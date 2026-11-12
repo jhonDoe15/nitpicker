@@ -1,0 +1,6 @@
+{
+  "id": "java-sample",
+  "title": "Add a shout method",
+  "preset": "java",
+  "prompt": "Add shout(String name) to src/main/java/sample/Greeter.java that returns the greeting in upper case (Locale.ROOT), with a test in src/test/java/sample/GreeterTest.java. Run nitpicker-gate until it exits 0."
+}

@@ -35,6 +35,29 @@ describe('analyzer process execution', () => {
       'wrapper emitted a finding for unexpected tool inner',
     );
   });
+  it.each([
+    [true, '60000'],
+    [false, 'unset'],
+  ])('passes a configured deadline (%s) to the analyzer process', async (configured, seen) => {
+    const probe = {
+      ...task('probe'),
+      timeoutMs: 60_000,
+      configuredTimeout: configured,
+      invocation: {
+        command: process.execPath,
+        args: [
+          '-e',
+          "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:process.env.NITPICKER_ANALYZER_TIMEOUT_MS ?? 'unset',classification:'enforceable'}]}))",
+        ],
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
+        env: { PATH: process.env.PATH },
+      },
+    };
+
+    const report = await executeAnalyzerTask(probe);
+
+    expect(report.findings.map(({ message }) => message)).toEqual([seen]);
+  });
   it('hides the CI job summary path from analyzers and keeps the rest of the environment', async () => {
     const probe = {
       ...task('probe'),
@@ -61,6 +84,18 @@ describe('analyzer process execution', () => {
         },
       ],
     });
+  });
+  it('stops an analyzer that keeps writing to stdout past the output limit', async () => {
+    const runaway = task('runaway');
+    runaway.timeoutMs = 60_000;
+    runaway.invocation.args = [
+      '-e',
+      "const chunk = Buffer.alloc(1024 * 1024, 120); for (;;) require('node:fs').writeSync(1, chunk);",
+    ];
+
+    await expect(executeAnalyzerTask(runaway)).rejects.toThrow(
+      'runaway exceeded the analyzer output limit',
+    );
   });
   it('force-kills an analyzer that ignores timeout termination', async () => {
     const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'analyzer-scheduler-force-kill-'));

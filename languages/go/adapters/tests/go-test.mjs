@@ -1,0 +1,147 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { TESTS_FAILED_RULE, testsFailHeadline } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  failingTestEntries,
+  valuesInMessage,
+} from '../../../../shared/rules/failing-tests/failing-tests.mjs';
+import { execute, failure } from '../execution/go-process.mjs';
+import { buildFlags } from '../build/go-vet.mjs';
+import {
+  RACE_FLAGS,
+  raceOnlyFailures,
+  raceUnavailable,
+  writeRaceCheck,
+} from '../race/race-run.mjs';
+import { meaningfulLines, parseTestEvents } from './test-events.mjs';
+
+const TEST_EVENTS = 'test-events.jsonl';
+const COVERAGE_PROFILE = 'coverage.out';
+const TESTS_TOOL = 'tests';
+const NO_TESTS_RULE = 'no-tests-ran';
+const LISTED_TESTS = 20;
+const OUTPUT_LINES = 8;
+
+function testCommand(settings, reportRoot, race) {
+  return [
+    'go',
+    'test',
+    '-vet=off',
+    '-json',
+    ...(race ? RACE_FLAGS : []),
+    ...buildFlags(settings),
+    '-coverpkg=./...',
+    `-coverprofile=${path.join(reportRoot, COVERAGE_PROFILE)}`,
+    './...',
+  ];
+}
+
+function runTests(context, race) {
+  const command = testCommand(context.settings, context.reportRoot, race);
+  return { command, result: execute(context, command) };
+}
+
+export function goTest(context) {
+  const raced = runTests(context, true);
+  const reason = raceUnavailable(raced.result);
+  const { command, result } = reason === undefined ? raced : runTests(context, false);
+  const text = result.stdout ?? '';
+  if (result.error !== undefined || (result.status !== 0 && parseTestEvents(text).events === 0)) {
+    throw failure({ command, result, rule: 'go-test-failed' });
+  }
+  writeFileSync(path.join(context.reportRoot, TEST_EVENTS), text);
+  writeRaceCheck(
+    context,
+    reason === undefined
+      ? { checked: true, raceOnly: raceOnlyFailures(context, parseTestEvents(text)) }
+      : { checked: false, reason },
+  );
+}
+
+export function readTestRun(reportRoot) {
+  return parseTestEvents(readFileSync(path.join(reportRoot, TEST_EVENTS), 'utf8'));
+}
+
+function failureLines({ id, output }) {
+  const lines = meaningfulLines(output)
+    .slice(0, OUTPUT_LINES)
+    .map((line) => `    ${line}`);
+  return [`  ${id}`, ...lines];
+}
+
+function listed(failures) {
+  const shown = failures.slice(0, LISTED_TESTS).flatMap(failureLines);
+  const more = failures.length - LISTED_TESTS;
+  return more > 0 ? [...shown, `  and ${String(more)} more`] : shown;
+}
+
+const OUTPUT_LOCATION = /^(?<file>\S+\.go):(?<line>\d+):(?<message>.*)$/u;
+
+function locatedLine(lines) {
+  const located = lines
+    .map((line) => OUTPUT_LOCATION.exec(line)?.groups)
+    .filter(Boolean)
+    .map((groups) => ({ ...groups, message: groups.message.trim() }));
+  return located.find(({ message }) => message !== '') ?? located[0];
+}
+
+function failureEntry({ id, output }) {
+  const lines = meaningfulLines(output);
+  const located = locatedLine(lines);
+  const errorLine = lines
+    .find((line) => line.startsWith('Error:'))
+    ?.replace(/^Error:\s*/u, '')
+    .replace(/:$/u, '');
+  const message = located === undefined ? lines[0] : located.message || errorLine;
+  return {
+    name: id,
+    ...(located === undefined ? {} : { file: located.file, line: Number(located.line) }),
+    ...(message === undefined ? {} : { message }),
+    ...valuesInMessage(output),
+  };
+}
+
+function failuresMessage(failures, snapshot) {
+  if (snapshot === 'base') {
+    return [
+      'Tests fail in the base snapshot. Make each failing test pass:',
+      ...listed(failures),
+      'The static analyzers ran as usual; coverage comes from the tests that ran.',
+    ].join('\n');
+  }
+  const consequence = 'the static analyzers ran, and coverage comes from the tests that ran';
+  return [
+    testsFailHeadline(failures.length, consequence),
+    ...failingTestEntries(failures.map(failureEntry)),
+  ].join('\n');
+}
+
+export function testRunFindings({ failures, testsRan, buildFailures }, snapshot = 'head') {
+  return [
+    ...(failures.length === 0
+      ? []
+      : [
+          {
+            tool: TESTS_TOOL,
+            rule: TESTS_FAILED_RULE,
+            path: '.',
+            identity: TESTS_FAILED_RULE,
+            message: failuresMessage(failures, snapshot),
+            classification: 'tool-error',
+          },
+        ]),
+    ...(testsRan || buildFailures.length > 0
+      ? []
+      : [
+          {
+            tool: TESTS_TOOL,
+            rule: NO_TESTS_RULE,
+            path: '.',
+            identity: NO_TESTS_RULE,
+            message:
+              'No tests ran. Keep the project tests, or restore the ones this change removed.',
+            classification: 'enforceable',
+          },
+        ]),
+  ];
+}

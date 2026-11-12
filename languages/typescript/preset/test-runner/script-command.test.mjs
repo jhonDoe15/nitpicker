@@ -161,4 +161,22 @@ describe('test script commands', () => {
       ),
     ).toEqual(['--runInBand', 'src', '-r', 'setup.js']);
   });
+
+  it('drops every value of an option that takes a list, up to the next option', () => {
+    expect(
+      withoutOptions(
+        [
+          '--coveragePathIgnorePatterns',
+          '/a/',
+          '/b/',
+          '--ci',
+          '--coverage-path-ignore-patterns=/c/',
+          '/d/',
+          '--runInBand',
+          'src',
+        ],
+        { variadic: ['--coveragePathIgnorePatterns'] },
+      ),
+    ).toEqual(['--ci', '--runInBand', 'src']);
+  });
 });

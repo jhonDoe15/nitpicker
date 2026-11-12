@@ -1,0 +1,1450 @@
+# The shared one-way rules
+
+Part of the [Python preset guide](../python-preset.md).
+
+These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
+finding names the allowed form first and ends with the usual exception sentence (`python.exceptions`, or `exceptions` for the shared rules). The
+rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
+under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`, `concurrency`); the
+others are ruff
+rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
+are listed at the end.
+
+| Concern                  | Allowed form                                                                                                                                                                           | Rule                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                                 | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                                                                                                                                                                                                                              |
+| Environment              | read once in a composition root, pass values in                                                                                                                                        | `process-env-access` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                  | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                                                                                                                                                                                                                                               |
+| Service lookups          | a parameter, resolved once in a composition root                                                                                                                                       | `service-locator-lookup` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                                                                                                                                                                                                                       |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`                                       | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                                                                                                                                                                                                                                               |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                                                                 | `unsafe-path-join` (script)                                                                                                                                                                                                                                                                                                                                                         |
+| Magic numbers            | a named constant                                                                                                                                                                       | ruff `PLR2004`                                                                                                                                                                                                                                                                                                                                                                      |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                                                        | ruff `N`                                                                                                                                                                                                                                                                                                                                                                            |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                                                            | `handwritten-boundary-guard` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                                                             | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                                                                                                                                                                                                                                                              |
+| Feature contracts        | a frozen dataclass or a domain type; the session or request stays in an adapter or route handler                                                                                       | `contract-infrastructure-type` (script)                                                                                                                                                                                                                                                                                                                                             |
+| Route handlers           | a separate schema (a Pydantic model, a frozen dataclass) mapped from the entity                                                                                                        | `handler-entity-type` (script)                                                                                                                                                                                                                                                                                                                                                      |
+| Type checking            | a concrete type, `Protocol`, `TypeVar`, `ParamSpec`, `object` narrowed with `isinstance`; no `typing.cast`, no `Any`                                                                   | `type-cast`, `explicit-any` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                                                           | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                                                                                                                                                                                                                                                              |
+| Module state             | state in an object made in the composition root                                                                                                                                        | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                                                                                                                                                                                                                                                    |
+| Updates across `await`   | `delta = await fetch()`, then `self.total += delta`, or one lock around the whole update                                                                                               | `atomic-update-across-await` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Lock discipline          | take a class's locks in one order, and hold the same lock for every write of an attribute                                                                                              | `lock-order-inversion`, `inconsistent-attribute-locking` (script); see [Lock discipline](../spec/checks.md#lock-discipline)                                                                                                                                                                                                                                                         |
+| Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                                                              | `import-time-effect` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                                                                | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                                                                                                                                                                                                                                                         |
+| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                                                           | ruff `S506`, `unsafe-deserialization` (script)                                                                                                                                                                                                                                                                                                                                      |
+| Deprecated APIs          | the replacement the deprecation notice names                                                                                                                                           | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                                                                                                                                                                                                                                                      |
+| Repeated strings         | a constant or enum member                                                                                                                                                              | `repeated-string-literal` (script)                                                                                                                                                                                                                                                                                                                                                  |
+| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                                                       | ruff `ARG001`-`ARG005`                                                                                                                                                                                                                                                                                                                                                              |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                                                            | `generic-name` (script)                                                                                                                                                                                                                                                                                                                                                             |
+| Method aliases           | call the target method directly and delete the alias                                                                                                                                   | `forwarding-method-alias` (script)                                                                                                                                                                                                                                                                                                                                                  |
+| Secrets                  | read from the environment; log only that a secret is set                                                                                                                               | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                                                                                                                                                                                                                                                    |
+| Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date   | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                                                                                                                                                                                                                                                |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                          | `boolean-flag-parameter` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                       | `tri-state-boolean` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                               | `orm-schema-sync` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                            | `orm-query-logging` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                                | `in-memory-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| Collection joins         | one collection per `joinedload`/`contains_eager` query; the others with `selectinload` or `subqueryload`                                                                               | `multiple-collection-joins` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Foreign key indexes      | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                        | `unindexed-foreign-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
+| Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                        | `number-truthiness` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Changing an argument     | build and return a new value, or copy the argument first                                                                                                                               | `parameter-mutation` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                         | `compatibility-shim` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Values in regex patterns | `re.escape(value)` inside a pattern, `in`/`startswith`/`==` for plain text, `re.compile(pattern)` with a whole pattern                                                                 | `regex-unescaped-value` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Regex pattern parts      | every part of a literal `re` pattern changes what it matches; the shorter form of the same pattern; no nested or overlapping quantifiers                                               | `regex-part-defect`, `regex-backtracking` (script)                                                                                                                                                                                                                                                                                                                                  |
+| Query order              | `order_by` on a unique key or with a tie-breaker (`order_by(User.created.desc(), User.id)`) before `limit`, `offset` or a slice; `aggregate_order_by` or `ArrayAgg(..., order_by=...)` | `unordered-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| Lists in queries         | an empty check and fixed-size chunks (`itertools.batched(ids, 1000)`), or one array parameter (`any_(bindparam("ids", ids, type_=ARRAY(Integer)))`)                                    | `unbounded-query-array` (script)                                                                                                                                                                                                                                                                                                                                                    |
+| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                            | `io-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                               |
+| Shareable objects        | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
+| Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
+| Streamed rows            | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
+| Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                   | `unbounded-fan-out` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                               | `task-outlives-resource` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                        | `unshielded-cleanup-await` (script)                                                                                                                                                                                                                                                                                                                                                 |
+| Files and connections    | `with open(path) as handle:`, `Path(path).read_text()`, `contextlib.closing(...)`                                                                                                      | `unclosed-inline-resource` (script), `SIM115`                                                                                                                                                                                                                                                                                                                                       |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                                                      | `todo-without-issue` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Commented-out code       | delete it                                                                                                                                                                              | ruff `ERA001`                                                                                                                                                                                                                                                                                                                                                                       |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                                                               | ruff `S` (see below)                                                                                                                                                                                                                                                                                                                                                                |
+| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                                                          | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                                                                                                                                                                                                                                                |
+| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                          | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                                                                                                                                                                                                                                                           |
+| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                       | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                                                                                                                                                                        |
+| Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                               | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                                                                                                                               |
+| Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                      |
+| Test honesty             | a skip only on a real condition, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                  | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `copied-constant-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
+| Float checks in tests    | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                              | `float-equality-in-test` (script)                                                                                                                                                                                                                                                                                                                                                   |
+| Test assertions          | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                                                              | `weak-assertion` (script)                                                                                                                                                                                                                                                                                                                                                           |
+| Test switches            | one case per test, asserted outright; a skip only on a real condition; a strict `xfail`                                                                                                | `conditional-assertion-in-test`, `switched-off-test` (script)                                                                                                                                                                                                                                                                                                                       |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                            | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                                                                                                                                                                                                                               |
+
+`type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
+(`partial(cast, int)`); `explicit-any` rejects every explicit `Any` of those modules. Both apply in
+source and in tests, as the TypeScript preset bans `as` and `any` in tests too. The finding is named
+by what it types: `f(a)`, `f(return)`, `Model.field`, `Alias`, or `cast(str) in f`, so a finding
+added above another does not renumber it; one annotation gives one finding however many `Any` it holds
+(`dict[str, Any] | list[Any]`), and `cast(Any, value)` is one `type-cast` finding. The allowed forms
+are the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` for a wrapper's `*args` and `**kwargs`,
+and `object` narrowed with `isinstance` or `match` (`dict[str, object]`, `Callable[..., object]`);
+untrusted input is parsed once in `adapters/` (the cast message names it when the target is a
+container). Both rules take `python.exceptions` entries with paths and a reason. ruff's `ANN401` is
+not selected, since `explicit-any` covers the same `Any` in every position.
+
+- An `Any` inside a node that `any-in-domain` or `pydantic-any-field` already reports (the whole
+  annotation, also over several lines) is not reported again, so one exception for the first rule
+  covers the `explicit-any` on that node too.
+- The implementation signature of a function that has `@overload` siblings is not checked: callers
+  see the overloads, which are.
+- `__getattr__`, `Callable[..., Any]` and test mocks are reported like any other `Any`; write
+  `Callable[..., object]` and a typed fake.
+- Resolution is lexical and conservative: a reassigned or ambiguous imported name (a comprehension
+  variable, a `match` capture, a parameter) is not assumed to refer to typing, while `typing` and
+  `typing_extensions` count as the same module (`try: from typing import cast` /
+  `except ImportError: from typing_extensions import cast`). Dynamic imports, wildcard imports (ruff
+  `F403` bans them), re-exports and arbitrary assignment aliases are not followed.
+- Annotation strings are parsed as expressions; `Literal` string values and `Annotated` metadata are
+  data, not type references. PEP 695/696 type-parameter bounds and defaults, class keywords and
+  subscript targets are read. Unused imports alone do not produce these findings (ruff handles unused
+  imports), and standalone `.pyi` stubs are not read.
+
+Details that are decisions rather than the table:
+
+- `contract-infrastructure-type` reads the public face of each feature: its `__init__.py` and the
+  modules directly in the feature folder whose names do not start with `_` (`layout.featureRoots`,
+  default `**/features`; `layout.sharedRoots`, default `**/shared`). Their public functions, and the
+  public methods of their public classes (nested ones included, dunder methods such as `__init__`
+  left out), may not take or return a persistence handle (SQLAlchemy and SQLModel `Session`,
+  `AsyncSession`, `sessionmaker`, `Engine`, `Connection`, `Query`, `Result`; Django `QuerySet` and
+  `Manager`; DB-API connections and cursors of `sqlite3`, `psycopg`, `psycopg2`, `asyncpg`,
+  `aiosqlite`, `pymysql` and `MySQLdb`; `pymongo` and `motor` clients, databases and collections;
+  peewee, Tortoise and `databases` handles) or a web request or response object (Django, Django REST
+  framework, Starlette, FastAPI, Flask, Werkzeug, Quart, aiohttp, Litestar and Sanic requests,
+  responses, websockets and uploads). Every name an `__init__.py` imports from a project module
+  counts, reported on the import: from an internal module, a public one, or one named for
+  infrastructure (`from .repository import open_session` is reported, as `index.ts` re-exports are
+  in TypeScript), and `from ._queries import *` brings in the names of `__all__`, or every public
+  definition when there is no `__all__`. Annotations are resolved through the imports, string
+  annotations and module-level type aliases, also across modules; a name that does not resolve to
+  one of those libraries is never reported. The identity is the member and the type's simple name
+  (`get_order|persistence|Session`). Left out: a function with a route decorator (`@router.get`,
+  `@app.route` in a module that imports a web framework, or a decorator of the web framework itself,
+  such as `@api_view` or `@login_required`; `@transaction.atomic` is not one), a class that
+  subclasses a web framework type (a Django `View`, a DRF `APIView`) or a data access type (a
+  Django `Manager` or `QuerySet`, which own their handles as a repository does), a class named
+  `*Repository` or `*Repo`, a parameter FastAPI injects (`= Depends(...)`, `Security(...)`,
+  `Annotated[Session, Depends(get_db)]`, or a module-level alias of one such as
+  `SessionDep = Annotated[Session, Depends(get_db)]`), modules named `adapter`, `adapters`,
+  `infrastructure`, `infra`, `persistence`, `repository`, `repositories`, `db`, `database`,
+  `dependencies`, `deps`, `config`, `configuration` or `security` (the Java and Kotlin presets skip
+  packages with the same names), and tests. A function whose first parameter is a request (annotated
+  as one, or named `request` without an annotation, as a Django view is, in any module) and the
+  modules `views`, `routes`, `router`, `routers`, `api`, `endpoints`, `urls` and `middleware` may use
+  the web types, but not the persistence ones. Class and dataclass fields are not read, only
+  signatures.
+- The allowed shapes for the two common layouts. FastAPI: a route handler in `router.py` takes
+  `session: SessionDep` and `Depends(...)` values, which are never reported; it passes the session to
+  a repository built in `deps.py` or `repository.py` (`OrderRepository(session)`), and the feature's
+  `service.py` takes that repository, or a `Protocol` the feature declares for it, and returns
+  frozen dataclasses or Pydantic schemas. A `service.py` or `crud.py` function that takes
+  `db: Session` is reported: callers in other features would need a session. Django: a view in
+  `views.py` may take the request and return a response; queries live in a `Manager` or `QuerySet`
+  subclass, a module named for infrastructure or a `_queries.py` module, and the feature's
+  `selectors.py` or `services.py` returns lists of frozen dataclasses or model instances, not a
+  `QuerySet`, which would let callers run more queries. A unit of work is the same: a function that
+  takes an optional `Session` or a transaction to join one is reported; pass a unit-of-work object
+  (a class the feature defines, with `commit()` and the repositories it needs) and keep the session
+  inside it.
+- `handler-entity-type` reads route handlers: functions with a route decorator (`@router.get(...)`,
+  `@app.route(...)`, `@api.post(...)` in a module that imports a web framework, or a decorator of the
+  framework itself, such as Litestar's `@get` or DRF's `@api_view`), Django function views (a
+  module-level function whose first parameter is the request, in a module that imports
+  `django.http`, `django.shortcuts` or `django.views`) and the request methods (`get`, `post`, `put`,
+  `patch`, `delete`, `head`, `options`, and a ViewSet's `list`, `retrieve`, `create`, `update`,
+  `partial_update`, `destroy`) of a class that subclasses a Django, DRF, Flask or other web framework
+  view. A parameter, the return annotation, `response_model=` or django-ninja's `response=` that
+  names an ORM entity is reported once per handler and entity; parameters FastAPI injects with
+  `Depends` or `Security` are left out, and a `response_model=` or `response=` that is not `None`
+  replaces the return annotation, which is then not read. A handler without either also has its
+  `return` values read, and every handler the first argument of a response it builds
+  (`Response(order)`, `JsonResponse(...)`, `jsonify(...)`): an entity class, a chain on it
+  (`Order.objects.get(pk=pk)`, but not `.values()`, `.values_list()`, `.count()`, `.exists()` or
+  `.aggregate()`), a parameter annotated with one, or a local variable assigned one of those. A
+  serializer around the entity (`OrderSerializer(order).data`) is the allowed form. Entities are
+  SQLAlchemy mapped classes (a `__tablename__` or `__table__` under a `DeclarativeBase` or
+  `declarative_base()` base, and their subclasses), SQLModel classes with `table=True`, and Django,
+  Tortoise and peewee models that are not `abstract`, found across the project's modules.
+  Imperative mappings (`registry.map_imperatively`, `@registry.mapped`) and entities that come from
+  a call the rule cannot type (`return db.get(Order, order_id)`) are not seen.
+- `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
+  `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
+  because ruff has no setting for it. Ruff already allows strings and bytes.
+- `S602`, `S604` and `S605` with a command that is a plain string literal are dropped too (ruff
+  marks them "seems safe"): a fixed command cannot be injected. A command built from a variable or
+  an f-string is reported. `S603` and `S607` (a subprocess call at all) and `S606` are not
+  selected: running a program with a list of arguments is the allowed form.
+- `process-env-access` reports `os.environ`, `os.getenv`, `os.putenv` and the related names (`posix.environ`,
+  `dotenv_values`, `getattr(os, "environ")`), also through `from os import environ` and import
+  aliases, once per site in every non-test file that is not a composition root. A composition root
+  is a file the program starts from or wires together: named `main`, `__main__`, `server`,
+  `composition_root`, `manage`, `wsgi`, `asgi`, `cli`, `app`, `application`, `celery`, `bootstrap` or
+  `worker`; named like a configuration module (`config`, `settings`, `conf`, `*_config`, `*_settings`,
+  `settings_*`); `tasks`, `fabfile`, `noxfile`, `setup` or `conftest` at the top level; in a
+  `composition_root`, `settings`, `config` or `conf` folder; an alembic `env.py` (a `script.py.mako`
+  beside it); a file that defines `create_app`, `make_app`, `build_app` or a similar factory; a
+  module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
+  `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
+  matched by `python.entryPoints`.
+  Nothing under a `domain` folder is a composition root.
+- `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
+  also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
+  `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
+  defined for `process-env-access` above. Code under an `if __name__ == "__main__":` guard is exempt
+  too, in any file. Every reference counts, including read-only facts such as
+  `sys.stdout.isatty()` or `sys.stdout.encoding`: take them from the writer the entry point passes in.
+  A name counts only when the file imports it from `sys`, so a parameter or class called `sys`
+  in a file that does not import the module is not reported. `sys.stdin` is not reported. The allowed form is a `TextIO` parameter written with `out.write(...)`
+  or `print(..., file=out)`, which ruff `T201` accepts; the entry point passes `sys.stdout` or
+  `sys.stderr`. A function that only forwards the real stream is covered by a test that passes
+  `io.StringIO()` or pytest's `capsys`; the passing line itself sits in the entry point or the
+  `__main__` guard, which the coverage step leaves out.
+- `service-locator-lookup` reports a service looked up in a dependency-injection container instead
+  of received as a parameter: `injector` (`Injector.get`, `create_object`, `call_with_injection`), `punq`
+  (`Container.resolve`, `resolve_all`), `lagom` (`container[Service]`, `resolve`), `kink`
+  (`di[Service]`), `dependency_injector` (calling a provider of a `DeclarativeContainer` or
+  `DynamicContainer` class defined in the project: `Container.mailer()`, or `container.mailer()` on an
+  instance) and `that_depends` (`Container.mailer()`, `.resolve()`, `.resolve_sync()` on a provider of a
+  `BaseContainer`). The receiver is resolved through imports, aliases, `from` imports, re-exports from a
+  package `__init__`, module-level instances of other project modules, `self.x = Container()` and
+  parameters or attributes annotated with the container class (also `"Injector"`, `Injector | None`,
+  `Optional[...]`, `Union[...]`), `x = injector or Injector()`, a function annotated to return the
+  container, an alias of an instance and the names a `from injector import *` brings in. A lookup
+  method used as a value counts too (`map(injector.get, types)`, `functools.partial(c.resolve, M)`,
+  `getattr(injector, "get")` with a literal name, `Injector.get(injector, M)`, `di.__getitem__`). A
+  project module named like a library (`injector/__init__.py`, `punq.py`) is the project's own code,
+  not the library. A name is resolved by scope: a parameter or a local of the
+  function shadows a module-level container or helper of the same name. A project container or
+  `injector.Module` that extends another one is followed through its bases. A method that is only
+  named `get` or `resolve` on another object is not evidence, and assigning `container[Service] = ...`, `@inject`
+  with `Provide[...]` and the container's `wire` and `config` calls are wiring, not lookups, and so is
+  a lookup inside a registration factory (`di[Mailer] = lambda di: ...`, `container.register(Mailer,
+factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project function, method, class
+  method, static method or constructor (also through a helper of a helper, a re-export, `import *`
+  or an import alias) whose own body looks a service up counts as a lookup at its call sites; a
+  closure the function only defines does not. The subject names the helper, the underlying call and
+  the file of that call (`resolve_mailer via punq.Container.resolve in src/shop/shared.py`). Not in tests, in a composition
+  root (see `process-env-access` for what counts as one, including `python.entryPoints`, and a
+  module with a top-level `if __name__ == "__main__":` guard, a script), nor in a
+  class that extends `injector.Module` or `injector.Provider`. A helper declared in a composition
+  root is a lookup when it is called from outside the roots; the lookup inside the root stays allowed.
+- `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
+  is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
+  `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,
+  `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
+  `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
+  accepts, is the allowed form. Not in tests.
+- `subprocess-without-timeout` reports waiting for a child process without a deadline:
+  `subprocess.run`, `call`, `check_call` and `check_output` without `timeout=` or with `timeout=None`
+  (also through a `**options` dict and a `functools.partial`, reported where the partial is called),
+  `subprocess.getoutput` and `getstatusoutput` (they take no timeout), `wait()` and `communicate()`
+  without a timeout on a `subprocess.Popen` (a chain, a local, a `with` target or a `self.` attribute
+  set in the class), and `wait()` or `communicate()` on an `asyncio.create_subprocess_exec`/`_shell` or
+  `anyio.open_process` process and `anyio.run_process`/`trio.run_process` outside a deadline in the
+  same function: `asyncio.timeout`, `asyncio.timeout_at`, `async_timeout.timeout`,
+  `anyio.fail_after`/`move_on_after`, the trio equivalents, or a call wrapped (at any depth) in
+  `asyncio.wait_for(..., timeout)` or `asyncio.wait(..., timeout=...)`, each with a value other than
+  `None`. A wait held in a variable and passed to `wait_for` later, a Popen returned by a project
+  helper, and a function passed to `run_in_executor` by reference are not followed. A call with
+  `**kwargs` whose keys are unknown is not reported. Not in tests or test support, where the test run
+  has its own limits. A program whose purpose is to run a child to completion, such as a build
+  wrapper, takes an exception.
+- `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
+  come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
+  `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,
+  `nbf` and `auth_time` read by subscript or `.get`) and from name suffixes (`_ms`, `_millis`, `_seconds`,
+  `_secs`, `_nanos`, `_micros`, `_minutes` and their camel-case and upper-case forms; a ratio such as
+  `MS_PER_SECOND` has no unit). A name assigned once takes the unit of its value, and `* 1000`, `/ 1000`,
+  `// 1000` (also through a unit-less constant), `int()`, `round()` and `math.floor` convert or keep it.
+  Reported: a `+`, `-` or comparison of two units; a name, attribute, dictionary key, default or keyword
+  argument in one unit that gets a value in another; an argument of one unit where the call takes another
+  (`time.sleep`, `asyncio.sleep`, `datetime.fromtimestamp`, the positional and keyword arguments of
+  `timedelta`, a module-level function whose parameter is named with a unit); and an epoch time passed to
+  `numpy.int32`, `numpy.uint32`, `ctypes.c_int` or `ctypes.c_int32`. Not in tests or test support. The same
+  rule runs as `nitpicker/time-unit-mismatch` (TypeScript, JavaScript), `pmd/MixedTimeUnits` and
+  `pmd/EpochNarrowedToInt` (Java) and `kotlin-source/TimeUnitMismatch` (Kotlin).
+- `sql-string-formatting` reports SQL text built at run time that reaches a query call. A value is
+  built when an f-string, `%`, `+`, `+=`, `.format`, `.format_map`, `string.Template(...).substitute` or
+  `.join` puts a piece into it that is not provably inert, followed through local names, parameter
+  defaults, module constants, class attributes and `self.x` set in the class (or a dataclass field),
+  attributes of a project module (`settings.TABLE`), constants and helper functions imported from other
+  project modules (with the call's arguments bound to the helper's parameters), comprehensions and lists
+  filled by `append`/`extend`. Inert pieces are literals, numbers (`int(x)`, `len(ids)`), placeholder
+  lists built from placeholders alone (`", ".join(["%s"] * len(ids))`, `"?" * n`, `("%s" for _ in ids)`,
+  rows such as `"(%s, %s)"`), optional filters whose every `append` is constant text
+  (`conditions.append("name = %s")` joined with `" AND "`), a subscript or `.get` of a dict, tuple or list of
+  constant names (`COLUMNS[key]`), a loop over such a tuple or over the keys or values of a constant dict
+  (also `MappingProxyType`, `frozenset` and `sorted` of one), the counter of `enumerate` (`f"${n}"`), a name
+  checked against a constant collection before use (`if column not in ALLOWED: raise ...`, also `return`,
+  `continue` or `break`, an enclosing `if column in ALLOWED:` and a comprehension filter), a parameter or a
+  pydantic or dataclass field annotated `Literal[...]`, `int` or an `Enum`/`StrEnum` class of the project
+  (and `.value`; a union counts only when every member does), a Django `_meta.db_table`, `get_field(...)`
+  and `concrete_fields` columns, SQLAlchemy metadata (`__tablename__`, `Table("name", ...)` and its `.name`,
+  `.c`, `.columns`, `metadata.tables`, `sorted_tables`, `inspect(Model).columns`), quoting calls
+  (`quote_name`, `quote_ident`, `escape_identifier`, `dialect.identifier_preparer.quote`), psycopg
+  `sql.Identifier`, `sql.Literal` and `sql.Placeholder`, and rows from `cursor.mogrify`; anything else,
+  including a parameter or an unknown call, is not. The query calls are matched by name, as in the
+  TypeScript rule: any name containing `query`, `sql` or `execute` (`execute`, `executemany`, `run_sql`,
+  `read_sql`, `exec_driver_sql`, but not `execute_command` or `to_sql`), a name starting with `fetch`,
+  `prepare`, `mogrify`, `raw`, `text`, `exec` and the `copy_*` calls, also through an alias
+  (`run = cursor.execute`), `getattr(cursor, "execute")` and `functools.partial`, plus psycopg2
+  `execute_values`/`execute_batch`. The static text must look like SQL: a statement (`SELECT`, `INSERT`,
+  `UPDATE`, `DELETE`, `WITH`, `MERGE`, and DDL: `CREATE`, `ALTER`, `DROP`, `TRUNCATE`), or a clause in SQL
+  shape (`WHERE name =`, `ORDER BY`, `LIMIT`, `SET x =`); a lone upper-case `AND`, `OR`, `IN` or `ON`, as in
+  a search query, is not SQL. The raw builders of query libraries
+  report any built piece, since their argument is SQL by definition: SQLAlchemy `text` and `literal_column`
+  (also inside `.where(...)`, `.order_by(...)`), peewee `SQL` and psycopg `sql.SQL` (and `sql.SQL(value)` as
+  an argument of `sql.SQL(...).format`, while `.format` on a `sql.SQL` with `sql.Identifier`/`sql.Literal`
+  is the safe composition). A project function or method that passes one of its parameters (positional or
+  keyword-only) straight to a query call is a wrapper, and its call sites are checked too (two levels). The
+  advice names the placeholder style of the project's driver, read from its dependencies: `$1` for asyncpg,
+  `?` for aiosqlite, `:name` for `databases`, `%s` otherwise. Django `.extra` and `RawSQL` are left to
+  ruff `S610` and `S611`, which report them already. Prose, log and exception text with SQL words never
+  reaches a query call and passes. It replaces ruff's `S608`, which flags every string that looks like SQL.
+- `tls-verification-off` reports what ruff `S501` and `S323` miss: `verify=` on `requests`, `httpx`,
+  `boto3`, `aiohttp` and session or client calls when the value can be `False` (a condition such as
+  `verify=not DEBUG`, a comparison with the environment such as `os.environ.get("X") != "0"`, `bool(...)`,
+  `strtobool`, `env.bool`, a conditional expression with a `False` branch, an `or` whose last operand can be
+  `False` or an `and` whose operands can, or a name, parameter default, class attribute or imported
+  constant bound to one of those; `ca or True` and `env or certifi.where()` cannot be `False` and pass),
+  also through an options dict (a literal, `dict(...)`, one built in steps, `**options`) and
+  `functools.partial`, and a literal `False` on calls `S501` does not cover (a session, `boto3`);
+  `session.verify = False` and the same conditions; `ssl._create_default_https_context =
+ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl.CERT_NONE` on a client
+  context (also `ssl.VerifyMode.CERT_NONE` and `0`, and through `setattr`); urllib3 `cert_reqs="CERT_NONE"`
+  and `assert_hostname=False`; `cert_reqs`/`ssl_cert_reqs` set to `CERT_NONE` (and redis
+  `ssl_cert_reqs=None`) in calls and option dicts (websocket `sslopt`); aiohttp `ssl=False` (also a name
+  bound to it) and `verify_ssl=False`; Elasticsearch and OpenSearch `verify_certs=False` and
+  `ssl_assert_hostname=False`, kafka `ssl_check_hostname=False`, ldap3 `Tls(validate=CERT_NONE)`, docker
+  `TLSConfig(verify=False)` and minio `cert_check=False`; Playwright `ignore_https_errors=True`, Selenium
+  `acceptInsecureCerts` (a capability or `accept_insecure_certs = True`) and the browser flag
+  `--ignore-certificate-errors`; MongoDB `tlsAllowInvalidCertificates`, `tlsAllowInvalidHostnames`,
+  `tlsInsecure` set to a value that can be `True`, also in a connection URI, including one built with an
+  f-string or `+`; and environment switches set in code or for child processes (`PYTHONHTTPSVERIFY=0`, an
+  empty `CURL_CA_BUNDLE` or `REQUESTS_CA_BUNDLE`, `NODE_TLS_REJECT_UNAUTHORIZED=0`, `GIT_SSL_NO_VERIFY`). A
+  switch behind an explicit command-line flag (`verify=not args.insecure`) is reported too; a project that
+  wants such a flag lifts the rule for its path with `python.exceptions`. A server context
+  (`ssl.Purpose.CLIENT_AUTH`, `PROTOCOL_TLS_SERVER`, `server_side=True`, also held on `self.context`, and
+  uvicorn and similar servers) and a server option dict (one that sets `certfile`,
+  `keyfile`, `ssl_certfile` or `ssl_keyfile`) pass: a server that asks for optional client certificates
+  sets `CERT_OPTIONAL`, which is never reported. A literal `verify=False` on a
+  module-level `requests` or `httpx` call is left to `S501`, so one site gives one finding. A `verify=`
+  read from an attribute (`settings.CA_BUNDLE`) is not reported, since it can be a path. Text that mentions
+  the settings (a warning, help text) is not read.
+- `weak-hmac` reports HMAC with MD5 (or MD4, MD2): `hmac.new`, `hmac.HMAC` and `hmac.digest` with
+  `hashlib.md5`, `"md5"`, a lambda returning one, `hashlib.new("md5")`, an import alias, a parameter default,
+  a class attribute or a constant bound to one, also from another module and through `functools.partial`,
+  pycryptodome `HMAC.new(..., digestmod=MD5)` and cryptography `hmac.HMAC(key, hashes.MD5())`. HMAC-SHA1 passes: its
+  security does not rest on collision resistance, and TOTP, HOTP and OAuth 1.0a fix it. Ruff's `S324`
+  does not look into `hmac`, and `hashlib.md5(..., usedforsecurity=False)` passes `S324` already; ruff's
+  `S303` reports `hashes.SHA1()` and `hashes.MD5()` inside a cryptography `HMAC(...)`, so those findings are
+  dropped after ruff runs, leaving HMAC-SHA1 allowed and HMAC-MD5 reported once, with the HMAC message. The
+  rules script finds those sites from the syntax tree (an aliased `HMAC`, a hash held in a variable) and
+  lists them in `rules-allowances.json`; it also lists SHA-1 in RSA-OAEP and `MGF1`
+  (`padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA1()), algorithm=hashes.SHA1(), ...)`), which rests on
+  no collision resistance either. `hashes.Hash(hashes.SHA1())` stays an `S303` finding.
+- `http-without-timeout` reports what ruff `S113` (module-level `requests` and `httpx` calls) misses:
+  `urllib.request.urlopen` and an opener's `open` without a timeout, `http.client.HTTPConnection` and
+  `HTTPSConnection` without one, a call on a plain `requests.Session()` (a local, a `with` target, a chain, a
+  class attribute, a `self.` attribute set or annotated in the class, a dataclass field, or a module
+  attribute of a project module) without `timeout=`, `timeout=None` (also through a constant such as
+  `TIMEOUT = None`) on such a session or an httpx client, `getattr(session, method)(...)`,
+  `functools.partial(requests.get, ...)` without a timeout, a urllib3 `PoolManager` or `urllib3.request`
+  without one (urllib3 has no default), and an `aiohttp.ClientTimeout` that bounds nothing (no `total`,
+  `connect`, `sock_read` or `sock_connect`, or each of them `None`, as in `ClientTimeout(total=None)`). `httpx` without a timeout passes: it has a 5 second default, and
+  `S113` reports only an explicit `None`. `aiohttp.ClientSession` passes: its default `ClientTimeout` ends a
+  request after 5 minutes. A project factory or `Session` subclass passes only when it sets a timeout: it
+  mounts a timeout adapter on that same session in the same scope (a plain `HTTPAdapter` sets none),
+  overrides `request` or `send` to set one, or binds `request` with `functools.partial(..., timeout=...)`.
+  A call with `**kwargs` whose keys are unknown is not reported; `urlopen` is not reported when production
+  code calls `socket.setdefaulttimeout` with a number.
+- `timeout-abandons-operation` reports a timeout that returns control while the work it bounded keeps
+  running. Two asyncio forms are modeled, in any function, through `import` aliases and `from asyncio
+import`: `done, pending = await asyncio.wait(tasks, timeout=...)` (or a `return_when` other than
+  `ALL_COMPLETED`) when `pending` is dropped (`_`, `*_`, a bare `await asyncio.wait(...)`) or only
+  read (`len(pending)`, `if pending:`, a log call, a loop that only logs, `pending.clear()`,
+  `pending.copy()`), and `asyncio.wait_for(asyncio.shield(x), seconds)` when `x` is a task created in
+  the same function (`asyncio.create_task(...)`, `ensure_future(...)`, also in an annotated
+  assignment) or a direct call, and nothing later awaits it, cancels it or hands it on. The pending
+  set counts as owned when a loop or comprehension over it calls `cancel()` or `add_done_callback()`
+  on each task or awaits it, when it is passed to a call that is not a log or sizing call
+  (`asyncio.gather(*pending)`, `owner.background.update(pending)`, a second `asyncio.wait(pending)`),
+  returned, stored on an attribute, or used by a nested function. The same reads of the awaited
+  collection count too: when the first argument of `asyncio.wait` is a plain name and the function
+  cancels its tasks (`for task in tasks: task.cancel()`, also in a `finally`) or hands it on, the
+  pending set is owned through it. A starred target (`done, *rest = ...`) is followed under its name
+  like `pending`; any other unpacking, or keeping the whole result in one name, is not followed and is
+  not reported. A shield over a parameter or an attribute is not reported, since its caller or object
+  owns that task, and neither is a `wait_for` whose timeout is `None`. `asyncio.wait_for` and
+  `asyncio.timeout` cancel the work on timeout, a `TaskGroup` owns its tasks, and Trio and AnyIO
+  cancel scopes (`move_on_after`, `fail_after`) cancel, so none of them is reported. `asyncio.wait`
+  without a timeout, or with `ALL_COMPLETED` and no timeout, has no pending set. Names must come from
+  an import; a local called `asyncio` is not the module. The subject, and so the identity, is the
+  construct with the keywords that make it return early (`asyncio.wait(timeout=...)`,
+  `asyncio.wait(return_when=FIRST_COMPLETED)`, `asyncio.wait_for(asyncio.shield(task))`), not the
+  line, and the message says what made it return.
+- `unsafe-deserialization` reports what ruff `S301`, `S302` and `S506` miss: `yaml.unsafe_load`,
+  `yaml.full_load` and their `_all` forms, `yaml.load_all` without a safe loader (`SafeLoader`, `CSafeLoader`,
+  `BaseLoader` or a project class deriving from one at any depth; `S506` covers `yaml.load` only, and its
+  finding is dropped when the loader is such a class), ruamel `YAML(typ="unsafe")` (also `y.typ = "unsafe"`
+  set afterwards), `torch.load` without `weights_only` bound to `True` (a literal or a constant; torch 2.6
+  made it the default, and the explicit form holds on every version), `numpy.load(..., allow_pickle=True)`,
+  the pickle-based `joblib.load`, `cloudpickle.load` and `cloudpickle.loads`, keras and `tf.keras`
+  `load_model(..., safe_mode=False)` and lxml `XMLParser(resolve_entities=True)` or `no_network=False`,
+  also through an options dict or `functools.partial`. `jsonpickle.decode`,
+  `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
+  value is an `S301` finding whose advice names `copy.deepcopy(value)`.
+- `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` and
+  `any-in-domain` apply to a directory named `domain` anywhere in the path (not tests). `io-in-domain`
+  reports `open`, `input`, `time.sleep`, `os.system`, `os.popen`, file methods of a `pathlib.Path`
+  (also one derived with `.parent`, `/`, `with_name`, `joinpath` or `resolve`), imports of
+  `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`, database and cloud clients and
+  similar, and imports of an `adapters` package or module. `random-in-domain` also reports imports
+  of the random-data and id generators `faker`, `mimesis`, `nanoid`, `shortuuid`, `cuid` and `cuid2`,
+  `ulid.ULID()` with no argument and the `uuid6`/`uuid_utils` generators (`ULID.from_str(text)`
+  and `uuid.UUID(text)` parse a value and are fine). `logger-in-domain` reports an import of
+  `logging`, `structlog` or `loguru`, or of a project module whose last segment is `log`, `logger` or
+  `logging` (also by a relative import such as `from . import logger`) or that sits in a `logger` or
+  `logging` package; an import under `if TYPE_CHECKING:` is fine, as it is for the id, random and
+  input-output imports above. Return a result that says what happened, or raise a domain error, and
+  log it in `adapters/`; in `domain/` the `catch-log-without-exception` advice says the same instead
+  of naming `logger.exception`. `module-state-in-domain` reports, once per state, a domain module that
+  imports or reads another module's state: a module-level collection that some production function
+  changes (what `module-level-mutable-state` reports at its definition) or a module-level instance of
+  a project class that some production code changes, through an attribute assignment on it or a
+  method of its class that assigns to `self` (`STORE = Store()` with `def add(self, item):
+self.items.append(item)`), also through a package `__init__` that re-exports it and through
+  `module.NAME` where `module` is an imported module; a parameter, local or attribute that only
+  shares the name (`def apply(registry): registry.handlers`) is not followed. Constants that
+  nothing changes (`LIMITS = {"default": 10}`), instances that nothing changes, and frozen values are
+  fine: a frozen dataclass, `@attrs.frozen`, `@attr.frozen`, `@attr.s(frozen=True)`, a pydantic
+  model with `model_config = ConfigDict(frozen=True)` (or `{"frozen": True}`) or a v1 `class Config:`
+  with `frozen = True` or `allow_mutation = False`, a `NamedTuple` and an `Enum`. These are the TypeScript `domain-does-not-import-*` concerns: adapters,
+  Node I/O and clients are `io-in-domain`, id libraries are `random-in-domain`.
+- The domain rules also follow calls into project helpers outside `domain/` and `adapters/`: a
+  domain call to a function, method or class (its `__init__`) of another production module that
+  reads the clock, draws randomness or does input or output, itself or through further helpers, is
+  reported at that call with the same rule id as the direct effect, and the message shows the path,
+  for example `quote -> shop.shared.prices.fetch -> shop.shared.http.get_json -> requests.get`; a
+  path longer than seven steps shows its first four and last two around `...`. The finding's
+  subject and identity are the helper's qualified name (`shop.shared.prices.fetch`), not the path,
+  so a change inside the helper keeps it and two helpers both named `fetch` stay apart. Calls are
+  resolved through `import x as y`, `from x import f as g`, relative imports, names re-exported by
+  a package `__init__`, `Class.method`, `self.method`/`cls.method` inside the same class, and bare
+  decorators (`@register` is a call of `register`); recursion between helpers is followed once. A
+  name means what the module binds at the top level: a function's own parameters and locals, and an
+  import inside another function, do not change it, a later top-level assignment (`run = lambda:
+1`) replaces an import, a definition inside a top-level `if` or `else` is preferred over an import
+  in the other branch, and both sides of a `try`/`except ImportError` fallback count. An absolute
+  import resolves to a project module only by its exact name, or by a shorter suffix whose first
+  segment is a project directory that is neither a standard-library module nor installed outside
+  the project, so `import json`, `import email` or `import redis` never resolve to a project's own
+  `json.py`, `email.py` or `redis.py`. A helper that takes the clock,
+  random source or client as a parameter (`def stamp(clock): return clock()`) stays legal, as do
+  importing a helper without calling it, type-only imports and helpers nobody calls. Not followed,
+  so not reported: methods of module-level or injected objects (`client.fetch()`), inherited
+  methods, nested functions and lambdas, `getattr` and other dynamic calls, decorators that wrap
+  a helper, and third-party code beyond the effect lists. Helper effects come from the same lists
+  as the direct rules plus the HTTP (`requests.get`, `httpx.post`, `urlopen`), subprocess, socket,
+  `shutil`, `tempfile`, `glob` and client-factory calls (`sqlite3.connect`, `create_engine`,
+  `requests.Session`, `boto3.client`), and methods called on a client created in the same
+  function. When a helper reaches an effect both through another domain module and directly, the
+  path shown is the one that stays outside `domain/`. A helper that only logs is not reported; the TypeScript rule
+  `domain-does-not-reach-io-through-shared` also counts reaching a logger package. Calls into
+  another domain module or into `adapters/` are left to that module's own findings and to the
+  import finding, so one cause gives one finding.
+- `import-time-effect` reports an external effect that runs while a production module is imported:
+  top-level statements (also inside top-level `if`, `try`, `for` and `with` blocks and the `else` of
+  a main guard), class bodies, default argument values and decorators. Effects are the input and
+  output calls above (`open`, `Path(...).read_text()`, HTTP requests, subprocesses, sockets,
+  `sqlite3.connect`, `psycopg.connect`, `pymongo.MongoClient`, `os.makedirs`, `time.sleep`), starting
+  a thread, process or scheduler (`threading.Thread(...).start()`, a name bound to one and then
+  started, `ThreadPoolExecutor().submit`, an apscheduler scheduler's `start`, `multiprocessing.Pool`),
+  `asyncio.run`, `uvicorn.run`, a `logging.FileHandler` without `delay=True`, `smtplib.SMTP(host)`,
+  registrations that change the process (`atexit.register`, `signal.signal`,
+  `threading.Timer(...).start()`, a `sched.scheduler`'s `run`, `logging.basicConfig(filename=...)`),
+  package data and data files read like a path (`importlib.resources.files(...).read_text()`,
+  `importlib.resources.read_text`, `pkgutil.get_data`, `pandas.read_*`, `numpy.load`,
+  `nltk.download`), `Base.metadata.create_all`, and a method that does I/O on a client bound at
+  module level (`ENGINE.connect()`, `S3.download_file(...)` on `boto3.client`, `CACHE.ping()` on
+  `redis.Redis`; `pipeline()` and other local methods are fine), also when the name is bound in a
+  class body or with an annotation, directly or through a project helper, function or class
+  constructor (the message shows the path, as above), a helper reading a module-level `Path`
+  constant included. The finding names the receiver as written (`ENGINE.connect`,
+  `threading.Thread(...).start`). A bare decorator (`@register`) counts as a call of that
+  function. Allowed: anything under a main guard (`if __name__ == "__main__":`, also written
+  `"__main__" == __name__` or joined with `and` to another condition) or `if TYPE_CHECKING:`, function and class definitions, lazy
+  factories (a function defined but not called at import), lambdas, pure constants,
+  `logging.getLogger`, dataclasses and enums, `TypeVar`, `re.compile`, `Path(__file__).resolve()`
+  and other path arithmetic, and creating a lazy client that connects only on first use
+  (`requests.Session()`, `httpx.Client()`, `create_engine(url)`, `redis.Redis()`, `boto3.client`,
+  `smtplib.SMTP()` without a host). Composition roots are exempt, as defined for
+  `process-env-access` above (the Django settings module and `manage.py`, `wsgi.py` and `asgi.py`
+  included), so is a file listed in `python.entryPoints`. Test files and test support, as defined
+  for the security rules above, are out of scope. Reading the environment at import is
+  `process-env-access` and is not reported again; in a `domain` module, input and output at import
+  is reported once, as `io-in-domain`. Differences from the TypeScript `report-module-load-effects`:
+  - Exempt files: TypeScript exempts the detected app entry and `layout.entryPoints`; Python also
+    exempts every composition root by name, folder or factory (`main.py`, `cli.py`, `worker.py`,
+    configuration modules, a module defining `create_app`, `pyproject.toml` script entry points).
+  - Test scope: TypeScript skips test files and test directories; Python skips test files and the
+    test support (`testing/`, `fixtures/`, `mocks/` and the other support folders that production
+    code does not import).
+  - Reported only in TypeScript: reading the clock or a random value at import (`Date.now()`,
+    `Math.random()`, `crypto.randomUUID()`; in `domain/` Python reports these as `clock-now` or
+    `random-in-domain`), any `process.*` call, a side-effect-only import, top-level `await`, a
+    static block, and a top-level expression statement or control flow on its own. Python reports
+    only the effects such statements run.
+  - Reported only in Python: effects in expression statements, class bodies, default values and
+    decorators (TypeScript reports effect calls only inside a module-level declaration), and effects
+    reached through a project helper.
+- `module-level-mutable-state` reports a module-level `dict`, `list`, `set` or `collections`
+  container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
+  definition; a collection that is only read, a local of the same name and a module-level change
+  are fine. `PLW0603` covers rebinding with `global`.
+- `atomic-update-across-await` reports a lost update in an `async def`: an assignment or augmented
+  assignment to shared state whose value reads that same state before an `await` in the same
+  statement (`self.total += await fetch()`, `self.total = self.total + await fetch()`,
+  `self.total = await fetch(self.total)`, `cache[key] = cache[key] + await load()`,
+  `self.counts[key] = self.counts.get(key, 0) + await load()`), or that uses a local holding a read
+  of the state made before an `await` (`current = self.total`, `delta = await fetch()`,
+  `self.total = current + delta`). Shared state is an attribute chain or subscript rooted at the
+  method's `self` or `cls` (also from a nested function), at a module-level name (a dict, an
+  object, a class), or a bare name declared `global` or `nonlocal`.
+- A saved read is followed through the locals that carry it: a local computed from it
+  (`next_total = current + 1`), changed in place (`current += 1`, `current += await fetch()`), an
+  annotated local (`current: int = self.total`), an element of a tuple assignment and a walrus
+  (`(current := self.total)`). It is followed into the `except`, `else` and `finally` blocks of a
+  `try` whose body holds the `await`, into both arms of an `if`, and around a loop, so a read saved
+  in one iteration and written in the next is reported. A local reassigned to a value that does not
+  read the state, and the result of an awaited call that was given the state
+  (`replaced = await fetch(self.total)`, then `self.total = replaced`) are not followed.
+- Awaiting into a local first, a local, a parameter object, in-place mutation
+  (`self.items.append(await fetch())`), a read after the `await`
+  (`self.total = await fetch() + self.total`), a check then set
+  (`if key not in self.items: self.items[key] = await fetch()`) and a saved value restored after
+  the location was deliberately set (save `self.state`, set it, `await`, put the saved value back)
+  pass.
+- An update inside `async with` on a lock that admits one task at a time and that every task
+  shares passes. A lock is trusted only when every assignment to it in the file builds one at
+  module level, at class level or in `__init__` (import aliases followed): `asyncio.Lock` or
+  `Condition`, `anyio.Lock` or `Condition`, `trio.Lock`, `StrictFIFOLock` or `Condition`, a
+  semaphore or capacity limiter built with one slot (`asyncio.Semaphore()`, `asyncio.Semaphore(1)`,
+  `BoundedSemaphore(value=1)`, `anyio.Semaphore(1)`, `anyio.CapacityLimiter(1)`, the `trio`
+  equivalents), a dataclass `field(default_factory=asyncio.Lock)`, or, in `__init__`, a local or
+  module name that holds such a lock. `self.gate` and `cls.gate` are looked up in their own class
+  (a class-level lock included) and then in its base classes of the same file, so two classes may
+  use one attribute name for different locks; `self.locks[key]` is trusted when `self.locks` is a
+  `defaultdict` of such locks. Anything else is reported: a lock or semaphore built in the method
+  that takes it (no other call shares it), an attribute assigned again outside `__init__`, a
+  semaphore or limiter with more than one slot or a size that is not the literal `1` (also after
+  `limiter.total_tokens = 5`), a conditional, factory or `or` construction, a lock passed in as a
+  parameter or injected through `__init__`, and an annotated dataclass field without a factory. A
+  name that the file never assigns and that is not a parameter (a lock set up in another module)
+  is trusted when it contains `lock` or `mutex`; that is the only guess. `await cond.wait()` and
+  `await cond.wait_for(...)` on the condition that is held release it, so a read made before the
+  wait is stale after it. A read saved before the lock was taken is still stale.
+- Source and test files are checked. Not covered: a local alias of shared state
+  (`state = self.state`, then an update of `state.total`), `yield`, an `await` hidden in a helper
+  the statement calls, and a lock taken by hand (`await lock.acquire()`); lift a serialized path
+  with a `python.exceptions` entry. On a module dict the line also gets
+  `module-level-mutable-state`, which asks where the state lives; the two findings are different
+  failures and both apply. No ruff rule covers this hazard (checked against ruff 0.16.9). Run over
+  the standard library and installed async packages it reported nothing, which measures false
+  positives only.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)):
+  `self` and `cls` are followed, a saved local is followed, a lock is recognized when proven shared
+  and exclusive, and a semaphore or limiter only when proven to have one slot. The TypeScript rule
+  does not follow `this` and recognizes no lock; the Kotlin rule recognizes `Mutex.withLock` and a
+  one-permit `Semaphore`.
+- `unsafe-path-join` follows the parameters of a function through `/`, `Path(...)`,
+  `os.path.join`, `joinpath` and f-strings into file operations (`open`, `read_text`, `unlink`,
+  `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment
+  (`is_relative_to`, `relative_to`, `startswith`, `commonpath`) in an `if`, or in a `try` whose
+  handler exits; for values converted with `int`, `uuid.UUID`, `secure_filename` or `basename`,
+  or reduced to `.name`; and for parameters annotated `Literal`.
+- `handwritten-boundary-guard` reports `isinstance` on a value that came from `json`, `yaml` or
+  `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
+  `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
+  `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
+- `eager-relationship` reports a SQLAlchemy `relationship` (or `backref`) mapped with
+  `lazy="joined"`, `"subquery"`, `"selectin"`, `"immediate"` or the legacy `lazy=False`, also
+  Flask-SQLAlchemy's `db.relationship` and SQLModel's `Relationship(sa_relationship_kwargs=...)`.
+  Every query of the model then loads the related rows. Leave `lazy` at its default (or
+  `"raise"`) and load per query with `options(selectinload(...))` or `joinedload(...)`. Port of
+  the JVM `JpaLazyFetching`.
+- `many-to-many-cascade-delete` reports a `cascade` with `all`, `delete` or `delete-orphan` on a
+  `relationship` with `secondary=` (and on its `backref`), and SQLModel's `cascade_delete=True` or
+  `sa_relationship_kwargs={"cascade": ...}` on a `Relationship` with `link_model=`: deleting one
+  owner deletes rows that other owners still share. `secondary` also counts when it is passed
+  positionally or through `sa_relationship_kwargs`; `single_parent=True` and `viewonly=True` are
+  not reported. Port of
+  the JVM `JpaManyToManyCascade`. Both rules check production sources only. Django has no eager
+  mapping option (`select_related` and `prefetch_related` are per query) and its `on_delete`
+  cascades are on foreign keys, not on a `ManyToManyField`, so neither rule applies to it.
+- `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
+  three times or more in a file (not tests, not generated migrations) and reports each use from the
+  third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
+  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
+  message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
+  formats). The minimum length, the number of allowed uses and those lists are defined once in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs);
+  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
+  `exceptions` route for the rule like every other Python rule.
+- `generic-name` reports a file, a folder or a class (nested ones too) whose last name word is `util`,
+  `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`, `commons`,
+  `misc` or `miscellaneous` (the list in `shared/naming/smell-words.mjs`, which the Kotlin preset uses
+  too; trailing digits and version words such as `v2` are ignored). A last word that only wraps the
+  real one (`functions`, `funcs`, `methods`, `module`, `modules`, `mixin`, `mixins`, `base`, `classes`,
+  the container words of the same module) is skipped, so `util_functions`, `helper_module`,
+  `OrderHelperMixin` and `HelperBase` are reported and `LoggingMixin` or `ModelBase` are not; a word
+  elsewhere in the name (`common_prefix`, `get_common_ancestor`) is not reported. Test
+  files are skipped. A class that extends a type with the same ending (`class SessionManager(CacheManager)`),
+  a `managers.py` that holds a framework manager (`models.Manager`), `context_manager` and the roles
+  `Authentication`, `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource`
+  before `Manager` or `Managers` (`ACCEPTED_MANAGER_ROLES` in the same module) are not reported.
+- `forwarding-method-alias` reports a method of a class whose only statement is `return self.target(...)`
+  (a bare `self.target(...)` when both return `None`, `return await` in an `async def`) passing its
+  own parameters unchanged and in order (keyword-only parameters by name, `*args` and `**kwargs`
+  spread) to a method of the same class with the same parameter names, kinds, annotations, defaults
+  and return annotation. Both methods must be fully annotated, plain (no decorator, so `property`,
+  `staticmethod`, `classmethod`, `overload`, `functools.cache` and `typing.override` pass) and
+  defined once; dunder methods, `of` and `from_` pass. A method whose name a base class in the
+  project defines (an override) passes, and so does every method of a class with a base the project
+  does not define, except `object`, `ABC`, `Generic`, enum, `NamedTuple` and `TypedDict` bases and
+  builtin exceptions (their own method names, such as `add_note`, are inherited names); an exception
+  base from another package, a class with keyword arguments other than `metaclass`, and a name that
+  is defined again under `if`, `try` or `with` in the class body, a name the class assigns as an
+  attribute (`self.total = ...`), and every method of a class with `__getattr__` or
+  `__getattribute__` are skipped. Test files are not
+  checked. Findings of this rule in generated files (the generated-file list of the size limits) are
+  dropped after the run, so a generated base class still counts for the classes that extend it. The
+  finding identity is the class and method name, not the target, so renaming the target keeps it
+  baselined. The message says to call the target directly and delete the alias; when a public alias
+  forwards to a `_private` method it says to rename the target to the alias name instead. A
+  structural `Protocol` implemented without inheriting from it cannot be seen, and an alias in a
+  base class that subclasses override is reported; add an exception (`python.exceptions` in
+  `nitpicker.config.json`) for a public alias that must stay.
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
+  `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
+  and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an
+  `if`, a conditional expression, a `while`, an `assert`, a comprehension filter, a `match`
+  subject or guard, also under `not`, `and` and `or`, as `flag is True` or `flag == False`, and
+  inside a nested lambda or closure. The flag is keyword-only (`def send(message, *, urgent=False)`),
+  two functions, or an enum. A name the code rebinds (a loop variable, a lambda parameter, an
+  assignment) is not the flag. Private names (a leading underscore, which covers `__init__` and
+  the other dunder methods), methods of a private class, nested functions, tests, methods named
+  `set_*` or `with_*`, `@classmethod` and `@staticmethod` factories named `from_*`, `of` or
+  `builder`, functions with `@override`, `@abstractmethod`, `@overload`, a property `setter`,
+  `getter` or `deleter`, or a pydantic `field_validator`, `validator` or `model_validator`, and a
+  flag that is only passed on or stored are not reported. A module function named `set_up_db` or
+  `from_config` is checked. A method that overrides a base class without `@override` is reported;
+  mark it `@override` (`typing_extensions.override` before Python 3.12). The finding names the
+  class: `Mailer.deliver(urgent)`. The [parameter rules table](../internals.md#parameter-rules-across-presets)
+  compares the presets.
+- Unused arguments (ruff `ARG001`-`ARG005`) skip names that start with `_`, `*args` and `**kwargs`,
+  `@override` and `@abstractmethod` methods, `@overload`, dunder methods other than `__init__`,
+  `__new__` and `__call__`, and bodies that are only `...`, `pass`, a docstring or
+  `raise NotImplementedError`. A callback signature that fixes a parameter the body does not read
+  takes the `_` prefix (`def handler(event, _context)`); a parameter the framework passes by
+  keyword (a FastAPI path parameter, a pytest fixture requested for its effect) keeps its name and
+  the path gets an exception. Test files are skipped, as for the other `ARG` use.
+- `hardcoded-secret` reports a secret string assigned to a name ending in `password`, `passwd`, `pwd`,
+  `passphrase`, `secret`, `token`, `credentials`, `api_key`, `private_key`, `access_key`, `secret_key`,
+  `auth_key`, `signing_key`, `encryption_key`, `hmac_key` or `jwt_key` (a trailing `value`, `raw`,
+  `str`, `string`, `text` or `plain` is ignored; tokenizer marker tokens such as `eos_token` and
+  `pad_token` are not secrets). The value rules are shared with the other presets
+  (`shared/naming/secret-words.mjs`, mirrored in `rules/credentials/spec.py`): six characters or more
+  with letters and digits, or three character classes; for a `password`, `passwd` or `passphrase`
+  name also eight characters or more with a lowercase letter followed by an uppercase one
+  (`CorrectHorseBatteryStaple`, not a single word such as `Elephantine` or an all-lowercase
+  `hunterhunter`). Not secrets: placeholders (`changeme`, `<...>`, `${...}`, `$NAME`, `{{...}}`,
+  `{name}`, `%s`, `%(name)s`, `:name`, `****1234`), environment variable names, header names, lowercase
+  paths and message keys (`prod/db-creds-v2`, `errors.token.expired_v2`, `/etc/app/creds.json`),
+  regular expressions (`^...$`), URLs, a value equal to the name and an identifier that contains a
+  secret word (`extra_token_1`, `newPassword`); a credential-shaped value is left to
+  `credential-shape`. Where: a variable (also through `:=` and tuple unpacking), attribute,
+  parameter default, keyword argument, dictionary entry, `setattr(obj, "password", ...)`, a subscript
+  (`os.environ["DB_PASSWORD"] = ...`, `config["api_key"] = ...`), a `field(default=...)`, a
+  `SecretStr(...)` or `SecretBytes(...)`, the `return` of a secret-named function or property without
+  parameters, a literal built from parts, `bytes`, `.encode()` or `str()`, the literal that opens the
+  value (`"...".strip()`, `"..." + suffix`, not `"...".format(...)`, `.join`, `.split` and other calls
+  that make another value), or a fallback: `x or "..."`, either branch of a conditional, and the
+  default of a settings read with a secret key or assigned to a secret name: `os.getenv`,
+  `os.environ.get`/`setdefault`/`pop`, `get`/`getenv`/`setdefault`/`pop`/`str` on a receiver named
+  `env`, `environ`, `environment`, `secrets` or `settings`, `config(k, default=...)` (python-decouple),
+  `env(k, ...)` (environs) and `add_argument("--password", default=...)`. Members of an `Enum` class
+  are skipped. `credential-shape` reports, anywhere, strings shaped like an AWS key, a GitHub or Slack
+  token, a `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a URL with
+  `user:password@`, a `password=` parameter or a `Bearer`/`Basic`/`Token` value. `secret-in-log`
+  reports such a name (not `has_*`/`is_*`; a constant name only when it is a key that is read, as in
+  `os.environ["API_TOKEN"]` or `os.getenv("API_TOKEN")`) passed to a logger call, `print`,
+  `pprint.pprint`, `sys.stdout.write`, `sys.stderr.write`, `click.echo`, `click.secho`,
+  `warnings.warn` or the exception of a `raise`: as an argument, attribute (not a member of a
+  `tokenizer`), subscript, `.get("token")`, keyword argument or `extra` entry whose value is not a
+  status, in an f-string, `%` or `.format` text, through `:=`, or wrapped in `str()`;
+  `token is not None` and `len(token)` are fine. Test files are skipped, as in the other presets. A
+  module name used as a key of a documentation table (`'pwd': 'pwd#module-pwd'`) is a false
+  positive; add an exception for the file.
+- `unordered-query` reports a page of rows taken with no ORDER BY, in main sources: SQL text that
+  starts a `select` or `with` and has `LIMIT`, `OFFSET` or `FETCH` with no `order by` at the same
+  level (also an f-string or a `+` concatenation, where an interpolated value counts only after a
+  comparison or a page keyword) or an `array_agg`/`json_agg`/`jsonb_agg` with no `order by` inside;
+  a SQLAlchemy `select(...)` or `query(...)` chain with `limit`, `offset`, `slice`, `fetch` or
+  `paginate` and no `order_by` (through a local that holds the statement, and an `order_by` on it
+  later in the function counts; a statement passed through a helper is not followed); a Django
+  queryset slice (`Order.objects.filter(...)[:20]`, also through a local) on a model the project
+  declares whose `Meta` and bases set no `ordering`; `func.array_agg`/`json_agg`/`jsonb_agg` without
+  `aggregate_order_by` or `within_group`, and Django `ArrayAgg`/`JSONBAgg` without `order_by` (or
+  `ordering`). `limit(1)` on a `select` of only counts or constants and `LIMIT 1` on a constant or a
+  count pass; `.first()` and an index (`[0]`) are not reported. It is the counterpart of
+  `nitpicker/no-unordered-query` and reads SQL text with a port of
+  `shared/rules/queries/sql-order.mjs` that the e2e tests check against it.
+- `unbounded-query-array` reports, in main sources of a file that imports SQLAlchemy or SQLModel, a
+  runtime list passed to `in_`, `not_in` or `notin_`, or to `values(...)` on an `insert(...)`: a
+  parameter (unannotated or annotated as a list, set, sequence, iterable or `tuple[X, ...]`; for
+  `values` only an annotated one), an attribute of one (`request.ids`, for `in_`), a comprehension, or
+  a local made from one with `list`, `set`, `sorted`, `map`, `filter` or a comprehension, when the
+  enclosing functions never call `len` on it (or on what it is made from) or test it in an `if`,
+  `while`, `assert` or conditional expression, and it is not the loop variable of a loop over a
+  chunk or batch helper or a parameter of a function decorated with one. A subquery, a literal list
+  and `session.execute(insert(User), rows)` (which SQLAlchemy batches) pass. The counterpart of
+  `nitpicker/no-unbounded-query-array`; Django `__in` lookups are not read.
+- `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
+  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
+  at the same site (so one remote call has one owner), a worker task started once per slot of a
+  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
+  assigns), a loop over fixed-size chunks (`for part in itertools.batched(ids, 1000):`, the form
+  `unbounded-query-array` asks for) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
+  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
+  at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
+  comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
+  function such as a visitor; a list also used by position (`[i]`, `insert`, `pop`, `index`, `sort`,
+  `reverse`) or bound twice is left alone. `linear-lookup-in-loop` reports `next(x for x in xs if
+x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehension or such a `lambda`, where the
+  key is an attribute or a constant subscript of the item, the value is not a constant, and `xs` is
+  a parameter or a local name bound once outside the loop (not a module or closure name), or a
+  `self` attribute that only `__init__` sets,
+  and nothing appends to, removes from, sorts or assigns into it. Ruff's `FURB192` reports
+  `sorted(xs)[0]` and `sorted(xs)[-1]`, in tests too; the two script rules skip test files. The same rules run as
+  `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
+  and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
+- `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
+  over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
+  `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,
+  the connection or the `execute` call), a named or server-side cursor, or a name bound to one, that
+  appends to a list (`[]` or `list()`, annotated or not) declared before the loop, never cleared in
+  it and with no `break` or `return` in the loop, and the same
+  collection with a comprehension, `list(...)` or `sorted(...)`. Allowed form: flush a fixed-size
+  batch inside the loop and the rest once after it. Test files are skipped. The same form runs as
+  `nitpicker/no-collected-stream-rows` (TypeScript) and `pmd/StreamedRowsCollected` (Java and
+  Kotlin).
+- `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
+  generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
+  `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
+  `nursery.start_soon` inside a loop or comprehension, when the coroutine makes a remote call
+  (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
+  Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
+  `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
+  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
+  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  or module-level `async def` of the project, a method of the same class or an imported project
+  function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
+  in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or
+  variable annotated with the library type. Database calls are the business of `io-in-loop`.
+  Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or trio `CapacityLimiter` or
+  `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and entered in the task body
+  (`async with limit:`); a parameter annotated with one of those types, or one the caller passes a
+  limiter it created; a parameter or imported name whose name ends in `sem`, `semaphore`, `limit`,
+  `limiter`, `throttle`, `throttler`, `capacity` or `gate`; an `await gate.acquire()` on such a
+  limiter or a `gather` that drains a window inside the loop; a literal or constant collection,
+  the members of an `Enum` class of the project, a slice or `islice` with an explicit size, and
+  chunks from `batched`, `chunked`, `chunks` or `partition_all` with a size. A worker pool is
+  bounded by its count: `range(workers)` and `range(3)` pass, while `range(len(xs))` stays a
+  fan-out over `xs`. A semaphore created inside the task, or a limit constant that nothing
+  acquires, bounds nothing. `asyncio.to_thread` and `loop.run_in_executor(None, ...)` run on the
+  default thread pool, which has a fixed size, so they are not reported. Test files are exempt.
+  Limits: an unannotated `client` parameter, a callable wrapped in `functools.partial` and a
+  library outside the list are not recognized, a limiter is recognized from an unannotated
+  parameter or import by its name only, and a collection that is small in practice but not by
+  construction is reported; lift such a path with a `python.exceptions` entry.
+- `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
+  group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
+  `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
+  held in a local variable, `tg = anyio.create_task_group()` then `async with tg:`). The resource is
+  the name an inner `with ... as name` binds, and it is handed over when it is a positional
+  argument of `start_soon` or `start` (`nursery.start_soon(consume, handle)`), a bound method
+  (`start_soon(handle.serve)`), a `lambda`, `functools.partial` or local `def` that captures it
+  (a parameter or a local rebinding of the same name is not a capture), or an argument or receiver
+  of the coroutine passed to `create_task` (`group.create_task(use(handle))`). A task assigned to a
+  name that is read again inside the `with` block (`await task`, `asyncio.wait([task])`) is
+  accepted, since the parent waits for it. Inside a plain `with res:` or `with open(...) as res:`
+  block, `asyncio.create_task(use(res))` or `asyncio.ensure_future(...)` as a statement is
+  reported when the task is discarded or its variable is never read before the block ends. The
+  allowed forms are a `with` that encloses the whole group, a resource opened inside the child, and
+  awaiting the task before the block exits. Ownership is modeled explicitly rather than inferred:
+  only the resource itself counts, so a value derived from it (`handle.name`, `handle.read()`,
+  `stack.pop_all()` for an `ExitStack` that moves ownership) is not reported, and neither is a
+  helper that is given the resource under another name; cancel scopes, timeouts and task groups
+  opened inside a group are not resources; keyword arguments such as `name=` are not passed to the
+  child; a task that is returned, collected or handed to another function is not tracked. A helper
+  that takes ownership and closes the resource itself is not recognized, and neither is a parent
+  that waits on an event instead of the task: open the resource in the child, or add a reviewed
+  `python.exceptions` entry. A group held in an attribute (`self.group`) is not followed. The
+  group-scoped form follows the documented flake8-async ASYNC111 behavior, extended to
+  `asyncio.TaskGroup` with explicit lifetime modeling; Ruff 0.16.8 and 0.16.9 have no ASYNC111, and
+  no flake8-async code is used. The identity is the resource name, the method and the enclosing
+  function. Ruff's `RUF006` reports the discarded `asyncio.create_task(...)` statement for its own
+  reason (the task can be garbage collected) and keeps its own finding.
+- `unclosed-inline-resource` covers what ruff's `SIM115` leaves out: a file, URL, archive, socket
+  or database handle opened and used in the same expression, with no `with` (the receiver of a
+  call, an argument or a `for` source). Checked in ruff 0.16.9, `SIM115` reports `open`, `io.open`,
+  `codecs.open`, `gzip.open`, `bz2.open`, `lzma.open`, `tarfile.open`, `shelve.open`, `dbm.open`,
+  `tempfile.TemporaryFile`, `tempfile.NamedTemporaryFile` and `Path(...).open()` outside `with`,
+  also inline (`json.load(open(path))`), but not in a `return` statement
+  (`return open(path).read()`), and never `urlopen()` or `.open()` on a path held in a name. So the
+  script reports those openers only in a `return`, and these everywhere: `zipfile.ZipFile`,
+  `tarfile.TarFile`, `os.fdopen`, `socket.create_connection`, `sqlite3.connect`,
+  `urllib.request.urlopen` (not over `io.BytesIO`, `io.StringIO` or `":memory:"`), and `.open()` on
+  `Path.home()`, `Path.cwd()`, a `path / "name"` or a name annotated or assigned as a `Path` in the
+  same function. An argument counts only when the call reads the handle and keeps nothing (`load`,
+  `safe_load`, `full_load`, `copyfileobj`, `read_file`, `file_digest`, `parse`, `iterparse`), since
+  a response, a wrapper class or a collection that takes the handle owns it
+  (`StreamingResponse(open(path, "rb"))`). Wrapping in `io.TextIOWrapper` or `gzip.GzipFile` moves
+  the check to the wrapper; `contextlib.closing`, `ExitStack.enter_context`, `.close()`, a `return`
+  of the handle itself and an assignment pass. `os.scandir` is left out: its iterator closes itself
+  when a loop runs it to the end. CPython closes the handle when the last reference goes, so
+  the leak is the PyPy one and the exception one (a traceback keeps the frame and the handle), plus
+  a `ResourceWarning` when warnings are on (`-X dev`, pytest). `with sqlite3.connect(path)` only
+  commits, so its message names `contextlib.closing(sqlite3.connect(path))`. Not in tests.
+- `unshielded-cleanup-await` follows the documented flake8-async ASYNC102 behavior for Trio and
+  AnyIO, which cancel again at every checkpoint of a cancelled scope: an `await`, `async with`,
+  `async for` or async comprehension inside `finally:` or inside a handler for `trio.Cancelled` or
+  `anyio.get_cancelled_exc_class()` (import aliases, tuples and names bound once by assignment
+  included, such as `cancelled = anyio.get_cancelled_exc_class()`) can be cancelled before the
+  cleanup finishes, so the resource may never be released. The check runs only in a module that
+  shows Trio or AnyIO cancellation semantics: any import of `trio`, or for AnyIO a use of
+  `anyio.create_task_group`, `anyio.CancelScope`, `anyio.move_on_after`, `anyio.fail_after`,
+  `anyio.run` or `anyio.get_cancelled_exc_class`, so a module that imports `anyio` only for
+  `to_thread` or `Path` is not checked. It reports the first checkpoint per block and allows it
+  inside a `with` that sets `shield=True` (a literal, or a name bound once to `True`) in a
+  `trio.CancelScope`, `trio.move_on_after`, `move_on_at`, `fail_after`, `fail_at`,
+  `anyio.CancelScope`, `anyio.move_on_after` or `anyio.fail_after`, called in the `with` or held in
+  a variable (`scope = trio.CancelScope(shield=True)`, then `with scope:`), in the block or around
+  the `try`. The message recommends `CancelScope(deadline=..., shield=True)`, because a shield
+  without a deadline can hang shutdown on a stuck close; such an unbounded shield is allowed, and
+  the deadline is not checked. `move_on_after(5, shield=True)` and `fail_after` need Trio 0.27 or
+  later for the `shield` argument. `trio.aclose_forcefully(...)` and the
+  `cancel_shielded_checkpoint()` helpers cannot be interrupted and are allowed. A shield set after
+  the scope is created (`scope.shield = True`) is not followed, and `except BaseException` and bare
+  `except:` handlers are not treated as cancellation handlers, because the evidence that they catch
+  a cancellation is missing. asyncio cancels a task once (`CancelledError` is raised at the `await`
+  that is waiting, and later awaits run normally unless the task is cancelled again), so the Trio
+  assumption does not carry over: modules without that evidence are not checked. `asyncio.shield`
+  is not a scope: it protects the inner task but the shielding `await` is still interrupted, and
+  its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
+  `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
+  used. The identity is the checkpoint, the block and the enclosing function.
+- `timeout-scope-path-without-checkpoint` reports a timeout or cancel scope in production code
+  whose body suspends on some paths but also has a path that runs real work without reaching a
+  checkpoint, so the deadline cannot interrupt that path (the semantics of flake8-async
+  ASYNC912/ASYNC913, which Ruff does not implement). The scopes are `trio.move_on_after`,
+  `move_on_at`, `fail_after`, `fail_at`, `trio.CancelScope`, `anyio.move_on_after`,
+  `anyio.fail_after`, `anyio.CancelScope`, `asyncio.timeout` and `asyncio.timeout_at` (import
+  renames and module aliases included; `with` and `async with`), and `asyncio.wait_for` of a call
+  to a coroutine defined once, undecorated, at module level of the same file (the coroutine body is
+  the scope). A `CancelScope(shield=True)` without a `deadline` is not a timeout and is skipped.
+  A checkpoint is an `await` that can suspend, `async for`, `async with` (and async comprehensions);
+  a `yield` is not one (as in flake8-async, the consumer of an async generator decides when it
+  resumes, so the scope's deadline cannot interrupt the code before the `yield`);
+  the path analysis follows `if`, `match`, `for`, `while`, `try`/`except`/`else`/`finally`,
+  `return`, `break` and `continue`, and `raise` ends a path. An `await` of a coroutine defined in
+  the same module whose body never suspends is not a checkpoint. A path is reported only when it
+  runs a call that is not on a short list of cheap ones: builtins such as `len` and `sorted`, a
+  constructor of a class the module defines or imports (`Response(cache[key])`, `Decimal(1)`, not
+  a client such as `requests.Session()`), a method of a string literal (`", ".join(parts)`), and
+  container and bookkeeping methods (`append`, `pop`, `get(key)`, `join(parts)`, logger methods,
+  `start_soon`, `create_task`). A method is cheap only on a receiver that is not an imported module
+  (`os.remove`, `requests.get`, `logging.info`), not a client the module creates or imports
+  (`session = requests.Session()`), and not an I/O owner the `io-in-loop` rule recognizes
+  (`self.repo.find`, `db.query`); `get()` without a key or with a `True` block flag (a blocking
+  queue) and `join()` without an argument or with a timeout (a thread) count as work, and so does
+  `result()` (a future). A branch that only logs or returns a cached or built value is allowed. The allowed forms are to await the slow work
+  (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`,
+  `await anyio.to_thread.run_sync(work)`), an explicit checkpoint before it
+  (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`), or moving the path out of the
+  scope. Overlap with Ruff: a `with` scope that contains no checkpoint at all is Ruff's `ASYNC100`
+  and is never reported here (the rule requires at least one checkpoint in the scope), so the
+  two never report the same scope. `asyncio.wait_for` is not a `with` scope and `ASYNC100` does
+  not look at it, so `wait_for` of a coroutine whose body never suspends is reported here. Test files are not checked. The identity is the scope and the
+  first offending call. Limits: only calls resolved by name are judged, a callee imported from
+  another module is assumed to be a real call but not to suspend, a loop is unrolled four rounds,
+  and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not
+  followed.
+- `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` (in comments and docstrings) when the
+  marker is in capitals, at the start of the comment or followed by `:` or `(`, and is not directly
+  followed by an issue reference: `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
+  similar standards) or an `http(s)` link. Each marker is judged on its own, so a second marker in the
+  same comment needs its own issue. Prose that mentions the word (`todo lists`, `Todo list items`,
+  `Hack to ...`, `the list of TODO items`) is not a marker. The Kotlin preset's `ForbiddenComment`
+  follows the same rule (plus `STOPSHIP`); `shared/naming/test-support/task-marker-cases.json` is the table both are
+  tested against. `TD` and `FIX` from ruff are not used, because they ask for an author and a date.
+- `tri-state-boolean` owns every nullable boolean: `bool | None`, `None | bool`, `Optional[bool]` and
+  `Union[bool, None]` (also as a string, inside `Annotated`, `Final` or `ClassVar`) on a parameter, a
+  return value, a class or module field and a `self.x: bool | None` attribute. `boolean-flag-parameter`
+  reports only a plain `bool` parameter, so a parameter is never reported by both. A union with
+  another type (`bool | str | None`) is not a tri-state boolean. Local variables, type aliases,
+  overloads, `@override` methods, a method that overrides a base class of the module or whose base
+  comes from another module (the base fixes the signature; name `@override` on it), the protocol hooks
+  `__exit__`, `__aexit__` and `eof_received`, `pytest_*` hooks and test files are skipped. Fields of
+  data that is mapped from outside are skipped too: a class that derives from a pydantic
+  `BaseModel` or `BaseSettings`, `SQLModel`, a Django `Model`, a SQLAlchemy `DeclarativeBase` or
+  `Base`, `Document`, `Schema` or `TypedDict` (also through a base class of the module). The allowed
+  form is an enum that names the third state (`Consent.UNKNOWN`), or a keyword-only `bool` with a
+  default (`*, urgent: bool = False`) when `None` only meant false.
+- `orm-schema-sync` (the Python counterpart of the Spring rule `spring/ddl-auto`) reports schema
+  changes the ORM makes while the application runs: SQLAlchemy and SQLModel `metadata.create_all`
+  and `drop_all` called or passed (`conn.run_sync(Base.metadata.create_all)`) inside a function
+  (at module level, `import-time-effect` reports it), `db.create_all()` and `db.drop_all()` in a
+  project that imports `flask_sqlalchemy`, Tortoise `register_tortoise(..., generate_schemas=True)`
+  and `Tortoise.generate_schemas()`, Peewee `create_tables`/`create_table` in a project that imports
+  `peewee` or `playhouse`, and Pony `generate_mapping(create_tables=True)`. An `if` around the call
+  does not lift it: the schema still changes in every other environment. Skipped: tests,
+  `conftest.py` and test support files, Alembic migrations (a module that imports `alembic`, or
+  under a `migrations`, `versions` or `alembic` folder), and one-off entry points: a block under
+  `if __name__ == "__main__":` and a function decorated as a CLI command (`@click.command()`,
+  `@app.cli.command()`, Typer's `@app.command()`). The allowed form is a migration (Alembic, Django
+  migrations, Aerich).
+- `orm-query-logging` (the counterpart of `spring/unsafe-diagnostics`) reports SQLAlchemy and
+  SQLModel `create_engine`, `create_async_engine` and `engine_from_config` with `echo=True`,
+  `echo="debug"` or an `echo` set by a condition, `engine_options={"echo": True}`,
+  Flask-SQLAlchemy `SQLALCHEMY_ECHO` on (assignment, `app.config[...]`, `config.update(...)` or a
+  dict key), `logging.getLogger("sqlalchemy")` or `"sqlalchemy.engine"` set to `INFO` or `DEBUG`,
+  the `peewee`, `tortoise.db_client` and `django.db.backends` loggers set to `DEBUG`, and the same
+  levels in a `LOGGING` dict (also as `"DEBUG" if DEBUG else "INFO"`). A value the check cannot
+  resolve, such as `echo=settings.DEBUG`, is not reported. The allowed form logs slow queries only
+  (SQLAlchemy cursor events, or the database's slow-query log).
+- `in-memory-query` (the counterpart of the Spring rule `pmd/SpringDataFilterInQuery` and of
+  `nitpicker/no-in-memory-query`) reports query rows loaded only to be counted, filtered, sorted or
+  aggregated in Python. A query result is a Django queryset (`Model.objects` followed by `all`,
+  `filter`, `exclude`, `order_by` and the other queryset methods, or `in_bulk`) or a SQLAlchemy
+  `.all()` list (`session.query(Model)`, `session.scalars(select(Model))`,
+  `session.execute(select(Model)).scalars()`, Flask-SQLAlchemy `Model.query`), used directly or
+  through a local that the function assigns once and reads once, outside a loop or a nested
+  function. It is reported when that one use is `len()`, `bool()`, `not` or a truth test (use
+  `.count()` or `.exists()`); a comprehension with an `if`, `filter()`, `any()`, `all()` or
+  `next()` (use the query's filter); `sorted()`, `.sort()`, `max()` or `min()` with a `key`
+  (use `order_by`); or `sum()`, `max()`, `min()` or `Counter` over the rows (use `aggregate`,
+  `annotate` or `func.sum` with `group_by`). Conditions, keys and aggregated values may only read
+  columns that the project declares on the model (Django fields, SQLAlchemy `Mapped`,
+  `mapped_column` and `Column`, SQLModel table fields, including those of base classes) and
+  compare them with constants, parameters and locals; a property, a method call, a model the
+  project does not declare, and a value computed per row leave the code alone. A count needs a
+  model the project declares or one imported from a `models` module (`django.contrib.auth.models`).
+  `for` loops over the rows, `itertools.groupby` and `defaultdict` grouping are not followed.
+  Tests, a Django `tests.py` and `migrations` folders are skipped. A small fixed lookup table that
+  is meant to be loaded whole takes an `exceptions` entry.
+- `unindexed-foreign-key` (the model-side partner of the `foreign-key-index` repository rule, and
+  the counterpart of `nitpicker/no-unindexed-foreign-key`) reports a foreign-key column with no
+  index that starts with it: only MySQL indexes a foreign-key column by itself. It reads SQLAlchemy
+  `mapped_column`/`Column` with a `ForeignKey`, SQLModel `Field(foreign_key=...)` (also through
+  `sa_column`), core `Table(...)` columns and `ForeignKeyConstraint` in `__table_args__`. A column is
+  covered by `index=True` or `unique=True`, by being the first primary-key column, or by an `Index`,
+  `UniqueConstraint` or `PrimaryKeyConstraint` (in `__table_args__`, in the `Table`, or a
+  module-level `Index("ix", Model.column)`, also with `.desc()`) whose first column is it; a
+  partial index (`postgresql_where`) does not count. `__table_args__` may be a literal, a sum of
+  tuples or a `declared_attr` function. Columns of a mixin or abstract base defined in the same
+  module are judged with the class that inherits them. Django indexes foreign keys itself, so only a `ForeignKey`
+  with `db_index=False` is reported, unless `Meta.indexes`, `unique_together`, `index_together` or a
+  `UniqueConstraint` lists the field (or `<field>_id`) first; a conditional index does not count,
+  and `db_constraint=False` passes. A project whose manifests name only MySQL or MariaDB drivers, or
+  whose settings use `django.db.backends.mysql` without PostgreSQL, is left alone. SQLAlchemy
+  models are left to the migrations when the project has an Alembic `versions/` folder with a
+  revision (`down_revision = ...`) next to an `env.py`; `foreign-key-index` then checks the
+  revisions. Manifests are read from the project root and `requirements/`. Tests are skipped.
+- `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
+  `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
+  `None` by default or by its type, when the body writes `param or default` or
+  `param if param else default` in a value position: an assignment, a return, an argument. A default
+  that is itself empty (`or []`, `or {}`, `or ""`, `or 0`, `or ()`, `or set()`) is not reported,
+  since the falsy value is already what it becomes. A parameter the function compares with `None`
+  anywhere, a condition (`if a or b`, `while`, `assert`, `bool(...)`, `not`, an `and` chain, a
+  comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
+  (`Path`, a project class) are not reported. The allowed form tests `None` only:
+  `limit if limit is not None else DEFAULT_LIMIT`.
+- `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
+  `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
+  parameter or annotated local, and a number field of a class in the same module read through a
+  parameter of that class or through `self` (`message.retry`, `self.size`). Reported forms:
+  `if count:`, `if not record_id:`, `x if retry else y`, `while left:`, `assert total`, a
+  comprehension filter, an operand of `and`/`or` in a condition, any operand of `and` but the
+  last, and an operand of `or` but the last, such as `limit or 10` on a required parameter (an
+  optional one is `falsy-default`'s). Test files are checked too. Not reported: `bool(count)`, the
+  last operand of an `and`/`or` outside a condition, an `or` that ends in `0` (`count or 0`), a name
+  the function binds again (`count = len(rows)`, a loop target, an import, a nested `def`, an
+  `except ... as` or a `match` capture; `count -= 1` and `count = count - 1` keep it a number), a
+  name of a nested function, a field of a class from another module, and a value whose type is
+  not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
+  `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
+  `nitpicker/strict-boolean-expressions`.
+- `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
+  `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
+  `MutableSet`, or a project `TypedDict` (a class that derives from `TypedDict`, resolved
+  through imports, subclasses, generic forms (`Box[int]`) and `Union` members, and treated as a
+  `dict`; the functional `TypedDict("Name", {...})` form is not resolved), also `Optional` and
+  `|` members, `typing` aliases and strings, that
+  the function changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
+  `.update`, `.setdefault`, `.popitem`, `.add`, `.discard` and the other mutating methods of its type,
+  an item or slice assignment (`p[k] = v`, `p[:] = x`, `p[k][j] = v`), `del p[k]`, an in-place operator
+  that the type implements as mutation (`p += [x]` on a list, `p |= other` on a set or dict) and
+  `random.shuffle`, `heapq.heappush`, `heapq.heappop`, `heapq.heapify`, `heapq.heapreplace`,
+  `heapq.heappushpop` and `bisect.insort*` on it, a call on a nested item (`table[k].append(x)`),
+  every target of `del a[0], b[k]` and of a tuple assignment, and the same operations on a one-hop
+  alias (`alias = items`, `self.items = items`). A rebind makes the parameter a copy only when the
+  right side is one (`list(p)`, `[*p]`, `{**p}`, `p.copy()`, `sorted(p)`, `p[:]`, `p + [x]`,
+  `copy.copy`, `copy.deepcopy`, a comprehension, a class call that unpacks the parameter
+  itself, such as `Movie(**p)`) and it comes before the first change; `p = p or []`
+  and `if p is None: p = []` keep the caller's list on the other branch and are reported. A
+  comprehension variable or lambda parameter named like the parameter is its own scope. Not
+  reported: `self` and `cls`, unannotated and read-only (`Sequence`, `Mapping`) parameters,
+  queues (`queue.Queue`, `asyncio.Queue`, which are not list-like types here), `pytest_*` hooks,
+  `@override` and `@overload`, private helpers (`_name`) and functions nested in another function
+  (the hazard is a public function that changes the caller's data), and test files. Attribute
+  writes are not reported: a project `@dataclass` must be `frozen=True` (`frozen-dataclass`), so
+  `p.field = v` raises at runtime and the type checker rejects it, and other class instances (a pydantic model, an
+  ORM entity) are skipped like class instances in the TypeScript preset. A constructor
+  that changes its argument is reported like any other function. The allowed form returns a new
+  value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `regex-unescaped-value` reports a function argument built into the pattern of a `re` or `regex`
+  call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
+  also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,
+  without `re.escape`: a `.`, `|` or `$` in the value changes the pattern. The value counts when it
+  reads a parameter of the enclosing function or lambda (not `self` or `cls`), directly or through a local assigned from
+  one, a `for` target or a comprehension over one. An `int`, `float`, `bool` or `complex` parameter,
+  `re.escape` (also passed to `map` or used in a comprehension) or a helper whose name contains
+  `escape` and `regex` or `pattern`, a `len()` or `int()` call, the condition of a conditional
+  expression, a compiled pattern's `.pattern`, module constants and module-level code are not
+  reported, and neither is a value passed as the whole
+  pattern (`re.compile(pattern)`): the issue suggested reporting a non-constant whole pattern as a
+  note, but a lone value is meant as a pattern far more often than not. The Java and Kotlin presets report the same mistake as
+  `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
+  (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
+  the pinned ruff, so it is not selected yet.
+- `regex-part-defect` reports a literal pattern of `re.compile`, `match`, `search`, `fullmatch`,
+  `findall`, `finditer`, `split`, `sub` or `subn` with a part that never changes what it matches
+  (`a|b|a`, `[_a-z_]`, an empty group), that does not do what it looks like (`a\bb`, which can never
+  match), or that has a shorter form with the same meaning (`x{1}`, `(?:ab)c`). `regex-backtracking`
+  reports one with nested or overlapping quantifiers that backtrack super-linearly (`^( *[a-z]+)*$`).
+  Both run the checks of the TypeScript preset's `regexp/` rules on the pattern, with `re.I`,
+  `re.M`, `re.S`, `re.A` or a leading `(?i)`, `(?m)` or `(?s)` read as flags, and the message names the
+  part. A pattern outside the syntax Python and JavaScript share is skipped, never misreported:
+  `(?P<name>...)`, `(?x)` and `re.VERBOSE`, `\A`, `\Z`, a `$` before the end (Python's `$` also
+  matches before a final newline), `\p`, a character above ASCII, `\w`, `\d`, `\s` and `\b` without `re.ASCII` (they
+  cover Unicode in Python), a lookbehind, a flags value that is not one of those constants, and `bytes` patterns. The
+  `regex` module is not read. The Java preset reports the same as `RegexPartDefect` and
+  `BacktrackingRegex`, the Kotlin preset as `kotlin-source/RegexPartDefect` and
+  `kotlin-source/BacktrackingRegex`.
+- `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
+__getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import through
+  `importlib.import_module` is not a shim), a `warnings.warn` (or `warn_explicit`) call whose category
+  or first argument is `DeprecationWarning`, `PendingDeprecationWarning`, `FutureWarning` or a class
+  named `...DeprecationWarning`, a `@deprecated` decorator
+  (`typing_extensions`, `warnings`, `deprecated`, `deprecation`, or a project one) on a function
+  or class, and a top-level `OldName = NewName` statement where `NewName` is a function or class
+  defined in the module or a name imported with `from ... import`, when the alias casing matches the
+  target (a lowercase `backend_class = Backend` is a configuration value). Underscore-prefixed names
+  (`_Alias`, `Public = _Private`, `__version__`), a name published in `pyproject.toml`
+  `[project.scripts]`, `[project.gui-scripts]` or `[project.entry-points]`, aliases inside `if`, `try`, functions and classes (the
+  `try: import fast / except ImportError: fast = slow` fallback and `__radd__ = add`) and test
+  files are skipped. A finding on a line the change touches is new (see Touched code), so only a
+  shim the change adds or edits fails. mypy's `deprecated` and pyright's `reportDeprecated` (the Deprecated APIs row)
+  report a call to a deprecated name; this rule reports the definition that keeps one alive. A
+  published library that has to keep a deprecation takes an exception for its public modules.
+- `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
+  that happens to parse is reported too (a label such as `Contact: someone`, a formula, a bare
+  `name: value` note); reword it, or add an exception for the file.
+- The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
+  `S113`, `S301`, `S302`, `S506`, `S307`, `S102`, `S202`, `S201`, `S306`, `S108`, the XML rules
+  `S313`-`S319`, the TLS rules `S323`, `S502`-`S505`, `S507`-`S509`, `S701`, `S702`, `S704`, `S308`
+  and the legacy protocol rules `S312`, `S321` each carry the safe form. The XML fix, `defusedxml`,
+  is a dependency, and strict mypy wants `types-defusedxml` next to it.
+- `S` rules left off (they flag idiomatic code): `S101` (`assert`, used by the tests that nitpicker
+  requires), `S608` (replaced by `sql-string-formatting`), `S103` and `S104` (file modes and binding `0.0.0.0` in a server), `S105`-`S107` (the
+  `hardcoded-secret` rule above does the same with fewer false positives), `S310` (`urlopen` of a
+  fixed URL), `S311` (`random` for non-crypto use, which the domain rule covers), `S601`, `S603`,
+  `S606` and `S607` (see above), and `S110`/`S112` (replaced by `swallowed-exception`).
+- Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
+  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
+  projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
+- The pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10` list every stable code of
+  ruff 0.16.8 (the version CI pins) except these, each with its reason at the end of
+  `nitpicker-ruff.toml`: `PLW1641` (equality without a hash: a mutable class may be unhashable on
+  purpose), `PLE0116` (`continue` in `finally`, which ruff reports only below Python 3.8, and the
+  lint always passes `--target-version py38` or later), and the codes another selected rule
+  already reports at the same site: `PLE1132` (`PIE804`), `PLE1300` and `PLE1307` (`UP031`,
+  `UP032` and `F509`), `PLE1310` (`B005`) and `PLW0711` (`B030`). Every selected pitfall code has
+  its own allowed form (`rules/hints/pitfalls/`). All of them apply to test files too, except
+  `DTZ`, whose findings are dropped there like `ARG`.
+- `ASYNC`: inside `async def`, sleep with `await asyncio.sleep(...)`; call HTTP through an async
+  client (`httpx.AsyncClient`) and processes through `asyncio.create_subprocess_exec`; read files
+  and check paths with `anyio.Path` or `await asyncio.to_thread(...)`, and read `input` with
+  `await asyncio.to_thread(input, prompt)`. A timeout scope holds an `await` (`ASYNC100`). An
+  `async def` takes no `timeout` parameter (`ASYNC109`, from Python 3.11 for asyncio): the caller
+  bounds it with `async with asyncio.timeout(...)`, the one way that composes through every call
+  below it; a method that overrides a base signature takes `@typing.override`, and a wrapper of
+  `asyncio.timeout` names its parameter otherwise (`delay`). Wait on an `asyncio.Event` instead of
+  a sleep loop (`ASYNC110`). For trio and anyio: await `trio.sleep`, `trio.lowlevel.checkpoint()`
+  for a bare yield and `trio.sleep_forever()` for an indefinite wait. These are local checks:
+  `ASYNC100` does not follow a checkpoint through helpers.
+- `DTZ`: pass the zone everywhere a datetime is made: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)` (for `now()`, `today()` and `utcnow()`),
+  `datetime.fromtimestamp(value, tz=timezone.utc)` (for `utcfromtimestamp` too) and
+  `datetime.max.replace(tzinfo=timezone.utc)` (`datetime.min` likewise). Parsing (`DTZ007`) uses
+  `%z`, attaches the known zone with `.replace(tzinfo=...)`, or reads a date-only or time-only
+  string with `date.fromisoformat` or `time.fromisoformat`. A date comes from
+  `datetime.now(tz=zone).date()` (`DTZ011`) or `datetime.fromtimestamp(value, tz=zone).date()`
+  (`DTZ012`) with the zone the date is meant in, since `date.today()` is the server's local date.
+  A naive civil time that is meant takes a path exception. Domain code reads no clock at all
+  (`clock-now`), so the `datetime.now(...)` forms belong in adapters and the composition root.
+- One finding per site. Where a nitpicker rule already reports the same problem, the ruff finding
+  is dropped: `DTZ002`, `DTZ003`, `DTZ005` and `DTZ011` on a `clock-now` (domain code) or
+  `real-clock-in-test` line, so the one finding left names one fix (inject the clock, or freeze
+  it); `ASYNC110` on the `while` loop around a `sleep-in-test` call; `PLE1507`, `PLW1507` and
+  `PLW1508` on a `process-env-access` line (read the environment in the composition root, where
+  these report with their own forms); and `PLW0129` on a `tautological-assert` line. Among ruff's
+  own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
+  finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
+  `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script
+  lists its sites (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mjs` drops
+  them, but only while the owning finding survives `python.exceptions`: an exception for
+  `clock-now` on a path brings `DTZ005` back there.
+- `LOG`: create loggers with `logging.getLogger(__name__)` (not `logging.Logger(...)`, `__file__`
+  or `__cached__`) and log through them, not the root logger (`LOG015`). `logger.exception(...)`
+  and `exc_info` belong inside an `except` handler, without `exc_info=False` (use
+  `logger.error(...)` then); use `logging.WARNING`, not `logging.WARN`.
+- `PLE` and `PLW` check invalid operations and suspicious code: special-method signatures and
+  return types, `__all__` of strings, `global` and `nonlocal` declarations (remove them and pass
+  the value in), logging argument counts, `os.getenv` types, a loop variable overwritten in its
+  body (bind a new name), an exception built and not raised, a lock made inside `with`, nested
+  `max`/`min` and `subprocess.run` without `check` (`check=True`, or `check=False` with the
+  return code handled). `PLW0108` asks to pass the function itself (`key=str`); a lambda that must
+  look a name up at call time takes an exception. `T100` rejects committed debugger imports and
+  breakpoints.
+- The advice follows the project when two forms are valid. Pytest style: the parentheses of
+  `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
+  `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
+  `ruff.toml`; from the head checkout for both sides of a comparison, so editing the table does not
+  turn unchanged tests into new findings), and where it sets nothing from the majority of the
+  project's own test code
+  (`rules/libraries/pytest-style.mjs`); a tie leaves ruff's default. Ruff gets the result as
+  `--config` flags, so the gate and the advice agree. Logging and validation: `project-libraries.mjs`
+  reads the dependencies (`pyproject.toml`, `Pipfile`, `requirements*.txt`) and words the logging
+  advice for structlog (`logger = structlog.get_logger()`, `logger.info("loaded", count=count)`) or
+  loguru (`logger.info("Loaded {}", count)`), and the boundary advice for pydantic (`model_validate`),
+  msgspec, cattrs or marshmallow. The rules stay the same for every project: `%s` arguments
+  rather than an f-string, and a validator in `adapters/`; only the example differs. The same
+  module is the place to swap in the conventions work's library detection.
+- Pytest-specific rules read the project: `uncollected-tests` applies when the test runner is
+  pytest and reads the whole collection configuration from `pytest.ini`, `pyproject.toml`
+  (`[tool.pytest.ini_options]`), `tox.ini` or `setup.cfg`: `python_files`, `python_classes`,
+  `python_functions`, `testpaths`, `norecursedirs`, and `--ignore`, `--ignore-glob`, `--deselect`,
+  `-k` and `-m` in `addopts`; a `collect_ignore` in `conftest.py` counts as well. It reports a test
+  that pytest will not run and says why: a file that matches no `python_files` pattern, a file or
+  folder excluded by `norecursedirs`, `--ignore` or `collect_ignore`, a class that matches no
+  `python_classes` pattern or has an `__init__`, a function that matches no `python_functions`
+  pattern, a test deselected by `--deselect`, `-k` or `-m` (a `-m` expression matches marker
+  names exactly, from the function, its class and the module's `pytestmark`). For `unittest` it reports a file named like
+  a test file (`tests.py`, `*_test.py`) that its default `test*.py` discovery does not find. `test-helper-in-source` reports `testing.py`, `testutils.py`,
+  `fixtures.py` and the folders `testing/`, `testutils/`, `test_utils/`, `test_helpers/`,
+  `test_support/`, `test_fixtures/` and `fixtures/` inside a source root.
+- `skipped-test-without-reason` reports a test that silently does not run: `@pytest.mark.skip`,
+  `skipif` and `xfail` without a reason (a `reason=` keyword, or the positional message of `skip`;
+  a reason that is an empty string does not count), `pytestmark = ...` the same way,
+  `pytest.skip()` and `pytest.xfail()` without a message, `@unittest.skip*` and
+  `@unittest.expectedFailure` without a reason, `self.skipTest()` and `raise SkipTest` without a
+  message, and a test with an `if condition: return` (or `return None`) anywhere in its own
+  body. The subject names the form, so the message says which one to fix; the allowed form is a skip on a real condition with a reason
+  (`switched-off-test` below reports the unconditional ones). `sleep-in-test` (TypeScript:
+  `nitpicker/no-fixed-sleep-synchronization`) reports `time.sleep`, `asyncio.sleep`, `trio.sleep`,
+  `anyio.sleep` and `gevent.sleep` with a delay other than a literal `0` (`asyncio.sleep(0)` only
+  yields), also through a star import (`from time import *`), and Playwright's `wait_for_timeout`.
+  It ignores tests that patch the sleep or freeze the clock, and follows the project's own helpers
+  that sleep, star imports included. A poll is the allowed form, so a sleep is not reported in the
+  body of a `while` loop of the same function with a condition, of a `while True` (or `while 1`)
+  loop that reads the clock (`time.monotonic()`, `time.perf_counter()`, `time.time()`,
+  `datetime.now()`, `loop.time()`, trio's or anyio's `current_time()`) as a deadline, or of a `for`
+  loop whose body leaves early under a condition (a `break` of that loop or a `return` inside an
+  `if`, `try` or `match`, as in `for _ in range(50): if ready(): break`). A `while True` loop
+  without a clock read is reported, as in the Java and Kotlin presets, because nothing bounds it. A
+  `for` loop that only repeats the wait, the `else` of a loop and a comprehension are reported, and
+  so is `wait_for_timeout` in a loop, because Playwright's `expect` already polls. As in the Java
+  preset, a sleep in code that runs off the test's path is not reported: a function or lambda
+  handed to a thread or executor (`Thread(target=...)`, `Timer`, `submit`, `run_in_executor`,
+  `asyncio.to_thread`, `start_new_thread`) or used as a mock's `side_effect` (keyword or
+  assignment). `negative-wait-in-test` (Java: `NegativeWaitInTest`; TypeScript: the timeout-based
+  negative assertion of `nitpicker/no-fixed-sleep-synchronization`) reports a wait that the test
+  expects to run out: `assert not event.wait(0.5)`, `lock.acquire(timeout=1) is False`,
+  `assertFalse(x.wait(...))`, and the first call with a delay (`timeout=`, `asyncio.wait_for(x,
+t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
+  of `TimeoutError`, `queue.Empty` or `TimeoutExpired`. Such a test passes only after the full
+  delay. A delay of `0` or `None` is not reported. Only a real wait counts: a `wait`, `wait_for`,
+  `get`, `join`, `acquire`, `result` or `communicate` call, a `timeout` or `fail_after` scope, a
+  `subprocess.run`-style call with a `timeout`, or a project helper named `wait_*`, `*_until` or
+  `poll*` called with `timeout=`. A call on something the test binds to a mock (`Mock()`,
+  `MagicMock()`, `patch(...)`, or whose `side_effect` or `return_value` it sets) waits for nothing;
+  the binding is matched by its full path (`self.api` mocked leaves `self.jobs` real), and the one
+  that counts is the last assignment before the call, so a name rebound from a mock to a
+  `Queue()` waits again. `assert not proc.wait(timeout=5)` on a `Popen` checks an exit code of 0. `real-clock-in-test` and `random-in-test` skip a
+  file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
+  look at the fake per test function, not per file. `network-in-test` skips files that use
+  `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
+  `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
+  `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
+  `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
+  reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an
+  `assert`, in `assertTrue`/`assertFalse`, or in `assertEqual`, `assertNotEqual` and the typed
+  `assert*Equal` forms, also inside a list, tuple or dict literal (the forms `pytest.approx` takes).
+  Integral literals (`1.0`) and infinities are exact and stay allowed, and a side wrapped in
+  `approx(...)` is not checked.
+- `weak-assertion` covers the asserts that pass for almost any value, in test files: a presence
+  check (`assert x`, `assert not x`, `assert x is not None`, `assert x != None`, `assertTrue(x)`,
+  `assertFalse(x)`, `assertIsNotNone(x)`) on a name, attribute or subscript, where a predicate call
+  such as `assert path.exists()` is not reported; a non-empty check (`assert len(x) > 0`,
+  `len(x) >= 1`, `len(x) != 0` in either order, `assert len(x)`, `assert x != []`,
+  `assertGreater(len(x), 0)`, `assertNotEqual(len(x), 0)`); and a call check that pins no arguments (`assert m.called`,
+  `assert m.call_count > 0`, `m.assert_called()`, `m.assert_awaited()`, and `assert_called_with`
+  and its siblings when every argument is `ANY`). A positive presence check is not reported when
+  the same expression is used again later in the same function, because it narrows the type for
+  the lines that follow. `assert not m.called` and `assert_called_once()` are not reported. The
+  allowed form asserts the exact value, length or call arguments.
+- `switched-off-test` reports a test that never runs or can never fail, where
+  `skipped-test-without-reason` reports the same forms without a reason (one finding per site, never
+  both). It reads every file of the test area (`conftest.py`, test folders and collected files), so
+  a skip in a fixture, a hook or a helper module counts. Forms:
+  - marks with a reason: `@pytest.mark.skip(reason=...)` (any reason, `"todo"` and `"."` included)
+    and `@unittest.skip("...")`, on a function or a class, in `pytestmark` (an assignment, an
+    annotated assignment or `+=`), in `pytest.param(marks=...)`, held in a module variable
+    (`OFF = pytest.mark.skip(reason="x")` then `@OFF`, `pytestmark = OFF`, `marks=OFF`), and
+    added by `item.add_marker(...)`, `request.applymarker(...)` or `request.node.add_marker(...)`
+    when the call is not behind a real condition;
+  - `skipif`, `skipIf` and `skipUnless` whose condition folds to a constant: a literal, an
+    expression over literals (`1 == 1`, `not False`, `True and True`, `-1`, `bool(1)`, `...`), a
+    string that parses to one (`"1 == 1"`, `"1"`; pytest evaluates string conditions), a module
+    constant assigned once (`FLAG = True`), and `sys.version_info` compared with a tuple that the
+    lowest supported Python (read from `requires-python`, at least 3.8) already decides
+    (`sys.version_info < (2,)`);
+  - `xfail(run=False)` and an `xfail` that is not strict. It is strict with `strict=True` or any
+    value that does not fold to a falsy constant (`strict=1`, `strict=is_strict()`), or when the
+    pytest configuration sets `xfail_strict` in the ini section or through `-o xfail_strict=true`
+    or `--override-ini` in `addopts` (an inline `; comment` is ignored). `strict=0`, `False`,
+    `""` and `not True` are never strict, and `strict=None` takes the configuration. The
+    configuration read is the one at the project root: a monorepo with a pytest configuration per
+    sub-project is not read per file;
+  - a statement that skips with a message: `pytest.skip("...")`, `pytest.xfail("...")`,
+    `self.skipTest("...")` or `raise SkipTest("...")`, in a test, a fixture (every fixture, used or
+    not), a `pytest_*` hook, a setup method (`setUp`, `setUpClass`, `setUpModule`, `setup_method`
+    and the like) or the module itself, when nothing makes it conditional. A `with`, `try` or loop
+    around it does not make it conditional, and neither does an `if` with a literal condition or
+    one whose every branch skips (`if a: skip() else: skip()`); an `if` with a real condition, or
+    with a branch that does something else, is a real condition.
+
+  A skip on a real condition (`skipif(sys.platform == "win32", reason=...)`,
+  `pytest.importorskip("numpy")`, `@unittest.skipUnless(HAS_DATABASE, "...")`, a conditional
+  `pytest.skip(...)`) is allowed. `@unittest.expectedFailure` stays with
+  `skipped-test-without-reason`. The message follows the TypeScript
+  `nitpicker/no-switched-off-tests`, which folds literal conditions the same way (`skipIf(1 === 1)`,
+  `runIf(!false)`): delete the test or make it run. A project that must keep a permanent skip lists
+  the file in a `python.exceptions` entry for `switched-off-test`.
+
+- `conditional-assertion-in-test` is the Python form of `vitest/no-conditional-expect`. In a test
+  function of a collected test file (`testFiles`; test functions and methods are found the way
+  pytest collects them: inside module level `if` and `try` blocks and in nested `Test*` classes
+  too) it reports the first assertion inside each outermost `if` (also a conditional expression),
+  `for`, `async for`, `while`, `match`, `except` handler, comprehension, `and`/`or` operand or
+  block that swallows assertion errors, once per construct, with the test and the construct as
+  subject (`TestOrders.test_total: for`; a `unittest.TestCase` adds ` (unittest)` and gets advice
+  for separate test methods instead of `parametrize`). The assertions are the ones
+  `test-without-assertion` knows: `assert`, `raise AssertionError`, `self.assert*` and other
+  `assert*` calls, `pytest.raises`, `warns`, pytest-check, imported assertion libraries, the
+  project's assertion helpers and the assertion functions of the same file. Allowed:
+  - `@pytest.mark.parametrize` with an unconditional assertion; a loop or branch that only builds
+    data before an unconditional `assert`; `with` blocks (`with pytest.raises(...)`);
+    `assert all(...)`; assertions in a `try` body, `else` or `finally`;
+  - a branch that can only fail or skip the test: `pytest.fail`, `self.fail`, `raise`,
+    `assert False`, `pytest.skip` and `self.skipTest` are not assertions, so
+    `if r is None: pytest.fail("none")`, `except OSError: pytest.fail("no")` and a conditional
+    skip stay quiet; and an `if`/`match` whose other branches all fail, raise or skip
+    (`if feature(): assert x else: pytest.skip("no feature")`, a `case _: pytest.fail()`),
+    whose assertion always runs;
+  - loops inside an assertion helper that is not a test function.
+
+  Also reported, as the construct they use: an assertion statement that is a ternary or an
+  implication (`assert f() if g() else True`, `assert not g() or f()`, also as the argument of
+  an assertion call or a helper such as `check(f() if g() else True)`); `a == 1 or a == 2` and
+  `x is None or x > 0` are checks of a value and stay quiet. `with contextlib.suppress(Exception)`
+  (also `BaseException`, `AssertionError` or a tuple with one of them) around an assertion, and a
+  `try` whose handler catches those errors without re-raising or failing, swallow the failure
+  (`suppress`); `blind-suppress` still reports the `suppress(Exception)` call itself. A nested
+  function or lambda counts where the test calls it or hands it to a call (`map`, a runner): an
+  assertion in a nested function that the test calls in a branch or loop is reported as that
+  construct, and one that nothing calls is no assertion (`test-without-assertion`). Likewise a
+  function of the same file that asserts (`def check_it(x): assert x`, or a method of the same
+  class called through `self`) is an assertion helper for that file, with the same position rules;
+  the project-wide helpers still need three test files to vote them in. An `unittest` `subTest`
+  loop is a loop: it is reported as `subTest`, because an empty iterable runs no case and passes
+  without asserting anything, where an empty `parametrize` list reports a skipped test; a suite
+  without `pytest` accepts it with a `python.exceptions` entry. An `assert` in an
+  `except ... as error:` handler that reads `error` is left to ruff `PT017`, which reports it
+  already (use `with pytest.raises(...) as info:`), so no site gets two findings.
+
+- Focused tests: pytest has no `only` marker, and the ways to narrow a run are already blocked.
+  `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob`, `testpaths`, `norecursedirs` and
+  `collect_ignore` in the configuration are reported per hidden test by `uncollected-tests`, and
+  the gate's own test runs drop `-k`, `-m`, `--deselect`, `--maxfail`, `-x`, `--sw`, `--co` and
+  rerun options from `addopts` (`adapters/test-runs/pytest-pins.mjs`), so a narrowed
+  configuration neither hides a test from the gate nor from the report.
+
+- `retry-in-test` (Java and Kotlin: `RetryInTest`; TypeScript: `nitpicker/no-test-retry`) reports a
+  retry set in test code: the `flaky` mark of pytest-rerunfailures, pytest-retry and the `flaky`
+  package (`@pytest.mark.flaky(reruns=3)`, `@pytest.mark.flaky(retries=2)`, a bare
+  `@pytest.mark.flaky`, in `pytestmark`, in `pytest.param(..., marks=...)` or added with
+  `add_marker` or `applymarker`, also by the name `"flaky"`), the `flaky` package's `@flaky`
+  decorator, and a tenacity, backoff, stamina, retry or retrying retry decorator on a test function
+  or method. A literal `reruns=0`, `retries=0` or `max_runs=1` is not a retry. A retry decorator
+  on a function whose name does not start with `test`, such as a helper that polls, is not
+  reported. The marks override the
+  `-o reruns=0` pin, so the test run backs the rule up: a test that fails and then passes on a
+  later attempt (a `rerun` or `retried` report, or a second setup or call of the same test)
+  counts as failed, with the first failure in the message. pytest-rerunfailures, pytest-retry and
+  the `flaky` plugin are covered, also under xdist, and so is a `retries` value in the config of
+  pytest-retry, which is not pinned. That run-time failure is `tests/tests-failed`, so an exception
+  for `retry-in-test` does not lift it. Only the rule sees a retry decorator, which retries inside
+  the test call, and the forms under unittest, nose2 and Django, which run no retry plugin.
+- `mocked-subject-in-test` (Java and Kotlin: `MockedSubjectInTest`; TypeScript:
+  `nitpicker/no-mocking-subject-under-test`) reports a test that replaces the code it is named after.
+  The subject is the module a test file is named for (`tests/test_cart.py` or `cart_test.py` for the
+  one project module `cart.py` or `cart/__init__.py`, or the one of them the test imports). Reported:
+  `patch`, `mocker.patch`, `patch.multiple` or `monkeypatch.setattr` of a function or class the
+  subject module defines (`patch("shop.cart.total")`, `patch("shop.cart.Cart.total")`);
+  `patch.object` or `monkeypatch.setattr` on the subject module, on one of its classes, or on an
+  instance of one (built in the test or returned by a fixture of the file); a method of such an
+  instance replaced by a `Mock`; and `Mock(spec=Cart)` or `create_autospec(Cart)`. Patching what the
+  subject imports (`patch("shop.cart.requests.get")`, the usual Python seam), a module constant
+  (`patch("shop.cart.LIMIT", 1)`) or another module is not reported; `patch-misses-lookup` covers
+  patch targets that miss. Allowed: pass the collaborators in and give the test a fake of them, and
+  test a helper through the public function that calls it.
+- `mock-without-spec` (the Kotlin preset's `RelaxedMockInTest` covers the MockK form, a relaxed mock) reports, in a test file, a mock of project code
+  that accepts any call. A `Mock`, `MagicMock`, `AsyncMock`, `NonCallableMock` or
+  `NonCallableMagicMock` with no spec (no first argument, `spec`, `spec_set` or `wraps`), passed
+  where a project class is expected: an argument of a call to a project function, class or class
+  method whose parameter (or dataclass field) is annotated with a project class (`Mailer`,
+  `Mailer | None`, `Optional["Mailer"]`), passed straight, through a local name or `self.` attribute
+  bound to it, or through a fixture of the file that returns it. Also `patch`, `patch.object`,
+  `mocker.patch` and `mocker.patch.object` whose target is a project function, class or method
+  (followed through `from ... import`), with none of `autospec`, `spec`, `spec_set`, `new` or
+  `new_callable` (`autospec=False` counts as none). Not followed: fixtures from `conftest.py`, an
+  inherited `__init__` or inherited dataclass fields, and `patch.multiple`. A patch that
+  `patch-misses-lookup` reports is left to it. A mock of a library type, and a mock of the
+  module the test is named after (`mocked-subject-in-test` reports that), are not reported. Allowed:
+  `Mock(spec=Mailer)`, `create_autospec(Mailer, instance=True)`, `patch(..., autospec=True)`, a
+  `new=` value, or a hand-written fake. TypeScript, JavaScript and Java have no counterpart: a
+  `vi.fn()` is one function rather than an object that grows attributes, TypeScript checks a mock
+  against the type it is passed as, and a Mockito mock is always made from a class.
+- `patch-misses-lookup` reports a patch of a name where it is defined (`patch("shop.mailer.send")`,
+  `mocker.patch`, `monkeypatch.setattr("shop.mailer.send", ...)`, `patch.object(mailer, "send")`),
+  when a production module the test imports bound the name at import time with
+  `from shop.mailer import send`: that module keeps the original, so the patch does not reach the
+  code under test. Not reported when the file also patches the name in that module, when the
+  module imports the name inside a function (looked up at call time) or under `if TYPE_CHECKING:`,
+  or for the module the test is named after. The modules counted are the ones the test file
+  imports itself (`import shop.checkout`, `from shop import checkout`, `from shop.checkout import pay`). Allowed: patch where the name is looked up (`patch("shop.checkout.send")`), or
+  have the module import the module (`from shop import mailer`, then `mailer.send(...)`). The
+  other presets have no counterpart: ES module imports are live bindings, and the JVM has no
+  module-level names.
+- `untested-round-trip` (TypeScript and JavaScript: `nitpicker/untested-round-trip`; Java and
+  Kotlin: `pmd/UntestedRoundTrip`) reports two public module-level functions of one production
+  module (also inside `if` and `try` blocks), or two public methods of one class or nested class
+  (class and static methods too), that turn values into each
+  other, when no test calls both. Pairs differ only by a direction word: `to_X`/`from_X`,
+  `dumps`/`loads`, `dump`/`load`, `encode`/`decode`, `serialize`/`deserialize`,
+  `marshal`/`unmarshal`, `parse`/`format`, `pack`/`unpack`, `encrypt`/`decrypt`,
+  `compress`/`decompress`, `escape`/`unescape`, alone or with the same rest (`encode_token`/
+  `decode_token`); `to_string`/`from_string` is not a pair. A test is one `test...` function or
+  method of a test file; the functions, methods and fixtures of test files that it calls or takes
+  as a parameter count, directly or through each other, and names match by name
+  (`Order.from_dict(order.to_dict())`). Not
+  reported: `_`-prefixed names, stubs (`...`, `pass`, `raise NotImplementedError`),
+  `@abstractmethod`, `@overload` and properties, and classes based on `Protocol` or `ABC`. The
+  finding is on the later definition. Allowed: `assert Order.from_dict(order.to_dict()) == order`
+  with values that need escaping or mapping. An exception goes in `python.exceptions`.
+- `global-state-leak-in-test` (Java and Kotlin: `GlobalStateLeakInTest`; TypeScript:
+  `nitpicker/fake-timers-require-restore`) reports, in a test file, a direct change to process-wide state that nothing
+  puts back: `os.environ[...] = ...`, `del os.environ[...]`, `os.environ.update`, `setdefault`, `pop`, `popitem` and
+  `clear`, `os.putenv` and `os.unsetenv`, `time.tzset()`, `locale.setlocale(category, value)` (the one-argument query
+  is not a change), and an assignment to an attribute of an imported project module or class (`settings.DEBUG = True`).
+  `monkeypatch.setenv`, `monkeypatch.setattr` and `mock.patch.dict(os.environ, ...)` are the allowed forms: pytest and
+  `mock` undo them. A direct change counts as restored when the same state is set again in a `finally` of the same
+  function, after `yield` in a fixture, in `tearDown`, `tearDownClass`, `asyncTearDown`, `teardown_method`,
+  `teardown_class`, `teardown_function`, `teardown_module` or `tearDownModule` (or a function one of them calls), or
+  by `importlib.reload` of the module; a cleanup the function registers (`addCleanup`, `request.addfinalizer`,
+  `enterContext`, `ExitStack.callback`) counts when its arguments name the state (`os.environ.pop`) or a function
+  that restores it, and that function itself is a restore site. A change inside `with mock.patch.dict(...)` or a
+  function decorated with `@mock.patch.dict(...)`, in a `pytest_*` hook, or at the top level of a module (it runs
+  once, at import) is not reported, and in a test-support module without tests a restore anywhere in the module
+  counts. `process-env-access` does not run on tests, so it does not overlap.
+- `shared-test-state` (Java and Kotlin: `SharedTestState`; TypeScript: `nitpicker/no-shared-test-state`) reports,
+  in a test module, a change to state that every test of the module or class shares: a call of `append`, `extend`,
+  `insert`, `remove`, `pop`, `clear`, `update`, `add`, `discard`, `setdefault`, `sort` and the like, an item
+  assignment or `del` on a module-level list, dict or set (a literal, a comprehension, `list()`, `dict()`, `set()`,
+  `bytearray()`, `collections.defaultdict`, `OrderedDict`, `Counter` or `deque`), a rebinding of a module name through `global`, the
+  same changes to a mutable class attribute of a test class through `self`, `cls`, the class name or `type(self)`,
+  and a rebinding of a class attribute through the class (`TestCart.count += 1`). It is reported in a test function or
+  method, in `setup_method`, `setUp`, `setup_function` and their teardown pairs, in a function-scoped fixture, and in
+  a function of the module (or a method of the class) that a test calls. Not reported: state that one of those
+  hooks or a function-scoped fixture resets before or after every test (`.clear()`, `[:] = ...`, a `global`
+  rebinding, or `self.items = []`, which gives each test its own attribute), writes in `setup_module`,
+  `setup_class`, `setUpClass` and session, module or class fixtures (set-up done once), a local of the same name,
+  and modules without tests. A `self.count = 1` in a test sets an attribute of that test's own instance, so it is
+  not reported.
+- `server-or-container-per-test` (Java and Kotlin: `ServerOrContainerPerTest`; TypeScript:
+  `nitpicker/no-server-or-worker-per-test` and `nitpicker/no-node-process-per-test`) reports a
+  container, server, process or git repository started for each test: a `testcontainers` class
+  named `*Container` or `DockerCompose`, `uvicorn.run` or `uvicorn.Server`, `subprocess.Popen`,
+  `asyncio.create_subprocess_exec`, `multiprocessing.Process`, an `http.server`, `socketserver`,
+  `werkzeug` or `wsgiref` server, `aiohttp.web.run_app`, `git.Repo.init`/`clone_from`, `pygit2`
+  or `dulwich` repository creation, or a `subprocess.run`-style `git init`/`git clone` (also after
+  `-C path`). A process the function waits for (`.wait()`, `.communicate()`) is a short command,
+  not a server, and is not counted. It is reported in a fixture with the default `function` scope
+  that runs two or more times: the tests that request it by parameter, `usefixtures` or a module
+  `pytestmark`, the cases of a literal `parametrize`, the `params` of the fixture, the
+  function-scoped fixtures that request it, and every test in reach of an `autouse` fixture. A
+  test counts for the closest fixture of that name (its class, its module, then the nearest
+  `conftest.py` above it), so a fake that overrides it lower down takes those tests away. It is
+  also reported in `setup_method`, `setUp`, `asyncSetUp` of a test class and `setup_function`,
+  and when two or more tests of one module or class make the same call with the same arguments.
+  A fixture with a wider `scope` and a fixture used once are not reported. Fixtures that a
+  `conftest.py` loads from another module (`pytest_plugins`, a star import) and
+  `request.getfixturevalue(...)` are not followed.
+- A test function with no assertion is not checked here; the conventions work owns it, together
+  with the detection of the project's own assertion helpers.
+- Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every
+  `python-rules` id, and ruff's `BLE001`, `ERA001`, `PLR2004`, `PLW0602`, `PLW0603`, `S102`, `S307`,
+  `S602`, `S604`, `S605`, `T201`, `T203`) are strict: a finding on a line the change adds or edits
+  is new even when the base had a finding of the same rule in that file, so code that is touched
+  is held to the rule while untouched legacy stays baselined. The repeats of one subject in a file
+  are numbered `#2`, `#3`, and base and head repeats are paired by line, so a new site never hides
+  behind an old one and the new one is the one on the added line. A line ruff format or black only
+  reformatted is not an edited line.
+- Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
+  code does not exist before), and the generated pyright config sets `reportDeprecated` to
+  `error`, so using an API marked `@deprecated` is a finding in each checker.

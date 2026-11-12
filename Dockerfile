@@ -38,9 +38,18 @@ COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/
 COPY core/ /opt/nitpicker/core/
 COPY shared/ /opt/nitpicker/shared/
 COPY languages/ /opt/nitpicker/languages/
+# The rule reference data is build output: it is built here from the catalogs, the guides and the
+# generator, which the image then drops.
+COPY docs/ /opt/nitpicker/docs/
+COPY spec/ /opt/nitpicker/spec/
+COPY scripts/reference/ /opt/nitpicker/scripts/reference/
+COPY scripts/typescript/emit.mjs /opt/nitpicker/scripts/typescript/emit.mjs
 RUN cd /opt/nitpicker \
     && npm ci --omit=dev --no-audit --no-fund \
-    && rm -rf /home/nitpicker/.npm \
+    && node scripts/typescript/emit.mjs \
+    && find core shared languages -name '*.mts' -delete \
+    && node scripts/reference/gen-rules.mjs --data \
+    && rm -rf docs spec scripts /home/nitpicker/.npm \
     && ln -s /opt/nitpicker/core/cli.mjs /usr/local/bin/nitpicker
 
 # The mounted checkout is owned by the host user, not by this container's user.

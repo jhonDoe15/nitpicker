@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -21,7 +22,9 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
     const { findings } = readJavaFindings(projectWithKotlinReports(), { preset: 'kotlin' });
     const detekt = findings.filter((finding) => finding.tool === 'detekt');
 
-    expect(parseAnalyzerReport({ findings }, 'kotlin').findings).toEqual(findings);
+    expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'kotlin').findings)).toEqual(
+      findings,
+    );
     expect(
       detekt.map(({ rule, path: file, identity, classification }) => [
         rule,
@@ -124,7 +127,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       'Calling !! on a nullable type will throw. Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug. If this is intended, add {"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
-  it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
+  it('reports an inline suppression of a one-way rule, and of `unused` on a function with parameters, in a Kotlin source file', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
       path.join(root, bad),
@@ -141,6 +144,19 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         identity: 'suppress:UnsafeCallOnNullableType',
         message:
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
+      {
+        tool: 'detekt',
+        rule: 'inline-suppression',
+        path: bad,
+        identity: 'suppress:unused',
+        message:
+          'Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. If this is intended, add {"rule":"detekt.style.UnusedParameter","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.',
         classification: 'enforceable',
       },
     ]);
@@ -256,7 +272,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
     expect(ktlint[0].message).toBe(
-      'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
+      'Wildcard import. Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
     );
     expect(ktlint[0].message).not.toContain('--format');
   });
@@ -270,7 +286,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         path: bad,
         identity: 'format',
         message:
-          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
+          'File is not formatted with ktfmt. Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);

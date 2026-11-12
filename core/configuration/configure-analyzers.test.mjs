@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { configuredAnalyzers } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
-import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
+import {
+  MUTATION_ANALYZER_NAME,
+  PYTHON_ANALYZER_NAME,
+  createPythonAnalyzers,
+} from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
+import { describeConfigOverrides } from './config.mjs';
+import { validateConfig } from './validate.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
 describe('configureAnalyzers', () => {
@@ -54,8 +61,9 @@ describe('configureAnalyzers', () => {
     );
 
     expect(configured.map(({ name }) => name)).toEqual(['python', 'mutation']);
-    for (const [index, part] of ['python', 'mutation'].entries()) {
-      expect(configured[index].createInvocation(context).args).toEqual([
+    const parts = ['python', 'mutation'];
+    expect(configured.map((analyzer) => analyzer.createInvocation(context).args)).toEqual(
+      parts.map((part) => [
         expect.stringMatching(/python-runner\.mjs$/),
         '--part',
         part,
@@ -69,8 +77,8 @@ describe('configureAnalyzers', () => {
         'base',
         '--legacy-inventory',
         'nitpicker.legacy.json',
-      ]);
-    }
+      ]),
+    );
   });
 
   it('leaves the mutation analyzer of another preset alone', () => {
@@ -122,14 +130,79 @@ describe('the baseline moves file', () => {
     ]);
   });
 
+  it('reaches the python runner, whose sibling-copy-edit reads the base facts', () => {
+    const args = configuredArguments('python', createPythonAnalyzers(), 'python');
+    const at = args.indexOf('--baseline-moves-file');
+
+    expect(args.slice(at, at + 2)).toEqual(['--baseline-moves-file', '/tmp/moves.json']);
+    expect(configuredArguments('python', createPythonAnalyzers(), 'mutation')).not.toContain(
+      '--baseline-moves-file',
+    );
+  });
+
   it.each([
-    ['python', () => createPythonAnalyzers(), 'python'],
     ['java', () => [createJavaAnalyzer()], 'java'],
     ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
-  ])(
-    'is not passed to the %s runner, which runs no rule that reads it yet',
-    (preset, analyzers, name) => {
-      expect(configuredArguments(preset, analyzers(), name)).not.toContain('--baseline-moves-file');
-    },
-  );
+  ])('reaches the %s runner, whose sibling-copy-edit reads the base', (preset, analyzers, name) => {
+    const args = configuredArguments(preset, analyzers(), name);
+    const at = args.indexOf('--baseline-moves-file');
+
+    expect(args.slice(at, at + 2)).toEqual(['--baseline-moves-file', '/tmp/moves.json']);
+  });
+});
+
+describe('analyzer timeouts', () => {
+  const MINUTE_MS = 60_000;
+
+  function timeoutsOf(config, analyzers = packageAnalyzers) {
+    validateConfig(config);
+    const configured = configureAnalyzers(analyzers, config, resolveHeadPolicy(config));
+    return Object.fromEntries(configured.map(({ name, timeoutMs }) => [name, timeoutMs]));
+  }
+
+  it('sets the deadline of a built-in and a custom analyzer, in every preset', () => {
+    const custom = [{ name: 'house-rules', command: './check.sh' }];
+    const timeouts = timeoutsOf({
+      analyzers: custom,
+      analyzerTimeoutMinutes: { 'eslint-lint': 20, 'house-rules': 3 },
+    });
+
+    expect(timeouts['eslint-lint']).toBe(20 * MINUTE_MS);
+    expect(timeouts['house-rules']).toBe(3 * MINUTE_MS);
+    expect(timeouts['prettier-format']).toBe(timeoutsOf({})['prettier-format']);
+    expect(
+      timeoutsOf(
+        { preset: 'python', analyzerTimeoutMinutes: { [PYTHON_ANALYZER_NAME]: 90 } },
+        createPythonAnalyzers(),
+      ).python,
+    ).toBe(90 * MINUTE_MS);
+    expect(
+      [
+        ['java', createJavaAnalyzer()],
+        ['kotlin', createJavaAnalyzer({ kotlin: true })],
+        ['go', createGoAnalyzer()],
+      ].map(
+        ([preset, analyzer]) =>
+          timeoutsOf({ preset, analyzerTimeoutMinutes: { [preset]: 120 } }, [analyzer])[preset],
+      ),
+    ).toEqual([120 * MINUTE_MS, 120 * MINUTE_MS, 120 * MINUTE_MS]);
+  });
+
+  it('accepts a disabled analyzer and rejects an unknown one', () => {
+    expect(
+      timeoutsOf({
+        disable: ['mutation'],
+        analyzerTimeoutMinutes: { [MUTATION_ANALYZER_NAME]: 90 },
+      })[MUTATION_ANALYZER_NAME],
+    ).toBeUndefined();
+    expect(() => timeoutsOf({ analyzerTimeoutMinutes: { eslnt: 5 } })).toThrow(
+      /"analyzerTimeoutMinutes" names unknown analyzers: eslnt\. Known analyzers: .*eslint-lint/,
+    );
+  });
+
+  it('is left out of the overrides that make up the policy hash', () => {
+    expect(
+      describeConfigOverrides({ analyzerTimeoutMinutes: { java: 60 }, disable: ['crap'] }),
+    ).toEqual(['disable: ["crap"]']);
+  });
 });

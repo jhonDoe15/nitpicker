@@ -1,11 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+import { useProjectFixtures } from '../../../../../core/diff/git/test-support/projects/project-fixtures.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import { javascriptFileFindings } from './javascript-files.mjs';
 
-const temporaryRoots = [];
+const { gitCheckout } = useGitCheckouts();
+const { outsideGit } = useProjectFixtures();
+
 const TSCONFIG = { 'tsconfig.json': '{ "compilerOptions": { "strict": true } }\n' };
 const SCRIPTS = {
   'src/orders/parse.mjs': 'export const a = 1;\n',
@@ -16,21 +22,11 @@ const SCRIPTS = {
   'src/cli.cjs': 'module.exports = {};\n',
 };
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javascript-files-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return outsideGit(files);
 }
+
+const AGENT_TSCONFIG = { 'tsconfig.json': '{}' };
 
 function findingsOf(root, policy = {}, liveProjectRoot = root) {
   return javascriptFileFindings({
@@ -107,5 +103,32 @@ describe('javascript-in-typescript-project', () => {
     const head = project({ ...TSCONFIG, ...SCRIPTS });
 
     expect(findingsOf(base, {}, head)).toHaveLength(4);
+  });
+
+  it('ignores a tsconfig in a git-ignored folder and in a nested checkout of a Git project', () => {
+    const root = gitCheckout(
+      {
+        ...SCRIPTS,
+        ...nestedCheckout('agent', AGENT_TSCONFIG),
+        '.scratch/fixture/tsconfig.json': '{}',
+        '.scratch/tsconfig.json': '{}',
+        'build/tsconfig.json': '{}',
+      },
+      ['.scratch/', 'build/'],
+    );
+
+    expect(findingsOf(root)).toEqual([]);
+    writeFileSync(path.join(root, 'tsconfig.json'), '{}');
+    expect(findingsOf(root)).toHaveLength(4);
+  });
+
+  it('still skips a nested checkout when the project is not a Git checkout', () => {
+    const repository = { ...SCRIPTS, 'agent/tsconfig.json': '{}', 'agent/.git/HEAD': 'ref\n' };
+    const worktree = { ...SCRIPTS, ...nestedCheckout('agent', AGENT_TSCONFIG) };
+
+    expect(findingsOf(project(repository))).toEqual([]);
+    expect(findingsOf(project(worktree))).toEqual([]);
+    expect(findingsOf(project({ ...SCRIPTS, 'agent/tsconfig.json': '{}' }))).toHaveLength(4);
+    expect(findingsOf(gitCheckout({ ...SCRIPTS, 'agent/tsconfig.json': '{}' }))).toHaveLength(4);
   });
 });

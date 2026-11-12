@@ -44,11 +44,21 @@ ruleTester.run('no-unvalidated-schema-field', noUnvalidatedSchemaField, {
   invalid: [
     {
       code: "import { z } from 'zod'; const s = z.object({ name: z.unknown() });",
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.unknown' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.unknown()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: "import { z } from 'zod'; const s = z.object({ name: z.any() });",
-      errors: [{ messageId: 'unvalidatedField', data: { factory: 'z.any' } }],
+      errors: [
+        {
+          messageId: 'unvalidatedField',
+          data: { factory: 'z.any()', example: 'z.string().trim().min(1) or z.email()' },
+        },
+      ],
     },
     {
       code: "import { z } from 'zod'; const s = z.object({ name: z.unknown().optional() });",
@@ -87,12 +97,12 @@ ruleTester.run('no-production-console', noProductionConsole, {
     {
       filename: '/repo/src/main/feature.ts',
       code: "console.warn('degraded');",
-      errors: [{ messageId: 'consoleCall', data: { method: 'warn' } }],
+      errors: [{ messageId: 'consoleCall', data: { reference: 'console.warn()' } }],
     },
     {
       filename: '/repo/src/main/feature.ts',
       code: "console.error('failed');",
-      errors: [{ messageId: 'consoleCall', data: { method: 'error' } }],
+      errors: [{ messageId: 'consoleCall', data: { reference: 'console.error()' } }],
     },
   ],
 });

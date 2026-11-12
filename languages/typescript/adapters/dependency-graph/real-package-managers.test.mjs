@@ -1,7 +1,13 @@
-import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { describe, expect, it, vi } from 'vitest';
+import { withTemporaryWorktree } from '../../../../core/diff/git/repository/worktree.mjs';
+import {
+  commit,
+  fixtureGit,
+  useGitFixtures,
+} from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import { removeSnapshotDependencies } from '../static-checks/dependencies.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
@@ -9,8 +15,10 @@ import {
   copyProjectFixture,
   managerVersion,
 } from './package-managers/test-support/project-fixtures.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const git = useGitFixtures();
+
 const REQUIRED = Boolean(process.env.CI);
 
 const ANY_VERSION = /^\d/u;
@@ -66,24 +74,24 @@ describe('frozen install with the real package managers', () => {
         kind: 'installed',
         dependencyPath: path.join(projectRoot, 'node_modules'),
         memberPaths: members.map((member) => path.join(projectRoot, member)),
+        localPackagePaths: [],
       });
       const libraryFolders = members.length === 0 ? ['node_modules'] : members;
-      for (const folder of libraryFolders) {
-        expect(existsSync(path.join(projectRoot, folder, 'fixture-lib/fixture.json'))).toBe(true);
-      }
+      const hasFile = (folder, name) => existsSync(path.join(projectRoot, folder, name));
+      expect(libraryFolders.map((folder) => hasFile(folder, 'fixture-lib/fixture.json'))).toEqual(
+        libraryFolders.map(() => true),
+      );
       expect(existsSync(path.join(projectRoot, 'ROOT_POSTINSTALL'))).toBe(false);
-      for (const folder of libraryFolders) {
-        expect(existsSync(path.join(projectRoot, folder, 'fixture-lib/LIB_POSTINSTALL'))).toBe(
-          false,
-        );
-      }
+      expect(
+        libraryFolders.map((folder) => hasFile(folder, 'fixture-lib/LIB_POSTINSTALL')),
+      ).toEqual(libraryFolders.map(() => false));
 
       removeSnapshotDependencies(dependencies);
 
       expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
-      for (const member of members) {
-        expect(existsSync(path.join(projectRoot, member))).toBe(false);
-      }
+      expect(members.map((member) => existsSync(path.join(projectRoot, member)))).toEqual(
+        members.map(() => false),
+      );
     });
   }
 });
@@ -95,7 +103,8 @@ describe('Yarn Plug and Play', () => {
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
       new Error(
-        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`)",
+        "Failed to install merge-base dependencies with yarn: the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`). " +
+          linkSentence('unsupportedYarn'),
       ),
     );
     expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
@@ -141,5 +150,68 @@ describe('repository code that a frozen install must not run', () => {
 
     expect(existsSync(path.join(projectRoot, 'PWNED'))).toBe(false);
     removeSnapshotDependencies(dependencies);
+  });
+});
+
+function baseWorktreeInstall(liveRoot, check) {
+  return withTemporaryWorktree(liveRoot, { commitSha: 'HEAD', warn: vi.fn() }, (worktreeRoot) => {
+    const dependencies = resolveDependencyHook().install(worktreeRoot, liveRoot);
+    try {
+      check(worktreeRoot, dependencies);
+    } finally {
+      removeSnapshotDependencies(dependencies);
+    }
+    expect(dependencies.localPackagePaths.filter((copied) => existsSync(copied))).toEqual([]);
+    return dependencies;
+  });
+}
+
+describe('local packages the base checkout does not hold', () => {
+  for (const testCase of CASES) {
+    it(`copies an untracked file: package from the working tree for ${testCase.label}`, (context) => {
+      requireManager(testCase, context);
+      const projectRoot = installFixture(testCase.fixture, { '.gitignore': 'vendor/\n' });
+      commit(projectRoot, 'manifests without the vendored package');
+
+      const dependencies = baseWorktreeInstall(projectRoot, (worktreeRoot) => {
+        const folders = testCase.members.length === 0 ? ['node_modules'] : testCase.members;
+        const installed = (folder) =>
+          existsSync(path.join(worktreeRoot, folder, 'fixture-lib/fixture.json'));
+        expect(folders.filter((folder) => !installed(folder))).toEqual([]);
+      });
+
+      expect(dependencies.localPackagePaths.map((copied) => path.basename(copied))).toEqual([
+        'fixture-lib',
+      ]);
+      expect(existsSync(path.join(projectRoot, 'vendor/fixture-lib/LIB_POSTINSTALL'))).toBe(false);
+    });
+  }
+
+  it('installs npm folder and tarball packages from outside the repository', (context) => {
+    requireManager(CASES[0], context);
+    const outside = git.temporaryRoot('nitpicker-local-packages-');
+    const liveRoot = path.join(outside, 'app');
+    copyProjectFixture('npm-outside', liveRoot);
+    renameSync(path.join(liveRoot, 'vendor/fixture-lib'), path.join(outside, 'fixture-lib'));
+    writeFiles(outside, {
+      'packed/package/package.json': '{"name":"packed-lib","version":"1.0.0"}',
+    });
+    const packed = spawnSync('tar', ['-czf', '../packed-lib-1.0.0.tgz', 'package'], {
+      cwd: path.join(outside, 'packed'),
+      timeout: 10_000,
+    });
+    expect(packed.status).toBe(0);
+    writeFiles(liveRoot, { '.gitignore': 'vendor/\n' });
+    fixtureGit(liveRoot, ['init', '-q', '--initial-branch=main']);
+    commit(liveRoot, 'local packages');
+
+    baseWorktreeInstall(liveRoot, (worktreeRoot) => {
+      expect(existsSync(path.join(worktreeRoot, 'node_modules/fixture-lib/fixture.json'))).toBe(
+        true,
+      );
+      expect(existsSync(path.join(worktreeRoot, 'node_modules/packed-lib/package.json'))).toBe(
+        true,
+      );
+    });
   });
 });

@@ -60,11 +60,18 @@ describe('shared policy', () => {
   it('catalogs each rule id once and says per language whether it is enforced', () => {
     const ids = RULES.map((rule) => rule.id);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const rule of RULES) {
-      expect(Object.keys(rule.enforcedBy).sort(), `${rule.id} names every language`).toEqual(
-        [...LANGUAGES].sort(),
-      );
-    }
+    expect(RULES.map((rule) => [rule.id, Object.keys(rule.enforcedBy).sort()])).toEqual(
+      RULES.map((rule) => [rule.id, [...LANGUAGES].sort()]),
+    );
+  });
+
+  it('gives a reason only for languages that do not enforce the rule', () => {
+    const misplaced = RULES.flatMap((rule) =>
+      Object.entries(rule.notApplicable ?? {})
+        .filter(([language, reason]) => rule.enforcedBy[language] !== false || reason === '')
+        .map(([language]) => `${rule.id}: ${language}`),
+    );
+    expect(misplaced).toEqual([]);
   });
 });
 

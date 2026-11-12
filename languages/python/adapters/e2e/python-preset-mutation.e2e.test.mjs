@@ -10,6 +10,12 @@ import {
   PRICING_WITH_UNUSED,
 } from './test-support/python-preset-data.mjs';
 import {
+  COLORS_EXHAUSTIVE,
+  COLORS_TEST,
+  INLINE_NEVER,
+  INLINE_NEVER_TEST,
+} from './test-support/python-coverage-idioms-data.mjs';
+import {
   commitBranch,
   fixture,
   fixtureRepository,
@@ -70,6 +76,14 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       'src/demo/pricing.py': PRICING,
       'tests/test_pricing.py': PRICING_FULL_TEST,
     });
+    commitBranch(project, 'exhaustive', {
+      'src/demo/colors.py': COLORS_EXHAUSTIVE,
+      'tests/test_colors.py': COLORS_TEST,
+    });
+    commitBranch(project, 'inline-never', {
+      'src/demo/inline.py': INLINE_NEVER,
+      'tests/test_inline.py': INLINE_NEVER_TEST,
+    });
   });
   afterAll(removeRepositories);
   it('fails new surviving and uncovered mutants but not the legacy survivors of the base', () => {
@@ -92,8 +106,18 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       identity: 'discount|-→+#1',
       message:
         'Survived operator: replacing `-` with `+` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/pricing.py"],"function":"discount","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      exception: {
+        rule: 'mutant-survived',
+        paths: ['src/demo/pricing.py'],
+        function: 'discount',
+        reason: '...',
+      },
+      exceptionList: 'exceptions',
       classification: 'enforceable',
       symbol: 'discount',
+      anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
       location: { line: 2 },
     });
   });
@@ -138,6 +162,21 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
         .json('new-findings.json')
         .filter(({ tool, rule }) => tool === 'mutmut' && rule !== 'mutation-summary'),
     ).toEqual([]);
+  });
+  it('makes no mutant of the assert_never that closes an exhaustive match', () => {
+    const result = gate(project, 'exhaustive');
+
+    expect(mutantFindings(result), result.text).toEqual([]);
+  });
+  it('keeps the mutants of a line that only starts with assert_never', () => {
+    const result = gate(project, 'inline-never');
+
+    expect(
+      mutantFindings(result).some(
+        ({ path: file, location }) => file === 'src/demo/inline.py' && location?.line === 7,
+      ),
+      result.text,
+    ).toBe(true);
   });
   it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
     const result = gate(project, 'weaker-source');

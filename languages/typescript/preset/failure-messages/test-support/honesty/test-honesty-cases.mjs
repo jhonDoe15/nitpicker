@@ -31,6 +31,26 @@ const HONESTY_ROWS = [
     '{"rule":"vitest/no-restricted-matchers","paths":["test/orders.test.ts"],"reason":"..."}',
   ],
   [
+    'not.toBe(null) names toEqual',
+    "it('x', () => { expect(load()).not.toBe(null); });",
+    'Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`',
+  ],
+  [
+    'a length above zero names the exact length',
+    "it('x', () => { expect(load().length).toBeGreaterThan(0); });",
+    '`expect(rows).toHaveLength(3)`',
+  ],
+  [
+    'assert.ok on a length names deepStrictEqual',
+    "it('x', () => { assert.ok(load().length > 0); });",
+    '`assert.deepStrictEqual(rows, [...])`',
+  ],
+  [
+    'wildcard-only call arguments name the expected arguments',
+    "it('x', () => { expect(spy).toHaveBeenCalledWith(expect.anything()); });",
+    '`expect(spy).toHaveBeenCalledWith(orderId)`',
+  ],
+  [
     'bare toHaveBeenCalled names the expected arguments',
     "it('x', () => { expect(spy).toHaveBeenCalled(); });",
     'toHaveBeenCalledWith',
@@ -66,9 +86,44 @@ const HONESTY_ROWS = [
   ],
   ['todo tests name writing the test', "it.todo('later');", 'write the test'],
   [
+    'float equality names toBeCloseTo',
+    "it('x', () => { expect(run()).toBe(0.1); });",
+    '`toBeCloseTo(0.1)`',
+  ],
+  [
+    'float equality names the exception route',
+    "it('x', () => { expect(run()).toBe(0.1); });",
+    '{"rule":"nitpicker/no-float-equality-in-tests","paths":["test/orders.test.ts"],"reason":"..."}',
+  ],
+  [
     'an unowned timer assertion names awaiting the callback',
     "it('x', () => { setTimeout(() => { expect(run()).toBe(1); }, 10); });",
     'Await a promise the callback resolves',
+  ],
+  [
+    'an assertion in a loop names asserting the whole collection',
+    "it('x', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
+    'Assert the whole collection at once (`expect(orders).toEqual([...])`',
+  ],
+  [
+    'an assertion in a loop names the parameterized test',
+    "it('x', () => { orders.forEach((order) => { expect(order.paid).toBe(true); }); });",
+    'parameterized test (`it.each`/`test.each`',
+  ],
+  [
+    'an assertion in a loop names building data first',
+    "it('x', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
+    'use the loop only to build data before an unconditional assertion',
+  ],
+  [
+    'an assertion in a loop over a literal table names it.each',
+    "it('x', () => { for (const row of [[1, 2], [3, 4]]) { expect(add(row[0], row[0])).toBe(row[1]); } });",
+    "`it.each([...])('name', (row) => { ... })`",
+  ],
+  [
+    'subtests registered over a collection name the literal table',
+    "import test from 'node:test';\ntest('x', async (t) => { for (const c of cases) { await t.test(c.name, () => { run(c); }); } });",
+    'Register them from a literal, non-empty table',
   ],
   [
     'skipIf(true) names the platform condition',

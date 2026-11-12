@@ -5,6 +5,7 @@ import { readProjectFile } from '../../libraries/project-files.mjs';
 import { readImportsReport } from '../analysis/python-coupling.mjs';
 import { snapshotScope } from '../test-runs/test-failures.mjs';
 import { impliedDistributions } from './python-frameworks.mjs';
+import { probedTops, unresolvedImportFindings } from '../imports/unresolved-imports.mjs';
 import {
   normalizeRequirementName,
   readPythonDependencies,
@@ -42,10 +43,10 @@ const LOADED_BY_NAME = new Set(
 
 export function scanDependencies(context, run) {
   const { reportRoot, projectRoot } = context;
-  const { modules, others = [] } = readImportsReport(reportRoot);
+  const imports = readImportsReport(reportRoot);
   const request = path.join(reportRoot, SCAN_REQUEST);
-  const files = [...modules, ...others].map(({ file }) => file);
-  writeFileSync(request, JSON.stringify({ root: projectRoot, files }));
+  const files = [...imports.modules, ...(imports.others ?? [])].map(({ file }) => file);
+  writeFileSync(request, JSON.stringify({ root: projectRoot, files, tops: probedTops(imports) }));
   const result = run(context, ['python', '-I', SCAN_SCRIPT, request], {
     rule: 'dependencies-failed',
   });
@@ -237,10 +238,11 @@ export function readDependencyFindings({ reportRoot, projectRoot, snapshot }) {
       ),
     ];
   }
-  if (!declared.complete) {
-    return [];
-  }
   const imports = readImportsReport(reportRoot);
+  const unresolved = unresolvedImportFindings({ projectRoot, imports, scan, declared });
+  if (!declared.complete) {
+    return unresolved;
+  }
   const state = {
     ...dependencyState(dependencies, imports),
     implied: impliedDistributions(projectRoot, imports),
@@ -250,5 +252,6 @@ export function readDependencyFindings({ reportRoot, projectRoot, snapshot }) {
     ...state.imports.modules.flatMap((entry) => importFindings(state, entry, true)),
     ...tests.flatMap((entry) => importFindings(state, entry, false)),
     ...unusedFindings(state, projectRoot),
+    ...unresolved,
   ];
 }

@@ -1,0 +1,33 @@
+  <rule name="SpringNoPostConstructIo" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent). These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//ClassBody/MethodDeclaration[
+    let $body := parent::ClassBody,
+        $starts := ($body/MethodDeclaration[ModifierList/Annotation[
+            pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]],
+          $body[parent::ClassDeclaration[pmd-java:typeIs('org.springframework.beans.factory.InitializingBean')]]
+            /MethodDeclaration[@Name = 'afterPropertiesSet'][@Arity = 0],
+          $body/MethodDeclaration[@Arity = 0][@Name = //Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')]
+            /AnnotationMemberList/MemberValuePair[@Name = 'initMethod']//StringLiteral/@ConstValue]),
+        $onlyFrom := function($method, $callers) {
+          let $uses := $body//(MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+              | MethodReference[*[1][self::ThisExpression[not(*)]]])[@MethodName = $method/@Name]
+          return $method/@Visibility = 'private' and exists($uses)
+            and (every $use in $uses satisfies exists($use/ancestor::* intersect $callers))
+        },
+        $helpers := $body/MethodDeclaration[$onlyFrom(., $starts)],
+        $startup := ($starts, $helpers, $body/MethodDeclaration[$onlyFrom(., ($starts, $helpers))])
+    return exists(. intersect $startup)]
+  //MethodCall[*[1][
+    pmd-java:typeIs('org.springframework.data.repository.Repository')
+    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))
+    or pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+    or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')
+    or pmd-java:typeIs('org.springframework.jdbc.core.simple.JdbcClient')
+    or pmd-java:typeIs('org.springframework.web.client.RestOperations')
+    or pmd-java:typeIs('org.springframework.web.client.RestClient')
+    or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
+    or pmd-java:typeIs('java.net.http.HttpClient')]]
+]]></value></property></properties>
+  </rule>

@@ -1,8 +1,10 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { RULE_CASES } from './test-support/python-rule-cases.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
+import { route, sample } from './test-support/hint-samples.mjs';
+import { ruleCases } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
   describeRuleFinding,
@@ -11,16 +13,7 @@ import {
   withHint,
 } from './rule-hints.mjs';
 
-const route = (rule) => exceptionRoute({ rule, path: 'src/a.py', key: 'python.exceptions' });
-
-const sample = ({ tool, rule }) => ({
-  tool,
-  rule,
-  path: 'src/a.py',
-  identity: 'x',
-  message: 'The base message.',
-  classification: 'enforceable',
-});
+const RULE_CASES = ruleCases();
 
 describe('every banned form has a banned and an allowed fixture', () => {
   const pythonFiles = (fixture, side) =>
@@ -42,6 +35,20 @@ describe('every banned form has a banned and an allowed fixture', () => {
   });
 });
 
+describe('every selected pitfall rule', () => {
+  const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+  const { lint } = createRequire(import.meta.url)('smol-toml').parse(
+    readFileSync(RUFF_CONFIG, 'utf8'),
+  );
+
+  it.each(lint.select.filter((code) => PITFALL.test(code)))(
+    '%s has its own allowed form',
+    (rule) => {
+      expect(hintFor(sample({ tool: 'ruff', rule }))?.rules).toContain(rule);
+    },
+  );
+});
+
 describe('every message names the allowed form', () => {
   it.each(RULE_CASES.map((testCase) => [testCase.name, testCase]))('%s', (_name, testCase) => {
     const { message } = withHint(sample(testCase));
@@ -49,12 +56,22 @@ describe('every message names the allowed form', () => {
     expect(message.toLowerCase()).toContain(testCase.mention.toLowerCase());
   });
 
-  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception !== false))(
+  it.each(RULE_CASES.filter((testCase) => hintFor(sample(testCase)).exception === undefined))(
     'tells how to add an exception for $tool $rule',
     (testCase) => {
       expect(withHint(sample(testCase)).message.endsWith(route(testCase.rule))).toBe(true);
     },
   );
+
+  it('sends unused-option to the top-level exceptions, in the wording every preset shares', () => {
+    const { message } = withHint(
+      sample({ tool: 'python-rules', rule: 'unused-option', data: { scope: 'private' } }),
+    );
+
+    expect(message).toBe(
+      'Option total.rate is never set. Remove it, or set it from a real call (tests do not count). If this is intended, add {"rule":"unused-option","paths":["src/a.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
+  });
 
   it('sends a suppression comment to the exception of no-inline-suppression itself', () => {
     const { message } = withHint(sample({ tool: 'python-rules', rule: 'no-inline-suppression' }));
@@ -104,7 +121,9 @@ describe('hints', () => {
     expect(withHint(sample({ tool: 'ruff', rule: 'T201' }))).toEqual({
       ...sample({ tool: 'ruff', rule: 'T201' }),
       message:
-        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        'The base message. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      allowedForm:
+        'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.',
     });
   });
 
@@ -158,6 +177,11 @@ describe('hints', () => {
   it.each([
     ['coverage-py', 'changed-branch-coverage'],
     ['mutmut', 'mutant-survived'],
+    ['test-runtime', 'slow-test'],
+    ['coupling', 'feature-internal-import'],
+    ['coupling', 'shared-imports-feature'],
+    ['coupling', 'feature-cycle'],
+    ['coupling', 'shared-used-by-one-feature'],
   ])('leave a %s %s finding to the shared exception route', (tool, rule) => {
     const finding = sample({ tool, rule });
 
@@ -167,207 +191,16 @@ describe('hints', () => {
   it('keep every other field of the finding', () => {
     const finding = sample({ tool: 'mypy', rule: 'return-value' });
 
-    expect(applyRuleHints([finding])).toEqual([{ ...finding, message: expect.any(String) }]);
+    expect(applyRuleHints([finding])).toEqual([
+      {
+        ...finding,
+        message: expect.any(String),
+        allowedForm: 'Fix the type; inline ignores are banned.',
+      },
+    ]);
   });
 
   it('describe a custom rule finding by its subject', () => {
     expect(describeRuleFinding('frozen-dataclass', 'Order')).toBe('Dataclass Order is not frozen');
-  });
-});
-
-describe('hints follow the libraries of the project', () => {
-  const advice = (rule, libraries, tool = 'ruff', subject) =>
-    withHint({ ...sample({ tool, rule }), subject }, libraries).message;
-  const expected = (rule, allowed) => `The base message. ${allowed} ${route(rule)}`;
-
-  it.each([
-    [
-      'structlog',
-      'Keep the message constant and pass the data as key-value pairs: `log.info("items_loaded", count=count)`.',
-    ],
-    [
-      'loguru',
-      'Pass the values as arguments, not a formatted string: `logger.info("Loaded {} items", count)`.',
-    ],
-    [
-      'logging',
-      'Pass the values as arguments, not a formatted string: `logger.info("Loaded %s items", count)`.',
-    ],
-  ])('name the %s form for a formatted log message', (logging, allowed) => {
-    expect(advice('G004', { logging })).toBe(expected('G004', allowed));
-  });
-
-  it.each([
-    [
-      'structlog',
-      'Use structlog: `log = structlog.get_logger()`, then `log.info("event_name", key=value)`.',
-    ],
-    ['loguru', 'Use loguru: `from loguru import logger`, then `logger.info(...)`.'],
-  ])('send a print to %s', (logging, allowed) => {
-    expect(advice('T201', { logging })).toBe(expected('T201', allowed));
-  });
-
-  it.each([
-    ['msgspec', 'msgspec (`msgspec.json.decode(raw, type=Model)`)'],
-    ['cattrs', 'cattrs (`cattrs.structure(data, Model)`)'],
-    ['marshmallow', 'marshmallow (`Schema().load(data)`)'],
-    ['pydantic', 'pydantic (`Model.model_validate(data)`)'],
-  ])('send a hand-written guard to %s', (validator, form) => {
-    const allowed = `Parse untrusted input once at the boundary with ${form} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
-
-    expect(advice('handwritten-boundary-guard', { validator }, 'python-rules')).toBe(
-      expected('handwritten-boundary-guard', allowed),
-    );
-  });
-
-  it('write the pytest decorators and parametrize calls the way the project does', () => {
-    const pytestStyle = {
-      'fixture-parentheses': true,
-      'parametrize-names-type': 'csv',
-      'parametrize-values-type': 'tuple',
-      'parametrize-values-row-type': 'list',
-    };
-
-    expect(advice('PT001', { pytestStyle })).toBe(
-      expected(
-        'PT001',
-        'Write the decorator with parentheses, as the rest of the project does: `@pytest.fixture()`, `@pytest.mark.slow()`.',
-      ),
-    );
-    expect(advice('PT006', { pytestStyle })).toBe(
-      expected(
-        'PT006',
-        'Pass the names as one comma-separated string: `@pytest.mark.parametrize("a,b", [(1, 2)])`.',
-      ),
-    );
-    expect(advice('PT007', { pytestStyle })).toBe(
-      expected(
-        'PT007',
-        'Pass the values as a tuple of lists: `([1, 2], [3, 4])`, or a tuple for one name.',
-      ),
-    );
-    expect(advice('PT007', {})).toBe(
-      expected(
-        'PT007',
-        'Pass the values as a list of tuples: `[(1, 2), (3, 4)]`, or a list for one name.',
-      ),
-    );
-  });
-
-  it.each([
-    [
-      'pytest.mark.xfail',
-      'Give the reason and the expected error: `@pytest.mark.xfail(reason="bug 123", raises=ZeroDivisionError, strict=True)`; or fix or delete the test.',
-    ],
-    [
-      'unittest.skip',
-      'Give the reason: `@unittest.skip("needs the staging database")`, `self.skipTest("...")`; or fix or delete the test.',
-    ],
-    [
-      'return in test_a',
-      'Skip visibly: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")` or `pytest.skip("...")` (`self.skipTest("...")` in unittest).',
-    ],
-  ])('word a skipped test by the form %s', (subject, allowed) => {
-    expect(advice('skipped-test-without-reason', {}, 'python-rules', subject)).toBe(
-      expected('skipped-test-without-reason', allowed),
-    );
-  });
-
-  it('name the default validation library when none is declared', () => {
-    expect(advice('pydantic-boundary', undefined, 'python-rules')).toBe(
-      expected(
-        'pydantic-boundary',
-        'Use pydantic only in an `adapters/` package to parse untrusted input (`Model.model_validate(data)`), and pass frozen dataclasses on from there.',
-      ),
-    );
-  });
-
-  it('name every declared validation library and the call of the first', () => {
-    expect(
-      advice('pydantic-boundary', { validators: ['marshmallow', 'msgspec'] }, 'python-rules'),
-    ).toBe(
-      expected(
-        'pydantic-boundary',
-        'Use marshmallow or msgspec only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there.',
-      ),
-    );
-  });
-
-  it.each([
-    ['torch.load', 'torch.load(path, weights_only=True)'],
-    ['numpy.load', 'allow_pickle=False'],
-    ['ruamel.yaml.YAML', 'YAML(typ="safe")'],
-    ['yaml.full_load', 'yaml.safe_load(text)'],
-    ['joblib.load', 'skops.io.load'],
-    ['cloudpickle.loads', 'json.loads(text)'],
-    ['keras.models.load_model', '`safe_mode=True`'],
-    ['lxml.etree.XMLParser', 'defusedxml.lxml'],
-  ])('name the safe loader for %s', (subject, form) => {
-    expect(advice('unsafe-deserialization', {}, 'python-rules', subject)).toContain(form);
-  });
-
-  it.each([
-    [
-      undefined,
-      'Keep the traceback: `logger.exception("message")` or `logger.error("message", exc_info=True)`; the exception as an argument drops it. Re-raising after the log also passes.',
-    ],
-    [
-      'structlog',
-      'Keep the traceback: `logger.exception("event")` or `logger.error("event", exc_info=True)`; the exception as a field drops it. Re-raising after the log also passes.',
-    ],
-    [
-      'loguru',
-      'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
-    ],
-  ])(
-    'tell a caught error log to keep the traceback the way the %s logger does',
-    (logging, allowed) => {
-      expect(advice('catch-log-without-exception', { logging }, 'python-rules')).toBe(
-        expected('catch-log-without-exception', allowed),
-      );
-    },
-  );
-
-  it('tell domain code to raise instead of logging a caught error', () => {
-    const rule = 'catch-log-without-exception';
-    const finding = { ...sample({ tool: 'python-rules', rule }), path: 'shop/domain/orders.py' };
-
-    expect(withHint({ ...finding, subject: 'logger.error(...)' }).message).toBe(
-      `The base message. Domain code does not log: re-raise the error with its cause (\`raise DomainError(...) from error\`) or return a failure, and let the caller in \`adapters/\` or the composition root log it with its traceback. ${exceptionRoute({ rule, path: 'shop/domain/orders.py', key: 'python.exceptions' })}`,
-    );
-  });
-
-  it('describe the rules for caught logs and silent tests by their subject', () => {
-    expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
-      '`logger.error(...)` logs a caught error without its traceback',
-    );
-    expect(describeRuleFinding('test-without-assertion', 'TestOrders.test_total')).toBe(
-      'Test `TestOrders.test_total` has no assertion',
-    );
-    expect(advice('test-without-assertion', undefined, 'python-rules')).toBe(
-      expected(
-        'test-without-assertion',
-        'Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.',
-      ),
-    );
-  });
-
-  it.each([
-    [
-      'cur.execute',
-      'asyncpg',
-      'WHERE id = $1", user_id)',
-      'f"${n}" for n in range(1, len(ids) + 1)',
-    ],
-    ['cur.execute', 'sqlite', 'WHERE id = ?", (user_id,))', '", ".join(["?"] * len(ids))'],
-    ['cur.execute', 'format', 'WHERE id = %s", (user_id,))', '", ".join(["%s"] * len(ids))'],
-    ['cur.execute', 'named', 'WHERE id = :id", {"id": user_id})', 'f":id_{n}"'],
-    ['conn.fetchrow', 'format', 'WHERE id = $1", user_id)', 'f"${n}"'],
-    ['db.fetch_all', 'format', 'WHERE id = :id", {"id": user_id})', 'f":id_{n}"'],
-  ])('name the placeholders for %s on %s', (subject, database, call, list) => {
-    const message = advice('sql-string-formatting', { database }, 'python-rules', subject);
-
-    expect(message).toContain(call);
-    expect(message).toContain(list);
   });
 });

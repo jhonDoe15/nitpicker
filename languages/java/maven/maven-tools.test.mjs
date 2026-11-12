@@ -1,4 +1,14 @@
-import { chmodSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -7,6 +17,7 @@ import {
   archunitTool,
   cacheDirectory,
   formatTool,
+  publishDirectory,
   resolveTools,
   toolDependencies,
 } from './maven-tools.mjs';
@@ -76,7 +87,15 @@ describe('formatTool', () => {
 describe('archunitTool', () => {
   it('asks for the pinned ArchUnit jar only for a build with a module that runs the architecture rules', () => {
     expect([archunitTool(true, pinned), archunitTool(false, pinned)]).toEqual([
-      [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }],
+      [
+        {
+          name: 'archunit',
+          coordinates: [
+            `com.tngtech.archunit:archunit:${pinned.archunit}`,
+            `org.ow2.asm:asm-analysis:${pinned.asm}`,
+          ],
+        },
+      ],
       [],
     ]);
   });
@@ -98,6 +117,7 @@ describe('toolDependencies', () => {
   it('carries no formatter of its own, so a style that does not need one resolves none', () => {
     expect(Object.keys(toolDependencies(pinned))).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',
@@ -108,6 +128,7 @@ describe('toolDependencies', () => {
     ]);
     expect(Object.keys(toolDependencies(pinned, [], formatTool('palantir', pinned)))).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'checkstyle',
       'errorprone',
@@ -123,6 +144,7 @@ describe('toolDependencies', () => {
 describe.skipIf(process.platform === 'win32')('resolveTools', () => {
   const common = [
     'pmd',
+    'forbiddenapis',
     'spotbugs',
     'checkstyle',
     'errorprone',
@@ -140,5 +162,51 @@ describe.skipIf(process.platform === 'win32')('resolveTools', () => {
 
   it('resolves ArchUnit with the other tools, under its own cache key, when a module uses Spring', () => {
     expect(resolvedWith('google', true)).toEqual([...common, 'format', 'archunit']);
+  });
+});
+
+describe('publishing a staged cache folder', () => {
+  function staged(name, text) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-publish-'));
+    roots.push(root);
+    const folder = path.join(root, name);
+    mkdirSync(folder);
+    writeFileSync(path.join(folder, 'marker'), text);
+    return { root, folder };
+  }
+
+  it('moves the staging folder to the target', () => {
+    const { root, folder } = staged('staging', 'new');
+    const target = path.join(root, 'target');
+
+    publishDirectory(folder, target);
+
+    expect([existsSync(folder), readFileSync(path.join(target, 'marker'), 'utf8')]).toEqual([
+      false,
+      'new',
+    ]);
+  });
+
+  it('keeps the target another run published first and drops its own staging folder', () => {
+    const { root, folder } = staged('staging', 'late');
+    const target = path.join(root, 'target');
+    mkdirSync(target);
+    writeFileSync(path.join(target, 'marker'), 'first');
+    writeFileSync(path.join(target, 'other'), 'kept');
+
+    publishDirectory(folder, target);
+
+    expect([existsSync(folder), readFileSync(path.join(target, 'marker'), 'utf8')]).toEqual([
+      false,
+      'first',
+    ]);
+  });
+
+  it('rethrows when the move fails and no target exists', () => {
+    const { root } = staged('unused', '');
+
+    expect(() => {
+      publishDirectory(path.join(root, 'missing'), path.join(root, 'target'));
+    }).toThrow(/ENOENT/u);
   });
 });

@@ -1,11 +1,8 @@
 import { annotationIn, argumentOf, isTrue, typeName } from '../spring-names.mjs';
 import { acceptsArguments, entriesOf, isSelfCall, ownerOf, symbolOf } from '../spring-scopes.mjs';
-import {
-  ENTITY_MANAGER,
-  JAKARTA_TRANSACTIONAL,
-  PERSISTENCE_EXCEPTIONS,
-  SPRING_TRANSACTIONAL,
-} from '../spring-types.mjs';
+import { PERSISTENCE_EXCEPTIONS } from '../spring-types.mjs';
+import { transactionOf } from '../transactions/scope.mjs';
+import { readOnlyWrites } from './read-only-writes.mjs';
 
 const BROAD = new Set([
   'kotlin.Exception',
@@ -38,35 +35,7 @@ const CHECKED = new Set([
 ]);
 const UNCHECKED = new Set(['RuntimeException', 'Error']);
 const CLASS_LITERAL = /([\w.]+)::class/gu;
-const WRITES = new Set([
-  'save',
-  'saveAll',
-  'saveAndFlush',
-  'saveAllAndFlush',
-  'delete',
-  'deleteAll',
-  'deleteById',
-  'deleteAllById',
-  'deleteAllInBatch',
-  'persist',
-  'merge',
-  'remove',
-]);
-export const WRITE_VERB =
-  /^(?:update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)/u;
 const DEPTH = 8;
-
-function transactionOf(view, fn) {
-  const owner = view.classes.get(fn.owner);
-  return {
-    own: annotationIn(view.resolve, entriesOf(fn), SPRING_TRANSACTIONAL),
-    jakarta: annotationIn(view.resolve, entriesOf(fn), JAKARTA_TRANSACTIONAL),
-    inherited:
-      owner === undefined
-        ? undefined
-        : annotationIn(view.resolve, owner.annotations, SPRING_TRANSACTIONAL),
-  };
-}
 
 function transactionalFunctions(view) {
   const direct = new Set(
@@ -219,36 +188,6 @@ function checkedRollback(view, { projectFiles }) {
             rule: 'SpringTransactionalCheckedRollback',
             line: fn.line,
             symbol: `${fn.owner}.${fn.name}`,
-          },
-        ]
-      : [];
-  });
-}
-
-function readOnly(annotation) {
-  return annotation !== undefined && isTrue(argumentOf(annotation, 'readOnly'));
-}
-
-function readOnlyWrites(view) {
-  return view.file.invocations.flatMap((invocation) => {
-    const fn = view.functionAt(invocation.scope);
-    if (fn === undefined) {
-      return [];
-    }
-    const { own, jakarta, inherited } = transactionOf(view, fn);
-    const underReadOnly =
-      readOnly(own) || (own === undefined && jakarta === undefined && readOnly(inherited));
-    const type = view.typeOf(invocation.scope, invocation.receiver);
-    const repository = type !== undefined && view.isRepository(type);
-    const write =
-      (WRITES.has(invocation.name) && (repository || view.is(type, ENTITY_MANAGER))) ||
-      (WRITE_VERB.test(invocation.name) && repository);
-    return underReadOnly && write
-      ? [
-          {
-            rule: 'SpringTransactionalReadOnlyWrite',
-            line: invocation.line,
-            symbol: symbolOf(view, invocation.scope, invocation.name),
           },
         ]
       : [];

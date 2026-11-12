@@ -25,7 +25,7 @@ export function classLimitFindings(classes, options) {
       classFinding(options.analyzerName, {
         entry,
         occurrence,
-        limit,
+        limit: { ...limit, messages: options.messageKeys?.[limit.messages] ?? limit.messages },
         max: limits[limit.threshold],
         exceptionPath: projectPath(entry.file),
       }),
@@ -52,7 +52,7 @@ function largestFirstPerFile(found) {
 }
 
 function classFinding(analyzerName, { entry, occurrence, limit, max, exceptionPath }) {
-  const rule = RULE_IDS[limit.messages];
+  const rule = RULE_IDS[limit.threshold];
   const value = entry[limit.metric];
   const messages =
     COMPONENT_KINDS.has(entry.kind) && limit.messages === 'classFields'

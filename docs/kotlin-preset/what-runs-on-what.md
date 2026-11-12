@@ -1,0 +1,40 @@
+# What runs on what
+
+Part of the [Kotlin preset guide](../kotlin-preset.md).
+
+| Tool                                                           | Java sources | Kotlin sources | Notes                                                                                                                                                              |
+| -------------------------------------------------------------- | ------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| detekt                                                         |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                                                              |
+| ktlint or ktfmt                                                |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file.                                            |
+| JaCoCo                                                         | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.                                                    |
+| PMD, Checkstyle, google-java-format, Error Prone with NullAway | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                                                            |
+| Review rules (`pmd/...` ids and `unused-option`)               | yes (PMD)    | yes            | On Kotlin the same rule ids come from the PSI facts, not from PMD. The coroutine and fan-out rules print `kotlin-source/...`. See [Review rules](review-rules.md). |
+| SpotBugs                                                       | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                                                             |
+| Java structure metrics (CRAP of Java)                          | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](crap.md).                                                              |
+| PIT                                                            | yes          | yes            | Mutants of Kotlin classes are gated like Java ones, after a filter for compiler-generated code; see [Mutation](mutation.md).                                       |
+| Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through the `kotlin-psi` program and jscpd's `kotlin` format. See below.                                                                                    |
+| jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](coupling.md).                                             |
+| javac lint, PMD CPD                                            | yes          | no             | On the module's Java files: javac lint on main ones, CPD on main and test ones. See the Java preset's Guards section.                                              |
+| forbiddenapis                                                  | yes          | no             | Reads the classes compiled from Java only, like SpotBugs.                                                                                                          |
+| Package cycles, unused dependencies                            | yes          | yes            | Read the Java and the Kotlin classes of the module together, like jdeps.                                                                                           |
+| Kotlin source checks                                           |              | yes            | A source scan on the Node side; tool `kotlin-source`. See [Source checks](source-checks.md).                                                                       |
+| kotlinc lint                                                   |              | yes            | The pinned Kotlin compiler on the main sources; tool `kotlinc`. See [Compiler warnings](compiler-warnings.md).                                                     |
+| Class limits                                                   |              | yes            | Methods, fields and inheritance depth from the `kotlin-psi` program. See [Class limits](structure-limits.md#class-limits).                                         |
+
+**PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so it keeps running on the Java files of a
+mixed module only; the review rules that PMD runs on Java (`pmd/FixedSleepInTest` and the others) are
+evaluated for Kotlin by the facts step (see [Review rules](review-rules.md)), and their findings carry the same
+`pmd` tool and rule ids (the four Kotlin-only coroutine rules print `kotlin-source/SuspendFunInFinallySection`,
+`kotlin-source/ChildCoroutineOutlivesResource`, `kotlin-source/BlockingCallInCoroutine` and
+`kotlin-source/TimeoutWithoutSuspension`). SpotBugs analyzes bytecode, and on
+Kotlin-generated bytecode it reports on compiler output the author cannot fix in source (null-check
+intrinsics, synthetic accessors, lambdas, `when` tables). It is therefore restricted to the classes
+Gradle compiled from Java sources (`compileJava`'s output); detekt is the Kotlin source-level
+counterpart. The same restriction keeps PIT's Kotlin mutants out of this tool: PIT mutates the Java and the
+Kotlin classes (see [Mutation](mutation.md)), and jdeps reads every main class directory (see [Coupling](coupling.md)).
+`tools.spotbugs` works as in the Java preset: with `"project"` listed, the exclude filters and the higher effort
+or lower threshold the build declares for SpotBugs apply to this Java-only run (see
+[Settings the build declares](../usage.md#settings-the-build-declares-java-and-kotlin-presets)).
+`tools.errorprone` likewise lays the Error Prone and NullAway flags the build declares over nitpicker's
+for the Java sources Error Prone compiles, and `tools.pit` passes the `pitest { }` settings to the PIT
+run of the Java and Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)).

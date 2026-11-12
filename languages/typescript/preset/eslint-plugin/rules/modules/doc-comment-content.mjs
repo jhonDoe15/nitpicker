@@ -1,6 +1,7 @@
 import {
   descriptionLines,
   docCommentProblem,
+  tagsHaveContent,
 } from '../../../../../../shared/rules/doc-comments/doc-comments.mjs';
 
 const MEMBER_TYPES = new Set(['TSPropertySignature', 'TSMethodSignature']);
@@ -26,6 +27,7 @@ export function docCommentContentReports(comment, node) {
   const problem = docCommentProblem({
     name: declaredName(node),
     lines: descriptionLines(comment.value, JSDOC),
+    detailed: tagsHaveContent(comment.value, JSDOC),
   });
   if (problem === undefined) {
     return [];

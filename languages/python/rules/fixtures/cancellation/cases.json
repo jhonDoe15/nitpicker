@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "cancellation-not-propagated",
+    "mention": "bare `raise`"
+  }
+]

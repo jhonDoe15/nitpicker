@@ -1,0 +1,10 @@
+  <rule name="SpringNoComponentScan" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.context.annotation.ComponentScan')]
+|
+//Annotation[pmd-java:typeIs('org.springframework.boot.autoconfigure.SpringBootApplication')]
+  [AnnotationMemberList/MemberValuePair[@Name = ('scanBasePackages', 'scanBasePackageClasses')]]
+]]></value></property></properties>
+  </rule>

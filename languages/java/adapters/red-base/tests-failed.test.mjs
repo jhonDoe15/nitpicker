@@ -10,6 +10,7 @@ import {
   withRootSourceRoots,
   withTestsFailures,
 } from './tests-failed.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const temporaryRoots = [];
 
@@ -100,7 +101,7 @@ describe('testsFailedFinding', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed:core',
-      message: 'Tests fail on the base in core:\n  shop.T.a: no\n  shop.T.b: no',
+      message: `Tests fail on the base in core:\n  shop.T.a: no\n  shop.T.b: no\n${linkSentence('baseTestsFail')}`,
       classification: 'tool-error',
       symbol: 'core',
     });
@@ -109,10 +110,13 @@ describe('testsFailedFinding', () => {
   it('words the root project without a module and cuts a long message', () => {
     const finding = testsFailedFinding('java', { module: '.', tests: ['x'.repeat(5000)] });
 
-    expect([finding.identity, finding.symbol, finding.message.length]).toEqual([
+    const [cut, link] = finding.message.split('\n').slice(1);
+
+    expect([finding.identity, finding.symbol, cut.length, link]).toEqual([
       'tests-failed',
       '.',
-      4003,
+      4003 - 'Tests fail on the base:\n'.length,
+      linkSentence('baseTestsFail'),
     ]);
     expect(finding.message.startsWith('Tests fail on the base:\n  xxx')).toBe(true);
   });
@@ -138,7 +142,7 @@ describe('collectJavaFindings on a failing Gradle build', () => {
   it('does not rerun a failed head: a red head fails', () => {
     const fake = fakeGradle([['']]);
 
-    expect(() => collect(fake, 'head')).toThrow('Tests fail in');
+    expect(() => collect(fake, 'head')).toThrow('1 test fails; the build stopped');
     expect(fake.calls()).toEqual([{ continued: false, testsFailed: undefined }]);
   });
 

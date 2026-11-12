@@ -18,6 +18,7 @@ export function useCliFixtures(runNitpickerCli) {
     return runNitpickerCli({
       runTasks: runTasksInProcess,
       progress: discardedProgress,
+      environment: {},
       ...options,
     });
   }

@@ -110,7 +110,7 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
-  it('counts a python entry point that hides more files, and lists a removed one', () => {
+  it('lists an added or removed python entry point without counting it as loosening', () => {
     const python = (entryPoints) => ({
       preset: 'python',
       python: { sourceRoots: ['src'], entryPoints },
@@ -118,8 +118,8 @@ describe('describePolicyChanges', () => {
     const files = ['src/shop/jobs.py', 'src/shop/billing.py'];
 
     expect(changes(python([]), python(['src/shop/jobs.py']), files)).toEqual({
-      loosened: ['python.entryPoints added: src/shop/jobs.py'],
-      changed: [],
+      loosened: [],
+      changed: ['python.entryPoints added: src/shop/jobs.py'],
     });
     expect(changes(python(['src/shop/jobs.py']), python([]), files)).toEqual({
       loosened: [],
@@ -184,7 +184,7 @@ describe('describePolicyChanges', () => {
     });
   });
 
-  it('counts layout exclusions and entry points that cover more files, and removed roots', () => {
+  it('counts layout exclusions that cover more files and removed roots, and lists added entry points', () => {
     expect(
       changes(
         { layout: { sourceRoots: ['src', 'lib'], entryPoints: ['src/a.ts'] } },
@@ -196,7 +196,7 @@ describe('describePolicyChanges', () => {
               'build/**',
               'generated/**',
               'coverage/**',
-              'reports/**',
+              'reports/quality/**',
               'target/**',
               '**/node_modules/**',
               '**/vendor/**',
@@ -206,12 +206,11 @@ describe('describePolicyChanges', () => {
         },
       ),
     ).toEqual({
-      loosened: [
-        'layout.excludedGlobs added: **/vendor/**',
+      loosened: ['layout.excludedGlobs added: **/vendor/**', 'layout.sourceRoots removed: lib'],
+      changed: [
         'layout.entryPoints added: src/cli/*.ts',
-        'layout.sourceRoots removed: lib',
+        'layout.sourceRoots: ["src","lib"] -> ["src","app"]',
       ],
-      changed: ['layout.sourceRoots: ["src","lib"] -> ["src","app"]'],
     });
   });
 
@@ -367,20 +366,47 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts precedence by what the tool runs', () => {
-    const precedence = (tool, before, after) =>
+    const precedence = (tool, before, after, preset = 'java') =>
       loosened(
-        { preset: 'java', tools: { [tool]: { precedence: before } } },
-        { preset: 'java', tools: { [tool]: { precedence: after } } },
+        { preset, tools: { [tool]: { precedence: before } } },
+        { preset, tools: { [tool]: { precedence: after } } },
       );
 
     expect(precedence('pmd', ['nitpicker'], ['project', 'nitpicker'])).toEqual([]);
     expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
       'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
     ]);
+    const script = (before, after) => precedence('knip', before, after, 'typescript');
+    expect(script(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.knip.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(script(['nitpicker', 'project'], ['project'])).toHaveLength(1);
+    expect(script(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(script(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
+    expect(
+      precedence('dependency-cruiser', ['nitpicker'], ['nitpicker', 'project'], 'typescript'),
+    ).toHaveLength(1);
     expect(precedence('checkstyle', ['project'], ['nitpicker'])).toEqual([]);
     expect(precedence('checkstyle', ['nitpicker'], ['project'])).toEqual([
       'tools.checkstyle.precedence: ["nitpicker"] -> ["project"]',
     ]);
+  });
+
+  it('counts any ESLint opt-in that lists the project, since its ignores apply with nitpicker first too', () => {
+    const eslint = (before, after) =>
+      loosened(
+        { tools: { eslint: { precedence: before } } },
+        { tools: { eslint: { precedence: after } } },
+      );
+
+    expect(eslint(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(eslint(['nitpicker', 'project'], ['project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker","project"] -> ["project"]',
+    ]);
+    expect(eslint(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(eslint(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
   });
 
   it('counts python and kotlin switches that turn a check off, not a swapped tool', () => {

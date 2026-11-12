@@ -7,6 +7,8 @@ import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';
 import { runHygieneCheck, runHygieneCli } from './runner.mjs';
+import { linkSentence } from '../messages/test-support/link-sentence.mjs';
+import { yamlDocuments } from '../../core/tooling/yaml/yaml-documents.mjs';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
@@ -94,7 +96,7 @@ describe('parseCheckArguments', () => {
 });
 
 describe('runHygieneCli', () => {
-  function run(commandArguments, policy) {
+  function run(commandArguments, policy, parseYaml) {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-hygiene-policy-'));
     temporaryDirectories.push(directory);
     const policyFile = path.join(directory, 'policy.json');
@@ -105,6 +107,7 @@ describe('runHygieneCli', () => {
       stdout: { write: (text) => (output.stdout += text) },
       stderr: { write: (text) => (output.stderr += text) },
       environment: { [HEAD_POLICY_ENV]: policyFile },
+      parseYaml,
     });
     return { status, ...output };
   }
@@ -121,11 +124,34 @@ describe('runHygieneCli', () => {
     }).toEqual({ status: 0, stdout: ['.env'], stderr: '' });
   });
 
+  it('hands the YAML parser it is given to the checks', () => {
+    const { root } = createGitRepository({
+      'db/changelog/lines.yaml': [
+        'databaseChangeLog:',
+        '  - changeSet:',
+        '      id: 1',
+        '      changes:',
+        '        - addForeignKeyConstraint:',
+        '            baseTableName: lines',
+        '            baseColumnNames: order_id',
+        '            referencedTableName: orders',
+        '            referencedColumnNames: id',
+        '',
+      ].join('\n'),
+    });
+    const paths = (parseYaml) =>
+      JSON.parse(
+        run(['--check', 'repository-hygiene', '--project-root', root], {}, parseYaml).stdout,
+      ).findings.map(({ path: file }) => file);
+
+    expect([paths(yamlDocuments), paths(undefined)]).toEqual([['db/changelog/lines.yaml'], []]);
+  });
+
   it('exits 2 with the cause on bad input', () => {
     expect(run(['--check', 'nope', '--project-root', '/'], {})).toEqual({
       status: 2,
       stdout: '',
-      stderr: 'Hygiene check failed: Unknown hygiene check: nope\n',
+      stderr: `Hygiene check failed: Unknown hygiene check: nope. ${linkSentence('analyzerCrashed')}\n`,
     });
   });
 });
@@ -150,6 +176,20 @@ describe('createHygieneAnalyzers', () => {
       cwd: '/tool',
     });
   });
+
+  it('hands the base checkout to the head run only', () => {
+    const [analyzer] = createHygieneAnalyzers('/tool/core/cli.mjs');
+    const argumentsOf = (snapshot) =>
+      analyzer.createInvocation({
+        projectRoot: '/side',
+        toolRoot: '/tool',
+        snapshot,
+        baselineRoot: '/base',
+      }).args;
+
+    expect(argumentsOf('head').slice(-2)).toEqual(['--baseline-root', '/base']);
+    expect(argumentsOf('base')).not.toContain('--baseline-root');
+  });
 });
 
 describe('the hygiene configuration hash', () => {
@@ -163,11 +203,30 @@ describe('the hygiene configuration hash', () => {
       'hygiene/files/known-files.mjs',
       'hygiene/files/output-sources.mjs',
       'hygiene/files/repository-files.mjs',
+      'hygiene/files/start-scripts.mjs',
+      'hygiene/migrations/hardcoded-names.mjs',
+      'hygiene/migrations/migration-files.mjs',
+      'hygiene/migrations/migration-order.mjs',
+      'hygiene/migrations/revision-graph.mjs',
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
+      'hygiene/schema/database-kind.mjs',
+      'hygiene/schema/foreign-key-index.mjs',
+      'hygiene/schema/migration-schema.mjs',
+      'hygiene/schema/prisma-schema.mjs',
+      'hygiene/schema/sources/sqlc-schemas.mjs',
+      'hygiene/schema/statements/alembic-statements.mjs',
+      'hygiene/schema/statements/changelog-statements.mjs',
+      'hygiene/schema/statements/sql-statements.mjs',
       'hygiene/tracked-files.mjs',
+      'jsonc/jsonc.mjs',
+      'messages/docs-url.mjs',
+      'messages/error-chain.mjs',
       'messages/exception-sentence.mjs',
+      'messages/terminal/terminal-text.mjs',
+      'messages/troubleshooting.mjs',
       'paths/glob.mjs',
+      'processes/deadlines.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
     ]);

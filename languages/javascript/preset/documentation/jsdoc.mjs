@@ -204,11 +204,36 @@ export function unknownMemberTags(tags) {
   return tags.filter((tag) => mentionsUnknownAsMember(tag) && !isCaughtErrorSlot(tag));
 }
 
-const TYPE_PREDICATE = /^(?:asserts\s+[\w$]+(?:\s+is\s+.+)?|[\w$]+\s+is\s+.+)$/s;
+const TYPE_PREDICATE = /^(?:asserts\s+[\w$]+(?:\s+is\s.+)?|[\w$]+\s+is\s.+)$/s;
 
 export function typePredicateTags(tags) {
   return tags.filter(
     (tag) => ['returns', 'return'].includes(tag.tag) && TYPE_PREDICATE.test(tag.type),
+  );
+}
+
+const TRI_STATE_FORMS = [
+  String.raw`\?\s*boolean`,
+  String.raw`boolean\s*\|\s*(?:undefined|null)`,
+  String.raw`(?:undefined|null)\s*\|\s*boolean`,
+  'boolean=',
+];
+const TRI_STATE_TYPE = new RegExp(
+  String.raw`^(?:Promise<\s*)?(?:${TRI_STATE_FORMS.join('|')})\s*>?$`,
+);
+const BARE_NAME = /^\[[\w$]+\]$/;
+
+function isTriStateTag(tag) {
+  if (tag.type === undefined) {
+    return false;
+  }
+  const optionalParameter = tag.tag === 'param' && BARE_NAME.test(tag.name ?? '');
+  return TRI_STATE_TYPE.test(tag.type) || (optionalParameter && tag.type === 'boolean');
+}
+
+export function triStateBooleanTags(tags) {
+  return tags.filter(
+    (tag) => (MEMBER_TAGS.has(tag.tag) || OTHER_TYPE_TAGS.has(tag.tag)) && isTriStateTag(tag),
   );
 }
 

@@ -7,8 +7,13 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './project-rules/reuse-rules.mjs';
-import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import { couplingRules, entryPointRule, reuseRules } from './project-rules/reuse-rules.mjs';
+import {
+  GO_NO_TYPE_ONLY,
+  NO_TYPE_ONLY,
+  slowTest,
+  testConsoleRule,
+} from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -22,19 +27,21 @@ import {
   HYGIENE_RULES,
 } from './project-rules/hygiene-rules.mjs';
 import { sharedFactExceptionRules, withLanguageColumns } from './project-rules/fact-rules.mjs';
+import { DESIGN_RULE_IDS, designRules } from './project-rules/design/design-rules.mjs';
 
 import {
   BASE_GREW_MESSAGES,
   BASE_HELD_MESSAGES,
   BASE_MESSAGES,
   EXCEPTION_HINT,
+  allowedForm,
 } from './messages/messages.mjs';
 
-export { EXCEPTION_HINT, renderMessage } from './messages/messages.mjs';
+export { EXCEPTION_HINT, allowedForm, messageFields, renderMessage } from './messages/messages.mjs';
 
 export { FILE_LIMIT_DEFAULTS } from './project-rules/size-rules.mjs';
 
-export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin'];
+export const LANGUAGES = ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'];
 
 export const RULE_IDS = {
   functionLines: 'function-lines-limit',
@@ -48,6 +55,7 @@ export const RULE_IDS = {
   mutantNoCoverage: 'mutant-nocoverage',
   duplicateClone: 'duplicate-clone',
   stabilityDirection: 'stability-direction',
+  packageCycle: 'package-cycle',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
   ...UNUSED_API_RULE_IDS,
@@ -57,6 +65,9 @@ export const RULE_IDS = {
   ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
+  featureInternalImport: 'feature-internal-import',
+  sharedImportsFeature: 'shared-imports-feature',
+  featureCycle: 'feature-cycle',
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
   exportedNameCollision: 'exported-name-collision',
@@ -65,6 +76,7 @@ export const RULE_IDS = {
   testConsoleOutput: 'test-console-output',
   docCommentContent: 'doc-comment-content',
   ...SOURCE_RULE_IDS,
+  ...DESIGN_RULE_IDS,
 };
 
 /** Per-function structure limits, keyed by the metric name the TypeScript analyzer reports. */
@@ -109,6 +121,8 @@ const FILE_EXCEPTION_RULES = [
 const PATH_EXCEPTION_RULES = [
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.packageCycle,
+  RULE_IDS.noProductionRuntime,
   ...FILE_EXCEPTION_RULES,
 ];
 
@@ -155,11 +169,14 @@ export const TOUCHED_CODE_RULES = [
 
 export const MESSAGES = {
   ...BASE_MESSAGES,
-  ...sizeMessages(EXCEPTION_HINT),
-  ...sourceRuleMessages(EXCEPTION_HINT),
+  ...sizeMessages(EXCEPTION_HINT, allowedForm),
+  ...sourceRuleMessages(EXCEPTION_HINT, allowedForm),
 };
 
-export const GREW_MESSAGES = { ...BASE_GREW_MESSAGES, ...sizeGrewMessages(EXCEPTION_HINT) };
+export const GREW_MESSAGES = {
+  ...BASE_GREW_MESSAGES,
+  ...sizeGrewMessages(EXCEPTION_HINT, allowedForm),
+};
 
 export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 
@@ -167,30 +184,34 @@ const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
 
+function withGo(enforcedBy) {
+  return { ...enforcedBy, go: true };
+}
+
 const CATALOG = [
   {
     id: RULE_IDS.functionLines,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.lines.limit)} lines`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.functionStatements,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.statements.limit)} statements`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.functionControlNesting,
     check: 'structure',
     limit: `control nesting deeper than ${String(FUNCTION_STRUCTURE_LIMITS.maxControlNesting.limit)}`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.functionParameters,
     check: 'structure',
     limit: `more than ${String(FUNCTION_STRUCTURE_LIMITS.parameters.limit)} parameters`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.crapScoreLimit,
@@ -214,65 +235,56 @@ const CATALOG = [
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: withKotlin(ALL, false),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: withKotlin(ALL, false),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.duplicateClone,
     check: 'duplicates',
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
-  {
-    id: RULE_IDS.stabilityDirection,
-    check: 'coupling',
-    limit:
-      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...couplingRules(RULE_IDS, {
+    everyLanguage: withGo(withKotlin(ALL, true)),
+    withoutTypescript: withKotlin({ typescript: false, java: true, python: true }, true),
+  }),
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file (Java and Kotlin: a test class) that runs no production code: nothing it imports or references, directly or through test helpers, is production code, and it starts no production process or framework context',
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.typeOnlyProductionDependency,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
+    enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
+    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY, go: GO_NO_TYPE_ONLY },
   },
   {
     id: RULE_IDS.baselineExpansion,
     check: 'coding-standards',
     limit: 'raising a legacy baseline allowance fails',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
-  {
-    id: RULE_IDS.publicAlternativeBypass,
-    check: 'entry-points',
-    limit: 'none: importing around a public entry point fails',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
-  },
+  entryPointRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...UNUSED_API_RULES,
-  ...sizeRules({ all: ALL, withKotlin }),
+  ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
-  {
-    id: RULE_IDS.slowTest,
-    check: 'test-runtime',
-    limit: `a test the change adds or edits taking more than ${String(TEST_TIME_DEFAULTS.unitTestSeconds)} s (unit) or ${String(TEST_TIME_DEFAULTS.integrationTestSeconds)} s (integration); override with \`thresholds.unitTestSeconds\` and \`thresholds.integrationTestSeconds\``,
-    enforcedBy: withKotlin(ALL, true),
-  },
+  slowTest(RULE_IDS, TEST_TIME_DEFAULTS, withGo(withKotlin(ALL, true))),
   ...HYGIENE_RULES,
   ...HISTORY_RULES,
   testConsoleRule(RULE_IDS),
   docCommentRule(RULE_IDS),
+  ...designRules(DESIGN_RULE_IDS),
 ];
 
 export const RULES = CATALOG.map((rule) => withLanguageColumns(rule, LANGUAGES));

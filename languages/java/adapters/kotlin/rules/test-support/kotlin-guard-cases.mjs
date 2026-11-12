@@ -18,7 +18,7 @@ export const kotlinGuardCases = [
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
       'kotlin.io.println',
-      'Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+      'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.',
     ),
     allowedForm: 'logger.info(',
     banned: 'fun show() {\n    println("shown")\n}\n',
@@ -29,7 +29,7 @@ export const kotlinGuardCases = [
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
       'java.lang.System.getenv',
-      'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class or a Ktor `Application` module): read them once into a config class there and pass it in.',
+      'Read environment variables only in the composition root (the file with `fun main`, the `@SpringBootApplication` class, a Ktor `Application` module, or a framework configuration type such as Spring `@Configuration`, Micronaut `@Factory` or a Dagger or Guice module): read them once into a config class there and pass it in.',
     ),
     allowedForm: 'composition root',
     banned: 'fun home(): String? = System.getenv("HOME")\n',
@@ -138,13 +138,14 @@ export const kotlinGuardCases = [
     allowed: '// TODO(#12): fix the rounding\nfun round(value: Double): Long = Math.round(value)\n',
   },
   {
-    id: 'repeatedLiteral',
-    rule: 'detekt.complexity.StringLiteralDuplication',
+    id: 'todoSecondMarker',
+    rule: 'detekt.style.ForbiddenComment',
     message:
-      'Multiple occurrences of the same string literal within a single file detected. Prefer extracting the string literal into a property or constant.',
-    allowedForm: 'private const val',
-    banned: 'fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n',
+      'A TODO or FIXME needs an issue reference: write `TODO(#123): ...` or `TODO PROJ-123: ...`, or do the work now.',
+    allowedForm: 'TODO(#123)',
+    banned:
+      '// TODO(#12) split this, FIXME: unreferenced second marker\nfun round(value: Double): Long = Math.round(value)\n',
     allowed:
-      'private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n',
+      '// TODO(#12) split this, FIXME(#13) second marker\nfun round(value: Double): Long = Math.round(value)\n',
   },
 ];

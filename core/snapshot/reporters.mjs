@@ -1,51 +1,79 @@
+import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
-import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { quickLines, stagedLines } from '../quick/summary.mjs';
+import { junitRunProfile } from '../quick/report-formats.mjs';
+import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
+import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
+import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
+import { ruleReferenceLines } from '../diff/reporting/text.mjs';
+import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
+import {
+  CODE_QUALITY_REPORT_FILE_NAME,
+  renderCodeQualityReport,
+} from '../diff/reporting/format/codequality.mjs';
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },
-  { name: 'findings.json', render: (report) => json(report.findings) },
+  {
+    name: 'findings.json',
+    render: (report, { reference }) => json(withHelpUris(report.findings, reference)),
+  },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
-  { name: 'report.txt', render: (report) => renderTextReport(report) },
+  { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: renderSnapshotSarifReport },
+  {
+    name: CODE_QUALITY_REPORT_FILE_NAME,
+    render: (report, options) => renderCodeQualityReport(report.findings, options),
+  },
 ];
 
 export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);
 
 export function clearSnapshotReports(outputRoot) {
   clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
+  clearLogs(outputRoot);
 }
 
-export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
-  return writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath } }).get(
-    'report.txt',
+export function writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
+    report,
+    options: { projectPath, repositoryRoot },
+  }).get('report.txt');
+}
+
+export function renderSnapshotConsoleSummary(report, diagnosticsPath) {
+  return renderTextReport(
+    report,
+    referenceLinks(),
+    designNoteLines(report.findings, diagnosticsPath, { snapshot: true }),
   );
 }
 
-function renderTextReport(report) {
+function renderTextReport(report, reference, descriptiveLines) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...partialRunLines(report.summary),
+    ...quickLines(report.summary),
   ];
 
-  if (report.summary.tools.length === 0) {
-    lines.push('Analyzers: none configured');
-  } else {
-    lines.push('', 'Per-tool counts:');
-    for (const tool of report.summary.tools) {
-      lines.push(
-        `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
-      );
-    }
-  }
-
+  appendToolCountSection(lines, report.summary.tools);
   appendFindingSection(lines, 'Enforceable findings', enforceable);
-  appendFindingSection(lines, 'Descriptive findings', descriptive);
+  if (descriptiveLines === undefined) {
+    appendFindingSection(lines, 'Descriptive findings', descriptive);
+  } else if (descriptiveLines.length > 0) {
+    lines.push('', ...descriptiveLines);
+  }
+  lines.push(...ruleReferenceLines(report.findings, reference));
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
 }
@@ -75,6 +103,8 @@ function renderJunitReport(report) {
       `  <testcase classname="quality.snapshot" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
     );
   }
+  const profile = junitRunProfile(report.summary, 'quality.snapshot', escapeXml);
+  testCases.push(...profile.skippedCases);
   if (testCases.length === 0) {
     testCases.push(
       '  <testcase classname="quality.snapshot" name="framework" time="0"></testcase>',
@@ -83,11 +113,25 @@ function renderJunitReport(report) {
   const tests = testCases.length;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    ...profile.propertyLines,
     ...testCases,
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+function appendToolCountSection(lines, tools) {
+  if (tools.length === 0) {
+    lines.push('Analyzers: none configured');
+    return;
+  }
+  lines.push('', 'Per-tool counts:');
+  for (const tool of tools) {
+    lines.push(
+      `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
+    );
+  }
 }
 
 function appendFindingSection(lines, heading, findings) {
@@ -108,6 +152,10 @@ function appendToolErrorSection(lines, toolErrors) {
   lines.push('', 'Tool errors:');
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
+  }
+  const help = toolErrorHelpLine(toolErrors.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(help);
   }
 }
 

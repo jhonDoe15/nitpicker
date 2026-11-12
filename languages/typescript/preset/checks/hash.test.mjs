@@ -60,9 +60,11 @@ it('follows static, side-effect and dynamic relative imports without loading Typ
     'c.mjs': 'export const c = 1;',
     'd.mjs': 'export const d = 1;',
   });
-  for (const name of ['a.mjs', 'b.mjs', 'c.mjs', 'd.mjs']) {
+  const names = ['a.mjs', 'b.mjs', 'c.mjs', 'd.mjs'];
+  const changes = names.map((name) => {
     const before = hashFiles(['policy.mjs'], [], { root });
     writeFileSync(path.join(root, name), 'export const changed = true;');
-    expect(hashFiles(['policy.mjs'], [], { root })).not.toBe(before);
-  }
+    return hashFiles(['policy.mjs'], [], { root }) !== before;
+  });
+  expect(changes).toEqual(names.map(() => true));
 });
