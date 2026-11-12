@@ -2,7 +2,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
-import { applyActionReference } from './action-inputs.mjs';
+import { applyActionReference } from './action-inputs.mts';
 import { applySupportMatrix } from './platforms/support-matrix.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
@@ -16,7 +16,7 @@ export const GENERATED_FILES = [
   { file: path.join(repositoryRoot, 'docs/compatibility.md'), generate: applySupportMatrix },
 ];
 
-export function staleFiles() {
+export function staleFiles(): string[] {
   return GENERATED_FILES.filter(
     ({ file, generate }) => generate(readFileSync(file, 'utf8')) !== readFileSync(file, 'utf8'),
   ).map(({ file }) => file);
@@ -31,7 +31,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     }
   } else {
     for (const { file, generate } of GENERATED_FILES) {
-      writeFileSync(file, generate(readFileSync(file, 'utf8')));
+      writeFileSync(file, String(generate(readFileSync(file, 'utf8'))));
     }
   }
 }

@@ -88,10 +88,20 @@ describe('the Gradle init script and the formatter style', () => {
       "jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {",
       '"--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()',
       '})',
+      'def formatErrors = new ByteArrayOutputStream()',
+      'errorOutput = formatErrors',
       'doFirst {',
       'reportDir.get().asFile.mkdirs()',
       "standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)",
       "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)",
+      '}',
+      'doLast {',
+      'def exit = executionResult.get().exitValue',
+      'if (exit != 0) {',
+      "def detail = formatErrors.toString('UTF-8').readLines().findAll { it.trim() && !it.startsWith('Picked up ') }.take(20).join('\\n')",
+      `throw new GradleException("\${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +`,
+      `"failed with exit code \${exit}: \${detail}")`,
+      '}',
       '}',
       '}',
     ]);
@@ -124,28 +134,13 @@ describe('the Gradle init script and the formatter style', () => {
     ]);
   });
 
-  it('adds the unused import check when no formatter runs, and moves indentation to the measured width', () => {
-    expect(blockStartingWith("if (javaStyle == 'none') {")).toEqual([
-      "if (javaStyle == 'none') {",
-      'if (!text.contains(\'<module name="TreeWalker">\')) {',
-      "throw new GradleException('nitpicker could not find TreeWalker in google_checks.xml')",
-      '}',
-      'text = text.replace(\'<module name="TreeWalker">\',',
-      '\'<module name="TreeWalker">\\n    <module name="UnusedImports"/>\')',
-      "if (javaIndentation == 'tab') {",
-      "['Indentation', 'FileTabCharacter'].each { name ->",
-      'text = text.replaceAll("(?s)<module name=\\"${name}\\"\\\\s*(?:/>|>.*?</module>)", \'\')',
-      '}',
-      "} else if (javaIndentation == '4') {",
-      "['basicOffset', 'caseIndent', 'arrayInitIndent'].each { property ->",
-      'def pattern = ~/(?s)(<module name="Indentation">(?:(?!<\\/module>).)*?<property name="${property}" value=")\\d+(")/',
-      'if (!(text =~ pattern).find()) {',
-      'throw new GradleException("nitpicker could not find Indentation ${property} in google_checks.xml")',
-      '}',
-      'text = text.replaceAll(pattern) { whole, head, tail -> "${head}4${tail}".toString() }',
-      '}',
-      '}',
-      '}',
+  it('has the shared config writer add the unused import check and the measured indentation', () => {
+    expect(linesContaining('javaStyle: javaStyle')).toEqual(['javaStyle: javaStyle,']);
+    expect(linesContaining('indentation: javaIndentation')).toEqual([
+      'indentation: javaIndentation,',
+    ]);
+    expect(linesContaining("writeRules('checkstyle-config', plan)")).toEqual([
+      "writeRules('checkstyle-config', plan)",
     ]);
   });
 });

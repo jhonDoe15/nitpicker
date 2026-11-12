@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
+import { jacocoPlugin } from './maven-tools.mjs';
 import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mjs';
 
 const { reactor, soloModule, removeReactors } = reactorKit();
@@ -111,6 +112,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     integrationTestJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
+    jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
     compiler: NO_COMPILER_SETTINGS,
   };
@@ -146,6 +148,7 @@ describe('readReactor', () => {
       integrationTestJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
+      jacocoAgentVersion: undefined,
       archunitIncludes: '**/*Rules.class',
       compiler: {
         ...CORE_LEVEL,
@@ -392,5 +395,31 @@ describe('describeModule plugin configuration', () => {
       path.join(module.basedir, 'target/unit.exec'),
       path.join(module.basedir, 'target/it.exec'),
     ]);
+  });
+
+  it('runs the JaCoCo agent at the version the project binds, since two agents cannot share a JVM', () => {
+    const agent = (phase = '') =>
+      `<executions><execution>${phase}<goals><goal>prepare-agent</goal></goals></execution></executions>`;
+    const versioned = (version, body) =>
+      soloModule(
+        inBuild(
+          plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
+        ),
+      );
+    const pinned = { jacoco: '0.8.16' };
+    const modules = [
+      versioned('0.8.12', agent()),
+      versioned('0.8.12', ''),
+      versioned('0.8.12', agent('<phase>none</phase>')),
+      versioned(`\${jacoco.version}`, agent()),
+    ];
+
+    expect(modules.map((module) => jacocoPlugin(pinned, [module]))).toEqual([
+      'org.jacoco:jacoco-maven-plugin:0.8.12',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+    ]);
+    expect(jacocoPlugin(pinned)).toBe('org.jacoco:jacoco-maven-plugin:0.8.16');
   });
 });
