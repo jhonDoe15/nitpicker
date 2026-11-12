@@ -219,6 +219,11 @@ Other changes:
 - Java 25 class files: JaCoCo moves to 0.8.16, PIT to 1.22.1 and SpotBugs to 4.9.8. Before, a
   Java 25 build lost coverage and mutation results to a tool error, and SpotBugs reported nothing
   without saying so (#1068).
+- Java 25 sources: Checkstyle moves to 13.5.0, PMD to 7.16.0, google-java-format to 1.35.0 and
+  palantir-java-format to 2.90.0, so module imports and statements before `super(...)` parse; the
+  formatter check no longer comes back empty when the formatter fails. Checkstyle and the
+  formatters run on JDK 21 or newer, and the source parsers and `--fix` run on a JDK that reads the
+  project's language level (#1068).
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot

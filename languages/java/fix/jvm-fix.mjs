@@ -41,7 +41,7 @@ function javaStep(settings, files, pinned) {
             classpath: classpaths['java-format'],
             java: formatterJava({
               tool: plan.label,
-              spawn: fixSpawn({ operation: 'java-runtime', executeFixCommand }),
+              spawn: fixSpawn({ operation: 'java-probe', executeFixCommand }),
             }),
             executeFixCommand,
           }),
