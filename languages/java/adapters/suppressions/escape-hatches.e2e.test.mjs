@@ -27,6 +27,7 @@ describe.skipIf(!enabled)('Java preset escape hatches without an opt-in', () => 
       'errorprone EmptyCatch SwallowingTest.java',
       'google-java-format format SwallowingTest.java',
       'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd TryCatchInTest SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       'structure line-length-limit SwallowingTest.java',
       'test-runtime no-production-runtime SwallowingTest.java',

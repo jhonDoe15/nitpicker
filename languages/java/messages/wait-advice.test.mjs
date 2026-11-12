@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from './wait-advice.mjs';
+import { applyRuleMessages } from './rule-messages.mjs';
+import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 
 const sleep = {
   tool: 'pmd',
@@ -43,6 +45,9 @@ describe('withWaitAdvice', () => {
     );
     expect(advised.message).toMatch(/not pollDelay\(\.\.\.\)\.until\(\(\) -> true\)/u);
     expect(advised.message).toMatch(/A sleep in a mock answer or a thread body is allowed\.$/u);
+    expect(applyRuleMessages([advised])[0].message).toBe(
+      `${advised.message} ${exceptionHint('pmd/FixedSleepInTest', sleep.path)}`,
+    );
     expect(untouched).toBe(other);
   });
 

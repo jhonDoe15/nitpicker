@@ -41,6 +41,7 @@ describe('readPinnedTools', () => {
   it('reads the versions pinned in the Gradle init script', () => {
     expect(Object.keys(readPinnedTools())).toEqual([
       'pmd',
+      'forbiddenapis',
       'spotbugs',
       'googleJavaFormat',
       'palantirJavaFormat',
