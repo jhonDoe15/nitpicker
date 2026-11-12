@@ -23,7 +23,7 @@ export const TYPESCRIPT_CONFIG_ENVIRONMENT = 'NITPICKER_DEPENDENCY_GRAPH_TSCONFI
 export function dependencyGraphTsconfig(layout) {
   const transform = layoutTransformFor(POLICY_TYPESCRIPT_CONFIG, layout);
   return (text, targetPath) => {
-    const config = JSON.parse(transform === undefined ? text : transform(text, targetPath));
+    const config = JSON.parse(transform(text, targetPath));
     const compilerOptions = { ...config.compilerOptions, rewriteRelativeImportExtensions: false };
     return `${JSON.stringify({ ...config, compilerOptions }, null, 2)}\n`;
   };
