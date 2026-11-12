@@ -350,9 +350,9 @@
     "primary": ["errorprone/IdentifierName"],
     "secondary": [
       "checkstyle/CatchParameterName",
+      "checkstyle/GoogleNonConstantFieldName",
       "checkstyle/LambdaParameterName",
       "checkstyle/LocalVariableName",
-      "checkstyle/MemberName",
       "checkstyle/MethodName",
       "checkstyle/ParameterName",
       "checkstyle/PatternVariableName",
