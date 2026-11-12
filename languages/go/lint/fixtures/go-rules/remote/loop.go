@@ -107,17 +107,18 @@ func TouchEach(ctx context.Context, db *sql.DB, ids []int) error {
 	return nil
 }
 
-func Insert(ctx context.Context, tx *sql.Tx, names []string) error {
+func Insert(ctx context.Context, tx *sql.Tx, names []string) (err error) {
 	statement, err := tx.PrepareContext(ctx, "INSERT INTO users (name) VALUES ($1)")
 	if err != nil {
 		return fmt.Errorf("prepare: %w", err)
 	}
+	defer func() { err = errors.Join(err, statement.Close()) }()
 	for _, name := range names {
 		if _, err := statement.ExecContext(ctx, name); err != nil {
-			return errors.Join(fmt.Errorf("insert %s: %w", name, err), statement.Close())
+			return fmt.Errorf("insert %s: %w", name, err)
 		}
 	}
-	return statement.Close()
+	return nil
 }
 
 func InsertEach(ctx context.Context, tx *sql.Tx, names []string) error {
