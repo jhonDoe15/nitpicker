@@ -2,10 +2,11 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { main } from './gradle-guards.mjs';
+import { main } from './gradle-guards.mts';
 
-const roots = [];
-const JAVAC = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'javac') : 'javac';
+const roots: string[] = [];
+const JAVA_HOME = process.env['JAVA_HOME'];
+const JAVAC = JAVA_HOME ? path.join(JAVA_HOME, 'bin', 'javac') : 'javac';
 
 beforeEach(() => {
   vi.stubEnv('JAVA_TOOL_OPTIONS', undefined);
@@ -18,7 +19,11 @@ afterEach(() => {
   }
 });
 
-function moduleWithPlan(root, key, plan) {
+function moduleWithPlan(
+  root: string,
+  key: string,
+  plan: unknown,
+): { key: string; reportRoot: string } {
   const reportRoot = path.join(root, 'reports', key);
   mkdirSync(reportRoot, { recursive: true });
   if (plan !== undefined) {

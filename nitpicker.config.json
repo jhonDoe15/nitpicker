@@ -28,7 +28,7 @@
       "core/diff/execution/analyzer-scheduler.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
-      "languages/java/adapters/gradle-reports/gradle-guards.mjs",
+      "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mjs",
       "languages/java/builds/tools/tool-commands.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
@@ -38,7 +38,7 @@
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
       "languages/typescript/preset/coding-standards/check.mjs",
-      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs",
+      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },

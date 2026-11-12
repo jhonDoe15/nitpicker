@@ -5,17 +5,31 @@ import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
 
 const GUARDS_PLAN = 'guards-plan.json';
 
-export function runGuardPlan(reportDir, { baselineRoot }) {
+type GuardsPlan = { readonly classDirectories?: unknown; readonly lint?: unknown };
+
+function guardsPlan(value: unknown): GuardsPlan {
+  return typeof value === 'object' && value !== null ? value : {};
+}
+
+export function runGuardPlan(
+  reportDir: string,
+  { baselineRoot }: { readonly baselineRoot: string | undefined },
+): void {
   const planFile = path.join(reportDir, GUARDS_PLAN);
   if (!existsSync(planFile)) {
     return;
   }
-  const plan = JSON.parse(readFileSync(planFile, 'utf8'), (_, value) => value ?? undefined);
+  const plan = guardsPlan(
+    JSON.parse(readFileSync(planFile, 'utf8'), (_, value: unknown) => value ?? undefined),
+  );
   runPermits({ classDirectories: plan.classDirectories, reportDir });
   runJavacLint(plan.lint, { reportDir, baselineRoot });
 }
 
-export function main([reportDir, baselineRoot]) {
+export function main([reportDir, baselineRoot]: readonly string[]): void {
+  if (reportDir === undefined) {
+    throw new TypeError('gradle-guards needs <report dir> [<base project root>]');
+  }
   runGuardPlan(reportDir, { baselineRoot });
 }
 
