@@ -8,7 +8,12 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { couplingRules, entryPointRule, reuseRules } from './project-rules/reuse-rules.mjs';
-import { NO_TYPE_ONLY, slowTest, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import {
+  GO_NO_TYPE_ONLY,
+  NO_TYPE_ONLY,
+  slowTest,
+  testConsoleRule,
+} from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -261,7 +266,7 @@ const CATALOG = [
     limit:
       'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
     enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
-    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY },
+    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY, go: GO_NO_TYPE_ONLY },
   },
   {
     id: RULE_IDS.baselineExpansion,
