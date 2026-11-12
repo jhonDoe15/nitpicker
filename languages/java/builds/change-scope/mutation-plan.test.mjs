@@ -101,7 +101,12 @@ describe('mutation in a comparison', () => {
     const other = { ...survivor(`${MAIN}/Price.java`, 4), tool: 'pmd' };
 
     expect(plan.options.policy.mutationScope).toEqual([`${MAIN}/Price.java`]);
-    expect(plan.findings([kept, survivor(`${MAIN}/Price.java`, 4), other])).toEqual([kept, other]);
+    const summary = { tool: 'pit', rule: 'mutation-summary', path: '.', identity: 'status:Killed' };
+
+    expect(plan.findings([kept, survivor(`${MAIN}/Price.java`, 4), other, summary])).toEqual([
+      kept,
+      other,
+    ]);
   });
 
   it('mutates the classes a changed test uses on both sides, and reports all their mutants', () => {

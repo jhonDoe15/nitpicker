@@ -79,6 +79,7 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'jacoco uncovered-method Greeter.java',
   'jacoco uncovered-method Legacy.java',
   'jacoco uncovered-method Wide.java',
+  'pit mutant-nocoverage Greeter.java',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
   'test-runtime category-count .',
