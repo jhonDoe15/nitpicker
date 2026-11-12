@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runJava } from '../maven-command.mjs';
-import { chooseErrorProneJdk, featureVersion, jdkHomes } from './maven-jdk.mjs';
+import {
+  chooseErrorProneJdk,
+  chooseFormatterJdk,
+  chooseToolJdk,
+  featureVersion,
+  jdkHomes,
+} from './maven-jdk.mjs';
 
 const VERSION_OUTPUT = (version) =>
   `openjdk version "${version}" 2024-01-16\nOpenJDK Runtime Environment`;
@@ -96,5 +102,65 @@ describe('the JDK Error Prone runs on', () => {
     expect(() => runJava({ java: '/nowhere/bin/java', tool: 'Error Prone', args: [] })).toThrow(
       'java not found (/nowhere/bin/java): set JAVA_HOME to a JDK, or put its bin directory on the PATH',
     );
+  });
+});
+
+describe('the JDK Checkstyle and the Java formatters run on', () => {
+  it("uses the project's JDK from 21 on, else the lowest installed JDK 21 or newer", () => {
+    expect([
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(25), installed: [jdk(21)] }),
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(21), installed: [] }),
+      chooseToolJdk({
+        tool: 'Checkstyle',
+        project: jdk(17),
+        installed: [jdk(25), jdk(11), jdk(21)],
+      }),
+      chooseToolJdk({ tool: 'Checkstyle', project: jdk(11), installed: [jdk(25), { java: '/x' }] }),
+    ]).toStrictEqual([
+      { java: '/jdk25/bin/java' },
+      { java: '/jdk21/bin/java' },
+      { java: '/jdk21/bin/java' },
+      { java: '/jdk25/bin/java' },
+    ]);
+  });
+
+  it('names the tool and where it looked when no JDK 21 or newer is installed', () => {
+    expect(
+      chooseToolJdk({ tool: 'google-java-format', project: jdk(17), installed: [jdk(11)] }),
+    ).toStrictEqual({
+      problem:
+        'google-java-format needs JDK 21 or newer to run, and /jdk17/bin/java is JDK 17. nitpicker ' +
+        'found no JDK 21 or newer in JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, ' +
+        'SDKMAN, /usr/lib/jvm or /Library/Java/JavaVirtualMachines. Install one there; the project ' +
+        'keeps compiling for its own release',
+    });
+  });
+});
+
+describe('the JDK nitpicker --fix formats Java on', () => {
+  it('takes the newest JDK from 21 to 25, so the parser reads what a newer toolchain compiles', () => {
+    const tool = 'google-java-format';
+
+    expect([
+      chooseFormatterJdk({ tool, project: jdk(21), installed: [jdk(25), jdk(17)] }),
+      chooseFormatterJdk({ tool, project: jdk(25), installed: [jdk(21)] }),
+      chooseFormatterJdk({ tool, project: jdk(26), installed: [jdk(25)] }),
+      chooseFormatterJdk({ tool, project: jdk(21), installed: [jdk(27)] }),
+      chooseFormatterJdk({ tool, project: jdk(17), installed: [jdk(21), jdk(11)] }),
+      chooseFormatterJdk({ tool, project: jdk(17), installed: [jdk(27)] }),
+    ]).toStrictEqual([
+      { java: '/jdk25/bin/java' },
+      { java: '/jdk25/bin/java' },
+      { java: '/jdk26/bin/java' },
+      { java: '/jdk21/bin/java' },
+      { java: '/jdk21/bin/java' },
+      { java: '/jdk27/bin/java' },
+    ]);
+  });
+
+  it('names the formatter when no JDK 21 or newer is installed', () => {
+    expect(
+      chooseFormatterJdk({ tool: 'palantir-java-format', project: jdk(17), installed: [] }).problem,
+    ).toMatch(/^palantir-java-format needs JDK 21 or newer to run/u);
   });
 });

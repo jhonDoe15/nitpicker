@@ -38,6 +38,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/cpd-task.gradle',
   'languages/java/gradle/tasks/dependency-tasks.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
+  'languages/java/gradle/tasks/tool-jdk.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/builds/tools/tool-commands.json',
   'languages/java/builds/tools/tool-commands.mjs',

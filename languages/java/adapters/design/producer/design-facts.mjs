@@ -57,13 +57,26 @@ export function markPublished(types, modules) {
   );
 }
 
-function programFacts({ projectRoot, files, work, target }) {
+export function sourceJava(modules) {
+  return modules
+    .map((module) => module.sourceJava)
+    .filter((source) => typeof source?.java === 'string')
+    .toSorted((left, right) => right.feature - left.feature)[0]?.java;
+}
+
+function programFacts({ projectRoot, files, work, target, java }) {
   if (files.length === 0) {
     return { modules: [], types: [], callables: [] };
   }
   const fileList = path.join(work, 'files.txt');
   writeFileSync(fileList, files.join('\n'));
-  runDesignProgram({ classes: compileDesignProgram(), projectRoot, fileList, output: target });
+  runDesignProgram({
+    classes: compileDesignProgram(),
+    projectRoot,
+    fileList,
+    output: target,
+    java,
+  });
   return JSON.parse(readFileSync(target, 'utf8'));
 }
 
@@ -74,7 +87,7 @@ export function produceDesignFacts({ projectRoot, modules, output }) {
     const target = output ?? path.join(work, 'design-facts.json');
     mkdirSync(path.dirname(target), { recursive: true });
     rmSync(target, { force: true });
-    const facts = programFacts({ projectRoot, files, work, target });
+    const facts = programFacts({ projectRoot, files, work, target, java: sourceJava(modules) });
     const bundle = {
       ...facts,
       types: markPublished(facts.types, modules),

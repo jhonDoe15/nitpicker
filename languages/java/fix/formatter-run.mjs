@@ -38,6 +38,7 @@ export function readWorkspaceFile(root, relative) {
 export function runFormatterJar({
   operation,
   tool,
+  java,
   classpath,
   mainClass,
   jvmArgs = [],
@@ -47,6 +48,7 @@ export function runFormatterJar({
   executeFixCommand,
 }) {
   return runJava({
+    ...(java === undefined ? {} : { java }),
     tool,
     classpath,
     mainClass,

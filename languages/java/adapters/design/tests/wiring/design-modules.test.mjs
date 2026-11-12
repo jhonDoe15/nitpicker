@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DESIGN_FACTS_FAILURE_RULE, designFindings } from '../../design-findings.mjs';
 import { gradleDesignModules, mavenDesignModules } from '../../design-modules.mjs';
+import { sourceJava } from '../../producer/design-facts.mjs';
 
 const REPORTS = 'target/nitpicker';
 const work = [];
@@ -85,14 +86,36 @@ describe('the modules the design rules read', () => {
   it('reads the Gradle modules from the manifests of the report', () => {
     const report = {
       modules: [
-        { dir: 'lib', manifest: { sourceRoots: ['lib/src/main/java'], published: true } },
+        {
+          dir: 'lib',
+          manifest: {
+            sourceRoots: ['lib/src/main/java'],
+            published: true,
+            sourceJava: { feature: 25, java: '/jdk25/bin/java' },
+          },
+        },
         { dir: '', manifest: {} },
       ],
     };
 
     expect(gradleDesignModules(report)).toEqual([
-      { dir: 'lib', sourceRoots: ['lib/src/main/java'], published: true },
-      { dir: '', sourceRoots: [], published: false },
+      {
+        dir: 'lib',
+        sourceRoots: ['lib/src/main/java'],
+        published: true,
+        sourceJava: { feature: 25, java: '/jdk25/bin/java' },
+      },
+      { dir: '', sourceRoots: [], published: false, sourceJava: undefined },
     ]);
+  });
+
+  it('parses with the newest JDK a module compiles with, else the java of JAVA_HOME', () => {
+    const jdk = (feature) => ({ sourceJava: { feature, java: `/jdk${String(feature)}/bin/java` } });
+
+    expect([
+      sourceJava([jdk(17), jdk(25), jdk(21), {}]),
+      sourceJava([{}, { sourceJava: {} }]),
+      sourceJava([]),
+    ]).toEqual(['/jdk25/bin/java', undefined, undefined]);
   });
 });

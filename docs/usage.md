@@ -1924,7 +1924,7 @@ one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 
 With `--fix`, the changed `.java` files are rewritten with the formatter the gate checks them
 with, the one the run names under "Following this project's conventions": google-java-format
-1.25.2 (`--aosp` for the 4-space style) or palantir-java-format 2.50.0. With no formatter signal at
+1.35.0 (`--aosp` for the 4-space style) or palantir-java-format 2.90.0. With no formatter signal at
 all, the convention is google, so `--fix` applies google-java-format to new files and to files that
 were formatted on the base, which is what the gate's format check then demands. The convention is
 `"none"` when `conventions` pins `"java.formatter"` to it, and also when nitpicker detects it: an

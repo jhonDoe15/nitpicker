@@ -6,6 +6,7 @@ import { javaCommand } from '../maven-command.mjs';
 import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 
 const ERROR_PRONE_JDK = 21;
+const NEWEST_FORMATTER_JDK = 25;
 const VERSION = /version "(?:1\.)?(\d+)/u;
 const VERSIONED_HOME = /^JAVA_HOME_\d+_(?:X64|ARM64|AARCH64)$/u;
 const JDK_HOME = /<jdkHome>([^<]*)<\/jdkHome>/gu;
@@ -31,7 +32,11 @@ export function jdkHomes({ env = process.env, home = homedir(), systemJdks = SYS
         .map(([, jdkHome]) => jdkHome.trim())
         .filter((jdkHome) => jdkHome !== '')
     : [];
-  const installed = [path.join(home, '.sdkman', 'candidates', 'java'), ...systemJdks]
+  const installed = [
+    path.join(home, '.sdkman', 'candidates', 'java'),
+    path.join(home, '.gradle', 'jdks'),
+    ...systemJdks,
+  ]
     .flatMap((directory) => subdirectories(directory))
     .flatMap((directory) => [directory, path.join(directory, 'Contents', 'Home')]);
   const variables = Object.keys(env)
@@ -82,7 +87,7 @@ function describe(java, spawn) {
   return { java, feature: featureVersion(`${result.stderr}${result.stdout}`) };
 }
 
-export function errorProneJava({ preview, spawn = spawnSync }) {
+function projectJava(spawn) {
   const project = describe(javaCommand('java'), spawn);
   if (project.missing) {
     throw explainedError(
@@ -92,6 +97,74 @@ export function errorProneJava({ preview, spawn = spawnSync }) {
   if (project.feature === undefined) {
     throw new Error(`nitpicker could not read the version of ${project.java} (java -version)`);
   }
+  return project;
+}
+
+const toolJavas = new Map();
+
+export function chooseToolJdk({ tool, project, installed }) {
+  if (project.feature >= ERROR_PRONE_JDK) {
+    return { java: project.java };
+  }
+  const found = installed
+    .filter((jdk) => jdk.feature !== undefined && jdk.feature >= ERROR_PRONE_JDK)
+    .toSorted((left, right) => left.feature - right.feature)[0];
+  return found === undefined
+    ? {
+        problem:
+          `${tool} needs JDK ${ERROR_PRONE_JDK} or newer to run, and ${project.java} is JDK ` +
+          `${String(project.feature)}. nitpicker found no JDK ${ERROR_PRONE_JDK} or newer in ` +
+          'JAVA_HOME, the JAVA_HOME_<N>_X64 variables, ~/.m2/toolchains.xml, SDKMAN, /usr/lib/jvm or ' +
+          '/Library/Java/JavaVirtualMachines. Install one there; the project keeps compiling for its ' +
+          'own release',
+      }
+    : { java: found.java };
+}
+
+export function toolJava({ tool, spawn = spawnSync }) {
+  const key = `${tool}|${javaCommand('java')}`;
+  if (!toolJavas.has(key)) {
+    const project = projectJava(spawn);
+    const installed =
+      project.feature >= ERROR_PRONE_JDK
+        ? []
+        : jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
+    const { java, problem } = chooseToolJdk({ tool, project, installed });
+    if (problem !== undefined) {
+      throw explainedError(problem);
+    }
+    toolJavas.set(key, java);
+  }
+  return toolJavas.get(key);
+}
+
+export function chooseFormatterJdk({ tool, project, installed }) {
+  const newest = installed
+    .filter(
+      (jdk) =>
+        jdk.feature !== undefined &&
+        jdk.feature >= ERROR_PRONE_JDK &&
+        jdk.feature <= NEWEST_FORMATTER_JDK,
+    )
+    .toSorted((left, right) => right.feature - left.feature)[0];
+  if (project.feature >= ERROR_PRONE_JDK && !(newest?.feature > project.feature)) {
+    return { java: project.java };
+  }
+  return newest === undefined ? chooseToolJdk({ tool, project, installed }) : { java: newest.java };
+}
+
+export function formatterJava({ tool, spawn = spawnSync }) {
+  const project = projectJava(spawn);
+  const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
+  const { java, problem } = chooseFormatterJdk({ tool, project, installed });
+  if (problem !== undefined) {
+    throw explainedError(problem);
+  }
+  return java;
+}
+
+export function errorProneJava({ preview, spawn = spawnSync }) {
+  const project = projectJava(spawn);
   const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
   const { java, problem } = chooseErrorProneJdk({ project, preview, installed });
   if (problem !== undefined) {

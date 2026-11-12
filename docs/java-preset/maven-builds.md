@@ -173,7 +173,10 @@ by field. Per snapshot:
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
-  set, else the PATH.
+  set, else the PATH. Checkstyle 13 and the Java formatters need JDK 21 or newer to run: they run on
+  that `java` when it is 21 or newer, else on the lowest JDK 21 or newer found where Error Prone
+  looks for one (the `JAVA_HOME_<N>_X64` variables, `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm`,
+  `/Library/Java/JavaVirtualMachines`), and the run stops with that list when there is none.
 - **Kotlin.** A Maven project that applies `kotlin-maven-plugin` runs with the Kotlin preset (see
   [Maven](kotlin-preset.md#maven)); the java preset on it analyzes the Java sources only.
 - **Not covered.** A surefire or Failsafe configuration that sets
