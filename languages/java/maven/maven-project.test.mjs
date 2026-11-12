@@ -411,7 +411,7 @@ describe('describeModule plugin configuration', () => {
       versioned('0.8.12', agent()),
       versioned('0.8.12', ''),
       versioned('0.8.12', agent('<phase>none</phase>')),
-      versioned('${jacoco.version}', agent()),
+      versioned(`\${jacoco.version}`, agent()),
     ];
 
     expect(modules.map((module) => jacocoPlugin(pinned, [module]))).toEqual([
