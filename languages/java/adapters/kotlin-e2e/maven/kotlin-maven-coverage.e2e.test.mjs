@@ -88,8 +88,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
         ),
       ].map(([, line]) => Number(line));
 
-    expect(linesWith('cb').length).toBeGreaterThan(0);
-    expect(linesWith('mb')).toEqual([]);
+    expect({ covered: linesWith('cb'), missed: linesWith('mb') }).toEqual({
+      covered: [15, 22],
+      missed: [],
+    });
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
