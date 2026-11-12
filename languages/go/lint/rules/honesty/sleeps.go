@@ -26,7 +26,7 @@ func runSleeps(pass *analysis.Pass) (any, error) {
 	bodies := map[ast.Node]bool{}
 	for _, found := range testFiles(pass) {
 		for function := range found.judged {
-			bodies[function] = true
+			bodies[function] = takesTesting(pass.TypesInfo, function) || isSuiteTest(pass.TypesInfo, function)
 		}
 		for literal := range found.subtests {
 			bodies[literal] = true
@@ -34,7 +34,7 @@ func runSleeps(pass *analysis.Pass) (any, error) {
 	}
 	for cursor := range support.Root(pass).Preorder((*ast.CallExpr)(nil)) {
 		call := cursor.Node().(*ast.CallExpr)
-		if !sleeps(pass.TypesInfo, cursor, call) {
+		if !sleeps(pass.TypesInfo, cursor, call) || inBubble(pass.TypesInfo, cursor) {
 			continue
 		}
 		if function, found := support.EnclosingFunc(cursor); found && bodies[function.Node()] {
@@ -58,8 +58,33 @@ func sleeps(info *types.Info, cursor inspector.Cursor, call *ast.CallExpr) bool 
 	if !ok || receive.Op != token.ARROW {
 		return false
 	}
-	_, statement := cursor.Parent().Parent().Node().(*ast.ExprStmt)
-	return statement
+	statement, isStatement := cursor.Parent().Parent().Node().(*ast.ExprStmt)
+	if !isStatement {
+		return false
+	}
+	clause, inClause := cursor.Parent().Parent().Parent().Node().(*ast.CommClause)
+	return !inClause || clause.Comm != statement
+}
+
+func inBubble(info *types.Info, cursor inspector.Cursor) bool {
+	for each := range cursor.Enclosing((*ast.CallExpr)(nil)) {
+		call := each.Node().(*ast.CallExpr)
+		if support.IsFunc(info, call, "testing/synctest", "Test") || support.IsFunc(info, call, "testing/synctest", "Run") {
+			return true
+		}
+	}
+	return false
+}
+
+func takesTesting(info *types.Info, function *ast.FuncDecl) bool {
+	for _, field := range function.Type.Params.List {
+		for _, name := range field.Names {
+			if testingValue(info, name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func zero(info *types.Info, duration ast.Expr) bool {

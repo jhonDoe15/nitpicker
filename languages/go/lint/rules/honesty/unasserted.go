@@ -38,7 +38,7 @@ func acts(info *types.Info, test *ast.FuncDecl) bool {
 			return !found
 		}
 		found = isAssertion(info, call) || testingMethod(info, call, skips) || handsOverTesting(info, call) ||
-			callsReceiver(info, call, receiver)
+			callsReceiver(info, call, receiver) || registersSubtest(info, call) && subtestBody(info, call) == nil
 		return !found
 	})
 	return found

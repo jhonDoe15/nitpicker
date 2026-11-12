@@ -18,7 +18,6 @@ const suitePackage = "github.com/stretchr/testify/suite"
 var (
 	failures         = []string{"Error", "Errorf", "Fatal", "Fatalf", "Fail", "FailNow"}
 	skips            = []string{"Skip", "Skipf", "SkipNow"}
-	testingTypes     = []string{"T", "B", "F", "TB"}
 	expectations     = []string{"Expect", "ExpectWithOffset", "Ω", "Eventually", "EventuallyWithOffset", "Consistently"}
 	assertionFolders = []string{"/assert", "/require"}
 )
@@ -72,6 +71,9 @@ func (found testFile) reach(info *types.Info) {
 			if literal := subtestBody(info, call); literal != nil {
 				found.subtests[literal] = true
 			}
+			if named := namedSubtest(info, call); named != nil && declarations[named] != nil {
+				pending = append(pending, declarations[named])
+			}
 			if callee, isFunc := typeutil.Callee(info, call).(*types.Func); isFunc && declarations[callee.Origin()] != nil {
 				pending = append(pending, declarations[callee.Origin()])
 			}
@@ -121,9 +123,12 @@ func testName(name string) bool {
 
 func testingValue(info *types.Info, expression ast.Expr) bool {
 	typ := info.TypeOf(expression)
-	return typ != nil && slices.ContainsFunc(testingTypes, func(name string) bool {
-		return support.IsNamed(typ, "testing", name)
-	})
+	if typ == nil {
+		return false
+	}
+	found, _, _ := types.LookupFieldOrMethod(typ, true, nil, "FailNow")
+	method, ok := found.(*types.Func)
+	return ok && method.Pkg() != nil && method.Pkg().Path() == "testing"
 }
 
 func testingMethod(info *types.Info, call *ast.CallExpr, names []string) bool {
@@ -131,18 +136,35 @@ func testingMethod(info *types.Info, call *ast.CallExpr, names []string) bool {
 	return ok && slices.Contains(names, selector.Sel.Name) && testingValue(info, selector.X)
 }
 
-func subtestBody(info *types.Info, call *ast.CallExpr) *ast.FuncLit {
+func registersSubtest(info *types.Info, call *ast.CallExpr) bool {
 	selector, ok := ast.Unparen(call.Fun).(*ast.SelectorExpr)
 	if !ok || selector.Sel.Name != "Run" || len(call.Args) != 2 {
-		return nil
+		return false
 	}
 	callee, _ := typeutil.Callee(info, call).(*types.Func)
 	fromSuite := callee != nil && callee.Pkg() != nil && callee.Pkg().Path() == suitePackage
-	if !testingValue(info, selector.X) && !fromSuite {
+	return testingValue(info, selector.X) || fromSuite
+}
+
+func subtestBody(info *types.Info, call *ast.CallExpr) *ast.FuncLit {
+	if !registersSubtest(info, call) {
 		return nil
 	}
 	literal, _ := ast.Unparen(call.Args[1]).(*ast.FuncLit)
 	return literal
+}
+
+func namedSubtest(info *types.Info, call *ast.CallExpr) types.Object {
+	if !registersSubtest(info, call) {
+		return nil
+	}
+	switch each := ast.Unparen(call.Args[1]).(type) {
+	case *ast.Ident:
+		return info.Uses[each]
+	case *ast.SelectorExpr:
+		return info.Uses[each.Sel]
+	}
+	return nil
 }
 
 func isAssertion(info *types.Info, call *ast.CallExpr) bool {
@@ -161,10 +183,22 @@ func isAssertion(info *types.Info, call *ast.CallExpr) bool {
 		return false
 	}
 	signature := callee.Signature()
+	if !reportsOnly(signature) {
+		return false
+	}
 	if receiver := signature.Recv(); receiver != nil {
 		return support.IsNamed(receiver.Type(), path, "Assertions")
 	}
 	return signature.Params().Len() > 0 && support.IsNamed(signature.Params().At(0).Type(), path, "TestingT")
+}
+
+func reportsOnly(signature *types.Signature) bool {
+	results := signature.Results()
+	if results.Len() == 0 {
+		return true
+	}
+	basic, ok := results.At(0).Type().Underlying().(*types.Basic)
+	return results.Len() == 1 && ok && basic.Kind() == types.Bool
 }
 
 func firstAssertion(info *types.Info, node ast.Node) ast.Node {

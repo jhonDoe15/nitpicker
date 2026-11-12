@@ -41,11 +41,13 @@ func runReasons(pass *analysis.Pass) (any, error) {
 }
 
 func reasoned(info *types.Info, call *ast.CallExpr) bool {
-	if len(call.Args) == 0 {
-		return false
+	for _, argument := range call.Args {
+		value := info.Types[argument].Value
+		if value == nil || value.Kind() != constant.String || constant.StringVal(value) != "" {
+			return true
+		}
 	}
-	value := info.Types[call.Args[0]].Value
-	return value == nil || value.Kind() != constant.String || constant.StringVal(value) != "" || len(call.Args) > 1
+	return false
 }
 
 func runSwitchedOff(pass *analysis.Pass) (any, error) {
@@ -88,6 +90,13 @@ func alwaysSkips(info *types.Info, statement ast.Stmt) ast.Node {
 }
 
 func constantTrue(info *types.Info, condition ast.Expr) bool {
-	value := info.Types[condition].Value
-	return value != nil && value.Kind() == constant.Bool && constant.BoolVal(value)
+	ident, ok := ast.Unparen(condition).(*ast.Ident)
+	if !ok {
+		return false
+	}
+	value := info.Types[ident].Value
+	object := info.Uses[ident]
+	ownConstant := object != nil && (object.Parent() == types.Universe || object.Pkg() != nil &&
+		object.Pkg().Path() != "runtime")
+	return ownConstant && value != nil && value.Kind() == constant.Bool && constant.BoolVal(value)
 }
