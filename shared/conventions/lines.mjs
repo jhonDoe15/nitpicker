@@ -42,3 +42,7 @@ export function groupJoinLengths(lines, { opener, closer, skip }) {
         last.trim().length,
     );
 }
+
+export function lineAt(text, index) {
+  return text.slice(0, index).split('\n').length;
+}

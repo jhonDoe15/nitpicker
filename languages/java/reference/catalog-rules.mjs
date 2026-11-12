@@ -30,6 +30,20 @@ const CHECKSTYLE_WHY = {
   coding:
     "Google style bans a coding form that has a clearer equivalent, and Checkstyle's Google checks report it.",
 };
+const CHECKSTYLE_OWN = {
+  ConstantName: {
+    summary: 'A constant named in a form other than UPPER_SNAKE_CASE.',
+    why: "Nitpicker's Checkstyle configuration fixes one form for a constant name, so constants read the same everywhere; a logger may be `log` or `logger`.",
+  },
+  MagicNumber: {
+    summary: 'A number written inline that has no name.',
+    why: "Nitpicker's Checkstyle configuration reports a number whose meaning the code does not say; a named constant says it once.",
+  },
+  VisibilityModifier: {
+    summary: 'A field that is not private.',
+    why: "Nitpicker's Checkstyle configuration keeps state behind the class, so a caller cannot change a field in a way the class does not expect; public final fields are allowed.",
+  },
+};
 const LAYOUT_CATEGORIES = new Set(['whitespace', 'indentation', 'blocks', 'sizes']);
 const CHECKSTYLE_DOCUMENTATION = 'https://checkstyle.org/checks';
 const SPOTBUGS_DOCUMENTATION = 'https://spotbugs.readthedocs.io/en/stable/bugDescriptions.html';
@@ -99,10 +113,11 @@ function checkstyleCheck(rule, texts) {
 
 function checkstyleText(rule, texts, { layout }) {
   const { name, category } = checkstyleCheck(rule, texts);
+  const own = CHECKSTYLE_OWN[name];
   const kind = layout === true || LAYOUT_CATEGORIES.has(category) ? 'layout' : category;
   return {
-    summary: wordsOfCamelCase(name),
-    why: CHECKSTYLE_WHY[kind] ?? CHECKSTYLE_WHY.coding,
+    summary: own?.summary ?? wordsOfCamelCase(name),
+    why: own?.why ?? CHECKSTYLE_WHY[kind] ?? CHECKSTYLE_WHY.coding,
     links: [
       {
         label: 'Checkstyle check documentation',
@@ -145,11 +160,11 @@ function entryOf({ tool, rule, fields }, texts) {
 }
 
 /** The entries of the PMD, Checkstyle and SpotBugs rules that have a message catalog. */
-export function catalogRuleEntries() {
+export function catalogRuleEntries({ skippedPmd = new Set() } = {}) {
   return CATALOG_TOOLS.flatMap((tool) => {
     const texts = readToolText(tool);
-    return Object.entries(readCatalog(tool)).map(([rule, fields]) =>
-      entryOf({ tool, rule, fields }, texts),
-    );
+    return Object.entries(readCatalog(tool))
+      .filter(([rule]) => tool !== 'pmd' || !skippedPmd.has(rule))
+      .map(([rule, fields]) => entryOf({ tool, rule, fields }, texts));
   });
 }

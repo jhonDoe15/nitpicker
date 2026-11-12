@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { toolVersions } from './execution/go-tools.mjs';
+import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
@@ -42,13 +43,22 @@ function hashConfiguration(settings) {
   return hash.digest('hex');
 }
 
-function goVersion(liveProjectRoot) {
-  const result = spawnSync('go', ['version'], {
+function probe(liveProjectRoot, args) {
+  const result = spawnSync('go', args, {
     cwd: liveProjectRoot,
     encoding: 'utf8',
     timeout: PROBE_TIMEOUT_MS,
   });
-  return result.status === 0 ? result.stdout.trim() : 'go missing';
+  return result.status === 0 ? result.stdout.trim() : undefined;
+}
+
+function goVersion(liveProjectRoot) {
+  const version = probe(liveProjectRoot, ['version']);
+  if (version === undefined) {
+    return 'go missing';
+  }
+  const cgo = probe(liveProjectRoot, ['env', 'CGO_ENABLED', 'CC'])?.split(/\s+/u).join('/');
+  return `${version} cgo=${cgo ?? 'unknown'}`;
 }
 
 export function createGoAnalyzer(settings = {}) {
@@ -62,17 +72,20 @@ export function createGoAnalyzer(settings = {}) {
       'gofmt',
       'gofumpt',
       'goimports',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
+      ...GO_LINTER_TOOLS,
       'build',
       'tests',
+      'race',
       'test-runtime',
       'structure',
+      'duplicates',
+      'coupling',
+      'facts',
+      'deadcode',
+      'dependencies',
     ],
     timeoutMs: ANALYZER_TIMEOUT_MS,
-    createInvocation: ({ projectRoot, toolRoot }) => ({
+    createInvocation: ({ projectRoot, toolRoot, baselineMovesFile }) => ({
       command: process.execPath,
       args: [
         cliPath,
@@ -80,6 +93,7 @@ export function createGoAnalyzer(settings = {}) {
         '--project-root',
         projectRoot,
         ...(Object.keys(settings).length === 0 ? [] : ['--go-settings', JSON.stringify(settings)]),
+        ...(baselineMovesFile === undefined ? [] : ['--baseline-moves-file', baselineMovesFile]),
       ],
       cwd: toolRoot,
     }),

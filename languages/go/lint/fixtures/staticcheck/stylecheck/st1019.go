@@ -6,5 +6,5 @@ import (
 )
 
 func Twice() string {
-	return fmt.Sprint(1) + format.Sprint(2)
+	return fmt.Sprint(1.5) + format.Sprint(2.5)
 }

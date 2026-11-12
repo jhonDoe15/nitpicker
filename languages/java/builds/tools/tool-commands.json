@@ -1,0 +1,18 @@
+{
+  "cpd": {
+    "launcher": "../../gradle/CpdReport.java",
+    "args": [{ "value": "report" }, { "each": "directories" }],
+    "accept": { "exits": [0], "report": "report", "root": "pmd-cpd" }
+  },
+  "forbiddenapis": {
+    "args": [
+      { "each": "classDirectories", "flag": "-d" },
+      "-c",
+      { "join": "libraries", "separator": "path" },
+      "-f",
+      { "value": "signatures" },
+      "--allowmissingclasses"
+    ],
+    "accept": { "exits": [0, 1] }
+  }
+}

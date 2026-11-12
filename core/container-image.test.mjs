@@ -18,12 +18,14 @@ const expectedCopyInstructions = [
   'COPY languages/ /opt/nitpicker/languages/',
   'COPY package.json package-lock.json .npmrc LICENSE README.md /opt/nitpicker/',
   'COPY scripts/reference/ /opt/nitpicker/scripts/reference/',
+  'COPY scripts/typescript/emit.mjs /opt/nitpicker/scripts/typescript/emit.mjs',
   'COPY shared/ /opt/nitpicker/shared/',
   'COPY spec/ /opt/nitpicker/spec/',
 ];
 const expectedDockerignoreLines = [
   '',
   '**/*.test.mjs',
+  '**/*.test.mts',
   '**/.nitpicker-*',
   '**/.stryker-tmp',
   '**/coverage',
@@ -58,6 +60,13 @@ describe('container image Dockerfile', () => {
     expect(
       instruction('RUN').some((line) => line.includes('core/cli.mjs /usr/local/bin/nitpicker')),
     ).toBe(true);
+  });
+
+  it('ships JavaScript emitted from the TypeScript sources, not the sources', () => {
+    const install = instruction('RUN').find((line) => line.includes('npm ci')) ?? '';
+    const emit = install.indexOf('node scripts/typescript/emit.mjs');
+    expect(emit).toBeGreaterThan(install.indexOf('npm ci'));
+    expect(install.indexOf("-name '*.mts' -delete")).toBeGreaterThan(emit);
   });
 
   it('provides the package managers that projects use', () => {

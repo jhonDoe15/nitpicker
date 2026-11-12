@@ -9,12 +9,7 @@ const TRANSPARENT = new Set([
   'TSInstantiationExpression',
 ]);
 
-const LOOSE = new Set([
-  'SequenceExpression',
-  'AssignmentExpression',
-  'ArrowFunctionExpression',
-  'YieldExpression',
-]);
+const LOOSE = new Set(['SequenceExpression', 'AssignmentExpression', 'YieldExpression']);
 
 const OPERATORS = new Map([
   ['UnaryExpression', 'unary'],
@@ -81,6 +76,11 @@ function isComposite(node) {
   return COMPOSITES.has(node.type) && isModeled(node);
 }
 
+/** Whether `toTerm` models `node` with its parts, so an expression inside it is part of its term. */
+export function isTermPart(node) {
+  return TRANSPARENT.has(node.type) || isComposite(node);
+}
+
 function fieldsOf(node) {
   switch (node.type) {
     case 'UnaryExpression':
@@ -124,8 +124,11 @@ function literalValue(node) {
   if (typeof node.value === 'string') {
     return JSON.stringify(node.value);
   }
-  if (typeof node.value === 'number' && Number.isFinite(node.value)) {
+  if (typeof node.value === 'number') {
     return String(node.value);
+  }
+  if (typeof node.bigint === 'string') {
+    return `${BigInt(node.bigint).toString()}n`;
   }
   const isNull = node.value === null && node.regex === undefined && node.bigint === undefined;
   return isNull ? 'null' : node.raw;
@@ -171,6 +174,9 @@ function opaque(node, text) {
   }
   if (node.type.endsWith('Statement')) {
     return term('statement', text);
+  }
+  if (node.type === 'ArrowFunctionExpression') {
+    return { ...term('opaque', text), loose: true, assignment: true };
   }
   return LOOSE.has(node.type) ? { ...term('opaque', text), loose: true } : term('opaque', text);
 }

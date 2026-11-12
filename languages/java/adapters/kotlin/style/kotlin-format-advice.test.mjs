@@ -6,13 +6,13 @@ const OPT_IN = (tool) => `"tools": { "${tool}": { "precedence": ["project", "nit
 describe('the advice on the findings', () => {
   it('sends a ktfmt finding to the command printed at the start of the run', () => {
     expect(kotlinFormatAdvice({}).ktfmt).toBe(
-      'Format it with the "Format with ktfmt" command printed at the start of the run.',
+      'Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run.',
     );
   });
 
   it('names the switch of a ktlint rule and when nitpicker reads the .editorconfig', () => {
     expect(kotlinFormatAdvice({}).ktlint('ktlint_standard_indent')).toBe(
-      'Lift this rule with ktlint_standard_indent = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run).',
+      'Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ktlint_standard_indent = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run).',
     );
   });
 
