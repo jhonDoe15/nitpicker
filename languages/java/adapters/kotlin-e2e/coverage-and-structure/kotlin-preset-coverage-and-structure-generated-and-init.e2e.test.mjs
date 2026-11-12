@@ -30,8 +30,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
         ),
       ].map(([, line]) => Number(line));
 
-    expect(linesWith('cb').length).toBeGreaterThan(0);
-    expect(linesWith('mb')).toEqual([]);
+    expect({ covered: linesWith('cb'), missed: linesWith('mb') }).toEqual({
+      covered: [15, 22],
+      missed: [],
+    });
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('keeps a legacy init block baselined when init blocks are inserted around it, in a class, a companion object and an object expression', () => {
