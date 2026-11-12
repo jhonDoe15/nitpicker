@@ -91,6 +91,63 @@ describe('parseTestEvents', () => {
     ]);
   });
 
+  it('strips race reports from failures and keeps each package and test that printed one', () => {
+    const race = [
+      '==================\n',
+      'WARNING: DATA RACE\n',
+      'Write at 0x00c000012318 by goroutine 8:\n',
+      '==================\n',
+      '    testing.go:1490: race detected during execution of test\n',
+    ];
+    const output = (Test, lines) =>
+      lines.map((Output) => event({ Action: 'output', Package: 'example.com/shop', Test, Output }));
+    const raced = parseTestEvents(
+      [
+        event({ Action: 'run', Package: 'example.com/shop', Test: 'TestCart' }),
+        event({ Action: 'run', Package: 'example.com/shop', Test: 'TestCart/add' }),
+        ...output('TestCart/add', race),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart/add' }),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart' }),
+        event({ Action: 'run', Package: 'example.com/shop', Test: 'TestTotal' }),
+        ...output('TestTotal', [...race, '    cart_test.go:9: got 1, want 2\n']),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestTotal' }),
+        event({ Action: 'fail', Package: 'example.com/shop', Elapsed: 0.1 }),
+      ].join('\n'),
+    );
+    expect(raced.failures).toEqual([
+      { id: 'example.com/shop.TestCart/add', package: 'example.com/shop', output: '' },
+      {
+        id: 'example.com/shop.TestTotal',
+        package: 'example.com/shop',
+        output: '    cart_test.go:9: got 1, want 2\n',
+      },
+    ]);
+    expect(raced.raceOutputs.map(({ package: name, test }) => `${name} ${test}`)).toEqual([
+      'example.com/shop TestCart/add',
+      'example.com/shop TestTotal',
+    ]);
+  });
+
+  it('keeps a parent test that failed on its own next to a failing subtest', () => {
+    const parsed = parseTestEvents(
+      [
+        event({ Action: 'run', Package: 'example.com/shop', Test: 'TestCart' }),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart/add' }),
+        event({
+          Action: 'output',
+          Package: 'example.com/shop',
+          Test: 'TestCart',
+          Output: '    cart_test.go:20: parent check\n',
+        }),
+        event({ Action: 'fail', Package: 'example.com/shop', Test: 'TestCart' }),
+      ].join('\n'),
+    );
+    expect(parsed.failures.map(({ id }) => id)).toEqual([
+      'example.com/shop.TestCart/add',
+      'example.com/shop.TestCart',
+    ]);
+  });
+
   it('turns failures into one tool error that quotes what each test printed', () => {
     expect(testRunFindings(parsed, 'base')).toEqual([
       {

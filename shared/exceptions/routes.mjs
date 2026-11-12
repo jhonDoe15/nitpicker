@@ -12,7 +12,7 @@ import {
   DEPENDENCY_RULES,
   toolsOf,
 } from './rule-tools.mjs';
-import { appendSentence } from '../messages/exception-sentence.mjs';
+import { appendSentence, hasExceptionRoute } from '../messages/exception-sentence.mjs';
 
 const ROUTED_RULES = [
   RULE_IDS.mutantSurvived,
@@ -49,7 +49,7 @@ export function sharedRouteRule(finding) {
 
 /**
  * Appends the exception entry that accepts each enforceable finding that `routeRule(finding)`
- * gives a rule for (a list of routed rule ids works too).
+ * gives a rule for (a list of routed rule ids works too), unless its message already names one.
  */
 export function withExceptionRoutes(findings, routeRule = sharedRouteRule) {
   const ruleOf =
@@ -57,7 +57,10 @@ export function withExceptionRoutes(findings, routeRule = sharedRouteRule) {
       ? routeRule
       : (finding) => (routeRule.includes(finding.rule) ? finding.rule : undefined);
   return findings.map((finding) => {
-    const rule = finding.classification === 'enforceable' ? ruleOf(finding) : undefined;
+    const rule =
+      finding.classification === 'enforceable' && !hasExceptionRoute(finding.message)
+        ? ruleOf(finding)
+        : undefined;
     return rule === undefined
       ? finding
       : {
