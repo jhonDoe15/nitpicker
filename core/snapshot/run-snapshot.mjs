@@ -1,6 +1,11 @@
 import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
+
+function isEnforceable(finding) {
+  return finding.classification === 'enforceable';
+}
 
 export function runQualitySnapshot({
   analyzers,
@@ -10,7 +15,8 @@ export function runQualitySnapshot({
   liveProjectRoot = projectRoot,
   startedAt = Date.now(),
   headPolicy = {},
-  runTasks,
+  scope,
+  ...execution
 }) {
   const { reports, toolErrors } = withHeadPolicyFile(headPolicy, (headPolicyFile) =>
     runAnalyzers({
@@ -21,20 +27,25 @@ export function runQualitySnapshot({
       liveProjectRoot,
       headPolicyFile,
       snapshot: 'head',
-      runTasks,
+      mutationScope: scope?.paths,
+      ...execution,
     }),
   );
 
-  const { findings, tools } = collectSnapshotFindings(analyzers, reports, toolErrors);
+  const { findings, tools, outside } = collectSnapshotFindings({
+    analyzers,
+    reports,
+    toolErrors,
+    scope,
+  });
 
-  const enforceableFindings = findings.filter(
-    (finding) => finding.classification === 'enforceable',
-  ).length;
+  const enforceableFindings = findings.filter(isEnforceable).length;
   const exclusions = declaredExclusions(analyzers);
   const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
 
   return {
     summary: {
+      ...scopeSummary(scope, outside),
       tools,
       exclusions,
       elapsedMs: Date.now() - startedAt,
@@ -86,9 +97,10 @@ function summarizeAnalyzer(analyzer, name, analyzerFindings) {
   };
 }
 
-function collectSnapshotFindings(analyzers, reports, toolErrors) {
+function collectSnapshotFindings({ analyzers, reports, toolErrors, scope }) {
   const findings = [];
   const tools = [];
+  let outside = 0;
   for (const [index, analyzer] of analyzers.entries()) {
     const name = analyzerName(analyzer, index);
     const reported = reports.get(analyzer.name)?.findings ?? [];
@@ -97,12 +109,14 @@ function collectSnapshotFindings(analyzers, reports, toolErrors) {
         .filter((finding) => finding.classification === 'tool-error')
         .map(toSnapshotToolError),
     );
-    const analyzerFindings = reported.filter((finding) => finding.classification !== 'tool-error');
+    const analyzed = reported.filter((finding) => finding.classification !== 'tool-error');
+    const analyzerFindings = analyzed.filter((finding) => isInScope(finding.path, scope));
+    outside += analyzed.length - analyzerFindings.length;
     findings.push(...analyzerFindings);
     tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
   }
 
-  return { findings, tools };
+  return { findings, tools, outside };
 }
 
 function declaredExclusions(analyzers) {

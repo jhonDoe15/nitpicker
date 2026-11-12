@@ -1,9 +1,12 @@
 import { describeRuleFinding, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { createIdentities } from './identities.mjs';
+import { withRegexDefects } from '../rules/regexes/regex-defects.mjs';
 
 const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
-const MINIMUM_PYTHON = '3.10';
+export const MINIMUM_PYTHON = '3.10';
+const TOO_DEEP_RULE = 'rules-too-deep';
+const TOO_DEEP_CHECKS = { file: 'some of the per-file checks', all: 'every check' };
 
 function toolError({ rule, path, subject, error }) {
   const message =
@@ -20,21 +23,39 @@ function toolError({ rule, path, subject, error }) {
   };
 }
 
+function tooDeepMessage(subject) {
+  const checks = TOO_DEEP_CHECKS[subject] ?? `the ${subject} checks`;
+  return `python-rules skipped ${checks} here: an expression nests too deeply for Python's recursion limit. Split the expression to have it checked.`;
+}
+
+function described({ rule, subject, data }, libraries) {
+  if (rule === TOO_DEEP_RULE) {
+    return { message: tooDeepMessage(subject), classification: 'descriptive' };
+  }
+  return {
+    message: describeRuleFinding(rule, subject, { libraries, data }),
+    classification: 'enforceable',
+    ...(data === undefined ? {} : { hintData: data }),
+  };
+}
+
 export function ingestRulesReport(text, libraries) {
   const identify = createIdentities();
-  return JSON.parse(text).map(({ rule, path, subject, line, error }) => {
-    if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
-      return toolError({ rule, path, subject, error });
-    }
-    return {
-      tool: RULES_TOOL,
-      rule,
-      path,
-      identity: identify({ path, rule, subject }),
-      subject,
-      message: describeRuleFinding(rule, subject, libraries),
-      classification: 'enforceable',
-      location: { line },
-    };
-  });
+  return withRegexDefects(JSON.parse(text)).map(
+    ({ rule, path, subject, line, data, error, via }) => {
+      if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
+        return toolError({ rule, path, subject, error });
+      }
+      const shown = via ?? subject;
+      return {
+        tool: RULES_TOOL,
+        rule,
+        path,
+        identity: identify({ path, rule, subject }),
+        subject: shown,
+        ...described({ rule, subject: shown, data }, libraries),
+        location: { line },
+      };
+    },
+  );
 }

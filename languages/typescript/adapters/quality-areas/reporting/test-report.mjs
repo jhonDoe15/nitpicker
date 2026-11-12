@@ -1,4 +1,14 @@
-import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  TESTS_FAILED_RULE,
+  TESTS_NOT_RUN_RULE,
+  testsFailHeadline,
+  testsFailOnBase,
+} from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  testsFailAnchor,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -17,34 +27,47 @@ import {
   unhandledErrors,
   unhandledErrorText,
   withSnapshotAdvice,
+  assertionDetails,
 } from './failure-lines.mjs';
+import { failingTestEntries } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+
+const COULD_NOT_RUN = 'could not run';
 
 export function coverageFailureFindings(
   options,
   { report, result, runnerName, precedingCommands },
 ) {
-  const [firstFailure] = testFailures(report, options.projectRoot);
+  const failures = testFailures(report, options.projectRoot);
+  const [firstFailure] = failures;
   const unhandled = unhandledErrors(result.stderr);
   if (firstFailure === undefined && unhandled.length > 0) {
     return [
       toolErrorFinding(options, {
-        rule: TESTS_FAILED_RULE,
+        rule: TESTS_NOT_RUN_RULE,
         path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
         message: unhandledErrorText(unhandled),
+        anchor: testsFailAnchor(options.snapshot),
       }),
     ];
   }
   if (firstFailure === undefined) {
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without naming a failing test${formatProcessOutput(result)}`,
+      testsFailAnchor(options.snapshot),
     );
   }
+  const ran = failures.some(({ name }) => name !== COULD_NOT_RUN);
   return [
     toolErrorFinding(options, {
-      rule: TESTS_FAILED_RULE,
+      rule: ran ? TESTS_FAILED_RULE : TESTS_NOT_RUN_RULE,
       path: findingPath(firstFailure.file),
-      message: formatTestFailures(report, options.projectRoot, { runnerName, precedingCommands }),
+      message: formatTestFailures(report, options.projectRoot, {
+        runnerName,
+        precedingCommands,
+        snapshot: ran ? options.snapshot : undefined,
+      }),
+      anchor: testsFailAnchor(options.snapshot),
     }),
   ];
 }
@@ -60,30 +83,29 @@ export function readCoverageFindings(options, testReport) {
   );
 }
 
-export function readTestReport(reportPath, result, runnerName) {
+export function readTestReport(reportPath, result, { runnerName, snapshot }) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(
+    throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
+      testsFailAnchor(snapshot),
       { cause: error },
     );
   }
 }
 
-export function toolErrorFinding(options, { rule, path: findingPath = '.', message }) {
+export function toolErrorFinding(options, { rule, path: findingPath = '.', message, anchor }) {
   return {
     tool: options.analyzerName,
     rule,
     path: findingPath,
     identity: rule,
-    message,
+    message: anchor === undefined ? message : withTroubleshooting(message, anchor),
     classification: 'tool-error',
   };
 }
-
-const MAX_LISTED_FAILURES = 5;
 
 function testFailures(report, projectRoot) {
   const failures = [];
@@ -96,6 +118,10 @@ function testFailures(report, projectRoot) {
     for (const assertion of failedAssertions) {
       failures.push({
         file,
+        ...assertionDetails(assertion, {
+          testFile: absoluteFile(projectRoot, testResult?.name),
+          projectRoot,
+        }),
         name: assertionName(assertion),
         assertion:
           timeoutText(assertion) ??
@@ -105,10 +131,14 @@ function testFailures(report, projectRoot) {
       });
     }
     if (failedAssertions.length === 0 && testResult?.status === 'failed') {
-      failures.push({ file, name: 'could not run', assertion: firstLine(testResult.message) });
+      failures.push({ file, name: COULD_NOT_RUN, assertion: firstLine(testResult.message) });
     }
   }
   return failures;
+}
+
+function absoluteFile(projectRoot, name) {
+  return typeof name === 'string' ? path.resolve(projectRoot, name) : undefined;
 }
 
 function projectFile(projectRoot, name) {
@@ -135,7 +165,18 @@ function precedingNote(precedingCommands) {
   ];
 }
 
-export function formatTestFailures(report, projectRoot, { runnerName, precedingCommands } = {}) {
+function failureEntry({ file, name, assertion }) {
+  return `${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`;
+}
+
+export function formatTestFailures(
+  report,
+  projectRoot,
+  { runnerName, precedingCommands, snapshot } = {},
+) {
+  if (snapshot === 'base') {
+    return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
+  }
   return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
     '\n',
   );
@@ -146,21 +187,15 @@ function failureText(report, projectRoot, runnerName) {
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
-  const headline = `${String(failedCount)} ${failedCount === 1 ? 'test fails' : 'tests fail'}, so coverage, CRAP and mutation were skipped. Fix the tests and rerun`;
+  const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
-    return `${headline}; the report named no test.`;
+    return `${headline.slice(0, -1)}; the report named no test.`;
   }
-  const listed = failures
-    .slice(0, MAX_LISTED_FAILURES)
-    .map(
-      ({ file, name, assertion }) =>
-        `  ${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`,
-    );
-  const omitted = failures.length - listed.length;
   return [
-    `${headline}:`,
-    ...listed,
-    ...(omitted > 0 ? [`  … and ${String(omitted)} more`] : []),
+    headline,
+    ...failingTestEntries(
+      failures.map(({ assertion, ...failure }) => ({ ...failure, message: assertion })),
+    ),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
   ].join('\n');
 }

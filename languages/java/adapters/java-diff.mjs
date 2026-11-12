@@ -1,16 +1,17 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  testFailuresOf,
+  unknownOnBaseFor,
+} from '../../../core/diff/comparison/base-red/unknown-base.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mjs';
 import { readRenameMap } from '../../../core/diff/git/patches/project-moves.mjs';
 import { withTemporaryWorktree } from '../../../core/diff/git/repository/worktree.mjs';
-import { gradleTarget } from './gradle-wrapper/gradle-command.mjs';
-import { runGradle } from './gradle-wrapper/gradle-process.mjs';
-import { withGradleLog } from './gradle-wrapper/diagnostics/failure-log.mjs';
-import { condenseFailure } from './gradle-wrapper/diagnostics/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
@@ -18,35 +19,36 @@ import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
+import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
+import { withJavaColumns } from './reporting/columns/java-columns.mjs';
+import { sourceTextReader } from './reporting/function-locator.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
-import { failingTestsOf } from './gradle-reports/failing-tests.mjs';
-import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
+import { runMavenPreset } from '../maven/maven-build.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
-import { moduleReport, readModuleFindings } from '../builds/java-modules.mjs';
+import { mergedRoots, readModuleReport } from '../builds/java-modules.mjs';
 import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
+import { runGradleStage } from './red-base/gradle-stage.mjs';
+import {
+  runOrNoteFailingTests,
+  withRootSourceRoots,
+  withTestsFailures,
+} from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
-import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
+import { withProjectSourceRules } from './regexes/regex-defects.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
-import { gradleOptions, gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
+import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
 
-const MAX_FAILURE_LENGTH = 3500;
 const CLOCK_SLACK_MS = 2000;
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
-function assertSucceeded(result, projectRoot, { reportBase, since }) {
-  if (result.error === undefined && result.status === 0) {
-    return;
-  }
-  const detail = condenseFailure(
-    result.stderr?.trim() ? result.stderr : (result.stdout ?? ''),
-    MAX_FAILURE_LENGTH,
-  );
-  const failure =
-    result.error ??
-    failingTestsOf(projectRoot, { reportBase, since }) ??
-    new Error(`Java preset failed in ${projectRoot}: ${detail || 'no diagnostic output'}`);
-  throw withGradleLog(failure, result);
+export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
+  return snapshot === 'head' && baselineRoot !== undefined
+    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
+    : [];
 }
 
 function runJavaPreset(
@@ -59,28 +61,31 @@ function runJavaPreset(
     reportBase,
     kotlinRun,
     budget = gradleBudget(),
+    testsFailedModules = [],
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
-  const directory = path.join(reportBase, 'tool-config');
   const since = Date.now() - CLOCK_SLACK_MS;
   withKotlin((kotlinArguments) => {
     const common = [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
+      ...GRADLE_FLAGS,
+      ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
+      `-Pnitpicker.node=${process.execPath}`,
+      ...lintBaselineProperties(policy),
       ...kotlinArguments,
     ];
-    const stages = gradleStages(common, { projectRoot, initScript, policy, directory });
+    const stages = gradleStages(common, {
+      projectRoot,
+      initScript,
+      policy,
+      directory: path.join(reportBase, 'tool-config'),
+      testsFailedModules,
+    });
+    const checkTests = testsFailedModules.length === 0;
+    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
-      const target = gradleTarget({ projectRoot, configured: gradle, args: stage() });
-      const result = runGradle(
-        target.command,
-        target.args,
-        gradleOptions(target, { projectRoot, budget, spawn }),
-      );
-      assertSucceeded(result, projectRoot, { reportBase, since });
+      runGradleStage({ args: stage(), ...options });
     }
   });
 }
@@ -91,26 +96,14 @@ function withoutReportBase(error, reportBase) {
     : error;
 }
 
-function readOptions(policy = {}) {
-  return {
-    crapLimit: policy.crapLimit,
-    preset: policy.preset ?? 'java',
-    conventions: policy.conventions,
-    fileLimits: policy.fileLimits,
-    exclude: policy.exclude,
-    exceptions: policy.exceptions,
-    testSeconds: policy.testSeconds,
-    testConsoleAllow: policy.testConsoleAllow,
-    javaStyle: policy.javaStyle,
-    baselineRoot: policy.baselineRoot,
-    baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
-  };
-}
-
 function gradleFindings(projectRoot, options, reportBase) {
   const preset = options.policy?.preset ?? 'java';
   const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
-  runJavaPreset(projectRoot, { ...options, reportBase, kotlinRun });
+  const testsFailures = runOrNoteFailingTests(runJavaPreset, projectRoot, {
+    ...options,
+    reportBase,
+    kotlinRun,
+  });
   const report = readReportModules(reportBase, preset);
   const duplicates = {
     reportRoot: reportBase,
@@ -121,12 +114,17 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  return readJavaFindings(projectRoot, {
+  const { findings, imports } = readJavaFindings(projectRoot, {
     ...readOptions(options.policy),
     formatAdvice: kotlinRun?.advice,
     reportBase,
     report,
-  }).findings;
+  });
+  return {
+    findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
+    imports,
+    testsFailures: withRootSourceRoots(testsFailures, report.modules),
+  };
 }
 
 function withGradleReports(projectRoot, options) {
@@ -144,53 +142,60 @@ function withGradleReports(projectRoot, options) {
 }
 
 function mavenFindings(projectRoot, options) {
-  const moduleDirs = runMavenPreset(projectRoot, {
-    maven: options.maven,
-    spawn: options.spawn,
-    policy: options.policy,
+  const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
+    ...options,
+    timeoutMs: options.budget?.mavenCommandTimeoutMs,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
-  for (const moduleDir of moduleDirs) {
-    const { reportBase, report } = moduleReport(moduleDir, MAVEN_REPORT_DIRECTORY);
-    runJavaDuplicates(moduleDir, {
-      reportRoot: reportBase,
-      manifest: report.manifest,
-      skippedFolders: options.policy?.duplicateSkippedFolders,
-    });
+  const duplicates = {
+    reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
+    manifest: mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
+    skippedFolders: options.policy?.duplicateSkippedFolders,
+  };
+  runJavaDuplicates(projectRoot, duplicates);
+  if (options.policy?.preset === 'kotlin') {
+    runKotlinDuplicates(projectRoot, duplicates);
   }
-  return readModuleFindings(projectRoot, moduleDirs, {
+  const { findings, imports } = readModuleReport(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
+    formatAdvice,
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
+  return {
+    findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
+    imports,
+    testsFailures,
+  };
 }
 
 export function collectJavaFindings(root, options = {}) {
+  return collectJavaReport(root, options).findings;
+}
+
+export function collectJavaReport(root, options = {}) {
   const projectRoot = path.resolve(root);
-  const findings =
+  const { findings, imports, testsFailures } =
     detectJavaBuild(projectRoot) === 'maven'
       ? mavenFindings(projectRoot, options)
       : withGradleReports(projectRoot, options);
   const preset = options.policy?.preset ?? 'java';
-  function readSource(file) {
-    return sourceText(projectRoot, file);
-  }
-  return applyFindingPolicy(
+  const readSource = sourceTextReader(projectRoot);
+  const parsed = parseAnalyzerReport(
+    {
+      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
+    },
+    preset,
+  ).findings;
+  const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(
-        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
-        projectRoot,
-      ),
+      withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
       options.policy?.conventions,
       readSource,
     ),
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
-    (reported) => withoutOverlaps(reported, { readSource }),
+    options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-}
-
-function sourceText(projectRoot, file) {
-  const absolute = path.join(projectRoot, file);
-  return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
+  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
 }
 
 function collectBothSnapshots({
@@ -199,23 +204,44 @@ function collectBothSnapshots({
   comparison,
   options,
   policy,
+  warn,
 }) {
-  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
+  const head = { commitSha: comparison.headSha, warn };
+  return withTemporaryWorktree(repositoryRoot, head, (headWorktree) => {
     const policyRoot = path.join(headWorktree, projectRelativePath);
-    function collectIn(worktreeRoot, snapshot) {
+    function collectIn(worktreeRoot, snapshot, extra = {}) {
       return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
         ...options,
-        policy: { ...policy, snapshot, policyRoot },
+        policy: { ...policy, snapshot, policyRoot, ...extra },
       });
     }
-    const headFindings = collectIn(headWorktree, 'head');
-    const baseFindings = withTemporaryWorktree(
+    return withTemporaryWorktree(
       repositoryRoot,
-      comparison.mergeBaseSha,
-      (baseWorktree) => collectIn(baseWorktree, 'base'),
+      { commitSha: comparison.mergeBaseSha, warn },
+      (baseWorktree) => {
+        const collectedBase = collectIn(baseWorktree, 'base');
+        const headFindings = collectIn(headWorktree, 'head', {
+          baselineRoot: path.join(baseWorktree, projectRelativePath),
+        });
+        const notes = testFailuresOf({ findings: collectedBase });
+        return {
+          notes,
+          baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
+          headFindings,
+        };
+      },
     );
-    return { baseFindings, headFindings };
   });
+}
+
+function withEnforceable(outcome) {
+  const newEnforceable = outcome.newFindings.filter(
+    (finding) => finding.classification === 'enforceable',
+  );
+  const failed =
+    newEnforceable.length > 0 ||
+    outcome.newFindings.some((finding) => finding.classification === 'tool-error');
+  return { ...outcome, newEnforceable, failed };
 }
 
 export function runJavaDiff({
@@ -233,31 +259,33 @@ export function runJavaDiff({
   const comparison = includeWorkingTree
     ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
     : committed;
-  const baseToHeadRenames = readRenameMap({
+  const range = {
     repositoryRoot,
     mergeBaseSha: comparison.mergeBaseSha,
     headSha: comparison.headSha,
     projectRelativePath,
-  });
-  const { baseFindings, headFindings } = collectBothSnapshots({
+  };
+  const baseToHeadRenames = readRenameMap(range);
+  const warnings = [];
+  const { notes, baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
     comparison,
     options: { gradle, maven, spawn, initScript },
     policy,
+    warn: (message) => warnings.push(message),
   });
   const touchedCode = {
-    changedLines: readChangedLines({
-      repositoryRoot,
-      mergeBaseSha: comparison.mergeBaseSha,
-      headSha: comparison.headSha,
-      projectRelativePath,
-    }),
+    changedLines: readChangedLines(range),
     isStrictRule: isJavaTouchedRule,
+    testsRemoved: readRemovesTests(range),
   };
-  const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames, touchedCode });
-  const newEnforceable = result.newFindings.filter(
-    (finding) => finding.classification === 'enforceable',
-  );
-  return { comparison, ...result, newEnforceable, failed: newEnforceable.length > 0 };
+  const result = compareFindings({
+    baseFindings,
+    headFindings,
+    baseToHeadRenames,
+    touchedCode,
+    unknownOnBase: unknownOnBaseFor(notes, touchedCode),
+  });
+  return withEnforceable({ comparison, ...result, notes, warnings });
 }

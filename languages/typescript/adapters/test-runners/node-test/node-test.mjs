@@ -23,6 +23,7 @@ import {
 const REPORTER = pathToFileURL(path.join(import.meta.dirname, 'node-test-reporter.mjs')).href;
 const RESTORE_MOCKS = path.join(import.meta.dirname, 'restore-mocks.cjs');
 const REQUIRE_HOOK_OPTIONS = new Set(['--require', '-r']);
+const IN_PROCESS_OPTION = /(?:^|\s)--(?:experimental-)?test-isolation[=\s]+none(?:\s|$)/u;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
 const LOADER_OPTIONS = new Set([
   '--import',
@@ -71,11 +72,12 @@ function typeStrippingArguments(nodeArguments, files) {
     : [];
 }
 
-function restoreMocksArguments(nodeArguments) {
+function restoreMocksArguments(nodeArguments, scriptOptions) {
   const usesRequireHook = nodeArguments.some((token) =>
     REQUIRE_HOOK_OPTIONS.has(token.split('=')[0]),
   );
-  return usesRequireHook
+  const runsInProcess = IN_PROCESS_OPTION.test([...nodeArguments, ...scriptOptions].join(' '));
+  return usesRequireHook || runsInProcess
     ? ['--require', RESTORE_MOCKS]
     : ['--import', pathToFileURL(RESTORE_MOCKS).href];
 }
@@ -101,7 +103,7 @@ export function nodeTestSelection(options, command) {
     nodeArguments: [
       ...command.nodeArguments,
       ...typeStrippingArguments(command.nodeArguments, files),
-      ...restoreMocksArguments(command.nodeArguments),
+      ...restoreMocksArguments(command.nodeArguments, scriptOptions),
     ],
     scriptOptions,
     testFiles: selectedTestFiles(
@@ -140,7 +142,12 @@ export async function runNodeTest(options, command) {
       arguments_: [],
     });
     testConsole.finish();
-    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.node });
+    const run = readRun({
+      reportPath,
+      result,
+      runnerName: RUNNER_NAMES.node,
+      snapshot: options.snapshot,
+    });
     if (!run.failed) {
       await coverage.write();
     }

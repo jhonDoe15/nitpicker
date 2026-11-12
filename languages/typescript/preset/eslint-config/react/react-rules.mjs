@@ -43,7 +43,6 @@ export const accessibilityRuleNames = [
 
 export const reactRuleIds = [
   'nitpicker/no-runtime-exclusive-props-check',
-  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/react-no-effect-data-fetching',
   'nitpicker/react-no-effect-derived-state',
   'nitpicker/react-no-hardcoded-colors',

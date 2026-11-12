@@ -49,13 +49,17 @@ function caseFiles(cases) {
   );
 }
 
+function viaText(via) {
+  return via === undefined ? '' : ` via ${via}`;
+}
+
 function verdictsFrom(found, names) {
   return Object.fromEntries(
     names.map((name, index) => [
       name,
       found
         .filter(({ path: file }) => file.startsWith(`k${String(index)}/`))
-        .map(({ rule, line, subject }) => `${rule}:${String(line)} ${subject}`),
+        .map(({ rule, line, subject, via }) => `${rule}:${String(line)} ${subject}${viaText(via)}`),
     ]),
   );
 }
@@ -69,9 +73,14 @@ export function createScripts({ hidden = [] } = {}) {
     }
   }
 
+  function reportOf(files, settings) {
+    return rawFindingsOf(roots, files, { settings, hidden });
+  }
+
   function findingsOf(files, settings) {
-    return rawFindingsOf(roots, files, { settings, hidden }).map(
-      ({ rule, path: file, subject, line }) => `${rule} ${file}:${String(line)} ${subject}`,
+    return reportOf(files, settings).map(
+      ({ rule, path: file, subject, line, via }) =>
+        `${rule} ${file}:${String(line)} ${subject}${viaText(via)}`,
     );
   }
 
@@ -90,5 +99,5 @@ export function createScripts({ hidden = [] } = {}) {
     return findingsOf({ [file]: code });
   }
 
-  return { cleanup, outcomes, findingsOf, single, verdicts };
+  return { cleanup, outcomes, findingsOf, reportOf, single, verdicts };
 }

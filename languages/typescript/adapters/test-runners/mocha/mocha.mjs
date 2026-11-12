@@ -1,7 +1,10 @@
 import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+import {
+  MOCHA_OPTIONS_NITPICKER_SETS,
+  RUNNER_NAMES,
+} from '../../../preset/test-runner/runners.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import {
   finishedRun,
@@ -15,24 +18,10 @@ import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
 
 export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
 const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
-
-const OPTIONS_NITPICKER_SETS = {
-  flags: ['--watch', '-w', '--forbid-only', '--bail', '-b'],
-  valued: [
-    '--reporter',
-    '-R',
-    '--reporter-option',
-    '--reporter-options',
-    '-O',
-    '--timeout',
-    '-t',
-    '--watch-files',
-    '--watch-ignore',
-  ],
-};
 
 function mochaReport({ options, mochaReportPath, result, testFiles }) {
   const loadFailure = existsSync(mochaReportPath)
@@ -42,12 +31,16 @@ function mochaReport({ options, mochaReportPath, result, testFiles }) {
     return loadFailure;
   }
   return reportFromMocha(
-    readTestReport(mochaReportPath, result, RUNNER_NAMES.mocha),
+    readTestReport(mochaReportPath, result, {
+      runnerName: RUNNER_NAMES.mocha,
+      snapshot: options.snapshot,
+    }),
     options.projectRoot,
   );
 }
 
 export async function runMocha(options, command) {
+  const retries = projectTestRetry('mocha') ?? 0;
   const testFiles = options.rerun?.files ?? runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
   const testConsole = startTestConsole(options, { collectsLines: true });
@@ -60,7 +53,7 @@ export async function runMocha(options, command) {
       nodeArguments: [...coverage.nodeArguments, ...command.nodeArguments],
       environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [
-        ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+        ...withoutOptions(command.arguments_, MOCHA_OPTIONS_NITPICKER_SETS),
         '--require',
         RESTORE_SINON_PLUGIN,
         '--require',
@@ -72,6 +65,10 @@ export async function runMocha(options, command) {
         `output=${mochaReportPath}`,
         '--timeout',
         String(testTimeoutMs(options, testFiles)),
+        '--retries',
+        String(retries),
+        '--no-bail',
+        '--no-forbid-only',
         ...(options.rerun === undefined ? [] : ['--grep', options.rerun.namePattern]),
         ...testFiles,
       ],

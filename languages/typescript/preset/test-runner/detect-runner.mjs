@@ -1,4 +1,4 @@
-import { readManifest } from '../eslint-config/scope-support.mjs';
+import { readManifest, testsCleanUpAutomatically } from '../eslint-config/scope-support.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 import { ambiguityMessage, chooseRunner } from './detection/choose-runner.mjs';
 import { RUNNER_NAMES } from './runners.mjs';
@@ -70,4 +70,18 @@ export function runnerChoiceNotices(tests, analyzers) {
     `Test runner detection ${tests.runnerAmbiguity} Until then the test-file lint rules follow ` +
       `${RUNNER_NAMES[tests.detectedRunner]}, and coverage, CRAP and mutation testing cannot run.`,
   ];
+}
+
+export function withTestRunnerFacts(policy, projectRoot, layout) {
+  const configured = policy.tools?.tests?.runner;
+  const tests = {
+    ...policy.tools?.tests,
+    ...detectedRunnerFact(projectRoot, { configured, layout }),
+  };
+  const runner = tests.runner ?? tests.detectedRunner;
+  const react =
+    policy.react?.enabled === true
+      ? { react: { ...policy.react, autoCleanup: testsCleanUpAutomatically(projectRoot, runner) } }
+      : {};
+  return { ...policy, ...react, tools: { ...policy.tools, tests } };
 }

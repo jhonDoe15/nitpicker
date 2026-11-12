@@ -1,6 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mjs';
@@ -9,6 +13,7 @@ const FILE = 'src/main/java/demo/Big.java';
 const SOURCE = ['class Big {', '  int big(int a) {', '    return a;', '  }', '}', ''].join('\n');
 
 let projectRoot;
+const { gitCheckout } = useGitCheckouts();
 let reportRoot;
 
 const method = (overrides = {}) => ({
@@ -97,12 +102,15 @@ describe('Java structure findings', () => {
       symbol: 'Big.big',
       ratchet: {
         key: 'function:Big.big:occurrence:1:lines',
+        declarationKey: 'function:Big.big:declaration:c9e872d07a659316b3922eaa:lines',
         value: 51,
         worseMessage:
           'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        worseAllowedForm: 'Put new code in a new function.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },
+      anchor: { key: 'function:lines:text:d748da76f8f51980958aab0b' },
       location: { line: 2 },
     });
   });
@@ -384,5 +392,25 @@ describe('Java file limits', () => {
 
   it('skips source roots that do not exist', () => {
     expect(readJavaFileLimitFindings(projectRoot, { manifest })).toEqual([]);
+  });
+});
+
+describe('Java files measured in a Git checkout', () => {
+  it('are those of the checkout, not ignored folders or nested checkouts', () => {
+    const long = `class A { ${'int a; '.repeat(40)}}\n`;
+    const root = gitCheckout(
+      {
+        'src/main/java/demo/A.java': long,
+        'src/main/java/gen/G.java': long,
+        ...nestedCheckout('src/main/java/agent', { 'X.java': long }),
+      },
+      ['src/main/java/gen/'],
+    );
+
+    const found = readJavaFileLimitFindings(root, {
+      manifest: { sourceRoots: ['src/main/java'] },
+    });
+
+    expect(found.map(({ path: file }) => file)).toEqual(['src/main/java/demo/A.java']);
   });
 });

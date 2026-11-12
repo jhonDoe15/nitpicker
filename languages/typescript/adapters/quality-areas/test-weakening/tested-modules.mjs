@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { diffAgainstBase } from '../runners/mutation-scope.mjs';
+import { isInMutationScope } from '../../../../../core/scope/mutation-scope.mjs';
 import {
   isFile,
   projectCompilerOptions,
@@ -107,7 +108,8 @@ export function testedSourceModules(options, layout) {
     ]),
   ]
     .filter((modulePath) => isFile(path.join(baselineRoot, modulePath)))
-    .filter((modulePath) => isFile(path.join(projectRoot, modulePath)));
+    .filter((modulePath) => isFile(path.join(projectRoot, modulePath)))
+    .filter((modulePath) => isInMutationScope(modulePath, options.mutationScope));
   return {
     modules: candidates.slice(0, MAX_TESTED_MODULES).sort(),
     skipped: candidates.slice(MAX_TESTED_MODULES),

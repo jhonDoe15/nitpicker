@@ -1,4 +1,4 @@
-import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
+import { hash, TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { mutationTargets } from '../runners/mutation-scope.mjs';
 import { sourceLineShifts } from './line-shifts.mjs';
@@ -21,7 +21,7 @@ async function weakenedTestsFindings(options, { headReport, mutationScope, mutat
   const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
   const base = await mutationReport(baseOptions, baseMutationTargets(headReport, scope));
   if (base.skipped !== undefined) {
-    return base.skipped;
+    return base.skipped.filter(({ rule }) => rule !== TESTS_FAILED_SKIPPED_RULE);
   }
   return weakenedTestFindings({
     headReport,

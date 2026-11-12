@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "tautological-assert",
+    "mention": "result of the code under test"
+  }
+]

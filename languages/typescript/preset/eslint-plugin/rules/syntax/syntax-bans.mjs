@@ -8,7 +8,8 @@ const restrictionSchema = {
   },
 };
 
-function syntaxBan(description) {
+/** A rule that reports each selector of its options with the option's message. */
+export function syntaxBan(description) {
   return {
     meta: { type: 'suggestion', docs: { description }, schema: restrictionSchema },
     create(context) {
@@ -21,7 +22,3 @@ function syntaxBan(description) {
     },
   };
 }
-
-export const noDefaultExport = syntaxBan('Disallow default exports outside config files');
-export const noNull = syntaxBan('Disallow null outside the allowed library forms');
-export const noPromiseChain = syntaxBan('Disallow then, catch and finally promise chains');

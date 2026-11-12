@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { runnerInstallation } from './runner-tools.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -24,12 +25,19 @@ describe('whether a test runner is installed for the project', () => {
     expect(runnerInstallation(runner, PACKAGE_ROOT)).toEqual({ installed: true });
   });
 
-  it.each(['vitest', 'jest', 'mocha'])('misses %s in a project without it', (runner) => {
+  it.each([
+    [
+      'vitest',
+      '^3.2.0 || ^4.1.11 || ^5.0.0 as a dev dependency of the project. If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 (`npx npm@11 install`) or use Vitest 5.',
+    ],
+    ['jest', '>=29 as a dev dependency of the project.'],
+    ['mocha', '>=10 as a dev dependency of the project.'],
+  ])('misses %s in a project without it', (runner, install) => {
     const root = emptyProject();
 
     expect(runnerInstallation(runner, root)).toEqual({
       installed: false,
-      reason: `Cannot find package '${runner}' imported from ${root}/package.json`,
+      reason: `Required tool ${runner} is not installed from ${root}. Install ${runner} ${install} ${linkSentence('missingPeer')}`,
     });
   });
 

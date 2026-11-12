@@ -20,7 +20,20 @@ const FACTORY_TYPES = {
   emptyList: 'List',
   setOf: 'Set',
   mutableSetOf: 'MutableSet',
+  arrayListOf: 'ArrayList',
+  hashSetOf: 'HashSet',
+  linkedSetOf: 'LinkedHashSet',
+  sortedSetOf: 'SortedSet',
+  sortedMapOf: 'SortedMap',
+  emptySet: 'Set',
+  arrayOf: 'Array',
+  sequenceOf: 'Sequence',
+  emptySequence: 'Sequence',
 };
+
+export function factoryType(name) {
+  return Object.hasOwn(FACTORY_TYPES, name) ? FACTORY_TYPES[name] : undefined;
+}
 
 export function entriesOf(declaration) {
   return declaration.annotationEntries ?? [];
@@ -39,7 +52,7 @@ export function ownerOf(view, invocation) {
 }
 
 export function symbolOf(view, scopeId, name) {
-  const fn = view.chain(scopeId).find(({ k }) => k === 'fun');
+  const fn = view.chain(scopeId).find(({ k, name }) => k === 'fun' && name !== undefined);
   const owner = view.chain(scopeId).find(({ k }) => k === 'class')?.qualified;
   return [owner, fn?.name, name].filter(Boolean).join('.');
 }
@@ -62,12 +75,12 @@ export function acceptsArguments(fn, count) {
   );
 }
 
-function initMethods(view) {
+export function beanMethodNames(view, option) {
   return new Set(
     view.file.functions
       .map((fn) => annotationIn(view.resolve, entriesOf(fn), BEAN))
       .flatMap((entry) => entry?.arguments ?? [])
-      .filter(({ name }) => name === 'initMethod')
+      .filter(({ name }) => name === option)
       .map(({ text }) => text.replaceAll('"', '')),
   );
 }
@@ -110,7 +123,7 @@ export function setupScopes(view, isStart) {
 }
 
 export function startupScopes(view, { singletons = true } = {}) {
-  const initNames = initMethods(view);
+  const initNames = beanMethodNames(view, 'initMethod');
   const callbacks = singletons ? STARTUP_NAMES : INIT_NAMES;
   return setupScopes(
     view,
@@ -153,7 +166,7 @@ export function returnTypeOf(view, fn) {
       ? [...COMPLETABLE_FUTURE][0]
       : undefined;
   }
-  const type = FACTORY_TYPES[call.name] ?? (TYPE_NAME.test(call.name) ? call.name : undefined);
+  const type = factoryType(call.name) ?? (TYPE_NAME.test(call.name) ? call.name : undefined);
   return type === undefined || call.typeArgumentList === undefined
     ? undefined
     : `${type}${call.typeArgumentList}`;

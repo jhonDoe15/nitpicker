@@ -56,16 +56,66 @@ def is_mutable_value(node, aliases):
     return False
 
 
-def is_frozen(node):
+FROZEN_DECORATOR = "frozen"
+MODEL_CONFIG = "model_config"
+CONFIG_CLASS = "Config"
+FROZEN_SETTINGS = {"frozen": True, "allow_mutation": False}
+NO_ALIASES = ({}, {})
+
+
+def is_constant(node, value):
+    return isinstance(node, ast.Constant) and node.value is value
+
+
+def frozen_keywords(call):
     return any(
-        isinstance(decorator, ast.Call)
-        and any(
-            keyword.arg == "frozen"
-            and isinstance(keyword.value, ast.Constant)
-            and keyword.value.value is True
-            for keyword in decorator.keywords
-        )
-        for decorator in node.decorator_list
+        is_constant(keyword.value, FROZEN_SETTINGS.get(keyword.arg, ()))
+        for keyword in call.keywords
+    )
+
+
+def frozen_decorator(decorator):
+    if isinstance(decorator, ast.Call):
+        return frozen_keywords(decorator)
+    name = dotted_name(decorator, NO_ALIASES) or ""
+    return name.rsplit(".", 1)[-1] == FROZEN_DECORATOR
+
+
+def frozen_mapping(value):
+    if isinstance(value, ast.Call):
+        return frozen_keywords(value)
+    if not isinstance(value, ast.Dict):
+        return False
+    return any(
+        isinstance(key, ast.Constant)
+        and is_constant(item, FROZEN_SETTINGS.get(key.value, ()))
+        for key, item in zip(value.keys, value.values)
+    )
+
+
+def frozen_config(statement):
+    return any(
+        isinstance(target, ast.Name)
+        and is_constant(value, FROZEN_SETTINGS.get(target.id, ()))
+        for item in statement.body
+        for target, value in assigned_pairs(item)
+    )
+
+
+def frozen_setting(statement):
+    if isinstance(statement, ast.ClassDef):
+        return statement.name == CONFIG_CLASS and frozen_config(statement)
+    return any(
+        isinstance(target, ast.Name)
+        and target.id == MODEL_CONFIG
+        and frozen_mapping(value)
+        for target, value in assigned_pairs(statement)
+    )
+
+
+def is_frozen(node):
+    return any(frozen_decorator(item) for item in node.decorator_list) or any(
+        frozen_setting(statement) for statement in node.body
     )
 
 

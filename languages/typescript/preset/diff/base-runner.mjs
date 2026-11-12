@@ -1,7 +1,7 @@
 import { runnerInstallation } from '../../adapters/test-runners/runner-tools.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
 import { runnerDetection } from '../test-runner/detect-runner.mjs';
-import { recordedTestRunner } from '../test-runner/runner-vocabulary.mjs';
+import { recordedTestRunner } from '../test-runner/vocabulary/runner-vocabulary.mjs';
 import { RUNNER_NAMES, RUNNER_PACKAGES } from '../test-runner/runners.mjs';
 import { runnerTestFileFacts } from '../test-runner/test-files/runner-test-files.mjs';
 

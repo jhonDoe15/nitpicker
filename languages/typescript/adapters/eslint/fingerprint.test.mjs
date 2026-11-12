@@ -1,61 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
 import { normalizeEslintResults } from './normalize.mjs';
-
-const temporaryRoots = [];
-
-afterAll(() => {
-  for (const root of temporaryRoots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function positionOf(code, offset) {
-  const before = code.slice(0, offset).split('\n');
-  return { line: before.length, column: (before.at(-1)?.length ?? 0) + 1 };
-}
-
-// Normalizes ESLint messages that point at `reported` (a substring of `code`, or a list of them,
-// one message each), the way ESLint reports them: a 1-based start and end.
-function findingFor({
-  code,
-  reported,
-  ruleId = 'functional/prefer-immutable-types',
-  messageId,
-  message = 'Reported text.',
-}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-fingerprint-'));
-  temporaryRoots.push(root);
-  mkdirSync(path.join(root, 'src'), { recursive: true });
-  writeFileSync(path.join(root, 'src/legacy.ts'), code);
-  const reportedTexts = [reported].flat();
-  const messages = reportedTexts.map((text, index) => {
-    const start = code.indexOf(text, index === 0 ? 0 : code.indexOf(reportedTexts[index - 1]) + 1);
-    const first = positionOf(code, start);
-    const last = positionOf(code, start + text.length);
-    return {
-      ruleId,
-      messageId,
-      message,
-      severity: 2,
-      line: first.line,
-      column: first.column,
-      endLine: last.line,
-      endColumn: last.column,
-    };
-  });
-  const findings = normalizeEslintResults({
-    value: [{ filePath: path.join(root, 'src/legacy.ts'), messages }],
-    projectRoot: root,
-    analyzerName: 'eslint-strict',
-  });
-  expect(findings).toHaveLength(reportedTexts.length);
-  return findings;
-}
+import { findingFor, makeTemporaryRoot, positionOf } from './test-support/finding-for.mjs';
 
 function compare(base, head) {
   return compareFindings({ baseFindings: base, headFindings: head });
@@ -155,12 +104,13 @@ describe('a finding in an edited function stays baselined while the function has
       rule: SILENT,
       path: 'src/legacy.ts',
       identity:
-        'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+        'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
       message:
         'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
       classification: 'enforceable',
       symbol: 'load',
+      anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
       ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       heldAtBase: 1,
     },
@@ -249,12 +199,13 @@ describe('a finding in an edited function stays baselined while the function has
         rule: 'nitpicker/no-silent-catch',
         path: 'src/legacy.ts',
         identity:
-          'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+          'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
         message:
           'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },
         classification: 'enforceable',
         symbol: 'fetchValue',
+        anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
         ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -319,7 +270,9 @@ describe('a new throw in a legacy function', () => {
       value: 1,
       existingCodeOnly: true,
       growthAdvice:
-        'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.',
+      growthAllowedForm:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
     });
   });
 
@@ -327,7 +280,19 @@ describe('a new throw in a legacy function', () => {
     const result = compareWithInserted(throws(oneThrow), throws(twoThrows), [[5, 7]]);
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      `${NO_THROW_MESSAGE} This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. ${NO_THROW_ROUTE}`,
+      `${NO_THROW_MESSAGE} Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had 1 of these at base and the count may not grow: a throw on a new line counts as new even when the count holds. ${NO_THROW_ROUTE}`,
+    ]);
+  });
+
+  it('keeps the throws of a renamed legacy function baselined', () => {
+    const renamed = twoThrows.replace('function parse', 'function read');
+    const result = compareWithInserted(throws(twoThrows), throws(renamed), [[1, 1]]);
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['read', 2],
+      ['read', 2],
     ]);
   });
 
@@ -394,6 +359,36 @@ describe('a complexity finding fails only when the number rises', () => {
     ]);
   });
 
+  it.each(cases)('keeps %s baselined after a rename', (_name, build, reported) => {
+    const rename = (body) => build(body).replace('total', 'sum');
+    const renamed = find(rename, reported === 'total' ? 'sum' : reported, 16);
+    const result = compareFindings({
+      baseFindings: find(build, reported, 16),
+      headFindings: renamed,
+      touchedCode: {
+        changedLines: new Map([
+          ['src/legacy.ts', { added: false, ranges: [[1, 1]], inserted: [] }],
+        ]),
+        isStrictRule,
+      },
+    });
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['sum', 16],
+    ]);
+  });
+
+  it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
+    const rename = (body) => build(body).replace('total', 'sum');
+    const grown = find(rename, reported === 'total' ? 'sum' : reported, 60, '  return 2;');
+    const result = compare(find(build, reported, 16), grown);
+
+    expect(result.newFindings.map(({ rule }) => rule)).toEqual(['nitpicker/cognitive-complexity']);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['total']);
+  });
+
   it.each(cases)('fails %s that is over the limit for the first time', (_name, build, reported) => {
     const result = compare([], find(build, reported, 16));
 
@@ -405,8 +400,7 @@ describe('a complexity finding fails only when the number rises', () => {
 
 describe('findings another rule already covers', () => {
   function normalized(code, reports) {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-superseded-'));
-    temporaryRoots.push(root);
+    const root = makeTemporaryRoot('nitpicker-eslint-superseded-');
     mkdirSync(path.join(root, 'src'), { recursive: true });
     writeFileSync(path.join(root, 'src/rows.tsx'), code);
     const messages = reports.map(([ruleId, text]) => {

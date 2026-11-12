@@ -1,0 +1,12 @@
+  <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
+  [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

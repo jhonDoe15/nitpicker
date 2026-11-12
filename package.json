@@ -1,6 +1,6 @@
 {
   "name": "nitpicker",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0-rc.2",
   "description": "A quality gate for code written by coding agents. It narrows each language to one allowed way of doing each thing and fails a change only for the problems it adds.",
   "keywords": [
     "quality-gate",
@@ -13,6 +13,7 @@
     "python",
     "java",
     "kotlin",
+    "go",
     "mutation-testing",
     "eslint"
   ],
@@ -26,7 +27,7 @@
     "url": "https://github.com/jhonDoe15/nitpicker/issues"
   },
   "bin": {
-    "nitpicker": "core/cli.mjs"
+    "nitpicker": "core/bin.mjs"
   },
   "type": "module",
   "engines": {
@@ -36,29 +37,56 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
+    "gen:schema": "node scripts/schema/gen-config-schema.mjs",
+    "gen:rules": "node scripts/reference/gen-rules.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "prepack": "node scripts/reference/gen-rules.mjs --data && node scripts/typescript/emit.mjs",
+    "postpack": "node scripts/typescript/emit.mjs --clean",
+    "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mjs",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
-    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism languages/java/adapters/java-e2e/preset languages/java/adapters/java-e2e/test-frameworks.e2e.test.mjs languages/java/adapters/java-e2e/multi-project.e2e.test.mjs languages/java/adapters/spring/e2e languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs languages/java/adapters/java-e2e/integration-tests.e2e.test.mjs languages/java/maven/preset languages/java/adapters/errorprone/error-prone.e2e.test.mjs languages/java/adapters/errorprone/lombok.e2e.test.mjs languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs languages/java/messages/rule-catalog.e2e.test.mjs",
-    "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000 languages/python/adapters/e2e languages/python/adapters/project-tools/pyright/pyright.e2e.test.mjs languages/python/adapters/project-tools/mypy.e2e.test.mjs languages/python/rules/nitpicker-rules.e2e.test.mjs languages/python/rules/swallowing.e2e.test.mjs languages/python/rules/rule-cases.e2e.test.mjs languages/python/rules/e2e languages/python/ruff/ruff-rules.e2e.test.mjs languages/python/ruff/ruff-groups.e2e.test.mjs languages/python/adapters/formatting/format-scope.e2e.test.mjs languages/python/adapters/configuration/python-ruff-config.e2e.test.mjs",
-    "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts languages/java/adapters/kotlin-metrics.e2e.test.mjs languages/java/adapters/kotlin-e2e"
+    "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism",
+    "test:python": "NITPICKER_PYTHON_E2E=1 vitest run --config vitest.config.mts --testTimeout=900000 --hookTimeout=900000",
+    "test:typescript": "NITPICKER_TS_RED_BASE=1 vitest run --config vitest.config.mts --testTimeout=300000 --hookTimeout=300000 core/diff/tests/policy/base-red/ts-red-base.test.mjs languages/typescript/adapters/quality-areas/unreached-mutants.test.mjs",
+    "test:kotlin": "NITPICKER_KOTLIN_E2E=1 vitest run --config vitest.config.mts",
+    "test:go": "NITPICKER_GO_E2E=1 vitest run --config vitest.config.mts --testTimeout=600000 --hookTimeout=600000"
   },
   "prettier": "./languages/typescript/preset/defaults/.prettierrc.json",
   "files": [
     "core/**/*.mjs",
     "shared/**/*.mjs",
+    "shared/reference/rules/*.json",
     "languages/**",
     "!**/*.test.mjs",
+    "!**/*.mts",
+    "!**/*_test.go",
     "!**/fixtures/**",
     "!**/test-support/**",
     "!languages/java/**/__tests__/**",
     "!**/README.md",
     "!**/__pycache__/**",
     "!**/*.pyc",
-    "skills/**"
+    "!core/reference/**",
+    "!shared/reference/build/**",
+    "!shared/reference/checks/**",
+    "!languages/*/reference/**",
+    "!languages/python/ruff/ruff-rules.json",
+    "core/init/templates/*.yml",
+    "docs/agents-snippet.md",
+    "!languages/java/gradle/rulesets/**",
+    "skills/**",
+    "CHANGELOG.md",
+    "spec/config.schema.json",
+    "spec/findings.schema.json",
+    "spec/json-output.schema.json"
   ],
   "exports": {
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./config.schema.json": "./spec/config.schema.json",
+    "./spec/config.schema.json": "./spec/config.schema.json",
+    "./spec/findings.schema.json": "./spec/findings.schema.json",
+    "./spec/json-output.schema.json": "./spec/json-output.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",
@@ -97,6 +125,7 @@
     "@stryker-mutator/tap-runner": "10.0.0",
     "@stryker-mutator/typescript-checker": "10.0.0",
     "@stryker-mutator/vitest-runner": "10.0.0",
+    "@typescript/native": "npm:typescript@7.0.2",
     "@vitest/eslint-plugin": "1.6.27",
     "acorn": "8.18.0",
     "ast-v8-to-istanbul": "1.0.7",
@@ -121,8 +150,9 @@
     "prettier": "3.9.6",
     "smol-toml": "1.9.0",
     "typescript-eslint": "8.68.0",
-    "typescript-native": "npm:typescript@7.0.2",
-    "yaml": "2.9.1"
+    "typescript-js-api": "npm:typescript@6.0.3",
+    "yaml": "2.9.1",
+    "z3-solver": "5.3.1"
   },
   "devDependencies": {
     "@testing-library/dom": "10.4.2",

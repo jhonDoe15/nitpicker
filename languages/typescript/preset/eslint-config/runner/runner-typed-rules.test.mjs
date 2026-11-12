@@ -117,9 +117,9 @@ beforeAll(async () => {
   eslintFindings = located(await eslint.lintFiles(['src/**/*.ts']));
 });
 
-beforeAll(() => {
+beforeAll(async () => {
   oxlintFindings = located(
-    lintWithOxlint({
+    await lintWithOxlint({
       options: { projectRoot: root, patterns: ['src/**/*.ts'] },
       projectConfigPath: path.join(root, 'tsconfig.json'),
       environment: {

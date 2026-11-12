@@ -4,15 +4,12 @@ import {
   isSuiteCall,
   isTestFunctionChain,
 } from '../test-quality/test-calls.mjs';
+import { isLiteralCondition } from './literal-condition.mjs';
 
 const CONDITIONAL_SKIPS = new Set(['skipIf', 'runIf']);
 const TOKEN_MESSAGES = new Map([['todo', 'todo']]);
 const SWITCH_OFF_OPTIONS = new Set(['skip', 'todo']);
 const SWITCH_OFF_CALLS = new Set(['skip', 'todo']);
-
-function isBooleanLiteral(node) {
-  return node?.type === 'Literal' && typeof node.value === 'boolean';
-}
 
 function isFixedSwitchOff(value) {
   if (value?.type === 'TemplateLiteral') {
@@ -126,7 +123,7 @@ export const rule = {
           !callee.computed &&
           CONDITIONAL_SKIPS.has(callee.property.name) &&
           isTestFunctionChain(callee.object) &&
-          isBooleanLiteral(node.arguments[0])
+          isLiteralCondition(node.arguments[0])
         ) {
           context.report({ node: callee.property, messageId: 'literalCondition' });
         }

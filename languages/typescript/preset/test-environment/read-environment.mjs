@@ -2,12 +2,21 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { chainOf, parentDirectory } from '../../../../shared/traversal.mjs';
-import { loadedMochaOptions } from '../test-runner/test-files/mocha-options.mjs';
+import { loadInChild, loaderScript } from '../project-configs/config-module.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig, testFilesFromConfig } from './environments.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
-export const RESULT_MARKER = 'NITPICKER_TEST_ENVIRONMENT_RESULT ';
-export const MOCHA_MODE = '--mocha-options';
+const READ_SCRIPT = loaderScript(
+  "process.env.VITEST = 'true';",
+  "process.env.NODE_ENV = 'test';",
+  `const { readEnvironment } = await import(${JSON.stringify(import.meta.url)});`,
+  'const [configFile, projectRoot, ...resolveRoots] = process.argv.slice(1);',
+  'report({ value: await readEnvironment({ configFile, projectRoot, resolveRoots }) });',
+);
 
 function entryOf(manifest) {
   const entry = manifest.exports?.['.'];
@@ -20,7 +29,12 @@ function viteManifestFrom(root) {
   const manifestPath = chainOf(root, parentDirectory)
     .map((directory) => path.join(directory, 'node_modules/vite/package.json'))
     .find((candidate) => existsSync(candidate));
-  if (manifestPath === undefined) throw new Error(`vite is not installed at or above ${root}`);
+  if (manifestPath === undefined) {
+    throw troubleshootingError(
+      `vite is not installed at or above ${root}`,
+      TROUBLESHOOTING_ANCHORS.missingPeer,
+    );
+  }
   return manifestPath;
 }
 
@@ -39,7 +53,35 @@ async function loadVite(roots) {
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
-  throw new Error(`vite could not be resolved from the project (${failures.join('; ')})`);
+  throw troubleshootingError(
+    `vite could not be resolved from the project (${failures.join('; ')})`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
+  );
+}
+
+function serializedRetry(retry) {
+  if (typeof retry !== 'object' || retry === null || retry.condition === undefined) {
+    return retry;
+  }
+  const { condition } = retry;
+  return {
+    ...retry,
+    condition:
+      condition instanceof RegExp
+        ? { source: condition.source, flags: condition.flags }
+        : { type: typeof condition },
+  };
+}
+
+function projectRetries(config) {
+  const entries = Array.isArray(config?.test?.projects) ? config.test.projects : [];
+  const retries = entries.flatMap((entry, index) => {
+    const retry = entry?.test?.retry;
+    return retry === undefined
+      ? []
+      : [{ name: entry.test.name ?? `#${String(index + 1)}`, retry: serializedRetry(retry) }];
+  });
+  return retries.length === 0 ? {} : { projectRetries: retries };
 }
 
 export async function readEnvironment({ configFile, projectRoot, resolveRoots }) {
@@ -56,33 +98,17 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
       aliases: aliasesFromConfig(config, projectRoot),
     },
     testFiles: testFilesFromConfig(config, projectRoot),
+    retry: serializedRetry(config?.test?.retry),
+    ...projectRetries(config),
   };
 }
 
-function readMocha([projectRoot, liveProjectRoot, ...tokens]) {
-  return loadedMochaOptions({ projectRoot, liveProjectRoot, tokens });
-}
-
-function readVite([configFile, projectRoot, ...resolveRoots]) {
-  return readEnvironment({ configFile, projectRoot, resolveRoots });
-}
-
-async function main([mode, ...rest]) {
-  try {
-    const result = await (mode === MOCHA_MODE ? readMocha(rest) : readVite([mode, ...rest]));
-    process.stdout.write(`\n${RESULT_MARKER}${JSON.stringify({ result })}\n`);
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    process.stdout.write(`\n${RESULT_MARKER}${JSON.stringify({ failure: reason })}\n`);
-  }
-  process.exit(0);
-}
-
-const invokedPath = process.argv[1];
-
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  await main(process.argv.slice(2));
+export function readConfigInChild({ configFile, projectRoot, resolveRoots, timeoutMs }) {
+  return loadInChild({
+    script: READ_SCRIPT,
+    args: [configFile, projectRoot, ...resolveRoots],
+    name: path.relative(projectRoot, configFile).split(path.sep).join('/'),
+    projectRoot,
+    timeoutMs,
+  });
 }

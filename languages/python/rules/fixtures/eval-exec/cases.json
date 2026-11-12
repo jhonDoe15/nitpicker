@@ -1,0 +1,12 @@
+[
+  {
+    "tool": "ruff",
+    "rule": "S102",
+    "mention": "ast.literal_eval"
+  },
+  {
+    "tool": "ruff",
+    "rule": "S307",
+    "mention": "ast.literal_eval"
+  }
+]

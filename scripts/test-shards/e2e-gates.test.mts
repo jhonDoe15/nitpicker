@@ -1,0 +1,204 @@
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
+import {
+  SUITES,
+  classifyGates,
+  gateCandidates,
+  suiteFiles,
+  workflowProblems,
+} from './e2e-gates.mts';
+import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
+
+const ENV = ['process', 'env'].join('.');
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+function repository(files: Readonly<Record<string, string>>): string {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-e2e-gates-'));
+  roots.push(root);
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
+  return root;
+}
+
+describe('the E2E gate candidates', () => {
+  it('are the .e2e.test. files and the tests that read a suite flag directly or through imports', () => {
+    const root = repository({
+      'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
+      'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+      'languages/a/gated.test.mjs': "import { on } from './support.mjs';\n",
+      'languages/a/project.mjs': "export { on } from './support.mjs';\n",
+      'languages/a/nested/deep.test.mjs': "import { on } from '../project.mjs';\n",
+      'languages/a/helper.mjs': "import { on } from './support.mjs';\nexport const size = 1;\n",
+      'languages/a/helper.test.mjs': "import { size } from './helper.mjs';\n",
+      'languages/a/unit.test.mjs': "vi.stubEnv('NITPICKER_JAVA_E2E', '1');\n",
+      'scripts/typo.test.mjs': `const on = ${ENV}['NITPICKER_JAAVA_E2E'] === '1';\n`,
+      'docs/other.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+    });
+
+    expect(gateCandidates(root)).toEqual([
+      { file: 'languages/a/gated.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+      { file: 'languages/a/nested/deep.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+      { file: 'languages/a/plain.e2e.test.mjs', flags: [] },
+      { file: 'scripts/typo.test.mjs', flags: ['NITPICKER_JAAVA_E2E'] },
+    ]);
+  });
+});
+
+describe('the suite files', () => {
+  const files = {
+    'languages/a/java.e2e.test.mjs': `const on = ${ENV}.NITPICKER_JAVA_E2E === '1';\n`,
+    'languages/a/support.mjs': `export const on = ${ENV}.NITPICKER_KOTLIN_E2E === '1';\n`,
+    'languages/a/kotlin.test.mjs': "import { on } from './support.mjs';\n",
+    'languages/a/plain.e2e.test.mjs': "it('runs', () => {});\n",
+    'languages/a/unit.test.mjs': "it('runs', () => {});\n",
+  };
+
+  it('are the files that read the flag of a suite that is set, directly or through an import', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/kotlin.test.mjs',
+    ]);
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '1', NITPICKER_KOTLIN_E2E: '1' })).toEqual([
+      'languages/a/java.e2e.test.mjs',
+      'languages/a/kotlin.test.mjs',
+    ]);
+  });
+
+  it('are none when no suite flag is set to 1', () => {
+    const root = repository(files);
+
+    expect(suiteFiles(root, { NITPICKER_JAVA_E2E: '0' })).toEqual([]);
+  });
+});
+
+const cases = (file: string, ...names: string[]): { file: string; name: string }[] =>
+  names.map((name) => ({ file, name }));
+
+describe('the E2E gates', () => {
+  const candidates = [
+    { file: 'java.e2e.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+    { file: 'helper-gated.test.mjs', flags: ['NITPICKER_JAVA_E2E'] },
+    { file: 'kotlin.e2e.test.mjs', flags: [] },
+    { file: 'python.e2e.test.mjs', flags: ['NITPICKER_PYTHON_E2E'] },
+    { file: 'both.e2e.test.mjs', flags: ['NITPICKER_JAVA_E2E', 'NITPICKER_KOTLIN_E2E'] },
+    { file: 'ungated.e2e.test.mjs', flags: [] },
+    { file: 'typo.e2e.test.mjs', flags: ['NITPICKER_KOTLN_E2E'] },
+    { file: 'foreign.e2e.test.mjs', flags: ['NITPICKER_PYTHON_E2E'] },
+    { file: 'go.e2e.test.mjs', flags: ['NITPICKER_GO_E2E'] },
+  ];
+  const ungated = cases('ungated.e2e.test.mjs', 'runs everywhere');
+  const listings = {
+    baseline: ungated,
+    listed: {
+      java: [
+        ...ungated,
+        ...cases('java.e2e.test.mjs', 'a', 'b'),
+        ...cases('helper-gated.test.mjs', 'c'),
+        ...cases('both.e2e.test.mjs', 'd'),
+        ...cases('foreign.e2e.test.mjs', 'e'),
+      ],
+      kotlin: [
+        ...ungated,
+        ...cases('kotlin.e2e.test.mjs', 'f'),
+        ...cases('both.e2e.test.mjs', 'd'),
+      ],
+      python: [...ungated, ...cases('python.e2e.test.mjs', 'g')],
+      go: [...ungated, ...cases('go.e2e.test.mjs', 'h')],
+    },
+  };
+
+  it('report a file under two flags, none, a flag no suite sets or a flag it does not read', () => {
+    expect(classifyGates(candidates, listings).problems).toEqual([
+      'both.e2e.test.mjs is gated by NITPICKER_JAVA_E2E and NITPICKER_KOTLIN_E2E',
+      'ungated.e2e.test.mjs is gated by no suite flag',
+      'typo.e2e.test.mjs is gated by no suite flag',
+      'typo.e2e.test.mjs reads NITPICKER_KOTLN_E2E, which no suite sets',
+      'foreign.e2e.test.mjs reads NITPICKER_PYTHON_E2E but does not list under it',
+    ]);
+  });
+
+  it('expect each suite to select the files that only its flag gates, whatever their name', () => {
+    expect(classifyGates(candidates, listings).expected).toEqual({
+      java: [
+        'foreign.e2e.test.mjs > e',
+        'helper-gated.test.mjs > c',
+        'java.e2e.test.mjs > a',
+        'java.e2e.test.mjs > b',
+      ],
+      kotlin: ['kotlin.e2e.test.mjs > f'],
+      python: ['python.e2e.test.mjs > g'],
+      go: ['go.e2e.test.mjs > h'],
+    });
+  });
+});
+
+function workflow(language: string): unknown {
+  const file = path.join(import.meta.dirname, `../../.github/workflows/${language}-e2e.yml`);
+  const parsed: unknown = parse(readFileSync(file, 'utf8'));
+  return parsed;
+}
+
+function withJob(parsed: unknown, name: string, change: (job: Fields) => Fields): unknown {
+  const jobs = fieldsOf(fieldsOf(parsed)?.['jobs']) ?? {};
+  return { ...fieldsOf(parsed), jobs: { ...jobs, [name]: change(fieldsOf(jobs[name]) ?? {}) } };
+}
+
+function withoutShardOption(job: Fields): Fields {
+  const steps = listOf(job['steps']).map((step) => {
+    const fields = fieldsOf(step) ?? {};
+    const run = fields['run'];
+    return typeof run === 'string' ? { ...fields, run: run.replace(/ --shard=\S+/u, '') } : fields;
+  });
+  return { ...job, steps };
+}
+
+describe('the E2E workflows', () => {
+  it.each(SUITES)(
+    'run the %s shards, its shard plan and an aggregate that checks both',
+    (language) => {
+      expect(workflowProblems(workflow(language), language)).toEqual([]);
+    },
+  );
+
+  it('report an aggregate that does not need the plan, and a shard run without --shard', () => {
+    const parsed = withJob(
+      withJob(workflow('python'), 'python-e2e', (job) => ({
+        ...job,
+        needs: ['changes', 'python-shard'],
+      })),
+      'python-shard',
+      withoutShardOption,
+    );
+
+    expect(workflowProblems(parsed, 'python')).toEqual([
+      'python-shard must run test:python with --shard=${{ matrix.shard }}/${{ strategy.job-total }}',
+      'one aggregate job must always run, need python-shard-plan and python-shard and check both results',
+    ]);
+  });
+
+  it('report an aggregate that ignores the changed-file selection', () => {
+    const parsed = withJob(workflow('go'), 'go-e2e', (job) => ({
+      ...job,
+      needs: ['go-shard-plan', 'go-shard'],
+    }));
+
+    expect(workflowProblems(parsed, 'go')).toEqual([
+      'the aggregate job must also need changes and check its result',
+    ]);
+  });
+});

@@ -1,4 +1,9 @@
-import { childrenNamed, createIdentityCounter, parseXml } from '../../../shared/ingest/common.mjs';
+import {
+  childrenNamed,
+  createIdentityCounter,
+  parseXml,
+  testCaseProblem,
+} from '../../../shared/ingest/common.mjs';
 
 const VIOLATION = /^([A-Z][A-Za-z ]*?) <((?:[^<>]|<\w+>)+)>/;
 const SOURCE_REFERENCE = /\s+in \(([^():]+\.(?:java|kt|groovy)):\d+\)\s*$/;
@@ -25,7 +30,7 @@ export function ingestArchunit(xml, options = {}) {
 }
 
 function testCaseFindings({ suite, testCase }, context) {
-  const failure = [...childrenNamed(testCase, 'failure'), ...childrenNamed(testCase, 'error')][0];
+  const failure = testCaseProblem(testCase)?.problem;
   if (failure === undefined) return [];
   const rule = testCase.attrs.name || 'archunit';
   const testClass = testCase.attrs.classname ?? suite.attrs.name ?? '';

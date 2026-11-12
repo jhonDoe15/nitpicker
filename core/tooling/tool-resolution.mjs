@@ -1,14 +1,14 @@
-import { chainOf } from '../../shared/traversal.mjs';
-import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
-import { findPackageJSON } from 'node:module';
-import { tmpdir } from 'node:os';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
+import { findPackageJSON } from './package-lookup/package-json.mjs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { realTemporaryDirectory } from './temporary-files.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../shared/messages/troubleshooting.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
-const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
@@ -18,22 +18,36 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
   return { root, version: installed.version, binPath: toolBinary(name, root, bin) };
 }
 
+export function isToolInstalled(name, { projectRoot, packageRoot = PACKAGE_ROOT } = {}) {
+  const { from } = owningTool(name, { projectRoot, packageRoot });
+  return packageFileOf(name, from) !== undefined;
+}
+
 function owningTool(name, { projectRoot, packageRoot }) {
   const trustedPackageRoot = realpathSync(packageRoot);
-  const owningManifest =
-    trustedPackageRoot === PACKAGE_ROOT
-      ? manifest
-      : readManifest(path.join(trustedPackageRoot, 'package.json'));
+  const owningManifest = readManifest(path.join(trustedPackageRoot, 'package.json'));
   const owningPeers = new Set(Object.keys(owningManifest.peerDependencies ?? {}));
   const from = owningPeers.has(name) ? projectRoot : trustedPackageRoot;
   if (from === undefined) throw new Error(`Project root is required to resolve peer tool ${name}`);
   return { owningManifest, owningPeers, from };
 }
 
+function packageFileOf(name, from) {
+  try {
+    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 function installedTool(name, { owningManifest, owningPeers, from }) {
-  const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
-  if (packageFile === undefined)
-    throw new Error(`Required tool ${name} is not installed from ${from}`);
+  const packageFile = packageFileOf(name, from);
+  if (packageFile === undefined) {
+    throw missingToolError(name, from, owningManifest.peerDependencies?.[name]);
+  }
   const root = realpathSync(path.dirname(packageFile));
   if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
     throw new Error(`Tool ${name} must not resolve from an analyzed snapshot`);
@@ -45,6 +59,28 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
     isPeer: owningPeers.has(name),
   });
   return { root, installed };
+}
+
+const VITEST_PACKAGES = new Set(['vitest', '@vitest/coverage-v8']);
+const NPM_10_HINT =
+  'If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+  '(`npx npm@11 install`) or use Vitest 5';
+
+export function missingToolMessage(name, from) {
+  const message = `Required tool ${name} is not installed from ${from}`;
+  return VITEST_PACKAGES.has(name) ? `${message}. ${NPM_10_HINT}` : message;
+}
+
+function missingToolError(name, from, peerRange) {
+  if (peerRange === undefined) {
+    return new Error(missingToolMessage(name, from));
+  }
+  const message = `Required tool ${name} is not installed from ${from}`;
+  const hint = VITEST_PACKAGES.has(name) ? ` ${NPM_10_HINT}.` : '';
+  return troubleshootingError(
+    `${message}. Install ${name} ${peerRange} as a dev dependency of the project.${hint}`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
+  );
 }
 
 function toolBinary(name, root, bin) {
@@ -85,32 +121,8 @@ export function toolNameForPath(relativeToolPath) {
   return parts[0].startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
 }
 
-const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
-
-export function resolveProjectRoot(cwd = process.cwd()) {
-  const current = realpathSync(cwd);
-  const repositoryRoot = realpathSync(
-    execFileSync('git', ['rev-parse', '--show-toplevel'], {
-      cwd: current,
-      encoding: 'utf8',
-    }).trim(),
-  );
-  const directories = chainOf(current, (directory) => {
-    const parent = path.dirname(directory);
-    return directory === repositoryRoot || directory === parent ? undefined : parent;
-  });
-  const projectRoot = directories.find((directory) =>
-    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
-  );
-  if (projectRoot !== undefined) return projectRoot;
-  throw new Error(
-    `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
-      `For a Java, Kotlin or Python project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
-  );
-}
-
 function isAnalyzedSnapshotPath(candidate) {
-  const relative = path.relative(realpathSync(tmpdir()), path.resolve(candidate));
+  const relative = path.relative(realTemporaryDirectory(), path.resolve(candidate));
   const isInsideTemporaryRoot =
     relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative);
   return (

@@ -34,7 +34,7 @@ function projectWith(files, { vite = 'real', packages = [] } = {}) {
 function noticePattern(reason) {
   const escaped = reason.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&');
   return new RegExp(
-    `^The project's test config vitest\\.config\\.mjs could not be read \\(.*${escaped}.*\\), so the DOM-environment check only uses per-file directives\\.$`,
+    `^The DOM-environment check only uses per-file directives: vitest\\.config\\.mjs could not be loaded: .*${escaped}.*\\.$`,
     'u',
   );
 }
@@ -85,7 +85,7 @@ describe('loadTestEnvironments', () => {
       'import "@acme/missing-plugin"; export default {};',
       'missing-plugin',
     ],
-    ['exits the process', 'process.exit(3);', 'the config ended the process with exit code 3'],
+    ['exits the process', 'process.exit(3);', 'it ended the process with exit code 3'],
   ])('reports a clear notice, not a crash, for a config that %s', (_name, text, reason) => {
     const root = projectWith(configWith(text));
     const result = loadTestEnvironments({ projectRoot: root });
@@ -116,7 +116,7 @@ describe('loadTestEnvironments', () => {
     );
     const result = loadTestEnvironments({ projectRoot: root, timeoutMs: 2000 });
     expect(result.notice.message).toBe(
-      "The project's test config vitest.config.mjs could not be read (it did not finish within 2000 ms), so the DOM-environment check only uses per-file directives.",
+      'The DOM-environment check only uses per-file directives: vitest.config.mjs did not finish loading within 2 s.',
     );
   });
 

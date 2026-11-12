@@ -6,6 +6,7 @@ import {
   runnerApiVisitors,
 } from '../rules/runner-apis/runner-apis.mjs';
 import { fakeTimerChange } from '../rules/runner-apis/runner-doubles.mjs';
+import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'after', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
@@ -116,7 +117,10 @@ function report(context, tracked, usesUserEvent) {
 export const rule = {
   meta: {
     type: 'problem',
-    docs: { description: 'Require fake timers, and stubs made in test files, to be restored' },
+    docs: {
+      description:
+        'Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored',
+    },
     schema: [
       {
         type: 'object',
@@ -130,6 +134,10 @@ export const rule = {
         'Fake timers stay on for the tests that follow. Restore them: {{restore}}. With user-event, create the user with `userEvent.setup({ advanceTimers: {{advance}} })` or its clicks wait forever.',
       unrestoredGlobal: `This stubbed global stays stubbed for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllGlobals(); });\`, or stub it once in a setup file.`,
       unrestoredEnv: `This stubbed environment variable stays set for the tests that follow. Restore it: \`afterEach(() => { vi.unstubAllEnvs(); });\`.`,
+      unrestoredEnvWrite:
+        'This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.',
+      unrestoredGlobalWrite:
+        'This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`.',
     },
   },
   create(context) {
@@ -144,6 +152,7 @@ export const rule = {
     const restored = new Set();
     const state = { usesUserEvent: false };
     const testModules = new Set();
+    const writes = createWriteTracker(context.sourceCode, isRestoredByHookOrFinally);
     return {
       ...visitors,
       ImportDeclaration(node) {
@@ -155,7 +164,13 @@ export const rule = {
           }
         }
       },
+      AssignmentExpression(node) {
+        visitors.AssignmentExpression(node);
+        writes.record(node);
+      },
+      UnaryExpression: writes.record,
       CallExpression(node) {
+        writes.call(node);
         const tracked = trackedCall(apis, node, { checkedStubs, testModules });
         if (tracked !== undefined) {
           calls.push(tracked);
@@ -167,6 +182,9 @@ export const rule = {
       'Program:exit'() {
         for (const tracked of calls.filter(({ restoredBy }) => !restored.has(restoredBy))) {
           report(context, tracked, state.usesUserEvent);
+        }
+        for (const { node, messageId } of writes.unrestored()) {
+          context.report({ node, messageId });
         }
       },
     };

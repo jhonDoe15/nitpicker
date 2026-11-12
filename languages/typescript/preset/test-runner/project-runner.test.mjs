@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { headPolicyEnvironment, withHeadPolicyFile } from '../head-policy.mjs';
 import { policyTestRunner, projectTestRunner } from './project-runner.mjs';
-import { recordedTestRunner } from './runner-vocabulary.mjs';
+import { recordedTestRunner } from './vocabulary/runner-vocabulary.mjs';
 
 const roots = [];
 

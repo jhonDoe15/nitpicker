@@ -108,7 +108,7 @@ function writeProject() {
   }
 }
 
-function runOxlint() {
+async function runOxlint() {
   return lintWithOxlint({
     options: { projectRoot: root, patterns: ['src/**/*.test.mjs'] },
     environment: {
@@ -132,8 +132,8 @@ beforeAll(async () => {
   eslintFindings = located(await eslint.lintFiles(['src/**/*.test.mjs']));
 });
 
-beforeAll(() => {
-  oxlintFindings = located(runOxlint());
+beforeAll(async () => {
+  oxlintFindings = located(await runOxlint());
 });
 
 afterAll(() => {

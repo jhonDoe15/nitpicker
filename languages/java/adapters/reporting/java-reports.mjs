@@ -1,122 +1,135 @@
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { ingestArchunit } from '../../ingest/archunit.mjs';
+import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
+import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
   readModuleJacoco,
   readReportModules,
+  withModuleIdentity,
+  withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mjs';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
-import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
-import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../builds/module-path.mjs';
-import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
-import { methodText } from '../../../../shared/ingest/structure-report.mjs';
+import { readGuardFindings } from '../../guards/index.mjs';
+import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mjs';
+import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { testRunFindings } from '../test-runs/test-run-findings.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   declarationUnits,
   functionLocator,
+  modulesUnitLocator,
   sourceTextReader,
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
-import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
-import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
-import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
+import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
+import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideFindings } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
-  reportOnlyKotlinMutants,
+  kotlinGeneratedFilter,
   requireKotlinManifest,
   sourceFileOf,
   sourceLocator,
 } from './kotlin-reports.mjs';
+import { withJavaCountRatchets } from './counts/java-counts.mjs';
+import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 
-const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
-  if (kotlinPreset) {
+  if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
+  const run = { kotlinBuild: buildViews(), foreignKeys: foreignKeyGate(projectRoot) };
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       withModuleIdentity(
-        moduleContextFindings(projectRoot, module, { manifest, modules, options }),
+        moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }),
         module,
       ),
     );
+  const wide = projectWide
+    ? projectWideReport(projectRoot, {
+        projects: reportModuleProjects(modules, ROOT_MODULE),
+        mergedRoot: path.join(reportBase, 'project'),
+        manifest,
+        kotlin: kotlinPreset,
+        policy: options,
+      })
+    : { findings: [], imports: undefined };
+  const findings = applyRuleMessages(
+    [
+      ...moduleFindings,
+      ...(projectWide
+        ? readProjectDuplicateFindings(reportBase, {
+            preset,
+            projectRoot,
+            skip: coveredByCpd(modules, projectRoot),
+          })
+        : []),
+      ...wide.findings,
+      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+      ...springFindings(projectRoot, manifest, options),
+    ],
+    { preset, javaStyle: options.javaStyle },
+  );
+  const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
   return {
-    findings: applyRuleMessages(
-      [
-        ...moduleFindings,
-        ...readDuplicateFindings(reportBase, { projectRoot }),
-        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
-        ...(projectWide
-          ? projectWideFindings(projectRoot, {
-              projects: modules.map((module) => ({
-                reportRoot: module.reportRoot,
-                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-                sourceRoots: module.manifest.sourceRoots ?? [],
-                kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-                resourceRoots: module.manifest.resourceRoots ?? [],
-              })),
-              mergedRoot: path.join(reportBase, 'project'),
-              manifest,
-              kotlin: kotlinPreset,
-              policy: options,
-            })
-          : []),
-        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest, options),
-      ],
-      { preset, javaStyle: options.javaStyle },
-    ),
+    findings: withJavaCountRatchets(withoutExcludedFiles(findings, modules), locate),
+    imports: wide.imports,
   };
 }
 
-function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {
+function moduleContextFindings(projectRoot, module, { manifest, modules, options, ...run }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
-  return readModuleFindings(
+  const findings = readModuleFindings(
     {
       projectRoot,
+      reactorRoot: options.reactorRoot ?? projectRoot,
       roots: projectRoots(projectRoot),
       reportRoot: module.reportRoot,
       manifest: module.manifest,
+      module: { moduleDir: module.dir, modulePath: options.modulePath },
       sourceRoots: module.manifest.sourceRoots ?? [],
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       modules,
+      ...run,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
-      jacoco: readModuleJacoco(module, preset),
+      quick: options.quick === true,
+      jacoco:
+        options.quick === true || module.manifest.testsFailed === true
+          ? undefined
+          : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
         baseline: options.baseline,
         modulePath,
       },
+      featureLayout: { layout: options.featureLayout, modulePath },
       testConsole: {
         allow: options.testConsoleAllow,
         exceptions: options.exceptions,
@@ -126,51 +139,38 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
     },
     options.crapLimit,
   );
+  return withoutMainMethodFindings(findings, sourceTextReader(projectRoot));
 }
 
-function testRootsOf(manifest) {
-  return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
+function ifTested(jacoco, build) {
+  return jacoco === undefined ? [] : build(jacoco);
 }
 
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
-  const testRoots = testRootsOf(context.manifest);
+  const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
+  const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
   return [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
     ...formatFindings(context),
     ...checkstyleFindings(context),
-    ...jacocoFindings(context, jacoco),
+    ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
     ...archunitFindings(context),
     ...springArchFindings(context),
-    ...crapFindings(context, jacoco, crapLimit),
-    ...pitFindings(context),
-    ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
+    ...(context.quick ? [] : pitFindings(context)),
+    ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
+    ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
-    ...branchFindings(context, jacoco),
+    ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
-    ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
-    ...readUnrunTestFindings({
-      reportRoot,
-      projectRoot,
-      manifest: context.manifest,
-      modulePath: context.testTimes.modulePath,
+    ...readGuardFindings({
+      ...context,
+      locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
     }),
+    ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
   ];
-}
-
-function withModuleIdentity(findings, module) {
-  return module.key === ROOT_MODULE
-    ? findings
-    : findings.map((finding) =>
-        finding.path === '.'
-          ? {
-              ...finding,
-              identity: `${finding.identity}${MODULE_IDENTITY_SEPARATOR}${module.path}`,
-            }
-          : finding,
-      );
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -186,11 +186,10 @@ function baselineRootOf({ baseline, modulePath }) {
 function springFindings(projectRoot, manifest, options) {
   return manifest.spring === true
     ? readSpringConfigFindings(projectRoot, {
+        ...manifest,
         sourceRoots: [
           ...new Set([...(manifest.sourceRoots ?? []), ...(manifest.kotlinSourceRoots ?? [])]),
         ],
-        resourceRoots: manifest.resourceRoots,
-        testSourceRoots: manifest.testSourceRoots,
         baselineRoot: baselineRootOf(options),
       })
     : [];
@@ -205,53 +204,15 @@ function jacocoFindings(context, jacoco) {
   );
 }
 
-function classLocator({ projectRoot, sourceRoots, manifest }) {
-  return sourceLocator(projectRoot, [
-    ...sourceRoots,
-    ...(manifest.testSourceRoots ?? []),
-    ...(manifest.kotlinSourceRoots ?? []),
-    ...(manifest.kotlinTestSourceRoots ?? []),
-  ]);
-}
-
-function springArchFindings(context) {
-  if (context.manifest.springArch !== true) {
-    return [];
-  }
-  const locate = classLocator(context);
-  const { exceptions = [], modulePath } = context.classLimits;
-  const matches = exceptionMatcher(exceptions);
-  return readSpringArchFindings(context.reportRoot, {
-    resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
-    isExcepted: (rule, file) => file !== undefined && matches(rule, inModule(modulePath, file)),
-  });
-}
-
-function archunitFindings({ reportRoot, projectRoot, sourceRoots, manifest }) {
-  const archunitRoot = path.join(reportRoot, 'archunit');
-  const archunitReports = existsSync(archunitRoot)
-    ? readdirSync(archunitRoot)
-        .filter((name) => name.endsWith('.xml'))
-        .sort()
-    : [];
-  const locate = classLocator({ projectRoot, sourceRoots, manifest });
-  return archunitReports.flatMap(
-    (name) =>
-      ingestArchunit(readFileSync(path.join(archunitRoot, name), 'utf8'), {
-        resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
-      }).findings,
-  );
-}
-
-function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimit) {
+function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jacoco, crapLimit) {
   const sources = new Map();
   const structure = JSON.parse(readFileSync(path.join(reportRoot, 'structure.json'), 'utf8'));
   return ingestCrap(structure, jacoco, {
     sourceRoots,
     limit: crapLimit,
-    sourceHash: (entry) =>
+    sourceText: (entry) =>
       existsSync(path.join(projectRoot, entry.file))
-        ? hash(methodText(sources, projectRoot, entry))
+        ? javaMethodText(sources, { projectRoot, reactorRoot }, entry)
         : undefined,
   }).findings;
 }
@@ -263,11 +224,12 @@ function pitFindings(context) {
     return [];
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
-  });
-  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
+    sourceText: sourceTextReader(projectRoot),
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
+  }).findings;
 }
 
 function branchFindings(context, jacoco) {
@@ -283,5 +245,6 @@ function branchFindings(context, jacoco) {
 function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
+  roots.add(realpathSync.native(projectRoot));
   return [...roots];
 }

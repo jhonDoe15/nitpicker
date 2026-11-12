@@ -135,7 +135,8 @@ describe('DOM environment directives in test files', () => {
   });
 
   it('reads the first environment directive in the file, as Vitest does', () => {
-    const nodeFirst = `${directive('vitest', 'node')}const text = '@vitest-environment jsdom';\n`;
+    const later = directive('vitest', 'jsdom').replace('/** ', '').replace(' */\n', '');
+    const nodeFirst = `${directive('vitest', 'node')}const text = '${later}';\n`;
 
     expect(hasDomDirectiveTests(layout, projectWith({ 'tests/a.test.js': nodeFirst }))).toBe(false);
   });

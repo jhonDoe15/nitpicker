@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { hash } from '../../../../../../shared/rules/finding-helpers.mjs';
 import { fileImports } from '../../../syntax/module-facts.mjs';
 import { declaredNames, referencedNames } from '../../../syntax/references.mjs';

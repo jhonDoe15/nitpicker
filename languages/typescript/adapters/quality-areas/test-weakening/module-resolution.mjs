@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 
 const PROJECT_CONFIG_NAMES = ['tsconfig.json', 'jsconfig.json'];

@@ -1,84 +1,54 @@
-import {
-  analyzerName,
-  analyzerMetadata,
-  policyHash,
-  sortByToolAndPath,
-} from '../reporting/report-model.mjs';
+import { policyHash, sortByToolAndPath } from '../reporting/report-model.mjs';
 import {
   isPolicyChangeAccepted,
   policyDigest,
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
-import { compareFindings } from './compare.mjs';
+import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { runProfileSummary } from '../../quick/summary.mjs';
+import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
-  const { analyzers, baseRun, headRun, additionalToolErrors } = context;
+  const { additionalToolErrors, policies = {} } = context;
+  const baseRun = withCoChangeDependencies(context.baseRun, policies.base);
+  const headRun = withCoChangeDependencies(context.headRun, policies.head);
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
-  const outcomes = analyzers.map((analyzer, index) =>
-    compareAnalyzer({ ...context, analyzer, index, toolErrors }),
-  );
-  return buildReport({ ...context, outcomes, toolErrors });
+  const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
+  const outcomes = scopeOutcomes(compared.outcomes, context.scope);
+  const notes = scopeNotes(compared.notes, context.scope);
+  return buildReport({ ...context, outcomes, notes, toolErrors });
 }
 
-function compareAnalyzer(context) {
-  const { analyzer, index, baseRun, headRun, toolErrors } = context;
-  const name = analyzerName(analyzer, index);
-  const baseReport = baseRun.reports.get(name);
-  const headReport = headRun.reports.get(name);
-  const baseFindings = withoutEmittedToolErrors(baseReport?.findings ?? [], 'base', toolErrors);
-  const headFindings = withoutEmittedToolErrors(headReport?.findings ?? [], 'head', toolErrors);
-  const comparable =
-    baseReport !== undefined &&
-    headReport !== undefined &&
-    !toolErrors.some((error) => error.tool === name);
-  const result = comparable
-    ? compareOrReportError({ ...context, name, baseFindings, headFindings })
-    : emptyComparison();
-  return {
-    result,
-    tool: toolSummary({ ...context, name, baseFindings, headFindings, result }),
-  };
+export function noChangesReport(context) {
+  const report = buildReport({
+    ...context,
+    outcomes: [],
+    notes: [],
+    toolErrors: context.additionalToolErrors,
+    policyChanges: [],
+    policyLoosenings: [],
+    notices: [],
+    baseToHeadRenames: new Map(),
+    reportsPolicy: false,
+  });
+  return { ...report, summary: { ...report.summary, noChanges: true } };
 }
 
-function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors } = context;
-  try {
-    return compareFindings({
-      baseFindings,
-      headFindings,
-      baseToHeadRenames: context.baseToHeadRenames,
-      baseToHeadDirectories: context.baseToHeadDirectories,
-      touchedCode: context.touchedCode,
-    });
-  } catch (error) {
-    toolErrors.push({
-      tool: name,
-      snapshot: 'comparison',
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return emptyComparison();
-  }
-}
+const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
 
-function toolSummary({ analyzer, name, baseRun, headRun, baseFindings, headFindings, result }) {
-  const baseElapsedMs = baseRun.timings.get(name);
-  const headElapsedMs = headRun.timings.get(name);
-  const skippedBecause = headRun.skipped?.get(name) ?? baseRun.skipped?.get(name);
-  return {
-    name,
-    ...(skippedBecause === undefined ? {} : { skippedBecause }),
-    version: analyzerMetadata(analyzer, 'version'),
-    configurationHash: analyzerMetadata(analyzer, 'configurationHash'),
-    base: baseFindings.length,
-    head: headFindings.length,
-    new: result.newFindings.length,
-    resolved: result.resolvedFindings.length,
-    unchanged: result.unchangedFindings.length,
-    changedMetrics: result.changedMetrics.length,
-    baseElapsedMs,
-    headElapsedMs,
-    elapsedMs: (baseElapsedMs ?? 0) + (headElapsedMs ?? 0),
-  };
+function skippedCheckNotices(outcomes) {
+  const findings = [...collect(outcomes, 'newFindings'), ...collect(outcomes, 'unchangedFindings')];
+  return [
+    ...new Set(
+      findings
+        .filter(
+          ({ rule, classification }) =>
+            classification === 'descriptive' && SKIPPED_CHECK_RULES.has(rule),
+        )
+        .map(({ tool, rule, message }) => `${tool}/${rule}: ${message}`),
+    ),
+  ];
 }
 
 function collect(outcomes, key) {
@@ -97,19 +67,29 @@ function declaredExclusions(analyzers) {
   ].sort();
 }
 
+function policyReview(context, digest) {
+  const { policyLoosenings, acceptPolicyChange, comparison } = context;
+  const acceptance = { acceptedDigest: acceptPolicyChange, headSha: comparison.headSha };
+  const kinds = context.policyKinds;
+  return {
+    findings: context.reportsPolicy
+      ? policyFindings(policyLoosenings, digest, { ...acceptance, kinds })
+      : [],
+    accepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptance),
+  };
+}
+
+function runAndScopeSummary(context, outcomes) {
+  const outside = outcomes.reduce((total, { outside: count }) => total + count, 0);
+  return { ...runProfileSummary(context), ...scopeSummary(context.scope, outside) };
+}
+
 function buildReport(context) {
   const { analyzers, outcomes, toolErrors, comparison, startedAt } = context;
-  const { configOverrides, policyChanges, policyLoosenings, acceptPolicyChange, notices } = context;
+  const { configOverrides, policyChanges, policyLoosenings, notices } = context;
   const digest = context.policyDigest ?? policyDigest({ loosenings: policyLoosenings });
-  const newFindings = [
-    ...collect(outcomes, 'newFindings'),
-    ...(context.reportsPolicy
-      ? policyFindings(policyLoosenings, digest, {
-          acceptedDigest: acceptPolicyChange,
-          kinds: context.policyKinds,
-        })
-      : []),
-  ];
+  const review = policyReview(context, digest);
+  const newFindings = [...collect(outcomes, 'newFindings'), ...review.findings];
   return {
     summary: {
       requestedBaseRef: comparison.requestedBaseRef,
@@ -121,11 +101,12 @@ function buildReport(context) {
       policyChanges,
       policyLoosenings,
       ...(policyLoosenings.length === 0 ? {} : { policyDigest: digest }),
-      policyChangeAccepted: isPolicyChangeAccepted(policyLoosenings, digest, acceptPolicyChange),
+      policyChangeAccepted: review.accepted,
       ...(context.policyAcceptanceSource === undefined
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
-      notices,
+      notices: [...notices, ...skippedCheckNotices(outcomes)],
+      ...runAndScopeSummary(context, outcomes),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,
@@ -140,30 +121,6 @@ function buildReport(context) {
     unchangedFindings: sortByToolAndPath(collect(outcomes, 'unchangedFindings')),
     changedMetrics: sortByToolAndPath(collect(outcomes, 'changedMetrics')),
     toolErrors: sortByToolAndPath(toolErrors),
-  };
-}
-
-function withoutEmittedToolErrors(findings, snapshot, toolErrors) {
-  return findings.filter((finding) => {
-    if (finding.classification !== 'tool-error') {
-      return true;
-    }
-    toolErrors.push({
-      tool: finding.tool,
-      snapshot,
-      rule: finding.rule,
-      path: finding.path,
-      message: finding.message,
-    });
-    return false;
-  });
-}
-
-function emptyComparison() {
-  return {
-    newFindings: [],
-    resolvedFindings: [],
-    unchangedFindings: [],
-    changedMetrics: [],
+    notes: sortByToolAndPath(context.notes),
   };
 }

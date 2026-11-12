@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "io-in-domain",
+    "mention": "protocol"
+  }
+]

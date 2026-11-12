@@ -4,6 +4,7 @@ const { afterEach, beforeEach, mock } = process.getBuiltinModule('node:test');
 const { pathToFileURL } = process.getBuiltinModule('node:url');
 
 const PRELOAD_OPTIONS = new Set(['--require', '-r', '--import']);
+const IN_PROCESS_OPTION = /(?:^|\s)--(?:experimental-)?test-isolation[=\s]+none(?:\s|$)/u;
 const DOUBLE_FACTORIES = ['fn', 'method', 'getter', 'setter', 'property'];
 const ownSpecifiers = new Set([__filename, pathToFileURL(__filename).href]);
 const execArguments = process.execArgv;
@@ -89,7 +90,9 @@ function registerRestore() {
 const startsTestProcesses =
   execArguments.includes('--test') && process.env.NODE_TEST_CONTEXT === undefined;
 
-if (!startsTestProcesses || !preloadedWithRequire()) {
+if (IN_PROCESS_OPTION.test(execArguments.join(' '))) {
+  queueMicrotask(registerRestore);
+} else if (!startsTestProcesses || !preloadedWithRequire()) {
   registerRestore();
 }
 

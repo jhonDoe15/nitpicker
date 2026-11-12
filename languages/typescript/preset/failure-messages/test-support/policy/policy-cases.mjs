@@ -39,6 +39,16 @@ export const policyFailureMessageCases = [
     'Promise.all',
   ),
   adapterCase(
+    'unbounded fan-out names the limiter',
+    'export async function load(urls: string[]) { await Promise.all(urls.map((url) => fetch(url))); }',
+    'pLimit(8)',
+  ),
+  adapterCase(
+    'unbounded fan-out names the chunked form',
+    'export async function load(urls: string[]) { await Promise.all(urls.map((url) => fetch(url))); }',
+    'fixed-size chunks',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',
@@ -62,6 +72,11 @@ export const policyFailureMessageCases = [
     'shell string names execFile',
     "import { exec } from 'node:child_process'; export function ls(dir) { exec(`ls ${dir}`); }",
     'execFile',
+  ),
+  adapterCase(
+    'synchronous fs call in an async function names the promise API',
+    "import { readFileSync } from 'node:fs'; export async function load(path) { return readFileSync(path, 'utf8'); }",
+    'node:fs/promises',
   ),
   adapterCase(
     'path join names the containment check',
@@ -94,6 +109,16 @@ export const policyFailureMessageCases = [
     'AbortSignal.timeout',
   ),
   adapterCase(
+    'timeout race names the abort controller',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    'AbortController',
+  ),
+  adapterCase(
+    'timeout race names the signal option',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    '{ signal: controller.signal }',
+  ),
+  adapterCase(
     'unsafe deserialization names JSON.parse',
     "import { unserialize } from 'node-serialize'; export const read = (text) => unserialize(text);",
     'JSON.parse',
@@ -119,6 +144,16 @@ export const policyFailureMessageCases = [
     'domain performance.now names a parameter',
     'export const t = performance.now();',
     'as a parameter',
+  ),
+  domainCase(
+    'reduce spreading its accumulator names the as const entries form',
+    'export const byId = (xs) => xs.reduce((index, x) => ({ ...index, [x.id]: x }), {});',
+    'new Map(xs.map((x) => [x.key, x] as const))',
+  ),
+  adapterCase(
+    'loop spreading its accumulator names push onto a const array',
+    'export function all(xs) { let out = []; for (const x of xs) { out = [...out, x]; } return out; }',
+    'declare the array const before the loop and push onto it',
   ),
   domainCase(
     'domain Reflect.set names spread',

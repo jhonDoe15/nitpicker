@@ -1,7 +1,13 @@
-import { findPackageJSON } from 'node:module';
+import { findPackageJSON } from '../../../../../core/tooling/package-lookup/package-json.mjs';
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../../shared/messages/troubleshooting.mjs';
+import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import { JEST_OPTIONS_NITPICKER_SETS } from '../../../preset/test-runner/runners.mjs';
 
 const LAUNCHERS = {
   'react-scripts': { packageName: 'react-scripts', bin: 'bin/react-scripts.js' },
@@ -12,9 +18,10 @@ const LAUNCHERS = {
 
 function missingLauncher(launcher, projectRoot, cause) {
   const { packageName } = LAUNCHERS[launcher];
-  return new Error(
+  return troubleshootingError(
     `The test script runs "${launcher} test", but ${packageName} is not installed in ${projectRoot}. ` +
       'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.',
+    TROUBLESHOOTING_ANCHORS.testRunnerNotInstalled,
     { cause },
   );
 }
@@ -61,4 +68,12 @@ export function jestTool(options, launcher) {
     leading: ['test'],
     trailing: ['--watchAll=false'],
   };
+}
+
+export function jestScriptArguments(command) {
+  return withoutOptions(command.arguments_, JEST_OPTIONS_NITPICKER_SETS);
+}
+
+export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
+  return [...leading, ...jestScriptArguments(command), ...nitpickerArguments, ...trailing];
 }

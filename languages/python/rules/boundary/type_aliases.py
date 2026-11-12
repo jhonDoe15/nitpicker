@@ -40,7 +40,7 @@ def mentions_any(expression, context, aliases):
 def string_mentions_any(text, context, aliases):
     try:
         parsed = ast.parse(text.strip(), mode="eval").body
-    except SyntaxError:
+    except (SyntaxError, ValueError):
         return False
     return mentions_any(parsed, context, aliases)
 

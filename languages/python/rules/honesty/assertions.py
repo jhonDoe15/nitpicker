@@ -1,8 +1,10 @@
 import ast
 import operator
 
-from checks.common import finding
+from checks.common import finding, overlap_sites
+from syntax.walk import same_tree
 
+TAUTOLOGY_OVERLAPS = {"tautological-assert": ("PLW0129",)}
 COMPARISONS = {
     ast.Eq: operator.eq,
     ast.NotEq: operator.ne,
@@ -24,7 +26,7 @@ def same_reference(left, right):
     pure = not any(
         isinstance(n, (ast.Call, ast.Await, ast.NamedExpr)) for n in ast.walk(left)
     )
-    return pure and ast.dump(left) == ast.dump(right)
+    return pure and same_tree(left, right)
 
 
 def is_len(node):
@@ -131,3 +133,7 @@ def check(context):
     if not context.tests:
         return []
     return tautology_findings(context)
+
+
+def allowances(context):
+    return overlap_sites(check(context), TAUTOLOGY_OVERLAPS)

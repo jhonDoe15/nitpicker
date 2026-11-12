@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createFakeProjects } from '../test-support/fake-project.mjs';
 import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
-import { checkRules, pythonSources } from './python-ast-rules.mjs';
+import { checkRules, contractFaces, pythonSources } from './python-ast-rules.mjs';
 
 const fakes = createFakeProjects();
 
@@ -74,13 +74,52 @@ describe('running the rules script', () => {
       ignoredGlobs: [],
       keywords: [],
       marks: [],
+      xfailStrict: false,
+      minimumPython: [3, 8],
       testFiles: [],
+      designFiles: ['src/demo/a.py'],
+      distributions: [],
       entryFiles: [],
       entryModules: [],
       boundaryRoots: ['pydantic', 'pydantic_settings'],
+      modules: { 'src/demo/a.py': 'demo.a' },
+      published: false,
+      entryPoints: [],
+      contractFaces: {},
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
     expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
+  });
+
+  it('hands it the production modules and the package facts', () => {
+    const root = fakes.project({
+      'pyproject.toml':
+        '[project]\nname = "shop"\n[project.scripts]\nshop = "shop.cli:main"\n[build-system]\nbuild-backend = "hatchling.build"\n',
+      'src/shop/__init__.py': '',
+      'src/shop/cli.py': '',
+      'tests/test_cli.py': '',
+      'testing/helpers.py': '',
+      'src/shop/cart_test.py': '',
+      'src/shop/testing/fakes.py': '',
+    });
+    const { context, reportRoot } = fakes.contextFor(root);
+
+    checkRules(context);
+
+    const { modules, testFiles, entryModules, published, entryPoints } = JSON.parse(
+      readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
+    );
+    expect({ modules, testFiles, entryModules, published, entryPoints }).toEqual({
+      modules: {
+        'src/shop/__init__.py': 'shop',
+        'src/shop/cli.py': 'shop.cli',
+        'src/shop/testing/fakes.py': 'shop.testing.fakes',
+      },
+      testFiles: ['src/shop/cart_test.py', 'testing/helpers.py', 'tests/test_cli.py'],
+      entryModules: ['shop.cli'],
+      published: true,
+      entryPoints: ['shop.cli:main'],
+    });
   });
 
   it('fails with the rules-failed rule when python fails', () => {
@@ -117,5 +156,33 @@ describe('running the rules script', () => {
     expect(
       JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
     ).toEqual(['pydantic', 'pydantic_settings']);
+  });
+});
+
+describe('the public faces of the features the contract rule reads', () => {
+  const sources = [
+    'app/features/orders/__init__.py',
+    'app/features/orders/service.py',
+    'app/features/orders/_store.py',
+    'app/features/orders/web/views.py',
+    'app/features/helpers.py',
+    'app/shared/db.py',
+    'app/billing/ledger.py',
+  ];
+
+  it('are the __init__.py and the public modules directly in each feature folder', () => {
+    expect(contractFaces(sources, {})).toEqual({
+      'app/features/orders/__init__.py': 'app/features/orders',
+      'app/features/orders/service.py': 'app/features/orders',
+    });
+  });
+
+  it('follow the configured feature and shared roots', () => {
+    const layout = { featureRoots: ['app'], sharedRoots: ['app/shared'] };
+
+    expect(contractFaces(sources, layout)).toEqual({
+      'app/billing/ledger.py': 'app/billing',
+      'app/features/helpers.py': 'app/features',
+    });
   });
 });

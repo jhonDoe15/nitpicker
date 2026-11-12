@@ -1,7 +1,8 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { resolveConstant, stringValue } from './constant-resolution.mjs';
+import { CHILD_PROCESS_MODULES, EXECA_MODULES } from './node/node-sync-modules.mjs';
 
-const SUBPROCESS_MODULES = new Set(['child_process', 'node:child_process', 'execa', 'cross-spawn']);
+const SUBPROCESS_MODULES = new Set([...CHILD_PROCESS_MODULES, ...EXECA_MODULES, 'cross-spawn']);
 const FILE_FORM_FUNCTIONS = new Set([
   'execFileSync',
   'execFile',
@@ -95,6 +96,30 @@ function defaultImportLocals(statement) {
   return statement.specifiers
     .filter((specifier) => specifier.type === 'ImportDefaultSpecifier')
     .map((specifier) => specifier.local.name);
+}
+
+export function isPromisify(callee) {
+  return (
+    (callee.type === 'Identifier' && callee.name === 'promisify') ||
+    (callee.type === 'MemberExpression' && callee.property.name === 'promisify')
+  );
+}
+
+export function withPromisified(program, bindings) {
+  const named = new Map(bindings.named);
+  const declarators = program.body
+    .flatMap((statement) =>
+      statement.type === 'VariableDeclaration' ? statement.declarations : [],
+    )
+    .filter(({ id, init }) => id.type === 'Identifier' && init?.type === 'CallExpression');
+  for (const { id, init } of declarators) {
+    const [wrapped] = init.arguments;
+    const name = wrapped === undefined ? undefined : importedCalleeName(wrapped, bindings);
+    if (isPromisify(init.callee) && name !== undefined) {
+      named.set(id.name, name);
+    }
+  }
+  return { ...bindings, named };
 }
 
 export function subprocessBindings(program) {

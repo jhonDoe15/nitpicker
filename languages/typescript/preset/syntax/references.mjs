@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 
 const NOT_REFERENCED_BY = [
   ts.isImportSpecifier,

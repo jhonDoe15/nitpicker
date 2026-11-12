@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
@@ -15,6 +16,7 @@ describe('nitpicker progress and run lock', () => {
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
+    writeFileSync(path.join(repository.root, 'src/main/edited.ts'), 'export const edited = 1;\n');
     const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
     const run = (extra = {}) => {
       const output = captureOutput();
@@ -30,7 +32,7 @@ describe('nitpicker progress and run lock', () => {
       });
       return { exitCode, output };
     };
-    return { repository, run, lockPath: resolveRunLockPath(repository.root) };
+    return { repository, run, cacheDirectory, lockPath: resolveRunLockPath(repository.root) };
   }
   it('prints a start line per phase to stderr and leaves out quick successful analyzers', () => {
     const { run } = setup();
@@ -45,13 +47,13 @@ describe('nitpicker progress and run lock', () => {
     expect(output.stdoutText).not.toContain('nitpicker: head');
   });
   it('says the base was cached instead of running it again', () => {
-    const { run } = setup();
+    const { run, cacheDirectory } = setup();
     run();
 
     const { output } = run();
 
     expect(output.stderrText.split('\n').filter(Boolean)).toEqual([
-      'nitpicker: base 1 analyzer cached',
+      `nitpicker: base 1 analyzer cached (${cacheDirectory}; use --no-cache to rerun)`,
       'nitpicker: head: running 1 analyzer',
     ]);
   });

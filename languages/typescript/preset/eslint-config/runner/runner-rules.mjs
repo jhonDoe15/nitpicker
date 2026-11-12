@@ -2,7 +2,7 @@ import vitest from '@vitest/eslint-plugin';
 import jest from 'eslint-plugin-jest';
 import globals from 'globals';
 import { RUNNER_NAMES, TEST_RUNNERS } from '../../test-runner/runners.mjs';
-import { runnerVocabulary } from '../../test-runner/runner-vocabulary.mjs';
+import { runnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
 import { nodeTestPlugin } from './node-test-plugin.mjs';
 
 const EXPECT_ASSERTIONS = ['expect', 'assert', 'expectTypeOf', 'assertType'];

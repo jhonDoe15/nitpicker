@@ -52,7 +52,17 @@ export function isExpectCall(node) {
 }
 
 const PER_TEST_TESTS = new Set(['it', 'test']);
-const REGISTRATION_FACTORIES = new Set(['each', 'for', 'extend', 'runIf', 'skipIf', 'todo']);
+const TEST_FUNCTIONS = new Set(['it', 'test', 'describe', 'suite']);
+const TEST_FACTORY_MEMBERS = new Set(['each', 'for', 'runIf', 'skipIf', 'extend']);
+const REGISTRATION_FACTORIES = new Set([...TEST_FACTORY_MEMBERS, 'todo']);
+
+export function isTestFunctionName(name) {
+  return TEST_FUNCTIONS.has(name);
+}
+
+export function isTestFactoryMember(name) {
+  return TEST_FACTORY_MEMBERS.has(name);
+}
 
 function parameterNames(fn) {
   return fn.params.flatMap((parameter) => {
@@ -74,19 +84,23 @@ function referencesAny(node, names) {
   return false;
 }
 
-function childNodes(context, node) {
-  return (context.sourceCode.visitorKeys[node.type] ?? []).flatMap((key) => {
+function pushChildren(pending, visitorKeys, node) {
+  for (const key of visitorKeys[node.type] ?? []) {
     const value = node[key];
-    if (Array.isArray(value)) return value.filter(Boolean);
-    return value ? [value] : [];
-  });
+    if (Array.isArray(value)) {
+      pending.push(...value.filter(Boolean));
+    } else if (value) {
+      pending.push(value);
+    }
+  }
 }
 
 function forEachNode(context, root, visit) {
+  const { visitorKeys } = context.sourceCode;
   const pending = [root];
   for (const node of pending) {
     visit(node);
-    pending.push(...childNodes(context, node));
+    pushChildren(pending, visitorKeys, node);
   }
 }
 
@@ -122,7 +136,7 @@ export function describeWrapperCall(context, call, bindings) {
   return found[0];
 }
 
-function registrationRoot(callee) {
+export function registrationRoot(callee) {
   const root = chainOf(callee, (link) => {
     if (link.type === 'MemberExpression') return link.object;
     return link.type === 'CallExpression' ? link.callee : undefined;

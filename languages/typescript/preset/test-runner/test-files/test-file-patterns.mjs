@@ -88,7 +88,14 @@ function loadPicomatch() {
 }
 
 function globMatcher(globs) {
-  return globs.length === 0 ? () => false : loadPicomatch()(globs, { dot: true });
+  if (globs.length === 0) {
+    return () => false;
+  }
+  let matcher;
+  return (file) => {
+    matcher ??= loadPicomatch()(globs, { dot: true });
+    return matcher(file);
+  };
 }
 
 function matchesAny(file, { globs, regexes }) {
