@@ -141,11 +141,6 @@
     "scope": "line"
   },
   {
-    "primary": ["errorprone/FieldCanBeStatic"],
-    "secondary": ["spotbugs/SS_SHOULD_BE_STATIC"],
-    "scope": "line"
-  },
-  {
     "primary": ["errorprone/UnnecessarySemicolon"],
     "secondary": [
       "spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE",
@@ -516,11 +511,6 @@
   {
     "primary": ["errorprone/AssignmentExpression"],
     "secondary": ["pmd/AssignmentInOperand"],
-    "scope": "line"
-  },
-  {
-    "primary": ["errorprone/ForEachIterable"],
-    "secondary": ["pmd/ForLoopCanBeForeach"],
     "scope": "line"
   },
   {

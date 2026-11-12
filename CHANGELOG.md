@@ -11,6 +11,13 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
+### Changed
+
+- Java: Error Prone's `ForEachIterable` and `FieldCanBeStatic` are off. Every Error Prone release
+  from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
+  fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
+  fields (SpotBugs only when the initializer is a compile-time constant).
+
 ### Fixed
 
 - Java: Spring architecture findings no longer print their exception sentence twice, which made
