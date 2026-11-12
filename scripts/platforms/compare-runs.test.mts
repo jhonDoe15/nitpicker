@@ -6,14 +6,21 @@ import {
   compareRuns,
   EXPECTED_DIFFERENCES,
   invariantProblems,
+  platformRunOf,
   referenceProblems,
-} from './compare-runs.mjs';
-import { findingKey, normalizedRun, toolErrorKey } from './smoke.mjs';
-import { renderSupportMatrix } from './support-matrix.mjs';
+} from './compare-runs.mts';
+import {
+  type NormalizedRun,
+  type PlatformRun,
+  findingKey,
+  normalizedRun,
+  toolErrorKey,
+} from './smoke.mts';
+import { renderSupportMatrix } from './support-matrix.mts';
 
 const GREET = 'src/main/features/greeting/domain/greet.ts';
 
-function finding(tool, rule, file = GREET, classification = 'enforceable') {
+function finding(tool: string, rule: string, file = GREET, classification = 'enforceable'): string {
   return findingKey({ tool, rule, path: file, identity: `${rule}|1`, classification });
 }
 
@@ -23,7 +30,13 @@ function run({
   platform = 'linux',
   all = {},
   change = {},
-} = {}) {
+}: {
+  readonly sample?: string;
+  readonly runtime?: string;
+  readonly platform?: string;
+  readonly all?: Partial<NormalizedRun>;
+  readonly change?: Partial<NormalizedRun>;
+} = {}): PlatformRun {
   return {
     sample,
     runtime,
@@ -32,12 +45,14 @@ function run({
       exitCode: 0,
       findings: [finding('coupling', 'coupling', '.', 'descriptive')],
       toolErrors: [],
+      toolErrorMessages: [],
       ...all,
     },
     change: {
       exitCode: 1,
       findings: [finding('eslint-lint', 'no-restricted-syntax')],
       toolErrors: [],
+      toolErrorMessages: [],
       ...change,
     },
   };
@@ -47,7 +62,13 @@ const typecheckCrash = toolErrorKey({ snapshot: 'head', tool: 'typescript-typech
 const mutationCrash = toolErrorKey({ snapshot: 'head', tool: 'mutation' });
 const PARSER = 'src/demo/parser.py';
 
-function pythonRun(platform, { all = {}, change = {} } = {}) {
+function pythonRun(
+  platform: string,
+  {
+    all = {},
+    change = {},
+  }: { readonly all?: Partial<NormalizedRun>; readonly change?: Partial<NormalizedRun> } = {},
+): PlatformRun {
   return run({
     sample: 'python',
     platform,
@@ -97,7 +118,8 @@ describe('comparing a sample run with the Linux run under Node', () => {
 
   it('fails when a documented difference no longer occurs, so the docs follow the fix', () => {
     expect(compareRuns(pythonRun('linux'), pythonRun('win32')).problems).toEqual([
-      'python on win32 with node: the expected difference in mutation no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md',
+      'python on win32 with node: the expected difference in mutation no longer occurs; ' +
+        'update EXPECTED_DIFFERENCES and docs/compatibility.md',
     ]);
   });
 
@@ -153,7 +175,7 @@ describe('comparing a sample run with the Linux run under Node', () => {
 });
 
 describe('the sample report reader', () => {
-  const roots = [];
+  const roots: string[] = [];
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
@@ -184,8 +206,25 @@ describe('the sample report reader', () => {
   });
 });
 
+describe('the platform run reader', () => {
+  it('reads a run file back unchanged', () => {
+    const recorded = run({ platform: 'darwin' });
+
+    expect(platformRunOf(JSON.parse(JSON.stringify(recorded)))).toEqual(recorded);
+  });
+
+  it('rejects a truncated or foreign run file', () => {
+    const { change, ...withoutChange } = run();
+
+    expect(change.exitCode).toBe(1);
+    expect(() => platformRunOf(withoutChange)).toThrow('change must be an object');
+    expect(() => platformRunOf({ ...run(), sample: 3 })).toThrow('sample must be text');
+    expect(() => platformRunOf('not a run')).toThrow('a platform run must be an object');
+  });
+});
+
 describe('the compatibility table', () => {
-  function tableRows(matrix) {
+  function tableRows(matrix: string): string[][] {
     return matrix
       .split('\n')
       .filter((line) => line.startsWith('| ') && !/^\| -/u.test(line))
@@ -211,7 +250,7 @@ describe('the compatibility table', () => {
     ]);
     expect(rows.slice(limitsStart)).toEqual([
       ['Where', 'Sample', 'Analyzers', 'Why'],
-      ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[0].reason],
+      ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[0]?.reason],
     ]);
   });
 });
