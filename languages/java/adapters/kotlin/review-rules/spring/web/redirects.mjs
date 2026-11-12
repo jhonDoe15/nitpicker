@@ -83,7 +83,13 @@ function openRedirects(view) {
   const lines = new Set();
   return found
     .filter(({ scope, line, reads, holder }) => flow.tainted(reads, scope, { line, holder }))
-    .filter(({ line }) => !lines.has(line) && lines.add(line))
+    .filter(({ line }) => {
+      if (lines.has(line)) {
+        return false;
+      }
+      lines.add(line);
+      return true;
+    })
     .map(({ scope, line, name }) => ({
       rule: 'SpringOpenRedirect',
       line,

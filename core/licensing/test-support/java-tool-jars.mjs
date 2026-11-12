@@ -37,7 +37,7 @@ export function toolsWithoutCoordinates(pinned) {
     ...gradleToolCoordinates(pinned).map(({ key }) => key),
     ...[...source(MAVEN_TOOLS).matchAll(PINNED_KEY)].map(([, key]) => key),
   ]);
-  return Object.keys(pinned).filter((key) => !keys.has(key) && !NOT_DOWNLOADED.has(key));
+  return Object.keys(pinned).filter((key) => !(keys.has(key) || NOT_DOWNLOADED.has(key)));
 }
 
 export function extraTools(pinned) {

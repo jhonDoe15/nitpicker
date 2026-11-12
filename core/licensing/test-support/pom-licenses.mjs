@@ -8,7 +8,7 @@ const LICENSE_NAMES = [
     /^gnu general public license, version 2 \(gpl2\), with the classpath exception$/i,
     'GPL-2.0-only WITH Classpath-exception-2.0',
   ],
-  [/\b(?:apache|asl)\b.*\b2(?:\.0)?$/i, 'Apache-2.0'],
+  [/\b(?:apache|asl)\b.+\b2(?:\.0)?$/i, 'Apache-2.0'],
   [/^(?:the )?mit(?: license)?$/i, 'MIT'],
   [/^(?:the )?bsd3 license$/i, 'BSD-3-Clause'],
   [/^(?:the )?bsd(?:-style| licen[cs]e(?: 2\.0)?)$/i, 'BSD-style'],
@@ -75,15 +75,15 @@ function parentPom(repository, project) {
 }
 
 function declaredNames(repository, file) {
-  const pending = [file];
+  const pending = new Set([file]);
   for (const current of pending) {
     const project = readProject(current);
     const names = project === undefined ? [] : licenseNames(project);
     const parent = project === undefined ? undefined : parentPom(repository, project);
-    if (names.length > 0 || parent === undefined || pending.includes(parent)) {
+    if (names.length > 0 || parent === undefined || pending.has(parent)) {
       return names;
     }
-    pending.push(parent);
+    pending.add(parent);
   }
   return [];
 }

@@ -140,7 +140,7 @@ describe('the tool jars to read', () => {
   });
 
   it('reads coordinates written with the pinned or the versions map', () => {
-    const scripts = ['a "g.x:tool:${pinned.pmd}"', 'b("g.y:other:${versions.errorProne}")'];
+    const scripts = [`a "g.x:tool:\${pinned.pmd}"`, `b("g.y:other:\${versions.errorProne}")`];
 
     expect(gradleToolCoordinates({ pmd: '1', errorProne: '2' }, scripts)).toEqual([
       { key: 'pmd', coordinates: 'g.x:tool:1' },
