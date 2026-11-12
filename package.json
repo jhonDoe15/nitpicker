@@ -43,6 +43,7 @@
     "prepack": "node scripts/reference/gen-rules.mjs --data && node scripts/typescript/emit.mjs",
     "postpack": "node scripts/typescript/emit.mjs --clean",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mts",
+    "measure:shard-weights": "node scripts/shard-weights/measure.mts",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mts",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
