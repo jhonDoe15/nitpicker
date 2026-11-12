@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { resolveTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
+import { fieldsOf, listOf } from '../json/fields.mts';
+import { readDurations } from './sequencer.mts';
 
-const config = JSON.parse(
+const config: unknown = JSON.parse(
   readFileSync(new URL('../../nitpicker.config.json', import.meta.url), 'utf8'),
 );
 
@@ -10,11 +13,11 @@ describe('repository JVM suite deadlines', () => {
   it.each(['java', 'kotlin'])(
     'keeps every %s E2E file under its finite named-suite budget',
     (language) => {
-      const files = Object.keys(
-        JSON.parse(readFileSync(new URL(`./${language}-e2e.json`, import.meta.url), 'utf8')),
-      );
+      const files = [
+        ...readDurations(fileURLToPath(new URL(`./${language}-e2e.json`, import.meta.url))).keys(),
+      ];
       expect(files).not.toHaveLength(0);
-      expect(files.map((file) => resolveTestTimeouts(config, { file }))).toEqual(
+      expect(files.map((file) => resolveTestTimeouts(fieldsOf(config), { file }))).toEqual(
         files.map(() => ({
           project: `${language}-e2e`,
           language,
@@ -27,7 +30,7 @@ describe('repository JVM suite deadlines', () => {
     },
   );
   it('keeps ordinary checks strict without turning the JVM rule off', () => {
-    expect(resolveTestTimeouts(config, { file: 'core/cli.test.mjs' })).toEqual({
+    expect(resolveTestTimeouts(fieldsOf(config), { file: 'core/cli.test.mjs' })).toEqual({
       language: 'typescript',
       testTimeoutMs: 30_000,
       hookTimeoutMs: 30_000,
@@ -35,11 +38,15 @@ describe('repository JVM suite deadlines', () => {
       hookDeclarationCeilingMs: 10_000,
     });
     expect(
-      config.exceptions.filter(
-        ({ rule, paths }) =>
-          rule === 'nitpicker/no-raised-test-timeout' &&
-          paths.some((file) => file.startsWith('languages/java/')),
-      ),
+      listOf(fieldsOf(config)?.['exceptions'])
+        .map((exception) => fieldsOf(exception) ?? {})
+        .filter(
+          ({ rule, paths }) =>
+            rule === 'nitpicker/no-raised-test-timeout' &&
+            listOf(paths).some(
+              (file) => typeof file === 'string' && file.startsWith('languages/java/'),
+            ),
+        ),
     ).toEqual([]);
   });
 });
