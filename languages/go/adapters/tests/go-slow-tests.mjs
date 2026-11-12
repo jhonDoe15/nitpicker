@@ -13,10 +13,9 @@ const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
 const INTEGRATION_FILE = /_(?:integration|e2e)_test\.go$/u;
 const INTEGRATION_TAG = /^\/\/go:build\s.*(?<![!\w])(?:integration|e2e)\b/mu;
-const SHORT_SKIP = /\btesting\.Short\(\)/u;
 const RETIME_TIMEOUT_MS = 10 * 60 * 1000;
 
-function packageDirectory(modulePath, importPath) {
+export function packageDirectory(modulePath, importPath) {
   if (importPath === modulePath) {
     return '.';
   }
@@ -32,7 +31,7 @@ function functionText(root, { file, start, end }) {
     .join('\n');
 }
 
-function testFunction(tests, directory, name) {
+export function testFunction(tests, directory, name) {
   return tests.find((test) => path.posix.dirname(test.file) === directory && test.name === name);
 }
 
@@ -43,7 +42,7 @@ function isIntegration(projectRoot, test) {
     folders.some((folder) => INTEGRATION_FOLDERS.has(folder)) ||
     INTEGRATION_FILE.test(test.file) ||
     INTEGRATION_TAG.test(fileText) ||
-    SHORT_SKIP.test(functionText(projectRoot, test) ?? '')
+    test.shortSkip === true
   );
 }
 

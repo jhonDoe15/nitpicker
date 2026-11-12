@@ -21,8 +21,7 @@ The gate can't check these; reviewers keep catching them.
   template, then regenerate and commit the output with the change. Never edit the output.
 - Feature flags: one flag per feature, read in one place. When a flag retires, delete the flag,
   its checks and the old path together.
-- Dependencies: add a module only when the standard library does not cover the job, and run
-  `go mod tidy` so `go.mod` and `go.sum` list exactly what the code imports.
+- Dependencies: add a module only when the standard library does not cover the job.
 
 ## Concurrency
 

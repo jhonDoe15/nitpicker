@@ -68,7 +68,10 @@ that carry one of these or that an `@Aspect` matches):
   persistence exception, no `runCatching` without `getOrThrow()` or a throwing `getOrElse`,
   `onFailure` or `fold`.
 - `@Throws(IOException::class)` or a checked `throw` needs `rollbackFor = [Exception::class]`. A
-  write under `readOnly = true` needs its own plain `@Transactional`.
+  write under `readOnly = true` (a repository write or `@Modifying` query, DML through
+  `JdbcTemplate`, `JdbcClient` or jOOQ, or an assignment to an entity the function loaded) needs its
+  own plain `@Transactional`. To shape a response from an entity, map it to a DTO instead of
+  changing it.
 - A public service function that writes more than once (`save`, `delete`, a `@Modifying` query,
   `jdbcTemplate.update`), also through its private helpers, is `@Transactional` or runs the writes in
   `transactionTemplate.execute { }`.
@@ -118,6 +121,10 @@ GenerationType.SEQUENCE)`. `@ManyToOne` and `@OneToOne` say `fetch = FetchType.L
   `EAGER`. `@ManyToMany` is a `Set` and never cascades `ALL` or `REMOVE`. Enums say
   `@Enumerated(EnumType.STRING)`. `hashCode` never reads the generated id: `override fun hashCode()
 = javaClass.hashCode()`, or an immutable business key.
+- Every `@ManyToOne` join column leads an index of the entity's `@Table`, for example
+  `@Table(indexes = [Index(columnList = "customer_id")])` (`JpaUnindexedForeignKey`); PostgreSQL
+  does not index foreign keys itself. With migrations, the index goes in the migration instead
+  (`foreign-key-index`).
 - Every repository function you declare has `@Query` with named parameters (`:status`) and constant
   JPQL text, a raw string when it spans lines, never joined with `+`. Inherited `findById` and
   `save` need nothing; no derived names (`findByEmailAndStatus`). `@Modifying(clearAutomatically =
@@ -134,3 +141,9 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
   write the same in the query there too. Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.
+- Index every foreign key in the Flyway or Liquibase migration that adds it:
+  `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
+  PostgreSQL does not create one (`foreign-key-index`).
+- Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
+  the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
+  (`JpaMultipleCollectionFetch`).

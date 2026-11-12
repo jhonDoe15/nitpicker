@@ -22,7 +22,7 @@ const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structure', () => {
   const fixture = useKotlinCoverageProject({ initialize: initializeMavenProject });
-  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutants', () => {
     const result = mavenDiffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -39,7 +39,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
         location: { line: 4 },
       },
     ]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([
+      'pit mutant-survived Label.kt',
+      'pit mutant-survived Label.kt',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = mavenDiffOf(fixture.project, 'multiline-branch');
@@ -181,25 +184,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
-  it('reports a Maven failure as a tool error instead of throwing', () => {
+  it('reports a Maven compile failure as compile-error findings at the broken file', () => {
     git(fixture.project, 'checkout', '-q', 'broken');
 
     const { findings } = analyzeJavaSnapshot(fixture.project.root, { maven, policy: kotlinPolicy });
 
-    expect(
-      findings.map(({ tool, rule, classification, message }) => ({
-        tool,
-        rule,
-        classification,
-        namesTheBrokenFile: message.includes('Broken.kt'),
-      })),
-    ).toEqual([
-      {
-        tool: 'kotlin',
-        rule: 'maven-failure',
-        classification: 'tool-error',
-        namesTheBrokenFile: true,
-      },
+    expect([
+      ...new Set(
+        findings.map(
+          ({ tool, rule, classification, path: file }) =>
+            `${tool}/${rule} ${classification} ${file}`,
+        ),
+      ),
+    ]).toEqual([
+      `build/compile-error enforceable ${kotlinSources}/Broken.kt`,
+      'kotlin/compile-failed-skipped tool-error .',
     ]);
   });
 });

@@ -1,19 +1,55 @@
 import { realpathSync } from 'node:fs';
 import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { collectJavaFindings } from './java-diff.mjs';
+import { collectJavaReport } from './java-diff.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
+import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs';
 import { javaStyle } from './style/java-style.mjs';
-import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  failureText,
+  troubleshootingLinkOf,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
+import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mjs';
+import {
+  compileErrorFindings,
+  compileErrorsOf,
+} from '../builds/compile-errors/compile-findings.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_TESTS_FAILED_LENGTH = 40_000;
 
+function truncated(message, rule) {
+  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
+  if (message.length <= limit) {
+    return message;
+  }
+  const link = troubleshootingLinkOf(message);
+  const kept = message.replace(link ?? '', '').trimEnd();
+  const logAt = kept.lastIndexOf(`\n${GRADLE_LOG_LINE}`);
+  const [body, log] = logAt < 0 ? [kept, ''] : [kept.slice(0, logAt), kept.slice(logAt)];
+  const cut = body.length > limit ? `${body.slice(0, limit)}...` : body;
+  return `${cut}${log}${link === undefined ? '' : `\n${link}`}`;
+}
+
 export function javaExecutionBudget(environment = process.env) {
-  return gradleBudget(environment);
+  const gradle = gradleBudget(environment);
+  const maven = mavenBudget(environment);
+  const configured = [
+    ...(environment.NITPICKER_GRADLE_TIMEOUT_MINUTES === undefined ? [] : [gradle]),
+    ...(environment.NITPICKER_MAVEN_TIMEOUT_MINUTES === undefined ? [] : [maven]),
+  ];
+  const budgets = configured.length === 0 ? [gradle] : configured;
+  return {
+    ...gradle,
+    mavenCommandTimeoutMs: maven.commandTimeoutMs,
+    analyzerTimeoutMs: Math.max(...budgets.map((budget) => budget.analyzerTimeoutMs)),
+  };
 }
 
 export function analyzeJavaSnapshot(
@@ -27,19 +63,25 @@ export function analyzeJavaSnapshot(
   } = {},
 ) {
   try {
-    return {
-      findings: collectJavaFindings(projectRoot, {
-        gradle: gradle || undefined,
-        maven: maven || undefined,
-        environment,
-        policy,
-        spawn,
-        budget: javaExecutionBudget(),
-      }),
-    };
+    const { findings, imports } = collectJavaReport(projectRoot, {
+      gradle: gradle || undefined,
+      maven: maven || undefined,
+      environment,
+      policy,
+      spawn,
+      budget: javaExecutionBudget(),
+    });
+    return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const compileErrors = policy?.snapshot === 'base' ? [] : compileErrorsOf(error);
+    if (compileErrors.length > 0) {
+      return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
+    }
     const rule = failureRule(error, projectRoot);
+    const anchor =
+      rule === MAVEN_FAILURE_RULE
+        ? TROUBLESHOOTING_ANCHORS.mavenFails
+        : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
@@ -47,7 +89,7 @@ export function analyzeJavaSnapshot(
           rule,
           path: '.',
           identity: rule,
-          message: cappedMessage(message, rule),
+          message: truncated(failureText(error, anchor), rule),
           classification: 'tool-error',
         },
       ],
@@ -56,21 +98,19 @@ export function analyzeJavaSnapshot(
 }
 
 export function withHeadPolicy(policy, headPolicy) {
-  const { conventions, spring, springRoles, kotlin } = headPolicy;
+  const { conventions, spring, springRoles, featureFolders, layout, kotlin, history } = headPolicy;
   return {
     ...policy,
     conventions,
     javaStyle: javaStyle(conventions),
     ...(spring === true ? { spring } : {}),
+    ...(featureFolders === true ? { featureFolders } : {}),
+    ...(layout === undefined ? {} : { layout: featureLayout(layout) }),
     ...(springRoles === undefined ? {} : { springRoles }),
     kotlinFormatter: kotlin?.formatter ?? policy.kotlinFormatter,
     ...(kotlin === undefined ? {} : { kotlinFacts: kotlin }),
+    ...(history === undefined ? {} : { history }),
   };
-}
-
-function cappedMessage(message, rule) {
-  const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
-  return message.length > limit ? `${message.slice(0, limit)}...` : message;
 }
 
 function failureRule(error, projectRoot) {

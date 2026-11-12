@@ -61,11 +61,10 @@ function processorPaths(project, configurations) {
 
 function settingOf(project, configurations) {
   return function setting(name, property) {
-    const configured = configurations
-      .map((configuration) => textAt(configuration, name))
-      .find((value) => value !== undefined);
-    const value = configured ?? textAt(project, 'properties', property);
-    return value === '' ? undefined : value;
+    return [
+      ...configurations.map((configuration) => textAt(configuration, name)),
+      textAt(project, 'properties', property),
+    ].find((value) => value !== undefined && value !== '' && !UNRESOLVED.test(value));
   };
 }
 
@@ -125,4 +124,8 @@ export function compilerSettings(project) {
       compilerArgs: argumentsOf(testConfigurations, testSetting),
     },
   };
+}
+
+export function guardCompiler({ release, source, target, encoding, compilerArgs }) {
+  return { release, source, target, encoding, args: compilerArgs };
 }

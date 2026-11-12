@@ -9,10 +9,29 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
+  or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
+  the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
+- Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
+  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
+  `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
+  Call the nested helpers a test defines, or they assert nothing. Skip only on a real condition
+  with a reason, in a test, fixture or hook alike
+  (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a
+  permanent `skip`, a literal `skipif(True)` (or `1 == 1`, `"1"`, a constant) or a non-strict
+  `xfail` is `switched-off-test`: delete the test, fix it, or use `xfail(strict=True)`.
+- No retries in test code (`retry-in-test`): no `@pytest.mark.flaky` (pytest-rerunfailures,
+  pytest-retry), no `@flaky` from the flaky package, no tenacity or backoff retry on a test. A test
+  that passes only on a later attempt always counts as failed. Fix the flaky cause instead.
 - Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
   `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
   Pass the collaborators in and fake them, test a helper through the public function that calls
   it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
+- Give a mock of project code its shape (`mock-without-spec`): `Mock(spec=Mailer)` or
+  `create_autospec(Mailer, instance=True)` where a project class is expected, and
+  `patch("shop.checkout.send", autospec=True)` (or `new=`) for a project function or class.
+- Patch a name where it is looked up (`patch-misses-lookup`): after `from shop.mailer import send` in
+  `shop.checkout`, patch `shop.checkout.send`, not `shop.mailer.send`.
 - Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
   variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
   not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
@@ -21,3 +40,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`server-or-container-per-test`): a fixture that starts one and serves several tests takes
   `scope="session"` or `scope="module"` and resets its state between tests; `setup_method`,
   `setUp` and `setup_function` do not start one; two tests do not make the same start.
+- Tests do not change state that other tests of the module see (`shared-test-state`): no `append`, `update`,
+  `add`, item assignment or `global` rebinding of a module-level list, dict or set, and no change to a class
+  attribute from a test method. Build the state in the test or in a function-scoped fixture, or reset it in an
+  `autouse` fixture or `setup_method`.
+- Test each public inverse pair on its own output (`untested-round-trip`): for `encode_token`/
+  `decode_token` or `Order.to_dict`/`Order.from_dict`, one test calls both,
+  `assert Order.from_dict(order.to_dict()) == order`.

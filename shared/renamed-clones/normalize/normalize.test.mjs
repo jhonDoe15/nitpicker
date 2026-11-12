@@ -147,6 +147,39 @@ describe('Java sources', () => {
   });
 });
 
+describe('Go sources', () => {
+  const source = [
+    'package shop',
+    'import (',
+    '\t"fmt"',
+    '\tlog "example.com/log"',
+    ')',
+    'var sizes = []int{1, 2}',
+    'func Label(items []Item, mark rune) (string, error) {',
+    '\ttext := `raw "quoted"',
+    '\t\ttext`',
+    '\tif items == nil {',
+    "\t\treturn fmt.Sprint(mark, 'c', 1.5), nil // tail",
+    '\t}',
+    '\treturn text, nil',
+    '}',
+    '',
+  ].join('\n');
+
+  it('renames names, strings, runes and numbers, and drops comments, imports and data', () => {
+    expect(squash(normalize(source, 'label.go', 'go'))).toBe(
+      squash(
+        'var _ = []int0 func _(_ []_, _ rune) (string, error) { _ := "" if _ == nil { ' +
+          'return _._(_, "", 0), nil } return _, nil }',
+      ),
+    );
+  });
+
+  it('keeps every line break', () => {
+    expect(lineCount(normalize(source, 'label.go', 'go'))).toBe(lineCount(source));
+  });
+});
+
 describe('TypeScript and JavaScript sources', () => {
   const source = [
     "import { a } from './a';",

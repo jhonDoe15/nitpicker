@@ -40,7 +40,7 @@ export const BASE_FILES = {
 
 export const DISCOUNT = `package shop
 
-func Discount(price int, percent int) int {
+func Discount(price, percent int) int {
 	if percent <= 0 {
 		return price
 	}
@@ -84,9 +84,9 @@ func Broken() int {
 
 export const NESTED = `package shop
 
-func Grade(score int, bonus int) string {
+func Grade(score, bonus int) string {
 	if score > 0 {
-		for i := 0; i < bonus; i++ {
+		for i := range bonus {
 			if score+i > 90 {
 				return "A"
 			}
@@ -112,7 +112,8 @@ func TestBroken(t *testing.T) {
 }
 `;
 
-function sleepingTest(header, name, seconds) {
+function sleepingTest(header, name, seconds, guard = '') {
+  const helper = name.replace('Test', 'restock');
   return `${header}package shop
 
 import (
@@ -121,7 +122,14 @@ import (
 )
 
 func ${name}(t *testing.T) {
+${guard}	if got := ${helper}(); got != 1 {
+		t.Fatalf("${helper}() = %d, want 1", got)
+	}
+}
+
+func ${helper}() int {
 	time.Sleep(${String(seconds)} * time.Second)
+	return 1
 }
 `;
 }
@@ -131,6 +139,24 @@ export const SLOW_INTEGRATION_TEST = sleepingTest(
   '//go:build integration\n\n',
   'TestSlowIntegration',
   6,
+);
+export const SHORT_SKIPPED_TEST = sleepingTest(
+  '',
+  'TestSlowSkipped',
+  6,
+  '\tif testing.Short() {\n\t\tt.Skip("integration")\n\t}\n',
+);
+export const SHORT_LOGGED_TEST = sleepingTest(
+  '',
+  'TestSlowLogged',
+  6,
+  '\tif testing.Short() {\n\t\tt.Log("short")\n\t}\n',
+);
+export const SHORT_DISCARDED_TEST = sleepingTest(
+  '',
+  'TestSlowDiscarded',
+  6,
+  '\t_ = testing.Short()\n',
 );
 
 export const GOFUMPT_ONLY = `package shop

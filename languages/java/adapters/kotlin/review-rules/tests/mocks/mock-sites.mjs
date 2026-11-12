@@ -23,7 +23,7 @@ const ANNOTATED_PROPERTY = new RegExp(
 const ANNOTATION = /@(?:\w+:)?([\w.]+)(\([^()]*\))?/gu;
 const CREATION = new RegExp(
   [
-    String.raw`(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(mockk|mock|spyk|spy)`,
+    String.raw`(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(mockkClass|mockk|mock|spyk|spy)`,
     String.raw`(?:\s*<\s*([\w.]+)(?:<(?:[^<>]|<[^<>]*>)*>)?(?:[^\w.<>][^<>]*)?>)?\s*[({]`,
   ].join(''),
   'gu',
@@ -36,6 +36,8 @@ const BINDING =
 const BINDING_WINDOW = 200;
 const NAMED_ARGUMENT = /^\s*\w+\s*=(?!=)/u;
 const REAL_METHODS = /\bCALLS_REAL_METHODS\b/u;
+const RELAXED = /^\s*relaxed\s*=\s*true\s*$/u;
+const RELAXED_ANNOTATIONS = new Set(['RelaxedMockK']);
 const BACKTICK = '`';
 const SPY_CALLS = new Set(['spyk', 'spy']);
 
@@ -43,10 +45,17 @@ function simpleName(type) {
   return type?.split('.').at(-1);
 }
 
+function splitText(text) {
+  return text === undefined ? [] : text.slice(1, -1).split(',');
+}
+
 function annotationsOf(text) {
   return [...text.matchAll(ANNOTATION)].map((match) => ({
     name: simpleName(match[1]),
     realMethods: REAL_METHODS.test(match[2] ?? ''),
+    relaxed:
+      RELAXED_ANNOTATIONS.has(simpleName(match[1])) ||
+      splitText(match[2]).some((part) => RELAXED.test(part)),
   }));
 }
 
@@ -113,6 +122,7 @@ function creationSite(code, match, types) {
     name,
     type,
     spy: SPY_CALLS.has(match[1]),
+    relaxed: texts.some((text) => RELAXED.test(text)),
     local: binding?.[1] !== undefined,
   };
 }
@@ -125,7 +135,7 @@ export function mockSites(code) {
     if ((mock === undefined && !spy) || mock?.realMethods === true) {
       return [];
     }
-    return [{ ...property, spy, local: false }];
+    return [{ ...property, spy, relaxed: mock?.relaxed === true, local: false }];
   });
   const created = [...code.matchAll(CREATION)].map((match) => creationSite(code, match, types));
   return [...annotated, ...created].filter(({ type }) => type !== undefined);
