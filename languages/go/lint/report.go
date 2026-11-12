@@ -60,6 +60,7 @@ func supersededBy() map[string][]string {
 		"G115":                      {"G109"},
 		"G601":                      {"range-val-address"},
 		"contextcheck":              {"G118"},
+		"context-outside-entry":     {"contextcheck"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
 	return replacements

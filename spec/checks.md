@@ -165,7 +165,7 @@ element (one pass). The same forms run as `list-used-as-set`, `linear-lookup-in-
 `FURB192` in the Python preset, `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme`
 in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules of the same names in the
 Kotlin preset. The other presets read `contains` or `in` only, and the Java and Kotlin rules read
-loops and iterating lambdas, not recursion or listeners. The Go preset has no own rule engine yet.
+loops and iterating lambdas, not recursion or listeners. The Go preset has no counterpart yet.
 
 Streamed rows collected: `nitpicker/no-collected-stream-rows` (production source, in `eslint-lint`)
 reports every item of a `for await` loop over a stream, async generator or cursor pushed into one array

@@ -52,6 +52,7 @@ export const GO_LINTER_TOOLS = [
   'gosec',
   'revive',
   ...GO_CATALOG_TOOLS,
+  'go-rules',
 ];
 export const GO_LINT_TOOLS = [...GO_LINTER_TOOLS, 'deadcode'];
 export const GO_EXCEPTION_RULES = [

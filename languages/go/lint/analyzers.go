@@ -1,7 +1,10 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules"
 	"github.com/kisielk/errcheck/errcheck"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/deepequalerrors"
@@ -77,6 +80,7 @@ func groups() []group {
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
 		{tool: gosecTool, analyzers: []*analysis.Analyzer{gosecAnalyzer}},
+		{tool: rules.Tool, analyzers: rules.Analyzers()},
 	}
 	for _, linter := range catalog.Linters() {
 		all = append(all, group{tool: linter.Tool, analyzers: linter.Analyzers})
@@ -89,7 +93,7 @@ func analyzers() []*analysis.Analyzer {
 	var selected []*analysis.Analyzer
 	for _, each := range groups() {
 		for _, analyzer := range each.analyzers {
-			if !off[analyzer.Name] {
+			if !off[ruleName(analyzer)] {
 				selected = append(selected, analyzer)
 			}
 		}
@@ -111,7 +115,11 @@ func ruleOf(analyzer *analysis.Analyzer, diagnostic analysis.Diagnostic) (string
 	if analyzer == gosecAnalyzer {
 		return diagnostic.Category, diagnostic.Message
 	}
-	return catalog.Rule(analyzer.Name, diagnostic)
+	rule, message := catalog.Rule(analyzer.Name, diagnostic)
+	if rule == analyzer.Name {
+		rule = ruleName(analyzer)
+	}
+	return rule, message
 }
 
 func ruleNames() []string {
@@ -123,8 +131,12 @@ func ruleNames() []string {
 		case checks != nil:
 			names = append(names, checks...)
 		default:
-			names = append(names, analyzer.Name)
+			names = append(names, ruleName(analyzer))
 		}
 	}
 	return names
+}
+
+func ruleName(analyzer *analysis.Analyzer) string {
+	return strings.ReplaceAll(analyzer.Name, "_", "-")
 }
