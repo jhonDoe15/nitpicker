@@ -15,8 +15,7 @@ import {
 } from '../security-values.mjs';
 
 const NO_VALUE = new Set(['undefined', 'null']);
-const CALLBACK_NAME =
-  /^(?:resolve|reject|cb|callback|done|next|handler|listener|on[A-Z]\w*|handle\w*)$/u;
+const CALLBACK_NAME = /^(?:resolve|reject|cb|callback|done|next|listener|on[A-Z]\w*|handle\w*)$/u;
 const LOCAL_URL = /^(?:data|blob):/iu;
 const LOCAL_URL_NAME = /^(?:data|blob|object)(?:Url|Uri|URL|URI)$/u;
 

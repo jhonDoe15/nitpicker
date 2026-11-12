@@ -15,9 +15,9 @@ const BELL = String.fromCodePoint(0x07);
 const CSI_8BIT = String.fromCodePoint(0x9b);
 const ESCAPE_SEQUENCES = new RegExp(
   [
-    `(?:${ESCAPE}\\[|${CSI_8BIT})[0-?]*[ -/]*[@-~]`,
+    `(?:${ESCAPE}\\[|${CSI_8BIT})[\\x30-\\x3F]*[\\x20-\\x2F]*[\\x40-\\x7E]`,
     `${ESCAPE}\\][^${BELL}${ESCAPE}]*(?:${BELL}|${ESCAPE}\\\\)?`,
-    `${ESCAPE}[ -~]?`,
+    `${ESCAPE}[\\x20-\\x7E]?`,
   ].join('|'),
   'gu',
 );

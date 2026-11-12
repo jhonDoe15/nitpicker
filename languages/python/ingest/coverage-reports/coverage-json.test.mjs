@@ -26,7 +26,7 @@ describe('coverage.py JSON ingester', () => {
         identity: 'line-coverage',
         message: 'line-coverage 81.82% (9/11)',
         classification: 'descriptive',
-        metric: { name: 'line-coverage', value: 81.82 },
+        metric: { name: 'line-coverage', value: expect.closeTo(81.82, 10) },
       },
       {
         tool: 'coverage',

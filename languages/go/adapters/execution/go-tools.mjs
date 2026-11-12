@@ -16,8 +16,11 @@ import { run } from './go-process.mjs';
 export const GO_TOOLS = {
   gofumpt: { module: 'mvdan.cc/gofumpt', version: 'v0.12.0' },
   goimports: { module: 'golang.org/x/tools/cmd/goimports', version: 'v0.52.0' },
+  deadcode: { module: 'golang.org/x/tools/cmd/deadcode', version: 'v0.52.0' },
 };
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
+const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');
+const LINT_GO_MINOR = 27;
 const NEUTRAL_ENV = { GOWORK: 'off', GOFLAGS: '', GOOS: '', GOARCH: '', CGO_ENABLED: '0' };
 const HASH_LENGTH = 16;
 
@@ -71,23 +74,73 @@ export function toolVersions() {
   return Object.entries(GO_TOOLS).map(([name, { version }]) => `${name}@${version}`);
 }
 
-function inspectHash() {
-  const hash = createHash('sha256');
-  for (const file of readdirSync(INSPECT_SOURCE)
-    .filter((name) => !name.endsWith('_test.go'))
-    .sort()) {
-    hash.update(`${file}\0`).update(readFileSync(path.join(INSPECT_SOURCE, file)));
+function sourceNames(source) {
+  return readdirSync(source, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && !entry.name.endsWith('_test.go'))
+    .map((entry) => path.relative(source, path.join(entry.parentPath, entry.name)))
+    .filter((name) => !name.split(path.sep).includes('fixtures'))
+    .toSorted();
+}
+
+export function sourceHash(source, extra) {
+  const hash = createHash('sha256').update(extra);
+  for (const name of sourceNames(source)) {
+    hash.update(`${name}\0`).update(sourceFile(source, name));
   }
   return hash.digest('hex').slice(0, HASH_LENGTH);
 }
 
-export function inspectCommand(context) {
-  const directory = path.join(cacheRoot(context.environment), `go-inspect-${inspectHash()}`);
-  return installInto(path.join(directory, 'inspect'), (staging) => {
-    run(context, ['go', 'build', '-o', path.join(staging, 'inspect'), '.'], {
-      rule: 'go-inspect-build-failed',
-      cwd: INSPECT_SOURCE,
-      env: { ...NEUTRAL_ENV, GOFLAGS: '-buildvcs=false -mod=mod' },
+function sourceFile(source, name) {
+  const full = path.resolve(source, name);
+  if (!full.startsWith(source + path.sep)) {
+    throw new Error(`${name} is outside ${source}`);
+  }
+  return readFileSync(full);
+}
+
+function buildProgram(context, { name, source, rule, env, toolchain = '' }) {
+  const directory = path.join(
+    cacheRoot(context.environment),
+    `go-${name}-${sourceHash(source, toolchain)}`,
+  );
+  return installInto(path.join(directory, name), (staging) => {
+    run(context, ['go', 'build', '-o', path.join(staging, name), '.'], {
+      rule,
+      cwd: source,
+      env: { ...NEUTRAL_ENV, ...env },
     });
+  });
+}
+
+export function inspectCommand(context) {
+  return buildProgram(context, {
+    name: 'inspect',
+    source: INSPECT_SOURCE,
+    rule: 'go-inspect-build-failed',
+    env: { GOFLAGS: '-buildvcs=false -mod=mod' },
+  });
+}
+
+export function newerToolchain(version) {
+  const match = /^(?<name>go(?<major>\d+)\.(?<minor>\d+)(?:\.\d+|rc\d+)?)(?:\s|$)/u.exec(version);
+  if (match?.groups === undefined) {
+    return undefined;
+  }
+  const { name, major, minor } = match.groups;
+  return Number(major) > 1 || Number(minor) > LINT_GO_MINOR ? name : undefined;
+}
+
+export function lintCommand(context) {
+  const version = run(context, ['go', 'env', 'GOVERSION'], { rule: 'go-env-failed' }).stdout.trim();
+  const toolchain = newerToolchain(version);
+  return buildProgram(context, {
+    name: 'lint',
+    source: LINT_SOURCE,
+    rule: 'go-lint-build-failed',
+    toolchain: version,
+    env: {
+      GOFLAGS: '-buildvcs=false -mod=readonly',
+      ...(toolchain === undefined ? {} : { GOTOOLCHAIN: toolchain }),
+    },
   });
 }

@@ -65,6 +65,12 @@ export const testFailureMessageCases = [
     allowed: 'Fix the cause, such as waiting on the condition instead of a delay',
   }),
   testCase({
+    name: 'copied production constant names using the constant',
+    banned:
+      "import { JAVASCRIPT_PRESET_FILE } from '../../languages/typescript/preset/checks/policy-files.mjs';\nit('x', () => { expect(read()).toBe('languages/javascript/preset/javascript-preset.mjs'); });",
+    allowed: 'Use JAVASCRIPT_PRESET_FILE',
+  }),
+  testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',
     banned:
       "let built;\nasync function build() { built ??= await compile(); return built; }\nit('x', async () => { await build(); });",
@@ -151,6 +157,22 @@ export const testFailureMessageCases = [
     banned:
       "import { ManyToOne } from 'typeorm';\nexport class Order { @ManyToOne(() => Customer, { eager: true }) customer: Customer; }",
     allowed: 'relations: { customer: true }',
+  },
+  {
+    name: 'unordered page names the order on a unique key',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const list = (db: Kysely<DB>) => db.selectFrom('asset').selectAll().limit(20).execute();",
+    allowed: ".orderBy('createdAt', 'desc').orderBy('id')",
+  },
+  {
+    name: 'runtime array in an in list names the any() parameter',
+    config: productionRulesConfig,
+    filename: 'src/assets/asset.repository.ts',
+    banned:
+      "import { Kysely } from 'kysely';\nexport const byIds = (db: Kysely<DB>, ids: string[]) => db.selectFrom('asset').selectAll().where('id', 'in', ids).execute();",
+    allowed: '::uuid[])',
   },
   {
     name: 'many-to-many cascade remove names the persist-only cascade',

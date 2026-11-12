@@ -10,6 +10,10 @@ import {
   readReport,
   runNitpicker,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/js-clean');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -72,9 +76,9 @@ const PLANTED_OUTPUT = [
   unknownFolder('lint/mode.ts', 1),
   'eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1 Do not declare an `enum`. Use a union of string literals: `type Mode = \'read\' | \'write\'`. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/lint/mode.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   unknownFolder('orders/place.js', 1),
-  'prettier-format/prettier/prettier src/main/format/messy.cjs:1 Format these lines with Prettier',
-  'prettier-format/prettier/prettier src/main/format/messy.js:1 Format these lines with Prettier',
-  'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 Format these lines with Prettier',
+  'prettier-format/prettier/prettier src/main/format/messy.cjs:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+  'prettier-format/prettier/prettier src/main/format/messy.js:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+  'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
   "typescript-typecheck/TS2345 src/main/features/greeting/domain/typed.js:9 Argument of type 'number' is not assignable to parameter of type 'string'.",
   '',
   'Design notes for review (not failing): 2 in the snapshot',
@@ -98,6 +102,7 @@ const FAILING_COVERAGE_OUTPUT = [
   'Tool errors:',
   'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
   "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
   '',
 ].join('\n');
 
@@ -344,6 +349,9 @@ it('fails on purpose', () => {
           [
             'Fixed files:',
             'src/main/changed.js',
+            'Fix notes:',
+            '  eslint --fix rewrote src/main/changed.js',
+            '  prettier rewrote src/main/changed.js',
             'Base: main (argument)',
             '',
             'Quality gate summary',
@@ -412,7 +420,7 @@ it('fails on purpose', () => {
 
     it('fails when the edit touches the line of a legacy violation', () => {
       const { exitCode, stdoutText } = runDifference('touched', (text) =>
-        text.replace('empty = null', 'empty  =  null'),
+        text.replace('empty = null', 'unset = null'),
       );
 
       expect(stdoutText).toBe(
@@ -422,7 +430,7 @@ it('fails on purpose', () => {
           'Quality gate summary',
           '✖ 1 new enforceable violation',
           '  eslint-lint/nitpicker/no-null: Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.',
-          '    src/main/legacy.js:2:24',
+          '    src/main/legacy.js:2:22',
           '    If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
           'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
