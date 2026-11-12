@@ -2,28 +2,29 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { loadCase } from '../runner/run-case.mjs';
+import { requiredText } from '../../scripts/json/fields.mts';
+import { loadCase } from '../case-definition/case-definition.mts';
 import {
   PYTHON_CONSTRAINTS,
   copiedWorkdir,
   linkedTree,
   pipArguments,
   provisionEnvironment,
-} from './workdirs.mjs';
+} from './workdirs.mts';
 
 const cases = path.join(import.meta.dirname, 'test-support', 'cases');
-let directory;
+let directory: string;
 beforeAll(() => {
   directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-workdirs-'));
 });
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
-const prepared = (name) => {
+function prepared(name: string): (file: string) => string {
   const workdir = path.join(directory, name);
   mkdirSync(workdir);
   copiedWorkdir()({ caseDefinition: loadCase(path.join(cases, name)), workdir });
   return (file) => readFileSync(path.join(workdir, file), 'utf8');
-};
+}
 
 describe('copiedWorkdir', () => {
   it('names the preset in a fixture that has no gate configuration', () => {
@@ -45,8 +46,12 @@ describe('linkedTree', () => {
   it('adds the preset gitignore and a plain manifest to a Python or JVM fixture', () => {
     const files = linkedTree(loadCase(path.join(cases, 'python-sample')));
     expect(files.get('.gitignore')).toContain('.coverage');
-    expect(JSON.parse(files.get('package.json'))).toMatchObject({ private: true });
-    expect(JSON.parse(files.get('nitpicker.config.json'))).toEqual({ preset: 'python' });
+    expect(JSON.parse(requiredText(files.get('package.json'), 'package.json'))).toMatchObject({
+      private: true,
+    });
+    expect(JSON.parse(requiredText(files.get('nitpicker.config.json'), 'config'))).toEqual({
+      preset: 'python',
+    });
   });
 
   it('gives a Gradle fixture the Gradle ignores and no script manifest', () => {
@@ -64,11 +69,11 @@ describe('pipArguments', () => {
   });
 
   const caseDefinition = { dependencies: { requests: '>=2' } };
-  const pyproject = (text) => {
+  function pyproject(text: string): string {
     const file = path.join(directory, `pyproject-${String(text.length)}.toml`);
     writeFileSync(file, text);
     return file;
-  };
+  }
 
   it('installs the project editable and its dev group when it declares them', () => {
     const text = '[build-system]\nrequires = []\n\n[dependency-groups]\ndev = ["ruff"]\n';

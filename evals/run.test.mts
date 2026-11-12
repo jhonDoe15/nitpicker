@@ -2,16 +2,16 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const runner = path.join(import.meta.dirname, 'run.mjs');
+const runner = path.join(import.meta.dirname, 'run.mts');
 
-function run(...args) {
+function run(...args: string[]) {
   const result = spawnSync('node', [runner, 'run', '--agent', 'true', '--tier', 't', ...args], {
     encoding: 'utf8',
   });
   return { status: result.status, stderr: result.stderr, stdout: result.stdout };
 }
 
-describe('run.mjs arguments', () => {
+describe('run.mts arguments', () => {
   it('fails on an unknown --case and names the known cases', () => {
     const result = run('--case', 'nope');
     expect(result.status).toBe(1);

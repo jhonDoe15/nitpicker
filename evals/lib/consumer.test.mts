@@ -1,6 +1,6 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { command } from './consumer.mjs';
+import { command } from './consumer.mts';
 
 describe('command', () => {
   it('records the status of a process that exits without reading its input', () => {
