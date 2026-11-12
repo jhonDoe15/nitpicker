@@ -4,17 +4,18 @@ import { resolveLayoutFor } from '../../languages/typescript/preset/layout.mjs';
 import { directlyImportedFiles } from '../../languages/typescript/preset/modules/production-imports.mjs';
 
 const LAYOUT_LESS_PRESETS = new Set(['java', 'kotlin', 'go']);
+const PYTHON_TEST_FILE = /(?:^|\/)(?:test_[^/]*|[^/]*_test|conftest)\.py$/u;
 
-function excludedBy(config) {
+function pythonNonImporter(config) {
   const patterns = (config.exclude ?? []).map(globMatcher);
-  return (file) => patterns.some((pattern) => pattern.test(file));
+  return (file) => PYTHON_TEST_FILE.test(file) || patterns.some((pattern) => pattern.test(file));
 }
 
 function importedSet({ projectRoot, config, files, roots }) {
   if (config.preset === 'python') {
     return pythonImportedFiles(projectRoot, {
       sourceRoots: roots['python.sourceRoots'],
-      isHidden: excludedBy(config),
+      isHidden: pythonNonImporter(config),
     });
   }
   if (LAYOUT_LESS_PRESETS.has(config.preset)) {

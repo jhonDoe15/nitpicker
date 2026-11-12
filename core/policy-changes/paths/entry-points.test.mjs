@@ -13,6 +13,8 @@ const PYTHON = {
   'src/shop/total.py': 'from shop.tax import RATE\n\nTOTAL = RATE * 2\n',
   'src/shop/tax.py': 'RATE = 2\n',
   'src/shop/jobs.py': 'from shop.total import TOTAL\n\nprint(TOTAL)\n',
+  'src/shop/test_jobs.py':
+    'from shop.jobs import TOTAL\n\n\ndef test_total():\n    assert TOTAL == 4\n',
 };
 
 function typescript(entryPoints) {
