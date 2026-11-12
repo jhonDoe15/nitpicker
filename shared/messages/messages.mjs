@@ -6,6 +6,10 @@ const ALLOWED_OPEN = '\u27E6';
 const ALLOWED_CLOSE = '\u27E7';
 const ALLOWED_SPAN = /\u27E6([^\u27E7]*)\u27E7/gu;
 
+export function listNames(names) {
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names.at(-1)}` : names[0];
+}
+
 export function allowedForm(text) {
   return `${ALLOWED_OPEN}${text}${ALLOWED_CLOSE}`;
 }
@@ -13,6 +17,9 @@ export function allowedForm(text) {
 export const UNUSED_OPTION_FIX = 'Remove it, or set it from a real call ({scope}).';
 
 export const UNUSED_OPTION_TEXT = `Option {name} is never set. ${allowedForm(UNUSED_OPTION_FIX)}`;
+
+const SHARED_IMPORTS_FEATURE_FORM =
+  'Move what it needs into a shared root, pass it in from the composition root, or move {importer} into {feature}.';
 
 export const BASE_MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
@@ -35,11 +42,19 @@ export const BASE_MESSAGES = {
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). ${allowedForm('Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.')} ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. ${allowedForm('{fix}.')} ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. ${allowedForm('Move it into {directory}.')} ${EXCEPTION_HINT}`,
+  featureInternalImport: `Import feature {feature} only through {face}: {importer} imports its internal module {target}. ${allowedForm('Expose what it needs there, or move the code both use to a shared root.')} ${EXCEPTION_HINT}`,
+  sharedImportsFeature: `Shared code imports only shared code: {importer} is shared and imports feature {feature} ({targets}). ${allowedForm(SHARED_IMPORTS_FEATURE_FORM)} ${EXCEPTION_HINT}`,
+  featureCycle: `Keep feature dependencies one-way: {importer} in {source} imports {feature} ({targets}), which depends back on {source} (cycle: {cycle}). ${allowedForm('Move what both need to a shared root, or invert this import behind an interface.')} ${EXCEPTION_HINT}`,
   duplicateDefinition: `{name} is also defined with {same} in {others}. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. ${allowedForm('Edit it there too, or merge the copies.')} ${EXCEPTION_HINT}`,
   exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. ${allowedForm('Use that one.')} ${EXCEPTION_HINT}`,
   newIconAsset: `${allowedForm('Use an icon from {package} instead of adding {path}.')} ${EXCEPTION_HINT}`,
+  stabilityDirectionFeature:
+    "Keep feature dependencies pointing at more stable units: {source} (instability {sourceInstability}) depends on {target} (instability {targetInstability}). Depend on the other side's public face, or move the code that joins them into the composition root.",
+  stabilityMovedBy: 'The change edited none of its files: it moved the numbers through {units}.',
+  stabilityMovedElsewhere:
+    'The change edited none of its files or of the files around it now, so the numbers moved through dependencies it removed or files it added elsewhere.',
   testConsoleOutput: `Tests print new console output: {output}. ${allowedForm('Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.')} ${EXCEPTION_HINT}`,
 };
 

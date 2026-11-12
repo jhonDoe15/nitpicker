@@ -104,7 +104,7 @@ func BeforeOnce(left, right string) bool {
 	return left < right
 }
 
-var pending sync.WaitGroup
+var pending sync.WaitGroup // want mutable-package-state
 
 func Finished() {
 	pending.Add(-1) // want wrapperFunc

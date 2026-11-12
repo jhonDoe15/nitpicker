@@ -25,6 +25,7 @@ require (
 	github.com/kkHAIKE/contextcheck v1.1.6
 	github.com/kulti/thelper v0.7.1
 	github.com/ldez/usetesting v0.5.0
+	github.com/mgechev/revive v1.17.1
 	github.com/moricho/tparallel v0.3.2
 	github.com/nishanths/exhaustive v0.17.1
 	github.com/raeperd/recvcheck v0.3.2
@@ -42,8 +43,11 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v1.4.1-0.20240526193622-a339e1f7089c // indirect
+	codeberg.org/chavacava/garif v0.2.1 // indirect
+	github.com/BurntSushi/toml v1.6.0 // indirect
 	github.com/ettle/strcase v0.2.0 // indirect
+	github.com/fatih/color v1.19.0 // indirect
+	github.com/fatih/structtag v1.2.0 // indirect
 	github.com/go-toolsmith/astcast v1.1.0 // indirect
 	github.com/go-toolsmith/astcopy v1.1.0 // indirect
 	github.com/go-toolsmith/astequal v1.2.0 // indirect
@@ -53,6 +57,9 @@ require (
 	github.com/go-toolsmith/typep v1.1.0 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/gostaticanalysis/analysisutil v0.7.1 // indirect
+	github.com/hashicorp/go-version v1.9.0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/quasilyte/go-ruleguard v0.4.5 // indirect
 	github.com/quasilyte/gogrep v0.5.0 // indirect
 	github.com/quasilyte/regex/syntax v0.0.0-20210819130434-b3f0c404a727 // indirect
@@ -60,6 +67,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.42.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
 )

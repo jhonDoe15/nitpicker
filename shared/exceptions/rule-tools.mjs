@@ -57,6 +57,9 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.unusedOption, ['structure']],
   [RULE_IDS.testOnlyExport, ['dead-code', 'coupling']],
   [RULE_IDS.sharedUsedByOneFeature, ['coupling']],
+  [RULE_IDS.featureInternalImport, ['coupling']],
+  [RULE_IDS.sharedImportsFeature, ['coupling']],
+  [RULE_IDS.featureCycle, ['coupling']],
   [RULE_IDS.duplicateDefinition, ['structure']],
   [RULE_IDS.siblingCopyEdit, ['structure']],
   [RULE_IDS.exportedNameCollision, ['structure']],
@@ -114,5 +117,5 @@ export const PRESET_TOOLS = {
   java: JVM_ANALYZER_TOOLS,
   kotlin: JVM_ANALYZER_TOOLS,
   python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling', 'facts'],
-  go: SHARED_TOOLS,
+  go: [...SHARED_TOOLS, 'facts'],
 };

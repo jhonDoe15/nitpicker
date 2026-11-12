@@ -19,6 +19,12 @@ import {
   policy,
 } from '../../../execution/test-support/analyzer-findings.mjs';
 import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+
+const TIMEOUT_MESSAGE =
+  'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +
+  '"analyzerTimeoutMinutes": { "fake-quality-analyzer": <minutes> } in nitpicker.config.json. ' +
+  linkSentence('analyzerTimeout');
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal();
@@ -101,12 +107,12 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'base',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: TIMEOUT_MESSAGE,
       },
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'head',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message: TIMEOUT_MESSAGE,
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
@@ -138,10 +144,7 @@ describe('quality diff temporary worktrees and reports', () => {
       readJson(repository.root, 'reports/quality/diff/tool-errors.json').map(
         ({ message }) => message,
       ),
-    ).toEqual([
-      'fake-quality-analyzer timed out after 100 ms',
-      'fake-quality-analyzer timed out after 100 ms',
-    ]);
+    ).toEqual([TIMEOUT_MESSAGE, TIMEOUT_MESSAGE]);
     expect(output.stdoutText.split('\n', 1)).toEqual([`Base: ${repository.baseRef} (argument)`]);
     expect(output.stderrText).toBe(
       leftovers

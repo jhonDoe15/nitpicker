@@ -15,12 +15,20 @@ const ENFORCEMENT_TEXT = {
   partial: 'partial',
   reported: 'report-only',
 };
+const REPORT_ONLY_TEXT = {
+  true: 'report-only',
+  false: 'not enforced',
+  partial: 'partial, report-only',
+};
 const NOT_APPLICABLE = 'does not apply';
 
 function cellText(rule, language) {
-  return rule.notApplicable?.[language] === undefined
-    ? ENFORCEMENT_TEXT[String(rule.enforcedBy[language])]
-    : NOT_APPLICABLE;
+  if (rule.notApplicable?.[language] !== undefined) {
+    return NOT_APPLICABLE;
+  }
+  return (rule.reportOnly === true ? REPORT_ONLY_TEXT : ENFORCEMENT_TEXT)[
+    String(rule.enforcedBy[language])
+  ];
 }
 
 function notApplicableNotes() {

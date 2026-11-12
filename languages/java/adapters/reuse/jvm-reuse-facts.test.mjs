@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { jvmReuseFacts, readJvmReuseFindings } from './jvm-reuse-facts.mjs';
+import { jvmReuseFacts, readJvmReuse, readJvmReuseFindings } from './jvm-reuse-facts.mjs';
 
 const roots = [];
 
@@ -155,6 +155,18 @@ describe('duplicate-definition on Java and Kotlin', () => {
     };
 
     expect(findings(files, { kotlin: true, policy })).toEqual([]);
+  });
+
+  it('reads no file that the build excludes from its Kotlin source set', () => {
+    const file = (packageName) =>
+      `package ${packageName}\n\nfun rounded(x: Double) = Math.round(x * 100) / 100.0\n`;
+    const files = {
+      [`${KOTLIN_ROOT}/shop/a/Money.kt`]: file('shop.a'),
+      [`${KOTLIN_ROOT}/shop/b/Money.kt`]: file('shop.b'),
+    };
+    const projects = [{ ...SINGLE[0], kotlinExcludedFiles: [`${KOTLIN_ROOT}/shop/b/Money.kt`] }];
+
+    expect(findings(files, { kotlin: true, projects })).toEqual([]);
   });
 });
 
@@ -379,6 +391,38 @@ describe('jvmReuseFacts', () => {
       [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],
       [{ root: 'app', published: false }],
       [],
+    ]);
+  });
+});
+
+describe('JVM imports for co-change dependencies', () => {
+  it('returns the file imports next to the reuse findings, for Java and Kotlin sources', () => {
+    const root = project({
+      [`${JAVA_ROOT}/shop/billing/Invoice.java`]: javaClass(
+        'shop.billing',
+        'Invoice',
+        '  public int total() { return Ledger.sum(); }\n',
+        'import shop.invoicing.Ledger;\n\n',
+      ),
+      [`${JAVA_ROOT}/shop/invoicing/Ledger.java`]: javaClass(
+        'shop.invoicing',
+        'Ledger',
+        '  public static int sum() { return 1; }\n',
+      ),
+      [`${KOTLIN_ROOT}/shop/refunds/Refund.kt`]:
+        'package shop.refunds\n\nimport shop.invoicing.Ledger\n\nfun refund(): Int = Ledger.sum()\n',
+    });
+
+    const read = readJvmReuse(root, { projects: SINGLE, kotlin: true });
+
+    expect(read.findings).toEqual(readJvmReuseFindings(root, { projects: SINGLE, kotlin: true }));
+    expect(
+      read.imports
+        .map(({ from, to }) => `${from} -> ${to}`)
+        .toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual([
+      `${JAVA_ROOT}/shop/billing/Invoice.java -> ${JAVA_ROOT}/shop/invoicing/Ledger.java`,
+      `${KOTLIN_ROOT}/shop/refunds/Refund.kt -> ${JAVA_ROOT}/shop/invoicing/Ledger.java`,
     ]);
   });
 });

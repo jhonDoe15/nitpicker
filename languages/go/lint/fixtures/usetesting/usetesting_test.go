@@ -13,7 +13,7 @@ func TestTemporaryFolder(t *testing.T) {
 	t.Log(folder)
 }
 
-func TestTestingFolder(t *testing.T) {
+func TestTestingFolder(t *testing.T) { // want test-without-assertion
 	t.Log(t.TempDir())
 }
 

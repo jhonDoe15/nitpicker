@@ -30,7 +30,7 @@ var verbose = flag.Bool(" verbose", false, "print more") // want flagName
 
 var quiet = *flag.Bool("quiet", false, "print less") // want flagDeref
 
-var debug bool
+var debug bool // want mutable-package-state
 
 func Flags() bool {
 	flag.BoolVar(&debug, "debug", false, "print debug output")

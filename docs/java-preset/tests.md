@@ -8,6 +8,8 @@ Part of the [Java preset guide](../java-preset.md).
   always on. The enum filter, the test-only class check and the Awaitility advice.
 - `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
   text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/exception-sentences.test.mjs`: fast, always on. No Java message source
+  writes its own exception route.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
 - `languages/java/adapters/java-e2e/preset/**/*.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1`

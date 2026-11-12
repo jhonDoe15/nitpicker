@@ -3,11 +3,12 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { javaCommand } from '../maven-command.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 
 const ERROR_PRONE_JDK = 21;
 const VERSION = /version "(?:1\.)?(\d+)/u;
 const VERSIONED_HOME = /^JAVA_HOME_\d+_(?:X64|ARM64|AARCH64)$/u;
-const JDK_HOME = /<jdkHome>\s*([^<]+?)\s*<\/jdkHome>/gu;
+const JDK_HOME = /<jdkHome>([^<]*)<\/jdkHome>/gu;
 const SYSTEM_JDKS = ['/usr/lib/jvm', '/Library/Java/JavaVirtualMachines'];
 
 export function featureVersion(versionOutput) {
@@ -26,7 +27,9 @@ function subdirectories(directory) {
 export function jdkHomes({ env = process.env, home = homedir(), systemJdks = SYSTEM_JDKS } = {}) {
   const toolchains = path.join(home, '.m2', 'toolchains.xml');
   const declared = existsSync(toolchains)
-    ? [...readFileSync(toolchains, 'utf8').matchAll(JDK_HOME)].map(([, jdkHome]) => jdkHome)
+    ? [...readFileSync(toolchains, 'utf8').matchAll(JDK_HOME)]
+        .map(([, jdkHome]) => jdkHome.trim())
+        .filter((jdkHome) => jdkHome !== '')
     : [];
   const installed = [path.join(home, '.sdkman', 'candidates', 'java'), ...systemJdks]
     .flatMap((directory) => subdirectories(directory))
@@ -82,7 +85,7 @@ function describe(java, spawn) {
 export function errorProneJava({ preview, spawn = spawnSync }) {
   const project = describe(javaCommand('java'), spawn);
   if (project.missing) {
-    throw new Error(
+    throw explainedError(
       `java not found (${project.java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
     );
   }
@@ -92,7 +95,7 @@ export function errorProneJava({ preview, spawn = spawnSync }) {
   const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
   const { java, problem } = chooseErrorProneJdk({ project, preview, installed });
   if (problem !== undefined) {
-    throw new Error(problem);
+    throw explainedError(problem);
   }
   return java;
 }
