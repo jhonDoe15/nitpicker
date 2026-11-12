@@ -27,10 +27,15 @@ function comparedTokens(definition) {
   return definition.untypedTokens ?? definition.tokens;
 }
 
+function tagOf({ text }) {
+  return text.slice(0, text.indexOf('|'));
+}
+
 function sameUntypedCode(before, definition) {
   const [left, right] = [before.untypedTokens, definition.untypedTokens];
   return (
     left !== undefined &&
+    tagOf(before) === tagOf(definition) &&
     right !== undefined &&
     left.length === right.length &&
     left.every((token, index) => token === right[index])

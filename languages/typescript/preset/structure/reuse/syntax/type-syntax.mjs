@@ -33,10 +33,18 @@ function isTypeOnlyNode(node, parent) {
   return marked && (node === parent.questionToken || node === parent.exclamationToken);
 }
 
+function isDeclared(node) {
+  const modifiers = ts.canHaveModifiers(node) ? (ts.getModifiers(node) ?? []) : [];
+  return modifiers.some(({ kind }) => kind === ts.SyntaxKind.DeclareKeyword);
+}
+
+function isThisParameter(node) {
+  return ts.isParameter(node) && ts.isIdentifier(node.name) && node.name.text === 'this';
+}
+
 function isSignatureOnly(node) {
-  if (ts.isPropertyDeclaration(node)) {
-    return (ts.getModifiers(node) ?? []).some(({ kind }) => kind === ts.SyntaxKind.DeclareKeyword);
-  }
+  if (ts.isPropertyDeclaration(node) || ts.isVariableStatement(node)) return isDeclared(node);
+  if (isThisParameter(node)) return true;
   return (
     (ts.isMethodDeclaration(node) || ts.isConstructorDeclaration(node)) && node.body === undefined
   );
@@ -56,9 +64,40 @@ function isTypeAnnotation(parent, child) {
   return child === parent.type && ts.isTypeNode(child);
 }
 
+function hasSingleBareParameter(node) {
+  if (!ts.isArrowFunction(node) || node.parameters.length !== 1) return false;
+  const [parameter] = node.parameters;
+  return (
+    ts.isIdentifier(parameter.name) &&
+    parameter.initializer === undefined &&
+    parameter.dotDotDotToken === undefined
+  );
+}
+
+function isWrappedAssertion(node) {
+  if (!ts.isParenthesizedExpression(node)) return false;
+  const { expression } = node;
+  return (
+    ts.isAsExpression(expression) ||
+    ts.isSatisfiesExpression(expression) ||
+    ts.isTypeAssertionExpression(expression) ||
+    ts.isNonNullExpression(expression)
+  );
+}
+
+function isOptionalParenthesis(parent, child) {
+  const parenthesis =
+    child.kind === ts.SyntaxKind.OpenParenToken || child.kind === ts.SyntaxKind.CloseParenToken;
+  return parenthesis && (hasSingleBareParameter(parent) || isWrappedAssertion(parent));
+}
+
 function typeSpans(parent, children) {
   return children.flatMap((child, index) => {
     if (typeListAt(parent, child)) return [index - 1, index, index + 1];
+    if (isOptionalParenthesis(parent, child)) return [index];
+    if (isThisParameter(child)) {
+      return children[index + 1]?.kind === ts.SyntaxKind.CommaToken ? [index, index + 1] : [index];
+    }
     if (!isTypeAnnotation(parent, child)) return [];
     const closing = ts.isTypeAssertionExpression(parent) ? [index + 1] : [];
     return [index - 1, index, ...closing].filter(

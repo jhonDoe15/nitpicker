@@ -96,6 +96,25 @@ describe('definition text', () => {
     expect(code.map(({ tokens }) => tokens)).not.toEqual(untyped.map(({ tokens }) => tokens));
   });
 
+  it('drop the parentheses a typed arrow parameter or a wrapped assertion needs', () => {
+    const untyped = definitionsOf(
+      'function f(a, b, c) { return a.map(x => b ? x : c).map((y) => y + 1); }',
+      'a.js',
+    );
+    const typed = definitionsOf(
+      [
+        'function f(this: Window, a: number[], b: boolean, c: number) {',
+        '  declare const hidden: number;',
+        '  return a.map((x: number): number => b ? (x as number) : (c satisfies number))',
+        '    .map((y) => y + 1);',
+        '}',
+      ].join('\n'),
+      'a.ts',
+    );
+
+    expect(typed[0].untypedTokens).toEqual(untyped[0].untypedTokens);
+  });
+
   it('keep optional chaining, conditionals and comparisons in the untyped tokens', () => {
     const [definition] = definitionsOf(
       'function at(list, index) { return list?.[index] ?? (index < 0 ? !list : list > 1); }',
