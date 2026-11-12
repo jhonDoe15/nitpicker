@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateBaselineExpansions } from './baseline-expansion.mjs';
 import { computeCoupling, evaluateCoupling } from './coupling.mjs';
-import { evaluateDuplicates } from './duplicates.mjs';
 import { evaluateStructure } from './structure.mjs';
 import { evaluateTestRuntime } from './test-runtime/evaluate.mjs';
 
@@ -193,62 +192,6 @@ describe('test-runtime rule on neutral findings', () => {
         'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
     });
     expect(failures[1].identity).toMatch(/^test:test\/BT\.java:source:[0-9a-f]{24}$/);
-  });
-});
-
-describe('duplicates rule on neutral clones', () => {
-  const clone = (first, second, extra = {}) => ({
-    first: { file: first, line: 3 },
-    second: { file: second, line: 8 },
-    fragment: 'x',
-    lines: 6,
-    tokens: 60,
-    ...extra,
-  });
-
-  it('orders the pair by path and numbers repeated pairs', () => {
-    const findings = evaluateDuplicates(
-      [clone('b.java', 'a.java'), clone('a.java', 'b.java')],
-      'duplicates',
-    );
-    const failures = byRule(findings, 'duplicate-clone');
-    expect(failures.map((finding) => [finding.path, finding.message])).toEqual([
-      [
-        'a.java',
-        'This code repeats b.java:3 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
-      ],
-      [
-        'a.java',
-        'This code repeats b.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java or b.java to "exclude" in nitpicker.config.json.',
-      ],
-    ]);
-    expect(failures[0].identity).toMatch(
-      /^pair:a\.java\|b\.java:fragment:[0-9a-f]{24}:occurrence:1$/,
-    );
-    expect(failures[1].identity).toMatch(/:occurrence:2$/);
-    expect(failures[0].location).toEqual({ line: 8 });
-  });
-
-  it('names the file once when a file repeats itself', () => {
-    const [failure] = byRule(
-      evaluateDuplicates([clone('a.java', 'a.java')], 'duplicates'),
-      'duplicate-clone',
-    );
-    expect(failure.message).toBe(
-      'This code repeats a.java:8 (6 lines). Keep one copy and call it from both places. If the repetition is intended, add a.java to "exclude" in nitpicker.config.json.',
-    );
-  });
-
-  it('adds size metrics and omits a location for an unusable line', () => {
-    const findings = evaluateDuplicates(
-      [clone('a.java', 'b.java', { first: { file: 'a.java' } })],
-      'duplicates',
-    );
-    expect(byRule(findings, 'duplicate-clone-size').map((finding) => finding.metric)).toEqual([
-      { name: 'lines', value: 6 },
-      { name: 'tokens', value: 60 },
-    ]);
-    expect(byRule(findings, 'duplicate-clone')[0]).not.toHaveProperty('location');
   });
 });
 

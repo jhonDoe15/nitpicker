@@ -12,6 +12,7 @@ import { lockOrderFindings } from './main/locking/lock-order.mjs';
 import { reusableObjectFindings } from './main/reusable-objects/reusable-objects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { timeoutFindings } from './main/timeouts/timeouts.mjs';
+import { streamedRowsFindings } from './main/streamed-rows/streamed-rows.mjs';
 import { suspendedUpdateFindings } from './main/suspension/suspended-updates.mjs';
 import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { serviceLookupFindings } from './main/service-lookups/service-lookups.mjs';
@@ -25,6 +26,7 @@ import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
+import { relaxedMockFindings } from './tests/mocks/relaxed-mocks.mjs';
 import { subjectMockFindings } from './tests/mocks/subject-mocks.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
 import { testHonestyFindings } from './tests/test-honesty.mjs';
@@ -70,6 +72,8 @@ function honestyFindings({ manifest, projectRoot, modules = [] }, finding) {
   });
 }
 
+const COLLECTION_RULES = [recursiveMapUpdateFindings, streamedRowsFindings, reusableObjectFindings];
+
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot, reportRoot } = context;
   const { own, projectFiles, javaRoots, build } = projectView(context);
@@ -88,8 +92,9 @@ export function readKotlinReviewFindings(context) {
     }),
     ...honesty,
     ...subjectMockFindings(own, { finding, projectRoot, projectFiles, isProduction }),
+    ...relaxedMockFindings(own, { finding, projectRoot, isProduction }),
     ...springContextFindings(own, { finding }),
-    ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
+    ...springFindings(own, { ...context, finding, projectFiles, javaRoots }),
     ...blockingFindings(own, { finding, declaredIn: projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
@@ -106,8 +111,7 @@ export function readKotlinReviewFindings(context) {
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
-    ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
-    ...reusableObjectFindings(own, { finding, declaredIn: projectFiles }),
+    ...COLLECTION_RULES.flatMap((rule) => rule(own, { finding, declaredIn: projectFiles })),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...generatedMemberFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {

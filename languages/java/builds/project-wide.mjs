@@ -8,10 +8,12 @@ import { inModule } from './module-path.mjs';
 import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
 import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
 import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
-import { readJvmReuseFindings } from '../adapters/reuse/jvm-reuse-facts.mjs';
+import { readJvmReuse } from '../adapters/reuse/jvm-reuse-facts.mjs';
+import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
+const PERMITS_REPORT = 'permits.txt';
 const ROOT_PACKAGE = '(root)';
 
 function readLines(reportRoot, name) {
@@ -66,15 +68,41 @@ function kotlinNodes(projects) {
   return { moduleOf, fileOf };
 }
 
+function qualifiedEdges(project, text, declared) {
+  return parseJdeps(text)
+    .map((edge) => ({
+      source: qualified(project.qualifier, edge.source),
+      target: targetOf(edge.target, { qualifier: project.qualifier, declared }),
+    }))
+    .filter((edge) => edge.target !== undefined);
+}
+
+function permitsText(reportRoot) {
+  const file = path.join(reportRoot, PERMITS_REPORT);
+  return existsSync(file)
+    ? readLines(reportRoot, PERMITS_REPORT)
+        .map((line) => `  ${line}`)
+        .join('\n')
+    : '';
+}
+
+function mergedPermits(projects, declared) {
+  const lines = projects.flatMap((project) =>
+    qualifiedEdges(project, permitsText(project.reportRoot), declared).map(
+      ({ source, target }) => `${source} -> ${target}\n`,
+    ),
+  );
+  return [...new Set(lines)].join('');
+}
+
 function mergeProjects(projectRoot, projects, mergedRoot) {
   const declared = declaringProjects(projects);
   const edges = projects.flatMap((project) =>
-    parseJdeps(readFileSync(path.join(project.reportRoot, JDEPS_REPORT), 'utf8'))
-      .map((edge) => ({
-        source: qualified(project.qualifier, edge.source),
-        target: targetOf(edge.target, { qualifier: project.qualifier, declared }),
-      }))
-      .filter((edge) => edge.target !== undefined),
+    qualifiedEdges(
+      project,
+      readFileSync(path.join(project.reportRoot, JDEPS_REPORT), 'utf8'),
+      declared,
+    ),
   );
   mkdirSync(mergedRoot, { recursive: true });
   writeFileSync(
@@ -89,6 +117,7 @@ function mergeProjects(projectRoot, projects, mergedRoot) {
     path.join(mergedRoot, JDEPS_REPORT),
     edges.map(({ source, target }) => `   ${source} -> ${target}\n`).join(''),
   );
+  writeFileSync(path.join(mergedRoot, PERMITS_REPORT), mergedPermits(projects, declared));
   return new Map(
     projects.flatMap((project) =>
       project.classes.map((name) => [
@@ -127,11 +156,22 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin,
   });
 }
 
-export function projectWideFindings(
-  projectRoot,
-  { projects, mergedRoot, manifest, kotlin, policy },
-) {
-  return [
+export function reportModuleProjects(modules, rootKey) {
+  return modules.map((module) => ({
+    reportRoot: module.reportRoot,
+    qualifier: module.key === rootKey ? '' : module.dir,
+    sourceRoots: module.manifest.sourceRoots ?? [],
+    kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+    testSourceRoots: module.manifest.testSourceRoots ?? [],
+    kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
+    kotlinExcludedFiles: module.manifest.kotlinExcludedFiles ?? [],
+    resourceRoots: module.manifest.resourceRoots ?? [],
+  }));
+}
+
+export function projectWideReport(projectRoot, { projects, mergedRoot, manifest, kotlin, policy }) {
+  const reuse = readJvmReuse(projectRoot, { projects, kotlin, policy });
+  const findings = [
     ...readJavaFileLimitFindings(projectRoot, {
       manifest,
       kotlin,
@@ -152,7 +192,9 @@ export function projectWideFindings(
     }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
     ...readTestRuntimeFindings(projectRoot, { projects }),
-    ...readJvmReuseFindings(projectRoot, { projects, kotlin, policy }),
+    ...reuse.findings,
+    ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
     ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
   ];
+  return { findings, imports: reuse.imports };
 }

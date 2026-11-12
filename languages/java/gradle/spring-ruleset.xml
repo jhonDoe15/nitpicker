@@ -564,6 +564,46 @@ return (
   /AnnotationMemberList/MemberValuePair[@Name = 'strategy'][.//*[@Name = ('IDENTITY', 'TABLE')]]
 ]]></value></property></properties>
   </rule>
+  <rule name="JpaUnindexedForeignKey" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add @Index(columnList = &quot;&lt;join column&gt;&quot;) to the entity''s @Table(indexes = ...) for the join column of this @ManyToOne. Only MySQL indexes a foreign key by itself; on PostgreSQL, SQL Server and SQLite every join and delete through it scans the table.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $norm := function($name) { lower-case(replace(string($name), '[_\s`"\[\]]', '')) },
+    $first := function($list) { $norm(tokenize(normalize-space(tokenize(string($list), ',')[1]), ' ')[1]) }
+return
+//ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')]]
+  /ClassBody/FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')]]
+  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MapsId') or pmd-java:typeIs('javax.persistence.MapsId')
+    or pmd-java:typeIs('jakarta.persistence.JoinTable') or pmd-java:typeIs('javax.persistence.JoinTable')])]
+  [let $ids := ../FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id')]]
+         /VariableDeclarator/VariableId/@Name ! string(.),
+       $field := string(VariableDeclarator[1]/VariableId/@Name),
+       $join := (ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumn') or pmd-java:typeIs('javax.persistence.JoinColumn')]
+         | ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumns') or pmd-java:typeIs('javax.persistence.JoinColumns')]
+           //Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumn') or pmd-java:typeIs('javax.persistence.JoinColumn')])[1],
+       $named := $join/AnnotationMemberList/MemberValuePair[@Name = 'name'],
+       $table := ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Table') or pmd-java:typeIs('javax.persistence.Table')],
+       $lists := $table//Annotation[pmd-java:typeIs('jakarta.persistence.Index') or pmd-java:typeIs('javax.persistence.Index')]
+         /AnnotationMemberList/MemberValuePair[@Name = 'columnList']/*,
+       $uniques := $table//Annotation[pmd-java:typeIs('jakarta.persistence.UniqueConstraint') or pmd-java:typeIs('javax.persistence.UniqueConstraint')]
+         /AnnotationMemberList/MemberValuePair[@Name = 'columnNames']/(StringLiteral | MemberValueArrayInitializer/*[1]),
+       $leads := ($lists[self::StringLiteral]/@ConstValue ! $first(.), $uniques[self::StringLiteral]/@ConstValue ! $norm(.)),
+       $referenced := $join/AnnotationMemberList/MemberValuePair[@Name = 'referencedColumnName'],
+       $column := if (exists($named))
+         then $named/StringLiteral/@ConstValue ! $norm(.)
+         else $norm($field) || (if (exists($referenced)) then $referenced/StringLiteral/@ConstValue ! $norm(.) else 'id')
+   return not(
+     exists($lists[not(self::StringLiteral)]) or exists($uniques[not(self::StringLiteral)])
+     or exists(($named, $referenced)[not(StringLiteral)])
+     or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'table'])
+     or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'unique'][BooleanLiteral[@True = true()]])
+     or exists($join//*[@Name = 'NO_CONSTRAINT'])
+     or $field = min($ids)
+     or $leads = $column
+   )]
+  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')]
+]]></value></property></properties>
+  </rule>
   <rule name="JpaVersion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.">
     <priority>2</priority>
@@ -1583,7 +1623,7 @@ return
 ]]></value></property></properties>
   </rule>
   <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection.">
+        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection. A column name chosen from a fixed list can be intended.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $scope := function($node) {

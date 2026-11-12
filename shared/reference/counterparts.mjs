@@ -9,6 +9,7 @@ const PAGES = {
     tool: 'eslint',
   },
   python: { label: 'Python', path: 'docs/rules/python-nitpicker.md', tool: 'python-rules' },
+  go: { label: 'Go', path: 'docs/go-preset.md', anchor: 'own-rules' },
 };
 const GROUPS = [
   {
@@ -21,6 +22,12 @@ const GROUPS = [
     typescript: 'nitpicker/no-multiple-collection-joins',
     python: 'multiple-collection-joins',
   },
+  {
+    java: 'JpaUnindexedForeignKey',
+    typescript: 'nitpicker/no-unindexed-foreign-key',
+    python: 'unindexed-foreign-key',
+    go: 'go-rules/unindexed-foreign-key',
+  },
 ];
 
 function spring(rule) {
@@ -32,12 +39,16 @@ function spring(rule) {
 }
 
 function link(language, rule) {
-  const { label, path, tool } = PAGES[language];
-  return { label: `${label} counterpart \`${rule}\``, path, anchor: anchorOf(tool, rule) };
+  const { label, path, tool, anchor } = PAGES[language];
+  return {
+    label: `${label} counterpart \`${rule}\``,
+    path,
+    anchor: anchor ?? anchorOf(tool, rule),
+  };
 }
 
 function groupEntries(group) {
-  const languages = Object.keys(PAGES);
+  const languages = Object.keys(PAGES).filter((language) => group[language] !== undefined);
   return languages.map((language) => [
     language === 'java' ? `pmd/${group.java}` : group[language],
     languages.filter((other) => other !== language).map((other) => link(other, group[other])),

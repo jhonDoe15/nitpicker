@@ -1,0 +1,200 @@
+package entschema
+
+import (
+	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema"
+	"entgo.io/ent/schema/edge"
+	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
+	"entgo.io/ent/schema/mixin"
+)
+
+type User struct{ ent.Schema }
+
+func (User) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("pets", Pet.Type),
+		edge.To("cars", Car.Type),
+		edge.To("card", Card.Type).Unique(),
+		edge.To("groups", Group.Type),
+		edge.To("notes", Note.Type), // want unindexed-foreign-key
+		edge.To("manager", User.Type).Unique(),
+		edge.To("team", Team.Type).Unique(), // want unindexed-foreign-key
+	}
+}
+
+type Pet struct{ ent.Schema }
+
+func (Pet) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("owner", User.Type).Ref("pets").Unique(), // want unindexed-foreign-key
+	}
+}
+
+const carOwner = "owner_id"
+
+type Car struct{ ent.Schema }
+
+func (Car) Mixin() []ent.Mixin {
+	return []ent.Mixin{mixin.Time{}}
+}
+
+func (Car) Fields() []ent.Field {
+	return []ent.Field{field.Int(carOwner), field.String("plate")}
+}
+
+func (Car) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("owner", User.Type).Ref("cars").Unique().Field(carOwner),
+	}
+}
+
+func (Car) Indexes() []ent.Index {
+	return []ent.Index{index.Fields(carOwner, "plate")}
+}
+
+type Card struct{ ent.Schema }
+
+func (Card) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("holder", User.Type).Ref("card").Unique(),
+	}
+}
+
+type Group struct{ ent.Schema }
+
+func (Group) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("users", User.Type).Ref("groups"),
+	}
+}
+
+type Note struct{ ent.Schema }
+
+type Team struct{ ent.Schema }
+
+func (Team) Edges() []ent.Edge {
+	return []ent.Edge{edge.From("members", User.Type).Ref("team")}
+}
+
+type Node struct{ ent.Schema }
+
+func (Node) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("children", Node.Type).From("parent").Unique(),
+		edge.To("links", Link.Type),
+	}
+}
+
+func (Node) Indexes() []ent.Index {
+	return []ent.Index{index.Edges("parent")}
+}
+
+type Link struct{ ent.Schema }
+
+func (Link) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("node", Node.Type).Ref("links").Unique(), // want unindexed-foreign-key
+		edge.To("target", Node.Type).Unique(),              // want unindexed-foreign-key
+	}
+}
+
+func (Link) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("weight").Edges("node"),
+		index.Edges("target").Annotations(entsql.IndexWhere("active")),
+	}
+}
+
+type Membership struct{ ent.Schema }
+
+func (Membership) Annotations() []schema.Annotation {
+	return []schema.Annotation{field.ID("user_id", "group_id")}
+}
+
+func (Membership) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("user", User.Type).Unique().Field("user_id"),
+		edge.To("group", Group.Type).Unique().Field("group_id"), // want unindexed-foreign-key
+	}
+}
+
+type Legacy struct{ ent.Schema }
+
+func (Legacy) Annotations() []schema.Annotation {
+	return []schema.Annotation{entsql.Annotation{Skip: true}}
+}
+
+func (Legacy) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("keeper", User.Type).Unique()}
+}
+
+type Tenant struct{ mixin.Schema }
+
+func (Tenant) Indexes() []ent.Index {
+	return []ent.Index{index.Edges("tenant")}
+}
+
+type Invoice struct{ ent.Schema }
+
+func (Invoice) Mixin() []ent.Mixin {
+	return []ent.Mixin{Tenant{}}
+}
+
+func (Invoice) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("tenant", Team.Type).Unique()}
+}
+
+type Person struct{ ent.Schema }
+
+func (Person) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("friends", Person.Type).Through("friendships", Friendship.Type)}
+}
+
+type Friendship struct{ ent.Schema }
+
+func (Friendship) Fields() []ent.Field {
+	return []ent.Field{field.Int("person_id"), field.Int("friend_id")}
+}
+
+func (Friendship) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("person", Person.Type).Unique().Field("person_id"),
+		edge.To("friend", Person.Type).Unique().Field("friend_id"), // want unindexed-foreign-key
+	}
+}
+
+func Tenanted() ent.Mixin {
+	return Tenant{}
+}
+
+type Receipt struct{ ent.Schema }
+
+func (Receipt) Mixin() []ent.Mixin {
+	return []ent.Mixin{Tenanted()}
+}
+
+func (Receipt) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("space", Team.Type).Unique()}
+}
+
+type Wrapped struct{ Tenant }
+
+type Bill struct{ ent.Schema }
+
+func (Bill) Mixin() []ent.Mixin {
+	return []ent.Mixin{Wrapped{}}
+}
+
+func (Bill) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("org", Team.Type).Unique()}
+}
+
+var ownerRef = "pets"
+
+type Toy struct{ ent.Schema }
+
+func (Toy) Edges() []ent.Edge {
+	return []ent.Edge{edge.From("buyer", User.Type).Ref(ownerRef).Unique()}
+}

@@ -5,7 +5,7 @@ description: Use before writing or changing Kotlin in a project that runs nitpic
 
 # nitpicker for Kotlin
 
-Written for nitpicker 0.1.0-rc.1. If `npx nitpicker --version` prints another version, reinstall
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
 this skill with the command `npx nitpicker init` prints.
 
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a

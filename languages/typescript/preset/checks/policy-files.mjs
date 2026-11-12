@@ -1,10 +1,12 @@
 import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
+import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
+  ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
@@ -71,6 +73,8 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/no-costly-collection-form.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/repeated-runs.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/sorted-extreme.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/streams/no-collected-stream-rows.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/streams/stream-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-unvalidated-schema-field.mjs',
@@ -104,6 +108,10 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/analysis/mutation/mutating-methods.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-compatibility-shim.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-falsy-default.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/round-trips/untested-round-trip.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/round-trips/exported-pairs.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/round-trips/tested-names.mjs',
+  'shared/rules/round-trips/round-trips.mjs',
   'languages/typescript/preset/eslint-plugin/rules/promises/cannot-reject.mjs',
   'languages/typescript/preset/eslint-plugin/rules/promises/no-unhandled-void-promise.mjs',
   'languages/typescript/preset/eslint-plugin/rules/regex/regex-bindings.mjs',
@@ -201,10 +209,6 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/joins/query-builders.mjs',
   'languages/typescript/preset/eslint-plugin/rules/joins/relation-types.mjs',
   'languages/typescript/preset/eslint-plugin/rules/joins/sequelize-includes.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/no-in-memory-query.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/query-calls.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/result-uses.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/queries/row-callbacks.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/bounds.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/client-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/collections/fixed-collections.mjs',

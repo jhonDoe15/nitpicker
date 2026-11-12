@@ -48,6 +48,115 @@ describe('Go lint messages', () => {
       },
       'methods on the same type should have the same receiver name. Use one receiver name for every method of the type.',
     ],
+    [
+      {
+        tool: 'nilerr',
+        rule: 'nilerr',
+        message: 'error is not nil (lines [6 9]) but it returns nil',
+      },
+      'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not.',
+    ],
+    [
+      { tool: 'bodyclose', rule: 'bodyclose', message: 'response body must be closed' },
+      'response body must be closed. Close it in a deferred call: `defer func() { err = errors.Join(err, response.Body.Close()) }()`.',
+    ],
+    [
+      {
+        tool: 'contextcheck',
+        rule: 'contextcheck',
+        message: 'Function `refresh->load` should pass the context parameter',
+      },
+      "Function `refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller's context down, or derive one from it; a goroutine uses a context made before the `go` statement.",
+    ],
+    [
+      {
+        tool: 'exhaustive',
+        rule: 'exhaustive',
+        message: 'missing cases in expression switch: Paused, Closed',
+      },
+      'missing cases in expression switch. Add a case for each missing constant, or a `default` case that handles the rest.',
+    ],
+    [
+      {
+        tool: 'usetesting',
+        rule: 'usetesting',
+        message: 'os.MkdirTemp() could be replaced by t.TempDir() in TestFolder',
+      },
+      'os.MkdirTemp() could be replaced by t.TempDir().',
+    ],
+    [
+      {
+        tool: 'testifylint',
+        rule: 'formatter',
+        message: 'assert.Equalf format %s reads arg #2, but call has 1 arg',
+      },
+      'assert.Equalf format %s reads arg N, but call has N arg.',
+    ],
+    [
+      {
+        tool: 'spancheck',
+        rule: 'spancheck',
+        message: 'span.End is not called on all paths, possible memory leak',
+      },
+      'span.End is not called on all paths, possible memory leak. Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'key-value pairs should not be used' },
+      'key-value pairs should not be used. Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
+    ],
+    [
+      { tool: 'sloglint', rule: 'sloglint', message: 'use slog.DiscardHandler instead' },
+      'use slog.DiscardHandler instead.',
+    ],
+    [
+      {
+        tool: 'perfsprint',
+        rule: 'integer-format',
+        message: 'fmt.Sprintf can be replaced with faster strconv.Itoa',
+      },
+      'fmt.Sprintf can be replaced with faster strconv.Itoa.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'identical-switch-branches',
+        message: '"switch" with identical branches (lines 22 and 24)',
+      },
+      '"switch" with identical branches. Merge the branches into one: `case a, b:` or `if a || b`.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'identical-switch-conditions',
+        message: 'case clause at line 32 has the same condition',
+      },
+      'case clause has the same condition. Remove the repeated case; only the first one can run.',
+    ],
+    [
+      { tool: 'revive', rule: 'defer', message: 'prefer not to defer chains of function calls' },
+      'prefer not to defer chains of function calls. Keep the returned function and defer that: `stop := start(); defer stop()`.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'package-directory-mismatch',
+        message:
+          'package name "api" does not match directory name "v2" or parent directory name "head"',
+      },
+      'package name "api" does not match directory name "v2". Name the package after its folder, or after the parent folder for a version folder such as `v2`.',
+    ],
+    [
+      { tool: 'revive', rule: 'defer', message: 'return in a defer function has no effect' },
+      'return in a defer function has no effect. Remove the return; a deferred function result is discarded.',
+    ],
+    [
+      {
+        tool: 'revive',
+        rule: 'unused-parameter',
+        message: "parameter 'text' seems to be unused, consider removing or renaming it as _",
+      },
+      "parameter 'text' seems to be unused, consider removing or renaming it as _.",
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

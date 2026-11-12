@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { renderConsoleSummary } from '../../summary.mjs';
 import { areaOf } from './finding-areas.mjs';
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
 
 const SAMPLE = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'fixtures/typescript-change-findings.json'), 'utf8'),
@@ -356,18 +357,7 @@ describe('finding areas', () => {
       'coverage-py',
       'mutmut',
     ],
-    go: [
-      'gofmt',
-      'gofumpt',
-      'goimports',
-      'build',
-      'vet',
-      'staticcheck',
-      'errcheck',
-      'modernize',
-      'tests',
-      'facts',
-    ],
+    go: ['gofmt', 'gofumpt', 'goimports', 'build', ...GO_LINTER_TOOLS, 'tests', 'race', 'facts'],
   };
 
   it.each(Object.entries(PRESET_TOOLS))(

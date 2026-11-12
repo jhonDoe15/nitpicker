@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
-import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import { parseAnalyzerReportKeepingValid } from '../comparison/schema/invalid-findings.mjs';
 import {
   ANALYZER_TIMEOUT_KEY,
   ANALYZER_TIMEOUT_VARIABLE,
@@ -234,7 +234,7 @@ export function installShutdownHandlers(
 
 function parsedReport(rawReport, analyzerName) {
   try {
-    return parseAnalyzerReport(rawReport, analyzerName);
+    return parseAnalyzerReportKeepingValid(rawReport, analyzerName);
   } catch (error) {
     if (error instanceof Error) {
       error.message = withTroubleshooting(error.message, TROUBLESHOOTING_ANCHORS.analyzerCrashed);

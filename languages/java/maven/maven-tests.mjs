@@ -151,34 +151,6 @@ export function runJacocoReport(options) {
   });
 }
 
-export function pitTargets(classDirectory) {
-  const targets = new Set();
-  const pending = [{ directory: classDirectory, prefix: '' }];
-  for (const { directory, prefix } of pending) {
-    const entries = readdirSync(directory, { withFileTypes: true });
-    const classes = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-      .map((entry) => `${prefix}${entry.name.replace(/\.class$/u, '')}`);
-    const wholePackage = classes.length > 0 && !'org.pitest.'.startsWith(prefix);
-    if (wholePackage) {
-      targets.add(`${prefix}*`);
-      continue;
-    }
-    for (const name of classes) {
-      targets.add(name);
-    }
-    pending.push(
-      ...entries
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => ({
-          directory: path.join(directory, entry.name),
-          prefix: `${prefix}${entry.name}.`,
-        })),
-    );
-  }
-  return [...targets].sort();
-}
-
 function topLevelClasses(classDirectory) {
   return [
     ...new Set(

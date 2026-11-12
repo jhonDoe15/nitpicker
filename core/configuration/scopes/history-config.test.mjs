@@ -116,6 +116,21 @@ describe('the change-history analyzer', () => {
     }).toEqual({ before: false, off: without, on: [...without, 'change-history'] });
   });
 
+  it.each([
+    ['typescript', ['coupling']],
+    ['javascript', ['coupling']],
+    ['java', ['java']],
+    ['kotlin', ['kotlin']],
+    ['python', ['python']],
+    ['go', []],
+  ])('shares a shard with the %s analyzers that publish imports', (preset, publishers) => {
+    const analyzer = presetAnalyzers({ preset, history: { coChange: true } }).find(
+      ({ name }) => name === 'change-history',
+    );
+
+    expect(analyzer.colocatedWith).toEqual(publishers);
+  });
+
   it('can be disabled like any analyzer, and does not replace injected analyzers', () => {
     const config = { history: { coChange: true }, disable: ['change-history'] };
 

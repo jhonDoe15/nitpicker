@@ -8,7 +8,7 @@ const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
 const MILLISECONDS_PER_MINUTE = 60000;
 const MESSAGE_TAIL_LENGTH = 3000;
-export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
+export const VERSION_PATTERN = /\d+\.\d\S*/;
 
 export function execute(
   context,

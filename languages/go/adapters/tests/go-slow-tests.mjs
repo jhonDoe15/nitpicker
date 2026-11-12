@@ -15,7 +15,7 @@ const INTEGRATION_FILE = /_(?:integration|e2e)_test\.go$/u;
 const INTEGRATION_TAG = /^\/\/go:build\s.*(?<![!\w])(?:integration|e2e)\b/mu;
 const RETIME_TIMEOUT_MS = 10 * 60 * 1000;
 
-function packageDirectory(modulePath, importPath) {
+export function packageDirectory(modulePath, importPath) {
   if (importPath === modulePath) {
     return '.';
   }
@@ -31,7 +31,7 @@ function functionText(root, { file, start, end }) {
     .join('\n');
 }
 
-function testFunction(tests, directory, name) {
+export function testFunction(tests, directory, name) {
   return tests.find((test) => path.posix.dirname(test.file) === directory && test.name === name);
 }
 

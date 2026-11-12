@@ -3,7 +3,8 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
-import { classFiles, pitClasspath, pitTargets, pitTests } from '../maven-tests.mjs';
+import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
+import { pitRunTargets } from '../module/pit-scope.mjs';
 
 export function javaArgumentFile(args) {
   return args
@@ -28,12 +29,12 @@ function pitArgLine(pitDir, args) {
   return ['--argLine', `${quote}@${file}${quote}`];
 }
 
-function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }) {
+function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history, targets }) {
   return [
     '--reportDir',
     pitDir,
     '--targetClasses',
-    pitTargets(module.outputDirectory).join(','),
+    targets.join(','),
     '--targetTests',
     pitTests(module.testOutputDirectory, isArchunit).join(','),
     '--sourceDirs',
@@ -64,6 +65,7 @@ export function runPit({
   isArchunit,
   configs,
   history,
+  scope,
   spawn,
   timeoutMs,
 }) {
@@ -74,16 +76,19 @@ export function runPit({
   if (classFiles(module.outputDirectory).length === 0) {
     return;
   }
-  runJava({
-    tool: 'PIT',
-    classpath: pitClasspath(tools, classpaths.testRuntime),
-    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history }),
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-    timeoutMs,
-  });
+  const targets = pitRunTargets(module, scope);
+  if (targets.length > 0) {
+    runJava({
+      tool: 'PIT',
+      classpath: pitClasspath(tools, classpaths.testRuntime),
+      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+      args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history, targets }),
+      cwd: module.basedir,
+      accept: (result) => result.status === 0,
+      spawn,
+      timeoutMs,
+    });
+  }
   if (!existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }
