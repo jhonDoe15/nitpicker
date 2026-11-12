@@ -113,6 +113,12 @@ Other changes:
 
 ### Fixed
 
+- Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
+  aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
+  (#1052).
+- Java 25 class files: JaCoCo moves to 0.8.16, PIT to 1.22.1 and SpotBugs to 4.9.8. Before, a
+  Java 25 build lost coverage and mutation results to a tool error, and SpotBugs reported nothing
+  without saying so (#1068).
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
