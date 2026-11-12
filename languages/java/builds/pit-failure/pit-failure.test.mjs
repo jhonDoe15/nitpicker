@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runPit } from '../../maven/pit/maven-pit.mjs';
+import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mjs';
 import { pitFailureFindings } from './pit-failure.mjs';
 
 const roots = [];
@@ -59,6 +59,7 @@ describe('a PIT run that fails', () => {
         rule: 'pit-failure',
         path: '.',
         identity: 'pit-failure:shop',
+        symbol: 'shop',
         message: expect.stringMatching(
           /^PIT failed with exit code 1: boom\nRunning\nSee https:\/\/\S+#pit-fails-or-times-out$/u,
         ),
@@ -97,5 +98,36 @@ describe('pitFailureFindings', () => {
       'pit-failure:app:integrationTest',
     ]);
     expect(pitFailureFindings(path.join(root, 'missing'))).toEqual([]);
+  });
+});
+
+describe('the time PIT gets on Maven', () => {
+  it('is the command limit, cut to the whole minutes left before the analyzer deadline', () => {
+    expect(pitTimeoutMs(15 * 60_000, undefined, 0)).toBe(15 * 60_000);
+    expect(pitTimeoutMs(15 * 60_000, 4.5 * 60_000, 0)).toBe(4 * 60_000);
+  });
+
+  it('is not started with less than a minute left, and says why', () => {
+    const { root, module } = moduleTree();
+    let spawned = false;
+
+    runPit({
+      module,
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      spawn: () => {
+        spawned = true;
+        return { status: 0, stdout: '', stderr: '' };
+      },
+      timeoutMs: 15 * 60_000,
+      deadline: Date.now() + 30_000,
+    });
+
+    expect(spawned).toBe(false);
+    expect(pitFailureFindings(root)[0].message).toMatch(
+      /^PIT was not started in .+: less than a minute of the Java analyzer's time limit was left\./u,
+    );
   });
 });

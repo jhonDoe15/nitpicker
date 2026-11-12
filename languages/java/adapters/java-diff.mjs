@@ -145,6 +145,7 @@ function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
+    pitDeadline: options.budget?.pitDeadlineMs,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
   const duplicates = {

@@ -1,5 +1,6 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import {
+  MUTATION_FAILED_PART_RULE,
   TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
   TESTS_FAILED_SCOPE_SEPARATOR,
@@ -36,6 +37,17 @@ export function unknownOnBaseFor(failures, touchedCode) {
   );
   return (finding) =>
     isTestResultFinding(finding) && modules.some((module) => isUnder(module, finding.path));
+}
+
+export function mutationFailuresOf(report) {
+  return (report?.findings ?? []).filter(
+    (finding) => isToolError(finding) && finding.rule === MUTATION_FAILED_PART_RULE,
+  );
+}
+
+export function unknownMutantsFor(failures, touchedCode) {
+  const unknown = unknownOnBaseFor(failures, touchedCode);
+  return unknown && ((finding) => finding.rule.startsWith('mutant-') && unknown(finding));
 }
 
 export function changedByDiff(finding, touchedCode) {

@@ -797,8 +797,13 @@ stop leftover containers or servers after a Maven timeout.
 
 **Symptom.** A `pit-failure` tool error of the `pit` tool on `base` or `head`, such as `PIT did not
 finish in <dir> within 15 minutes and was stopped. Set NITPICKER_MAVEN_TIMEOUT_MINUTES ...` or `PIT
-failed with exit code 1: ...` followed by PIT's last output lines. The other Java or Kotlin findings
-of that run are still reported; only that module's mutation findings are missing.
+failed with exit code 1: ...` followed by PIT's last output lines, or `PIT was not started in <dir>:
+less than a minute of the Java analyzer's time limit was left`. The other Java or Kotlin findings of
+that run are still reported; only that module's mutation findings are missing (all of them, even when
+only one of its Gradle test tasks failed, since the other tasks' results alone would show mutants the
+failed task's tests kill as surviving; the message names that task). A failure on `base` makes the
+module's `head` mutants count as new only on changed lines, and a failure on `head` resolves none of
+its `base` mutants.
 
 **Cause.** Mutation testing runs the tests once per mutated class, in a fresh JVM, so a large module,
 slow tests or Spring application contexts make it the longest step. `--all` mutates every class; see
@@ -806,7 +811,9 @@ slow tests or Spring application contexts make it the longest step. `--all` muta
 also fails when a test fails or hangs under its agent, or when it cannot start the project's test
 engine.
 
-**Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. On Gradle, PIT runs
+**Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
+gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
+keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
 inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
 stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.

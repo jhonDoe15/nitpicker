@@ -1,12 +1,12 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { MUTATION_FAILED_PART_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
 
 const PIT_FAILURE_FILE = 'failure.txt';
-const PIT_FAILURE_RULE = 'pit-failure';
 
 export function writePitFailure(pitDir, error) {
   writeFileSync(
@@ -30,9 +30,10 @@ function failureFiles(pitRoot) {
 export function pitFailureFindings(reportRoot, moduleDir = '') {
   return failureFiles(path.join(reportRoot, 'pit')).map(({ part, file }) => ({
     tool: 'pit',
-    rule: PIT_FAILURE_RULE,
+    rule: MUTATION_FAILED_PART_RULE,
     path: '.',
-    identity: [PIT_FAILURE_RULE, moduleDir || '.', part].filter(Boolean).join(':'),
+    identity: [MUTATION_FAILED_PART_RULE, moduleDir || '.', part].filter(Boolean).join(':'),
+    symbol: moduleDir || '.',
     message: withTroubleshooting(
       readFileSync(file, 'utf8').trim(),
       TROUBLESHOOTING_ANCHORS.pitFails,

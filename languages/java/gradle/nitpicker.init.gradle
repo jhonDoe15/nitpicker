@@ -984,8 +984,9 @@ allprojects {
                     def exitValue = executionResult.get().exitValue
                     if (exitValue != 0) {
                         def lines = pitOutput.toString('UTF-8').readLines().findAll { it.trim() }
+                        def testTask = checkedTestTasks().size() > 1 ? " running the ${source.name} tests" : ''
                         new File(pitReportDirectory(source).asFile, 'failure.txt').text =
-                            "PIT failed with exit code ${exitValue}: ${lines.takeRight(40).join('\n')}"
+                            "PIT failed with exit code ${exitValue}${testTask}: ${lines.takeRight(40).join('\n')}"
                     }
                 }
                 doFirst {
