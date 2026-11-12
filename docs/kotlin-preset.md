@@ -2,7 +2,8 @@
 
 Status: slices KT1 (ticket #176), KT2 (ticket #177), KT3 (ticket #178) and KT4 (ticket #179) implemented.
 
-The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`) or a
+The Kotlin preset gates a Gradle project with Kotlin JVM modules (`org.jetbrains.kotlin.jvm`), Kotlin
+Multiplatform or Android modules (their sources only, see [Known limits](kotlin-preset/known-limits.md)), or a
 Maven project that applies `kotlin-maven-plugin`, including modules that mix Java and Kotlin, with the same differential gate as the
 [Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
 findings, fail only on new enforceable findings. It is not a second implementation. It shares the
@@ -46,3 +47,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Remaining slices](kotlin-preset/remaining-slices.md)
 - [Tools evaluated and not integrated](kotlin-preset/tools-evaluated-and-not-integrated.md)
 - [Known limits](kotlin-preset/known-limits.md)
+- [Troubleshooting](kotlin-preset/troubleshooting.md)

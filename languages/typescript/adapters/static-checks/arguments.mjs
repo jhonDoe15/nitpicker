@@ -1,10 +1,10 @@
 import { realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { tmpdir } from 'node:os';
 import {
   PACKAGE_ROOT,
   SNAPSHOT_DIRECTORY_NAMES,
 } from '../../../../core/tooling/tool-resolution.mjs';
+import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const SUPPORTED_KINDS = new Set(['prettier', 'typecheck', 'architecture']);
 
@@ -90,7 +90,7 @@ function validatedSnapshotRoot(value, name) {
   if (root === TRUSTED_TOOL_ROOT) {
     return root;
   }
-  const relativeToTemporaryRoot = path.relative(realpathSync(tmpdir()), root);
+  const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), root);
   const segments = relativeToTemporaryRoot.split(path.sep);
   if (
     relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||

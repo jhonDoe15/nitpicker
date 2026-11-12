@@ -3,6 +3,10 @@ import {
   TESTS_FAILED_SCOPE_SEPARATOR,
   testsFailOnBase,
 } from '../../../../shared/rules/finding-helpers.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const ROOT_MODULE = '.';
 const MAX_MESSAGE_LENGTH = 4000;
@@ -51,8 +55,10 @@ export function testsFailedFinding(preset, { module, tests, roots = [] }) {
     rule: TESTS_FAILED_RULE,
     path: '.',
     identity: module === ROOT_MODULE ? TESTS_FAILED_RULE : `${TESTS_FAILED_RULE}:${module}`,
-    message:
+    message: withTroubleshooting(
       message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...` : message,
+      TROUBLESHOOTING_ANCHORS.baseTestsFail,
+    ),
     classification: 'tool-error',
     symbol:
       module === ROOT_MODULE && roots.length > 0

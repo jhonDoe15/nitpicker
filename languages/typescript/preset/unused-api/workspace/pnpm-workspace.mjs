@@ -1,6 +1,6 @@
-const PACKAGES_KEY = /^packages\s*:\s*(.*)$/u;
+const PACKAGES_KEY = /^packages\s*:(.*)$/u;
 const TOP_LEVEL_KEY = /^[^\s#-]/u;
-const LIST_ITEM = /^\s*-\s*(.*)$/u;
+const LIST_ITEM = /^\s*-(.*)$/u;
 const COMMENT = /(?:^|\s)#.*$/u;
 
 function withoutComment(line) {
@@ -43,7 +43,7 @@ export function pnpmPackagePatterns(text) {
   const lines = text.split(/\r?\n/u).map(withoutComment);
   const start = lines.findIndex((line) => PACKAGES_KEY.test(line));
   if (start === -1) return [];
-  const inline = PACKAGES_KEY.exec(lines[start])[1];
+  const inline = PACKAGES_KEY.exec(lines[start])[1].trimStart();
   const rest = lines.slice(start + 1);
   return inline.startsWith('[') ? flowItems(rest, inline) : blockItems(rest);
 }

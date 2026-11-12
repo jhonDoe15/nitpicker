@@ -26,13 +26,15 @@ def attribute_chain(node):
 
 
 def scope_imports(body):
-    for statement in body:
+    pending = list(reversed(body))
+    while pending:
+        statement = pending.pop()
         if isinstance(statement, (ast.Import, ast.ImportFrom)):
             yield statement
         elif not isinstance(statement, SCOPE_TYPES):
             children = ast.iter_child_nodes(statement)
-            yield from scope_imports(
-                [child for child in children if isinstance(child, ast.stmt)]
+            pending.extend(
+                reversed([child for child in children if isinstance(child, ast.stmt)])
             )
 
 

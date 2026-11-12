@@ -1,0 +1,31 @@
+{
+  "findings": [
+    {
+      "tool": "duplicates",
+      "rule": "cpd-not-run",
+      "path": ".",
+      "identity": "cpd-not-run@:core",
+      "message": "No CPD duplicate report for core.",
+      "classification": "descriptive",
+      "toolNotRun": true,
+      "notRunScope": ["core/src/main/java", "core/src/test/java"],
+      "notRunIdentityPrefix": "cpd:"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "core/src/main/java/p/Old.java",
+      "identity": "cpd:pair:core/src/main/java/p/Old.java|core/src/main/java/p/Copy.java:occurrence:1",
+      "message": "This code repeats core/src/main/java/p/Copy.java.",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "duplicates",
+      "rule": "duplicate-clone",
+      "path": "integration/src/test/java/p/T.java",
+      "identity": "cpd:pair:integration/src/test/java/p/T.java|integration/src/test/java/p/U.java:occurrence:1",
+      "message": "This code repeats integration/src/test/java/p/U.java.",
+      "classification": "enforceable"
+    }
+  ]
+}

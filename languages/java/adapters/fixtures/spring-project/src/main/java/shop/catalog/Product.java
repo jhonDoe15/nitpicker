@@ -6,10 +6,12 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
+import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -17,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
+@Table(indexes = @Index(columnList = "preferred_supplier_id"))
 public class Product {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY) // violation: JpaSequenceIds
@@ -24,9 +27,9 @@ public class Product {
 
   @Version private long version;
 
-  @ManyToOne private Supplier supplier; // violation: JpaLazyFetching
+  @ManyToOne private Supplier supplier; // violation: JpaLazyFetching, JpaUnindexedForeignKey
 
-  @ManyToOne(fetch = FetchType.EAGER) // violation: JpaLazyFetching
+  @ManyToOne(fetch = FetchType.EAGER) // violation: JpaLazyFetching, JpaUnindexedForeignKey
   private Supplier backupSupplier;
 
   @ManyToOne(fetch = FetchType.LAZY)

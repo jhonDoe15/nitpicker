@@ -61,6 +61,22 @@ describe('mypy text report', () => {
     ).toEqual(['a.py misc Bad', 'a.py misc Bad#2', 'a.py other Bad', 'b.py misc Bad']);
   });
 
+  it('takes the code only from the bracket that ends the line after a space', () => {
+    const text = [
+      'a.py:1: error: Bad [a] [b]',
+      'a.py:2: error: Foo [bar baz]',
+      'a.py:3: error: Tight[misc]',
+      'a.py:4: error: Trailing space  ',
+    ].join('\n');
+
+    expect(ingestMypy(text, { roots }).map(({ rule, message }) => `${rule}|${message}`)).toEqual([
+      'b|Bad [a]',
+      'type-error|Foo [bar baz]',
+      'type-error|Tight[misc]',
+      'type-error|Trailing space  ',
+    ]);
+  });
+
   it('keeps the identity when lines move', () => {
     const before = ingestMypy('a.py:1: error: Bad  [misc]\n', { roots });
     const after = ingestMypy('a.py:40: error: Bad  [misc]\n', { roots });

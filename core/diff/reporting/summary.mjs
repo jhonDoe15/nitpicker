@@ -4,10 +4,15 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import {
+  toolErrorHelpLine,
+  troubleshootingLinkOf,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { designNoteLines } from './format/design-notes.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { failingHeadTests, failingTestLines } from './failing-tests/failing-tests.mjs';
@@ -71,7 +76,7 @@ function renderGateSummary(
   lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, otherErrors, color);
-  for (const line of partialRunLines(report.summary)) {
+  for (const line of [...partialRunLines(report.summary), ...quickLines(report.summary)]) {
     lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
   }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
@@ -221,6 +226,10 @@ function appendToolErrorSummary(lines, shown, color) {
       ...rest.map((line) => `  ${line}`),
     );
   }
+  const help = toolErrorHelpLine(shown.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(style(help, [ANSI.dim], color));
+  }
 }
 
 export function withoutSkipNotices(toolErrors) {
@@ -236,13 +245,16 @@ const ERROR_HEADLINE_LIMIT = 300;
 
 const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
 
-function errorHeadline(message) {
-  const text = singleLine(message);
+export function errorHeadline(message) {
+  const link = troubleshootingLinkOf(String(message));
+  const text = singleLine(String(message).replace(link ?? '', ''));
   const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);
-  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT);
-  return headline.length < text.length - start
-    ? `${headline}… (full text in the diagnostics file)`
-    : headline;
+  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT).trimEnd();
+  const shown =
+    headline.length < text.length - start
+      ? `${headline}… (full text in the diagnostics file)`
+      : headline;
+  return link === undefined ? shown : `${shown} ${link}`;
 }
 
 export function pluralize(noun, count) {
