@@ -313,6 +313,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ClassLoadEffect',
       'pmd/UnboundedThreadPool',
       'pmd/RecursiveMapUpdate',
+      'pmd/StreamedRowsCollected',
       'pmd/ReusableObjectPerCall',
       'pmd/GeneratedMemberCycle',
       'pmd/GeneratedEqualsSkipsSuperclass',

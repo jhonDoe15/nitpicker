@@ -13,6 +13,7 @@ import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
 import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
 import { rule as ruleNoCopiedConstant } from './test-assertions/copied-constants/no-copied-constant.mjs';
@@ -141,6 +142,7 @@ export const directoryRules = {
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
   'no-copied-constant': ruleNoCopiedConstant,

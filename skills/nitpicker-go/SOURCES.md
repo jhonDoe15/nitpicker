@@ -42,6 +42,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   Types and values: exhaustive (BSD-2-Clause), recvcheck, reassign and wastedassign (MIT),
   durationcheck and makezero (Apache-2.0), unconvert (BSD-3-Clause, the analyzer form
   golangci-lint maintains).
+  Tests: thelper, tparallel and testifylint (MIT), usetesting (Apache-2.0). testify itself is
+  only a dependency of the fixtures.
+  Other forms: asciicheck and canonicalheader (MIT, the forks golangci-lint maintains), bidichk,
+  gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
+  (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
+  of the spancheck fixtures.
 
 ## Rules and their reasoning
 
@@ -117,8 +123,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **gosec with every rule, its file-mode limits aligned.** Each rule names the safe form (crypto/rand,
   query parameters, `os.Root`, a server with `ReadHeaderTimeout`, 0o600 files). G307 is held to the
   same 0o600 as G302 and G306, because gosec's default limit for `os.Create` (0o666) is the mode
-  `os.Create` always uses, so the rule never reported. G104, G107, G204, G304 and G504 are off:
-  errcheck covers unchecked errors; G107, G204 and G304 flag every non-constant URL, command or
+  `os.Create` always uses, so the rule never reported. G104, G107, G116, G204, G304 and G504 are off:
+  errcheck covers unchecked errors; bidichk reports bidirectional characters where they are, not on
+  the file's first line; G107, G204 and G304 flag every non-constant URL, command or
   path, while the taint rules G704, G702 and G703 report the ones from request data, program
   arguments, the environment or stdin; G504 names a `net/http/cgi` weakness fixed in Go 1.6.3. G601
   runs only for files before Go 1.22, read per file, because gosec itself reads one Go version per
@@ -141,6 +148,19 @@ than the others, and this skill teaches its rules before an agent writes Go.
   methods an interface expects on values (`String`, `Error`, `Format`, `Value`, `Marshal...`)
   take a value next to pointer methods, since a pointer receiver there would stop
   `fmt` and `encoding/json` using them for plain values.
+- **Test linters.** A helper without `t.Helper()` reports failures on its own line, a serial
+  test with parallel subtests runs them after it returns, `os.Setenv` in a test leaks into the
+  next one, and a generic testify assertion hides what failed; each has one allowed form.
+  testifylint runs every check, and each is printed under its own name, so an exception names
+  one check rather than all of testify. paralleltest is left out: `t.Parallel()` everywhere
+  conflicts with `t.Setenv` and shared fixtures.
+- **Other one-form linters.** A `fmt.Sprintf` that `strconv` or `+` replaces, a layout or status literal where the standard library names the constant, an untagged struct whose field names become its
+  encoded form, a log call that drops the context it has, a span not ended on every path, a
+  non-canonical header key, a non-ASCII identifier and a bidirectional control character are a
+  second form or a hidden bug, each with one allowed form. sloglint asks for typed attributes
+  rather than key-value pairs, because `LogAttrs` takes only attributes, so it is the form every
+  call accepts, and a key-value list can pair a key with the wrong value. usestdlibvars's checks for bare words (`\"May\"`, `\"MD5\"`) and sloglint's constant-message check stay off: both flag correct code (a type-name table, a logging wrapper) that has no other form. predeclared is left
+  out because revive's `redefines-builtin-id` reports the same names.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -230,3 +250,28 @@ Two adversarial reviews of the type and value linters changed these rules:
   adding a case or a constant does not make the finding new.
 - **Rewritten directives keep their length and shape** (`//exhaustivx:`, `//nolinx:`), so no
   comment's end moves and none turns from a directive into doc text.
+
+Two adversarial reviews of the test linters changed these rules:
+
+- **testifylint's formatter checks format strings only**; requiring `Equalf` for every message
+  flagged plain messages that format nothing. usetesting leaves `os.TempDir()` alone, since
+  building an expected path with it creates nothing.
+- **Messages drop test names and counts** (usetesting's `in TestX`, formatter's argument
+  numbers), and a testifylint check name testifylint adds later falls back to
+  `testifylint/testifylint` instead of an unknown rule.
+- **One finding per line**: errorlint wins over testifylint `compares` on
+  `assert.True(t, err == io.EOF)`, and thelper over `suite-thelper`.
+
+Two adversarial reviews of the other catalog linters changed these rules:
+
+- **Checks that match a bare word are off.** usestdlibvars's month, weekday, hash, isolation
+  level, TLS scheme and constant-kind checks flag `"May"` or `"Int"` in any string, and
+  sloglint's constant-message check flags a constant from another package and every logging
+  wrapper; neither leaves an allowed form.
+- **A misspelled directive alone on its line is reported.** gocheckcompilerdirectives reads a
+  directive only up to a following space, so `//go:nosplitt` with nothing after it passed; the
+  lint program hands it each comment with a space appended.
+- **perfsprint stays quiet where staticcheck reports the call**: S1025, S1028, S1039, SA1006,
+  QF1010 and QF1012 keep the line.
+- **Hints fit every message**: musttag names the tag the message names, spancheck covers a span
+  that is never assigned, and sloglint's key-value message names the attribute form.

@@ -33,23 +33,33 @@ type Result struct {
 
 func supersededBy() map[string][]string {
 	replacements := map[string][]string{
-		"S1023":        {"SA4011"},
-		"S1000":        {"S1037"},
-		"inline":       {"gofixdirective"},
-		"rangeint":     {"S1018"},
-		"SA4006":       {"SA4010"},
-		"SA1006":       {"printf"},
-		"nilness":      {"SA4031", "SA5000"},
-		"errcheck":     {"SA5001", "SA9001", "sqlclosecheck"},
-		"nilnil":       {"nilerr"},
-		"wastedassign": {"SA4006", "SA4010"},
-		"errname":      {"ST1012"},
-		"noctx":        {"SA1005"},
-		"SA1019":       {"G506", "G507"},
-		"G118":         {"lostcancel"},
-		"G115":         {"G109"},
-		"G601":         {"range-val-address"},
-		"contextcheck": {"G118"},
+		"S1023":                     {"SA4011"},
+		"S1000":                     {"S1037"},
+		"inline":                    {"gofixdirective"},
+		"rangeint":                  {"S1018"},
+		"SA4006":                    {"SA4010"},
+		"SA1006":                    {"printf"},
+		"nilness":                   {"SA4031", "SA5000"},
+		"errcheck":                  {"SA5001", "SA9001", "sqlclosecheck"},
+		"nilnil":                    {"nilerr"},
+		"wastedassign":              {"SA4006", "SA4010"},
+		"usetesting":                {"testingcontext"},
+		"compares":                  {"errorlint"},
+		"suite-thelper":             {"thelper"},
+		"errname":                   {"ST1012"},
+		"noctx":                     {"SA1005"},
+		"string-format":             {"SA1006", "QF1010", "QF1012", "S1025", "S1028", "S1039", "unnecessary-format"},
+		"bool-format":               {"QF1012"},
+		"hex-format":                {"QF1012"},
+		"integer-format":            {"QF1012"},
+		"gocheckcompilerdirectives": {"SA9009"},
+		"usestdlibvars":             {"ST1013"},
+		"bidichk":                   {"ST1018"},
+		"SA1019":                    {"G506", "G507"},
+		"G118":                      {"lostcancel"},
+		"G115":                      {"G109"},
+		"G601":                      {"range-val-address"},
+		"contextcheck":              {"G118"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
 	return replacements
@@ -88,9 +98,9 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			rule := ruleOf(action.Analyzer, diagnostic)
+			rule, message := ruleOf(action.Analyzer, diagnostic)
 			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
-			found.Message = diagnostic.Message
+			found.Message = message
 			seen[found] = true
 		}
 		objects.add(action.Result)

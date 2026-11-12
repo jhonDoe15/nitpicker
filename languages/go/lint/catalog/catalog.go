@@ -21,10 +21,12 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// Linter is one linter: the tool name findings are printed under and its analyzers.
+// Linter is one linter: the tool name findings are printed under and its analyzers. A linter
+// with Checks reports each finding under the check named by the diagnostic's category.
 type Linter struct {
 	Tool      string
 	Analyzers []*analysis.Analyzer
+	Checks    []string
 }
 
 // SQLPackages are the packages whose rows rowserrcheck follows beside database/sql.
@@ -50,7 +52,7 @@ var (
 
 // Linters returns every catalog linter.
 func Linters() []Linter {
-	return slices.Concat(linters, valueLinters)
+	return slices.Concat(linters, valueLinters, testLinters, otherLinters)
 }
 
 // Configure sets the options that differ from each linter's defaults, and turns off the
@@ -60,5 +62,11 @@ func Configure() error {
 	if err := errorComparisons.Flags.Set("errorf", "true"); err != nil {
 		return err
 	}
-	return configureValues()
+	if err := configureValues(); err != nil {
+		return err
+	}
+	if err := configureTests(); err != nil {
+		return err
+	}
+	return configureOthers()
 }

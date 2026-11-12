@@ -4,7 +4,7 @@ Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every 
 check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes, revive,
 gosec and the catalog linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
 contextcheck, containedctx, fatcontext, exhaustive, recvcheck, durationcheck, makezero,
-reassign, unconvert, wastedassign) on every package, test files included. Write these forms from the start; each finding's message names the
+reassign, unconvert, wastedassign, thelper, tparallel, usetesting, testifylint) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
 
 ## Errors
@@ -39,6 +39,18 @@ allowed form and ends with its exception entry.
   (containedctx). In a loop, derive each iteration's context into a new variable, not into the
   loop's own (fatcontext).
 
+## Tests
+
+- A test helper takes `t *testing.T` first and starts with `t.Helper()` (thelper).
+- When subtests call `t.Parallel()`, the test calls it too (tparallel).
+- Use `t.TempDir()`, `t.Setenv()`, `t.Chdir()` and `t.Context()`, never `os.MkdirTemp`,
+  `os.Setenv`, `os.Chdir` or `context.Background()` in a test (usetesting).
+- With testify, use the specific assertion (`assert.Len`, `assert.Empty`, `assert.ErrorIs`,
+  `assert.JSONEq`, `assert.InDelta` for floats), `require.NoError` for errors, the expected value
+  first, format strings that match their arguments, `s.Equal` and `s.Run` inside a suite, and
+  `require` only in the test's own goroutine (testifylint). Compare a float with
+  `assert.InDelta`, or convert a whole number to `int` first.
+
 ## Names and comments
 
 - Every package has a package comment, `// Package orders ...`, in one file, usually `doc.go`
@@ -72,6 +84,16 @@ allowed form and ends with its exception entry.
   you append to with `make([]T, 0, n)` (makezero). Drop conversions to the type a value already
   has (unconvert), and assignments that are overwritten before they are read (wastedassign).
 - Never assign another package's variables such as `io.EOF` (reassign).
+- Format with `strconv`, `hex.EncodeToString`, `errors.New` or `+` where `fmt.Sprintf` adds
+  nothing (perfsprint), and use the standard library's constants: `http.MethodGet`,
+  `http.StatusCreated`, `time.RFC3339`, `time.January` in `time.Date` (usestdlibvars).
+- Tag every field of a struct that goes through `json`, `xml`, `yaml`, `toml`, `mapstructure` or
+  sqlx (musttag).
+- Log with `slog`'s `...Context` form when the function has a context or request, and typed attributes such as `slog.String("name", name)`, never bare key-value pairs
+  (sloglint). End every span in a deferred call right after `tracer.Start` (spancheck).
+- Write header keys in canonical form, `"Content-Type"` (canonicalheader); keep identifiers ASCII
+  (asciicheck), source free of bidirectional control characters (bidichk), and every `//go:`
+  directive one the compiler knows (gocheckcompilerdirectives).
 - Defer one call: keep a returned function first, `stop := start(); defer stop()`, never
   `defer start()()`.
 

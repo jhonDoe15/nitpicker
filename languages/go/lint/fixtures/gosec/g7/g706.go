@@ -11,5 +11,5 @@ func Logged(request *http.Request) {
 }
 
 func Structured(request *http.Request) {
-	slog.Info("user logged in", "user", request.URL.Query().Get("user"))
+	slog.InfoContext(request.Context(), "user logged in", slog.String("user", request.URL.Query().Get("user")))
 }

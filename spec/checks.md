@@ -167,6 +167,18 @@ in the Java preset (main sources, Gradle and Maven) and `kotlin-source/` rules o
 Kotlin preset. The other presets read `contains` or `in` only, and the Java and Kotlin rules read
 loops and iterating lambdas, not recursion or listeners. The Go preset has no own rule engine yet.
 
+Streamed rows collected: `nitpicker/no-collected-stream-rows` (production source, in `eslint-lint`)
+reports every item of a `for await` loop over a stream, async generator or cursor pushed into one array
+that is read only after the loop, so the whole input sits in memory (a batch flushed inside the loop).
+The same form runs as `streamed-rows-collected` in the Python preset (`.iterator()`, `yield_per`,
+`stream_results=True`, a named or server-side cursor) and as `pmd/StreamedRowsCollected` in the Java
+preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryForStream` or a Hibernate
+`stream()`, collected with `toList()`, `collect` or `forEach(list::add)`) and the Kotlin preset (a
+`Stream` returned by a repository function, collected in the same chain). A `limit`, an early `break` or
+`return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
+it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
+small result. The Go preset has no own rule engine yet.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
