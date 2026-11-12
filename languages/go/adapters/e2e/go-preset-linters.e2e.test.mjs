@@ -10,7 +10,10 @@ import {
 } from './test-support/go-e2e-support.mjs';
 import { BASE_FILES } from './test-support/go-fixtures.mjs';
 import {
+  GORM_MIGRATED,
+  GORM_MODELS,
   LOOKUP,
+  OWN_RULES,
   PROJECT_STATICCHECK,
   SKIP_S1003,
   STATUS,
@@ -27,11 +30,14 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     workspace = createWorkspace();
     project = goRepository(workspace, BASE_FILES);
     commitBranch(project, 'lint', { 'shop/lookup.go': LOOKUP });
+    commitBranch(project, 'own-rules', { 'shop/rules.go': OWN_RULES });
     commitBranch(project, 'catalog', {
       'shop/stock.go': STOCK,
       'shop/stock/stock.go': STOCK_REFRESH,
     });
     commitBranch(project, 'catalog-values', { 'shop/status.go': STATUS });
+    commitBranch(project, 'foreign-keys', GORM_MODELS);
+    commitBranch(project, 'foreign-keys-migrated', GORM_MIGRATED);
     commitBranch(project, 'conf-ignored', {
       'shop/lookup.go': LOOKUP,
       'staticcheck.conf': SKIP_S1003,
@@ -46,17 +52,31 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     removeWorkspace(workspace);
   });
 
-  it('fails staticcheck, errcheck and modernize findings with the allowed form', () => {
+  it('fails staticcheck, errcheck, modernize and revive findings with the allowed form', () => {
     const result = gate(project, 'lint');
     expect(newFindings(result)).toEqual([
       'errcheck/unchecked shop/lookup.go',
       'modernize/any shop/lookup.go',
+      'revive/enforce-map-style shop/lookup.go',
       'staticcheck/S1003 shop/lookup.go',
     ]);
     expect(newMessages(result)).toEqual([
       'unchecked error. Handle the error: return it (wrapped with `%w`), or join it into a named error result in a deferred call, `defer func() { err = errors.Join(err, file.Close()) }()`. Assign a type assertion to two values, `value, ok := x.(T)`. If this is intended, add {"rule":"errcheck/unchecked","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'interface{} can be replaced by any. `go fix ./...` applies this rewrite. If this is intended, add {"rule":"modernize/any","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'use map[type]type{} instead of make(map[type]type). Write `map[K]V{}`; keep `make` only with a size: `make(map[K]V, n)`. If this is intended, add {"rule":"revive/enforce-map-style","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'should use strings.Contains(name, "-") instead. If this is intended, add {"rule":"staticcheck/S1003","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('fails the own go-rules findings with the allowed form', () => {
+    const result = gate(project, 'own-rules');
+    expect(newFindings(result)).toEqual([
+      'go-rules/logged-and-returned shop/rules.go',
+      'go-rules/panic-for-failure shop/rules.go',
+    ]);
+    expect(newMessages(result)).toEqual([
+      'the error is logged and then returned, so it is reported twice: return it wrapped with `%w` and let the caller that handles it log it, or log it here and handle it. If this is intended, add {"rule":"go-rules/logged-and-returned","paths":["shop/rules.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'panic outside main, init and a Must function: return an error and let the caller decide (a Must function, such as `regexp.MustCompile`, panics only on input the program itself wrote). If this is intended, add {"rule":"go-rules/panic-for-failure","paths":["shop/rules.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 
@@ -65,12 +85,29 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     expect(newFindings(result)).toEqual([
       'contextcheck/contextcheck shop/stock.go',
       'errorlint/errorlint shop/stock.go',
+      'go-rules/context-outside-entry shop/stock/stock.go',
       'nilerr/nilerr shop/stock.go',
     ]);
     expect(newMessages(result)).toEqual([
       'Function `Refresh` should pass the context parameter. Take a `ctx context.Context` parameter and pass the caller\'s context down, or derive one from it; a goroutine uses a context made before the `go` statement. If this is intended, add {"rule":"contextcheck/contextcheck","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'comparing with == will fail on wrapped errors. Use errors.Is to check for a specific error. If this is intended, add {"rule":"errorlint/errorlint","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'a new root context outside package main cannot be cancelled by any caller: take `ctx context.Context` as the first parameter and pass it on. If this is intended, add {"rule":"go-rules/context-outside-entry","paths":["shop/stock/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'error is not nil but it returns nil. Return the error the branch checks: the error when it is set, nil when it is not. If this is intended, add {"rule":"nilerr/nilerr","paths":["shop/stock.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('fails a GORM foreign key without an index, and leaves it to the migrations when they declare it', () => {
+    const models = gate(project, 'foreign-keys');
+    expect(newFindings(models)).toEqual(['go-rules/unindexed-foreign-key shop/models.go']);
+    expect(newMessages(models)).toEqual([
+      '`Order.CustomerID` holds the foreign key of the GORM relation `Customer.Orders`, and no index, unique constraint or primary key of `Order` starts with it: add `gorm:"index"` to `Order.CustomerID`, or put it first in a composite index. ' +
+        'Only MySQL indexes a foreign-key column by itself; PostgreSQL, SQL Server and SQLite do not, so every delete of a referenced row, and every join or lookup by the column, scans the whole table once it grows. An exception fits only when the table is known to stay small. ' +
+        'If this is intended, add {"rule":"go-rules/unindexed-foreign-key","paths":["shop/models.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+
+    const migrated = gate(project, 'foreign-keys-migrated');
+    expect(newFindings(migrated)).toEqual([
+      'repository-hygiene/foreign-key-index migrations/0001_orders.up.sql',
     ]);
   });
 
@@ -86,6 +123,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     expect(newFindings(gate(project, 'conf-ignored'))).toEqual([
       'errcheck/unchecked shop/lookup.go',
       'modernize/any shop/lookup.go',
+      'revive/enforce-map-style shop/lookup.go',
       'staticcheck/S1003 shop/lookup.go',
     ]);
   });
@@ -97,6 +135,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'modernize/any shop/lookup.go',
       'nitpicker-config/policy-loosened nitpicker.config.json',
       'nitpicker-config/policy-loosened nitpicker.config.json',
+      'revive/enforce-map-style shop/lookup.go',
     ]);
     expect(
       newMessages(result)

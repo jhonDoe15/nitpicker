@@ -16,8 +16,8 @@ const LOGIC_ROOT = /^(?:buildSrc|build-logic)(?:\/|$)/u;
 const MAX_FILE_BYTES = 512 * 1024;
 const QUOTED = /"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'/gu;
 const ROOT_PREFIX =
-  /^(?:\$\{?(?:rootDir|rootProject\.projectDir|project\.rootDir|rootProject\.rootDir)\}?)(?:\/|$)/u;
-const PROJECT_PREFIX = /^(?:\$\{?(?:projectDir|project\.projectDir)\}?)(?:\/|$)/u;
+  /^\$\{?(?:rootDir|rootProject\.projectDir|project\.rootDir|rootProject\.rootDir)\}?(?:\/|$)/u;
+const PROJECT_PREFIX = /^\$\{?(?:projectDir|project\.projectDir)\}?(?:\/|$)/u;
 const ROOT_RECEIVER = /\brootProject\b|\brootDir\b|\bisolated\.rootProject\b/u;
 const MAVEN_ROOT = new Set([
   'maven.multiModuleProjectDirectory',

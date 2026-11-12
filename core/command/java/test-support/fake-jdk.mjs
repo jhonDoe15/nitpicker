@@ -4,9 +4,11 @@ import path from 'node:path';
 const FIRST_FINDING_LINE = 3;
 const GOOGLE_CHECKS = [
   '<module name="Checker">',
+  '<module name="TreeWalker">',
   ...['MemberName', 'MethodName'].map(
     (name) => `<module name="${name}"><property name="format" value="^[a-z]+$"/></module>`,
   ),
+  '</module>',
   '</module>',
 ].join('\n');
 
@@ -75,6 +77,7 @@ const HANDLERS = {
     );
   },
   'com.google.googlejavaformat.java.Main'() {},
+  'de.thetaphi.forbiddenapis.cli.CliMain'() {},
 };
 
 function java({ args, cwd }) {
@@ -92,6 +95,8 @@ function java({ args, cwd }) {
     put(tokens[tokens.indexOf(script) + 2], '{"files":{},"classes":[]}');
   } else if (script?.endsWith('ErrorProneReport.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]\n');
+  } else if (script?.endsWith('CpdReport.java')) {
+    copyOrWrite(tokens[tokens.indexOf(script) + 1], path.join(cwd, 'cpd.xml'), '<pmd-cpd/>');
   } else {
     const handler = HANDLERS[mainClass];
     if (handler === undefined) {
@@ -102,8 +107,9 @@ function java({ args, cwd }) {
   return {};
 }
 
-function jdeps({ cwd }) {
-  const reports = ['jdeps.txt', 'jdeps/jdeps.txt', 'jdeps/jdeps-test.txt']
+function jdeps({ args, cwd }) {
+  const testClasses = args.some((argument) => argument.includes('test-classes'));
+  const reports = ['jdeps.txt', 'jdeps/jdeps.txt', ...(testClasses ? ['jdeps/jdeps-test.txt'] : [])]
     .map((file) => path.join(cwd, file))
     .filter((file) => existsSync(file));
   return { stdout: reports.map((file) => readFileSync(file, 'utf8')).join('') };
@@ -114,7 +120,11 @@ function jar({ cwd }) {
   return {};
 }
 
-const TOOLS = { java, jdeps, jar };
+function javac({ args }) {
+  return args[0] === '-version' ? { stdout: 'javac 21.0.1\n' } : {};
+}
+
+const TOOLS = { java, javac, jdeps, jar };
 
 export const fakeJdkTools = Object.keys(TOOLS);
 

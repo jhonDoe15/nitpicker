@@ -43,7 +43,7 @@ func GrowOnce(values map[string]int) {
 	values["grown"] = 1
 }
 
-func Describe(value any) string {
+func Describe(value any) string { // want any-in-exported-signature
 	if text, ok := value.(string); ok { // want typeAssertChain
 		return text
 	} else if number, ok := value.(int); ok {
@@ -52,7 +52,7 @@ func Describe(value any) string {
 	return ""
 }
 
-func DescribeOnce(value any) string {
+func DescribeOnce(value any) string { // want any-in-exported-signature
 	switch typed := value.(type) {
 	case string:
 		return typed

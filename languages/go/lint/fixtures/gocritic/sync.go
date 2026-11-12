@@ -38,7 +38,7 @@ func Prepared(work func()) func() {
 	return sync.OnceFunc(work)
 }
 
-func Take(cache *sync.Map, key string) any {
+func Take(cache *sync.Map, key string) any { // want any-in-exported-signature
 	value, ok := cache.Load(key) // want syncMapLoadAndDelete
 	if ok {
 		cache.Delete(key)
@@ -46,7 +46,7 @@ func Take(cache *sync.Map, key string) any {
 	return value
 }
 
-func TakeOnce(cache *sync.Map, key string) any {
+func TakeOnce(cache *sync.Map, key string) any { // want any-in-exported-signature
 	value, _ := cache.LoadAndDelete(key)
 	return value
 }

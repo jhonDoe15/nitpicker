@@ -10,11 +10,11 @@ func bump(value *int) int {
 	return *value
 }
 
-func Bumped(value int) (int, int) {
+func Bumped(value int) (int, int) { // want confusing-results
 	return value, bump(&value) // want evalOrder
 }
 
-func BumpedFirst(value int) (int, int) {
+func BumpedFirst(value int) (int, int) { // want confusing-results
 	next := bump(&value)
 	return value, next
 }
@@ -48,7 +48,7 @@ func Checked(read func() error, other error) error {
 func Exited(name string, done func()) {
 	defer done()
 	if name == "" {
-		os.Exit(1) // want exitAfterDefer
+		os.Exit(1) // want exitAfterDefer deep-exit
 	}
 }
 

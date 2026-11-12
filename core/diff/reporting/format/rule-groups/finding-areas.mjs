@@ -1,4 +1,4 @@
-import { GO_LINT_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
 
 const AREA_TOOLS = [
   [
@@ -32,7 +32,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      ...GO_LINT_TOOLS,
+      ...GO_LINTER_TOOLS,
       'coding-standards',
       'entry-points',
       'dependency-architecture',
@@ -42,7 +42,7 @@ const AREA_TOOLS = [
   ],
   ['structure', ['structure', 'duplicates', 'coupling', 'repository-hygiene', 'change-history']],
   ['other', []],
-  ['tests', ['tests', 'test-runtime', 'test-console']],
+  ['tests', ['tests', 'race', 'test-runtime', 'test-console']],
   ['coverage', ['coverage', 'jacoco', 'coverage-py']],
   ['crap', ['crap']],
   ['mutation', ['mutation', 'pit', 'mutmut']],
@@ -65,16 +65,19 @@ export function areaRank(tool) {
   return AREAS.indexOf(areaOf(tool));
 }
 
-export function areaCountLine(findings) {
+export function areaCounts(findings) {
   const counts = new Map();
   for (const { tool } of findings) {
     const area = areaOf(tool);
     counts.set(area, (counts.get(area) ?? 0) + 1);
   }
+  return new Map(AREAS.filter((area) => counts.has(area)).map((area) => [area, counts.get(area)]));
+}
+
+export function areaCountLine(findings) {
+  const counts = areaCounts(findings);
   if (counts.size < 2) {
     return undefined;
   }
-  return AREAS.filter((area) => counts.has(area))
-    .map((area) => `${area} ${String(counts.get(area))}`)
-    .join(' · ');
+  return [...counts].map(([area, count]) => `${area} ${String(count)}`).join(' · ');
 }

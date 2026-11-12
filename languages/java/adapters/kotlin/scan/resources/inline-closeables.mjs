@@ -50,7 +50,7 @@ const WRAPPERS = new Set([
   'checkNotNull',
 ]);
 const OWNERS =
-  /^(?:close\w*|register|exit|readValue|readTree|add\w*|put\w*|offer\w*|push|set[A-Z]\w*|listOf|setOf|of|ofNullable)$/;
+  /^(?:close\w*|register|exit|readValue|readTree|add\w*|put\w*|offer\w*|push|set[A-Z]\w*|listOf|of|ofNullable)$/;
 const CLOSING_OWNERS = new Set(['FileCopyUtils']);
 
 const INLINE_CLOSEABLE_MESSAGES = {

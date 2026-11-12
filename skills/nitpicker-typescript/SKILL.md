@@ -5,6 +5,9 @@ description: Use before writing or changing TypeScript or React code in a projec
 
 # nitpicker for TypeScript
 
+Written for nitpicker 0.1.0-rc.2. If `npx nitpicker --version` prints another version, reinstall
+this skill with the command `npx nitpicker init` prints.
+
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
@@ -23,6 +26,10 @@ project, so it takes as long as a full run; finish with the plain run below.
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
 1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
    and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
@@ -40,6 +47,7 @@ project, so it takes as long as a full run; finish with the plain run below.
      changed before editing them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
    (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
    or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person to

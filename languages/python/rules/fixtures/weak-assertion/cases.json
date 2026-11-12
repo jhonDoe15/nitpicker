@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "weak-assertion",
+    "mention": "assert rows == expected"
+  }
+]

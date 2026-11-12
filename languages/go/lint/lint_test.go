@@ -141,12 +141,17 @@ func TestEveryEnabledRuleHasAFailingFixture(t *testing.T) {
 	for _, analyzer := range analyzers() {
 		rules := catalog.Checks(analyzer.Name)
 		if rules == nil {
-			rules = []string{analyzer.Name}
+			rules = []string{ruleName(analyzer)}
 		}
 		for _, rule := range rules {
 			if !covered[rule] {
 				uncovered = append(uncovered, rule)
 			}
+		}
+	}
+	for _, each := range reviveRules() {
+		if !covered[each.Name()] {
+			uncovered = append(uncovered, each.Name())
 		}
 	}
 	if len(uncovered) > 0 {

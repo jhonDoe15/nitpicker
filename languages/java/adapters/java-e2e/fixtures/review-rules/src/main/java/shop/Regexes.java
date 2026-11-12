@@ -131,4 +131,20 @@ public final class Regexes {
   public Pattern compileQuotedNames(List<String> names) {
     return Pattern.compile("^(?:" + String.join("|", names.stream().map(Pattern::quote).toList()) + ")$");
   }
+
+  public boolean duplicateAlternative(String line) {
+    return line.matches("a|b|a"); // violation: RegexPartDefect
+  }
+
+  public Pattern duplicateRange() {
+    return Pattern.compile("[a-zA-Z]+", Pattern.CASE_INSENSITIVE); // violation: RegexPartDefect
+  }
+
+  public Pattern nestedQuantifiers() {
+    return Pattern.compile("(\\s*\\w+)*x"); // violation: BacktrackingRegex
+  }
+
+  public Pattern possessive() {
+    return Pattern.compile("a|b|a++");
+  }
 }

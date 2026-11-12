@@ -3,11 +3,12 @@ import path from 'node:path';
 import { ANY_STATUS, failure, run } from '../execution/go-process.mjs';
 import { lintCommand } from '../execution/go-tools.mjs';
 import { diagnosticFindings, parsePosition } from '../build/diagnostics.mjs';
+import { withoutGatedForeignKeys } from './foreign-keys/key-gate.mjs';
 import { lintMessage, lintRule } from './lint-rules.mjs';
 
 const LINT_REPORT = 'lint.json';
 const PROJECT_CONFIG_FLAG = '-project-staticcheck-config';
-const PACKAGE_RULES = new Set(['ST1000']);
+const PACKAGE_RULES = new Set(['ST1000', 'package-naming', 'generic-package-name']);
 
 function lintArguments(context) {
   const tags = context.settings.buildTags ?? [];
@@ -46,6 +47,9 @@ export function lintFindings(context) {
   const report = JSON.parse(readFileSync(path.join(context.reportRoot, LINT_REPORT), 'utf8'));
   return diagnosticFindings(
     context.projectRoot,
-    report.findings.flatMap((entry) => diagnostic(context.projectRoot, entry)),
+    withoutGatedForeignKeys(
+      context.projectRoot,
+      report.findings.flatMap((entry) => diagnostic(context.projectRoot, entry)),
+    ),
   );
 }

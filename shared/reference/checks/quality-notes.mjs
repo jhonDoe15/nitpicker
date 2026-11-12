@@ -39,6 +39,11 @@ export const QUALITY_NOTES = {
     'Stable code that depends on volatile code breaks whenever the volatile code changes (the Stable Dependencies Principle).',
     'Depend on an abstraction in a more stable package, or move the dependency inward. An import that exists only for the type checker is never the reported dependency.',
   ],
+  'package-cycle': [
+    'Packages that depend on each other in a loop.',
+    'A cycle makes the packages impossible to change, test or release apart.',
+    'Move the shared types down into a package both can use, or invert one dependency behind an interface.',
+  ],
   'slow-test': [
     'A test the change adds or edits that takes longer than the limit for its kind (unit or integration).',
     'Slow tests slow every run and are the first to be skipped; most tests should be fast unit tests.',

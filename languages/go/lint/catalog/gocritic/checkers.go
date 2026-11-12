@@ -11,10 +11,10 @@ var Enabled = []string{
 	"indexAlloc", "initClause", "mapKey", "methodExprCall", "newDeref", "nilValReturn",
 	"octalLiteral", "offBy1", "preferDecodeRune", "preferFilepathJoin", "preferFprint",
 	"preferStringWriter", "preferWriteByte", "ptrToRefParam", "rangeAppendAll", "redundantSprint",
-	"regexpMust", "regexpPattern", "regexpSimplify", "returnAfterHttpError", "singleCaseSwitch",
+	"regexpMust", "regexpPattern", "regexpSimplify", "returnAfterHttpError",
 	"sloppyLen", "sloppyReassign", "sortSlice", "sqlQuery", "stringConcatSimplify",
 	"stringsCompare", "stringXbytes", "switchTrue", "syncMapLoadAndDelete",
-	"todoCommentWithoutDetail", "truncateCmp", "typeAssertChain", "typeDefFirst", "typeUnparen",
+	"truncateCmp", "typeAssertChain", "typeDefFirst", "typeUnparen",
 	"uncheckedInlineErr", "underef", "unlabelStmt", "unlambda", "unnecessaryBlock",
 	"unnecessaryDefer", "unslice", "valSwap", "weakCond", "wrapperFunc", "zeroByteRepeat",
 }
@@ -24,7 +24,8 @@ var Disabled = []string{
 	"badSorting", "builtinShadow", "builtinShadowDecl", "caseOrder", "commentFormatting",
 	"defaultCaseOrder", "deferInLoop", "dupBranchBody", "dupImport", "dupSubExpr",
 	"dynamicFmtString", "externalErrorReassign", "hugeParam", "importShadow", "nestingReduce",
-	"paramTypeCombine", "rangeExprCopy", "rangeValCopy", "ruleguard", "sliceClear",
-	"sloppyTypeAssert", "sprintfQuotedString", "timeExprSimplify", "tooManyResultsChecker",
+	"paramTypeCombine", "rangeExprCopy", "rangeValCopy", "ruleguard", "singleCaseSwitch", "sliceClear",
+	"sloppyTypeAssert", "sprintfQuotedString", "timeExprSimplify", "todoCommentWithoutDetail",
+	"tooManyResultsChecker",
 	"typeSwitchVar", "unnamedResult", "whyNoLint", "yodaStyleExpr",
 }

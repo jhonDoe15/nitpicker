@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { ERROR_PRONE_MESSAGE, errorProneEscapes } from './errorprone/errorprone-escapes.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 export const INLINE_SUPPRESSION_RULE = 'InlineSuppression';
 export const INLINE_SUPPRESSIBLE_RULES = ['PMD.SpringDataNativeQuery'];
@@ -30,7 +31,7 @@ const JUSTIFICATION = /\bjustification\s*=\s*"(?:[^"\\]|\\.)*"/g;
 const UNICODE_ESCAPE = /\\u+([0-9a-fA-F]{4})/g;
 const NESTED_PARENTHESES = /(\([^()]*)\([^()]*\)/g;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/g;
-const LITERAL_ARGUMENTS = /^\s*(?:value\s*=)?[\s{},"]*$/;
+const LITERAL_ARGUMENTS = /^(?:\s*value\s*=)?[\s{},"]*$/;
 const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
   'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
@@ -53,12 +54,8 @@ export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
 }
 
 function javaFiles(directory) {
-  if (!existsSync(directory)) {
-    return [];
-  }
-  return readdirSync(directory, { withFileTypes: true, recursive: true })
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-    .map((entry) => path.join(entry.parentPath, entry.name))
+  return projectFilesUnder(directory)
+    .filter((file) => file.endsWith('.java'))
     .sort();
 }
 

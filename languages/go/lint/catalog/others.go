@@ -15,9 +15,10 @@ import (
 	"golang.org/x/tools/go/analysis"
 )
 
-// PerfsprintChecks are the perfsprint checks this preset runs; modernize covers concat-loop.
+// PerfsprintChecks are the perfsprint checks this preset runs; modernize covers concat-loop;
+// revive unnecessary-format covers error-format.
 var PerfsprintChecks = []string{
-	"error-format", "integer-format", "string-format", "bool-format", "hex-format",
+	"integer-format", "string-format", "bool-format", "hex-format",
 }
 
 var standardValues = []string{
@@ -54,7 +55,7 @@ func configureOthers() error {
 			return err
 		}
 	}
-	for _, check := range []string{"fiximports", "concat-loop"} {
+	for _, check := range []string{"fiximports", "concat-loop", "error-format"} {
 		if err := formatting.Flags.Set(check, "false"); err != nil {
 			return err
 		}

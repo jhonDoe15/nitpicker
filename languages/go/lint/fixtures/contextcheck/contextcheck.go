@@ -21,12 +21,12 @@ func HandleWithContext(ctx context.Context) error {
 }
 
 func refresh() error {
-	return refreshWithContext(context.Background())
+	return refreshWithContext(context.Background()) // want context-outside-entry
 }
 
 // nolint:contextcheck
 func refreshIgnored() error {
-	return refreshWithContext(context.Background())
+	return refreshWithContext(context.Background()) // want context-outside-entry
 }
 
 func refreshWithContext(ctx context.Context) error {

@@ -1,4 +1,5 @@
 import { pluginOpener } from '../rules/proxies.mjs';
+import { collectionFetches } from './fetches.mjs';
 import { annotationIn, argumentOf, typeName } from '../spring-names.mjs';
 import { entriesOf, report } from '../spring-scopes.mjs';
 import {
@@ -120,4 +121,4 @@ function versions(view) {
     .map((declared) => report('JpaVersion', declared, declared.qualified));
 }
 
-export const ENTITY_RULES = [mappings, manyToManyLists, entityClasses, versions];
+export const ENTITY_RULES = [mappings, manyToManyLists, entityClasses, versions, collectionFetches];

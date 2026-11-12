@@ -6,7 +6,7 @@ func Doubled(total int) int {
 	return total
 }
 
-func Scaled(Factor int) int { // want captLocal
+func Scaled(Factor int) int { // want captLocal unexported-naming
 	result := Factor * 2
 	return result + 1
 }
@@ -24,7 +24,7 @@ func DeferredOnce(release func(int), work func()) {
 func Grade(score int) string {
 	if score > 90 {
 		return "A"
-	} else { // want elseif
+	} else { // want elseif indent-error-flow
 		if score > 80 {
 			return "B"
 		}
@@ -46,7 +46,7 @@ func Kind(score int) string {
 		return "high"
 	} else if score > 50 {
 		return "middle"
-	} else {
+	} else { // want indent-error-flow
 		return "low"
 	}
 }
@@ -62,7 +62,7 @@ func KindOnce(score int) string {
 	}
 }
 
-func Started(start func(), ready bool) bool {
+func Started(start func(), ready bool) bool { // want flag-parameter
 	if start(); ready { // want initClause
 		return true
 	}
@@ -70,7 +70,7 @@ func Started(start func(), ready bool) bool {
 }
 
 func Positive(score int) bool {
-	switch { // want singleCaseSwitch
+	switch { // want unnecessary-stmt
 	case score > 0:
 		return true
 	}

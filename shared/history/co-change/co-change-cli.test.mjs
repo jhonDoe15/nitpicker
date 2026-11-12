@@ -6,6 +6,9 @@ import { runCli } from '../../../core/cli.mjs';
 import { captureOutput } from '../../../core/diff/reporting/test-support/output-capture.mjs';
 import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { createHistoryAnalyzers } from '../analyzers.mjs';
+import { CO_CHANGE_ADVICE } from './findings.mjs';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
+import { resolveHeadPolicy } from '../../head-policy.mjs';
 import {
   edit,
   importHistory,
@@ -51,6 +54,21 @@ beforeAll(() => {
   );
 });
 
+function importsPublisher(moduleImports) {
+  const report = JSON.stringify({ findings: [], moduleImports });
+  return {
+    name: 'coupling',
+    version: '1',
+    configurationHash: 'fixture',
+    exclusions: [],
+    createInvocation: ({ projectRoot }) => ({
+      command: process.execPath,
+      args: ['-e', `process.stdout.write(${JSON.stringify(report)})`],
+      cwd: projectRoot,
+    }),
+  };
+}
+
 function runGate(root) {
   const output = captureOutput();
   const exitCode = runCli({
@@ -68,12 +86,12 @@ function summary(root, notices = []) {
   const noticeLines =
     notices.length === 0
       ? ''
-      : `\u001b[1m\u001b[33mNotices (not failing):\u001b[0m\n${notices.map((notice) => `  ${notice}\n`).join('')}`;
+      : `Notices (not failing):\n${notices.map((notice) => `  ${notice}\n`).join('')}`;
   return `Base: ${BASE_REF} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-${noticeLines}\u001b[2mFull diagnostics: ${path.join(root, 'reports/quality/diff')}/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+${noticeLines}Full diagnostics: ${path.join(root, 'reports/quality/diff')}/report.txt
 `;
 }
 
@@ -110,5 +128,34 @@ describe('co-change in a base and head run', () => {
     const root = repositories[name];
 
     expect(runGate(root)).toEqual({ exitCode: 0, stdout: summary(root) });
+  });
+});
+
+describe('co-change dependencies in a gate run', () => {
+  function dependencySentence(root, analyzers) {
+    const report = runQualityDiff({
+      repositoryRoot: root,
+      projectRelativePath: '.',
+      requestedBaseRef: BASE_REF,
+      outputRoot: path.join(root, 'reports/dependencies'),
+      analyzers,
+      headPolicy: resolveHeadPolicy(ENABLED),
+    });
+    const { message } = report.unchangedFindings.find(({ tool }) => tool === 'change-history');
+    return message.split(CO_CHANGE_ADVICE)[0].split('). ').at(-1).trim();
+  }
+
+  it('names the import an analyzer published between the two modules', () => {
+    const publisher = importsPublisher([{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }]);
+
+    expect(
+      dependencySentence(repositories.alone, [...createHistoryAnalyzers(ENTRY), publisher]),
+    ).toBe('src/billing imports src/invoicing in 1 file.');
+  });
+
+  it('says the dependency is unknown when no analyzer published imports', () => {
+    expect(dependencySentence(repositories.alone, createHistoryAnalyzers(ENTRY))).toBe(
+      'Imports between them are unknown: no analyzer reported any for this run.',
+    );
   });
 });

@@ -1,0 +1,19 @@
+  <rule name="BacktrackingRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Rewrite this regex without nested or overlapping quantifiers, or use a String method: it backtracks super-linearly on some inputs. An exception fits only when the input is bounded and trusted.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#compile(java.lang.String,int)')
+             or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')
+             or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')
+             or pmd-java:matchesSig('java.lang.String#split(_*)')
+             or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')]
+  /ArgumentList/*[1][self::StringLiteral][not(@TextBlock = true())]
+]]></value>
+      </property>
+    </properties>
+  </rule>
