@@ -104,7 +104,9 @@ by field. Per snapshot:
   same jar there). Two JaCoCo agents of different versions cannot share a JVM (the second fails to
   define `java.lang.$JaCoCo` and the forked test JVM aborts), so when the project binds its own
   agent at a version (Spring Boot's parent manages one), our `prepare-agent` runs at that version
-  instead of the pinned one; the pinned JaCoCo CLI still writes the report.
+  instead of the pinned one; the pinned JaCoCo CLI still writes the report. Modules of one reactor
+  that bind different agent versions stop the run with a message that names them, since one
+  `prepare-agent` goal runs for the whole reactor.
   Without a configured `destFile` the project's agent still writes our file, because our
   `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
   fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
