@@ -28,9 +28,17 @@ describe('strict escape-hatch rules', () => {
     expect(messages(code)).toEqual([]);
   });
 
-  it('reports null built outside JSON.stringify, even when the value is serialized later', () => {
-    const code = 'const body = { gone: null };\nexport const text = JSON.stringify(body);';
-
+  it.each([
+    [
+      'built outside the call',
+      'const body = { gone: null };\nexport const text = JSON.stringify(body);',
+    ],
+    ['passed to another function', 'export const text = JSON.stringify(load(null));'],
+    [
+      'returned from a function',
+      'export const text = JSON.stringify({ f: () => { return null; } });',
+    ],
+  ])('reports null %s, even when the value is serialized', (_name, code) => {
     expect(messages(code).map((message) => message.split('.')[0])).toEqual([
       'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing',
     ]);
