@@ -2,7 +2,11 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { mutationScopeArguments, parseMutationScope } from '../tooling/runner-arguments.mjs';
+import {
+  MUTATION_SCOPE_OPTION,
+  mutationScopeArguments,
+  parseMutationScope,
+} from '../tooling/runner-arguments.mjs';
 import { isInMutationScope, outsideScopePatterns, scopedProjectFiles } from './mutation-scope.mjs';
 
 const { createGitRepository } = useGitFixtures();
@@ -11,7 +15,7 @@ describe('parseMutationScope', () => {
   it('reads the paths that mutationScopeArguments writes', () => {
     const [option, value] = mutationScopeArguments(['src/orders', 'src/a.ts']);
 
-    expect(option).toBe('--mutation-scope');
+    expect(option).toBe(MUTATION_SCOPE_OPTION);
     expect(parseMutationScope(value)).toEqual(['src/orders', 'src/a.ts']);
     expect(mutationScopeArguments(undefined)).toEqual([]);
   });
