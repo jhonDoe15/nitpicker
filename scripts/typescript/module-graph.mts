@@ -17,6 +17,8 @@ export const GIT_TIMEOUT_MS = 60_000;
 const MODULE = /\.(?:mjs|mts|cjs)$/u;
 const FIXTURE = /(?:^|\/)fixtures\//u;
 const MODULE_URL = /new URL\(\s*(['"])(?<specifier>[^'"]+)\1,\s*import\.meta\.url/gu;
+const NODE_22_14_SCRIPTS = ['scripts/typescript/emit.mjs', 'scripts/reference/gen-rules.mjs'];
+const NODE_22_14_BUILD = 'the package build on Node.js 22.14';
 
 export function repositoryFile(root: string, file: string): string {
   const base = path.resolve(root);
@@ -83,24 +85,83 @@ export function doubledModules(modules: readonly string[]): string[] {
   return modules.filter((file) => isConverted(file) && names.has(file.replace(/\.mts$/u, '.mjs')));
 }
 
-function waits({ importer, target }: ModuleImport, converting: ReadonlySet<string>): boolean {
+function nodeBuildModules(imports: readonly ModuleImport[]): Set<string> {
+  const byImporter = Map.groupBy(imports, ({ importer }) => importer);
+  const found = new Set(NODE_22_14_SCRIPTS);
+  for (const file of found) {
+    const next = isShipped(file) ? [] : (byImporter.get(file) ?? []);
+    for (const { target } of next) {
+      found.add(target);
+    }
+  }
+  return found;
+}
+
+export function convertedNodeBuildModules(
+  modules: readonly string[],
+  imports: readonly ModuleImport[],
+): string[] {
+  const tracked = new Set(modules);
+  return [...nodeBuildModules(imports)].filter((file) => isConverted(file) || !tracked.has(file));
+}
+
+function runsOnNodeBuild(importer: string, build: ReadonlySet<string>): boolean {
+  return build.has(importer) && !isShipped(importer);
+}
+
+function waits(
+  { importer, target }: ModuleImport,
+  converting: ReadonlySet<string>,
+  build: ReadonlySet<string>,
+): boolean {
   return (
-    isShipped(target) && isShipped(importer) && !isConverted(importer) && !converting.has(importer)
+    runsOnNodeBuild(importer, build) ||
+    (isShipped(target) &&
+      isShipped(importer) &&
+      !isConverted(importer) &&
+      !converting.has(importer))
   );
+}
+
+function importerName(importer: string, build: ReadonlySet<string>): string {
+  return runsOnNodeBuild(importer, build) ? `${importer} on Node.js 22.14` : importer;
+}
+
+type ImportGraph = {
+  readonly byTarget: ReadonlyMap<string, readonly ModuleImport[]>;
+  readonly build: ReadonlySet<string>;
+};
+
+function importGraph(imports: readonly ModuleImport[]): ImportGraph {
+  return {
+    byTarget: Map.groupBy(imports, ({ target }) => target),
+    build: nodeBuildModules(imports),
+  };
+}
+
+function waitingImporters(
+  { byTarget, build }: ImportGraph,
+  file: string,
+  converting: ReadonlySet<string>,
+): string[] {
+  const roots = NODE_22_14_SCRIPTS.includes(file) ? [NODE_22_14_BUILD] : [];
+  return [
+    ...roots,
+    ...(byTarget.get(file) ?? [])
+      .filter((moduleImport) => waits(moduleImport, converting, build))
+      .map(({ importer }) => importerName(importer, build)),
+  ];
 }
 
 export function blockingImporters(
   imports: readonly ModuleImport[],
   candidates: ReadonlySet<string>,
 ): Map<string, string[]> {
-  const blocking = Map.groupBy(
-    imports.filter(
-      (moduleImport) => candidates.has(moduleImport.target) && waits(moduleImport, candidates),
-    ),
-    ({ target }) => target,
-  );
+  const graph = importGraph(imports);
   return new Map(
-    [...blocking].map(([target, found]) => [target, found.map(({ importer }) => importer)]),
+    [...candidates]
+      .map((file): [string, string[]] => [file, waitingImporters(graph, file, candidates)])
+      .filter(([, importers]) => importers.length > 0),
   );
 }
 
@@ -124,9 +185,7 @@ export function waitingOn(
   file: string,
   converting: ReadonlySet<string>,
 ): string[] {
-  return imports
-    .filter((moduleImport) => moduleImport.target === file && waits(moduleImport, converting))
-    .map(({ importer }) => importer);
+  return waitingImporters(importGraph(imports), file, converting);
 }
 
 function unwrappedReferences(root: string, file: string): string[] {
