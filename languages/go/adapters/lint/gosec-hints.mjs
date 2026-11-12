@@ -24,7 +24,6 @@ export function gosecMessage(rule, message) {
 }
 
 export const GOSEC_HINTS = [
-  ['G101', `Read the secret from the environment or a secret store. ${EXCEPTION}`],
   [
     'G102',
     'Bind to a specific interface, such as `127.0.0.1:8080`, or take the address from configuration.',
