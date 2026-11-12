@@ -59,7 +59,7 @@ The main-only ruleset (`pmd-main-ruleset.xml`, which holds the `security` catego
 project reference to `category/java/security.xml` adds nothing, and a project rule that names one of its
 rules is overlaid on it (`pmd-main-rules.xml`) and still runs on main sources only.
 
-**Additional PMD categories (7.7.0).** The shared ruleset also runs the `performance` and
+**Additional PMD categories (7.16.0).** The shared ruleset also runs the `performance` and
 `multithreading` categories on main and test Java sources, and `pmd-main-ruleset.xml` runs the
 `security` category on main sources only, since a test encrypts with a fixed key and IV to check known
 output. Both hold with Gradle and Maven and for the Java sources of the Kotlin preset. Performance
