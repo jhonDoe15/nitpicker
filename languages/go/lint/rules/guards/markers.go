@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/support"
 	"golang.org/x/tools/go/analysis"
@@ -86,13 +87,16 @@ func unreferencedMarker(line string) bool {
 }
 
 func standalone(line string, start, end int) bool {
-	if start > 0 && (wordCharacter(rune(line[start-1])) || strings.ContainsRune("./-", rune(line[start-1]))) {
+	before, _ := utf8.DecodeLastRuneInString(line[:start])
+	if start > 0 && (wordCharacter(before) || strings.ContainsRune("./-", before)) {
 		return false
 	}
-	if end < len(line) && (wordCharacter(rune(line[end])) || line[end] == '-') {
+	after, size := utf8.DecodeRuneInString(line[end:])
+	if end < len(line) && (wordCharacter(after) || after == '-') {
 		return false
 	}
-	return !(end+1 < len(line) && strings.ContainsRune("./", rune(line[end])) && wordCharacter(rune(line[end+1])))
+	next, _ := utf8.DecodeRuneInString(line[end+size:])
+	return !(end+size < len(line) && strings.ContainsRune("./", after) && wordCharacter(next))
 }
 
 func wordCharacter(character rune) bool {

@@ -51,8 +51,11 @@ func checksError(info *types.Info, condition ast.Expr) bool {
 	if isNil(info, left) {
 		left, right = right, left
 	}
-	_, named := left.(*ast.Ident)
-	return named && isNil(info, right) && types.Identical(info.TypeOf(left), errorType)
+	switch left.(type) {
+	case *ast.Ident, *ast.SelectorExpr:
+		return isNil(info, right) && types.Identical(info.TypeOf(left), errorType)
+	}
+	return false
 }
 
 func isNil(info *types.Info, expression ast.Expr) bool {
@@ -86,7 +89,7 @@ func enclosingResults(info *types.Info, cursor inspector.Cursor) *types.Tuple {
 
 func returnsError(results *types.Tuple) bool {
 	for each := range results.Variables() {
-		if types.Identical(each.Type(), errorType) {
+		if types.Implements(each.Type(), errorType.Underlying().(*types.Interface)) {
 			return true
 		}
 	}

@@ -126,12 +126,17 @@ func followsLibraryType(info *types.Info, spec *ast.TypeSpec) bool {
 }
 
 func baseTypes(expression ast.Expr) []ast.Expr {
-	structure, ok := expression.(*ast.StructType)
-	if !ok {
+	var fields *ast.FieldList
+	switch each := expression.(type) {
+	case *ast.StructType:
+		fields = each.Fields
+	case *ast.InterfaceType:
+		fields = each.Methods
+	default:
 		return []ast.Expr{expression}
 	}
 	bases := []ast.Expr{}
-	for _, field := range structure.Fields.List {
+	for _, field := range fields.List {
 		if len(field.Names) == 0 {
 			bases = append(bases, field.Type)
 		}

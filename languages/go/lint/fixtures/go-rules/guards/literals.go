@@ -29,3 +29,7 @@ func Describe(order Order) string {
 	kinds := []Order{{Kind: "refund"}, {Kind: "refund"}, {Kind: "refund"}}
 	return labels["shipped"] + labels["shipped"] + labels["shipped"] + kinds[0].Kind
 }
+
+func Routes() []string {
+	return []string{"api/users", "api/users", "api/users", "50% off", "50% off", "50% off"} // want repeated-string-literal
+}

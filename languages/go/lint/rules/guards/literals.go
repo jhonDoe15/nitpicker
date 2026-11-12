@@ -31,13 +31,14 @@ const (
 
 var (
 	alphanumeric = regexp.MustCompile(`[A-Za-z0-9]`)
-	mimeType     = regexp.MustCompile(`^[a-z]+/[a-z0-9.+*-]+$`)
-	goLayout     = regexp.MustCompile(`^(?:2006|January|Jan|Monday|Mon|MST|Z07:00|Z0700|-07:00|-0700|` +
+	mimeType     = regexp.MustCompile(`^(?:application|audio|font|image|message|model|multipart|text|video)/` +
+		`[a-z0-9.+*-]+$`)
+	goLayout = regexp.MustCompile(`^(?:2006|January|Jan|Monday|Mon|MST|Z07:00|Z0700|-07:00|-0700|` +
 		`\.0+|\.9+|01|02|03|04|05|06|15|PM|pm|_2|[-:/ T.,])+$`)
 	idiomaticText = []string{
 		"utf-8", "utf8", "ascii", "latin-1", "utf-16", "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS",
 	}
-	formatVerb       = regexp.MustCompile(`%[-+# 0-9.*\[\]]*[a-zA-Z]`)
+	formatVerb       = regexp.MustCompile(`%[-+#0-9.*\[\]]*[a-zA-Z]`)
 	translationCalls = []string{"T", "Tr", "Translate", "Gettext", "NGettext", "Localize", "MustLocalize"}
 	discriminantKeys = []string{"type", "kind", "tag", "variant"}
 )

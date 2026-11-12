@@ -91,3 +91,28 @@ func Load(name string) ([]byte, error) {
 	}
 	return data, nil
 }
+
+type Job struct {
+	err error
+}
+
+func (job *Job) Report() {
+	if job.err != nil { // want swallowed-error
+		log.Print(job.err)
+	}
+}
+
+type PathError struct {
+	Path string
+}
+
+func (failure *PathError) Error() string {
+	return failure.Path
+}
+
+func Parse(text string) *PathError {
+	if _, err := strconv.Atoi(text); err != nil {
+		return &PathError{Path: text}
+	}
+	return nil
+}

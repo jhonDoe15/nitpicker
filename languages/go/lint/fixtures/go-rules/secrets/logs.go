@@ -21,5 +21,7 @@ func Connect(token string, session Session) error {
 		return fmt.Errorf("no session for %s", []byte(token)) // want secret-in-log
 	}
 	slog.Info("connected", slog.Int("token_length", len(token)))
+	log.Println(token != "", tokenHeader)
+	fmt.Println("token", session.IsToken)
 	return nil
 }
