@@ -114,8 +114,9 @@ concurrency argument over a collection, `forkJoin` and friends over a mapped arr
 a concurrency argument over `Flux.fromIterable`, `Mono.zip`/`Mono.when`/`Flux.zip`/`Flux.merge` over a
 list built per element, and Kotlin `flatMapMerge(Int.MAX_VALUE)`). The Python preset has no reactive
 rule: RxPY is rare in services, and `asyncio.gather` and task groups are covered by
-`unbounded-fan-out`. The Go preset has no rule engine of its own yet.
-Database calls per element are left to the per-item I/O rules, which also keep a bounded or
+`unbounded-fan-out`. The Go preset has no fan-out rule yet.
+Database calls per element are left to the per-item I/O rules (`io-in-loop` in the Python preset and
+`go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
 
@@ -183,7 +184,8 @@ HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production sour
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
 sources, with or without Spring; the clients Spring builds stay with `pmd/SpringHttpClientTimeouts` and
-`pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
+`pmd/SpringHttpClientPerCall`), `kotlin-source/HttpWithoutTimeout` in the Kotlin preset and
+`go-rules/http-without-timeout` in the Go preset; each preset's
 document lists the clients it knows.
 
 Configuration reads: the process environment and system properties are read once, in the composition root,
