@@ -47,7 +47,7 @@ abstract class AuditedEntity {
 @Entity
 class Tag(@Id var id: Long = 0, @Version var version: Long = 0)
 
-@Entity
+@Entity @jakarta.persistence.Table(indexes = [jakarta.persistence.Index(columnList = "tag_id")])
 class Shipment(
     @ManyToOne(fetch = FetchType.LAZY) var tag: Tag? = null,
     @OneToMany(mappedBy = "shipment") var lines: MutableList<Line> = mutableListOf(),
@@ -60,7 +60,7 @@ class Shipment(
     @Transient var preview: Status = Status.OPEN,
 ) : AuditedEntity()
 
-@Entity
+@Entity @jakarta.persistence.Table(indexes = [jakarta.persistence.Index(columnList = "shipment_id, quantity")])
 class Line(
     @ManyToOne(fetch = FetchType.LAZY) var shipment: Shipment? = null,
     var quantity: Int = 0,
