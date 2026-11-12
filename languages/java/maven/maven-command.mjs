@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
+import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
@@ -112,10 +113,6 @@ export function javaCommand(name) {
   return candidate !== undefined && (existsSync(candidate) || existsSync(`${candidate}.exe`))
     ? candidate
     : name;
-}
-
-function argumentFileToken(value) {
-  return `"${String(value).replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`;
 }
 
 export function runJava({
