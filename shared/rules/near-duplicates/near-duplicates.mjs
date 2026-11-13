@@ -3,6 +3,7 @@ import { compareText } from '../../near-duplicates/tree/keys.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { listNames } from '../../messages/messages.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
+import { isTypeSpecialized } from './type-families.mjs';
 import { shortText } from '../../near-duplicates/unit-parts.mjs';
 
 const CLONE_ANALYZER_MINIMUM = { lines: 5, tokens: 100 };
@@ -123,6 +124,7 @@ export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
   return findNearDuplicates(units.map((unit) => ({ ...unit, id: unitIdOf(unit) })))
     .map((finding) => ({ finding, pair: sides(finding, byId) }))
     .filter(({ finding, pair }) => !isLeftToCloneAnalyzer(finding, pair))
+    .filter(({ finding, pair }) => !isTypeSpecialized(finding, pair))
     .filter(({ pair }) => !pair.some(({ file }) => isExcepted(rule, file)))
     .map(({ finding, pair }) => nearDuplicateFinding(finding, { pair, analyzerName }));
 }
