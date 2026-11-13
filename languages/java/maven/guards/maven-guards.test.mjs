@@ -72,7 +72,12 @@ function guards(root, { files, mainCompile, stale = false }) {
     writeFileSync(path.join(reportDir, 'forbidden-apis.txt'), 'forbidden: from an earlier run\n');
   }
   runGuards(
-    { module, reportDir, tools: TOOLS, classpaths: { mainCompile, dependencies: [] } },
+    {
+      module,
+      reportDir,
+      tools: TOOLS,
+      classpaths: { mainCompile, testCompile: [], dependencies: [] },
+    },
     { projectRoot: root, baselineRoot: undefined, reactor: [] },
   );
   return reportDir;
@@ -183,7 +188,7 @@ describe.skipIf(process.platform === 'win32')('runGuards forbiddenapis', () => {
 });
 
 describe('lintPlan processor path', () => {
-  const classpaths = { mainCompile: ['/m2/lombok.jar', '/m2/guava.jar'] };
+  const classpaths = { mainCompile: ['/m2/lombok.jar', '/m2/guava.jar'], testCompile: [] };
 
   function plan(compiler, tools = {}) {
     const root = workspace();
@@ -206,5 +211,39 @@ describe('lintPlan processor path', () => {
 
   it('takes no processor when annotation processing is off', () => {
     expect(plan({ proc: 'none' })).toEqual([]);
+  });
+
+  it('plans the test lint with the test class path, the test class directory and the test compiler', () => {
+    const root = workspace();
+    const { module } = moduleOf(root, []);
+    const testOutputDirectory = path.join(module.basedir, 'target/test-classes');
+    const compiler = {
+      release: '17',
+      compilerArgs: ['-parameters'],
+      test: { release: '21', compilerArgs: ['--add-reads', 'app=ALL-UNNAMED'] },
+    };
+    const lintClasspaths = {
+      mainCompile: ['/m2/a.jar'],
+      testCompile: ['/m2/a.jar', '/m2/junit.jar'],
+    };
+    const { test } = lintPlan(
+      {
+        module: { ...module, compiler, testOutputDirectory },
+        classpaths: lintClasspaths,
+        tools: {},
+      },
+      root,
+    );
+
+    expect(test).toEqual({
+      classDirectory: testOutputDirectory,
+      classpath: [module.outputDirectory, '/m2/a.jar', '/m2/junit.jar'],
+      compiler: { release: '21', args: ['--add-reads', 'app=ALL-UNNAMED'] },
+      generatedSources: [
+        path.join(module.basedir, 'target/generated-test-sources/test-annotations'),
+      ],
+      processorPath: ['/m2/a.jar', '/m2/junit.jar'],
+      sources: [],
+    });
   });
 });

@@ -61,8 +61,12 @@ tasks.register('nitpickerLint') {
     group = 'nitpicker'
     description = 'Runs the javac lint and reads the sealed permits from guards-plan.json.'
     dependsOn tasks.named('classes')
+    dependsOn { project.ext.nitpickerTestSourceSets().collect { tasks.named(it.classesTaskName) } }
     doLast {
         def compile = tasks.named('compileJava').get()
+        def testSets = project.ext.nitpickerTestSourceSets().findAll { !it.allJava.files.isEmpty() }
+        def testCompiles = testSets.collect { tasks.named(it.compileJavaTaskName).get() }
+        def testClassDirs = testSets.collectMany { it.output.classesDirs.files }
         def javac = compile.javaCompiler.orNull?.executablePath?.asFile ?: new File(javaHome, 'bin/javac')
         def lintDirectory = layout.buildDirectory.dir('nitpicker-lint').get().asFile
         def generated = compile.options.generatedSourceOutputDirectory.asFile.orNull
@@ -82,7 +86,18 @@ tasks.register('nitpickerLint') {
                 compiler        : compilerOf(compile),
                 workDirectory   : new File(lintDirectory, 'work').absolutePath,
                 cacheDirectory  : lintDirectory.absolutePath,
-            ],
+            ] + (testCompiles.isEmpty() ? [:] : [
+                test            : [
+                    sources         : pathsOf(testSets.collectMany { it.allJava.files }.unique()),
+                    generatedSources: pathsOf(testCompiles.collect { it.options.generatedSourceOutputDirectory.asFile.orNull }
+                        .findAll { it != null }),
+                    classDirectory  : testCompiles[0].destinationDirectory.get().asFile.absolutePath,
+                    classpath       : pathsOf(testCompiles.collectMany { it.classpath.files }.unique()
+                        .findAll { !testClassDirs.contains(it) }),
+                    processorPath   : pathsOf(testCompiles.collectMany { it.options.annotationProcessorPath?.files ?: [] }.unique()),
+                    compiler        : compilerOf(testCompiles[0]),
+                ],
+            ]),
         ])
         runNode(guardsRunner, [reportDir.get().asFile.absolutePath] + (lintBaseline ? [lintBaseline.toString()] : []),
             'nitpicker could not run the javac lint')
