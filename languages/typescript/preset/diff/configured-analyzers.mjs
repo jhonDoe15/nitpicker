@@ -30,7 +30,7 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint/analyzer.mjs',
-  'languages/typescript/adapters/eslint/chains/any-chain.mts',
+  'languages/typescript/adapters/eslint/chains/any-chain.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-wrapper.config.mjs',
   'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
