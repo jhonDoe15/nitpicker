@@ -2057,6 +2057,43 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="BooleanFlagParameter" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This boolean parameter switches the method between two behaviors, so a call like send(order, true) does not say what it does. Split the method in two, one for each value of the flag, or pass an enum that names each behavior.">
+    <description>A public method of a public type whose boolean parameter is the condition of an if, a conditional expression or a loop.</description>
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $carried := function($use, $test) {
+      every $step in ($use/ancestor::* intersect $test/descendant-or-self::*) satisfies
+        exists($step[self::UnaryExpression[@Operator = '!']
+          or self::InfixExpression[@Operator = ('&&', '||')]
+          or self::InfixExpression[@Operator = ('==', '!=')][BooleanLiteral]
+          or self::CastExpression])
+    },
+    $tested := function($use) {
+      exists($use/ancestor::*[self::IfStatement or self::WhileStatement or self::ConditionalExpression]
+        [$carried($use, *[1])][*[1] intersect $use/ancestor-or-self::*])
+      or exists($use/ancestor::DoStatement[$carried($use, *[last()])][*[last()] intersect $use/ancestor-or-self::*])
+      or exists($use/ancestor::ForStatement[(*[not(self::ForInit or self::ForUpdate)] except *[last()]) intersect $use/ancestor-or-self::*]
+        [$carried($use, *[not(self::ForInit or self::ForUpdate)] except *[last()])])
+    }
+return
+//MethodDeclaration[@Visibility = 'public'][@Static = false() or not(@Name = ('of', 'from', 'valueOf', 'create', 'builder'))]
+  [not(@Overridden = true())][not(ModifierList/Annotation[@SimpleName = ('Override', 'Bean', 'Test', 'ParameterizedTest')])]
+  [not(matches(@Name, '^(?:set|with)[A-Z]'))][not(@Name = 'main')]
+  [not(ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration or self::AnnotationTypeDeclaration or self::InterfaceDeclaration][@Visibility != 'public'])]
+  [not(ancestor::ClassDeclaration[@Local = true() or @Anonymous = true()])]
+  [Block]
+  /FormalParameters/FormalParameter[not(ModifierList/Annotation)][PrimitiveType[@Kind = 'boolean']][not(@Varargs = true())]
+  [let $name := VariableId/@Name, $method := ../..
+   return exists($method/Block//VariableAccess[@Name = $name][$tested(.)])
+     and not(exists($method/Block//AssignmentExpression[*[1][self::VariableAccess[@Name = $name]]]))]
+/VariableId
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="GeneratedEqualsSkipsSuperclass" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This class extends a project class, which declares fields, but the equals and hashCode that Lombok generates ignore inherited fields unless callSuper is set, so two objects that differ only in those fields are equal. Write @EqualsAndHashCode(callSuper = true), or callSuper = false when ignoring them is intended.">
     <priority>3</priority>

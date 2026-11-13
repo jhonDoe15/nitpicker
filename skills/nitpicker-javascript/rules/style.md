@@ -94,7 +94,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/require-client-timeout`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
-- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+- Signatures: an exported function or public method does not branch on a `{boolean}` parameter
+  (`nitpicker/no-boolean-flag-parameter`): write two functions or take an options object. A value
+  with three states is a union of string literals, not `{boolean|undefined}`,
   `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
   JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
   `false`; return a

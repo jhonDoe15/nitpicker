@@ -78,6 +78,7 @@ const REVIEW_RULES = new Set([
   'SingularAndPluralMember',
   'timeout-abandons-operation',
   'TriStateBoolean',
+  'BooleanFlagParameter',
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',

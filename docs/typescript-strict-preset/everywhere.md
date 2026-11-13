@@ -970,6 +970,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   The message says to call the target directly and delete the alias; when the target is `private`,
   `protected` or `#private` and the alias is more visible it says to rename the target to the alias
   name instead. Add an exception for a public alias that must stay.
+- `nitpicker/no-boolean-flag-parameter`: a `boolean` parameter that an exported function or a public
+  class member or a method of an exported object literal branches on (an `if`, `while`, `for`,
+  `switch` or ternary test, or `urgent && run()` as a statement, also through `!`, `&&`, `||` or
+  `=== true`) makes the call `send(order, true)` unreadable. Reported for a parameter typed `boolean`
+  or defaulted to `true` or `false`; the JavaScript preset also reads `@param {boolean}`. Not reported:
+  a parameter that is only passed on, stored or reassigned, an optional parameter (`urgent?: boolean`,
+  the tri-state rule's), a function that is not exported, a `private`, `protected`, `#private`,
+  `override`, getter, setter or constructor member, a member of a class that `extends` or `implements`
+  another type (the supertype dictates the signature), a `static create*` or `valueOf*` factory, a nested function, and the builders `set*`, `with*`,
+  `from*`, `of` and `builder`. The message names two functions, an options object or a union of string
+  literals.
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
