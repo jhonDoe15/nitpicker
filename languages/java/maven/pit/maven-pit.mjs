@@ -98,7 +98,7 @@ function pitRan(options, { pitDir, limit, targets }) {
 }
 
 export function runPit(options) {
-  const { module, reportDir, timeoutMs, deadline, scope } = options;
+  const { module, reportDir, scope } = options;
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
   mkdirSync(pitDir, { recursive: true });
@@ -111,9 +111,13 @@ export function runPit(options) {
     writeFileSync(report, '<mutations/>');
     return;
   }
-  const limit = pitTimeoutMs(timeoutMs, deadline);
+  mutate(options, { pitDir, report, targets });
+}
+
+function mutate(options, { pitDir, report, targets }) {
+  const limit = pitTimeoutMs(options.timeoutMs, options.deadline);
   if (limit < MINUTE_MS) {
-    writePitFailure(pitDir, notStarted(module));
+    writePitFailure(pitDir, notStarted(options.module));
     return;
   }
   if (pitRan(options, { pitDir, limit, targets }) && !existsSync(report)) {
