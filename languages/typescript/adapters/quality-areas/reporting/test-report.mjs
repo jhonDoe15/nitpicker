@@ -37,6 +37,7 @@ const COULD_NOT_RUN = 'could not run';
 export function coverageFailureFindings(
   options,
   { report, result, runnerName, precedingCommands },
+  { mockPin = false } = {},
 ) {
   const failures = testFailures(report, options.projectRoot);
   const [firstFailure] = failures;
@@ -66,6 +67,7 @@ export function coverageFailureFindings(
         runnerName,
         precedingCommands,
         snapshot: ran ? options.snapshot : undefined,
+        mockPin: ran && mockPin,
       }),
       anchor: testsFailAnchor(options.snapshot),
     }),
@@ -172,22 +174,25 @@ function failureEntry({ file, name, assertion }) {
 export function formatTestFailures(
   report,
   projectRoot,
-  { runnerName, precedingCommands, snapshot } = {},
+  { runnerName, precedingCommands, snapshot, mockPin = false } = {},
 ) {
   if (snapshot === 'base') {
     return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
   }
-  return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
-    '\n',
-  );
+  return [
+    failureText(report, projectRoot, { runnerName, mockPin }),
+    ...precedingNote(precedingCommands),
+  ].join('\n');
 }
 
-function failureText(report, projectRoot, runnerName) {
+function failureText(report, projectRoot, { runnerName, mockPin }) {
   const failures = testFailures(report, projectRoot);
   const failedCount = Number.isInteger(report?.numFailedTests)
     ? Math.max(report.numFailedTests, failures.length)
     : failures.length;
-  const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
+  const headline = mockPin
+    ? mockPinHeadline(failedCount, runnerName)
+    : testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
     return `${headline.slice(0, -1)}; the report named no test.`;
   }
@@ -198,6 +203,17 @@ function failureText(report, projectRoot, runnerName) {
     ),
     ...(runnerName === RUNNER_NAMES.vitest ? missingSetupHints(failures) : []),
   ].join('\n');
+}
+
+function mockPinHeadline(count, runnerName) {
+  const verb = count === 1 ? 'test fails' : 'tests fail';
+  const setting = runnerName === RUNNER_NAMES.jest ? '`--restoreMocks`' : '`restoreMocks: true`';
+  return [
+    `${String(count)} ${verb} only because nitpicker pins ${setting} for the coverage run;`,
+    'the same tests pass without it, so coverage, CRAP and mutation were skipped.',
+    'Create the spy in `beforeEach` or inside the test instead of once in `beforeAll`',
+    'or a `describe` body, and rerun:',
+  ].join(' ');
 }
 
 function assertionName(assertion) {

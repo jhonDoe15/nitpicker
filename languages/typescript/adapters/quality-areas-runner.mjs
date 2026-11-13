@@ -7,6 +7,12 @@ import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
 
+const STDERR_OUTPUT = {
+  write(text) {
+    process.stderr.write(text);
+  },
+};
+
 function areaResult(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
   if (runner === undefined) {
@@ -34,7 +40,7 @@ function areaResult(options) {
       return [];
     }
   }
-  return runner(options);
+  return runner(options, STDERR_OUTPUT);
 }
 
 export async function runQualityAreaReport(options) {

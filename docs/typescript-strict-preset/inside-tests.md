@@ -436,6 +436,14 @@ hop, and type-only imports do not count.
   is the way to leave a file out. Neither
   Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
   `jest.useRealTimers()`) in `afterEach`.
+- A test that creates a spy once (in `beforeAll` or a `describe` body) and asserts on it in later
+  tests passes in the project and fails under the pin. When the coverage run has failing tests on
+  Vitest or Jest, nitpicker reruns only those test files once without the pin (the project's own
+  `restoreMocks` setting applies). If they then pass, the `tests-failed` message says the tests fail
+  only because of the `restoreMocks` pin and gives the fix: create the spy in `beforeEach` or
+  inside the test. Coverage, CRAP and mutation are still skipped for that run: the pin is the one way
+  tests run, so a pass without it is not a result nitpicker can measure. Tests that also fail
+  without the pin keep the plain failure message.
 
 - `test-console-output` (the `test-console` check, not an ESLint rule): a test file that prints
   `console.error` or `console.warn` output the base run did not print fails, with the message and
