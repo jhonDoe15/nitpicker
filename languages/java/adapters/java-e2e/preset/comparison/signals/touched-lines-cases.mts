@@ -2,10 +2,18 @@ import path from 'node:path';
 import { expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../../../../core/diff/comparison/positions/touched-lines.mjs';
 
+type TouchedFinding = {
+  readonly rule: string;
+  readonly path: string;
+  readonly message: string;
+  readonly location?: { readonly line?: number };
+};
+type TouchedResult = { readonly newFindings: readonly TouchedFinding[] };
+
 const sources = 'src/main/java/demo';
 const EDITED_BRANCH_LINE = 5;
 
-function javaClass(name, ...members) {
+function javaClass(name: string, ...members: string[]): string {
   return `package demo;\n\npublic final class ${name} {\n${members.join('\n\n')}\n}\n`;
 }
 
@@ -25,7 +33,7 @@ const PICK = [
   '    }',
 ];
 
-function isThree(name, condition = 'if (value == 3) {') {
+function isThree(name: string, condition = 'if (value == 3) {'): string {
   return [
     `  public boolean ${name}(int value) {`,
     `    ${condition}`,
@@ -36,7 +44,7 @@ function isThree(name, condition = 'if (value == 3) {') {
   ].join('\n');
 }
 
-function clamp(condition) {
+function clamp(condition: string): string {
   return [
     '  public int clamp(int value) {',
     `    ${condition}`,
@@ -73,13 +81,13 @@ export const TOUCHED_HEAD = {
   ),
 };
 
-function locations(result, wanted) {
+function locations(result: TouchedResult, wanted: string): string[] {
   return result.newFindings
     .filter(({ rule }) => rule === wanted)
-    .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`);
+    .map(({ path: file, location }) => `${path.basename(file)}:${String(location?.line)}`);
 }
 
-export function touchedLineCases(resultOf) {
+export function touchedLineCases(resultOf: () => TouchedResult): void {
   it('keeps a legacy branch baselined above an extracted helper and through reformatting', () => {
     expect(
       locations(resultOf(), 'changed-branch-coverage').filter(
@@ -105,7 +113,7 @@ export function touchedLineCases(resultOf) {
     );
 
     expect(rest).toEqual([]);
-    expect(edited.location.line).toBe(EDITED_BRANCH_LINE);
-    expect(edited.message).toContain(EDITED_LINE_SENTENCE);
+    expect(edited?.location?.line).toBe(EDITED_BRANCH_LINE);
+    expect(edited?.message).toContain(EDITED_LINE_SENTENCE);
   });
 }
