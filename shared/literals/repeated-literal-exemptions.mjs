@@ -51,6 +51,10 @@ export const TRANSLATION_CALLS = [
 
 export const DISCRIMINANT_KEYS = ['type', 'kind', 'tag', 'variant'];
 
+export const ESLINT_SEVERITIES = ['error'];
+
+export const RULE_KEY_PATTERN = '[/-]';
+
 const IDIOMS = new Set(IDIOMATIC_TEXTS);
 const MIME_TYPE = new RegExp(MIME_TYPE_PATTERN);
 const TIME_FORMAT = new RegExp(TIME_FORMAT_PATTERN);

@@ -93,6 +93,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
   a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
   rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
+- A string of five characters or more used three times in a file is named once as a constant
+  (`nitpicker/no-repeated-string-literal`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`
