@@ -3,8 +3,14 @@ import path from 'node:path';
 import * as prettier from 'prettier';
 import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/store.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
-import { buildReference } from './build.mjs';
-import { renderReference } from './render.mjs';
+import { buildReference } from './build.mts';
+import { renderReference } from './render.mts';
+import type { ReferenceEntry } from './build.mts';
+
+const pageData: (entries: readonly ReferenceEntry[]) => unknown = encodePage;
+const dataDirectory: string = REFERENCE_DATA_DIRECTORY;
+const pageIds: readonly { readonly id: string }[] = PAGES;
+const parseJson: (text: string) => unknown = JSON.parse;
 
 export {
   installedRuffRules,
@@ -27,7 +33,7 @@ export {
 
 const JSON_FILE = /\.json$/u;
 
-function insideRepository(repositoryRoot, file) {
+function insideRepository(repositoryRoot: string, file: string): string {
   const target = path.resolve(repositoryRoot, file);
   if (!target.startsWith(repositoryRoot + path.sep)) {
     throw new Error(`The generated file ${file} is outside the repository`);
@@ -35,42 +41,42 @@ function insideRepository(repositoryRoot, file) {
   return target;
 }
 
-/** `text` formatted as Prettier formats the committed file at `file`. */
-export async function formattedText(repositoryRoot, file, text) {
+export async function formattedText(
+  repositoryRoot: string,
+  file: string,
+  text: string,
+): Promise<string> {
   const target = insideRepository(repositoryRoot, file);
   const options = (await prettier.resolveConfig(target)) ?? {};
   return prettier.format(text, { ...options, filepath: target });
 }
 
-function dataFiles(entries) {
+function dataFiles(entries: readonly ReferenceEntry[]): [string, string][] {
   const byPage = Map.groupBy(entries, ({ page }) => page);
-  return PAGES.map(({ id }) => [
-    `${REFERENCE_DATA_DIRECTORY}/${id}.json`,
-    JSON.stringify(encodePage(byPage.get(id) ?? [])),
+  return pageIds.map(({ id }) => [
+    `${dataDirectory}/${id}.json`,
+    JSON.stringify(pageData(byPage.get(id) ?? [])),
   ]);
 }
 
-/** The data file of each page, as compact JSON, by path relative to the repository root. */
-export function referenceDataFiles(repositoryRoot) {
+export function referenceDataFiles(repositoryRoot: string): Map<string, string> {
   return new Map(dataFiles(buildReference(repositoryRoot)));
 }
 
-/**
- * The generated files, by path relative to the repository root: the data file of each page, as
- * compact JSON, and the Markdown pages, already in the form Prettier gives them.
- */
-export function referenceFiles(repositoryRoot) {
+export function referenceFiles(repositoryRoot: string): Map<string, string> {
   const entries = buildReference(repositoryRoot);
   return new Map([...dataFiles(entries), ...renderReference(entries)]);
 }
 
-function committedText(target, file) {
+function committedText(target: string, file: string): string {
   const text = readFileSync(target, 'utf8');
-  return JSON_FILE.test(file) ? JSON.stringify(JSON.parse(text)) : text;
+  return JSON_FILE.test(file) ? JSON.stringify(parseJson(text)) : text;
 }
 
-/** The files of `referenceFiles` whose committed copy is missing or says something else. */
-export function staleReferenceFiles(repositoryRoot, generated) {
+export function staleReferenceFiles(
+  repositoryRoot: string,
+  generated: ReadonlyMap<string, string>,
+): string[] {
   return [...generated]
     .filter(([file, text]) => {
       const target = insideRepository(repositoryRoot, file);

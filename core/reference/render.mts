@@ -1,8 +1,41 @@
 import path from 'node:path';
 import { entryFacts, entryLinks } from '../../shared/reference/facts.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
-import { pageCredits } from './credits.mjs';
-import { pageExceptionTexts } from './page-exceptions.mjs';
+import { pageCredits } from './credits.mts';
+import { pageExceptionTexts } from './page-exceptions.mts';
+import type { ReferenceEntry } from './build.mts';
+import { textOf } from '../../shared/values/readers.mts';
+
+type Fact = {
+  readonly label: string;
+  readonly text?: string | undefined;
+  readonly items?: readonly string[] | undefined;
+  readonly code?: string | undefined;
+  readonly language?: string | undefined;
+};
+
+type Link = {
+  readonly label: string;
+  readonly path?: string | undefined;
+  readonly anchor?: string | undefined;
+  readonly url?: string | undefined;
+};
+
+type Page = {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly guide: string;
+};
+
+type PageNotes = {
+  readonly credits: Readonly<Record<string, string>>;
+  readonly exceptions: Readonly<Record<string, string>>;
+};
+
+const factsOf: (entry: ReferenceEntry) => readonly Fact[] = entryFacts;
+const linksOf: (entry: ReferenceEntry) => readonly Link[] = entryLinks;
+const pages: readonly Page[] = PAGES;
 
 const REFERENCE_DIRECTORY = 'docs/rules';
 const INDEX_FILE = 'README.md';
@@ -16,47 +49,47 @@ const COMMON_SHARE = 0.6;
 const MINIMUM_ENTRIES = 5;
 const SENTENCE_END = /[.!?]$/u;
 
-function escaped(text) {
+function escaped(text: string): string {
   return text.replaceAll(SPECIAL, '\\$&');
 }
 
-function pageTarget(target) {
+function pageTarget(target: string): string {
   if (ABSOLUTE_URL.test(target)) {
     return target;
   }
-  const [file, anchor] = target.split('#');
+  const [file = '', anchor] = target.split('#');
   return `${path.posix.relative(REFERENCE_DIRECTORY, file)}${anchor === undefined ? '' : `#${anchor}`}`;
 }
 
-function markedPart(part) {
+function markedPart(part: string): string {
   const link = LINK.exec(part);
-  return link === null ? part : `[${escaped(link[1])}](${pageTarget(link[2])})`;
+  return link === null ? part : `[${escaped(link[1] ?? '')}](${pageTarget(link[2] ?? '')})`;
 }
 
-function markdownText(text) {
+function markdownText(text: string): string {
   return text
     .split(CODE_OR_LINK)
     .map((part, index) => (index % 2 === 1 ? markedPart(part) : escaped(part)))
     .join('');
 }
 
-function sentence(text) {
+function sentence(text: string): string {
   const capitalized = `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
   return SENTENCE_END.test(capitalized) ? capitalized : `${capitalized}.`;
 }
 
-function relativeLink({ label, path: target, anchor, url }) {
+function relativeLink({ label, path: target, anchor, url }: Link): string {
   const href =
     url ??
-    `${path.posix.relative(REFERENCE_DIRECTORY, target)}${anchor === undefined ? '' : `#${anchor}`}`;
+    `${path.posix.relative(REFERENCE_DIRECTORY, target ?? '')}${anchor === undefined ? '' : `#${anchor}`}`;
   return `[${label}](${href})`;
 }
 
-function isGuide({ path: target, anchor }, guide) {
+function isGuide({ path: target, anchor }: Link, guide: string): boolean {
   return target !== undefined && `${target}${anchor === undefined ? '' : `#${anchor}`}` === guide;
 }
 
-function commonFacts(factsList) {
+function commonFacts(factsList: readonly (readonly Fact[])[]): Fact[] {
   if (factsList.length < MINIMUM_ENTRIES) {
     return [];
   }
@@ -73,36 +106,39 @@ function commonFacts(factsList) {
   });
 }
 
-function codeLines(code, language) {
+function codeLines(code: string, language: string | undefined): string[] {
   return [
     '',
-    `  \`\`\`${language}`,
+    `  \`\`\`${textOf(language)}`,
     ...code.split('\n').map((line) => (line === '' ? '' : `  ${line}`)),
     '  ```',
     '',
   ];
 }
 
-function factLines({ label, text, items, code, language }) {
+function factLines({ label, text, items, code, language }: Fact): string[] {
   if (code !== undefined) {
     return [`- **${label}:**`, ...codeLines(code, language)];
   }
   return items === undefined
-    ? [`- **${label}:** ${markdownText(text)}`]
+    ? [`- **${label}:** ${markdownText(text ?? '')}`]
     : [`- **${label}:**`, ...items.map((item) => `  - ${markdownText(item)}`)];
 }
 
-function entryMarkdown(entry, { common, guide }) {
-  const facts = entryFacts(entry).filter(
+function entryMarkdown(
+  entry: ReferenceEntry,
+  { common, guide }: { readonly common: readonly Fact[]; readonly guide: string },
+): string[] {
+  const facts = factsOf(entry).filter(
     (fact) => !common.some(({ label, text }) => label === fact.label && text === fact.text),
   );
-  const links = entryLinks(entry).filter((link) => !isGuide(link, guide));
+  const links = linksOf(entry).filter((link) => !isGuide(link, guide));
   return [
-    `<a id="${entry.anchor}"></a>`,
+    `<a id="${textOf(entry['anchor'])}"></a>`,
     '',
-    `### \`${entry.id}\``,
+    `### \`${textOf(entry['id'])}\``,
     '',
-    markdownText(sentence(entry.summary)),
+    markdownText(sentence(textOf(entry['summary']))),
     '',
     ...facts.flatMap(factLines),
     ...(links.length === 0 ? [] : [`- **See also:** ${links.map(relativeLink).join(', ')}`]),
@@ -110,14 +146,22 @@ function entryMarkdown(entry, { common, guide }) {
   ];
 }
 
-function pageMarkdown(page, entries, { credit, exceptions }) {
-  const common = commonFacts(entries.map(entryFacts));
+function pageMarkdown(
+  page: Page,
+  entries: readonly ReferenceEntry[],
+  {
+    credit,
+    exceptions,
+  }: { readonly credit: string | undefined; readonly exceptions: string | undefined },
+): string {
+  const [guidePath = '', guideAnchor] = page.guide.split('#');
+  const common = commonFacts(entries.map(factsOf));
   return [
     `# ${page.title}`,
     '',
     `${page.summary} This page lists ${String(entries.length)} ${entries.length === 1 ? 'rule' : 'rules'}. [All pages](${INDEX_FILE}).`,
     '',
-    `The guide for these rules: ${relativeLink({ label: page.guide, path: page.guide.split('#')[0], anchor: page.guide.split('#')[1] })}.`,
+    `The guide for these rules: ${relativeLink({ label: page.guide, path: guidePath, anchor: guideAnchor })}.`,
     '',
     ...(credit === undefined ? [] : [markdownText(credit), '']),
     ...(exceptions === undefined ? [] : [markdownText(exceptions), '']),
@@ -128,13 +172,16 @@ function pageMarkdown(page, entries, { credit, exceptions }) {
   ].join('\n');
 }
 
-function tableRow(cells, widths) {
-  return `| ${cells.map((cell, column) => cell.padEnd(widths[column])).join(' | ')} |`;
+function tableRow(cells: readonly string[], widths: readonly number[]): string {
+  return `| ${cells.map((cell, column) => cell.padEnd(widths[column] ?? 0)).join(' | ')} |`;
 }
 
-function tableLines([header, ...rows]) {
+function tableLines([header, ...rows]: readonly (readonly string[])[]): string[] {
+  if (header === undefined) {
+    return [];
+  }
   const widths = header.map((_, column) =>
-    Math.max(...[header, ...rows].map((cells) => cells[column].length)),
+    Math.max(...[header, ...rows].map((cells) => (cells[column] ?? '').length)),
   );
   return [
     tableRow(header, widths),
@@ -146,7 +193,7 @@ function tableLines([header, ...rows]) {
   ];
 }
 
-function indexMarkdown(byPage) {
+function indexMarkdown(byPage: ReadonlyMap<unknown, readonly ReferenceEntry[]>): string {
   return [
     '# Rule reference',
     '',
@@ -160,9 +207,9 @@ function indexMarkdown(byPage) {
     '',
     ...tableLines([
       ['Page', 'Rules', 'What it covers'],
-      ...PAGES.map((page) => [
+      ...pages.map((page) => [
         `[${page.title}](${page.id}.md)`,
-        String(byPage.get(page.id).length),
+        String((byPage.get(page.id) ?? []).length),
         page.summary,
       ]),
     ]),
@@ -170,22 +217,23 @@ function indexMarkdown(byPage) {
   ].join('\n');
 }
 
-/** The Markdown files of the reference, by path relative to the repository root, as Prettier formats them. */
 export function renderReference(
-  entries,
-  notes = { credits: pageCredits(), exceptions: pageExceptionTexts() },
-) {
+  entries: readonly ReferenceEntry[],
+  notes: PageNotes = { credits: pageCredits(), exceptions: pageExceptionTexts() },
+): Map<string, string> {
   const byPage = Map.groupBy(entries, ({ page }) => page);
-  for (const page of PAGES) {
+  for (const page of pages) {
     byPage.set(page.id, byPage.get(page.id) ?? []);
   }
   return new Map([
     [`${REFERENCE_DIRECTORY}/${INDEX_FILE}`, indexMarkdown(byPage)],
-    ...PAGES.map((page) => [
+    ...pages.map((page): [string, string] => [
       `${REFERENCE_DIRECTORY}/${page.id}.md`,
       pageMarkdown(
         page,
-        byPage.get(page.id).toSorted((a, b) => a.id.localeCompare(b.id)),
+        (byPage.get(page.id) ?? []).toSorted((a, b) =>
+          textOf(a['id']).localeCompare(textOf(b['id'])),
+        ),
         { credit: notes.credits[page.id], exceptions: notes.exceptions[page.id] },
       ),
     ]),

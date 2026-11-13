@@ -31,7 +31,7 @@
       "core/cli.mts",
       "core/diff/sharding/aggregate-shards.mts",
       "core/diff/execution/analyzer-scheduler.mts",
-      "core/reference/generate.mjs",
+      "core/reference/generate.mts",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
