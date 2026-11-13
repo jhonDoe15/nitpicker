@@ -157,7 +157,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
         'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
       ),
     ]).toEqual([
-      ['languages/java/adapters/design/design-findings.mjs'],
+      ['languages/java/adapters/design/design-findings.mts'],
       ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
       true,
     ]);

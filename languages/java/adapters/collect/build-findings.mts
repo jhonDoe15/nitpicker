@@ -16,10 +16,10 @@ import { runGradleStage } from '../red-base/gradle-stage.mjs';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mjs';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
-import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mjs';
+import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import type { JavaReport, JavaRunOptions } from '../typed/java-run-options.mts';
-import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -121,9 +121,9 @@ function gradleFindings(
     reportBase,
     report,
   });
-  const design: unknown = gradleDesignFindings({ projectRoot, report, options, reportBase });
+  const design = gradleDesignFindings({ projectRoot, report, options, reportBase });
   return {
-    findings: [...findingsOf(fieldOf(read, 'findings')), ...findingsOf(design)],
+    findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
     imports: fieldOf(read, 'imports'),
     testsFailures: callUntyped(withRootSourceRoots, testsFailures, fieldOf(report, 'modules')),
   };
@@ -151,7 +151,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     pitDeadline: options.budget?.pitDeadlineMs,
     configs,
   });
-  const moduleDirs = fieldOf(run, 'moduleDirs');
+  const moduleDirs = textsOf(fieldOf(run, 'moduleDirs'));
   const manifest: unknown = mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY);
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
@@ -167,9 +167,9 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     formatAdvice: fieldOf(run, 'formatAdvice'),
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
-  const design: unknown = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
+  const design = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
   return {
-    findings: [...findingsOf(fieldOf(read, 'findings')), ...findingsOf(design)],
+    findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
     imports: fieldOf(read, 'imports'),
     testsFailures: fieldOf(run, 'testsFailures'),
   };
