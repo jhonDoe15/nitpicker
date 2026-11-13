@@ -1,7 +1,7 @@
 # Sources and decisions
 
 Why the Python preset's automatic fixes say what they say. The rules themselves are in
-`languages/python/ruff/nitpicker-ruff.toml`; this page records what was decided for ruff fixes.
+`languages/python/ruff/nitpicker-ruff.toml`; this page records what was decided for ruff fixes and for the recipes that read the rule script.
 
 ## Ruff fixes marked unsafe
 
@@ -19,46 +19,46 @@ case (`ruff rule <code>` gives the reason ruff states for each). There are three
 
 ### Promoted
 
-| Rule      | Why it is safe enough                                                                                                        |
+| Rule     | Why it is safe enough                                                                                          |
 | -------- | -------------------------------------------------------------------------------------------------------------- |
-| `PT018`   | one assert per condition; the same checks run in the same order                                                              |
+| `PT018`  | one assert per condition; the same checks run in the same order                                                |
 | `RUF013` | T \| None replaces an implicit Optional; only the annotation changes                                           |
-| `SIM103`  | returns the condition itself, wrapped in bool() when it may not be boolean; differs only for a custom **bool**               |
+| `SIM103` | returns the condition itself, wrapped in bool() when it may not be boolean; differs only for a custom **bool** |
 
 ### Review
 
-| Rule       | Why it needs a review                                                             |
+| Rule       | Why it needs a review                                                                                |
 | ---------- | ---------------------------------------------------------------------------------------------------- |
-| `ASYNC105` | adds an await, so the call now runs                                               |
-| `ASYNC116` | changes how long the sleep lasts                                                  |
-| `B006`     | moves the default into the body, which may not be what the author meant           |
-| `B011`     | assert False becomes raise AssertionError, which python -O no longer skips        |
-| `B028`     | adds a stacklevel the author may want higher                                      |
-| `E712`     | x == True becomes x, which differs for values equal to True that are not bool     |
-| `E731`     | a lambda becomes a def, so **name** and the repr change                           |
+| `ASYNC105` | adds an await, so the call now runs                                                                  |
+| `ASYNC116` | changes how long the sleep lasts                                                                     |
+| `B006`     | moves the default into the body, which may not be what the author meant                              |
+| `B011`     | assert False becomes raise AssertionError, which python -O no longer skips                           |
+| `B028`     | adds a stacklevel the author may want higher                                                         |
+| `E712`     | x == True becomes x, which differs for values equal to True that are not bool                        |
+| `E731`     | a lambda becomes a def, so **name** and the repr change                                              |
 | `E711`     | is None replaces == None, which differs for numpy, pandas and SQLAlchemy values that overload **eq** |
-| `FLY002`   | an f-string formats each item instead of requiring str                            |
-| `LOG001`   | Logger becomes getLogger, which adds the logger to the logging tree               |
-| `N804`     | renaming cls breaks callers that pass it by keyword                               |
-| `N805`     | renaming self breaks callers that pass it by keyword                              |
-| `PIE810`   | a tuple of prefixes fails when an argument is itself a tuple                      |
-| `PLE1519`  | singledispatch becomes singledispatchmethod, which dispatches on another argument |
-| `PLE1520`  | singledispatchmethod becomes singledispatch, which dispatches on another argument |
-| `PLR1714`  | a set or tuple evaluates every member, while or short-circuits                    |
-| `PLW0133`  | adds a raise to an exception that was built and dropped                           |
-| `PT014`    | removes duplicate test cases, which tests with shared state may rely on           |
-| `PT022`    | drops a yield that may carry implicit cleanup                                     |
+| `FLY002`   | an f-string formats each item instead of requiring str                                               |
+| `LOG001`   | Logger becomes getLogger, which adds the logger to the logging tree                                  |
+| `N804`     | renaming cls breaks callers that pass it by keyword                                                  |
+| `N805`     | renaming self breaks callers that pass it by keyword                                                 |
+| `PIE810`   | a tuple of prefixes fails when an argument is itself a tuple                                         |
+| `PLE1519`  | singledispatch becomes singledispatchmethod, which dispatches on another argument                    |
+| `PLE1520`  | singledispatchmethod becomes singledispatch, which dispatches on another argument                    |
+| `PLR1714`  | a set or tuple evaluates every member, while or short-circuits                                       |
+| `PLW0133`  | adds a raise to an exception that was built and dropped                                              |
+| `PT014`    | removes duplicate test cases, which tests with shared state may rely on                              |
+| `PT022`    | drops a yield that may carry implicit cleanup                                                        |
 | `RUF005`   | [a, *b] replaces [a] + b, which differs for a type with a custom **add** or **iter** (numpy arrays)  |
-| `RUF015`   | next(iter()) is lazy and raises StopIteration instead of IndexError               |
-| `RUF024`   | each dict value becomes its own object instead of a shared one                    |
-| `RUF032`   | the Decimal value changes from the float it was built from                        |
-| `SIM109`   | in (...) evaluates every comparand once and can reorder side effects              |
-| `SIM112`   | upper-casing an environment variable name is case-sensitive on Unix               |
-| `SIM118`   | drops .keys() on an object that may not be a dict                                 |
-| `T201`     | removes a print that may be output, not debugging                                 |
-| `T203`     | removes a pprint that may be output, not debugging                                |
+| `RUF015`   | next(iter()) is lazy and raises StopIteration instead of IndexError                                  |
+| `RUF024`   | each dict value becomes its own object instead of a shared one                                       |
+| `RUF032`   | the Decimal value changes from the float it was built from                                           |
+| `SIM109`   | in (...) evaluates every comparand once and can reorder side effects                                 |
+| `SIM112`   | upper-casing an environment variable name is case-sensitive on Unix                                  |
+| `SIM118`   | drops .keys() on an object that may not be a dict                                                    |
+| `T201`     | removes a print that may be output, not debugging                                                    |
+| `T203`     | removes a pprint that may be output, not debugging                                                   |
 | `TRY201`   | bare raise replaces raise e, which differs when the name is rebound between except and raise         |
-| `TRY400`   | logger.exception adds a traceback to the log record                               |
+| `TRY400`   | logger.exception adds a traceback to the log record                                                  |
 
 ### Left out
 
@@ -81,3 +81,31 @@ case (`ruff rule <code>` gives the reason ruff states for each). There are three
 
 `ruff check --fix` runs per file over stdin and the engine writes the result, so a file that
 changed meanwhile, is not UTF-8 or is a link is left as it is (see `docs/usage.md`).
+
+## Automatic fixes
+
+`--fix` rewrites some Python findings. The rule script runs in the project's Python environment, so
+the edits come from stdlib `ast` and `tokenize` positions (no LibCST). `ast` columns are UTF-8
+byte offsets and the engine wants offsets into the decoded text, so each position is converted to
+UTF-16 code units. The TypeScript fixes (issue 782) and the Kotlin fixes (issue 787) are the twins of
+these recipes; a rule that exists in more than one preset keeps the same rewrite.
+
+Done:
+
+- `catch-log-without-exception`: add `exc_info=True`. Only for a `logging` logger, never loguru.
+- `falsy-default`: `x or d` and `x if x else d` become `x if x is not None else d`. Review.
+- `frozen-dataclass`: add `frozen=True`. Review. A class with bases, one that assigns to `self`, one that another class in the project extends and one whose field name is assigned anywhere in the project (`obj.field = ...`, `setattr`) are declined.
+- `http-without-timeout`: add `timeout=10`, the number the rule's advice uses, or replace `timeout=None`. Review. `urlopen` and `HTTPConnection` are declined: the rule also depends on a project-wide `socket.setdefaulttimeout`.
+- `shell-command`: a literal `["sh", "-c", "cmd"]` or `asyncio.create_subprocess_shell("cmd")` becomes an argument list. Review. Shell syntax, builtins, assignments and an unbalanced quote are declined. A fixer that fails on one finding declines it and the others still run.
+- `tls-verification-off`: drop a literal `verify=False` or `ssl=False`. Review.
+- `unsafe-deserialization`: `yaml.unsafe_load` and `yaml.full_load` (and `_all`) become `yaml.safe_load`. Review, because a document with Python tags stops loading. `yaml.load_all` with a loader, ruamel and the pickle-like loaders have no single replacement.
+- `uncollected-tests`: rename the file to a name the collection patterns accept. Review.
+- mutmut `mutant-ignored`: remove the `# pragma: no mutate` comment and the words after it up to the next `#`. Review.
+
+Declined:
+
+- `forwarding-wrapper` and `unused-option`: the rewrite needs every caller in the project, and a
+  fix sees only the changed files. Retargeting callers also needs import rewrites and a proof that
+  nothing patches or re-exports the wrapper.
+- mypy `unused-ignore`: only mypy knows which ignores are unused, and a recipe has no findings to
+  read. The recipe can be added once findings reach the fixer.
