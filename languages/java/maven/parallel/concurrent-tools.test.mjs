@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runToolsConcurrently } from './concurrent-tools.mjs';
+import { runToolsConcurrently } from './concurrent-tools.mts';
 import { failWith, writeMarker } from './test-support/marker-tools.mjs';
 
 const TOOLS_URL = new URL('test-support/marker-tools.mjs', import.meta.url).href;

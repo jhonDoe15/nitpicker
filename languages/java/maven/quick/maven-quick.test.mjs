@@ -6,7 +6,7 @@ import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMavenPreset } from '../maven-build.mts';
 import { toolDependencies } from '../maven-tools.mjs';
 import { withoutTestTools } from './maven-quick.mjs';
-import { buildGoals, readTestRuns, runCoverageTools } from './maven-test-phase.mjs';
+import { buildGoals, readTestRuns, runCoverageTools } from './maven-test-phase.mts';
 
 const roots = [];
 const pinned = readPinnedTools();

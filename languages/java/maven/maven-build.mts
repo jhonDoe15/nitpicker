@@ -17,8 +17,8 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
-import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
-import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mts';
+import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
   type JavaPolicy,
@@ -112,7 +112,7 @@ export function buildAndTest({
       '--quiet',
       ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
       `${textOf(MAVEN_PLUGINS.dependency)}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
+      `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
       '-DoutputAbsoluteArtifactFilename=true',
       '-DappendOutput=false',
       '-Dmaven.test.failure.ignore=true',
@@ -248,14 +248,8 @@ function presetInWork(
   const pinned: unknown = readPinnedTools();
   const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
   const { modules, effectivePom } = readModules({ ...run, work });
-  const kotlin = callUntyped(kotlinSetup, {
-    ...run,
-    policy,
-    modules,
-    effectivePom,
-    work,
-    environment,
-  });
+  const setup = { ...run, policy, modules, effectivePom, work, environment };
+  const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - CLOCK_SLACK_MS;
   buildAndTest({ ...run, work, modules });
   const analyzed = modules.map((module) => ({
