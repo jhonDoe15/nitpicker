@@ -738,7 +738,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
   gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
-  `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
+  `ruff check --fix` (safe fixes, nitpicker's rules only, plus the fixes the preset promoted; see
+  `skills/nitpicker-python/SOURCES.md`) and ruff format or black for Python;
   google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin; gofmt, gofumpt
   or goimports for Go (see the Java, Kotlin and Python sections and the
   [Go preset](go-preset.md#format-check-following-the-project)). The TypeScript and JavaScript fixers touch only the changed files
@@ -1982,6 +1983,8 @@ own, so it never rewrites findings you did not name:
   With no ESLint rule named, it does not run.
 - `ruff check --fix` is limited to the named `ruff/<code>` rules (`--fixable`); with no ruff rule
   named, it does not run.
+  A named code that ruff marks unsafe and that the Python preset reviewed (see
+  `skills/nitpicker-python/SOURCES.md`) also gets a second pass with `--unsafe-fixes`.
 - Prettier, the Python formatter and the Java and Kotlin formatters run only on the files the
   selected fixes changed, so a file nothing fixed is not reformatted.
 

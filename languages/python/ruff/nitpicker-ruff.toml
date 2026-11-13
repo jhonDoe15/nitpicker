@@ -261,6 +261,11 @@ select = [
   "PLW2901",
   "PLW3301",
 ]
+extend-safe-fixes = [
+  "PT018",
+  "RUF013",
+  "SIM103",
+]
 ignore = ["B008", "F405", "RUF001", "RUF002", "RUF003", "RUF012", "RUF100", "SIM105"]
 
 [lint.pep8-naming]
