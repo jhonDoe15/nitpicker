@@ -10,6 +10,8 @@ export type Layout = {
   readonly exclude: readonly string[];
   readonly graphRoots: readonly string[];
   isExcluded(relativePath: string): boolean;
+  readonly isSourceFile: (relativePath: string) => boolean;
+  readonly isRunnableTestFile: (relativePath: string) => boolean;
   projectCodeFiles(projectRoot: string): readonly string[];
 };
 

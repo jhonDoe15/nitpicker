@@ -39,7 +39,7 @@
       "languages/java/builds/rulesets/write-rules.mts",
       "languages/java/builds/tools/tool-commands.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
-      "languages/typescript/adapters/quality-areas-runner.mjs",
+      "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
