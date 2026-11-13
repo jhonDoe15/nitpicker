@@ -12,6 +12,7 @@
       "scripts/check.mts",
       "scripts/record-eslint-reports.mts",
       "scripts/test-shards/repository-timeouts.mts",
+      "scripts/shard-weights/measure.mts",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
       "languages/typescript/adapters/entry-points-runner.mts",
