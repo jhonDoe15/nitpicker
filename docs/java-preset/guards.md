@@ -265,7 +265,17 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   `filter`, `peek`, `anyMatch` and the like) of a test method: an empty collection runs no assertion.
   Allowed: assert the whole collection at once, `assertAll(() -> ..., () -> ...)`, a
   `@ParameterizedTest` for a table of cases, and a loop that only builds data before an unconditional
-  assertion; an `if` that only calls `fail` is fine),
+  assertion; an `if` that only calls `fail` is fine). A branch, loop or callback in a helper method of the
+  same file that a test calls (directly or through two more helpers) is reported on the helper's
+  own construct, since an empty collection or an untaken branch passes silently there too. A loop with a literal count cannot run zero times and is fine
+  (`for (int i = 0; i < 3; i++)`, `i <= 3`, a counting-down loop, `IntStream.range(0, 3)` and
+  `rangeClosed`, also through `map`, `mapToObj` or `boxed`, but not through `filter`, `limit`, `skip` or
+  `takeWhile`, which can leave no element), and so is `do ... while`. A `break` or `return` inside such a loop
+  can still skip an assertion; that is a known limit. An assertion is a call named `assert*`, Mockito `verify`,
+  `verifyNo*`, `verifyZero*`, `should()` and `shouldHaveNo*`, `andExpect`/`andExpectAll`, or the Reactor
+  and WebTestClient `verifyComplete`, `verifyError`, `verifyTimeout`, `expectStatus`, `expectBody`,
+  `expectHeader`, `expectNext*`, `expectComplete`, `expectError*`; a call of a project helper such as
+  `shouldRetry(x)` or `verifySignature(x)` is not read as an assertion,
   `TryCatchInTest` (use `assertThrows`; a `try` inside a lambda or an anonymous class is fine),
   `TautologicalAssertion` (`assertThat(true)`, `assertTrue(true)`,
   `assertEquals(1, 1)`; `assertEquals(a, a)` is a reflexivity test and is fine),

@@ -26,7 +26,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
 - Assert unconditionally (`AssertionInControlFlow`): no assertion or `verify` inside an `if`, `switch`, `?:`,
-  loop or `forEach`/`map`/`filter` callback of a test, since an empty collection runs none. Assert the whole
+  loop or `forEach`/`map`/`filter` callback of a test or of a helper it calls, since an empty collection runs none
+  (`for (int i = 0; i < 3; i++)`, `IntStream.range(0, 3)` and `do`-`while` always run and are fine). Assert the whole
   collection at once (`assertEquals(List.of(...), actual)`, AssertJ `containsExactly`), put a table of cases
   in `@ParameterizedTest`, or use `assertAll(() -> ..., () -> ...)`.
 - Assert the value, not that something is there (`WeakAssertionInTest`): no `assertNotNull(x)`, AssertJ

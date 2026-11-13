@@ -1356,7 +1356,19 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
     skip stay quiet; and an `if`/`match` whose other branches all fail, raise or skip
     (`if feature(): assert x else: pytest.skip("no feature")`, a `case _: pytest.fail()`),
     whose assertion always runs;
-  - loops inside an assertion helper that is not a test function.
+  - a loop that cannot run zero times: `range(3)`, `range(1, 10, 3)` or a comprehension over one
+    (a literal, positive count; `range(0)` and `range(n)` are reported), and a `subTest` loop over a
+    literal non-empty table (a list, tuple, set or dict literal without `*` or `**` elements, or a
+    module-level name bound once, plain or annotated, to one and never rebound, shadowed, mutated or
+    declared `global` anywhere in the module), where `unittest` has no table API. A plain `for` over a literal table is still reported:
+    use `parametrize`. A `break` or `return` inside a fixed-count loop can still skip an assertion;
+    that is a known limit.
+
+  A loop in a same-file helper that a test calls is reported like one in the test, whether the
+  helper sits at module level or is a method of the test class called through `self` (and helpers
+  that those call): an empty collection passes silently wherever the loop is. The finding names
+  the calling test and sits on the assertion in the helper. A helper that no test calls and a
+  helper with branches only are not reported (a branch is judged at the call).
 
   Also reported, as the construct they use: an assertion statement that is a ternary or an
   implication (`assert f() if g() else True`, `assert not g() or f()`, also as the argument of
@@ -1372,8 +1384,9 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   class called through `self`) is an assertion helper for that file, with the same position rules;
   the project-wide helpers still need three test files to vote them in. An `unittest` `subTest`
   loop is a loop: it is reported as `subTest`, because an empty iterable runs no case and passes
-  without asserting anything, where an empty `parametrize` list reports a skipped test; a suite
-  without `pytest` accepts it with a `python.exceptions` entry. An `assert` in an
+  without asserting anything (unless the table is literal and non-empty), where an empty
+  `parametrize` list reports a skipped test; a suite without `pytest` accepts it with a
+  `python.exceptions` entry. An `assert` in an
   `except ... as error:` handler that reads `error` is left to ruff `PT017`, which reports it
   already (use `with pytest.raises(...) as info:`), so no site gets two findings.
 
