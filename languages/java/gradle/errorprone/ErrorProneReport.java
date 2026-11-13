@@ -21,6 +21,7 @@ public final class ErrorProneReport {
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
   private static final String PROJECT_FLAG = "--errorprone-flag=";
+  private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
   private static final List<String> MODULE_OPTIONS = List.of("--add-exports", "--add-modules", "--add-reads");
   private static final List<String> NULLAWAY_OPTIONS =
       List.of("ExcludedFieldAnnotations", "ExternalInitAnnotations", "CustomInitializerAnnotations");
@@ -96,6 +97,13 @@ public final class ErrorProneReport {
     }
     projectLines.forEach(line -> flags.add(line.substring(PROJECT_FLAG.length())));
     return String.join(" ", flags);
+  }
+
+  static List<String> projectLines(List<String> head, String patchDirectory) {
+    return head.stream().filter(line -> line.startsWith(PROJECT_FLAG))
+        .map(line -> line.startsWith(PATCH_LOCATION) && !line.endsWith(":IN_PLACE")
+            ? line + "/" + patchDirectory : line)
+        .toList();
   }
 
   static List<String> javacOptions(List<String> lines) {
@@ -181,8 +189,10 @@ public final class ErrorProneReport {
         int classpath = options.indexOf("-classpath") + 1;
         options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
       }
+      String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
+          + (group == unsuppressed ? "-lombok" : "");
       options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-          group == unsuppressed, head.stream().filter(line -> line.startsWith(PROJECT_FLAG)).toList()));
+          group == unsuppressed, projectLines(head, patchDirectory)));
       if (failedSilently(compiler, options, group, entries, errors, crashes)) {
         errors.add("javac failed on " + argumentsFile + " without reporting an error");
       }

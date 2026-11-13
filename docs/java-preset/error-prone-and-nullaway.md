@@ -28,6 +28,12 @@ Part of the [Java preset guide](../java-preset.md).
   `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
   Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
   class around it, innermost first.
+- **Fix runs.** `--fix` runs the same task and the same runner with two more `--errorprone-flag=`
+  lines, `-XepPatchChecks:<checks>` and `-XepPatchLocation:<folder>`. Error Prone then runs only
+  the named checks and writes `error-prone.patch` into the folder. The runner appends a folder per
+  compile (one per arguments file, and one more for the Lombok pass) so that the compiles of the
+  main and test sources do not overwrite each other's patch. See
+  [Error Prone fixes](../usage.md#error-prone-fixes).
 - **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
   the `BugPattern: <Check>` it came from; the runner then turns that check off with
   `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other

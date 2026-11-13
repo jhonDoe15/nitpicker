@@ -2025,6 +2025,7 @@ runs only when `--fix --rule` names one of its rules.
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | java   | `checkstyle/UpperEll`                    | `java-upper-ell`       | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF                                  |
+| java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes)                                                                                                                                                                                            | `java-error-prone-safe`, `java-error-prone-review`                                                                   | applies the fix Error Prone suggests, to the changed lines of `.java` files                                                                     |
 | kotlin       | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst`, `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags                                                                                                         |
 | kotlin       | `catch-log-without-exception`, `LogStringConcatenation`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget`                                                                                                                    | `kotlin-catch-log-without-exception` and its siblings                                                                | passes the exception to the logger, uses `{}` placeholders, deletes commented-out code, drops the marker or focus, writes `@field:`             |
 | kotlin       | `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`                                                                                                                                 | `kotlin-use-is-null-or-empty` and its siblings                                                                       | `review` recipes: they run only when their rule is selected, because the text does not prove them                                               |
@@ -2189,6 +2190,23 @@ files, and the other ESLint rules are not fixed in that run. Prettier runs after
 `nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
 `--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied
 like the others; the logging check's other rule, `nitpicker/no-production-console`, has no fix.
+
+### Error Prone fixes
+
+Error Prone suggests a fix for about 370 of its checks. With `--fix` on a Gradle or Maven project,
+nitpicker compiles the project once more with the settings the gate compiles with (the init script
+on Gradle, the compiler arguments on Maven) plus `-XepPatchChecks` and `-XepPatchLocation`, into a
+folder of its own, never in place. Error Prone writes its suggested fixes as a patch. nitpicker
+keeps the hunks that touch a line you changed and applies them as checked edits: a hunk whose old
+lines are no longer in the file is skipped. Files you did not change stay byte-identical. The step
+covers the `.java` files of Java and Kotlin projects. A compile that fails is a `error-prone-fix`
+tool error, and the other fixers still run.
+
+A plain `--fix` applies the checks on the safe list: fixes that keep behaviour and match the form
+the preset asks for. The other checks are on the review list and run only when a run selects their rule, for example
+`errorprone/ClassCanBeStatic`: their fix changes behaviour on purpose, changes a
+public signature, or touches several places that must change together. The lists and the reasons
+are in `skills/nitpicker-java/SOURCES.md`.
 
 ## Java preset
 
