@@ -5,7 +5,7 @@ import {
   troubleshootingUrl,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { PEER_TOOLS, withTypeScriptHint } from './tool-failure-hint.mjs';
+import { PEER_TOOLS, withTypeScriptHint } from './tool-failure-hint.mts';
 
 const hinted = (error) => withTypeScriptHint(error).message;
 

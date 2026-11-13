@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mjs';

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { format } from 'prettier';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
 import { strictSyntaxConfig } from '../../../../languages/typescript/preset/eslint-config/strict.mjs';
 import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
 import { isStrictRule } from '../../../../languages/typescript/preset/strict-rules.mjs';

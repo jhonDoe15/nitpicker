@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { baseLineOf, parseLineShifts } from './line-shifts.mjs';
+import { baseLineOf, parseLineShifts } from './line-shifts.mts';
 import {
   baseMutationTargets,
   changedCodeMutants,
   hasWeakeningCandidates,
   mutationTargetsWithTestedModules,
   weakenedTestFindings,
-} from './weakened-mutants.mjs';
+} from './weakened-mutants.mts';
 
 function mutant(status, line, overrides = {}) {
   return {
