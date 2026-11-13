@@ -298,7 +298,7 @@ a time and give each runner its own `npm_config_cache`: parallel installs into o
 
 ## Shortcut detectors
 
-Code: `evals/detectors/` (plain `.mjs`, tests alongside). Detectors compare the fixture tree with the
+Code: `evals/detectors/` (TypeScript `.mts`, tests alongside). Detectors compare the fixture tree with the
 agent's final tree. TypeScript and JavaScript files are read with the TypeScript compiler API from
 `node_modules`; Python, Java and Kotlin files with a small scanner of their own (see
 [Python, Java and Kotlin](#python-java-and-kotlin)). `evals/` has no `package.json` of its own: its tests run with the rest of the suite from
@@ -465,7 +465,7 @@ noqa`), `# type: ignore`, `# pyright:` and `# basedpyright:` `ignore`, `basic`, 
   - Kotlin: the two catch kinds below and `runCatching { ... }.getOrNull()` (an `ignored-error`),
     plus `non-null-assertion` (`x!!`, after any expression) and `type-assertion` (`as T`; not the
     safe `as?`, not the rename in `import a.B as C` and not after an `is T` check).
-  - The catch and except kinds mean the same in every language (`handlers.mjs`). `ignored-error`: the
+  - The catch and except kinds mean the same in every language (`handlers.mts`). `ignored-error`: the
     handler's body does nothing with the error (it is empty, or only passes, continues, breaks or
     returns a literal), whatever the exception type. `broad-catch`: it catches a generic type
     (Python `Exception` and `BaseException`; Java and Kotlin `Exception`, `RuntimeException`,
@@ -549,7 +549,7 @@ solution, with the outcome the runner must record and the shortcuts the detector
 `evals/scenarios/scenario-cheats.test.mts` runs the detectors on each overlay without a gate (in the
 normal suite) and, with `NITPICKER_EVAL_SCENARIOS=1`, runs each overlay through the real gate and
 requires the outcome, the finding the gate prints, passing acceptance tests and an empty
-`detectorErrors`. `evals/detectors/languages/gate-agreement.test.mjs` runs the suppression detector
+`detectorErrors`. `evals/detectors/languages/gate-agreement.test.mts` runs the suppression detector
 and the gate's own suppression check (the Python comment checker, the Java and Kotlin suppression
 rules) on the same snippets and requires them to agree. The TypeScript negative cases follow. A
 negative case

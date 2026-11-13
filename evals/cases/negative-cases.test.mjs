@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 import { loadCase } from '../case-definition/case-definition.mts';
 import { casesDirectory, strictCleanRoot } from './case-harness.mjs';
 import { HARDCODED, NEGATIVE_CASES } from './case-table.mjs';

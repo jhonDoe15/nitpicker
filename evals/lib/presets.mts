@@ -1,4 +1,4 @@
-import { isCollectedPythonFile, isTestFile } from '../detectors/languages/project-files.mjs';
+import { isCollectedPythonFile, isTestFile } from '../detectors/languages/project-files.mts';
 import { fieldAt, type Fields, requiredFields } from '../../scripts/json/fields.mts';
 
 export const PRESETS = ['typescript', 'javascript', 'python', 'java', 'kotlin'] as const;
