@@ -3,18 +3,19 @@ import { canonicalTree } from './canonical/canonical.mjs';
 import { candidatePairs } from './search/candidates.mjs';
 import { bagOf, createVocabulary, matchMasks } from './search/tokens.mjs';
 import { THRESHOLDS } from './thresholds.mjs';
-import { KEY_MODES, compareText, createKeyCache, digest } from './tree/keys.mjs';
+import { KEY_MODES, compareText, createKeyCache, digest, keyOf } from './tree/keys.mjs';
 import { sizeOf } from './tree/nodes.mjs';
 import { sharedRun } from './verdict/runs.mjs';
 import { wholeVerdict } from './verdict/whole.mjs';
 
 export function prepareUnit(unit, tokensOf = createVocabulary()) {
-  const { tree, rewritten } = canonicalTree(unit.tree);
+  const { tree, original, rewritten } = canonicalTree(unit.tree);
   const tokens = tokensOf(tree);
   return {
     unit,
     tree,
     rewritten,
+    plainKey: digest(keyOf(rewritten ? original : tree, KEY_MODES.abstract)),
     size: sizeOf(tree),
     tokens,
     bag: bagOf(tokens),
@@ -30,7 +31,10 @@ function oriented([left, right], cachedKey) {
 }
 
 function spanOf(statements) {
-  return { start: statements[0].start, end: statements.at(-1).end };
+  return {
+    start: Math.min(...statements.map(({ start }) => start)),
+    end: Math.max(...statements.map(({ end }) => end)),
+  };
 }
 
 function describe([first, second], { verdict, alignment, cachedKey }) {
@@ -46,7 +50,7 @@ function describe([first, second], { verdict, alignment, cachedKey }) {
     parameters: state.holes.map(({ kind, deferred, a, b }) => ({ kind, deferred, a, b })),
     renames: state.renames.map(({ a, b }) => ({ a, b })),
     sharedNodes: state.shared,
-    rewritten: first.rewritten || second.rewritten,
+    rewritten: (first.rewritten || second.rewritten) && first.plainKey !== second.plainKey,
     ...(alignment.statements === undefined ? {} : { run: alignment.statements.map(spanOf) }),
   };
 }

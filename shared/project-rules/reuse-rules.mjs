@@ -60,6 +60,12 @@ export function reuseRules(ids, reactEnforcedBy) {
         'a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions; Go: top-level functions outside build-constrained files, across the packages of a Go module)',
     },
     {
+      id: ids.nearDuplicate,
+      check: 'structure',
+      limit:
+        'two production functions whose syntax trees are proved copies: the same apart from renamed locals, or apart from at most 4 values, literals or types, or sharing a run of at least 3 statements (30 tree nodes) that leaves at most one value for the code after it; both need at least 30 shared tree nodes, 80% of each function. Each pair is one finding, at the copy that sorts last. Copies that differ only in names and string or number literals, both large enough for `duplicate-clone` (5 lines, 100 tokens), are left to it',
+    },
+    {
       id: ids.exportedNameCollision,
       check: 'structure',
       limit:

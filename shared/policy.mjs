@@ -70,6 +70,7 @@ export const RULE_IDS = {
   featureCycle: 'feature-cycle',
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
+  nearDuplicate: 'near-duplicate',
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',

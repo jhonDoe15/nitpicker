@@ -9,7 +9,7 @@ import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
 import { sharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
 import { uniqueFindings } from '../../../../../shared/rules/reuse/reuse-finding.mjs';
-import { neutralReuseFacts } from './definition-facts.mjs';
+import { importSourceText, neutralReuseFacts } from './definition-facts.mjs';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
 import { iconAssetFindings } from './rules/icon-assets.mjs';
@@ -17,7 +17,12 @@ import { redefinedLibraryComponentFindings } from './rules/library-components.mj
 
 const IGNORED = { kind: 'ignored' };
 
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+];
 
 function projectTarget(target, source) {
   const located = source === undefined ? undefined : { ...target, path: source };
@@ -68,7 +73,9 @@ export function reuseFindings(
   const { exceptions, react } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
-  const facts = productionFacts(projectRoot, layout);
+  const facts = productionFacts(projectRoot, layout, (specifier, file) =>
+    importSourceText(resolve(specifier, file), specifier, file),
+  );
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
   const baseline =
     baselineRoot === undefined

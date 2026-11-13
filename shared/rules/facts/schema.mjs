@@ -29,6 +29,10 @@ function isName(value) {
   );
 }
 
+function isTree(value) {
+  return typeof value === 'object' && value !== null && isNonEmpty(value.kind);
+}
+
 function isNames(value) {
   return Array.isArray(value) && value.every(isName);
 }
@@ -87,6 +91,14 @@ const SHAPES = {
     detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
+  nearDuplicateUnits: {
+    file: isProjectPath,
+    name: isNonEmpty,
+    start: isLine,
+    end: isLine,
+    tokens: isCount,
+    tree: isTree,
+  },
 };
 
 const FACT_LISTS = [...Object.keys(SHAPES), ...Object.keys(DESIGN_SHAPES)];
@@ -106,10 +118,15 @@ const MODULE_REFERENCES = [
   ['imports', 'to', isModule],
   ['definitions', 'file', isModule],
   ['docComments', 'file', isModule],
+  ['nearDuplicateUnits', 'file', isModule],
   ['console', 'file', isModuleOrFolder],
 ];
 
-const REFERENCE_NOUNS = { docComments: 'doc comment', console: 'console entry' };
+const REFERENCE_NOUNS = {
+  docComments: 'doc comment',
+  console: 'console entry',
+  nearDuplicateUnits: 'near-duplicate unit',
+};
 
 function itemProblem(list, item, index) {
   if (DESIGN_SHAPES[list] !== undefined) {

@@ -2,8 +2,8 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
-`duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` are the shared rules of
-the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+`duplicate-definition`, `sibling-copy-edit`, `exported-name-collision` and `near-duplicate` are the
+shared rules of the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
 (`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
 Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
 The findings have tool `structure` and are lifted with the top-level `exceptions`.
@@ -49,6 +49,12 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`near-duplicate`.** Java only for now. `adapters/near-duplicates/java-trees.mjs` parses the
+  same `.java` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java`
+  grammar, in a child process) into one tree per method, constructor and field lambda, and the
+  shared engine (`shared/near-duplicates/`) proves which pairs are copies. Each pair is reported
+  once, at the copy whose `file#name` sorts last, and keeps its identity while both copies stay, so
+  a pair the base already had is never new.
 - **`shared-used-by-one-feature`.** The same facts feed the feature rule: a source file under a
   folder that `layout.sharedRoots` matches (default `**/shared`, such as
   `src/main/java/com/acme/shared`) that only the files of one feature use, directly or through

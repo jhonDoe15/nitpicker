@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs';
+import { readJavaUnits } from '../near-duplicates/java-trees.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
@@ -68,7 +69,20 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
       ),
     ),
     imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
+    nearDuplicateUnits: kotlin ? [] : javaUnitFacts(projectRoot, files),
   };
+}
+
+function javaUnitFacts(projectRoot, files) {
+  const javaFiles = files.map(({ file }) => file).filter((file) => file.endsWith('.java'));
+  return readJavaUnits(projectRoot, javaFiles).map(({ file, name, start, end, tokens, tree }) => ({
+    file,
+    name,
+    start,
+    end,
+    tokens,
+    tree,
+  }));
 }
 
 function baselineReader(projectRoot, { baselineRoot, baselineMovesFile }) {
@@ -114,7 +128,7 @@ export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {
     ...sharedFactFindings(facts, {
       language,
       analyzerName: REUSE_TOOL,
-      rules: REUSE_RULES,
+      rules: kotlin ? REUSE_RULES : [...REUSE_RULES, 'near-duplicate'],
       policy: { exceptions },
       baseline: baselineOf(projectRoot, policy),
       collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
