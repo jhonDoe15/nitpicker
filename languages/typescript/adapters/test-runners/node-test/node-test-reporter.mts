@@ -1,35 +1,59 @@
 import path from 'node:path';
 import { formattedValue } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 
+import type {
+  FailureDetail,
+  AssertionResult,
+  PendingEntry,
+  FileState,
+  TestFailure,
+  ResultData,
+  ResultEvent,
+  StderrEvent,
+  ReporterEvent,
+  NodeTestReport,
+} from './node-test-report-types.mts';
+
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
 const CANCELLED_BY_PARENT = 'cancelledByParent';
 const HOOK_FAILED = 'hookFailed';
 const MAX_STDERR_LENGTH = 2000;
 
-function fileState(files, file) {
+function fileState(files: Map<string, FileState>, file: string): FileState {
   const known = files.get(file);
   if (known !== undefined) {
     return known;
   }
-  const created = { pending: [], loadFailures: [], stderr: '' };
+  const created: FileState = { pending: [], loadFailures: [], stderr: '' };
   files.set(file, created);
   return created;
 }
 
-function failureMessage(error) {
-  const cause = error?.cause;
-  const message = cause instanceof Error ? cause.stack : (cause?.message ?? error?.message);
-  return typeof message === 'string' ? message : String(cause ?? error ?? 'failed');
+function messageOf(value: unknown): unknown {
+  return (typeof value === 'object' || typeof value === 'function') &&
+    value !== null &&
+    'message' in value
+    ? value.message
+    : undefined;
 }
 
-function statusOf(failed, data) {
+function failureMessage(error: TestFailure | undefined): string {
+  const cause = error?.cause;
+  const message = cause instanceof Error ? cause.stack : (messageOf(cause) ?? error?.message);
+  const described: unknown = cause ?? error ?? 'failed';
+  return typeof message === 'string' ? message : String(described);
+}
+
+function statusOf(failed: boolean, data: ResultData): AssertionResult['status'] {
   if (data.skip !== undefined || data.todo !== undefined) {
     return 'pending';
   }
   return failed ? 'failed' : 'passed';
 }
 
-function failureValues(error) {
+function failureValues(error: TestFailure | undefined): {
+  failureDetails?: readonly FailureDetail[];
+} {
   const cause = error?.cause;
   if (
     cause === null ||
@@ -43,7 +67,7 @@ function failureValues(error) {
   return { failureDetails: [{ ...values, formatted: true }] };
 }
 
-function entryFor(type, data) {
+function entryFor(type: ResultEvent['type'], data: ResultData): AssertionResult {
   const details = data.details ?? {};
   const failed = type === 'test:fail';
   return {
@@ -57,14 +81,17 @@ function entryFor(type, data) {
   };
 }
 
-function prefixed(name, children) {
+function prefixed(name: string, children: readonly PendingEntry[]): PendingEntry[] {
   return children.map((child) => ({
     ...child,
     entry: { ...child.entry, fullName: `${name} ${child.entry.fullName}` },
   }));
 }
 
-function withHookFailure(children, error) {
+function withHookFailure(
+  children: readonly PendingEntry[],
+  error: TestFailure | undefined,
+): readonly PendingEntry[] {
   if (error?.failureType !== HOOK_FAILED) {
     return children;
   }
@@ -76,7 +103,7 @@ function withHookFailure(children, error) {
   );
 }
 
-function isFileItself(data) {
+function isFileItself(data: ResultData): boolean {
   return (
     data.nesting === 0 &&
     data.file !== undefined &&
@@ -84,7 +111,7 @@ function isFileItself(data) {
   );
 }
 
-function record(state, type, data) {
+function record(state: FileState, type: ResultEvent['type'], data: ResultData): void {
   if (isFileItself(data)) {
     if (type === 'test:fail') {
       state.loadFailures.push(failureMessage(data.details?.error));
@@ -114,7 +141,7 @@ function record(state, type, data) {
 
 const ERROR_LINE = /^\w*Error\b/u;
 
-function loadFailureMessage(state) {
+function loadFailureMessage(state: FileState): string {
   const errorLine = state.stderr
     .split('\n')
     .map((line) => line.trim())
@@ -124,7 +151,7 @@ function loadFailureMessage(state) {
     .join('\n');
 }
 
-function testResult(file, state) {
+function testResult(file: string, state: FileState): NodeTestReport['testResults'][number] {
   const assertionResults = state.pending.map(({ entry }) => entry);
   const loadFailed = state.loadFailures.length > 0;
   const failed = loadFailed || assertionResults.some(({ status }) => status === 'failed');
@@ -136,18 +163,27 @@ function testResult(file, state) {
   };
 }
 
-export function reportFromEvents(events) {
-  const files = new Map();
-  for (const { type, data } of events) {
-    if (data?.file === undefined) {
+function isResultEvent(event: ReporterEvent): event is ResultEvent {
+  return RESULT_EVENTS.has(event.type) && event.data !== undefined;
+}
+
+function isStderrEvent(event: ReporterEvent): event is StderrEvent {
+  return event.type === 'test:stderr' && event.data !== undefined;
+}
+
+export function reportFromEvents(events: Iterable<ReporterEvent>): NodeTestReport {
+  const files = new Map<string, FileState>();
+  for (const event of events) {
+    const file = event.data?.file;
+    if (file === undefined) {
       continue;
     }
-    const state = fileState(files, path.resolve(data.file));
-    if (type === 'test:stderr' && state.stderr.length < MAX_STDERR_LENGTH) {
-      state.stderr = `${state.stderr}${String(data.message)}`.slice(0, MAX_STDERR_LENGTH);
+    const state = fileState(files, path.resolve(file));
+    if (isStderrEvent(event) && state.stderr.length < MAX_STDERR_LENGTH) {
+      state.stderr = `${state.stderr}${String(event.data.message)}`.slice(0, MAX_STDERR_LENGTH);
     }
-    if (RESULT_EVENTS.has(type)) {
-      record(state, type, data);
+    if (isResultEvent(event)) {
+      record(state, event.type, event.data);
     }
   }
   const testResults = [...files].map(([file, state]) => testResult(file, state));
@@ -159,8 +195,10 @@ export function reportFromEvents(events) {
   };
 }
 
-export default async function* nodeTestReporter(source) {
-  const events = [];
+export default async function* nodeTestReporter(
+  source: AsyncIterable<ReporterEvent>,
+): AsyncGenerator<string> {
+  const events: ReporterEvent[] = [];
   for await (const event of source) {
     events.push(event);
   }
