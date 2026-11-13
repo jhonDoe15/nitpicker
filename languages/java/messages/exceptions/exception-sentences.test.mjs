@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../../adapters/java-analyzer.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const JAVA_PACKAGE = 'languages/java/';
@@ -17,7 +18,7 @@ function messageSources() {
 describe('Java finding messages', () => {
   it('in every file that shapes findings get their exception route only from the shared sentence', () => {
     const handWritten = messageSources().flatMap((file) =>
-      readFileSync(path.join(packageRoot, JAVA_PACKAGE, file), 'utf8')
+      readFileSync(checkoutModulePath(path.join(packageRoot, JAVA_PACKAGE, file)), 'utf8')
         .split('\n')
         .flatMap((line, index) =>
           HAND_WRITTEN_ROUTE.test(line) ? [`${file}:${String(index + 1)}`] : [],

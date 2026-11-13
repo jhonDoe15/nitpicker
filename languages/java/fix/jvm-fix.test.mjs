@@ -16,7 +16,7 @@ const JAVA = 'src/main/java/demo';
 const KT = 'src/main/kotlin/demo';
 const ENVIRONMENT = { NITPICKER_GRADLE: '', NITPICKER_MAVEN: 'fake-mvn' };
 const TOOLS_PROPERTY = '-Pnitpicker.fix.tools=';
-const GOOGLE_COORDINATES = 'java-format=com.google.googlejavaformat:google-java-format:1.25.2';
+const GOOGLE_COORDINATES = 'java-format=com.google.googlejavaformat:google-java-format:1.35.0';
 const TEMPORARY = new RegExp(`${tmpdir()}/nitpicker-fix-\\w+`, 'gu');
 const MAVEN_TOOLS = /^.*\/maven-tools-[0-9a-f]{16}\//u;
 
@@ -133,7 +133,7 @@ describe('--fix for Java', () => {
       ['--palantir', '--replace', '<cwd>/0/New.java'],
     ]);
     expect(toolsProperty(tools)).toBe(
-      `${TOOLS_PROPERTY}java-format=com.palantir.javaformat:palantir-java-format:2.50.0`,
+      `${TOOLS_PROPERTY}java-format=com.palantir.javaformat:palantir-java-format:2.90.0`,
     );
     expect(result.notes).toEqual([`palantir-java-format rewrote ${JAVA}/New.java`]);
   });

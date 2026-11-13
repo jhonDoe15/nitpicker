@@ -3,16 +3,27 @@
 Part of the [Java preset guide](../java-preset.md).
 
 - **Gradle side.** The init script applies the Gradle `checkstyle` plugin (version pinned in the
-  map, `checkstyle: 10.21.1`) and makes `nitpickerJava` depend on the Checkstyle task of the
+  map, `checkstyle: 13.5.0`) and makes `nitpickerJava` depend on the Checkstyle task of the
   main source set and of every test source set (see [Coupling and stability](coupling-and-stability-ticket-sh6.md)
   for which source sets are tests; a `jmh` or `benchmark` set is not checked). `ignoreFailures` is on and the XML reports are written to `checkstyle.xml` (main
   sources) and `checkstyle-<source set>.xml` (`checkstyle-test.xml`, `checkstyle-integration.xml`,
-  ...) in the report directory; the HTML report is off.
+  ...) in the report directory; the HTML report is off. Checkstyle 13 needs JDK 21 or newer, so
+  `languages/java/gradle/tasks/tool-jdk.gradle` runs the tasks on a toolchain of the higher of 21
+  and the JDK Gradle runs on (the project's own toolchain may be older); Gradle finds or provisions
+  it like any toolchain. Checkstyle 13.5 is the first release that parses every Java 25 form
+  (module imports, statements before `super(...)`); 10.x stops on them with a parse error.
 - **Configuration.** The preset uses `google_checks.xml` from the pinned
   Checkstyle jar, with the layout checks the formatter owns (see [Style](style.md)) and `MissingJavadocMethod` and
   `MissingJavadocType` suppressed (`languages/java/gradle/checkstyle-suppressions.xml`): Javadoc is
   allowed on public API but not required, the same rule as the TypeScript preset. Member and method
-  names may be a single lowercase letter (`x`, `y`), as record components can. Javadoc that is
+  names may be a single lowercase letter (`x`, `y`), as record components can. Both builds write
+  the config with `languages/java/builds/rulesets/checkstyle-config.mjs`, which takes the bundled
+  file of the pinned version and changes it the same way for Gradle and Maven: no inline
+  suppression filters, no `TextBlockGoogleStyleFormatting` (the formatter owns text block layout),
+  a `TODO` tag checked for its case only, and field names checked by `MemberName` and
+  `StaticVariableName` under the id `GoogleNonConstantFieldName`, so an underscore between two digits
+  (`gradle_8_14`) is still rejected and a one-letter name is allowed. Checkstyle 13 reports a check
+  with an id as `Check#id`; the rule is the id (`checkstyle/OperatorWrapNL`). Javadoc that is
   there still has to be well formed. With this bundled config the tasks run on nitpicker's own
   `nitpickerCheckstyle` configuration, so a project that declares its own Checkstyle version in
   `checkstyle` (Spring PetClinic declares 12.3.1) still gets the pinned version and its config.

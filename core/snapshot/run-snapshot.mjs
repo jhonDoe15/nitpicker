@@ -3,6 +3,10 @@ import { withHeadPolicyFile } from '../../languages/typescript/preset/head-polic
 import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 
+function isEnforceable(finding) {
+  return finding.classification === 'enforceable';
+}
+
 export function runQualitySnapshot({
   analyzers,
   projectRoot,
@@ -23,6 +27,7 @@ export function runQualitySnapshot({
       liveProjectRoot,
       headPolicyFile,
       snapshot: 'head',
+      mutationScope: scope?.paths,
       ...execution,
     }),
   );
@@ -34,9 +39,7 @@ export function runQualitySnapshot({
     scope,
   });
 
-  const enforceableFindings = findings.filter(
-    (finding) => finding.classification === 'enforceable',
-  ).length;
+  const enforceableFindings = findings.filter(isEnforceable).length;
   const exclusions = declaredExclusions(analyzers);
   const overallStatus = overallStatusFor({ toolErrors, enforceableFindings });
 

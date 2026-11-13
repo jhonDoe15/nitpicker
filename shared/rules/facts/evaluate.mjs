@@ -10,6 +10,10 @@ import {
 import { featureCycleAnalysis, featureCycleFindings } from '../features/feature-cycles.mjs';
 import { featureLayout, featureRoleContract, featureRoles } from '../features/feature-roles.mjs';
 import { sharedUsageFindings, sharedUsedByOneFeature } from '../features/shared-usage.mjs';
+import {
+  publicAlternativeBypasses,
+  publicAlternativeFindings,
+} from '../entry-points/public-alternatives.mjs';
 import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs';
 import { exportedNameCollisionFindings } from '../reuse/name-collisions.mjs';
 import { uniqueFindings } from '../reuse/reuse-finding.mjs';
@@ -81,6 +85,8 @@ const EVALUATORS = {
   'feature-internal-import': featureBoundaryRule(featureInternalImportFindings),
   'shared-imports-feature': featureBoundaryRule(sharedImportsFeatureFindings),
   'feature-cycle': featureBoundaryRule(featureCycleFindings),
+  'public-alternative-bypass': ({ facts, context }) =>
+    publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
   'doc-comment-content': ({ facts, context }) => docCommentFindings(facts.docComments, context),
   'test-console-output': ({ facts, context, options }) =>

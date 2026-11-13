@@ -18,6 +18,7 @@ on:
       - 'scripts/test-shards/**'
       - 'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs'
       - 'evals/**/*.test.mjs'
+      - 'evals/**/*.test.mts'
       - 'scripts/ci/**'
       - '.github/workflows/kotlin-e2e.yml'
   pull_request:

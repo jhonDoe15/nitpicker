@@ -1,0 +1,28 @@
+def toolchains = project.extensions.getByType(JavaToolchainService)
+def minimumToolJdk = 21
+def currentJdk = JavaVersion.current().majorVersion as int
+def compilerJdk = { JavaCompile compile ->
+    compile.javaCompiler.orNull?.metadata?.languageVersion?.asInt() ?: currentJdk
+}
+def launcherOf = { int wanted ->
+    toolchains.launcherFor { languageVersion = JavaLanguageVersion.of(wanted) }
+}
+def checkstyleJdk = Math.max(minimumToolJdk, currentJdk)
+def sourceJdk = project.provider {
+    ([currentJdk] + tasks.withType(JavaCompile).collect { compilerJdk(it) }).max()
+}
+def formatterJdk = sourceJdk.map { Math.max(minimumToolJdk, it) }
+
+project.ext.nitpickerSourceJava = {
+    def wanted = sourceJdk.get()
+    [feature: wanted, java: wanted == currentJdk
+        ? new File(System.getProperty('java.home'), 'bin/java').absolutePath
+        : launcherOf(wanted).get().executablePath.asFile.absolutePath]
+}
+
+tasks.withType(Checkstyle).configureEach { task ->
+    task.javaLauncher.set(launcherOf(checkstyleJdk))
+}
+tasks.matching { it.name == 'nitpickerFormat' }.configureEach { task ->
+    task.javaLauncher.set(formatterJdk.flatMap { launcherOf(it) })
+}
