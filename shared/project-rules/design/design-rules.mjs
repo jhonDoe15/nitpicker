@@ -18,14 +18,21 @@ export const DESIGN_RULE_LISTS = Object.fromEntries(
   DESIGN_RULES.map((rule) => [rule, DESIGN_LISTS]),
 );
 
-export const DESIGN_RULE_LANGUAGES = {
-  typescript: true,
-  javascript: 'partial',
-  java: true,
-  python: true,
-  kotlin: true,
-  go: false,
-};
+const GO_DESIGN_RULES = new Set([DESIGN_RULE_IDS.mutableStateEscape]);
+
+export const DESIGN_RULE_LANGUAGES = Object.fromEntries(
+  DESIGN_RULES.map((rule) => [
+    rule,
+    {
+      typescript: true,
+      javascript: 'partial',
+      java: true,
+      python: true,
+      kotlin: true,
+      go: GO_DESIGN_RULES.has(rule),
+    },
+  ]),
+);
 
 export const DESIGN_RULE_SETTINGS = { [DESIGN_RULE_IDS.protocolContract]: ['protocols'] };
 

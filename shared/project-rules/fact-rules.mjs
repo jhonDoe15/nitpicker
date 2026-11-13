@@ -85,7 +85,7 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
     go: true,
   },
-  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
+  ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES[rule] }])),
 };
 
 export const FACT_RULE_LISTS = {

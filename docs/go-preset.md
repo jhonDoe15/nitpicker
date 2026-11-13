@@ -709,6 +709,43 @@ and says more, so a comment with one is never reported as restating its name. `_
 generated files are not read, and neither is the package comment. The exception takes it as
 printed, `facts/doc-comment-content`.
 
+## Design rules
+
+The shared deep-module design rules (listed in [`spec/checks.md`](../spec/checks.md)) read two more
+lists of the Go facts, `types` and `callables`, that the metrics program writes under `design` in
+`inspect.json` (`languages/go/inspect/design/`). A `.go` file is a module, a package is not. Test
+files, generated files and files with a build constraint (`//go:build`, `_linux.go`) are not read,
+and neither are files that do not parse.
+
+The program types what it can prove without the compiler: package-level names, imports of the
+module's own packages, parameter and receiver types, struct fields, and local variables whose every
+assignment agrees on one type (`x := New()`, `var x T`, `x := y.Field`, `for _, x := range xs`). A
+call on a value it cannot type, a function value, a dot import, a type alias or a generic type
+argument is left out rather than guessed, so the rules see less, never more.
+
+- A struct is a `class` (it has methods) or `data` (it has none); a named type with constants of its
+  type (`type Status int` with `const (Open Status = iota; ...)`) is an `enum` with those `cases`; an
+  interface is an `interface` with bodyless methods; every file with a top-level function is a
+  `module` that owns them, and its package-level variables are its fields.
+- Exported means a capitalised name, and a method also needs a capitalised type. A field is private
+  when its name is lower case, and mutable when its type is a slice, a map or a pointer.
+- A method's owner is its receiver type, wherever in the package the method is declared. Methods
+  promoted through an embedded struct or interface of the project resolve to the embedded type, and
+  an embedded type is a supertype.
+
+**`mutable-state-escape`.** A caller in another file that changes the value an exported method
+returned fails when that value is a private slice, map or pointer field of the receiver
+(`return c.items`). A change is an element or field assignment (`lines[0] = x`, `cfg.Timeout = 3`,
+also `++` and `+=`), `delete`, `clear` or `copy` on it, and `sort.*`, `slices.Sort*`,
+`slices.Reverse`, `maps.DeleteFunc` or `maps.Copy` called on it, made directly on the call or on a
+local that holds the result and is never reassigned. `append` is not a change: it copies unless
+the capacity is left over, which the rule cannot see. A method of the same type is the owner even
+in another file of the package, so it may change the value. Return a copy (`slices.Clone`) or add
+the operation to the owner.
+
+Unexported names count as private even though the other files of the package can reach them, and
+callers in the same file as the owner are not judged, as in the other languages.
+
 ## Duplicates
 
 jscpd's `go` format runs over the module's non-test, non-generated files, and the renamed-clone pass
