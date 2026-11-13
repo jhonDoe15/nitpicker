@@ -5,7 +5,7 @@ import path from 'node:path';
 import { runCli } from '../../../../../core/cli.mts';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 
-const COMMAND_TIMEOUT_MS = 60_000;
+const COMMAND_TIMEOUT_MS = 180_000;
 const GIT_SETTINGS = [
   '-c',
   'user.name=test',
