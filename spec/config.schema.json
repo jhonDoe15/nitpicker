@@ -1774,7 +1774,6 @@
               "dependency-cruiser": false,
               "eslint": false,
               "typescript": false,
-              "tests": false,
               "ktlint": false,
               "ktfmt": false,
               "detekt": false,
@@ -1786,7 +1785,8 @@
               "coverage": false,
               "gofumpt": false,
               "goimports": false,
-              "staticcheck": false
+              "staticcheck": false,
+              "tests": { "properties": { "runner": false, "timeouts": false } }
             }
           },
           "conventions": {
@@ -1794,6 +1794,18 @@
               "java.formatter": {
                 "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
                 "enum": ["google", "palantir", "none"]
+              },
+              "java.formatterVersion": {
+                "description": "Java formatter version: \"pinned\" (the version nitpicker pins), or a version such as \"2.90.0\".",
+                "anyOf": [
+                  { "enum": ["pinned"] },
+                  { "type": "string", "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$" }
+                ]
+              },
+              "java.formatterOptions": {
+                "description": "Java formatter options: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
               "java.indentation": {
                 "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
@@ -1987,7 +1999,6 @@
               "dependency-cruiser": false,
               "eslint": false,
               "typescript": false,
-              "tests": false,
               "ruff": false,
               "black": false,
               "pyright": false,
@@ -1996,7 +2007,8 @@
               "coverage": false,
               "gofumpt": false,
               "goimports": false,
-              "staticcheck": false
+              "staticcheck": false,
+              "tests": { "properties": { "runner": false, "timeouts": false } }
             }
           },
           "conventions": {
@@ -2004,6 +2016,18 @@
               "java.formatter": {
                 "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
                 "enum": ["google", "palantir", "none"]
+              },
+              "java.formatterVersion": {
+                "description": "Java formatter version: \"pinned\" (the version nitpicker pins), or a version such as \"2.90.0\".",
+                "anyOf": [
+                  { "enum": ["pinned"] },
+                  { "type": "string", "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$" }
+                ]
+              },
+              "java.formatterOptions": {
+                "description": "Java formatter options: the names of the helper functions that count as assertions.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
               "java.indentation": {
                 "description": "Java indentation: \"2\" (2 spaces), \"4\" (4 spaces), \"tab\" (tabs).",
@@ -2401,7 +2425,6 @@
               "dependency-cruiser": false,
               "eslint": false,
               "typescript": false,
-              "tests": false,
               "pmd": false,
               "checkstyle": false,
               "spotbugs": false,
@@ -2412,7 +2435,8 @@
               "detekt": false,
               "gofumpt": false,
               "goimports": false,
-              "staticcheck": false
+              "staticcheck": false,
+              "tests": { "properties": { "runner": false, "timeouts": false } }
             }
           },
           "conventions": {

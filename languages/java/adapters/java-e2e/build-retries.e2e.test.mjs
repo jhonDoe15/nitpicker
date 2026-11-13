@@ -68,5 +68,19 @@ describe.skipIf(!enabled)(
           'expected: <true> but was: <false>',
       );
     }, 180_000);
+
+    const OPTED_IN = { toolPrecedence: { tests: ['project', 'nitpicker'] } };
+
+    it('lets the test pass on Gradle when tools.tests.precedence opts in to the retries', () => {
+      const project = projectOf('gradle');
+
+      expect(() => collectJavaFindings(project, { gradle, policy: OPTED_IN })).not.toThrow();
+    }, 180_000);
+
+    it('lets the test pass on Maven when tools.tests.precedence opts in to the reruns', () => {
+      const project = projectOf('maven');
+
+      expect(() => collectJavaFindings(project, { maven, policy: OPTED_IN })).not.toThrow();
+    }, 180_000);
   },
 );

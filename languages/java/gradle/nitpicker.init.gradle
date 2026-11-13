@@ -304,13 +304,19 @@ def kotlinCallerGaps = { Project root ->
 
 gradle.rootProject { root -> root.ext.nitpickerKotlinCallerGaps = { kotlinCallerGaps(root) } }
 
+def testRetrySettings = {
+    def file = gradle.startParameter.projectProperties['nitpicker.tests.settings']
+    file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
+}
+
 def pinTestRetries = { Task testTask ->
     def develocity = testTask.extensions.findByName('develocity')
     def retryExtensions = [testTask.extensions.findByName('retry'),
                            develocity != null && develocity.hasProperty('testRetry') ? develocity.testRetry : null]
+    def maxRetries = testRetrySettings().maxRetries ?: 0
     retryExtensions.findAll { it != null && it.hasProperty('maxRetries') }.each { retry ->
-        retry.maxRetries = 0
-        if (retry.hasProperty('failOnPassedAfterRetry')) {
+        retry.maxRetries = maxRetries
+        if (maxRetries == 0 && retry.hasProperty('failOnPassedAfterRetry')) {
             retry.failOnPassedAfterRetry = true
         }
     }

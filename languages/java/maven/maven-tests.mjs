@@ -82,13 +82,14 @@ export function collectTestResults({
   since,
   isArchunit,
   tolerateFailures,
+  retriesPass,
   moduleName = '.',
 }) {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   const failures = reports
     .filter((report) => !isArchunit(suiteNameOf(report)))
-    .flatMap((report) => failedCaseEntries(report));
+    .flatMap((report) => failedCaseEntries(report, { retriesPass }));
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
     moduleName,

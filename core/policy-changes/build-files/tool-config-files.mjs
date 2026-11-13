@@ -42,6 +42,7 @@ import { readImportLinterConfig } from '../../../languages/python/adapters/analy
 import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
+import { readPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -179,8 +180,21 @@ function declaredFingerprints(tool, side, gitBlobId) {
   ]);
 }
 
+function pytestRetryFingerprints(side, gitBlobId) {
+  const { file, values } = attempt(() => readPytestRetries(side.root)).value ?? {};
+  return file === undefined
+    ? new Map()
+    : new Map([[file, gitBlobId(JSON.stringify(values, Object.keys(values).toSorted()))]]);
+}
+
 function sideFingerprints(tool, side, gitBlobId) {
-  if (BUILD_DECLARED_TOOLS.includes(tool)) {
+  if (tool === TESTS_TOOL && side.config.preset === 'python') {
+    return pytestRetryFingerprints(side, gitBlobId);
+  }
+  if (
+    BUILD_DECLARED_TOOLS.includes(tool) &&
+    (tool !== TESTS_TOOL || GRADLE_PRESETS.includes(side.config.preset))
+  ) {
     return declaredFingerprints(tool, side, gitBlobId);
   }
   if (!PYTHON_TOOLS.includes(tool)) {
@@ -242,16 +256,18 @@ export function readToolConfigs(base, head, readers) {
 
 function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOptions }) {
   return [
-    'pmd',
-    'checkstyle',
-    ...BUILD_DECLARED_TOOLS,
-    ...KOTLIN_TOOLS,
-    ...GO_TOOLS,
-    ...SCRIPT_TOOL_FILES.keys(),
-    'jscpd',
-    'eslint',
-    ...PYTHON_TOOLS,
-    ...projectConfigTools(),
+    ...new Set([
+      'pmd',
+      'checkstyle',
+      ...BUILD_DECLARED_TOOLS,
+      ...KOTLIN_TOOLS,
+      ...GO_TOOLS,
+      ...SCRIPT_TOOL_FILES.keys(),
+      'jscpd',
+      'eslint',
+      ...PYTHON_TOOLS,
+      ...projectConfigTools(),
+    ]),
   ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {

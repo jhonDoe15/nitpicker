@@ -3210,7 +3210,7 @@ the project sets applies, and a test that failed and then passed on a retry of t
 | Gradle | `maxRetries` of the `org.gradle.test-retry` plugin or Develocity's `testRetry`, in `build.gradle` or `build.gradle.kts`, up to 10                            | the init script sets `maxRetries` to the value instead of 0; `failOnPassedAfterRetry` is only forced when it is 0                                   |
 | Maven  | `rerunFailingTestsCount` of `maven-surefire-plugin` and `maven-failsafe-plugin` in the POM configuration or `properties`, up to 10                           | `-Dsurefire.rerunFailingTestsCount` and `-Dfailsafe.rerunFailingTestsCount` get the value, and `flakyFailure` and `flakyError` cases pass           |
 
-Kotlin on Gradle and on Maven follow the Java rows. The value is read from the head checkout and applies
+Kotlin on Gradle and on Maven follow the Java rows. The count is not per module: the highest value any build file of the project declares applies to every module (a module that sets fewer retries gets the highest one too, and a module that sets none gets it as well), and the policy review names the build file the changed value is declared in. The value is read from the head checkout and applies
 to both sides when the base opts in too; a base that does not opt in keeps no retries. A conditional
 Gradle setting, a count above 10 or one that is not a literal whole number is a tool error that names the
 file. Without the opt-in the run prints `Ignoring maxRetries in build.gradle; opt in with "tools": {

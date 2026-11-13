@@ -145,4 +145,13 @@ describe('the Gradle init script and the formatter style', () => {
       "writeRules('checkstyle-config', plan)",
     ]);
   });
+
+  it('pins the retry count of the test-retry and Develocity extensions from the head settings', () => {
+    expect(linesContaining('nitpicker.tests.settings')).toHaveLength(1);
+    expect(linesContaining('def maxRetries =')).toEqual([
+      'def maxRetries = testRetrySettings().maxRetries ?: 0',
+    ]);
+    expect(linesContaining('retry.maxRetries = maxRetries')).toHaveLength(1);
+    expect(linesContaining('.each(pinTestRetries)')).toHaveLength(1);
+  });
 });

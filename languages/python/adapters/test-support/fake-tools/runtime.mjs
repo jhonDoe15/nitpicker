@@ -158,7 +158,13 @@ function pytestProbe(call) {
     call.result.status = 1;
     return;
   }
-  const plugins = ['pytest-cov.txt', 'xdist.txt', 'rerunfailures.txt', 'pytest-django.txt'];
+  const plugins = [
+    'pytest-cov.txt',
+    'xdist.txt',
+    'rerunfailures.txt',
+    'pytest-django.txt',
+    'pytest-retry.txt',
+  ];
   const flags = plugins.map((file) => (exists(call, file) ? 1 : 0));
   out(call, `8.3.1 ${flags.join(' ')}\n`);
 }

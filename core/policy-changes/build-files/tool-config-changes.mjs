@@ -1,15 +1,15 @@
 import { strykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
-import { testRunnerConfigChanges } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config-changes.mjs';
 import { typescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
 import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
 import { importLinterChanges } from './import-linter-changes.mjs';
+import { testsConfigChanges } from './applied-values/retry-changes.mjs';
 
 const OWN_APPLIED_CHANGES = new Map([
   ['jscpd', jscpdConfigChanges],
   ['stryker', strykerConfigChanges],
   ['typescript', typescriptConfigChanges],
-  ['tests', testRunnerConfigChanges],
+  ['tests', testsConfigChanges],
 ]);
 
 function appliedChanges({ tool, applied }) {

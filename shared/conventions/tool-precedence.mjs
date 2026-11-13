@@ -10,6 +10,11 @@ export function precedenceLayers(precedence = ['nitpicker']) {
   return { usesProject: project !== -1, nitpickerFirst: nitpicker !== -1 && nitpicker < project };
 }
 
+export function usesConfigRetries(toolPrecedence) {
+  const layers = precedenceLayers(toolPrecedence?.tests);
+  return layers.usesProject && !layers.nitpickerFirst;
+}
+
 function shownSetting(value) {
   return Array.isArray(value)
     ? `[${value.map((item) => JSON.stringify(item)).join(', ')}]`

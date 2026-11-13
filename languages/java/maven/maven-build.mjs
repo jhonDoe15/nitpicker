@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF, testRerunArguments } from './maven-command.mjs';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
 import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
@@ -47,6 +48,7 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  reruns = TEST_RERUNS_OFF,
 }) {
   runMaven({
     projectRoot,
@@ -63,7 +65,7 @@ export function buildAndTest({
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
-      ...TEST_RERUNS_OFF,
+      ...reruns,
       ...PROJECT_CHECKS_OFF,
       ...springAotSkip(modules),
     ],
@@ -127,6 +129,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         classpaths,
         style,
         tolerateFailures: true,
+        retriesPass: usesConfigRetries(policy.toolPrecedence),
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,
@@ -164,7 +167,7 @@ export function runMavenPreset(
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
     const since = Date.now() - 2000;
-    buildAndTest({ ...run, work, modules });
+    buildAndTest({ ...run, work, modules, reruns: testRerunArguments(configs?.tests?.arguments) });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
