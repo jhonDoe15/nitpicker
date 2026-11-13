@@ -129,7 +129,16 @@ Part of the [Java preset guide](../java-preset.md).
   Prone matches subpackages too), so ignoring the result of any of the project's own methods
   fails, in main and test code, test-only packages included. The message asks to use the result
   or make the method return void; a value dropped on purpose can still be assigned to
-  `var unused = ...` (PMD's unused-variable rules skip names starting with `unused`).
+  `var unused = ...` (PMD's unused-variable rules skip names starting with `unused`). A fluent
+  method is the exception, as with Error Prone's `@CanIgnoreReturnValue`: when every declaration
+  with the called name and parameter count, in the compiled sources of every module of the
+  project (main, test and generated, such as OpenAPI DTOs), returns only `this`, `(T) this` or a
+  `self()` that does, calling it as a statement is not reported
+  (`adapters/errorprone/fluent/fluent-returns.mjs`). A record component counts as a zero-argument
+  declaration that returns a value. A method with another return, an overload with the same name
+  and count that returns something else, or one without compiled source (a library or a class
+  file, and Lombok-generated chain setters and `@Builder` methods) keeps Error Prone's own
+  decision.
 - **NullAway.** Main sources only: a test that passes `null` on purpose to check the failure is
   legitimate. `AnnotatedPackages` is the project's main packages: its code is non-null unless
   marked, and a field, parameter or return value that may be null carries a `@Nullable` (NullAway
