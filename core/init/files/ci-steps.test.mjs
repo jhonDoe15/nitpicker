@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { workflowParts } from './ci-steps.mjs';
+import { workflowParts } from './ci-steps.mts';
 
 const project = useProjects();
 const PYTHON = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy', tool: 'pip' };

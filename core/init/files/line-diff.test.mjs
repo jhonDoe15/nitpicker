@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { unifiedDiff } from './line-diff.mjs';
+import { unifiedDiff } from './line-diff.mts';
 
 const diff = (before, after) => unifiedDiff({ name: 'file.json', before, after });
 

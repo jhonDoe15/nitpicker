@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { describeConfigOverrides } from '../configuration/config.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';

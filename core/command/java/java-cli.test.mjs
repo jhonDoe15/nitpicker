@@ -3,7 +3,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {

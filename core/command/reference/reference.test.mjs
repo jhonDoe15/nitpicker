@@ -1,12 +1,12 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { useCliFixtures } from '../test-support/cli-harness.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { readReferenceEntries } from '../../../shared/reference/store.mjs';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 
 const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 

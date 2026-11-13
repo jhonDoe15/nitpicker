@@ -15,7 +15,7 @@ import { pathToFileURL } from 'node:url';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
-import { baseUrlFreeOptions } from './oxlint-paths.mjs';
+import { stageConfigOptions } from './oxlint-paths.mjs';
 
 const STAGE_DIRECTORY = '.nitpicker-oxlint';
 
@@ -51,13 +51,16 @@ export function createStage(projectRoot, projectConfigPath) {
     symlinkSync(path.join(projectRoot, entry), path.join(stage, entry));
   }
   if (projectConfigPath !== undefined) {
-    writeFileSync(path.join(stage, 'tsconfig.json'), lintTypeScriptConfig(projectConfigPath));
+    writeFileSync(
+      path.join(stage, 'tsconfig.json'),
+      lintTypeScriptConfig(projectConfigPath, stage),
+    );
   }
   mkdirSync(path.join(stage, STAGE_DIRECTORY));
   return stage;
 }
 
-function lintTypeScriptConfig(projectConfigPath) {
+function lintTypeScriptConfig(projectConfigPath, stage) {
   const { config, error } = ts.parseConfigFileTextToJson(
     projectConfigPath,
     readFileSync(projectConfigPath, 'utf8'),
@@ -71,11 +74,18 @@ function lintTypeScriptConfig(projectConfigPath) {
       ? {}
       : { extends: rebasedExtends(config.extends, path.dirname(projectConfigPath)) }),
   };
+  const { compilerOptions, unset, typeFiles } = stageConfigOptions(
+    rebased,
+    projectConfigPath,
+    stage,
+  );
   return JSON.stringify({
     ...rebased,
+    ...(typeFiles.length === 0 ? {} : { files: [...(config.files ?? []), ...typeFiles] }),
     compilerOptions: {
       ...config.compilerOptions,
-      ...baseUrlFreeOptions(rebased, projectConfigPath),
+      ...compilerOptions,
+      ...Object.fromEntries(unset.map((option) => [option, null])),
       noEmit: true,
     },
   });
