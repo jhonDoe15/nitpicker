@@ -1,10 +1,9 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { attachFixes } from './attach-fixes.mjs';
-import { KNOWN_RECIPES } from './known-recipes.mjs';
 import { renderSarifReport } from '../../reporting/sarif.mts';
 import { writeReports } from '../../reporting/reporters.mts';
 import { finding, report } from '../../reporting/test-support/report-builders.mjs';
@@ -13,6 +12,34 @@ import { findingsSchemaErrors } from '../test-support/findings-schema-check.mjs'
 
 const SOURCE = 'class A {\n  long a = 1l;\n  long b = 2L;\n  long c = 3l;\n}\n';
 let root;
+
+const UPPER_ELL = {
+  id: 'java-upper-ell',
+  rules: [{ tool: 'checkstyle', rule: 'UpperEll' }],
+  scope: 'file',
+  safety: 'safe',
+  plan: ({ files }) => ({
+    fixes: files.flatMap(({ path: name, text }) =>
+      [...text.matchAll(/\d(l)\b/gu)].map((match) => ({
+        finding: {
+          tool: 'checkstyle',
+          rule: 'UpperEll',
+          path: name,
+          line: text.slice(0, match.index).split('\n').length,
+        },
+        edits: [
+          {
+            type: 'replace',
+            path: name,
+            start: match.index + 1,
+            end: match.index + 2,
+            text: 'L',
+          },
+        ],
+      })),
+    ),
+  }),
+};
 
 function ell(line) {
   return finding({
@@ -35,7 +62,7 @@ afterEach(() => {
 
 describe('attachFixes', () => {
   it('attaches the edit of the UpperEll recipe at the line of the finding', () => {
-    const [first, second] = attachFixes([ell(2), ell(4)], root);
+    const [first, second] = attachFixes([ell(2), ell(4)], root, [UPPER_ELL]);
 
     expect(first.fix).toEqual({
       recipe: 'java-upper-ell',
@@ -60,19 +87,22 @@ describe('attachFixes', () => {
     const other = finding({ location: { line: 1 } });
     const clean = ell(3);
 
-    expect(attachFixes([other, clean], root)).toEqual([other, clean]);
+    expect(attachFixes([other, clean], root, [UPPER_ELL])).toEqual([other, clean]);
   });
 
   it('keeps a fix an analyzer already set', () => {
     const given = { ...ell(2), fix: { recipe: 'analyzer', safety: 'review' } };
 
-    expect(attachFixes([given], root)[0].fix).toEqual({ recipe: 'analyzer', safety: 'review' });
+    expect(attachFixes([given], root, [UPPER_ELL])[0].fix).toEqual({
+      recipe: 'analyzer',
+      safety: 'review',
+    });
   });
 
   it('skips a finding whose file cannot be read', () => {
     const missing = { ...ell(2), path: 'src/Missing.java' };
 
-    expect(attachFixes([missing], root)).toEqual([missing]);
+    expect(attachFixes([missing], root, [UPPER_ELL])).toEqual([missing]);
   });
 
   it('uses a recipe from any preset that is added to the list', () => {
@@ -95,7 +125,7 @@ describe('attachFixes', () => {
       path: 'src/A.java',
       location: { line: 2 },
     });
-    const [attached] = attachFixes([sample], root, [...KNOWN_RECIPES, recipe]);
+    const [attached] = attachFixes([sample], root, [UPPER_ELL, recipe]);
 
     expect(attached.fix).toEqual({
       recipe: 'sample-whole-file',
@@ -105,12 +135,46 @@ describe('attachFixes', () => {
       textLength: SOURCE.length,
       edits: [{ type: 'write', path: 'src/A.java', text: 'x\n' }],
     });
-    expect(attachFixes([sample], root)).toEqual([sample]);
+    expect(attachFixes([sample], root, [UPPER_ELL])).toEqual([sample]);
+  });
+
+  it('gives each of two findings on one line its own fix, in column order', () => {
+    const source = 'class A {\n  long a = 1l, b = 2l;\n}\n';
+    writeFileSync(path.join(root, 'src/A.java'), source);
+    const at = (column) => ({
+      ...ell(2),
+      identity: `ell:${String(column)}`,
+      location: { line: 2, column },
+    });
+
+    const [second, first] = attachFixes([at(20), at(12)], root, [UPPER_ELL]);
+
+    expect(first.fix.edits[0].start).toBe(source.indexOf('1l') + 1);
+    expect(second.fix.edits[0].start).toBe(source.indexOf('2l') + 1);
+  });
+
+  it('attaches no fix when the line has more findings than fixes', () => {
+    const at = (column) => ({ ...ell(2), location: { line: 2, column } });
+
+    expect(attachFixes([at(1), at(9)], root, [UPPER_ELL]).map(({ fix }) => fix)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('does not read a file through a symbolic link that leaves the project', () => {
+    const outside = mkdtempSync(path.join(tmpdir(), 'attach-fixes-outside-'));
+    writeFileSync(path.join(outside, 'A.java'), SOURCE);
+    symlinkSync(outside, path.join(root, 'linked'));
+    const linked = { ...ell(2), path: 'linked/A.java' };
+
+    expect(attachFixes([linked], root, [UPPER_ELL])).toEqual([linked]);
+    rmSync(outside, { recursive: true, force: true });
   });
 
   it('skips a recipe that throws', () => {
     const throwing = {
-      ...KNOWN_RECIPES[0],
+      ...UPPER_ELL,
       plan: () => {
         throw new Error('boom');
       },
@@ -122,7 +186,7 @@ describe('attachFixes', () => {
 
 describe('a finding with a fix in the reports', () => {
   it('is written to new-findings.json and to SARIF fixes', () => {
-    const withFix = attachFixes([ell(2)], root);
+    const withFix = attachFixes([ell(2)], root, [UPPER_ELL]);
     const output = path.join(root, 'out');
     writeReports(
       output,

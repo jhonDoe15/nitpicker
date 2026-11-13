@@ -729,7 +729,7 @@ nitpicker cache publish [--analyzer <name>]...
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
 nitpicker explain <tool/rule>...
-nitpicker rules [--preset <name>] [--tool <name>]
+nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
 ```
 
 - `<path>...`: show and gate only the findings in these files or folders; see
@@ -855,10 +855,11 @@ The other commands:
   for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
   to list its rules. A name the reference does not know is reported with the closest rules and
   exits 1.
-- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
-  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
-  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
-  full, and `--tool` keeps one tool.
+- `nitpicker rules [--preset <name>] [--tool <name>] [--fixable]`: list the rules, one line each. It
+  lists the preset of the project's `nitpicker.config.json` (`typescript` without a config) and
+  leaves out the rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists
+  another preset in full, `--tool` keeps one tool, and `--fixable` keeps the rules `--fix` fixes
+  (marked `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 
@@ -1996,6 +1997,15 @@ runs only when `--fix --rule` names one of its rules.
 | ------ | ---------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
 | java   | `checkstyle/UpperEll`                    | `java-upper-ell`       | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF                                  |
+
+The rule reference says what `--fix` does about each rule, in a "Fix" line that `nitpicker explain`
+prints too: `automatic` (a safe recipe, or a fixer that runs under `--fix`: ESLint rules that
+declare a fix, Prettier, ruff safe fixes and the formatters), `with --fix --rule` (a recipe that needs a
+review and runs only when you name the rule), `fix plan` (nitpicker writes the steps, and nothing is
+rewritten) or `none`. The line is computed from the recipes and the fixers, so it cannot drift: a
+test fails when the generated reference does not match them. An ESLint or ruff fix does not
+cover every case a rule reports. Checkstyle layout rules are not listed as fixed: with a Java
+formatter they are suppressed, and without one `--fix` does not format.
 
 A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
 meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is

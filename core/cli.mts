@@ -29,7 +29,7 @@ import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
 import { runQualityDiff } from './diff/comparison/run-diff.mts';
-import { fixIfRequested } from './command/fix-request.mts';
+import { FIX_RECIPES, fixIfRequested } from './command/fix-request.mts';
 import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
@@ -270,6 +270,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     requestedBaseRef,
     outputRoot,
     analyzers,
+    fixRecipes: FIX_RECIPES,
     partialRun: selection.partialRun,
     cacheStore,
     includeWorkingTree: true,

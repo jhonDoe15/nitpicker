@@ -43,6 +43,7 @@ export type DiffOptions = Omit<
   readonly headProjectRoot?: string | undefined;
   readonly requestedBaseRef?: unknown;
   readonly partialRun?: unknown;
+  readonly fixRecipes?: unknown;
   readonly includeWorkingTree?: true | undefined;
   readonly captureHead?: unknown;
   readonly staged?: unknown;
@@ -222,6 +223,7 @@ function runAndCombine(context: RunContext): DiffReport {
   );
   return combineAnalyzerReports({
     headRoot: context.roots.headSnapshotRoot,
+    fixRecipes: [...listOf(settings.fixRecipes)],
     analyzers: settings.analyzers,
     baseRun,
     headRun,

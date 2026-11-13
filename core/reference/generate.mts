@@ -5,7 +5,7 @@ import { encodePage, REFERENCE_DATA_DIRECTORY } from '../../shared/reference/sto
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { buildReference } from './build.mts';
 import { renderReference } from './render.mts';
-import type { ReferenceEntry } from './build.mts';
+import type { FixSources, ReferenceEntry } from './build.mts';
 
 const pageData: (entries: readonly ReferenceEntry[]) => unknown = encodePage;
 const dataDirectory: string = REFERENCE_DATA_DIRECTORY;
@@ -59,12 +59,18 @@ function dataFiles(entries: readonly ReferenceEntry[]): [string, string][] {
   ]);
 }
 
-export function referenceDataFiles(repositoryRoot: string): Map<string, string> {
-  return new Map(dataFiles(buildReference(repositoryRoot)));
+export function referenceDataFiles(
+  repositoryRoot: string,
+  fixSources?: FixSources,
+): Map<string, string> {
+  return new Map(dataFiles(buildReference(repositoryRoot, fixSources)));
 }
 
-export function referenceFiles(repositoryRoot: string): Map<string, string> {
-  const entries = buildReference(repositoryRoot);
+export function referenceFiles(
+  repositoryRoot: string,
+  fixSources?: FixSources,
+): Map<string, string> {
+  const entries = buildReference(repositoryRoot, fixSources);
   return new Map([...dataFiles(entries), ...renderReference(entries)]);
 }
 
