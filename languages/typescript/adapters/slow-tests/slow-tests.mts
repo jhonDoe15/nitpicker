@@ -1,35 +1,59 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import {
+  type TestRunTime,
+  type TestTimeLimits,
+  exceptionMatcher,
   slowestRuns,
   slowTestBudget,
   slowTestFindings,
   slowTestLimits,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
-import { isIntegrationTest } from './integration-tests.mjs';
-import { passedRuns, runKey } from './report-runs.mjs';
-import { retimeWithoutCoverage } from './rerun-timings.mjs';
-import { testCallsOf } from './test-calls.mjs';
+} from './slow-test-rules.mts';
+import { type Layout, readHeadPolicy, readLayout } from '../typed/head-policy.mts';
+import type { Finding } from '../static-checks/shared.mts';
+import type { TestOptions, TestReport } from '../test-runners/typed/runner-types.mts';
+import { type TestCall, testCallsOf } from './test-calls.mts';
+import { isIntegrationTest } from './integration-tests.mts';
+import { passedRuns, runKey } from './report-runs.mts';
+import { retimeWithoutCoverage } from './rerun-timings.mts';
+
+type SlowTestSettings = {
+  readonly options: TestOptions;
+  readonly limits: TestTimeLimits;
+  readonly exceptions: readonly unknown[];
+  readonly layout: Layout;
+};
+
+type Retime = (
+  options: TestOptions,
+  suspects: readonly TestRunTime[],
+) => Promise<ReadonlyMap<string, number>>;
 
 const SLOW_TEST_TOOL = 'test-runtime';
 
-function readOptional(root, file) {
+function readOptional(root: string | undefined, file: string): string | undefined {
   const absolute = root === undefined ? undefined : path.join(root, file);
   return absolute !== undefined && existsSync(absolute)
     ? readFileSync(absolute, 'utf8')
     : undefined;
 }
 
-function matchedCalls(file, text, name) {
+function matchedCalls(file: string, text: string, name: string): TestCall[] {
   const matched = testCallsOf(file, text).filter((call) => call.matcher.test(name));
   const named = matched.filter((call) => !call.dynamic);
   return named.length > 0 ? named : matched;
 }
 
-function isEdited({ run, head, base }) {
+function isEdited({
+  run,
+  head,
+  base,
+}: {
+  readonly run: TestRunTime;
+  readonly head: string;
+  readonly base: string | undefined;
+}): boolean {
   if (base === undefined) {
     return true;
   }
@@ -43,7 +67,10 @@ function isEdited({ run, head, base }) {
   );
 }
 
-function slowRuns(report, { options, limits, exceptions, layout }) {
+function slowRuns(
+  report: TestReport,
+  { options, limits, exceptions, layout }: SlowTestSettings,
+): TestRunTime[] {
   const budget = slowTestBudget(limits);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
   const isExcepted = exceptionMatcher(exceptions);
@@ -58,7 +85,7 @@ function slowRuns(report, { options, limits, exceptions, layout }) {
   );
 }
 
-function isCounted(run, options) {
+function isCounted(run: TestRunTime, options: TestOptions): boolean {
   if (options.baselineRoot === undefined) {
     return true;
   }
@@ -66,7 +93,7 @@ function isCounted(run, options) {
   return isEdited({ run, head, base: readOptional(options.baselineRoot, run.file) });
 }
 
-function findingsFor(run, { options, limits, layout }) {
+function findingsFor(run: TestRunTime, { options, limits, layout }: SlowTestSettings): Finding[] {
   const head = readOptional(options.projectRoot, run.file) ?? '';
   const matched = matchedCalls(run.file, head, run.name);
   return slowTestFindings({
@@ -79,12 +106,16 @@ function findingsFor(run, { options, limits, layout }) {
       name: `${path.posix.basename(run.file)} ${run.name}`,
       identity: `test:${run.name}`,
       seconds: run.seconds,
-      ...(matched.length === 1 ? { line: matched[0].line } : {}),
+      ...(matched.length === 1 && matched[0] !== undefined ? { line: matched[0].line } : {}),
     },
   });
 }
 
-export async function readSlowTestFindings(options, report, retime = retimeWithoutCoverage) {
+export async function readSlowTestFindings(
+  options: TestOptions,
+  report: TestReport,
+  retime: Retime = retimeWithoutCoverage,
+): Promise<Finding[]> {
   if (options.snapshot === 'base') {
     return [];
   }

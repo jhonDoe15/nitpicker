@@ -1,15 +1,20 @@
 import path from 'node:path';
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { runProjectTests } from '../test-runners/run-project-tests.mjs';
-import { passedRuns, runKey } from './report-runs.mjs';
+import { escapeRegExp } from '../typed/tooling.mts';
+import type { Rerun, TestOptions } from '../test-runners/typed/runner-types.mts';
+import type { TestRunTime } from './slow-test-rules.mts';
+import { runProjectTests } from '../test-runners/run-project-tests.mts';
+import { passedRuns, runKey } from './report-runs.mts';
 
-function rerunSelection(projectRoot, suspects) {
+function rerunSelection(projectRoot: string, suspects: readonly TestRunTime[]): Rerun {
   const files = new Set(suspects.map(({ file }) => path.join(projectRoot, file)));
   const names = new Set(suspects.map(({ name }) => escapeRegExp(name)));
   return { files: [...files], namePattern: `^(?:${[...names].join('|')})$` };
 }
 
-export async function retimeWithoutCoverage(options, suspects) {
+export async function retimeWithoutCoverage(
+  options: TestOptions,
+  suspects: readonly TestRunTime[],
+): Promise<Map<string, number>> {
   try {
     const run = await runProjectTests({
       ...options,

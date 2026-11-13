@@ -1,29 +1,30 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
-import { coverageGlobs, coverageOutputFile, coverageSourceFiles } from '../test-run.mjs';
-import { parseReportJson } from '../../quality-areas/runners/tooling.mjs';
-import { formatProcessOutput } from '../../quality-areas/reporting/test-report.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+import { coverageGlobs, coverageOutputFile, coverageSourceFiles } from '../test-run.mts';
+import { parseReportJson } from '../../quality-areas/typed/tooling.mts';
+import { formatProcessOutput } from '../typed/runner-tools.mts';
+import type { TestOptions } from '../typed/runner-types.mts';
+import type { NodeToolResult } from '../../static-checks/shared.mts';
+import { troubleshootingError } from '../../lint-engine/typed/tools.mts';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
+import { fieldOf, fieldsOf, listOf } from '../../../../../shared/values/readers.mts';
 
 const SHOWN_CONFIG_START = '{\n  "configs"';
 const GLOB_CHARACTERS = /[*?[{]/u;
 
-function toPosix(relativePath) {
+function toPosix(relativePath: string): string {
   return relativePath.split(path.sep).join('/');
 }
 
-function isOutside(relativePath) {
+function isOutside(relativePath: string): boolean {
   return relativePath === '..' || relativePath.startsWith(`..${path.sep}`);
 }
 
-function matchesSegment(part, segment) {
+function matchesSegment(part: string | undefined, segment: string): boolean {
   return part === segment || (part !== undefined && GLOB_CHARACTERS.test(part));
 }
 
-function strippedGlob(body, rootSegments) {
+function strippedGlob(body: string, rootSegments: readonly string[]): string | undefined {
   const parts = body.split('/');
   for (const [index, segment] of rootSegments.entries()) {
     if (parts[index] === '**') {
@@ -37,7 +38,10 @@ function strippedGlob(body, rootSegments) {
   return rest === '' ? undefined : rest;
 }
 
-function rebasedBodies(body, { up, down }) {
+function rebasedBodies(
+  body: string,
+  { up, down }: { readonly up: string; readonly down: string },
+): string[] {
   const prefixed = path.posix.join(toPosix(up), body);
   if (down === '' || isOutside(down) || path.isAbsolute(down)) {
     return [prefixed];
@@ -46,7 +50,10 @@ function rebasedBodies(body, { up, down }) {
   return stripped === undefined ? [prefixed] : [stripped, prefixed];
 }
 
-export function rebaseGlobs(globs, { projectRoot, rootDir }) {
+export function rebaseGlobs(
+  globs: readonly string[],
+  { projectRoot, rootDir }: { readonly projectRoot: string; readonly rootDir: string },
+): readonly string[] {
   const up = path.relative(rootDir, projectRoot);
   if (up === '') {
     return globs;
@@ -60,24 +67,30 @@ export function rebaseGlobs(globs, { projectRoot, rootDir }) {
   });
 }
 
-export function shownConfig(result) {
+export function shownConfig(result: NodeToolResult): {
+  readonly rootDir: string;
+  readonly printsDirectly: boolean;
+} {
   const start = result.stdout.indexOf(SHOWN_CONFIG_START);
   if (result.status !== 0 || start === -1) {
     throw new Error(
       `Jest exited ${String(result.status)} without printing its config for --showConfig${formatProcessOutput(result)}`,
     );
   }
-  const { configs, globalConfig } = parseReportJson(result.stdout.slice(start));
-  if (typeof globalConfig?.rootDir !== 'string') {
+  const shown = parseReportJson(result.stdout.slice(start));
+  const configs: unknown = fieldOf(shown, 'configs');
+  const globalConfig: unknown = fieldOf(shown, 'globalConfig');
+  const rootDir = fieldOf(globalConfig, 'rootDir');
+  if (typeof rootDir !== 'string') {
     throw new TypeError('Jest printed a config without a global rootDir for --showConfig');
   }
-  const printing = [globalConfig, ...(Array.isArray(configs) ? configs : [])].some(
-    (config) => config?.silent === true || config?.verbose === true,
+  const printing = [globalConfig, ...listOf(configs)].some(
+    (config) => fieldOf(config, 'silent') === true || fieldOf(config, 'verbose') === true,
   );
-  return { rootDir: globalConfig.rootDir, printsDirectly: printing };
+  return { rootDir, printsDirectly: printing };
 }
 
-export function coverageArguments(options, rootDir) {
+export function coverageArguments(options: TestOptions, rootDir: string): string[] {
   const { include, exclude } = coverageGlobs();
   const globs = rebaseGlobs([...include, ...exclude.map((glob) => `!${glob}`)], {
     projectRoot: options.projectRoot,
@@ -94,16 +107,16 @@ export function coverageArguments(options, rootDir) {
   ];
 }
 
-export function assertSourcesCovered(options, rootDir) {
+export function assertSourcesCovered(options: TestOptions, rootDir: string): void {
   const sources = coverageSourceFiles(options);
   const covered = new Set(
-    Object.keys(parseReportJson(readFileSync(coverageOutputFile(options), 'utf8'))),
+    Object.keys(fieldsOf(parseReportJson(readFileSync(coverageOutputFile(options), 'utf8')))),
   );
   const missing = sources.filter((file) => !covered.has(file));
   if (missing.length === 0) {
     return;
   }
-  const example = path.relative(options.projectRoot, missing[0]);
+  const example = path.relative(options.projectRoot, String(missing[0]));
   if (missing.length < sources.length) {
     throw new Error(
       `Jest left source files out of coverage, such as ${example}. ` +

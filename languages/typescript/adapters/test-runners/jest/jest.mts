@@ -1,18 +1,24 @@
 import path from 'node:path';
-import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
-import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
+import { readTestReport, spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
+import type {
+  RunnerCommand,
+  TestConsole,
+  TestOptions,
+  TestReport,
+  TestRun,
+} from '../typed/runner-types.mts';
+import type { NodeToolResult } from '../../static-checks/shared.mts';
 import {
   finishedRun,
   removeTemporary,
   temporaryProjectPath,
   testTimeoutMs,
   workerCount,
-} from '../test-run.mjs';
+} from '../test-run.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mjs';
-import { jestTool } from './jest-launcher.mjs';
-import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mjs';
+import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mts';
+import { type JestLaunch, jestTool } from './jest-launcher.mts';
+import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mts';
 
 const LATE_LOG = 'Cannot log after tests are done';
 
@@ -60,27 +66,35 @@ const OPTIONS_NITPICKER_SETS = {
 
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
 
-function scriptArguments(command) {
+function scriptArguments(command: RunnerCommand): string[] {
   return withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS);
 }
 
-export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
+export function jestArguments(
+  command: RunnerCommand,
+  nitpickerArguments: readonly string[],
+  { leading, trailing }: Pick<JestLaunch, 'leading' | 'trailing'>,
+): string[] {
   return [...leading, ...scriptArguments(command), ...nitpickerArguments, ...trailing];
 }
 
-function rerunPaths(options, command) {
+function rerunPaths(options: TestOptions, command: RunnerCommand): string[] {
   const named = new Set(
     scriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
   );
-  return options.rerun.files.filter((file) => !named.has(file));
+  return (options.rerun?.files ?? []).filter((file) => !named.has(file));
 }
 
-function workerArguments(options, tokens) {
-  const serial = tokens.some((token) => SERIAL_OPTIONS.has(token.split('=')[0]));
+function workerArguments(options: TestOptions, tokens: readonly string[]): string[] {
+  const serial = tokens.some((token) => SERIAL_OPTIONS.has(token.split('=')[0] ?? token));
   return serial ? [] : [`--maxWorkers=${String(workerCount(options))}`];
 }
 
-function spawnJest(options, command, nitpickerArguments) {
+function spawnJest(
+  options: TestOptions,
+  command: RunnerCommand,
+  nitpickerArguments: readonly string[],
+): NodeToolResult {
   const launch = jestTool(options, command.launcher);
   return spawnNodeTool({
     options,
@@ -92,7 +106,7 @@ function spawnJest(options, command, nitpickerArguments) {
   });
 }
 
-function reporterArguments(options, testConsole) {
+function reporterArguments(options: TestOptions, testConsole: TestConsole): string[] {
   return [
     '--reporters=default',
     ...(testConsole.enabled
@@ -101,7 +115,11 @@ function reporterArguments(options, testConsole) {
   ];
 }
 
-function consoleCommand(options, command, testConsole) {
+function consoleCommand(
+  options: TestOptions,
+  command: RunnerCommand,
+  testConsole: TestConsole,
+): RunnerCommand {
   return testConsole.enabled
     ? {
         ...command,
@@ -111,9 +129,9 @@ function consoleCommand(options, command, testConsole) {
     : command;
 }
 
-function passedEverything(report) {
+function passedEverything(report: TestReport): boolean {
   return (
-    report?.success === true &&
+    report.success === true &&
     report.snapshot?.failure !== true &&
     report.numFailedTests === 0 &&
     report.numFailedTestSuites === 0 &&
@@ -122,8 +140,19 @@ function passedEverything(report) {
   );
 }
 
-function withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }) {
-  const ownRunPrints = printsDirectly || report?.numTotalTestSuites === 1;
+function withoutForcedLateLogExit(
+  result: NodeToolResult,
+  {
+    report,
+    printsDirectly,
+    testConsole,
+  }: {
+    readonly report: TestReport;
+    readonly printsDirectly: boolean;
+    readonly testConsole: TestConsole;
+  },
+): NodeToolResult {
+  const ownRunPrints = printsDirectly || report.numTotalTestSuites === 1;
   const forced =
     testConsole.enabled &&
     ownRunPrints &&
@@ -133,7 +162,7 @@ function withoutForcedLateLogExit(result, { report, printsDirectly, testConsole 
   return forced ? { ...result, status: 0 } : result;
 }
 
-export function runJest(options, command) {
+export function runJest(options: TestOptions, command: RunnerCommand): TestRun {
   const { rootDir, printsDirectly } = shownConfig(spawnJest(options, command, ['--showConfig']));
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
   const testConsole = startTestConsole(options, { collectsLines: false });
@@ -168,7 +197,7 @@ export function runJest(options, command) {
       result: withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }),
       runnerName: RUNNER_NAMES.jest,
     });
-    if (!run.failed && run.report.numTotalTests > 0 && options.rerun === undefined) {
+    if (!run.failed && (run.report.numTotalTests ?? 0) > 0 && options.rerun === undefined) {
       assertSourcesCovered(options, rootDir);
     }
     return run;

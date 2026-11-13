@@ -1,13 +1,17 @@
 import path from 'node:path';
-import { timeoutSetupSource } from './test-timeouts-setup.mjs';
-import { readHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
+import { timeoutSetupSource } from './test-timeouts-setup.mts';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mjs';
+import { runNodeTool } from '../../quality-areas/typed/tooling.mts';
+import {
+  projectTestRetry,
+  readHeadPolicyFile,
+  vitestRetryArguments,
+} from '../typed/runner-tools.mts';
+import type { TestFileResult, TestOptions, TestRun } from '../typed/runner-types.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
-import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
-import { vitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
+import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 import { FAILURE_DETAILS_VARIABLE } from '../../../preset/test-failures/vitest-failure-details.config.mjs';
 
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
@@ -17,12 +21,23 @@ const QUALITY_CONFIG = 'languages/typescript/preset/defaults/vitest.quality.conf
 const FAILURE_DETAILS_REPORTER =
   'languages/typescript/preset/test-failures/vitest-failure-details.config.mjs';
 
-function takeDetail(details, file, name) {
+type RecordedDetail = {
+  readonly file?: unknown;
+  readonly name?: unknown;
+  readonly expected?: unknown;
+  readonly actual?: unknown;
+};
+
+function takeDetail(
+  details: RecordedDetail[],
+  file: string | undefined,
+  name: string | undefined,
+): RecordedDetail | undefined {
   const index = details.findIndex((detail) => detail.file === file && detail.name === name);
   return index === -1 ? undefined : details.splice(index, 1)[0];
 }
 
-function addFailureDetails(testResult, details) {
+function addFailureDetails(testResult: TestFileResult, details: RecordedDetail[]): void {
   for (const assertion of testResult.assertionResults ?? []) {
     const detail =
       assertion.status === 'failed'
@@ -36,18 +51,25 @@ function addFailureDetails(testResult, details) {
   }
 }
 
-function withFailureDetails(run, detailsPath) {
+function withFailureDetails(run: TestRun, detailsPath: string): TestRun {
   if (!run.failed || !existsSync(detailsPath)) {
     return run;
   }
-  const details = JSON.parse(readFileSync(detailsPath, 'utf8'));
+  const details: RecordedDetail[] = listOf(JSON.parse(readFileSync(detailsPath, 'utf8'))).map(
+    (detail) => ({
+      file: fieldOf(detail, 'file'),
+      name: fieldOf(detail, 'name'),
+      expected: fieldOf(detail, 'expected'),
+      actual: fieldOf(detail, 'actual'),
+    }),
+  );
   for (const testResult of run.report.testResults ?? []) {
     addFailureDetails(testResult, details);
   }
   return run;
 }
 
-function reportArguments(options, reportPath) {
+function reportArguments(options: TestOptions, reportPath: string): string[] {
   return [
     '--reporter',
     'json',
@@ -58,14 +80,14 @@ function reportArguments(options, reportPath) {
   ];
 }
 
-function timeoutEnvironment(setupPath) {
+function timeoutEnvironment(setupPath: string): Readonly<Record<string, string>> {
   return {
     [TIMEOUT_SETUP_VARIABLE]: setupPath,
     [TIMEOUT_LIMITS_VARIABLE]: JSON.stringify(testTimeouts()),
   };
 }
 
-export function runVitest(options) {
+export function runVitest(options: TestOptions): TestRun {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
   const setupPath = temporaryProjectPath(options, 'test-timeouts.mjs');

@@ -1,5 +1,4 @@
 import type { Finding } from '../../static-checks/shared.mts';
-import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from './area-types.mts';
 import {
   coverageFailureFindings as untypedCoverageFailureFindings,
@@ -11,12 +10,6 @@ import {
   withFunctionSourceHashes as untypedFunctionSourceHashes,
 } from '../reporting/source-hashes.mjs';
 import { normalizeCrap as untypedNormalizeCrap } from '../reporting/tests.mjs';
-import { readSlowTestFindings as untypedSlowTestFindings } from '../../slow-tests/slow-tests.mjs';
-import { runProjectTests as untypedRunProjectTests } from '../../test-runners/run-project-tests.mjs';
-import {
-  hasProjectTests as untypedHasProjectTests,
-  projectTestFiles as untypedProjectTestFiles,
-} from '../../test-runners/test-run.mjs';
 
 export type ToolErrorDetails = {
   readonly rule: string;
@@ -57,23 +50,3 @@ export const normalizeCrap: (
   analyzerName: string,
   options: { readonly scoreLimit: number },
 ) => Finding[] = untypedNormalizeCrap;
-
-export const readSlowTestFindings: (
-  options: QualityAreaOptions,
-  report: unknown,
-) => Promise<Finding[]> = untypedSlowTestFindings;
-
-export const runProjectTests: (options: QualityAreaOptions) => Promise<ProjectTestRun> =
-  untypedRunProjectTests;
-
-export const hasProjectTests: (
-  options: QualityAreaOptions,
-  layout: Layout,
-  files: readonly string[],
-) => boolean = untypedHasProjectTests;
-
-export const projectTestFiles: (
-  options: QualityAreaOptions,
-  layout: Layout,
-  files: readonly string[],
-) => string[] = untypedProjectTestFiles;

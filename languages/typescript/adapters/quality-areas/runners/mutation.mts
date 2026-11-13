@@ -22,7 +22,15 @@ import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { toolErrorFinding } from '../typed/reporting.mts';
 import { mutationSkipFor } from './skips/mutation-skips.mts';
-import { CRACO_JEST_CONFIG } from '../../test-runners/mutation-runner-config.mjs';
+import {
+  CRACO_JEST_CONFIG,
+  cracoJestConfigText,
+  mutationRunnerConfig,
+  unsupportedMutationRunner,
+} from '../../test-runners/mutation-runner-config.mts';
+import { runnableTestFiles } from '../../test-runners/test-run.mts';
+import { projectTestRunner } from '../../test-runners/typed/runner-tools.mts';
+import type { RunnerCommand, TestRunner } from '../../test-runners/typed/runner-types.mts';
 import {
   mutationCheckerConfig,
   mutationCheckerEngine,
@@ -30,16 +38,9 @@ import {
 import {
   type MutationOutcome,
   type MutationReport,
-  type RunnerCommand,
   type StrykerConfig,
-  type TestRunner,
-  cracoJestConfigText,
   layeredStrykerConfig,
-  mutationRunnerConfig,
   normalizeMutation,
-  projectTestRunner,
-  runnableTestFiles,
-  unsupportedMutationRunner,
   withMutationSourceHashes,
   withoutProjectIgnoredMutants,
   withUnreachedMutantsUncovered,

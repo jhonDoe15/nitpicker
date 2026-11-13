@@ -1,20 +1,43 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { parse } from 'acorn';
+import { type Options, type Program, parse } from 'acorn';
 import { convert } from 'ast-v8-to-istanbul';
-import { executedScript, readLoadedSources, scriptFile } from './executed-script.mjs';
-import { unmappedNodeFilter } from './mapped-nodes.mjs';
-import { mergedCoverage } from './merge-coverage.mjs';
+import {
+  type CoveredScript,
+  type FunctionCoverage,
+  executedScript,
+  readLoadedSources,
+  scriptFile,
+  sourceMapOf,
+} from './executed-script.mts';
+import { unmappedNodeFilter } from './mapped-nodes.mts';
+import { type Coverage, mergedCoverage } from './merge-coverage.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+
+type SourceType = 'script' | 'module';
+
+export type V8CoverageFiles = {
+  readonly coverageDirectory: string;
+  readonly sourcesDirectory: string;
+  readonly sourceFiles: readonly string[];
+  readonly outputFile: string;
+};
 
 const NODE_RUNNABLE_FILE = /\.[cm]?[jt]s$/u;
 const COMMONJS_FILE = /\.c[jt]s$/u;
 
-const PARSE_OPTIONS = { ecmaVersion: 'latest', locations: true, allowHashBang: true };
+const PARSE_OPTIONS: Pick<Options, 'ecmaVersion' | 'locations' | 'allowHashBang'> = {
+  ecmaVersion: 'latest',
+  locations: true,
+  allowHashBang: true,
+};
 
-function parseExecuted(file, code) {
-  const sourceTypes = COMMONJS_FILE.test(file) ? ['script'] : ['module', 'script'];
-  const errors = [];
+function parseExecuted(file: string, code: string): Program {
+  const sourceTypes: readonly SourceType[] = COMMONJS_FILE.test(file)
+    ? ['script']
+    : ['module', 'script'];
+  const errors: unknown[] = [];
   for (const sourceType of sourceTypes) {
     try {
       return parse(code, { ...PARSE_OPTIONS, sourceType, allowReturnOutsideFunction: true });
@@ -25,7 +48,7 @@ function parseExecuted(file, code) {
   throw new AggregateError(errors, `it parses neither as ${sourceTypes.join(' nor as ')}`);
 }
 
-function untouchedFunctions(code) {
+function untouchedFunctions(code: string): FunctionCoverage[] {
   return [
     {
       functionName: '',
@@ -35,14 +58,15 @@ function untouchedFunctions(code) {
   ];
 }
 
-function coverageOfFile(file, data) {
+function coverageOfFile(file: string, data: object): Coverage | undefined {
   const entries = Object.entries(data);
-  const [, coverage] =
-    entries.find(([key]) => path.resolve(key) === file) ?? (entries.length === 1 ? entries[0] : []);
-  return coverage === undefined ? undefined : { ...coverage, path: file };
+  const entry =
+    entries.find(([key]) => path.resolve(key) === file) ??
+    (entries.length === 1 ? entries[0] : undefined);
+  return entry === undefined ? undefined : { ...fieldsOf(entry[1]), path: file };
 }
 
-async function fileCoverage(script) {
+async function fileCoverage(script: CoveredScript): Promise<Coverage | undefined> {
   const { file, functions } = script;
   try {
     const { code, sourceMap } = executedScript(script);
@@ -65,16 +89,33 @@ async function fileCoverage(script) {
   }
 }
 
-function coverageScripts(coverage) {
-  const sourceMaps = coverage['source-map-cache'] ?? {};
-  return coverage.result.map((script) => ({
-    file: scriptFile(script.url),
-    functions: script.functions,
-    cachedSourceMap: sourceMaps[script.url]?.data,
-  }));
+function isFunctionList(value: unknown): value is FunctionCoverage[] {
+  return Array.isArray(value) && value.every((entry) => Array.isArray(fieldOf(entry, 'ranges')));
 }
 
-function loadedScripts(coverageDirectory, sourcesDirectory, isCovered) {
+function coverageScripts(coverage: unknown): CoveredScript[] {
+  const sourceMaps = fieldOf(coverage, 'source-map-cache');
+  return listOf(fieldOf(coverage, 'result')).flatMap((script) => {
+    const url = textOf(fieldOf(script, 'url'));
+    const file = scriptFile(url);
+    const functions = fieldOf(script, 'functions');
+    return file === undefined
+      ? []
+      : [
+          {
+            file,
+            functions: isFunctionList(functions) ? functions : undefined,
+            cachedSourceMap: sourceMapOf(fieldOf(fieldOf(sourceMaps, url), 'data')),
+          },
+        ];
+  });
+}
+
+function loadedScripts(
+  coverageDirectory: string,
+  sourcesDirectory: string,
+  isCovered: (file: string) => boolean,
+): CoveredScript[] {
   const loaded = readLoadedSources(sourcesDirectory);
   return readdirSync(coverageDirectory)
     .filter((name) => name.endsWith('.json'))
@@ -83,12 +124,14 @@ function loadedScripts(coverageDirectory, sourcesDirectory, isCovered) {
         JSON.parse(readFileSync(path.join(coverageDirectory, path.basename(name)), 'utf8')),
       ),
     )
-    .filter(({ file }) => file !== undefined && isCovered(file))
+    .filter(({ file }) => isCovered(file))
     .map((script) => ({ ...script, loaded: loaded.get(script.file) }));
 }
 
-async function convertedCoverage(scripts) {
-  const coverage = new Map();
+async function convertedCoverage(
+  scripts: readonly CoveredScript[],
+): Promise<Map<string, Coverage>> {
+  const coverage = new Map<string, Coverage>();
   for (const script of scripts) {
     const data = await fileCoverage(script);
     if (data !== undefined) {
@@ -103,7 +146,7 @@ export async function writeV8Coverage({
   sourcesDirectory,
   sourceFiles,
   outputFile,
-}) {
+}: V8CoverageFiles): Promise<void> {
   const wanted = new Set(sourceFiles);
   const coverage = await convertedCoverage(
     loadedScripts(coverageDirectory, sourcesDirectory, (file) => wanted.has(file)),

@@ -1,34 +1,44 @@
 import { existsSync, rmSync } from 'node:fs';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import path from 'node:path';
-import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-import { readLayout } from '../../preset/head-policy.mjs';
-import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
+import { trackTemporaryPath } from '../typed/tooling.mts';
+import { type Layout, readLayout } from '../typed/head-policy.mts';
+import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mjs';
 import {
-  resolveTestTimeouts,
-  TEST_TIMEOUT_CEILING_MS,
-} from '../../../../shared/test-timeouts/resolve.mjs';
-import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
-import {
-  COVERAGE_REPORT_PATH,
   formatProcessOutput,
+  projectTestRunner,
+  readHeadPolicyFile,
   readTestReport,
-} from '../quality-areas/reporting/test-report.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+} from './typed/runner-tools.mts';
+import { resolveTestTimeouts } from './typed/timeouts.mts';
+import { COVERAGE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
+import { troubleshootingError } from '../lint-engine/typed/tools.mts';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import type { NodeToolResult } from '../static-checks/shared.mts';
+import type {
+  CoverageRun,
+  RunnerCommand,
+  TestOptions,
+  TestReport,
+  TestRun,
+  TimeoutLimits,
+} from './typed/runner-types.mts';
 
-export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
+export const TEST_TIMEOUT_MS: number = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
 
-export function testTimeouts(file, policy = readHeadPolicyFile()) {
+export function testTimeouts(file?: string, policy = readHeadPolicyFile()): TimeoutLimits {
   return resolveTestTimeouts(policy, {
     file,
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
   });
 }
 
-export function testTimeoutMs(options, files, { hooks = true } = {}) {
+export function testTimeoutMs(
+  options: TestOptions | undefined,
+  files?: readonly string[],
+  { hooks }: { readonly hooks: boolean } = { hooks: true },
+): number {
   if (options === undefined) {
     return testTimeouts().testTimeoutMs;
   }
@@ -36,10 +46,11 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
   const limits = selected.map((file) =>
     testTimeouts(path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file),
   );
+  const [first = testTimeouts()] = limits;
   if (limits.length === 0) {
-    limits.push(testTimeouts());
+    limits.push(first);
   }
-  const timeout = limits[0].testTimeoutMs;
+  const timeout = first.testTimeoutMs;
   if (!hooks && limits.some((limit) => limit.hookTimeoutMs !== undefined)) {
     throw troubleshootingError(
       'This test runner cannot set hook deadlines. Use Vitest for configured hook timeouts.',
@@ -61,11 +72,11 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
   return timeout;
 }
 
-export function workerCount(options) {
+export function workerCount(options: TestOptions): number {
   return options.rerun === undefined ? MAX_WORKERS : 1;
 }
 
-export function uncoveredRun(command) {
+export function uncoveredRun(command: RunnerCommand): CoverageRun {
   return {
     nodeArguments: [],
     environment: command.environment,
@@ -74,11 +85,11 @@ export function uncoveredRun(command) {
   };
 }
 
-export function coverageOutputFile(options) {
+export function coverageOutputFile(options: TestOptions): string {
   return path.join(options.projectRoot, COVERAGE_REPORT_PATH);
 }
 
-export function temporaryProjectPath(options, name) {
+export function temporaryProjectPath(options: TestOptions, name: string): string {
   const filePath = path.resolve(options.projectRoot, `.nitpicker-diff-${name}`);
   if (!filePath.startsWith(`${options.projectRoot}${path.sep}`)) {
     throw new Error(`Temporary test file is outside the project: ${filePath}`);
@@ -89,17 +100,17 @@ export function temporaryProjectPath(options, name) {
   return trackTemporaryPath(filePath);
 }
 
-export function removeTemporary(...paths) {
+export function removeTemporary(...paths: readonly string[]): void {
   for (const filePath of paths) {
     rmSync(filePath, { force: true, recursive: true });
   }
 }
 
-function absoluteFiles(options, files) {
+function absoluteFiles(options: TestOptions, files: readonly string[]): string[] {
   return files.map((file) => path.join(options.projectRoot, file));
 }
 
-export function runnableTestFiles(options) {
+export function runnableTestFiles(options: TestOptions): string[] {
   const layout = readLayout();
   return absoluteFiles(
     options,
@@ -107,17 +118,25 @@ export function runnableTestFiles(options) {
   );
 }
 
-export function projectTestFiles(options, layout, files) {
+export function projectTestFiles(
+  options: TestOptions,
+  layout: Layout,
+  files: readonly string[],
+): string[] {
   const isTest =
     projectTestRunner(options).runner === 'vitest' ? layout.isRunnableTestFile : layout.isTestFile;
   return files.filter(isTest);
 }
 
-export function hasProjectTests(options, layout, files) {
+export function hasProjectTests(
+  options: TestOptions,
+  layout: Layout,
+  files: readonly string[],
+): boolean {
   return projectTestFiles(options, layout, files).length > 0;
 }
 
-export function coverageSourceFiles(options) {
+export function coverageSourceFiles(options: TestOptions): string[] {
   const layout = readLayout();
   return absoluteFiles(
     options,
@@ -125,7 +144,10 @@ export function coverageSourceFiles(options) {
   );
 }
 
-export function coverageGlobs() {
+export function coverageGlobs(): {
+  readonly include: readonly string[];
+  readonly exclude: string[];
+} {
   const layout = readLayout();
   return {
     include: layout.sourceGlobs,
@@ -138,15 +160,27 @@ export function coverageGlobs() {
   };
 }
 
-function isFailing(report) {
-  const results = Array.isArray(report?.testResults) ? report.testResults : [];
+function isFailing(report: TestReport | undefined): boolean {
+  const results = listOf(report?.testResults);
   return (
-    (Number.isInteger(report?.numFailedTests) && report.numFailedTests > 0) ||
-    results.some((result) => result?.status === 'failed')
+    (typeof report?.numFailedTests === 'number' &&
+      Number.isInteger(report.numFailedTests) &&
+      report.numFailedTests > 0) ||
+    results.some((result) => fieldOf(result, 'status') === 'failed')
   );
 }
 
-export function readRun({ reportPath, result, runnerName, snapshot }) {
+export function readRun({
+  reportPath,
+  result,
+  runnerName,
+  snapshot,
+}: {
+  readonly reportPath: string;
+  readonly result: NodeToolResult;
+  readonly runnerName: string;
+  readonly snapshot: string;
+}): TestRun {
   return finishedRun({
     report: readTestReport(reportPath, result, { runnerName, snapshot }),
     result,
@@ -154,7 +188,15 @@ export function readRun({ reportPath, result, runnerName, snapshot }) {
   });
 }
 
-export function finishedRun({ report, result, runnerName }) {
+export function finishedRun({
+  report,
+  result,
+  runnerName,
+}: {
+  readonly report: TestReport;
+  readonly result: NodeToolResult;
+  readonly runnerName: string;
+}): TestRun {
   const failing = isFailing(report);
   if (!failing && result.status !== 0) {
     throw new Error(

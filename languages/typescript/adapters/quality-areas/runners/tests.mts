@@ -6,16 +6,15 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { COVERAGE_REPORT_PATH } from '../reporting/test-report.mjs';
 import {
   coverageFailureFindings,
-  hasProjectTests,
   normalizeCrap,
-  projectTestFiles,
   readCoverageFindings,
-  readSlowTestFindings,
-  runProjectTests,
   toolErrorFinding,
   withFunctionSourceHashes,
 } from '../typed/reporting.mts';
 import { readLayout } from '../../typed/head-policy.mts';
+import { readSlowTestFindings } from '../../slow-tests/slow-tests.mts';
+import { runProjectTests } from '../../test-runners/run-project-tests.mts';
+import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mts';
 import {
   TESTS_FAILED_SKIPPED_RULE,
   TESTS_NOT_RUN_RULE,
