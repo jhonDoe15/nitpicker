@@ -7,7 +7,7 @@ import { readOptions } from '../options/java-read-options.mts';
 import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mjs';
 import { readReportModules } from '../gradle-reports/report-modules.mjs';
-import { runMavenPreset } from '../../maven/maven-build.mjs';
+import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
@@ -19,7 +19,7 @@ import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
 import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
-import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -141,14 +141,13 @@ function withGradleReports(projectRoot: string, options: JavaRunOptions): JavaRe
 }
 
 function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport {
-  const configs: unknown = toolConfigChoices(projectRoot, options.policy);
-  const run = callUntyped(runMavenPreset, projectRoot, {
+  const run = runMavenPreset(projectRoot, {
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     pitDeadline: options.budget?.pitDeadlineMs,
-    configs,
+    configs: toolConfigChoices(projectRoot, options.policy),
   });
-  const moduleDirs = textsOf(fieldOf(run, 'moduleDirs'));
+  const { moduleDirs } = run;
   const manifest = mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY);
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
@@ -161,14 +160,14 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
   }
   const read = readModuleReport(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
-    formatAdvice: fieldOf(run, 'formatAdvice'),
+    formatAdvice: run.formatAdvice,
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
   const design = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
   return {
     findings: [...read.findings, ...design],
     imports: read.imports,
-    testsFailures: fieldOf(run, 'testsFailures'),
+    testsFailures: run.testsFailures,
   };
 }
 

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mjs';
-import { buildAndTest } from '../maven-build.mjs';
+import { buildAndTest } from '../maven-build.mts';
 import { readReactor } from '../maven-project.mjs';
 
 const roots = [];

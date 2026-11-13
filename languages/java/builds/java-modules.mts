@@ -5,6 +5,7 @@ import { readProjectDuplicateFindings } from '../adapters/kotlin/kotlin-duplicat
 import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
 import { inModule } from './module-path.mjs';
 import { projectWideReport } from './project-wide.mjs';
+import { resolveInside } from '../../../shared/conventions/read-inside.mjs';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaFinding,
@@ -67,7 +68,11 @@ export function prefixedFinding(finding: JavaFinding, prefix: string): JavaFindi
 }
 
 function readManifest(moduleDir: string, reportDirectory: string): unknown {
-  return JSON.parse(readFileSync(path.join(moduleDir, reportDirectory, 'manifest.json'), 'utf8'));
+  const manifest: unknown = resolveInside(moduleDir, `${reportDirectory}/manifest.json`);
+  if (typeof manifest !== 'string') {
+    throw new Error(`The Maven report directory ${reportDirectory} is outside ${moduleDir}`);
+  }
+  return JSON.parse(readFileSync(manifest, 'utf8'));
 }
 
 function prefixedRoots(manifest: unknown, list: string, prefix: string): string[] {
