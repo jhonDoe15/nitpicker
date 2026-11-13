@@ -78,7 +78,7 @@ other check ran. Fix the tests and rerun:`) instead of Gradle's own failure outp
   `review-rules/source-declarations.mjs`): any `void main` declared with no parameter or one
   `String[]` parameter, in any modifier order, so the JDK 25 launch-protocol forms count and
   `main(int)` does not. Java files only: Kotlin sources have their own rules.
-- **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
+- **Ingester.** `languages/java/ingest/pit.mts` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
   descriptive `mutant-timeout`, `mutant-runtimeerror`, `mutant-compileerror`, `mutant-ignored`;

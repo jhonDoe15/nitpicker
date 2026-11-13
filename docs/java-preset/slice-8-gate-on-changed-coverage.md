@@ -4,7 +4,7 @@ Part of the [Java preset guide](../java-preset.md).
 
 - **Tool and report.** No new tool: the JaCoCo XML of slice 1 already has, per source line, the
   covered and missed branch outcomes (`<line nr mb cb>`). The init script is unchanged.
-- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage-reports/jacoco-branches.mjs`) emits one enforceable
+- **Findings.** `ingestJacocoBranches` (`languages/java/ingest/coverage-reports/jacoco-branches.mts`) emits one enforceable
   `jacoco` / `changed-branch-coverage` finding per source line whose covered branch outcomes are
   below 95% (the TypeScript check's minimum); lines without branches are never reported. It runs on
   both snapshots, so a branch that is uncovered on the base is baselined like any other finding.

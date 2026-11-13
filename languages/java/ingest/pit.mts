@@ -1,11 +1,37 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
+import { listOf, textOf } from '../../../shared/values/readers.mts';
+
+type Mutant = {
+  readonly status: string;
+  readonly className: string;
+  readonly sourceFile: string;
+  readonly method: string;
+  readonly methodDescription: string;
+  readonly mutatorName: string;
+  readonly description: string;
+  readonly line: number;
+  readonly block: number;
+};
+type ResolvePath = (className: string, sourceFile: string) => unknown;
+type Judge = (mutant: Mutant, filePath: unknown) => unknown;
+type PitOptions = {
+  readonly tool?: string;
+  readonly resolvePath?: ResolvePath;
+  readonly generated?: (mutants: readonly Mutant[]) => Judge | undefined;
+  readonly functionAt?: (filePath: string, line: number) => unknown;
+  readonly sourceText?: (filePath: string) => unknown;
+};
+type Grouped = { readonly mutant: Mutant; readonly status: string; readonly filePath: string };
+type GroupEntry = Grouped & { readonly key: string };
+type Groups = Map<string, GroupEntry[]>;
+type LineAt = (filePath: string, line: number) => string | undefined;
 
 const PIT_WAY_OUT =
   'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
-const STATUS_NAMES = {
+const STATUS_NAMES: Readonly<Record<string, string>> = {
   KILLED: 'Killed',
   SURVIVED: 'Survived',
   NO_COVERAGE: 'NoCoverage',
@@ -16,29 +42,43 @@ const STATUS_NAMES = {
   STARTED: 'Ignored',
 };
 
-export function ingestPit(xml, options = {}) {
-  if (!/<mutations[\s>]|<mutations\/>/.test(xml)) {
+export function ingestPit(xml: string, options: PitOptions = {}): { findings: unknown[] } {
+  if (!/<mutations[\s>]|<mutations\/>/u.test(xml)) {
     throw new TypeError('PIT report root element must be <mutations>');
   }
   const tool = options.tool ?? 'pit';
-  const resolvePath = options.resolvePath ?? ((className, sourceFile) => sourceFile);
+  const resolvePath = options.resolvePath ?? keepSourceFile;
   const generated = options.generated;
-  const mutants = [...xml.matchAll(/<mutation\b([^>]*?)(?:\/>|>([\s\S]*?)<\/mutation>)/g)]
-    .map(([, attributes, body = '']) => parseMutant(attributes, body))
+  const mutants = [...xml.matchAll(/<mutation\b([^>]*?)(?:\/>|>([\s\S]*?)<\/mutation>)/gu)]
+    .map(([, attributes = '', body = '']) => parseMutant(attributes, body))
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts, leftOut } = groupMutants(mutants, { resolvePath, generated });
-  const findings = mutantFindings(neutralMutants(groups, options), {
-    tool,
-    wayOut: PIT_WAY_OUT,
-  });
-  findings.push(...statusSummaries(statusCounts, tool), ...leftOutSummary(leftOut, tool));
-  return { findings };
+  const findings = listOf(
+    mutantFindings(neutralMutants(groups, options), { tool, wayOut: PIT_WAY_OUT }),
+  );
+  return {
+    findings: [
+      ...findings,
+      ...statusSummaries(statusCounts, tool),
+      ...leftOutSummary(leftOut, tool),
+    ],
+  };
 }
 
-function groupMutants(mutants, { resolvePath, generated }) {
-  const statusCounts = new Map();
-  const groups = new Map();
+function keepSourceFile(_className: string, sourceFile: string): unknown {
+  return sourceFile;
+}
+
+function groupMutants(
+  mutants: readonly Mutant[],
+  {
+    resolvePath,
+    generated,
+  }: { readonly resolvePath: ResolvePath; readonly generated: PitOptions['generated'] },
+): { groups: Groups; statusCounts: Map<string, number>; leftOut: number } {
+  const statusCounts = new Map<string, number>();
+  const groups: Groups = new Map();
   let leftOut = 0;
   const judge = generated?.(mutants);
   for (const mutant of mutants) {
@@ -52,14 +92,14 @@ function groupMutants(mutants, { resolvePath, generated }) {
       continue;
     }
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
-    if (status !== 'Killed' && filePath !== undefined) {
+    if (status !== 'Killed' && typeof filePath === 'string') {
       addToGroup(groups, { mutant, status, filePath });
     }
   }
   return { groups, statusCounts, leftOut };
 }
 
-function addToGroup(groups, { mutant, status, filePath }) {
+function addToGroup(groups: Groups, { mutant, status, filePath }: Grouped): void {
   const key = [
     withoutSyntheticNumbers(simpleClassName(mutant.className)),
     `${withoutSyntheticNumbers(mutant.method)}${simpleDescriptor(mutant.methodDescription)}`,
@@ -74,33 +114,38 @@ function addToGroup(groups, { mutant, status, filePath }) {
 
 const INITIALIZER_LAMBDA = /^lambda\$new\$\d+$/u;
 
-function mutantSymbol(mutant, filePath, functionAt) {
+function mutantSymbol(
+  mutant: Mutant,
+  filePath: string,
+  functionAt: PitOptions['functionAt'],
+): unknown {
   const symbol = `${simpleClassName(mutant.className)}#${mutant.method}${simpleDescriptor(mutant.methodDescription)}`;
   return INITIALIZER_LAMBDA.test(mutant.method)
     ? (functionAt?.(filePath, mutant.line) ?? symbol)
     : symbol;
 }
 
-function lineReader(sourceText) {
-  const files = new Map();
+function lineReader(sourceText: PitOptions['sourceText']): LineAt {
+  const files = new Map<string, string[] | undefined>();
   return (filePath, line) => {
     if (!files.has(filePath)) {
-      files.set(filePath, sourceText?.(filePath)?.split(/\r?\n/u));
+      const text = sourceText?.(filePath);
+      files.set(filePath, typeof text === 'string' ? text.split(/\r?\n/u) : undefined);
     }
     return files.get(filePath)?.[line - 1]?.trim();
   };
 }
 
-function mutantAnchor(mutant, filePath, lineAt) {
+function mutantAnchor(mutant: Mutant, filePath: string, lineAt: LineAt): string | undefined {
   const text = lineAt(filePath, mutant.line);
   return text === undefined || text === ''
     ? undefined
-    : [mutant.mutatorName, withoutMethod(mutant.description), hash(text)].join('|');
+    : [mutant.mutatorName, withoutMethod(mutant.description), textOf(hash(text))].join('|');
 }
 
-function neutralMutants(groups, { functionAt, sourceText }) {
+function neutralMutants(groups: Groups, { functionAt, sourceText }: PitOptions): unknown[] {
   const lineAt = lineReader(sourceText);
-  const neutral = [];
+  const neutral: unknown[] = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
     for (const [index, { mutant, status, key, filePath }] of group.entries()) {
@@ -118,7 +163,7 @@ function neutralMutants(groups, { functionAt, sourceText }) {
   return neutral;
 }
 
-function statusSummaries(statusCounts, tool) {
+function statusSummaries(statusCounts: ReadonlyMap<string, number>, tool: string): unknown[] {
   return [...statusCounts].map(([status, value]) => ({
     tool,
     rule: 'mutation-summary',
@@ -130,7 +175,7 @@ function statusSummaries(statusCounts, tool) {
   }));
 }
 
-function leftOutSummary(count, tool) {
+function leftOutSummary(count: number, tool: string): unknown[] {
   return count === 0
     ? []
     : [
@@ -146,35 +191,35 @@ function leftOutSummary(count, tool) {
       ];
 }
 
-function simpleClassName(className) {
+function simpleClassName(className: string): string {
   return className.slice(className.lastIndexOf('.') + 1);
 }
 
-function simpleDescriptor(descriptor) {
-  return descriptor.replaceAll(/L(?:[\w$]+\/)+([\w$]+;)/g, 'L$1');
+function simpleDescriptor(descriptor: string): string {
+  return descriptor.replaceAll(/L(?:[\w$]+\/)+([\w$]+;)/gu, 'L$1');
 }
 
-function withoutPackages(text) {
-  return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/g, '$1');
+function withoutPackages(text: string): string {
+  return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/gu, '$1');
 }
 
-function withoutSyntheticNumbers(name) {
+function withoutSyntheticNumbers(name: string): string {
   return name.replaceAll(/\$\d+\b/gu, '');
 }
 
-function withoutMethod(description) {
+function withoutMethod(description: string): string {
   return description.replaceAll(/(?:[\w$]+\/)*[\w$]+::[\w$<>]+/gu, '');
 }
 
-function mutator(qualifiedName) {
+function mutator(qualifiedName: string): string {
   return qualifiedName.slice(qualifiedName.lastIndexOf('.') + 1);
 }
 
-function parseMutant(attributes, body) {
-  const status = /\bstatus\s*=\s*['"]([^'"]*)['"]/.exec(attributes)?.[1];
-  function field(name) {
-    const match = new RegExp(`<${name}>([^<]*)</${name}>`).exec(body);
-    return match === null ? undefined : decodeEntities(match[1]);
+function parseMutant(attributes: string, body: string): Mutant | undefined {
+  const status = /\bstatus\s*=\s*['"]([^'"]*)['"]/u.exec(attributes)?.[1];
+  function field(name: string): string | undefined {
+    const match = new RegExp(`<${name}>([^<]*)</${name}>`, 'u').exec(body);
+    return match === null ? undefined : textOf(decodeEntities(match[1] ?? ''));
   }
   const className = field('mutatedClass');
   const sourceFile = field('sourceFile');
@@ -190,6 +235,6 @@ function parseMutant(attributes, body) {
     mutatorName: mutator(field('mutator') ?? 'unknown'),
     description: field('description') ?? '',
     line: Number.parseInt(field('lineNumber') ?? '', 10) || 0,
-    block: Number.parseInt((field('blocks') ?? '').match(/\d+/)?.[0] ?? '', 10) || 0,
+    block: Number.parseInt(/\d+/u.exec(field('blocks') ?? '')?.[0] ?? '', 10) || 0,
   };
 }

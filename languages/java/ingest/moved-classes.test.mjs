@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
-import { ingestJacoco } from './coverage-reports/jacoco.mjs';
+import { ingestJacoco } from './coverage-reports/jacoco.mts';
 
 const ROOT = '/work/app';
 

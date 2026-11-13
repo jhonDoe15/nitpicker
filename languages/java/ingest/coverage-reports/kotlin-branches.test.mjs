@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestJacocoBranches } from './jacoco-branches.mjs';
+import { ingestJacocoBranches } from './jacoco-branches.mts';
 import {
   isCompilerGeneratedBranchLine,
   libraryBranchCount,

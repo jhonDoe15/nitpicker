@@ -30,9 +30,9 @@ import {
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mts';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
-import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
-import { ingestPit } from '../../ingest/pit.mjs';
-import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
+import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
+import { ingestPit } from '../../ingest/pit.mts';
+import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mts';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
 import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';

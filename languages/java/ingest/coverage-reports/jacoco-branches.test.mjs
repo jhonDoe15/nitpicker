@@ -6,7 +6,7 @@ import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
 import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
 import { javaDeclarationUnits } from '../declarations/java-declaration-units.mjs';
-import { ingestJacocoBranches } from './jacoco-branches.mjs';
+import { ingestJacocoBranches } from './jacoco-branches.mts';
 
 const xml = readFileSync(
   path.resolve(import.meta.dirname, '..', 'fixtures/jacoco-branches.xml'),

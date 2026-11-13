@@ -8,9 +8,9 @@ import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
 import { ingestGoCoverprofile } from './coverage-reports/gocover.mts';
-import { ingestJacoco } from './coverage-reports/jacoco.mjs';
+import { ingestJacoco } from './coverage-reports/jacoco.mts';
 import { ingestLcov } from './coverage-reports/lcov.mts';
-import { ingestPit } from './pit.mjs';
+import { ingestPit } from './pit.mts';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
 
