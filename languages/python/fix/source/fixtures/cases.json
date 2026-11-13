@@ -1,0 +1,29 @@
+{
+  "python-exc-info": {
+    "app/load.py": "import logging\n\nlog = logging.getLogger(__name__)\n\n\ndef load(path):\n    try:\n        return open(path).read()\n    except OSError as error:\n        log.warning(\"cannot read %s: %s\", path, error)\n        raise RuntimeError(\"unreadable\") from None\n"
+  },
+  "python-falsy-default": {
+    "app/title.py": "def title(name: str | None = None, tags: list[str] | None = None):\n    label = name or \"untitled\"\n    items = tags if tags else [\"a\"]\n    return label, items\n"
+  },
+  "python-frozen-dataclass": {
+    "app/point.py": "from dataclasses import dataclass\n\n\n@dataclass\nclass Point:\n    x: int\n    y: int\n\n\n@dataclass(order=True)\nclass Ordered:\n    rank: int\n"
+  },
+  "python-http-timeout": {
+    "app/client.py": "import requests\n\n\ndef fetch(url):\n    session = requests.Session()\n    first = session.get(url)\n    second = session.post(url, timeout=None)\n    return first, second\n"
+  },
+  "python-shell-arguments": {
+    "app/run.py": "import subprocess\n\n\ndef build():\n    subprocess.run([\"bash\", \"-c\", \"make -j4 all\"], check=True)\n"
+  },
+  "python-tls-verification": {
+    "app/secure.py": "import requests\n\n\ndef fetch(url):\n    session = requests.Session()\n    return session.get(url, verify=False, timeout=5)\n"
+  },
+  "python-safe-load": {
+    "app/config.py": "import yaml\n\n\ndef read(stream):\n    return yaml.full_load(stream)\n"
+  },
+  "python-collected-test-name": {
+    "tests/check_math.py": "def test_add():\n    assert 1 + 1 == 2\n"
+  },
+  "python-mutmut-pragma": {
+    "app/core.py": "LIMIT = 10  # pragma: no mutate\n\n\ndef clamp(value):\n    # pragma: no mutate\n    return min(value, LIMIT)\n"
+  }
+}

@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+
 const PARSE_FAILURES = {
   'ruff-format-fix': {
     status: 2,
@@ -22,6 +24,7 @@ export function fakePythonTools({
   poetryEnvironment,
   jupyterMissing = false,
   missingFormatter = false,
+  sourceFixes = false,
 } = {}) {
   const calls = [];
   function lint(invocation) {
@@ -53,7 +56,21 @@ export function fakePythonTools({
     }
     return { status: 0, stdout: squeezed(invocation.input), stderr: '' };
   }
+  function sourceEdits(invocation) {
+    if (!sourceFixes) {
+      return { status: 0, stdout: '{"fixes":[],"declines":[]}', stderr: '' };
+    }
+    const run = spawnSync('python3', invocation.args, {
+      input: invocation.input,
+      encoding: 'utf8',
+      timeout: 60_000,
+    });
+    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
+  }
   function executeFixCommand(invocation) {
+    if (invocation.operation === 'python-fix-edits') {
+      return sourceEdits(invocation);
+    }
     calls.push(invocation);
     if (invocation.operation === 'python-probe') {
       return invocation.command === 'poetry' && poetryEnvironment !== undefined

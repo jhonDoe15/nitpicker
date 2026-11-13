@@ -2,6 +2,7 @@ import { fixerError } from '../../../core/fix/common/fix-command.mjs';
 import {
   collectFixFiles,
   excludedBy,
+  changedFiles,
   readBytes,
   rewrittenPaths,
   splitByEncoding,
@@ -9,6 +10,7 @@ import {
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
+import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
 import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { onlyUnparsableFiles } from '../adapters/python-tools.mjs';
@@ -20,6 +22,9 @@ import {
 } from './python-fix-commands.mjs';
 import { reviewCodesSelected, selectedRuffCodes } from './review/review-rules.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
+import { fixOptions } from './source/fix-options.mjs';
+import { createPythonRecipes } from './source/python-recipes.mjs';
+import { FIX_SCRIPT, SCRIPT_OPERATION } from './source/script-edits.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
 const JUPYTER_MISSING = /Jupyter dependencies are not installed/u;
@@ -136,22 +141,50 @@ function formatStep({ context, run, settings, files, mergeBaseSha }) {
   ];
 }
 
-function formattedFiles({ files, settings }, written) {
+function formattedFiles({ files, settings, projectRoot, before }, written) {
   return settings.selectedRules.length === 0
     ? files
-    : files.filter(({ path: name }) => written.includes(name));
+    : files.filter(
+        ({ path: name }) =>
+          written.includes(name) || changedFiles(projectRoot, [{ path: name }], before).length > 0,
+      );
+}
+
+function recipeStep({ context, run, settings, files }) {
+  const excluded = excludedBy(settings.headPolicy.exclude);
+  const recipes = createPythonRecipes({
+    runScript: (input) =>
+      run({
+        operation: SCRIPT_OPERATION,
+        command: ['python', '-I', FIX_SCRIPT],
+        acceptedStatuses: [0],
+        input,
+      }).stdout,
+    optionsFor: fixOptions(context),
+  });
+  return runRecipes({
+    projectRoot: settings.projectRoot,
+    files,
+    recipes,
+    preset: settings.config?.preset ?? 'python',
+    selectedRules: settings.selectedRules,
+    writer: settings.writer,
+    accepts: (name) => PYTHON_FILE.test(name) && !excluded(name),
+  });
 }
 
 function runFixers(settings, files, mergeBaseSha) {
   try {
     return withPythonFixContext(settings, (context) => {
       const run = commandRunner(context, settings.executeFixCommand);
+      const before = readBytes(settings.projectRoot, files);
+      const recipes = recipeStep({ context, run, settings, files });
       const step = {
         context,
         run,
         settings,
         projectRoot: settings.projectRoot,
-        files,
+        files: recipes.files,
         mergeBaseSha,
         selectedRules: settings.selectedRules,
         writer: settings.writer,
@@ -164,12 +197,14 @@ function runFixers(settings, files, mergeBaseSha) {
           return outcome.notes;
         }),
         attempt(FORMATTERS[context.project.formatter].operation, () =>
-          formatStep({ ...step, files: formattedFiles(step, lint.written) }),
+          formatStep({ ...step, files: formattedFiles({ ...step, before }, lint.written) }),
         ),
       ];
       return {
-        toolErrors: outcomes.flatMap(({ toolErrors }) => toolErrors),
-        notes: outcomes.flatMap(({ notes }) => notes),
+        fixedFindings: recipes.fixedFindings,
+        renamed: recipes.files.filter(({ path: name }, index) => name !== files[index].path),
+        toolErrors: [...recipes.toolErrors, ...outcomes.flatMap(({ toolErrors }) => toolErrors)],
+        notes: [...recipes.notes, ...outcomes.flatMap(({ notes }) => notes)],
       };
     });
   } catch (error) {
@@ -191,13 +226,22 @@ export function fixPython(settings) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
-  const { toolErrors, notes } = runFixers(
+  const {
+    fixedFindings = [],
+    renamed = [],
+    toolErrors,
+    notes,
+  } = runFixers(
     { ...settings, headPolicy, selectedRules: settings.selectedRules ?? [] },
     files,
     comparison.mergeBaseSha,
   );
   return {
-    fixedFiles: rewrittenPaths(projectRoot, files, before),
+    fixedFiles: [
+      ...rewrittenPaths(projectRoot, files, before),
+      ...renamed.map(({ path: name }) => name),
+    ],
+    ...(fixedFindings.length === 0 ? {} : { fixedFindings }),
     toolErrors,
     notes: [...notes, ...linkNote(links)],
   };

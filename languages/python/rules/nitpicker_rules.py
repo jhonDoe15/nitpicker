@@ -227,7 +227,10 @@ def write_reports(results, options, out_file):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
-    reported = [{k: v for k, v in item.items() if k != "end"} for item in results.findings]
+    reported = [
+        {k: v for k, v in item.items() if k not in {"end", "at"}}
+        for item in results.findings
+    ]
     write_json(out_file, [item for item in reported if item["rule"] != REGEX_SITE_RULE])
     regexes = [item for item in reported if item["rule"] == REGEX_SITE_RULE]
     write_json(os.path.join(os.path.dirname(out_file), REGEXES_REPORT), regexes)

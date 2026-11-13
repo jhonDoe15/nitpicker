@@ -81,7 +81,7 @@ describe('fixWorkingTree', () => {
   it('runs only the Python fixers for the python preset', () => {
     const { operations, result } = operationsFor({ preset: 'python' });
 
-    expect(operations).toEqual(['python-probe', 'ruff-fix', 'ruff-format-fix']);
+    expect(operations).toEqual(['python-fix-edits', 'python-probe', 'ruff-fix', 'ruff-format-fix']);
     expect(result.fixedFiles).toEqual(['src/a.py']);
   });
   it('runs only the Java fixers for the java preset', () => {
