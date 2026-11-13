@@ -1,5 +1,9 @@
 import { withoutSnapshotRoot } from '../../../../../core/diff/snapshot-root/snapshot-root.mjs';
 import { compileErrorsIn } from '../../../builds/compile-errors/compiler-output.mjs';
+import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
+
+type Section = { readonly name: string; readonly lines: string[] };
+type ChainEntry = { readonly depth: number; readonly text: string };
 
 const TOOL_NOISE = [
   /Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS):/u,
@@ -17,19 +21,19 @@ const OWN_INIT_SCRIPT = /nitpicker\.init\.gradle\b/u;
 const MAX_LINES = 12;
 const MAX_LINE_LENGTH = 300;
 
-export function withoutToolNoise(text) {
+export function withoutToolNoise(text: string): string {
   return text
-    .split(/\r?\n/)
+    .split(/\r?\n/u)
     .filter((line) => !TOOL_NOISE.some((noise) => noise.test(line)))
     .join('\n')
     .trim();
 }
 
-function sections(lines) {
-  const found = [];
-  let current;
+function sections(lines: readonly string[]): Section[] {
+  const found: Section[] = [];
+  let current: Section | undefined;
   for (const line of lines) {
-    const name = SECTION.exec(line)?.groups.name;
+    const name = SECTION.exec(line)?.groups?.['name'];
     if (name !== undefined) {
       current = { name, lines: [] };
       found.push(current);
@@ -40,21 +44,25 @@ function sections(lines) {
   return found;
 }
 
-function chainEntries(lines) {
+function chainEntries(lines: readonly string[]): ChainEntry[] {
   return lines.flatMap((line) => {
-    const match = CHAIN.exec(line);
-    if (match !== null) {
-      return [{ depth: match.groups.indent.length, text: match.groups.text.trim() }];
+    const groups = CHAIN.exec(line)?.groups;
+    if (groups !== undefined) {
+      return [{ depth: (groups['indent'] ?? '').length, text: (groups['text'] ?? '').trim() }];
     }
     return /^\s/u.test(line) ? [] : [{ depth: -1, text: line.trim() }];
   });
 }
 
-function isLeaf(entries, index) {
-  return entries[index].depth >= 0 && !(entries[index + 1]?.depth > entries[index].depth);
+function isLeaf(entries: readonly ChainEntry[], index: number): boolean {
+  const entry = entries[index];
+  const next = entries[index + 1];
+  return (
+    entry !== undefined && entry.depth >= 0 && !(next !== undefined && next.depth > entry.depth)
+  );
 }
 
-function causeOf(lines) {
+function causeOf(lines: readonly string[]): string[] {
   const entries = chainEntries(lines);
   if (entries.every(({ depth }) => depth < 0)) {
     return entries.map(({ text }) => text);
@@ -68,7 +76,7 @@ function causeOf(lines) {
   });
 }
 
-function failureLines(lines) {
+function failureLines(lines: readonly string[]): string[] {
   return sections(lines).flatMap(({ name, lines: body }) => {
     if (name === 'Where') {
       return body.some((line) => OWN_INIT_SCRIPT.test(line)) ? [] : body.map((line) => line.trim());
@@ -77,23 +85,24 @@ function failureLines(lines) {
   });
 }
 
-function compilerLines(text, projectRoot) {
-  return compileErrorsIn(text, projectRoot).map(
-    ({ path: file, line, message }) => `${file}:${String(line)}: error: ${message}`,
+function compilerLines(text: string, projectRoot: string): string[] {
+  return listOf(compileErrorsIn(text, projectRoot)).map(
+    (error) =>
+      `${textOf(fieldOf(error, 'path'))}:${String(fieldOf(error, 'line'))}: error: ${textOf(fieldOf(error, 'message'))}`,
   );
 }
 
-function withoutProjectRoot(line, projectRoot) {
-  return withoutSnapshotRoot(line, { projectRoot, snapshot: '.' });
+function withoutProjectRoot(line: string, projectRoot: string): string {
+  return textOf(withoutSnapshotRoot(line, { projectRoot, snapshot: '.' }));
 }
 
-function fitted(lines, projectRoot) {
+function fitted(lines: readonly string[], projectRoot: string): string[] {
   return [...new Set(lines.map((line) => withoutProjectRoot(line, projectRoot)))]
     .slice(0, MAX_LINES)
     .map((line) => (line.length > MAX_LINE_LENGTH ? `${line.slice(0, MAX_LINE_LENGTH)}…` : line));
 }
 
-export function condenseFailure(text, projectRoot) {
+export function condenseFailure(text: string, projectRoot: string): string {
   const lines = withoutToolNoise(text).split('\n');
   const start = lines.findIndex((line) => FAILURE_START.test(line));
   const before = start < 0 ? lines : lines.slice(0, start);

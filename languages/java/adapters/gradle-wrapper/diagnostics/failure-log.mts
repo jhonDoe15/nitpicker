@@ -5,23 +5,33 @@ import {
   troubleshootingLinkOf,
   withoutTroubleshooting,
 } from '../../../../../shared/messages/troubleshooting.mjs';
+import { textOf } from '../../../../../shared/values/readers.mts';
+import type { JavaPolicy } from '../../typed/java-values.mts';
 
-function keepingExplained(error, wrapped) {
+type GradleLog = { readonly file: string; readonly label: string };
+type GradleOutput = { readonly stdout?: string | undefined; readonly stderr?: string | undefined };
+
+function keepingExplained(error: unknown, wrapped: Error): Error {
   return isExplainedError(error)
     ? Object.defineProperty(wrapped, 'explained', { value: true })
     : wrapped;
 }
 
-function withLineBeforeLink(message, line) {
-  const link = troubleshootingLinkOf(message);
+function withLineBeforeLink(message: string, line: string): string {
+  const link: unknown = troubleshootingLinkOf(message);
   return link === undefined
     ? `${message}\n${line}`
-    : `${withoutTroubleshooting(message)}\n${line}\n${link}`;
+    : `${textOf(withoutTroubleshooting(message))}\n${line}\n${textOf(link)}`;
 }
 
 export const GRADLE_LOG_LINE = 'Full Gradle log: ';
 
-export function gradleLog({ logRoot, logLabel, preset = 'java', snapshot = 'head' } = {}) {
+export function gradleLog({
+  logRoot,
+  logLabel,
+  preset = 'java',
+  snapshot = 'head',
+}: JavaPolicy = {}): GradleLog | undefined {
   if (logRoot === undefined) {
     return undefined;
   }
@@ -32,7 +42,11 @@ export function gradleLog({ logRoot, logLabel, preset = 'java', snapshot = 'head
   };
 }
 
-export function withGradleLog(error, result, log) {
+export function withGradleLog(
+  error: Error,
+  result: GradleOutput,
+  log: GradleLog | undefined,
+): Error {
   if (log === undefined) {
     return error;
   }
@@ -54,7 +68,10 @@ export function withGradleLog(error, result, log) {
       error,
       new AggregateError(
         [error, logError],
-        withLineBeforeLink(error.message, `Could not save the Gradle log: ${logError.message}`),
+        withLineBeforeLink(
+          error.message,
+          `Could not save the Gradle log: ${logError instanceof Error ? logError.message : String(logError)}`,
+        ),
         { cause: logError },
       ),
     );

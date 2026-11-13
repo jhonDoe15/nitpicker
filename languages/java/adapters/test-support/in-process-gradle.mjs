@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { SUPERVISOR } from '../gradle-wrapper/gradle-process.mjs';
+import { SUPERVISOR } from '../gradle-wrapper/gradle-process.mts';
 import { runFakeGradle } from './fake-gradle/run-fake-gradle.mjs';
 
 export { EMPTY_MUTATION_FACTS } from './fake-gradle/kotlin-empty-reports.mjs';

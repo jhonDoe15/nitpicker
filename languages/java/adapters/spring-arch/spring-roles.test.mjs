@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../core/configuration/validate.mjs';
 import { readRunnerPolicy } from '../java-runner.mts';
-import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
+import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { springRolesFact, writeSpringRoles } from './spring-roles.mjs';
 
 const ROLES = { service: ['com.acme.UseCase', 'com.acme.Job'], controller: ['com.acme.Endpoint'] };

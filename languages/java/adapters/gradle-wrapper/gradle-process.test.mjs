@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { runGradle } from './gradle-process.mjs';
+import { runGradle } from './gradle-process.mts';
 
 const TREE = fileURLToPath(new URL('./test-support/build-tree.mjs', import.meta.url));
 const OPTIONS = { cwd: process.cwd(), shell: false, timeout: 800, maxBuffer: 1024 * 1024 };
