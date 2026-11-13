@@ -26,6 +26,20 @@ function other(tool) {
   return { tool, rule: 'no-debugger', path: 'src/a.ts', identity: 'x', message: 'x' };
 }
 
+function unusedRules(tool, rules) {
+  const quoted = rules.map((rule) => `'${rule}'`).join(' or ');
+  const message = `Unused eslint-disable directive (no problems were reported from ${quoted}).`;
+  return { ...unused(tool, 'src/a.ts'), message, identity: `message:${message}|occurrence:1` };
+}
+
+function inlineDisabled(tool) {
+  return {
+    ...unused(tool, 'src/a.ts'),
+    rule: 'eslint/inline-config-disabled',
+    message: 'Inline configuration is disabled.',
+  };
+}
+
 function run(findingsByAnalyzer) {
   return {
     reports: new Map(
@@ -111,5 +125,61 @@ describe('an unused eslint-disable directive reported by several ESLint analyzer
     const original = run({ 'entry-points': [other('entry-points')] });
 
     expect(withSharedUnusedDirectives(original, analyzers)).toBe(original);
+  });
+
+  it('ignores an analyzer that forbids the directive rather than treating it as used', () => {
+    const result = merged({
+      'eslint-lint': [inlineDisabled('eslint-lint')],
+      'eslint-errors': [unused('eslint-errors', 'src/a.ts')],
+      'eslint-logging': [unused('eslint-logging', 'src/a.ts')],
+    });
+
+    expect(result).toEqual({
+      'eslint-lint': ['eslint/inline-config-disabled src/a.ts'],
+      'eslint-errors': ['eslint/unused-disable-directive src/a.ts'],
+      'eslint-logging': [],
+    });
+  });
+
+  it('keeps only the rules unused across analyzers when their messages differ', () => {
+    const result = withSharedUnusedDirectives(
+      run({
+        'eslint-errors': [unusedRules('eslint-errors', ['no-debugger'])],
+        'eslint-logging': [unusedRules('eslint-logging', ['no-debugger', 'no-console'])],
+      }),
+      analyzers,
+    );
+
+    expect(result.reports.get('eslint-errors').findings).toEqual([
+      unusedRules('eslint-errors', ['no-debugger']),
+    ]);
+    expect(result.reports.get('eslint-logging').findings).toEqual([]);
+  });
+
+  it('drops a multi-rule directive when each rule is used by at least one analyzer', () => {
+    const result = merged({
+      'eslint-errors': [unusedRules('eslint-errors', ['no-console'])],
+      'eslint-logging': [unusedRules('eslint-logging', ['no-debugger'])],
+    });
+
+    expect(result).toEqual({ 'eslint-errors': [], 'eslint-logging': [] });
+  });
+
+  it('combines individual unused-rule reports and updates the canonical finding identity', () => {
+    const result = withSharedUnusedDirectives(
+      run({
+        'eslint-errors': [
+          unusedRules('eslint-errors', ['no-debugger']),
+          unusedRules('eslint-errors', ['no-alert']),
+        ],
+        'eslint-logging': [unusedRules('eslint-logging', ['no-alert', 'no-console'])],
+      }),
+      analyzers,
+    );
+
+    expect(result.reports.get('eslint-errors').findings).toEqual([
+      unusedRules('eslint-errors', ['no-alert']),
+    ]);
+    expect(result.reports.get('eslint-logging').findings).toEqual([]);
   });
 });
