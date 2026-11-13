@@ -537,7 +537,10 @@ the package as `nitpicker/spec/json-output.schema.json`.
 
 A comparison run writes these files to `reports/quality/diff/`:
 
-- `report.txt`: the readable report.
+- `report.txt`: the readable report. It lists the new findings that fail the run first, then the
+  report-only ones; a metric finding shows its value (and its limit, when it has one), and a metric
+  delta is rounded to the precision of the two values. The per-tool table lists the analyzers with
+  any count, then one line counts the ones that ran clean.
 - `summary.json`: totals, per-tool counts and the fields below.
 - `new-findings.json`: the new findings, the ones that count against the change.
 - `resolved-findings.json`: findings that were in the base and are gone.
@@ -556,7 +559,9 @@ A comparison run writes these files to `reports/quality/diff/`:
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
-`report.sarif` and `codequality.json`. The console prints the same summary layout as a comparison
+`report.sarif` and `codequality.json`. Its `report.txt` has the same layout: enforceable findings
+first, then the descriptive ones with their metric values, and the same per-tool table. The console
+prints the same summary layout as a comparison
 run: findings grouped by rule, at most ten design notes, the tool errors, one line for each analyzer
 with findings and a count of the analyzers that ran clean, and the path of `report.txt`, which keeps
 the full list. The exit codes do not change.

@@ -9,6 +9,9 @@ import { partialRunLines } from './partial-run/partial-run.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
+import { appendFailingFirst, appendFindingSection } from './console/finding-lines.mjs';
+import { metricChange } from './console/metric-values.mjs';
+import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mjs';
 
 export function renderTextReport(report, { reference = referenceLinks() } = {}) {
   const lines = [
@@ -18,7 +21,7 @@ export function renderTextReport(report, { reference = referenceLinks() } = {}) 
     ...noticeSection(report.summary.notices),
     ...toolCountLines(report.summary),
   ];
-  appendFindingSection(lines, 'New findings', report.newFindings);
+  appendFailingFirst(lines, 'New', report.newFindings);
   lines.push(...ruleReferenceLines(report.newFindings, reference));
   appendHeldSection(lines, report.unchangedFindings);
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
@@ -66,7 +69,13 @@ function toolCountLines({ tools, noChanges, skippedAll }) {
   if (tools.length === 0) {
     return ['Analyzers: none configured'];
   }
-  return ['', 'Per-tool counts:', ...tools.map(toolCountLine)];
+  const { active, clean } = splitTools(tools, isActiveDiffTool);
+  return [
+    '',
+    'Per-tool counts:',
+    ...active.map(toolCountLine),
+    ...(clean === 0 ? [] : [cleanLine(clean)]),
+  ];
 }
 
 function toolCountLine(tool) {
@@ -89,17 +98,6 @@ export function renderRuleFilterSection(report, ruleFilters) {
   appendFindingSection(lines, '  Unchanged', report.unchangedFindings.filter(matches));
   appendFindingSection(lines, '  Resolved', report.resolvedFindings.filter(matches));
   return `${lines.join('\n')}\n`;
-}
-
-function appendFindingSection(lines, heading, findings) {
-  if (findings.length === 0) {
-    return;
-  }
-  lines.push('', `${heading}:`);
-  for (const finding of findings) {
-    const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
-    lines.push(`${finding.tool}/${finding.rule} ${finding.path}${location} ${finding.message}`);
-  }
 }
 
 /** The line that points at the rule reference, when one of `findings` has an entry there. */
@@ -129,8 +127,9 @@ function appendMetricSection(lines, metrics) {
   }
   lines.push('', 'Changed metrics:');
   for (const metric of metrics) {
-    const change = `${metric.baseValue} -> ${metric.headValue} (${formatDelta(metric.delta)})`;
-    lines.push(`${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${change}`);
+    lines.push(
+      `${metric.tool}/${metric.rule} ${metric.path} ${metric.metric}: ${metricChange(metric)}`,
+    );
   }
 }
 
@@ -142,8 +141,4 @@ function appendToolErrorSection(lines, toolErrors) {
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
   }
-}
-
-function formatDelta(delta) {
-  return delta > 0 ? `+${String(delta)}` : String(delta);
 }

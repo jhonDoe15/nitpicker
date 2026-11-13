@@ -223,7 +223,7 @@ describe('console policy review', () => {
 
   it('keeps one finding per change with the guidance and the route in full diagnostics', () => {
     const lines = renderTextReport(policyReport()).split('\n');
-    const start = lines.indexOf('New findings:');
+    const start = lines.indexOf('New failing findings:');
 
     expect(lines.slice(start + 1, start + 3)).toEqual(
       EXCLUDE_CHANGES.map(
