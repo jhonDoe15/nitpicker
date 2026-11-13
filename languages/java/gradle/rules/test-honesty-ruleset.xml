@@ -15,14 +15,14 @@
   </rule>
 
   <rule name="AssertionInControlFlow" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Assert unconditionally. Replace the branch or loop with separate tests, a parameterized test (@ParameterizedTest) or assertAll.">
+        message="Assert unconditionally: an assertion in a branch, loop or iterating callback (forEach, map, filter) does not run when the branch is not taken or the collection is empty. Assert the whole collection at once, use a parameterized test (@ParameterizedTest) for a table of cases, or assertAll(() -> ..., () -> ...).">
     <description>An assertion that may not run proves nothing.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-//MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]
-  //(IfStatement | SwitchStatement | SwitchExpression | ForStatement | ForeachStatement | WhileStatement | DoStatement | ConditionalExpression)
-  [not(ancestor::*[self::IfStatement or self::SwitchStatement or self::SwitchExpression or self::ForStatement
-    or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::ConditionalExpression])]
+let $controls := //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]
+  //(IfStatement | SwitchStatement | SwitchExpression | ForStatement | ForeachStatement | WhileStatement | DoStatement | ConditionalExpression
+    | LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'takeWhile', 'dropWhile', 'reduce')]])
+return $controls[not(ancestor::* intersect $controls)]
   [.//MethodCall[starts-with(@MethodName, 'assert') or @MethodName = 'verify']]
 ]]></value></property></properties>
   </rule>

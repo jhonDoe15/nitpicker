@@ -25,6 +25,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Assert unconditionally (`AssertionInControlFlow`): no assertion or `verify` inside an `if`, `switch`, `?:`,
+  loop or `forEach`/`map`/`filter` callback of a test, since an empty collection runs none. Assert the whole
+  collection at once (`assertEquals(List.of(...), actual)`, AssertJ `containsExactly`), put a table of cases
+  in `@ParameterizedTest`, or use `assertAll(() -> ..., () -> ...)`.
 - Assert the value, not that something is there (`WeakAssertionInTest`): no `assertNotNull(x)`, AssertJ
   `isNotNull()` or Hamcrest `notNullValue()` as the whole check, no `isNotEmpty()`, `assertFalse(c.isEmpty())`
   or `assertTrue(c.size() > 0)`, and no `verify(m).f(any())` whose arguments are all `any()`. Assert the
