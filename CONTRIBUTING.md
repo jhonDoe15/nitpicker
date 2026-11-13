@@ -62,6 +62,26 @@ so the package stays plain JavaScript.
   scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
   `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
 
+## Batching issues into pull requests
+
+CI time, not review size, limits how fast changes land, so related issues ship together: fewer pull
+requests start fewer CI runs, and every change still passes the same checks.
+
+- **Coordinator issues.** A bigger feature or refactor gets a coordinator issue with the `batch`
+  label, such as #147 for the move to TypeScript. It lists each child issue as a checklist item with
+  the order to do them in, what each one depends on, and the pull request it ships in.
+- **Nesting.** A coordinator issue can list other coordinator issues, so small batches join into
+  bigger ones. Each connected group of issues becomes one pull request, with one commit per child
+  issue whose message names that issue. The pull request closes the child issues it completes, and
+  the coordinator issue closes when its last child does.
+- **One direction per pull request.** A pull request delivers one feature, refactor or family of
+  fixes; unrelated fixes go in their own batch. Keep it to about eight child issues. A feature that
+  needs more splits into nested batches that land one after another, each its own pull request.
+- **New work.** Before starting an issue, check whether it belongs to an open coordinator issue, and
+  add a new issue to the coordinator issue it fits. An issue that fits no batch can still ship alone.
+- **CI.** Run the focused local checks for each commit, then push the batch and add `run-ci` once.
+  Fix what CI reports in one more push rather than one push per failure.
+
 ## Running the checks
 
 Pull requests do not run CI on every push. Check your change locally before you push it and again
