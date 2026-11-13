@@ -7,7 +7,6 @@ import type {
   TestRunner,
 } from './runner-types.mts';
 import type { TimeoutPolicy } from './timeouts.mts';
-import { spawnNodeTool as spawnUntypedNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions as untypedWithoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import { projectTestRunner as untypedProjectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
 import { projectTestRetry as untypedProjectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
@@ -31,16 +30,6 @@ type OptionSets = {
   readonly variadic?: readonly string[];
 };
 
-export type NodeToolSpawn = {
-  readonly options: TestOptions;
-  readonly relativeToolPath?: string;
-  readonly absoluteToolPath?: string;
-  readonly arguments_: readonly string[];
-  readonly nodeArguments?: readonly string[];
-  readonly nodeOptions?: readonly string[] | undefined;
-  readonly environment?: Readonly<Record<string, string>>;
-};
-
 export type ConsoleCall = {
   readonly content: string;
   readonly root: string;
@@ -48,19 +37,7 @@ export type ConsoleCall = {
   readonly test?: unknown;
 };
 
-function isNodeToolResult(value: unknown): value is NodeToolResult {
-  return (
-    typeof fieldOf(value, 'stdout') === 'string' && typeof fieldOf(value, 'stderr') === 'string'
-  );
-}
-
-export function spawnNodeTool(invocation: NodeToolSpawn): NodeToolResult {
-  const result: unknown = Reflect.apply(spawnUntypedNodeTool, undefined, [invocation]);
-  if (!isNodeToolResult(result)) {
-    throw new TypeError('The tool run did not return its output');
-  }
-  return result;
-}
+export { type NodeToolSpawn, spawnNodeTool } from '../../quality-areas/runners/tooling.mts';
 
 function called(untyped: unknown, values: readonly unknown[]): unknown {
   if (typeof untyped !== 'function') {
