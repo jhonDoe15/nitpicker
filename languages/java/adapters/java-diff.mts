@@ -17,7 +17,7 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
 import { withJavaColumns } from './reporting/columns/java-columns.mts';
 import { sourceTextReader } from './reporting/function-locator.mjs';
-import { withTestsFailures } from './red-base/tests-failed.mjs';
+import { withTestsFailures } from './red-base/tests-failed.mts';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mts';
@@ -94,7 +94,7 @@ export function collectJavaReport(
       ((reported: readonly JavaFinding[]) => withoutOverlaps(reported, { readSource })),
   );
   return {
-    findings: findingsOf(callUntyped(withTestsFailures, policed, preset, testsFailures)),
+    findings: withTestsFailures(findingsOf(policed), preset, testsFailures),
     imports,
   };
 }

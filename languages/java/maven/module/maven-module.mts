@@ -5,7 +5,7 @@ import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mjs';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
-import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
+import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
