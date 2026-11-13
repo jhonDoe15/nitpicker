@@ -4,6 +4,8 @@ import { NONE, at, codeChildren, field, isStatementNode, textOf, typeNode } from
 import { STATEMENTS } from './statements.mjs';
 import { languageUnits } from './unit-driver.mjs';
 
+const PARAMETERS_KIND = 'parameters';
+
 const TYPE_DECLARATIONS = new Set([
   'class_declaration',
   'interface_declaration',
@@ -37,7 +39,7 @@ export function joined(qualifier, part) {
 }
 
 function parameterTypes(source) {
-  const parameters = field(source, 'parameters');
+  const parameters = field(source, PARAMETERS_KIND);
   if (parameters === undefined) {
     return '';
   }
@@ -116,7 +118,7 @@ function functionOf(source, context) {
       body.kind === 'block' ? body : at('block', source, [at('return', source, [body])]);
     return at('function', source, [NONE, parameters, block]);
   }
-  const parameters = field(source, 'parameters');
+  const parameters = field(source, PARAMETERS_KIND);
   const list =
     parameters === undefined
       ? []
@@ -124,7 +126,7 @@ function functionOf(source, context) {
   return at('function', source, [
     typeNode(field(source, 'type')),
     at(
-      'parameters',
+      PARAMETERS_KIND,
       parameters ?? source,
       list.map((parameter) => context.get(parameter)),
     ),

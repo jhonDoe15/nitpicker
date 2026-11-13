@@ -10,6 +10,9 @@ import {
   typeNode,
 } from './nodes.mjs';
 
+const NUMBER_KIND = 'number';
+const PARAMETER_KIND = 'parameter';
+
 function operatorOf(source) {
   return field(source, 'operator')?.type;
 }
@@ -64,7 +67,7 @@ function lambdaParameters(source, context) {
     parameters,
     list.map((parameter) =>
       parameter.type === 'identifier'
-        ? at('parameter', parameter, [NONE, context.get(parameter)])
+        ? at(PARAMETER_KIND, parameter, [NONE, context.get(parameter)])
         : context.get(parameter),
     ),
   );
@@ -109,12 +112,12 @@ function grouped(value) {
 
 export const EXPRESSIONS = {
   identifier: (source, context) => context.name(source.text, source),
-  decimal_integer_literal: literal('number', numberText),
-  hex_integer_literal: literal('number', numberText),
-  octal_integer_literal: literal('number', numberText),
-  binary_integer_literal: literal('number', numberText),
-  decimal_floating_point_literal: literal('number', numberText),
-  hex_floating_point_literal: literal('number', numberText),
+  decimal_integer_literal: literal(NUMBER_KIND, numberText),
+  hex_integer_literal: literal(NUMBER_KIND, numberText),
+  octal_integer_literal: literal(NUMBER_KIND, numberText),
+  binary_integer_literal: literal(NUMBER_KIND, numberText),
+  decimal_floating_point_literal: literal(NUMBER_KIND, numberText),
+  hex_floating_point_literal: literal(NUMBER_KIND, numberText),
   string_literal: literal('string'),
   character_literal: literal('char'),
   true: literal('boolean'),
@@ -166,11 +169,14 @@ export const EXPRESSIONS = {
   class_literal: (source) =>
     at({ kind: 'expression', value: 'class' }, source, [typeNode(codeChildren(source)[0])]),
   formal_parameter: (source, context) =>
-    at('parameter', source, [typeNode(field(source, 'type')), context.get(field(source, 'name'))]),
+    at(PARAMETER_KIND, source, [
+      typeNode(field(source, 'type')),
+      context.get(field(source, 'name')),
+    ]),
   spread_parameter: (source, context) => {
     const [type, declarator] = codeChildren(source).filter((child) => child.type !== 'modifiers');
     const name = declarator.type === 'variable_declarator' ? field(declarator, 'name') : declarator;
-    return at('parameter', source, [
+    return at(PARAMETER_KIND, source, [
       typeNode(type),
       at({ kind: 'expression', value: 'rest' }, declarator, [context.get(name)]),
     ]);

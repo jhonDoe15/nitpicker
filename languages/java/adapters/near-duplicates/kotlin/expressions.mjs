@@ -11,9 +11,14 @@ import {
 } from '../tree/nodes.mjs';
 import { bodyOf } from './statements.mjs';
 
+const RIGHT_FIELD = 'right';
+const STRING_KIND = 'string';
+const NUMBER_KIND = 'number';
+const BOOLEAN_KIND = 'boolean';
+
 const KEYWORD_NAMES = {
-  true: (source) => at({ kind: 'literal', literal: 'boolean', value: 'true' }, source),
-  false: (source) => at({ kind: 'literal', literal: 'boolean', value: 'false' }, source),
+  true: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'true' }, source),
+  false: (source) => at({ kind: 'literal', literal: BOOLEAN_KIND, value: 'false' }, source),
   null: (source) => at({ kind: 'literal', literal: 'null', value: 'null' }, source),
   break: (source) => at('break', source),
   continue: (source) => at('continue', source),
@@ -94,7 +99,7 @@ function unaryOf(source, context) {
 function binaryOf(source, context) {
   return at({ kind: 'binary', value: operatorText(source) }, source, [
     context.get(field(source, 'left')),
-    context.get(field(source, 'right')),
+    context.get(field(source, RIGHT_FIELD)),
   ]);
 }
 
@@ -102,7 +107,7 @@ function typeTestOf(source, context) {
   return at(
     { kind: 'binary', value: source.children.find((child) => !child.isNamed)?.type },
     source,
-    [context.get(field(source, 'left')), typeNode(field(source, 'right'))],
+    [context.get(field(source, 'left')), typeNode(field(source, RIGHT_FIELD))],
   );
 }
 
@@ -110,7 +115,7 @@ function castOf(source, context) {
   return at(
     { kind: 'expression', value: source.children.find((child) => !child.isNamed)?.type },
     source,
-    [typeNode(field(source, 'right')), context.get(field(source, 'left'))],
+    [typeNode(field(source, RIGHT_FIELD)), context.get(field(source, 'left'))],
   );
 }
 
@@ -165,18 +170,18 @@ function contentParts(text, source, context) {
   let last = 0;
   for (const match of text.matchAll(SIMPLE_TEMPLATE)) {
     parts.push(
-      at({ kind: 'literal', literal: 'string', value: text.slice(last, match.index) }, source),
+      at({ kind: 'literal', literal: STRING_KIND, value: text.slice(last, match.index) }, source),
     );
     parts.push(context.name(match[1], source));
     last = match.index + match[0].length;
   }
-  return [...parts, at({ kind: 'literal', literal: 'string', value: text.slice(last) }, source)];
+  return [...parts, at({ kind: 'literal', literal: STRING_KIND, value: text.slice(last) }, source)];
 }
 
 function stringOf(source, context) {
   const children = codeChildren(source);
   if (children.every((child) => child.type === 'string_content') && !source.text.includes('$')) {
-    return at({ kind: 'literal', literal: 'string', value: source.text }, source);
+    return at({ kind: 'literal', literal: STRING_KIND, value: source.text }, source);
   }
   const pieces = [];
   let content = '';
@@ -197,13 +202,13 @@ function stringOf(source, context) {
 export const EXPRESSIONS = {
   identifier: (source, context) =>
     KEYWORD_NAMES[source.text]?.(source) ?? context.name(source.text, source),
-  number_literal: literal('number', numberText),
-  float_literal: literal('number', numberText),
-  hex_literal: literal('number', numberText),
-  bin_literal: literal('number', numberText),
-  unsigned_literal: literal('number', numberText),
-  long_literal: literal('number', numberText),
-  boolean_literal: literal('boolean'),
+  number_literal: literal(NUMBER_KIND, numberText),
+  float_literal: literal(NUMBER_KIND, numberText),
+  hex_literal: literal(NUMBER_KIND, numberText),
+  bin_literal: literal(NUMBER_KIND, numberText),
+  unsigned_literal: literal(NUMBER_KIND, numberText),
+  long_literal: literal(NUMBER_KIND, numberText),
+  boolean_literal: literal(BOOLEAN_KIND),
   null_literal: literal('null'),
   character_literal: literal('char'),
   string_literal: stringOf,
@@ -223,7 +228,7 @@ export const EXPRESSIONS = {
   in_expression: (source, context) =>
     at({ kind: 'binary', value: source.children.find((child) => !child.isNamed)?.type }, source, [
       context.get(field(source, 'left')),
-      context.get(field(source, 'right')),
+      context.get(field(source, RIGHT_FIELD)),
     ]),
   is_expression: typeTestOf,
   as_expression: castOf,

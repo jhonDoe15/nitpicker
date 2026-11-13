@@ -2,6 +2,9 @@ import { print } from '../../logic/print.mjs';
 import { term } from '../../logic/terms.mjs';
 import { rebuild } from '../tree/nodes.mjs';
 
+const LITERAL_KIND = 'literal';
+const BINARY_KIND = 'binary';
+
 const INTEGER_TYPES = new Set(['int', 'long', 'short', 'byte', 'Int', 'Long', 'Short', 'Byte']);
 const LOGICAL = new Set(['&&', '||']);
 const EQUALITY = new Map([
@@ -52,12 +55,12 @@ function numberValue(text) {
 function literalTerm(node) {
   if (node.literal === 'number') {
     const value = numberValue(node.value);
-    return Number.isFinite(value) ? term('literal', String(value)) : undefined;
+    return Number.isFinite(value) ? term(LITERAL_KIND, String(value)) : undefined;
   }
   if (node.literal === 'boolean' || node.literal === 'null') {
-    return term('literal', node.value);
+    return term(LITERAL_KIND, node.value);
   }
-  return term('literal', JSON.stringify(`${node.literal ?? ''}:${node.value}`));
+  return term(LITERAL_KIND, JSON.stringify(`${node.literal ?? ''}:${node.value}`));
 }
 
 function nameTerm(node, context) {
@@ -83,25 +86,25 @@ function extremeOf(node, [, ...operands]) {
     return undefined;
   }
   const [left, right] = operands;
-  return term('conditional', undefined, [term('binary', relation, [left, right]), left, right]);
+  return term('conditional', undefined, [term(BINARY_KIND, relation, [left, right]), left, right]);
 }
 
 function isArithmetic(value, children) {
-  return ARITHMETIC.has(value) && children.some((child) => child.kind !== 'literal');
+  return ARITHMETIC.has(value) && children.some((child) => child.kind !== LITERAL_KIND);
 }
 
 function valueAtom(built) {
   const atom = term('name', `#value ${print(built)}`);
   const integral = built.children.every(
     (child) =>
-      child.integer === true || (child.kind === 'literal' && INTEGER_TEXT.test(child.value)),
+      child.integer === true || (child.kind === LITERAL_KIND && INTEGER_TEXT.test(child.value)),
   );
   return integral ? { ...atom, integer: true } : atom;
 }
 
 function charCode(operand, source) {
   const char = source.literal === 'char' ? PLAIN_CHAR.exec(source.value)?.groups.char : undefined;
-  return char === undefined ? operand : term('literal', String(char.codePointAt(0)));
+  return char === undefined ? operand : term(LITERAL_KIND, String(char.codePointAt(0)));
 }
 
 function isLooseBoolean(node, context) {
@@ -123,10 +126,10 @@ function binaryTerm(node, operands, context) {
     ? operands.map((operand, index) => charCode(operand, node.children[index]))
     : operands;
   if (isArithmetic(node.value, [left, right])) {
-    return valueAtom(term('binary', node.value, [left, right]));
+    return valueAtom(term(BINARY_KIND, node.value, [left, right]));
   }
   const strict = context.strictEquality ? EQUALITY.get(node.value) : undefined;
-  return term('binary', strict ?? node.value, [left, right]);
+  return term(BINARY_KIND, strict ?? node.value, [left, right]);
 }
 
 const TERMS = {

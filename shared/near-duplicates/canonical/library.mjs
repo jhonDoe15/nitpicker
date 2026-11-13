@@ -1,5 +1,7 @@
 import { NONE, categoryOf, make, rebuild } from '../tree/nodes.mjs';
 
+const EXPRESSION_KIND = 'expression';
+
 const MATCHES = new Map([
   ['anyMatch', 'any'],
   ['some', 'any'],
@@ -43,13 +45,13 @@ function iterableOf(receiver) {
     return rest[0];
   }
   if (isMember(callee, CHARACTER_VIEWS) && rest.length === 0) {
-    return make('expression', [callee.children[0]], { value: 'characters' });
+    return make(EXPRESSION_KIND, [callee.children[0]], { value: 'characters' });
   }
   return receiver;
 }
 
 function returnedValue(body) {
-  if (categoryOf(body) === 'expression') {
+  if (categoryOf(body) === EXPRESSION_KIND) {
     return body;
   }
   const [only] = body.children;
@@ -76,7 +78,7 @@ function referencePredicate(node) {
 }
 
 function predicateOf(lambda) {
-  if (lambda?.kind === 'expression') {
+  if (lambda?.kind === EXPRESSION_KIND) {
     return referencePredicate(lambda);
   }
   if (lambda?.kind !== 'lambda' || lambda.value !== undefined) {
@@ -109,7 +111,7 @@ function asCondition(root) {
 
 function anyOf(iterable, { name, value }) {
   const lambda = lambdaOf(name, asCondition(value));
-  return make('expression', [iterableOf(iterable), lambda], { value: 'any' });
+  return make(EXPRESSION_KIND, [iterableOf(iterable), lambda], { value: 'any' });
 }
 
 function matchOf(kind, iterable, predicate) {
@@ -121,7 +123,7 @@ function matchOf(kind, iterable, predicate) {
 }
 
 function generatorMatch(kind, generator) {
-  if (generator?.kind !== 'expression' || !GENERATORS.has(generator.value)) {
+  if (generator?.kind !== EXPRESSION_KIND || !GENERATORS.has(generator.value)) {
     return undefined;
   }
   const [element, ...loops] = generator.children;
@@ -178,12 +180,13 @@ export function asReference(node) {
     argument.binding === 'bound' &&
     argument.value === predicate.name.value;
   return isStaticCall
-    ? make('expression', [], { value: `reference:${referenceName(owner)}::${callee.value}` })
+    ? make(EXPRESSION_KIND, [], { value: `reference:${referenceName(owner)}::${callee.value}` })
     : undefined;
 }
 
 export function sameReference(node) {
-  const groups = node.kind === 'expression' ? REFERENCE.exec(node.value ?? '')?.groups : undefined;
+  const groups =
+    node.kind === EXPRESSION_KIND ? REFERENCE.exec(node.value ?? '')?.groups : undefined;
   return groups === undefined || node.value.startsWith('reference:')
     ? undefined
     : { ...node, value: `reference:${groups.owner}::${groups.method}` };
@@ -219,5 +222,5 @@ export function loopMatch(loop, next) {
 export function collapsedNegation(node) {
   const inner = node.kind === 'unary' && node.value === '!' ? node.children[0] : undefined;
   const match = inner?.kind === 'unary' && inner.value === '!' ? inner.children[0] : undefined;
-  return match?.kind === 'expression' && match.value === 'any' ? match : undefined;
+  return match?.kind === EXPRESSION_KIND && match.value === 'any' ? match : undefined;
 }

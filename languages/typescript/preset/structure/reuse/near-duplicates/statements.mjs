@@ -2,10 +2,12 @@ import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { listOf, statementsOf } from '../../../../../../shared/near-duplicates/unit-parts.mjs';
 import { NONE, at, opaque, optional } from './tree-nodes.mjs';
 
+const BLOCK_KIND = 'block';
+
 function blockOf(source, context) {
   return ts.isBlock(source)
     ? context.get(source)
-    : at('block', source, statementsOf(source, context));
+    : at(BLOCK_KIND, source, statementsOf(source, context));
 }
 
 function declarationsOf(list, context) {
@@ -31,7 +33,10 @@ function grouped(value, source, children) {
 
 function caseOf(clause, context) {
   const test = ts.isCaseClause(clause) ? context.get(clause.expression) : NONE;
-  return grouped('case', clause, [test, at('block', clause, listOf(clause.statements, context))]);
+  return grouped('case', clause, [
+    test,
+    at(BLOCK_KIND, clause, listOf(clause.statements, context)),
+  ]);
 }
 
 function forOf(source, context) {
@@ -55,7 +60,7 @@ function catchOf(clause, context) {
 const KIND = ts.SyntaxKind;
 
 export const STATEMENTS = {
-  [KIND.Block]: (source, context) => at('block', source, listOf(source.statements, context)),
+  [KIND.Block]: (source, context) => at(BLOCK_KIND, source, listOf(source.statements, context)),
   [KIND.VariableStatement]: (source, context) => declarationsOf(source.declarationList, context),
   [KIND.VariableDeclaration]: (source, context) =>
     at('declare', source, [
@@ -78,9 +83,9 @@ export const STATEMENTS = {
   [KIND.ContinueStatement]: (source) => labelled('continue', source),
   [KIND.ForStatement]: (source, context) =>
     at('for', source, [
-      at('block', source, forPart(source.initializer, context)),
+      at(BLOCK_KIND, source, forPart(source.initializer, context)),
       optional(source.condition, context),
-      at('block', source, forPart(source.incrementor, context)),
+      at(BLOCK_KIND, source, forPart(source.incrementor, context)),
       blockOf(source.statement, context),
     ]),
   [KIND.ForOfStatement]: forOf,

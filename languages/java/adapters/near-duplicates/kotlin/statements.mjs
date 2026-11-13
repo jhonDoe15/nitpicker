@@ -1,15 +1,19 @@
 import { NONE, at, codeChildren, field, grouped, typeNode } from '../tree/nodes.mjs';
 
+const BLOCK_KIND = 'block';
+const CONDITION_FIELD = 'condition';
+const EVALUATE_KIND = 'evaluate';
+
 const STATEMENT_KINDS = new Set([
   'declare',
-  'evaluate',
+  EVALUATE_KIND,
   'if',
   'return',
   'throw',
   'break',
   'continue',
 ]);
-const LOOP_KINDS = new Set(['for', 'foreach', 'while', 'do', 'block', 'statement']);
+const LOOP_KINDS = new Set(['for', 'foreach', 'while', 'do', BLOCK_KIND, 'statement']);
 
 function typeChild(source) {
   return typeNode(codeChildren(source).find((child) => child.type.endsWith('_type')));
@@ -19,7 +23,7 @@ function asStatement(node, source) {
   if (STATEMENT_KINDS.has(node.kind) || LOOP_KINDS.has(node.kind)) {
     return node;
   }
-  return at('evaluate', source, [node]);
+  return at(EVALUATE_KIND, source, [node]);
 }
 
 function statementOf(source, context) {
@@ -31,15 +35,15 @@ export function bodyOf(source, context) {
   if (source === undefined) {
     return NONE;
   }
-  if (source.type === 'block') {
+  if (source.type === BLOCK_KIND) {
     return context.get(source);
   }
-  return at('block', source, statementOf(source, context));
+  return at(BLOCK_KIND, source, statementOf(source, context));
 }
 
 function blockOf(source, context) {
   return at(
-    'block',
+    BLOCK_KIND,
     source,
     codeChildren(source).flatMap((child) => statementOf(child, context)),
   );
@@ -86,7 +90,7 @@ function propertyOf(source, context) {
 }
 
 function branches(source) {
-  const condition = field(source, 'condition');
+  const condition = field(source, CONDITION_FIELD);
   return codeChildren(source).filter((child) => child.id !== condition?.id);
 }
 
@@ -96,7 +100,7 @@ function branchValue(branch, context) {
 
 function ifOf(source, context) {
   const [consequence, alternative] = branches(source);
-  const condition = context.get(field(source, 'condition'));
+  const condition = context.get(field(source, CONDITION_FIELD));
   if (context.isStatement(source)) {
     return at('if', source, [
       condition,
@@ -122,7 +126,7 @@ function forOf(source, context) {
 }
 
 function conditionAndBody(source, context) {
-  const condition = field(source, 'condition');
+  const condition = field(source, CONDITION_FIELD);
   const body = loopParts(source).find((child) => child.id !== condition.id);
   return [context.get(condition), bodyOf(body, context)];
 }
@@ -153,7 +157,7 @@ function tryOf(source, context) {
 }
 
 function whenEntryOf(entry, context) {
-  const conditions = entry.childrenForFieldName('condition').filter(Boolean);
+  const conditions = entry.childrenForFieldName(CONDITION_FIELD).filter(Boolean);
   const ids = new Set(conditions.map(({ id }) => id));
   const body = codeChildren(entry).find((child) => !ids.has(child.id));
   const tests = conditions.map((condition) => context.get(condition));
@@ -197,7 +201,7 @@ export const STATEMENTS = {
   statements: blockOf,
   property_declaration: propertyOf,
   assignment: (source, context) =>
-    at('evaluate', source, [
+    at(EVALUATE_KIND, source, [
       at({ kind: 'assign', value: field(source, 'operator')?.type ?? '=' }, source, [
         context.get(field(source, 'left')),
         context.get(field(source, 'right')),

@@ -1,13 +1,18 @@
 import { listOf, statementsOf } from '../../../../../shared/near-duplicates/unit-parts.mjs';
 import { NONE, at, codeChildren, field, fields, grouped, typeNode } from './nodes.mjs';
 
+const BLOCK_KIND = 'block';
+const EVALUATE_KIND = 'evaluate';
+const CONDITION_FIELD = 'condition';
+const VALUE_FIELD = 'value';
+
 function blockOf(source, context) {
   if (source === undefined) {
     return NONE;
   }
-  return source.type === 'block'
+  return source.type === BLOCK_KIND
     ? context.get(source)
-    : at('block', source, statementsOf(source, context));
+    : at(BLOCK_KIND, source, statementsOf(source, context));
 }
 
 function optionalChild(source, context) {
@@ -16,7 +21,7 @@ function optionalChild(source, context) {
 }
 
 function declareOf(declarator, type, context) {
-  const value = field(declarator, 'value');
+  const value = field(declarator, VALUE_FIELD);
   return at('declare', declarator, [
     type,
     context.get(field(declarator, 'name')),
@@ -33,7 +38,7 @@ function forPart(sources, context) {
   return sources.flatMap((source) =>
     source.type === 'local_variable_declaration'
       ? declarationsOf(source, context)
-      : [at('evaluate', source, [context.get(source)])],
+      : [at(EVALUATE_KIND, source, [context.get(source)])],
   );
 }
 
@@ -58,18 +63,18 @@ function switchBody(source, context) {
     const body =
       part.type === 'switch_rule'
         ? rest.map((child) => context.get(child))
-        : [at('block', part, listOf(rest, context))];
+        : [at(BLOCK_KIND, part, listOf(rest, context))];
     return grouped(part.type === 'switch_rule' ? 'rule' : 'case', part, [...tests, ...body.flat()]);
   });
 }
 
 function switchOf(source, context) {
   const kind =
-    source.parent?.type === 'block' || source.parent?.type === 'expression_statement'
+    source.parent?.type === BLOCK_KIND || source.parent?.type === 'expression_statement'
       ? 'statement'
       : 'expression';
   return at({ kind, value: 'switch' }, source, [
-    context.get(field(source, 'condition')),
+    context.get(field(source, CONDITION_FIELD)),
     ...switchBody(source, context),
   ]);
 }
@@ -99,24 +104,25 @@ function tryParts(source, context) {
 function resourceOf(resource, context) {
   const name = field(resource, 'name');
   if (name === undefined) {
-    return at('evaluate', resource, [context.get(codeChildren(resource)[0])]);
+    return at(EVALUATE_KIND, resource, [context.get(codeChildren(resource)[0])]);
   }
   return at('declare', resource, [
     typeNode(field(resource, 'type')),
     context.get(name),
-    context.get(field(resource, 'value')),
+    context.get(field(resource, VALUE_FIELD)),
   ]);
 }
 
 export const STATEMENTS = {
-  block: (source, context) => at('block', source, listOf(codeChildren(source), context)),
-  constructor_body: (source, context) => at('block', source, listOf(codeChildren(source), context)),
+  block: (source, context) => at(BLOCK_KIND, source, listOf(codeChildren(source), context)),
+  constructor_body: (source, context) =>
+    at(BLOCK_KIND, source, listOf(codeChildren(source), context)),
   local_variable_declaration: declarationsOf,
   expression_statement: (source, context) =>
-    at('evaluate', source, [context.get(codeChildren(source)[0])]),
+    at(EVALUATE_KIND, source, [context.get(codeChildren(source)[0])]),
   if_statement: (source, context) =>
     at('if', source, [
-      context.get(field(source, 'condition')),
+      context.get(field(source, CONDITION_FIELD)),
       blockOf(field(source, 'consequence'), context),
       blockOf(field(source, 'alternative'), context),
     ]),
@@ -126,27 +132,29 @@ export const STATEMENTS = {
   continue_statement: (source) => labelled('continue', source),
   for_statement: (source, context) =>
     at('for', source, [
-      at('block', source, forPart(fields(source, 'init'), context)),
-      field(source, 'condition') === undefined ? NONE : context.get(field(source, 'condition')),
-      at('block', source, forPart(fields(source, 'update'), context)),
+      at(BLOCK_KIND, source, forPart(fields(source, 'init'), context)),
+      field(source, CONDITION_FIELD) === undefined
+        ? NONE
+        : context.get(field(source, CONDITION_FIELD)),
+      at(BLOCK_KIND, source, forPart(fields(source, 'update'), context)),
       blockOf(field(source, 'body'), context),
     ]),
   enhanced_for_statement: (source, context) =>
     at('foreach', source, [
       typeNode(field(source, 'type')),
       context.get(field(source, 'name')),
-      context.get(field(source, 'value')),
+      context.get(field(source, VALUE_FIELD)),
       blockOf(field(source, 'body'), context),
     ]),
   while_statement: (source, context) =>
     at('while', source, [
-      context.get(field(source, 'condition')),
+      context.get(field(source, CONDITION_FIELD)),
       blockOf(field(source, 'body'), context),
     ]),
   do_statement: (source, context) =>
     at('do', source, [
       blockOf(field(source, 'body'), context),
-      context.get(field(source, 'condition')),
+      context.get(field(source, CONDITION_FIELD)),
     ]),
   switch_expression: switchOf,
   try_statement: (source, context) =>
@@ -174,7 +182,7 @@ export const STATEMENTS = {
     ),
   yield_statement: (source, context) => grouped('yield', source, [optionalChild(source, context)]),
   explicit_constructor_invocation: (source, context) =>
-    at('evaluate', source, [
+    at(EVALUATE_KIND, source, [
       at('call', source, [
         context.name(field(source, 'constructor').text, source),
         ...codeChildren(field(source, 'arguments')).map((argument) => context.get(argument)),
