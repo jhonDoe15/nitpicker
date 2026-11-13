@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { BLACK_DEFAULT_EXCLUDES } from './python-fix-commands.mjs';
 import { fakePythonTools } from './test-support/fake-python-fix.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';

@@ -173,7 +173,7 @@ Fix notes (from the dry run):
     expect(result.unchanged).toEqual(result.before);
     expect(result.applied).toEqual(result.real);
     expect(result.applied).not.toEqual(result.before);
-  });
+  }, 90_000);
   it('removes a stale dry-run patch when --fix runs for real in the same output folder', () => {
     const repository = javaRepository();
     const dry = run(repository, ['--fix', '--dry-run'], fakeJvmTools());

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
