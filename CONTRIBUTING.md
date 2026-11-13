@@ -75,8 +75,9 @@ requests start fewer CI runs, and every change still passes the same checks.
   issue whose message names that issue. The pull request closes the child issues it completes, and
   the coordinator issue closes when its last child does.
 - **One direction per pull request.** A pull request delivers one feature, refactor or family of
-  fixes; unrelated fixes go in their own batch. Keep it to about eight child issues. A feature that
-  needs more splits into nested batches that land one after another, each its own pull request.
+  fixes; unrelated fixes go in their own batch. Aim for 20 to 30 commits: merge small batches of the
+  same feature or of closely related features into one pull request, and split a feature that needs
+  more into nested batches that land one after another, each its own pull request.
 - **New work.** Before starting an issue, check whether it belongs to an open coordinator issue, and
   add a new issue to the coordinator issue it fits. An issue that fits no batch can still ship alone.
 - **CI.** Run the focused local checks for each commit, then push the batch and add `run-ci` once.
