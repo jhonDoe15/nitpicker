@@ -1,11 +1,7 @@
 import { hash } from '../typed/repository.mts';
-import {
-  type FunctionIdentity,
-  declarationLine,
-  functionIdentity,
-  nameFreeHash,
-  positiveInteger,
-} from '../typed/reporting.mts';
+import { declarationLine, nameFreeHash, positiveInteger } from '../typed/reporting.mts';
+import { functionIdentity } from '../../exceptions/function-identity.mts';
+import type { FunctionIdentity } from '../../exceptions/function-units.mts';
 import { escapeRegExp } from '../../typed/tooling.mts';
 import { fieldOf, fieldsOf, listOf, objectOf } from '../../../../../shared/values/readers.mts';
 import type { MutantLocation, MutationReport } from '../typed/mutation.mts';

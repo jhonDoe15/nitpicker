@@ -1,6 +1,14 @@
 import path from 'node:path';
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { functionUnits } from '../../preset/structure/units/function-units.mjs';
+import { typescriptApi } from '../typed/typescript-program.mts';
+import {
+  type BranchSite,
+  type FunctionIdentity,
+  type FunctionUnit,
+  type LineSpan,
+  functionUnits,
+} from './function-units.mts';
+
+const ts = typescriptApi();
 
 const SCRIPT_KINDS = new Map([
   ['.tsx', ts.ScriptKind.TSX],
@@ -10,7 +18,7 @@ const SCRIPT_KINDS = new Map([
   ['.cjs', ts.ScriptKind.JS],
 ]);
 
-function unitsOf(source, file) {
+function unitsOf(source: string, file: string): readonly FunctionUnit[] {
   const sourceFile = ts.createSourceFile(
     file,
     source,
@@ -21,10 +29,10 @@ function unitsOf(source, file) {
   return functionUnits(sourceFile).units;
 }
 
-function narrowest(units, line) {
-  let found;
+function narrowest(units: readonly FunctionUnit[], line: number | undefined): string | undefined {
+  let found: FunctionUnit | undefined;
   for (const unit of units) {
-    const holds = unit.start <= line && line <= unit.end;
+    const holds = line !== undefined && unit.start <= line && line <= unit.end;
     if (holds && (found === undefined || unit.end - unit.start <= found.end - found.start)) {
       found = unit;
     }
@@ -32,15 +40,21 @@ function narrowest(units, line) {
   return found?.name;
 }
 
-function crapFunctionName(units, { lines }) {
+function crapFunctionName(
+  units: readonly FunctionUnit[],
+  { lines }: { readonly lines?: LineSpan },
+): string | undefined {
   const functions = units.filter(({ kind }) => kind === 'function');
   return (
-    functions.find((unit) => unit.start === lines?.start && unit.end === lines?.end) ??
+    functions.find((unit) => unit.start === lines?.start && unit.end === lines.end) ??
     functions.find((unit) => unit.start === lines?.start)
   )?.name;
 }
 
-function branchFunctionNames(units, branchMap = {}) {
+function branchFunctionNames(
+  units: readonly FunctionUnit[],
+  branchMap: Readonly<Record<string, BranchSite>> = {},
+): Record<string, string | undefined> {
   return Object.fromEntries(
     Object.entries(branchMap).map(([branchId, branch]) => [
       branchId,
@@ -54,7 +68,7 @@ function branchFunctionNames(units, branchMap = {}) {
  * (found by its first and last line), of the unit (function, class field initializer or static
  * block) that holds each branch, and of the one that holds a mutant's line.
  */
-export function functionIdentity(source, file) {
+export function functionIdentity(source: string, file: string): FunctionIdentity {
   const units = unitsOf(source, file);
   return {
     crapFunctionName: (entry) => crapFunctionName(units, entry),
