@@ -10,6 +10,7 @@ const EMPTY = {
   functions: [],
   types: [],
   tests: [],
+  branches: [],
   errors: [],
   definitions: [],
   usages: [],

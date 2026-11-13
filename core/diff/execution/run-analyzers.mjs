@@ -75,6 +75,7 @@ export function runAnalyzers({
   baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
+  mutationScope,
   logRoot,
   runTasks = runScheduler,
 }) {
@@ -90,6 +91,7 @@ export function runAnalyzers({
     baselineRoot,
     baselineMovesFile,
     liveProjectRoot,
+    mutationScope,
     logRoot,
   });
 
@@ -242,6 +244,7 @@ function createTask(analyzer, context) {
     baselineRoot: context.baselineRoot,
     baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
+    ...(context.mutationScope === undefined ? {} : { mutationScope: context.mutationScope }),
     ...logLocation(context.logRoot, liveProjectRoot),
   });
   validateInvocation(analyzer.name, invocation);

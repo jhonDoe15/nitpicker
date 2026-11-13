@@ -60,7 +60,7 @@ func goFiles(root string, report *Report) ([]string, error) {
 
 func emptyReport() Report {
 	return Report{
-		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Errors: []string{},
+		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Branches: []Branch{}, Errors: []string{},
 		Definitions: []Definition{}, Usages: []Usage{}, DocComments: []DocComment{}, Skipped: []string{},
 	}
 }
@@ -110,6 +110,9 @@ func inspectModule(root string) (Report, error) {
 		}
 	}
 	addFunctions(&report, fileSet, parsed)
+	for _, function := range report.Functions {
+		report.Branches = append(report.Branches, function.Branches...)
+	}
 	report.Types = typeEntries(fileSet, parsed)
 	return report, nil
 }

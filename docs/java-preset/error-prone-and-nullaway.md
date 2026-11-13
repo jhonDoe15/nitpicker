@@ -21,6 +21,21 @@ Part of the [Java preset guide](../java-preset.md).
   path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
   type may permit classes in another package. Test sources compile on the class path, without the
   descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
+  reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
+  per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
+  `--source=`, `--target=`, `--project-arg=`, `--errorprone-flag=`). The report is a JSON array of
+  `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
+  Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
+  class around it, innermost first.
+- **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
+  the `BugPattern: <Check>` it came from; the runner then turns that check off with
+  `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
+  checks' findings are kept. Each crashed check is one more report entry,
+  `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
+  check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
+  off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -94,11 +109,11 @@ Part of the [Java preset guide](../java-preset.md).
   (`reviewedChecks` in `checks.json`, with the reviewed Error Prone and NullAway versions under
   `reviewed`; a unit test fails when the init script or the Maven path pins other versions, and
   the e2e test fails when the jar's checks differ from the reviewed ones). On: every ERROR and
-  WARNING check Error Prone enables by default except 10, plus 109 of its off-by-default checks (for
+  WARNING check Error Prone enables by default except 10, plus 107 of its off-by-default checks (for
   example `FieldCanBeLocal`, `FieldCanBeFinal`, `IdentifierName`,
   `PrivateConstructorForUtilityClass`, `RedundantThrows`, `CheckedExceptionNotThrown`,
   `ThrowSpecificExceptions`, `NonFinalStaticField`, `BanSerializableRead`,
-  `UseCorrectAssertInTests`): 595 checks. A check is off only when another check that is always on
+  `UseCorrectAssertInTests`): 593 checks. A check is off only when another check that is always on
   reports every case it does at the same place, it fights another tool, needs an annotation library a project would add only for it (Error Prone's own
   annotations, Guava, auto-common), flags legitimate code with no allowed form, or picks one of two
   forms that are both valid conventions (`var` or the explicit type, `final` on parameters and
@@ -273,8 +288,10 @@ Part of the [Java preset guide](../java-preset.md).
 | `EmptyIf`                        | off     | errorprone/UnnecessarySemicolon, which is always on, reports every if (c); at the same position with a clearer fix                                                                                                                        |
 | `EqualsGetClass`                 | on      | getClass() and instanceof in equals are both valid conventions, with different semantics for subclasses                                                                                                                                   |
 | `EqualsMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `FieldCanBeStatic`               | off     | Crashes Error Prone (2.26 to 2.52) when it rewrites a Lombok @Getter field initialized from a constant; spotbugs/SS_SHOULD_BE_STATIC reports such a field when its initializer is a compile-time constant                                 |
 | `FieldMissingNullable`           | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `IfChainToSwitch`                | on      | An if-chain and a switch are both valid forms                                                                                                                                                                                             |
+| `ForEachIterable`                | off     | Crashes Error Prone (2.26 to 2.52) on a record pattern with var bindings; pmd/ForLoopCanBeForeach reports the same loops                                                                                                                  |
 | `ImmutableMemberCollection`      | off     | Its allowed form is a Guava immutable type, even in projects without Guava                                                                                                                                                                |
 | `ImmutableRefactoring`           | off     | A migration to Error Prone's @Immutable annotation, a dependency nitpicker does not ask for                                                                                                                                               |
 | `InlineFormatString`             | on      | A format string inline or in a named constant are both valid forms                                                                                                                                                                        |
@@ -497,7 +514,6 @@ The pairs:
 - line: `errorprone/CheckReturnValue`, `errorprone/ReturnValueIgnored` over `spotbugs/RV_RETURN_VALUE_IGNORED`, `pmd/UselessOperationOnImmutable`
 - line: `errorprone/SelfAssignment` over `spotbugs/SA_FIELD_SELF_ASSIGNMENT`, `spotbugs/SA_LOCAL_SELF_ASSIGNMENT`, `pmd/IdempotentOperations`
 - line: `pmd/CheckSkipResult` over `spotbugs/SR_NOT_CHECKED`
-- line: `errorprone/FieldCanBeStatic` over `spotbugs/SS_SHOULD_BE_STATIC`
 - line: `errorprone/UnnecessarySemicolon` over `spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE`, `checkstyle/NeedBraces`, `errorprone/MissingBraces`
 - line: `checkstyle/NeedBraces` over `errorprone/MissingBraces`
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
@@ -529,7 +545,7 @@ The pairs:
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
-- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/GoogleNonConstantFieldName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
 - file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
@@ -560,7 +576,6 @@ The pairs:
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
 - file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
 - line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`, `pmd/UseArrayListInsteadOfVector`

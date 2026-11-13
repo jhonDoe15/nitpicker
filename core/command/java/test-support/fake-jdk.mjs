@@ -5,9 +5,9 @@ const FIRST_FINDING_LINE = 3;
 const GOOGLE_CHECKS = [
   '<module name="Checker">',
   '<module name="TreeWalker">',
-  ...['MemberName', 'MethodName'].map(
-    (name) => `<module name="${name}"><property name="format" value="^[a-z]+$"/></module>`,
-  ),
+  '<module name="MethodName"><property name="format" value="^[a-z]+$"/></module>',
+  '<module name="GoogleNonConstantFieldName"/>',
+  '<module name="TodoComment"><property name="id" value="TodoFormat"/></module>',
   '</module>',
   '</module>',
 ].join('\n');
@@ -64,7 +64,7 @@ const HANDLERS = {
     put(after('-output'), sarif('SpotBugs', []));
   },
   'com.puppycrawl.tools.checkstyle.Main'({ after }) {
-    put(after('-o'), '<checkstyle version="10.21.1"></checkstyle>');
+    put(after('-o'), '<checkstyle version="13.5.0"></checkstyle>');
   },
   'org.jacoco.cli.internal.Main'({ after, cwd }) {
     copyOrWrite(after('--xml'), path.join(cwd, 'jacoco.xml'), '<report name="demo"></report>');

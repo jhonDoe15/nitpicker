@@ -94,3 +94,23 @@ the allowed form and ends with its exception entry.
   `cmp.Or(os.Getenv("API_TOKEN"), "...")` included. A placeholder (`changeme`, `${TOKEN}`) is fine.
 - Never log a secret or put it in an error (`go-rules/secret-in-log`): log only that it is set,
   `slog.Bool("token_set", token != "")`, or its length.
+
+## Tests
+
+- Every test asserts (`go-rules/test-without-assertion`): check the result with
+  `if got != want { t.Errorf(...) }`, testify `assert`/`require`, or a helper you hand `t`. A
+  test that only calls the code passes whatever it does.
+- Assert outright, not under a condition (`go-rules/conditional-assertion-in-test`): check the
+  condition itself first, `if resp == nil { t.Fatal("no response") }`, then the value; never
+  `if resp != nil { if resp.Code != 200 { ... } }`. Give a `switch` on a result a `default` that
+  fails.
+- No assertions in a loop over a computed collection, which can be empty: loop over a literal table
+  and run each case as a `t.Run` subtest, or compare the whole collection at once (`slices.Equal`,
+  `cmp.Diff`). A loop with a constant count (`for range 3`) is fine.
+- Skip only on a real condition, with a reason (`go-rules/switched-off-test`,
+  `go-rules/skipped-test-without-reason`): `if testing.Short() { t.Skip("needs the database") }`.
+  A test that always skips is deleted or fixed.
+- Never sleep in a test (`go-rules/sleep-in-test`): wait for the event (a channel,
+  `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
+  that sleeps to act slow is fine.
+- A goroutine a test starts is waited for before the test returns (`go-rules/unowned-goroutine`).
