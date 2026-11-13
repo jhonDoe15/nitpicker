@@ -106,9 +106,14 @@ function directoryRoot(value: string, name: string): string {
 
 export function validatedSnapshotRoot(value: string, name: string): string {
   const root = directoryRoot(value, name);
-  if (root === TRUSTED_TOOL_ROOT) {
-    return root;
-  }
+  return root === TRUSTED_TOOL_ROOT ? root : worktreeRoot(root, name);
+}
+
+export function validatedWorktreeRoot(value: string, name: string): string {
+  return worktreeRoot(directoryRoot(value, name), name);
+}
+
+function worktreeRoot(root: string, name: string): string {
   const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), root);
   const segments = relativeToTemporaryRoot.split(path.sep);
   if (
@@ -135,7 +140,11 @@ function normalizedPattern(value: string): string {
   return value.replaceAll('\\', '/');
 }
 
-export function normalizedRelativePath(value: string, context: string): string {
+export function normalizedRelativePath(
+  value: string,
+  context: string,
+  place = 'the analyzed snapshot',
+): string {
   const normalizedPath = path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
   if (
     normalizedPath.length === 0 ||
@@ -144,7 +153,7 @@ export function normalizedRelativePath(value: string, context: string): string {
     path.posix.isAbsolute(normalizedPath) ||
     /^[A-Za-z]:\//.test(normalizedPath)
   ) {
-    throw new Error(`${context} must stay within the analyzed snapshot`);
+    throw new Error(`${context} must stay within ${place}`);
   }
   return normalizedPath;
 }

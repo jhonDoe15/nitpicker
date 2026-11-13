@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
 
 const presetRoot = path.join(import.meta.dirname, '../../../preset');

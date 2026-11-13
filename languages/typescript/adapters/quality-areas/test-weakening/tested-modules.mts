@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
-import { isInMutationScope, pathInside, typescriptApi } from '../typed/mutation.mts';
+import { isInMutationScope, pathInside } from '../typed/mutation.mts';
+import { typescriptApi } from '../../typed/typescript-program.mts';
 import { diffAgainstBase } from '../runners/mutation-scope.mts';
 import {
   type ResolutionProject,

@@ -13,7 +13,7 @@ import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { hashFiles } from '../../../preset/checks/hash.mjs';
 import { configuredAnalyzers } from '../../../preset/diff/configured-analyzers.mjs';
 import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
-import { normalizeEslintResults } from '../../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { spawnJson } from '../oxlint-process.mjs';
 import { lintWithOxlint } from '../oxlint-runner.mjs';
 import { nativeRuleIndex, PARITY_BRIDGED_RULES, translatePlan } from '../oxlint-translation.mjs';

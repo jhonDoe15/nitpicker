@@ -1,8 +1,6 @@
-import type TypeScript from 'typescript';
 import type { Finding } from '../../static-checks/shared.mts';
 import type { Layout } from '../../typed/head-policy.mts';
 import type { QualityAreaOptions } from './area-types.mts';
-import { ts as untypedTs } from '../../../typescript-api/typescript-api.mjs';
 import { parseChangedLines as untypedParseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
 import { runGit as untypedRunGit } from '../../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase as untypedDiffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
@@ -175,15 +173,3 @@ export const layoutTransformFor: (
   layout: Layout,
   options?: { readonly strictMutants: boolean },
 ) => Transform = untypedLayoutTransformFor;
-
-function isTypeScriptApi(value: unknown): value is typeof TypeScript {
-  return typeof value === 'object' && value !== null && 'createSourceFile' in value;
-}
-
-export function typescriptApi(): typeof TypeScript {
-  const api: unknown = untypedTs;
-  if (!isTypeScriptApi(api)) {
-    throw new TypeError('The selected TypeScript API does not load');
-  }
-  return api;
-}

@@ -1,8 +1,12 @@
 import path from 'node:path';
 import { lstatIfExists } from '../../../../core/tooling/policy-links.mjs';
 import { realpathSync } from 'node:fs';
+import { normalizedRelativePath as snapshotRelativePath } from '../static-checks/arguments.mts';
 
-export function validatedProjectFile(projectRoot, filePath) {
+export function validatedProjectFile(
+  projectRoot: string,
+  filePath: string,
+): { readonly relativePath: string; readonly canonicalPath: string } {
   const resolvedPath = path.resolve(filePath);
   const relativePath = path.relative(projectRoot, resolvedPath).replaceAll('\\', '/');
   if (
@@ -22,21 +26,15 @@ export function validatedProjectFile(projectRoot, filePath) {
   return { relativePath, canonicalPath };
 }
 
-export function normalizedRelativePath(value, context) {
-  const normalizedPath = path.posix.normalize(value.replaceAll('\\', '/')).replace(/^\.\//, '');
-  if (
-    normalizedPath.length === 0 ||
-    normalizedPath === '..' ||
-    normalizedPath.startsWith('../') ||
-    path.posix.isAbsolute(normalizedPath) ||
-    /^[A-Za-z]:\//.test(normalizedPath)
-  ) {
-    throw new Error(`${context} must stay within the project root`);
-  }
-  return normalizedPath;
+export function normalizedRelativePath(value: string, context: string): string {
+  return snapshotRelativePath(value, context, 'the project root');
 }
 
-export function validatedContainedFile(root, relativePath, context) {
+export function validatedContainedFile(
+  root: string,
+  relativePath: string,
+  context: string,
+): { readonly normalizedPath: string; readonly canonicalPath: string } {
   const normalizedPath = normalizedRelativePath(relativePath, context);
   const resolvedPath = path.resolve(root, normalizedPath);
   assertContainedPath(root, resolvedPath, context);
@@ -49,7 +47,7 @@ export function validatedContainedFile(root, relativePath, context) {
   return { normalizedPath, canonicalPath };
 }
 
-export function assertContainedPath(root, candidate, context) {
+export function assertContainedPath(root: string, candidate: string, context: string): void {
   const relativePath = path.relative(root, candidate);
   if (
     relativePath.length === 0 ||

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
-import { normalizeEslintResults } from '../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../eslint/normalize.mts';
 import { lintWithOxlint } from './oxlint-runner.mjs';
 
 const RULE = 'nitpicker/no-unused-dom-environment';

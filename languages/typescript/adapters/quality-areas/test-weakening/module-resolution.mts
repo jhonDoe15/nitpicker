@@ -1,7 +1,8 @@
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
-import { pathInside, typescriptApi } from '../typed/mutation.mts';
+import { pathInside } from '../typed/mutation.mts';
+import { typescriptApi } from '../../typed/typescript-program.mts';
 
 export type ResolutionProject = {
   readonly root: string;
