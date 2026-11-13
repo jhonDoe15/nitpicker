@@ -9,6 +9,7 @@ import {
 } from '../reporting/test-report.mjs';
 import { readSlowTestFindings } from '../../slow-tests/slow-tests.mjs';
 import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
+import { passesWithoutMockPin } from '../../test-runners/mock-pin-rerun.mjs';
 import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mjs';
 import { readLayout } from '../../../preset/head-policy.mjs';
 import {
@@ -33,11 +34,12 @@ export function runPolicyTests(options) {
   return [];
 }
 
-export async function runCoverage(options) {
+export async function runCoverage(options, output) {
   const run = await runProjectTests(options);
   if (run.failed) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
-    return coverageFailureFindings(options, run);
+    const mockPin = await passesWithoutMockPin(options, run, output);
+    return coverageFailureFindings(options, run, { mockPin });
   }
   if (run.report.numTotalTests === 0) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });

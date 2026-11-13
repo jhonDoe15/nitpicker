@@ -9,6 +9,7 @@ import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
 import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
 import { vitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
 import { FAILURE_DETAILS_VARIABLE } from '../../../preset/test-failures/vitest-failure-details.config.mjs';
+import { MOCK_PIN_ENVIRONMENT_VARIABLE } from './mock-pin-variable.mjs';
 
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
 const TIMEOUT_LIMITS_VARIABLE = 'NITPICKER_TEST_TIMEOUT_LIMITS';
@@ -65,6 +66,17 @@ function timeoutEnvironment(setupPath) {
   };
 }
 
+function modeArguments(options) {
+  if (options.rerun === undefined) {
+    return ['--coverage'];
+  }
+  const { namePattern } = options.rerun;
+  return [
+    '--maxWorkers=1',
+    ...(namePattern === undefined ? [] : ['--testNamePattern', namePattern]),
+  ];
+}
+
 export function runVitest(options) {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
@@ -82,9 +94,7 @@ export function runVitest(options) {
         'run',
         '--config',
         configPath,
-        ...(options.rerun === undefined
-          ? ['--coverage']
-          : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
+        ...modeArguments(options),
         ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
         ...vitestRetryArguments(projectTestRetry('vitest')),
         ...reportArguments(options, reportPath),
@@ -94,6 +104,7 @@ export function runVitest(options) {
       environment: {
         ...testConsole.environment,
         [FAILURE_DETAILS_VARIABLE]: detailsPath,
+        [MOCK_PIN_ENVIRONMENT_VARIABLE]: options.rerun?.withoutMockPin === true ? '1' : '0',
         ...(configured ? timeoutEnvironment(setupPath) : {}),
       },
       acceptedStatuses: [0, 1],
