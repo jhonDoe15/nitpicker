@@ -6,9 +6,9 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mjs';
-import { isJvmTestPath } from './jvm-paths.mjs';
-import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mjs';
+import { comparisonMutationPlan, mutationPlanOf } from './mutation-plan.mts';
+import { isJvmTestPath } from './jvm-paths.mts';
+import { MAX_TESTED_SOURCES, changedTestsKey } from './tested-sources.mts';
 
 const MAIN = 'src/main/java/shop';
 const TEST = 'src/test/java/shop';

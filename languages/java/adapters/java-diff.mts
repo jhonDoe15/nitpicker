@@ -20,14 +20,13 @@ import { sourceTextReader } from './reporting/function-locator.mjs';
 import { withTestsFailures } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectSourceRules } from './regexes/regex-defects.mts';
-import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mjs';
+import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mts';
 import { buildFindings } from './collect/build-findings.mts';
 import {
   type JavaFinding,
   type JavaPolicy,
   callUntyped,
   findingsOf,
-  javaPolicyOf,
 } from './typed/java-values.mts';
 import type { JavaRunOptions } from './typed/java-run-options.mts';
 import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
@@ -68,20 +67,14 @@ export function collectJavaFindings(
   return collectJavaReport(root, options).findings;
 }
 
-function plannedOptions(options: JavaRunOptions, plan: unknown): JavaRunOptions {
-  const policy = fieldOf(fieldOf(plan, 'options'), 'policy');
-  return { ...options, policy: policy === undefined ? undefined : javaPolicyOf(policy) };
-}
-
 export function collectJavaReport(
   root: string,
   options: JavaRunOptions = {},
 ): { readonly findings: readonly JavaFinding[]; readonly imports: unknown } {
   const projectRoot = path.resolve(root);
-  const plan: unknown = mutationPlanOf(projectRoot, options);
-  const planned = plannedOptions(options, plan);
-  const { findings: collected, imports, testsFailures } = buildFindings(projectRoot, planned);
-  const findings = findingsOf(callUntyped(fieldOf(plan, 'findings'), collected));
+  const plan = mutationPlanOf(projectRoot, options);
+  const { findings: collected, imports, testsFailures } = buildFindings(projectRoot, plan.options);
+  const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
   const report: unknown = parseAnalyzerReport(
