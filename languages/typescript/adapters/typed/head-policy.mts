@@ -9,9 +9,11 @@ import { layoutTransformFor as untypedLayoutTransformFor } from '../../preset/to
 export type Layout = {
   readonly exclude: readonly string[];
   readonly graphRoots: readonly string[];
+  readonly sourceRoots: readonly string[];
   isExcluded(relativePath: string): boolean;
   readonly isSourceFile: (relativePath: string) => boolean;
   readonly isRunnableTestFile: (relativePath: string) => boolean;
+  readonly isTestFile: (relativePath: string) => boolean;
   projectCodeFiles(projectRoot: string): readonly string[];
 };
 

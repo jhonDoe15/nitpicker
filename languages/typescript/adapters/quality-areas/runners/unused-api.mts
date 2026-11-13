@@ -1,20 +1,28 @@
-import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
+import type { Finding } from '../../static-checks/shared.mts';
+import type { QualityAreaOptions } from '../typed/area-types.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { readLayout } from '../../typed/head-policy.mts';
 import {
+  type KnipConfig,
+  exceptionMatcher,
   layoutKnipProductionConfig,
-  withEntryExports,
-} from '../../../preset/unused-api/test-only/production-config.mjs';
-import {
+  loadPackages,
   needsProductionRun,
+  readHeadPolicy,
   testOnlyExportFindings,
-} from '../../../preset/unused-api/test-only/test-only-exports.mjs';
-import { loadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { failure, runProgramAnalysis } from './program/program-analysis.mjs';
+  withEntryExports,
+} from '../typed/policy.mts';
+import { failure, runProgramAnalysis } from './program/program-analysis.mts';
+
+type KnipRuns = {
+  readonly config: KnipConfig;
+  readonly normal: unknown;
+  readonly knip: (config: KnipConfig) => unknown;
+};
 
 const ANALYZER = 'languages/typescript/preset/unused-api/analyze.mjs';
 
-/** Unused props and options; a failure is a tool error, so the other structure checks still report. */
-export function runUnusedApi(options) {
+export function runUnusedApi(options: QualityAreaOptions): Promise<Finding[]> {
   return runProgramAnalysis(options, {
     rule: 'unused-api',
     analyzer: ANALYZER,
@@ -23,7 +31,10 @@ export function runUnusedApi(options) {
   });
 }
 
-function testOnlyFindings(options, { config, normal, knip }) {
+function testOnlyFindings(
+  options: QualityAreaOptions,
+  { config, normal, knip }: KnipRuns,
+): Finding[] {
   const layout = readLayout();
   const packagesInfo = loadPackages(options.projectRoot, layout);
   const hasTests = layout.projectCodeFiles(options.projectRoot).some(layout.isTestFile);
@@ -38,7 +49,7 @@ function testOnlyFindings(options, { config, normal, knip }) {
     packagesInfo,
     context: {
       layout,
-      entryPatterns: productionConfig.entry,
+      entryPatterns: fieldOf(productionConfig, 'entry'),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       isExcepted: exceptionMatcher(readHeadPolicy().exceptions),
@@ -46,8 +57,7 @@ function testOnlyFindings(options, { config, normal, knip }) {
   });
 }
 
-/** Test-only exports and modules; a failed knip run is a tool error next to the normal findings. */
-export function runTestOnlyExports(options, runs) {
+export function runTestOnlyExports(options: QualityAreaOptions, runs: KnipRuns): Finding[] {
   try {
     return testOnlyFindings(options, runs);
   } catch (error) {

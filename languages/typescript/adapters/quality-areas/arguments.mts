@@ -1,4 +1,5 @@
-import { QUALITY_AREA_RUNNERS, type QualityAreaOptions } from './registry.mts';
+import { QUALITY_AREA_RUNNERS } from './registry.mts';
+import type { QualityAreaOptions } from './typed/area-types.mts';
 import { realpathSync, lstatSync } from 'node:fs';
 import { TRUSTED_TOOL_ROOT } from './runners/tooling.mjs';
 import path from 'node:path';

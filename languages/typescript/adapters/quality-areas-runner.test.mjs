@@ -13,7 +13,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { installStrykerTsconfig } from './quality-areas/runners/mutation.mjs';
 import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mjs';
-import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
+import { normalizeStructure } from './quality-areas/reporting/repository.mts';
 import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mts';
 import { runQualityArea } from './quality-areas-runner.mts';

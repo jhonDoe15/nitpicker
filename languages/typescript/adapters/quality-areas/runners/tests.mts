@@ -1,25 +1,28 @@
-import { runNodeTool, parseReportJson } from './tooling.mjs';
+import type { Finding } from '../../static-checks/shared.mts';
+import type { QualityAreaOptions } from '../typed/area-types.mts';
+import { runNodeTool, parseReportJson } from '../typed/tooling.mts';
 import path from 'node:path';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { COVERAGE_REPORT_PATH } from '../reporting/test-report.mjs';
 import {
-  COVERAGE_REPORT_PATH,
   coverageFailureFindings,
+  hasProjectTests,
+  normalizeCrap,
+  projectTestFiles,
   readCoverageFindings,
+  readSlowTestFindings,
+  runProjectTests,
   toolErrorFinding,
-} from '../reporting/test-report.mjs';
-import { readSlowTestFindings } from '../../slow-tests/slow-tests.mjs';
-import { runProjectTests } from '../../test-runners/run-project-tests.mjs';
-import { hasProjectTests, projectTestFiles } from '../../test-runners/test-run.mjs';
-import { readLayout } from '../../../preset/head-policy.mjs';
+  withFunctionSourceHashes,
+} from '../typed/reporting.mts';
+import { readLayout } from '../../typed/head-policy.mts';
 import {
   TESTS_FAILED_SKIPPED_RULE,
   TESTS_NOT_RUN_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import { normalizeCrap } from '../reporting/tests.mjs';
 import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
-import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
 
-export function runPolicyTests(options) {
+export function runPolicyTests(options: QualityAreaOptions): Finding[] {
   if (options.snapshot === 'base') {
     return [];
   }
@@ -33,7 +36,7 @@ export function runPolicyTests(options) {
   return [];
 }
 
-export async function runCoverage(options) {
+export async function runCoverage(options: QualityAreaOptions): Promise<Finding[]> {
   const run = await runProjectTests(options);
   if (run.failed) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
@@ -49,22 +52,23 @@ export async function runCoverage(options) {
   ];
 }
 
-function noTestsRanFinding(options, runnerName) {
+function noTestsRanFinding(options: QualityAreaOptions, runnerName: string): Finding {
   const layout = readLayout();
   const [first] = projectTestFiles(options, layout, layout.projectCodeFiles(options.projectRoot));
   return toolErrorFinding(options, {
     rule: TESTS_NOT_RUN_RULE,
     path: first,
-    message: `${runnerName} ran no tests, but nitpicker sees test files such as ${first}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
+    anchor: undefined,
+    message: `${runnerName} ran no tests, but nitpicker sees test files such as ${String(first)}. Make the project's ${runnerName} config find them, or set "tools.tests.runner" in nitpicker.config.json to the runner they are written for.`,
   });
 }
 
-function hasRunnableTests(options) {
+function hasRunnableTests(options: QualityAreaOptions): boolean {
   const layout = readLayout();
   return hasProjectTests(options, layout, layout.projectCodeFiles(options.projectRoot));
 }
 
-export function runCrap(options) {
+export function runCrap(options: QualityAreaOptions): Finding[] {
   if (
     !existsSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH)) &&
     hasRunnableTests(options)
