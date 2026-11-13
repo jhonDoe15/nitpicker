@@ -2934,7 +2934,7 @@ loosen the gate. A project whose ruff or black config set the line length or quo
 conventions (and detekt's defaults) until it opts in. The run prints, once at the start, the exact
 command that formats the code the way nitpicker checks it (`Format with ruff: ruff format ...`), and
 one line per ignored config, such as `Ignoring [tool.ruff] in pyproject.toml except
-lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding points to that command.
+lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding asks for `nitpicker --fix`, which formats the changed files with that formatter.
 
 | Tool     | Default (isolated)                                                                                 | Read when `precedence` lists `"project"`                                                                                    |
 | -------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
