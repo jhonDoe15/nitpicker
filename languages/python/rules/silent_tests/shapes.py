@@ -1,4 +1,5 @@
 import ast
+from collections import Counter
 
 from checks.common import dotted_name
 from silent_tests.calls import DEFINITIONS
@@ -19,11 +20,108 @@ def is_irrefutable(case):
     return isinstance(pattern, ast.MatchAs) and pattern.pattern is None and case.guard is None
 
 
-def construct_kind(node):
+def int_value(node):
+    if isinstance(node, ast.Constant) and type(node.value) is int:
+        return node.value
+    negated = isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub)
+    if (
+        negated
+        and isinstance(node.operand, ast.Constant)
+        and type(node.operand.value) is int
+    ):
+        return -node.operand.value
+    return None
+
+
+def is_fixed_range(node):
+    if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+        return False
+    if node.func.id != "range" or node.keywords or not 1 <= len(node.args) <= 3:
+        return False
+    values = [int_value(argument) for argument in node.args]
+    step_is_zero = len(values) == 3 and values[2] == 0
+    return None not in values and not step_is_zero and len(range(*values)) > 0
+
+
+MUTATORS = {
+    "append", "extend", "insert", "pop", "remove", "clear", "update", "add",
+    "discard", "sort", "reverse", "setdefault", "popitem", "difference_update",
+    "intersection_update", "symmetric_difference_update",
+}  # fmt: skip
+
+
+def is_literal_table(node, tables):
+    if isinstance(node, ast.Name):
+        return node.id in tables
+    if isinstance(node, ast.Dict):
+        return bool(node.keys) and None not in node.keys
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        return bool(node.elts) and not any(isinstance(e, ast.Starred) for e in node.elts)
+    return False
+
+
+def table_binding(node):
+    if isinstance(node, ast.Assign) and len(node.targets) == 1:
+        target, value = node.targets[0], node.value
+    elif isinstance(node, ast.AnnAssign) and node.value is not None:
+        target, value = node.target, node.value
+    else:
+        return None
+    named = isinstance(target, ast.Name)
+    return target.id if named and is_literal_table(value, frozenset()) else None
+
+
+def mutates(func):
+    return isinstance(func, ast.Attribute) and func.attr in MUTATORS
+
+
+def altered_names(tree):
+    names = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            names.append(node.id)
+        elif isinstance(node, ast.arg):
+            names.append(node.arg)
+        elif isinstance(node, (ast.Global, ast.Nonlocal)):
+            names.extend(node.names)
+        elif isinstance(node, (*DEFINITIONS, ast.ClassDef)):
+            names.append(node.name)
+        elif isinstance(node, ast.alias):
+            names.append((node.asname or node.name).split(".")[0])
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            names.append(node.name)
+        elif isinstance(node, ast.Subscript) and not isinstance(node.ctx, ast.Load):
+            names.append(getattr(node.value, "id", None))
+        elif isinstance(node, ast.Call) and mutates(node.func):
+            names.append(getattr(node.func.value, "id", None))
+    return names
+
+
+def literal_tables(tree):
+    bound = [name for name in map(table_binding, tree.body) if name is not None]
+    altered = Counter(altered_names(tree))
+    return frozenset(name for name in bound if altered[name] == 1)
+
+
+def loop_kind(node, tables):
+    if is_fixed_range(node.iter):
+        return None
+    if any(is_subtest(n) for n in ast.walk(node)):
+        return None if is_literal_table(node.iter, tables) else "subTest"
+    return "for"
+
+
+def construct_kind(node, tables=frozenset()):
     if isinstance(node, LOOPS):
-        return "subTest" if any(is_subtest(n) for n in ast.walk(node)) else "for"
+        return loop_kind(node, tables)
     if isinstance(node, COMPREHENSIONS):
-        return "comprehension"
+        fixed = all(
+            not generator.is_async
+            and not generator.ifs
+            and is_fixed_range(generator.iter)
+            for generator in node.generators
+        )
+        return None if fixed else "comprehension"
     for node_type, kind in SIMPLE_CONSTRUCTS:
         if isinstance(node, node_type):
             return kind

@@ -84,7 +84,7 @@ class RetryingTests {
     }
   }
 
-  static boolean never(ITestResult result) {
+  static boolean never(ITestResult ignoredResult) {
     return false;
   }
 
@@ -93,7 +93,7 @@ class RetryingTests {
   final IRetryAnalyzer asReference = RetryingTests::never; // violation: RetryInTest
 
   static class Registry {
-    void setRetryAnalyzer(int attempts) {}
+    void setRetryAnalyzer(int ignoredAttempts) {}
   }
 
   void ownMethodWithTheSameName() {

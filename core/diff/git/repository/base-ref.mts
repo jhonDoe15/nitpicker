@@ -45,9 +45,12 @@ const NO_COMMITS_FOR_HOOK_MESSAGE = [
   'Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
 ].join(' ');
 
-export function assertHasCommit(repositoryRoot: string, staged = false): void {
+export function assertHasCommit(
+  repositoryRoot: string,
+  message: string = NO_COMMITS_MESSAGE,
+): void {
   if (commitOf(repositoryRoot, 'HEAD') === undefined) {
-    throw new Error(staged ? NO_COMMITS_FOR_HOOK_MESSAGE : NO_COMMITS_MESSAGE);
+    throw new Error(message);
   }
 }
 
@@ -58,7 +61,7 @@ export function resolveBase({
   environment = {},
   staged,
 }: BaseRequest): BaseChoice {
-  assertHasCommit(repositoryRoot, staged);
+  assertHasCommit(repositoryRoot, staged ? NO_COMMITS_FOR_HOOK_MESSAGE : NO_COMMITS_MESSAGE);
   if (isNonEmpty(explicitBase)) {
     return { baseRef: explicitBase, source: 'argument' };
   }

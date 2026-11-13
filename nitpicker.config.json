@@ -27,8 +27,8 @@
       "languages/java/adapters/java-runner.mjs",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mts",
-      "languages/typescript/adapters/eslint-runner.mjs",
-      "languages/typescript/adapters/quality-areas-runner.mjs",
+      "languages/typescript/adapters/eslint-runner.mts",
+      "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
@@ -118,11 +118,6 @@
       "rule": "javascript-in-typescript-project",
       "paths": ["**/*.mjs"],
       "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types."
-    },
-    {
-      "rule": "@typescript-eslint/no-deprecated",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
     },
     {
       "rule": "nitpicker/no-default-export",

@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mjs';
-import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mjs';
+import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
+import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
 import { UNSAFE_ANY_RULES, untypedJavascriptConfig } from './untyped-javascript.mjs';
 

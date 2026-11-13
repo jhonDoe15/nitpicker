@@ -17,7 +17,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
-- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+- Signatures: a public method does not branch on a `boolean` parameter (`pmd/BooleanFlagParameter`):
+  write two methods or take an enum. A value with three states is an `enum`, not a boxed `Boolean` parameter, field,
   return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
   fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
   method returns a new collection or array instead of changing a parameter (`items.add`,
@@ -80,3 +81,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`,
+  `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
+  exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).

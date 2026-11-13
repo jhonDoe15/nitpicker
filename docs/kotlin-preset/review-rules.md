@@ -33,6 +33,8 @@ skipped with a note on stderr.
 | `FloatEqualityInTest`                                   | `review-rules/tests/floats/`                           | `assertEquals`, `shouldBe`, AssertJ `isEqualTo` or `assertTrue(x == 0.1)` against a fractional float literal (`0.1`, `1e-3`) in a test                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `ServerOrContainerPerTest`                              | `review-rules/tests/setup/`                            | a container, server or process started for each test: a `@Container`, `@Rule` or `@RegisterExtension` property of a JUnit instance, a Kotest container extension in a per-test mode, a start in `@BeforeEach`, `@Before`, `beforeTest` or `beforeEach` on an object made for each test, the same start in two or more tests of a class                                                                                                                                                                                                                                                                                                                                                                                 |
 | `AssertionInControlFlow`                                | `review-rules/tests/honesty/`                          | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop that can run zero times (also in a helper the test calls), a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `DroppedCallbackInTest`                                 | `review-rules/tests/honesty/dropped/`                  | a call statement, or a lambda that only holds one, whose result is a function or a functional interface (`Runnable`, `Consumer`, `Executable`, `ContextConsumer` or a `fun interface` of the file): the callback is built and dropped, so its assertions never run                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MessageAfterAssertion`                                 | `review-rules/tests/honesty/dropped/`                  | an AssertJ `as`, `describedAs`, `withFailMessage` or `overridingErrorMessage` chained after an assertion method (`isTrue`, `hasSize`, `isEqualTo`), where it never applies                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `WeakAssertionInTest`                                   | `review-rules/tests/honesty/weak/`                     | an assertion that passes for almost any value: not null, not empty, or a mock verified with only `any()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `CoroutineEscapesTest`                                  | `review-rules/tests/coroutines/`                       | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `BlockingCallInCoroutine` (tool `kotlin-source`)        | `review-rules/blocking/`                               | a blocking call in coroutine code that nothing offloads: `Files.*`, file, JDBC, `Future.get()`, `latch.await()`, `queue.take()`, `Mono.block()`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -760,14 +762,21 @@ guessed at.
   `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. An
   assertion is a call of a real assertion API: `assert*`, kotlin.test and Strikt `expect`, the Kotest
   `should*` matchers, MockK and Mockito `verify` (when the file imports them), Spring `andExpect`, and `fail`,
-  `error` or `TODO`; a condition (`if (isValid(x))`) is not read as an assertion. Allowed: an `if`/`else` or a
+  `error` or `TODO`, any imported function whose name starts with `expect` (`import demo.expectValid`, or a star import of a
+  package that is not `kotlin.*`, `java.*`, `javax.*` or `kotlinx.*`; a `fun expectX` declaration is not a call), an
+  import alias of any of these (`import org.junit.jupiter.api.Assertions.assertEquals as eq`), and the names of the
+  project's `kotlin.assertionHelpers` convention (the helpers its tests end with, as for the test without an
+  assertion, called without a receiver or on `this`); a condition (`if (isValid(x))`) is not read as an assertion, and neither are matcher builders
+  (`argThat { }`, `match { }`) or stubbing (`every { }`). An `if` or `when` that only calls a same-file
+  helper which asserts is reported like one that asserts, as in the Python preset (and as a loop that does is):
+  the helper call may be skipped just as the assertion would be. Allowed: an `if`/`else` or a
   `when` whose every branch asserts or fails (a `when` with an `else`, or over `is` types or the constants of
   a sealed type), a check inside Kotest `checkAll`, `forAll`, `forNone`, `forOne`, `forSome` or JUnit
   `assertAll`, `@Property` and `@Example` tests, and generated cases (`@TestFactory`, registrations in a
   loop, `withData`). Allowed form: separate tests or `@ParameterizedTest` with `@MethodSource` or
   `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
-  `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
-  results of the code under test is reported too: an empty result checks nothing. A loop that cannot
+  `?: fail(...)` to narrow a type instead of an `if` or a safe call. A loop over the
+  results of the code under test is reported too, as in the Java guard: an empty result checks nothing. A loop that cannot
   run zero times is allowed, as in the TypeScript preset: `repeat(n)` with a positive integer literal,
   `for` over a non-empty range of integer literals (`1..3`, `0 until 3`, `0..<3`, `3 downTo 1`, with
   or without `step`), the same range with `.forEach { }` or another iteration call, and
@@ -781,6 +790,24 @@ guessed at.
   reported once, under the first test that reaches it, and keyed by the helper's name, so the key
   stays when that test goes. Tests registered in a loop are checked in their own bodies; a
   registration loop over an empty collection registers no test and is not reported.
+- `DroppedCallbackInTest`: a call of a function of the same file whose declared return type is a function
+  type (`(String) -> Unit`, `suspend () -> Unit`) or a functional interface (`Runnable`, `Callable`, `Supplier`,
+  `Consumer`, `Function`, `Predicate`, JUnit `Executable`, `ThrowingSupplier`, Spring Boot `ContextConsumer`,
+  or a `fun interface` declared in the file) and whose result nothing uses, in a test body: a call statement
+  (also `this.helper()`), a statement in an `if`, `else` or loop body, or the only expression of a lambda that
+  is the argument of `run`, `forEach`, `onEach`, `ifPresent`, `execute`, `repeat`, `assertAll`, `assertThrows` or
+  `assertFailsWith`. A helper that returns the assertion as a callback, called inside such a lambda, builds
+  the callback and drops it: the test passes without asserting. Allowed: run it (`hasLength(3)("ADA")`,
+  `.invoke(...)`, `.accept(...)`), pass it on (`run(hasLength(3))`) or store it. Functions of other files and
+  calls on another receiver are not followed. A binding such as `val f = run { check(3) }` or
+  `val r = when ...` stores the value and is not reported. The Java guard of the same name is documented with the Java
+  guards.
+- `MessageAfterAssertion`: in a test file that imports AssertJ, `as`, `describedAs`, `withFailMessage` or
+  `overridingErrorMessage` called on the result of an assertion method (a method whose name starts with
+  `is`, `has`, `contains`, `doesNot`, `matches`, `satisfies`, `startsWith`, `endsWith`, `allMatch`,
+  `anyMatch` or `noneMatch`), as in `assertThat(x).isTrue().withFailMessage("...")`: the message is set
+  after the assertion has run, so it never applies, when the message call ends the chain. Allowed: set it before the assertion
+  (`assertThat(x).withFailMessage("...").isTrue()`), including after a conversion such as `extracting`.
 - `WeakAssertionInTest`: in a JUnit test or a Kotest test body, a check that passes for almost any value.
   Presence: `assertNotNull(x)` (also `assertNotNull(x, "msg")`, and qualified as `Assertions.assertNotNull(x)`) whose result is unused (an infix matcher chained on the same line, `x.shouldNotBeNull() shouldBe 3`, uses it),
   `assertTrue(x != null)`, `assertFalse(x == null)`, Kotest `x.shouldNotBeNull()` and `x shouldNotBe null`, which Kotlin smart-casts, so
@@ -930,6 +957,18 @@ Kotlin-specific choices:
   `.waitFor()` call without arguments on any receiver counts, since `Process` is the class that declares it; a
   project's own `fun waitFor()` called without a receiver does not. A program whose purpose is to run a child to
   completion (a build wrapper) takes an exception.
+- `UnhandledRootCoroutine` is a text scan: it reads `launch` and `async` calls whose receiver is a root scope built in
+  the file, so a scope handed in as a parameter, built by a helper or provided by the framework is not judged, and a
+  scope built from the caller's context or a parent job is skipped. A project runner that handles the failure is named
+  in `conventions` `kotlin.detachedWorkRunners` (never measured, adding a name is reported as a loosening). The
+  Java preset has Error Prone's `FutureReturnValueIgnored`, the TypeScript presets `nitpicker/no-unhandled-void-promise`
+  and Python ruff `RUF006` for the same failure. It runs on Gradle and Maven alike, since the scan is shared.
+- `UnboundedWait` and `ReactorBlockWithoutTimeout` are text scans (the Java preset's `pmd/UnboundedWait` and
+  `pmd/ReactorBlockWithoutTimeout` match by type): the receiver of `get()`, `join()` or `await()` must be a name the file
+  declares as a `Future`-like type, `Thread` or `CountDownLatch` (or makes from `CompletableFuture`, `submit`, `Thread(...)`,
+  `thread { }`, `CountDownLatch(n)`), so a coroutine `Job` or `Deferred` is never reported, and `block()` counts only in a
+  file that imports Reactor or the Spring reactive web package. Where `BlockingCallInCoroutine` reports the same line, only
+  that finding stays. A name the file declares with two different types (or in a lambda parameter) is skipped, `block()` counts only on a receiver the file shows to be a `Mono` or `Flux` (declared, made by `Mono.`/`Flux.`, or a `WebClient` `retrieve()`/`bodyToMono` chain), and the Java rules' exemptions for methods that return a publisher and operator lambdas are not mirrored, since the scan cannot tell them apart. Not followed: a future returned by a project factory function, `futures.map { it.get() }`, and a `Mono` held in a property of another object. A program whose purpose is to wait for the work to finish takes an exception.
 - `FutureWithoutException` is a text scan (the Java preset's `pmd/FutureWithoutException` matches `CompletableFuture`
   by type): it reads the block of `suspendCancellableCoroutine`/`suspendCoroutine` and the block that declares a
   `CompletableDeferred()` or `CompletableFuture()` local, so a resume or completion in a function called from there is

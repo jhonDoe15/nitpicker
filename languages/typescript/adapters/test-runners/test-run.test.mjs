@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { testTimeoutMs, uncoveredRun, workerCount } from './test-run.mjs';
+import { testTimeoutMs, uncoveredRun, workerCount } from './test-run.mts';
 
 let directory;
 

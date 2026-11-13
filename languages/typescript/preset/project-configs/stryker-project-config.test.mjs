@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../core/configuration/validate.mjs';
-import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mjs';
+import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mts';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { strykerIgnoredNotices } from './ignored-notices.mjs';
 import {

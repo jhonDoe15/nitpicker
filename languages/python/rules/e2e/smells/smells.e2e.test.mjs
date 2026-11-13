@@ -86,6 +86,16 @@ describe.skipIf(!enabled)('repeated-string-literal', () => {
         [],
       ],
       [
+        'discriminant comparisons',
+        'def f(n):\n    return n.type == "order-placed" or n.kind != "order-placed" or "order-placed" == n["tag"]\n',
+        [],
+      ],
+      [
+        'comparisons with other attributes',
+        'def f(n):\n    return n.state == "order-placed" or n.name == "order-placed" or n.mode == "order-placed"\n',
+        ['repeated-string-literal:2 order-placed'],
+      ],
+      [
         'other dictionary values',
         'A = {"state": "order-placed"}\nB = {"state": "order-placed"}\nC = {"state": "order-placed"}\n',
         ['repeated-string-literal:3 order-placed'],
