@@ -37,6 +37,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A `close()` that clears a map of pending `CompletableDeferred` or futures completes every entry first
   (`pending.values.forEach { it.completeExceptionally(...) }`), so no caller waits forever
   (`kotlin-source/PendingFuturesNotFailedOnClose`).
+- A class that creates a scheduled executor or `Timer` shuts it down in `close()`
+  (`kotlin-source/TimerNotStoppedOnClose`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).

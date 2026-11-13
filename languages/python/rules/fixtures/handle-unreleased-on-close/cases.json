@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "handle-unreleased-on-close",
+    "mention": "keep the handle"
+  }
+]

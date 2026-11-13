@@ -23,6 +23,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `close()` that clears a map of pending futures completes every entry first
   (`pending.values().forEach(f -> f.completeExceptionally(...))`), so no caller waits forever
   (`pmd/PendingFuturesNotFailedOnClose`).
+- A class that creates a `ScheduledExecutorService` or `Timer` shuts it down in `close()` (`shutdown()` then
+  `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone

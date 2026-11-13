@@ -40,6 +40,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A close function that clears a map of pending callbacks or resolve/reject pairs rejects every entry first
   (`for (const entry of pending.values()) entry.reject(new Error('closed'));`), so no caller waits forever
   (`nitpicker/settle-pending-on-close`).
+- A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
+  register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
+  handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

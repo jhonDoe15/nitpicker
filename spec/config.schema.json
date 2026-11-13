@@ -2196,6 +2196,7 @@
                             "kotlin-source/FutureWithoutException",
                             "kotlin-source/CleanupSkippedOnFailure",
                             "kotlin-source/PendingFuturesNotFailedOnClose",
+                            "kotlin-source/TimerNotStoppedOnClose",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",

@@ -117,6 +117,7 @@ import { rule as ruleReactNoHardcodedColors } from './rules/react/theme/react-no
 import { rule as ruleReactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
 import { rule as ruleReactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 import { rule as ruleReactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
+import { rule as ruleReleaseListenersOnClose } from './rules/lifecycles/handles/release-listeners-on-close.mjs';
 import { rule as ruleReportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as ruleRequireAtomicUpdates } from './rules/wrapped/require-atomic-updates.mjs';
 import { rule as ruleRequireClientTimeout } from './rules/clients/require-client-timeout.mjs';
@@ -259,6 +260,7 @@ export const directoryRules = {
   'react-no-random-key': ruleReactNoRandomKey,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
+  'release-listeners-on-close': ruleReleaseListenersOnClose,
   'report-module-load-effects': ruleReportModuleLoadEffects,
   'require-atomic-updates': ruleRequireAtomicUpdates,
   'require-client-timeout': ruleRequireClientTimeout,

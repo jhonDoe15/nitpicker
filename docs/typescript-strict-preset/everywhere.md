@@ -54,6 +54,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   Failure paths that give up before close (a decode error, a give-up timeout) are not read: the preset has no
   advisory level, and a report-only form would be a finding nobody can act on. A `.clear()` alone leaves every caller still waiting hanging forever. Allowed: reject
   or resolve each entry before clearing, or hand the collection to a helper that does.
+- `nitpicker/release-listeners-on-close`: listeners and timers must be released by the scope that registers
+  them. In a class or factory with a close, dispose, stop or shutdown function, outside composition-root
+  files, it reports `on`, `addListener` and `addEventListener` on an emitter held in a field (`this.socket`),
+  a closure or module variable or `process` when nothing in the scope calls `off`, `removeListener`,
+  `removeEventListener` or `removeAllListeners` (or closes or destroys the emitter) on it, and a
+  `setInterval`, or a `setTimeout` whose handle is kept in a field or long-lived variable, that the scope
+  never passes to `clearInterval` or `clearTimeout`. Emitters created inside the method that uses them, a
+  registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
+  emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
+  Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),

@@ -201,6 +201,7 @@ describe('readKotlinSourceFindings', () => {
         'TestClassWithoutTestCases',
         'TestHelperInSource',
         'TimeUnitMismatch',
+        'TimerNotStoppedOnClose',
         'TlsVerificationOff',
         'TriStateBoolean',
         'UnboundedFanOut',

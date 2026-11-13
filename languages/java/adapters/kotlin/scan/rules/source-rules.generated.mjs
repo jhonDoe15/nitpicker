@@ -7,6 +7,7 @@ import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/c
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
 import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
 import { kotlinSourceRules as rulesPendingFutures } from '../lifecycles/pending/pending-futures.mjs';
+import { kotlinSourceRules as rulesTimerFields } from '../lifecycles/timers/timer-fields.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesSimplerLogic } from '../logic/simpler-logic.mjs';
@@ -44,6 +45,7 @@ export const directoryRules = [
   rulesFutureCompletions,
   rulesCleanupOrder,
   rulesPendingFutures,
+  rulesTimerFields,
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesSimplerLogic,

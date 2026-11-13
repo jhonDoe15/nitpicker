@@ -37,6 +37,8 @@ the allowed form and ends with its exception entry.
   the next release (`go-rules/cleanup-skipped`).
 - A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
   clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
+- A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
+  (`go-rules/ticker-not-stopped`).
 
 ## Package state and design
 
