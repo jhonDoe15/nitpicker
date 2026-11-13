@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { quickAnalyzersOf } from '../lib/presets.mts';
 import { linkedTree, linkedWorkdir } from '../lib/workdirs.mts';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 import { runCase } from '../runner/run-case.mts';
 import { loadCase, referenceTree } from '../case-definition/case-definition.mts';
 

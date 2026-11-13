@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { defaultDetectors } from '../runner/detectors.mts';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 import { loadCase } from '../case-definition/case-definition.mts';
 import { CASE_TIMEOUT_MS, missingShortcuts, runApplied } from '../cases/case-harness.mjs';
 import { SCENARIO_CHEATS } from './cheat-table.mts';
