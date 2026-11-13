@@ -38,12 +38,9 @@ Work from a clean checkout of `main` with full history.
      The first publish creates the package, so it needs no prior rights.
    - `LICENSE` is at the repository root, which is also the package root, so npm packs it as is.
      The installed-package test asserts the packed copy matches the root file.
-   - [CHANGELOG.md](../CHANGELOG.md) lists every user-facing change since the last tag under
-     `Unreleased`, grouped as Added, Changed (a stricter rule that can fail code that passed
-     before goes here), Fixed and Upgrade notes. Check it against the merged pull requests:
-     `git log <last-tag>..origin/main --merges --oneline` after
-     `git fetch --depth=2000 origin main --tags`. Write for people who use nitpicker: leave out CI,
-     test and refactoring changes, and name no internal modules.
+   - Pull requests do not edit [CHANGELOG.md](../CHANGELOG.md); its entry for the release is written
+     in step 2. Fetch the tags and enough history to reach the last one:
+     `git fetch --depth=2000 origin main --tags`.
    - The README's claims match the release, and the base image versions in the `Dockerfile` are
      current (see [Container images](#container-images)).
    - The npm page renders the README and resolves its relative links against the GitHub
@@ -56,11 +53,28 @@ Work from a clean checkout of `main` with full history.
    `npm version <new-version> --no-git-tag-version`. This updates `package.json` and
    `package-lock.json`. Put the new version in the opening paragraph of each
    `skills/*/SKILL.md` ("Written for nitpicker <new-version>."); the skills test fails until they
-   match. In `CHANGELOG.md`, move the `Unreleased` entries under a new
-   `## [<new-version>] - <YYYY-MM-DD>` heading, leave an empty `Unreleased` section above it, and
-   update the link definitions at the bottom (`[Unreleased]` compares the new tag with `HEAD`, and the
-   new version links to its release). Commit it (`Release v<new-version>`) through a normal PR to
-   `main`. A test fails when `package.json` has a version that `CHANGELOG.md` has no entry for.
+   match. Then write the changelog entry:
+
+   ```sh
+   npm run release:changelog -- <new-version>
+   ```
+
+   `scripts/release/changelog.mts` lists the pull requests merged on `main` since the tag of the
+   newest version in `CHANGELOG.md` (`--since <ref>` starts elsewhere, for example when that tag
+   was never pushed), and puts each one that changes a shipped file under a new
+   `## [<new-version>] - <YYYY-MM-DD>` heading as `- <title> (#<number>)`, sorted into Added
+   (titles that start with Add, Support, Introduce or New), Fixed (titles that start with Fix) and
+   Changed. Entries already under `Unreleased` move to the new heading and keep their place, and a
+   pull request they mention is not added again. It leaves an empty `Unreleased` section above, updates the link definitions
+   at the bottom (`[Unreleased]` compares the new tag with `HEAD`, and the new version links to its
+   release), and prints the pull requests it left out because they change only tests, fixtures, CI,
+   scripts or documentation. Edit the entry before you commit: write each line for people who use
+   nitpicker, merge the pull requests that make one change, drop CI, test and refactoring changes,
+   name no internal modules, move a stricter rule that can fail code that passed before under
+   Changed, and add an Upgrade notes section when users need to act. Then commit it
+   (`Release v<new-version>`) through a normal PR to `main`. A test fails when `package.json` has a
+   version that `CHANGELOG.md` has no entry for.
+
 3. **Test.**
    ```sh
    npm ci
