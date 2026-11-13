@@ -89,9 +89,9 @@ async function startedApi({
   readonly entry: string;
 }): Promise<Started> {
   const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(entry);
-  const API = apiConstructorOf(await import(pathToFileURL(apiPath).href));
   let api: NativeApi | undefined;
   try {
+    const API = apiConstructorOf(await import(pathToFileURL(apiPath).href));
     api = new API({ cwd: projectRoot });
     await api.ensureInitialized();
     return { api };

@@ -77,8 +77,16 @@ export function projectFile(projectRoot: string, filePath: string): string {
 
 export function policyFile(options: StaticCheckOptions, relativePath: string): string {
   const normalizedPath = normalizedRelativePath(relativePath, relativePath);
-  const filePath = path.resolve(options.policyRoot, normalizedPath);
-  const relativeToPolicy = path.relative(options.policyRoot, filePath);
+  return policyPath(options.policyRoot, relativePath, normalizedPath);
+}
+
+export function policyPath(
+  policyRoot: string,
+  relativePath: string,
+  resolved = relativePath,
+): string {
+  const filePath = path.resolve(policyRoot, resolved);
+  const relativeToPolicy = path.relative(policyRoot, filePath);
   if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
     throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
   }

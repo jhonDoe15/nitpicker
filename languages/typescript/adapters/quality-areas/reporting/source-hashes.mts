@@ -162,7 +162,7 @@ function startsWith(source: string, location: Span | undefined, pattern: RegExp)
   );
 }
 
-function offsetOf(source: string, { line = 0, column }: Point): number {
+function offsetOf(source: string, { line = 1, column }: Point): number {
   const precedingLines = source.split('\n').slice(0, line - 1);
   return precedingLines.reduce((total, text) => total + text.length + 1, 0) + (column ?? 0);
 }

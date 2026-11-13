@@ -14,7 +14,7 @@ type Rule = Readonly<Record<string, unknown>>;
 
 type ResolveOptions = { readonly extensions?: unknown; readonly [key: string]: unknown };
 
-export type CruiseOptions = {
+type CruiseOptions = {
   readonly doNotFollow?: unknown;
   readonly exclude?: unknown;
   readonly enhancedResolveOptions?: ResolveOptions;

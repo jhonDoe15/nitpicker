@@ -37,7 +37,7 @@ export type ConsoleCall = {
   readonly test?: unknown;
 };
 
-export { type NodeToolSpawn, spawnNodeTool } from '../../quality-areas/runners/tooling.mts';
+export { spawnNodeTool } from '../../quality-areas/runners/tooling.mts';
 
 function called(untyped: unknown, values: readonly unknown[]): unknown {
   if (typeof untyped !== 'function') {
