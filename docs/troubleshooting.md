@@ -504,6 +504,21 @@ shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node
 `Cannot read properties of null (reading 'edgesOut')` while installing Vitest 4.1, see
 [npm 10 and Vitest 4.1](usage.md#npm-10-and-vitest-41).
 
+### No source files under the source roots
+
+**Symptom.** The run exits 2 with the `source-roots` tool error `No TypeScript or JavaScript files under
+<roots>; nothing was analyzed. Set "layout.sourceRoots" (...)`. It appears on every run, full or comparison.
+`nitpicker init` prints the same sentence instead of "No TypeScript or JavaScript sources under src yet".
+
+**Cause.** The TypeScript or JavaScript preset found no source file under `layout.sourceRoots` (default
+`src`) and no test file under `layout.testRoots`, so the code analyzers had nothing to check. A
+workspace root whose code sits in `packages/*/src` is the usual case. The message lists up to three
+folders that hold TypeScript or JavaScript files (package `src` folders, or top-level folders),
+skipping dependency folders, build output, hidden folders and ignored files.
+
+**Fix.** Set `layout.sourceRoots` in `nitpicker.config.json` to the folders that hold the code, for
+example `{ "preset": "typescript", "layout": { "sourceRoots": ["packages", "excalidraw-app"] } }`.
+
 ### Dependencies are not installed
 
 **Symptom.** `Dependencies are not installed: <dir>/node_modules is missing. Run `npm install` in

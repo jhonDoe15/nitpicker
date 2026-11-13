@@ -12,6 +12,7 @@ finding. The ones the TypeScript, JavaScript and React presets meet:
   [a test runner is not installed](../troubleshooting.md#a-test-runner-is-not-installed),
   [Jest collects no coverage](../troubleshooting.md#jest-collects-no-coverage) and
   [test timeouts need Vitest](../troubleshooting.md#test-timeouts-need-vitest).
+- [No source files under the source roots](../troubleshooting.md#no-source-files-under-the-source-roots).
 - [The lint or type-check engine cannot run](../troubleshooting.md#the-lint-or-type-check-engine-cannot-run),
   [a project package does not support this ESLint](../troubleshooting.md#a-project-package-does-not-support-this-eslint),
   [the TypeScript config cannot be read](../troubleshooting.md#the-typescript-config-cannot-be-read) and
