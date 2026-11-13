@@ -8,8 +8,8 @@ import {
   removeWorkspace,
   toolErrors,
 } from '../test-support/go-e2e-support.mjs';
-import { BASE_FILES } from './base-fixtures.mjs';
-import { SCENARIOS } from './scenarios.mjs';
+import { BASE_FILES } from './test-support/base-fixtures.mjs';
+import { SCENARIOS } from './test-support/scenarios.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 

@@ -6,6 +6,7 @@ import {
 } from '../../../../shared/rules/domain/domain-messages.mjs';
 import { listed } from '../../../../shared/rules/features/feature-boundaries.mjs';
 import { libraryConcern } from './go-domain-libraries.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const DOMAIN_SEGMENT = 'domain';
 const ADAPTER_SEGMENTS = new Set(['adapter', 'adapters', 'infrastructure', 'infra']);
@@ -35,9 +36,8 @@ function projectFolder(importPath, module) {
 const MAJOR_VERSION = /^v\d+$/u;
 
 function packageNames(importPath) {
-  const segments = importPath.split('/');
-  const last =
-    segments.length > 1 && MAJOR_VERSION.test(segments.at(-1)) ? segments.at(-2) : segments.at(-1);
+  const [final, previous] = importPath.split('/').toReversed();
+  const last = previous !== undefined && MAJOR_VERSION.test(final) ? previous : final;
   const bare = last
     .replace(/\.v\d+$/u, '')
     .replace(/^go[-.]/u, '')
@@ -79,7 +79,10 @@ function adapterFindings(usage, { owner, module }) {
       },
       adapterMessage({
         owner,
-        used: used.length === 0 ? `package ${localName(entry)}` : listed([...new Set(used)].sort()),
+        used:
+          used.length === 0
+            ? `package ${localName(entry)}`
+            : listed([...new Set(used)].toSorted(byText)),
         packageName: entry.path,
       }),
     ),

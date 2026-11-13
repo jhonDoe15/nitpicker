@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { goFactFindings } from './go-fact-findings.mjs';
 import { goFacts } from './go-facts.mjs';
 
@@ -251,8 +252,8 @@ describe('Go facts', () => {
       'feature-internal-import features/cart/cart.go',
       'shared-imports-feature shared/money/round.go',
     ]);
-    expect(findings.find(({ rule }) => rule === 'feature-internal-import').message).toContain(
-      'Import feature billing only through the package directly in features/billing/',
+    expect(findings.find(({ rule }) => rule === 'feature-internal-import').message).toBe(
+      `Import feature billing only through the package directly in features/billing/: features/cart/cart.go imports its internal module features/billing/store/store.go. Expose what it needs there, or move the code both use to a shared root. ${exceptionHint('feature-internal-import', 'features/cart/cart.go')}`,
     );
   });
 

@@ -106,7 +106,7 @@ func Load(l *ledger.Ledger) {
 };
 
 function endpoint(path, name, params) {
-  const directory = path.split('/').at(-2);
+  const [, directory] = path.split('/').toReversed();
   return {
     [`internal/${path}`]: `package ${directory}
 
