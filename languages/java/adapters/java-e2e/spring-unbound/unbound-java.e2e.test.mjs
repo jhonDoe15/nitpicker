@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { UNBOUND_FINDINGS, unboundProjects } from './unbound-project.mjs';
+import { UNBOUND_FINDINGS, unboundProjects } from './unbound-project.mts';
 
 const projects = unboundProjects();
 
