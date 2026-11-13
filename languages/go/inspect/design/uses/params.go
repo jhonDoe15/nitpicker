@@ -34,7 +34,12 @@ type walker struct {
 	stack  []ast.Node
 }
 
-func Params(env *scope.Env, declaration *ast.FuncDecl, accepts func(*index.TypeInfo) bool, known func(string) bool) []ParamUse {
+func Params(
+	env *scope.Env,
+	declaration *ast.FuncDecl,
+	accepts func(*index.TypeInfo) bool,
+	known func(string) bool,
+) []ParamUse {
 	if declaration.Body == nil || declaration.Type.Params == nil {
 		return nil
 	}
@@ -43,7 +48,10 @@ func Params(env *scope.Env, declaration *ast.FuncDecl, accepts func(*index.TypeI
 		_, variadic := param.Field.Type.(*ast.Ellipsis)
 		project := index.Ty{Expr: param.Field.Type, File: env.File}.Project()
 		if project != nil && !variadic && accepts(project) {
-			entry := &tracked{use: ParamUse{Param: param.Position, Fields: []string{}, Forwards: []Forward{}}, fields: map[string]bool{}}
+			entry := &tracked{
+				use:    ParamUse{Param: param.Position, Fields: []string{}, Forwards: []Forward{}},
+				fields: map[string]bool{},
+			}
 			w.params[param.Object] = entry
 			w.order = append(w.order, entry)
 		}

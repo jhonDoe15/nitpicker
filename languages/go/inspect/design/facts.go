@@ -4,6 +4,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/decide"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/reads"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
 
@@ -52,6 +53,7 @@ type Callable struct {
 	Calls        []calls.Call      `json:"calls,omitempty"`
 	ParamUses    []uses.ParamUse   `json:"paramUses,omitempty"`
 	Decisions    []decide.Decision `json:"decisions,omitempty"`
+	Reads        []reads.Read      `json:"reads,omitempty"`
 	OwnFields    []string          `json:"ownFields,omitempty"`
 	ReturnsField string            `json:"returnsField,omitempty"`
 	References   []string          `json:"references,omitempty"`

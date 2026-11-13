@@ -221,6 +221,7 @@ describe('the shared fact rules', () => {
       'test-only-export',
       'doc-comment-content',
       'test-console-output',
+      ...DESIGN_RULES,
     ]);
     withLanguageRegistered('public-alternative-bypass', 'go', () => {
       expect(sharedFactExceptionRules()).toEqual(python);

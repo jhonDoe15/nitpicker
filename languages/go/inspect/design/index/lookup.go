@@ -50,7 +50,9 @@ func (t *TypeInfo) Fields() []Field {
 	for _, field := range structure.Fields.List {
 		ty := Ty{Expr: field.Type, File: t.File}
 		if len(field.Names) == 0 {
-			fields = append(fields, Field{Owner: t, Name: ReceiverName(field.Type), Type: ty, Embedded: true, Line: t.File.Line(field.Pos())})
+			fields = append(fields, Field{
+				Owner: t, Name: ReceiverName(field.Type), Type: ty, Embedded: true, Line: t.File.Line(field.Pos()),
+			})
 		}
 		for _, name := range field.Names {
 			fields = append(fields, Field{Owner: t, Name: name.Name, Type: ty, Line: t.File.Line(name.Pos())})

@@ -808,6 +808,13 @@ type is the enum, whether it is a variable or a field. A decision with any other
 a call, `!=`, `&&`) is not listed, nor is a `switch` on a type. `default` and the last `else` are
 `otherwise`.
 
+**`foreign-state-decision`.** Report-only. Two functions in other files than a struct with methods
+that branch on the same 2 or more of its fields. A field is decided when it is selected on a
+parameter or local of the struct type (or on a field of the receiver) inside the condition of an
+`if` or `for`, the tag of a `switch`, or a case expression of a tagless `switch`; reading it in a
+body does not count. Methods of the struct, structs without methods and fields reached through a
+call result or a second selector are not judged.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 

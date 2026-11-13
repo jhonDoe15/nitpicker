@@ -8,6 +8,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/decide"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/reads"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
@@ -103,6 +104,7 @@ func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) C
 		Calls:        calls.Collect(env, info.Decl.Body, known),
 		ParamUses:    uses.Params(env, info.Decl, hasMembers, known),
 		Decisions:    decide.Of(env, info.Decl.Body),
+		Reads:        reads.Of(env, info.Decl.Body),
 		OwnFields:    uses.OwnFields(env, info),
 		ReturnsField: returnedField(env, info),
 		References:   uses.References(env, info.Decl.Body, known),
@@ -112,7 +114,8 @@ func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) C
 func memberFact(member index.Member) Callable {
 	file := member.Owner.File
 	return Callable{
-		ID: member.ID(), File: file.Path, Name: member.Name, Line: file.Line(member.Sig.Pos()), Kind: "method", Owner: member.Owner.ID(),
+		ID: member.ID(), File: file.Path, Name: member.Name, Line: file.Line(member.Sig.Pos()),
+		Kind: "method", Owner: member.Owner.ID(),
 		Exported: ast.IsExported(member.Name) && ast.IsExported(member.Owner.Name),
 		Params:   signatureParams(member.Sig, file), Returns: signatureReturns(member.Sig, file),
 	}
