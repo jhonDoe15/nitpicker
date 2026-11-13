@@ -1136,7 +1136,10 @@ code imports the files it newly covers. An entry point names a file that a comma
 without an import, such as a script run by path, a worker or a test reporter. The dead-code and
 unused-export checks treat it as used, and it may do what a program start does: with
 `layout.entryPoints`, module-load effects, process access and service-locator lookups (it counts as
-a composition root); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
+a composition root; the TypeScript and JavaScript presets already detect files that a script, a CI
+step, a worker or spawn call with a literal path, a build task, a shebang or a main-module guard
+starts, and the Python preset a module with an `if __name__ == "__main__":` block or one that a CI
+step or `pyproject.toml` task runs); with `python.entryPoints`, `process-env-access`, `process-stream-access`,
 `import-time-effect` and `service-locator-lookup` skip it. Every other check still applies. A file
 that a production file under the source roots imports is not an entry point, so an added entry that
 newly covers one (a broad glob such as `**`, for example) is loosening, and the finding names the
@@ -2370,7 +2373,9 @@ own tools do:
   the source and test roots are context only: their own diagnostics are not reported. Because `noEmit`
   is set, `.js` files that the project's tsconfig includes no longer fail with TS5055; they get the
   JavaScript lint rules, `no-var` and `prefer-const` among them, and the type-aware `no-unsafe-*`,
-  `restrict-plus-operands` and `restrict-template-expressions` rules, so code a change adds to an
+  `restrict-plus-operands` and `restrict-template-expressions` rules (these seven run on a
+  JavaScript file only where the tsconfig that covers it sets `checkJs`: without it most values in
+  the file are `any` and the rules would only report missing types), so code a change adds to an
   existing `.js` file is held to the types it can see. A new `.js`, `.mjs`, `.cjs` or `.jsx` file
   under the source or test roots of a TypeScript project (one with a `tsconfig.json` at the root or
   in a package, or a config such a `tsconfig.json` references) fails as

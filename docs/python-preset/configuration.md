@@ -83,6 +83,14 @@ skip a file listed there. Like `layout.entryPoints`, an added or removed entry i
 policy changes and does not fail the gate, unless another production module imports a file it newly
 covers; the base snapshot is measured with the entry points both sides declare.
 
+Nothing needs listing for a file that is started in a way the gate can read: a module with an
+`if __name__ == "__main__":` block, a module that a `pyproject.toml` task or a GitHub Actions step
+runs as `python path/to/file.py` (also through `uv run`, `poetry run` and similar launchers), and a
+module started as `python -m package.module`. These count as composition roots for
+`process-env-access`, `process-stream-access` and `service-locator-lookup`; `import-time-effect`
+still reports an effect outside the main guard, and the files that a CI step or task runs are
+exempt from it like the files above.
+
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
 `--ignore-glob` in `addopts`, both counted only for files pytest collects (`python_files`), and a

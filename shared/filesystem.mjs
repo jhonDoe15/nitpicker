@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { depthFirst } from './traversal.mjs';
 
@@ -9,6 +9,10 @@ export function pathInside(root, relative) {
     return undefined;
   }
   return full;
+}
+
+export function readTextIfExists(file) {
+  return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
 export function firstFileIn(root, names) {
