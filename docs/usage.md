@@ -2250,8 +2250,8 @@ new and touched code must comply.
   keyword (arrow functions only as callbacks); named exports only (config files and
   `declare module` blocks may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
-  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
+  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and
+  as an object field or array element in the data passed to `JSON.stringify`, or its replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
   (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
@@ -3164,6 +3164,10 @@ Findings match ESLint's with these known differences:
 
 - Type-aware rules see the project through TypeScript 7, so a rule such as
   `@typescript-eslint/unbound-method` can find a few cases TypeScript 6 missed.
+  TypeScript 7 removed some compiler options, so oxlint gets a copy of the lint config with those
+  unset (TypeScript 7's defaults apply), `rootDir` unset, `isolatedDeclarations` off and `types` that
+  are not installed left out. A config error oxlint still reports fails the analyzer; see
+  [The TypeScript config cannot be read](troubleshooting.md#the-typescript-config-cannot-be-read).
 - A disable comment for a rule the analyzer does not run is reported as unused, where ESLint
   reports that the rule definition was not found.
 - Rules oxlint has its own port of word some messages differently, and a few report a different
