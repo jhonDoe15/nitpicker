@@ -9,6 +9,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `Promise.allSettled` over the releases, then rethrow the first failure, or `try { ... } finally { reset }`;
   never `await a.close(); await b.close();` or `Promise.all` of releases
   (`nitpicker/no-cleanup-skipped-on-failure`).
+- A close function that clears a map of pending callbacks or resolve/reject pairs rejects every entry first
+  (`for (const entry of pending.values()) entry.reject(new Error('closed'));`), so no caller waits forever
+  (`nitpicker/settle-pending-on-close`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

@@ -128,3 +128,21 @@ export function statementsOf(code, block) {
   }
   return statements;
 }
+
+export function memberProperties(code, body, depths = braceDepths(code)) {
+  const text = code.slice(body.open + 1, body.end);
+  const depth = depths[body.open + 1];
+  return [...text.matchAll(PROPERTY_HEADER)]
+    .map((match) => {
+      const offset = match.index + body.open + 1;
+      const line = code.indexOf('\n', offset);
+      return {
+        kind: match[1],
+        name: match[2],
+        offset,
+        depth: depths[offset],
+        text: code.slice(offset, line === -1 ? code.length : line),
+      };
+    })
+    .filter((property) => property.depth === depth);
+}

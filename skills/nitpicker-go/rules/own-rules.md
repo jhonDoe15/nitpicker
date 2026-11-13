@@ -35,6 +35,8 @@ the allowed form and ends with its exception entry.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).
+- A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
+  clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
 
 ## Package state and design
 

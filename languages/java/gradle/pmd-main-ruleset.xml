@@ -934,6 +934,31 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="PendingFuturesNotFailedOnClose" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This map keeps pending requests as futures, but the close method of its class never completes them, so every caller still waiting hangs forever. In close, complete every entry exceptionally (pending.values().forEach(f -&gt; f.completeExceptionally(new IllegalStateException(&quot;closed&quot;)))) and then clear the map. An exception fits only when the entries are completed elsewhere before the class closes.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $closers := ('close', 'shutdown', 'stop', 'disconnect', 'destroy', 'dispose', 'end', 'cleanup'),
+    $bookkeeping := ('clear', 'size', 'isEmpty', 'containsKey', 'remove', 'put', 'putIfAbsent', 'get', 'add', 'contains'),
+    $loggers := ('log', 'LOG', 'logger', 'LOGGER')
+return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
+  [ClassType[pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Collection')]]
+  [.//TypeArguments//ClassType[@SimpleName = ('CompletableFuture', 'Future', 'CompletionStage', 'SettableFuture',
+                                              'Promise', 'DeferredResult')]]
+  [let $name := VariableDeclarator[1]/@Name,
+       $body := ancestor::ClassBody[1],
+       $closing := $body/MethodDeclaration[@Name = $closers or ModifierList/Annotation[@SimpleName = 'PreDestroy']],
+       $called := $closing//MethodCall/@MethodName
+   return exists($closing)
+     and empty(($closing | $body/MethodDeclaration[@Name = $called])//*[self::MethodCall or self::ConstructorCall]
+                [not(self::MethodCall and (@MethodName = $bookkeeping or *[1][@Name = $loggers]))]
+                [.//*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.">
     <priority>3</priority>

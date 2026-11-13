@@ -126,6 +126,7 @@ import { rule as ruleRequireProcessTimeout } from './rules/processes/require-pro
 import { rule as ruleRequirePromiseReject } from './rules/promises/executors/require-promise-reject.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as ruleReusableObjectPerCall } from './rules/reuse/reusable-object-per-call.mjs';
+import { rule as ruleSettlePendingOnClose } from './rules/lifecycles/pending/settle-pending-on-close.mjs';
 import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
@@ -267,6 +268,7 @@ export const directoryRules = {
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'reusable-object-per-call': ruleReusableObjectPerCall,
+  'settle-pending-on-close': ruleSettlePendingOnClose,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,

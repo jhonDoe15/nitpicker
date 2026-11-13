@@ -34,7 +34,7 @@ export function unwrapExpression(node) {
   return chainEnd(node, (current) => (WRAPPERS.has(current.type) ? current.expression : undefined));
 }
 
-function chainEnd(start, next) {
+export function chainEnd(start, next) {
   const chain = [start];
   for (const current of chain) {
     const following = next(current);

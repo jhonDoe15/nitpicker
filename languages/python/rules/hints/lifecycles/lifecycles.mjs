@@ -11,4 +11,12 @@ export const LIFECYCLE_HINTS = [
     allowed:
       'Register every release on `contextlib.ExitStack` or `AsyncExitStack` (`stack.callback(x.close)`, `await stack.enter_async_context(...)`), or `await asyncio.gather(..., return_exceptions=True)` and raise the first failure, or `try:` with the reset in `finally:`. An exception fits only when a failed release should abort the remaining ones.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['pending-unsettled-on-close'],
+    describe: (subject) =>
+      `\`${subject}()\` clears the futures kept for pending requests without failing them, so every caller still awaiting one waits forever`,
+    allowed:
+      'In the close method, fail every pending future and then clear the dict: `for future in self._pending.values(): future.set_exception(ConnectionError("closed"))` (or `future.cancel()`), or hand the dict to a helper that does. An exception fits only when the futures are failed elsewhere before the object closes.',
+  },
 ];

@@ -186,6 +186,7 @@ describe('readKotlinSourceFindings', () => {
         'MutationIgnoreMarker',
         'OperandSlip',
         'ParameterMutation',
+        'PendingFuturesNotFailedOnClose',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',
         'RegexPartDefect',

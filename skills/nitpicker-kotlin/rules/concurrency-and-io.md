@@ -34,6 +34,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/FutureWithoutException`).
 - A `close()`, `@AfterEach` or `@PreDestroy` function that releases several resources uses `use` or `try`/`finally`
   per release, never `a.close()` then `b.close()` in sequence (`kotlin-source/CleanupSkippedOnFailure`).
+- A `close()` that clears a map of pending `CompletableDeferred` or futures completes every entry first
+  (`pending.values.forEach { it.completeExceptionally(...) }`), so no caller waits forever
+  (`kotlin-source/PendingFuturesNotFailedOnClose`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
