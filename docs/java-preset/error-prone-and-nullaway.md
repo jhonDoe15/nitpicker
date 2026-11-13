@@ -21,6 +21,20 @@ Part of the [Java preset guide](../java-preset.md).
   path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
   type may permit classes in another package. Test sources compile on the class path, without the
   descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Why it is a separate compile.** Error Prone runs as its own javac pass on both build tools, not
+  inside the project's compile. The pass uses `-XDcompilePolicy=simple` and
+  `--should-stop=ifError=FLOW`, so javac goes on through flow analysis (where Error Prone's checks
+  run) even when an earlier phase reported an error, and the diagnostics come back as a structured
+  report. Its classes go to a throwaway directory and are never used. Attaching Error Prone to the
+  project's own compile instead would need the findings to come from compiler diagnostics, the
+  project's Error Prone arguments to keep their precedence, error-level checks not to fail the
+  project's own build, and, on Maven, which has no user property for `compilerArgs` or
+  `annotationProcessorPaths`, a build extension or a POM rewrite. That is a redesign for the few
+  seconds the pass costs per module (5.8 to 6.0 s in total over the three modules of the Maven
+  multi-module fixture, in a run of about 29 s), and Error Prone's own analysis would run either
+  way. Gradle and Maven therefore behave the same: one compile for the build, one analysis pass for
+  Error Prone. On Maven the pass runs side by side with the module's other tools (PMD, SpotBugs,
+  Checkstyle, the format check, structure metrics, jdeps), so it adds little to the wall time.
 - **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
   reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
   per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
