@@ -7,7 +7,8 @@ import { isClassExempt } from './exemptions/class-exemptions.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
 import { sourceReader } from './lombok/source-text.mjs';
-import { checksOf } from './checks/checks-shape.mts';
+import { errorProneChecks } from './checks/checks-docs.mts';
+import type { ErrorProneChecks } from './checks/checks-shape.mts';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -22,10 +23,6 @@ type Finding = Readonly<Record<string, unknown>>;
 const ERROR_PRONE_REPORT = 'errorprone.json';
 const SENTENCE_END = /[.?!:]$/u;
 const LISTED_OUTSIDE_FILES = 5;
-const CHECKS = checksOf(
-  JSON.parse(readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8')),
-);
-const CERTAIN_BUGS = new Set(CHECKS.certainBugs);
 
 function guavaRead(manifest: unknown, testRoots: readonly string[]): (file: string) => boolean {
   return (file) => fieldOf(manifest, inRoots(file, testRoots) ? 'testGuava' : 'guava') !== false;
@@ -47,13 +44,18 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   const report: unknown = JSON.parse(readFileSync(reportPath, 'utf8'));
   const { diagnostics, crashes } = splitCrashes(report);
   const readSource: unknown = sourceReader(context.reportRoot);
-  const ingested = callUntyped(ingestErrorProne, withoutExemptCode(diagnostics, readSource), {
-    resolvePath: (file: string) => lintedPath(file, placement),
-    guava: guavaRead(manifest, testRoots),
-  });
+  const checks = errorProneChecks();
+  const ingested = callUntyped(
+    ingestErrorProne,
+    withoutExemptCode(diagnostics, readSource, checks),
+    {
+      resolvePath: (file: string) => lintedPath(file, placement),
+      guava: guavaRead(manifest, testRoots),
+    },
+  );
   return [
     ...listOf(fieldOf(ingested, 'findings')).map((finding) =>
-      withExceptionRoute(fieldsOf(finding), testRoots),
+      withExceptionRoute(fieldsOf(finding), testRoots, checks),
     ),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
@@ -111,7 +113,11 @@ function unmappedError(outside: ReadonlySet<string>, roots: readonly string[]): 
   );
 }
 
-function withoutExemptCode(diagnostics: unknown, readSource: unknown): string {
+function withoutExemptCode(
+  diagnostics: unknown,
+  readSource: unknown,
+  checks: ErrorProneChecks,
+): string {
   if (!Array.isArray(diagnostics)) {
     return JSON.stringify(diagnostics);
   }
@@ -125,16 +131,20 @@ function withoutExemptCode(diagnostics: unknown, readSource: unknown): string {
   return JSON.stringify(
     listOf(diagnostics).filter(
       (diagnostic) =>
-        isClassExempt(diagnostic, CHECKS.classExemptions) !== true &&
+        !isClassExempt(diagnostic, checks.classExemptions) &&
         !isIntegrationTestName(diagnostic) &&
-        isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file')))) !== true,
+        !isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file')))),
     ),
   );
 }
 
-function withExceptionRoute(finding: Finding, testRoots: readonly string[]): Finding {
+function withExceptionRoute(
+  finding: Finding,
+  testRoots: readonly string[],
+  checks: ErrorProneChecks,
+): Finding {
   const findingPath = textOf(finding['path']);
-  if (CERTAIN_BUGS.has(textOf(finding['rule'])) && !inRoots(findingPath, testRoots)) {
+  if (checks.certainBugs.includes(textOf(finding['rule'])) && !inRoots(findingPath, testRoots)) {
     return finding;
   }
   const rule = `${textOf(finding['tool'])}/${textOf(finding['rule'])}`;

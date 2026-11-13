@@ -61,7 +61,7 @@ function declaredEntry(declared: Declared, { resolved, names }: Usage): Record<s
     group: fieldOf(match, 'groupId') ?? declared.group,
     name: declared.name,
     archives: archives.map((file) => path.basename(file)),
-    used: archives.some((archive) => usesArchive(archive, names) === true),
+    used: archives.some((archive) => usesArchive(archive, names)),
   };
 }
 

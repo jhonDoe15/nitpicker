@@ -1,6 +1,7 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
 import { hash } from '../../../shared/rules/finding-helpers.mjs';
+import { escapeRegExp as escapedText } from '../../../shared/paths/glob.mjs';
 import { listOf, textOf } from '../../../shared/values/readers.mts';
 
 type Mutant = {
@@ -27,6 +28,8 @@ type Grouped = { readonly mutant: Mutant; readonly status: string; readonly file
 type GroupEntry = Grouped & { readonly key: string };
 type Groups = Map<string, GroupEntry[]>;
 type LineAt = (filePath: string, line: number) => string | undefined;
+
+const escapeRegExp: (value: string) => string = escapedText;
 
 const PIT_WAY_OUT =
   'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
@@ -218,7 +221,9 @@ function mutator(qualifiedName: string): string {
 function parseMutant(attributes: string, body: string): Mutant | undefined {
   const status = /\bstatus\s*=\s*['"]([^'"]*)['"]/u.exec(attributes)?.[1];
   function field(name: string): string | undefined {
-    const match = new RegExp(`<${name}>([^<]*)</${name}>`, 'u').exec(body);
+    const match = new RegExp(`<${escapeRegExp(name)}>([^<]*)</${escapeRegExp(name)}>`, 'u').exec(
+      body,
+    );
     return match === null ? undefined : textOf(decodeEntities(match[1] ?? ''));
   }
   const className = field('mutatedClass');
