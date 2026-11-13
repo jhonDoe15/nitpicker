@@ -40,7 +40,7 @@
     "gen:schema": "node scripts/schema/gen-config-schema.mts",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
     "typecheck": "tsc -p tsconfig.json",
-    "prepack": "node scripts/reference/gen-rules.mjs --data && node scripts/typescript/emit.mjs",
+    "prepack": "node scripts/typescript/emit.mjs && node scripts/reference/gen-rules.mjs --data",
     "postpack": "node scripts/typescript/emit.mjs --clean",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mts",
     "measure:shard-weights": "node scripts/shard-weights/measure.mts",
