@@ -249,6 +249,13 @@ describe('container image toolchains', () => {
   });
 });
 
+function matchingLines(text, pattern) {
+  return text
+    .split('\n')
+    .filter((line) => pattern.test(line))
+    .map((line) => line.trim());
+}
+
 describe('container workflow', () => {
   const variants = stageNames()
     .filter((name) => !HELPER_STAGES.includes(name))
@@ -261,8 +268,34 @@ describe('container workflow', () => {
     expect(built.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
   });
 
+  it('builds every variant on a native runner of each architecture', () => {
+    expect(setting(containerWorkflow, /platform: \[([\w, ]+)\]/).split(', ')).toEqual([
+      'amd64',
+      'arm64',
+    ]);
+    expect(matchingLines(containerWorkflow, /^\s*(runs-on|platforms): .*matrix\.platform/)).toEqual(
+      [
+        `runs-on: \${{ matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}`,
+        `platforms: linux/\${{ matrix.platform }}`,
+      ],
+    );
+  });
+
+  it('joins both architectures into one manifest per published tag', () => {
+    const manifest = containerWorkflow.slice(containerWorkflow.indexOf('  manifest:'));
+    const joined = setting(manifest, /for variant in ([\w ]+); do/).split(' ');
+    expect(joined.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
+    expect(matchingLines(manifest, /imagetools create --tag "\$tag"|-amd64"/)).toEqual([
+      'docker buildx imagetools create --tag "$tag" \\',
+      `"\${image}:\${VERSION}-\${variant}-amd64" "\${image}:\${VERSION}-\${variant}-arm64"`,
+    ]);
+    const latest = containerWorkflow.slice(containerWorkflow.indexOf('\n  latest:') + 1);
+    expect(latest.split('\n').slice(0, 2)).toEqual(['  latest:', '    needs: [changes, manifest]']);
+  });
+
   it('moves the latest tag of every image variant', () => {
-    const moved = setting(containerWorkflow, /for variant in ([\w ]+); do/).split(' ');
+    const latest = containerWorkflow.slice(containerWorkflow.indexOf('  latest:'));
+    const moved = setting(latest, /for variant in ([\w ]+); do/).split(' ');
     expect(moved.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
   });
 });
