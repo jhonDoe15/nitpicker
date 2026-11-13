@@ -105,3 +105,23 @@ func (e *Env) methodOnVariable(variable, name string) Callee {
 	}
 	return Callee{Kind: Method, Member: member, Receiver: ast.NewIdent(variable)}
 }
+
+func (c Callee) Target() string {
+	switch c.Kind {
+	case Function:
+		return c.Func.ID()
+	case Method:
+		return c.Member.ID()
+	}
+	return ""
+}
+
+func (c Callee) Signature() *ast.FuncType {
+	switch c.Kind {
+	case Function:
+		return c.Func.Decl.Type
+	case Method:
+		return c.Member.Sig
+	}
+	return nil
+}

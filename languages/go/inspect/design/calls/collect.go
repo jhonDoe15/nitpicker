@@ -20,16 +20,6 @@ type site struct {
 	at   token.Pos
 }
 
-func targetOf(callee scope.Callee) string {
-	switch callee.Kind {
-	case scope.Function:
-		return callee.Func.ID()
-	case scope.Method:
-		return callee.Member.ID()
-	}
-	return ""
-}
-
 func Collect(env *scope.Env, body *ast.BlockStmt, known func(string) bool) []Call {
 	if body == nil {
 		return nil
@@ -40,7 +30,7 @@ func Collect(env *scope.Env, body *ast.BlockStmt, known func(string) bool) []Cal
 		if !ok {
 			return true
 		}
-		target := targetOf(env.Callee(call))
+		target := env.Callee(call).Target()
 		if target != "" && known(target) {
 			sites = append(sites, site{
 				call: Call{Target: target, Line: env.File.Line(call.Lparen)},

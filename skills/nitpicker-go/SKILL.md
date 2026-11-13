@@ -116,6 +116,16 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
 - `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
   import (`unused-dependency`, `unlisted-dependency`).
 
+## Deep modules
+
+- Keep a type's state behind its methods. A method that returns a private slice, map or pointer
+  field (`return c.items`) hands callers in other files the state: editing the result
+  (`lines[0] = x`, `delete(m, k)`, `sort.Strings(c.Lines())`) fails `mutable-state-escape`. Return a
+  copy (`slices.Clone`) or add the operation to the type.
+- Pass a function the values it reads. A struct of 5 or more fields handed whole through 2 or more
+  functions that read a third of it is reported by `context-threading` (report-only); pass those
+  values, or a small struct with just them.
+
 ## Size and tests
 
 - A function stays within 50 lines, 15 statements, 2 levels of control nesting and 3 parameters
