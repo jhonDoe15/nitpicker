@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { lintWithOxlint } from '../oxlint-runner.mjs';
+import { lintWithOxlint } from '../oxlint-runner.mts';
 
 const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
 

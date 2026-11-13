@@ -222,7 +222,7 @@ export function isInlineHost(name) {
   return INLINE_HOSTS.has(name);
 }
 
-export function waitMessage(found, awaitility = false) {
+export function waitMessage(found, awaitility) {
   const { rule, kind } = found;
   if (rule === NEGATIVE_WAIT_RULE) {
     return NEGATIVE_MESSAGE;

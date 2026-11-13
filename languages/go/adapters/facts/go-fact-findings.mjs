@@ -1,6 +1,7 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
 import { inspectBaseline, readInspect } from '../structure/go-inspect.mjs';
 import { readTestRun } from '../tests/go-test.mjs';
 import { goFacts } from './go-facts.mjs';
@@ -53,7 +54,9 @@ function findings(facts, { rules, policy, baseline, analyzerName = ANALYZER_NAME
           exceptions: policy.exceptions ?? [],
           ...(policy.layout === undefined ? {} : { layout: policy.layout }),
           ...(policy.testConsole === undefined ? {} : { testConsole: policy.testConsole }),
+          ...(policy.protocols === undefined ? {} : { protocols: policy.protocols }),
         },
+        publicFace: PUBLIC_FACES.go,
         duplicatesAcrossPackages: true,
         siblingCopiesAcrossPackages: true,
         privateCopyFix: PRIVATE_COPY_FIX,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDeadCode } from './dead-code.mjs';
+import { normalizeDeadCode } from './dead-code.mts';
 
 const manifestReport = {
   issues: [

@@ -29,8 +29,9 @@ function installedInIgnoredFolder(clone) {
   writeFileSync(path.join(clone, '.gitignore'), 'node_modules\n');
   const installed = path.join(clone, 'node_modules/nitpicker');
   for (const [file, contents] of importClosure([LISTING_MODULE, 'package.json'], PACKAGE_ROOT)) {
-    mkdirSync(path.dirname(path.join(installed, file)), { recursive: true });
-    writeFileSync(path.join(installed, file), shippedContents(file, contents));
+    const shipped = path.join(installed, file.replace(/\.mts$/u, '.mjs'));
+    mkdirSync(path.dirname(shipped), { recursive: true });
+    writeFileSync(shipped, shippedContents(file, contents));
   }
   symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(installed, 'node_modules'), 'dir');
   return installed;

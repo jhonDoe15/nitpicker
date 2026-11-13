@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
-import { startV8Coverage } from './v8-coverage-run.mjs';
+import { startV8Coverage } from './v8-coverage-run.mts';
 
 const projects = createRunnerProjects();
 

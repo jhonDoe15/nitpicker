@@ -14,8 +14,8 @@ import { byText } from '../text-order/by-text.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const IGNORED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__', 'e2e', '__pycache__']);
-const SOURCE_FILE = /\.(?:[cm]?js|py|java|kt|kts|gradle)$/u;
-const TEST_FILE = /\.test\.[cm]?js$/u;
+const SOURCE_FILE = /\.(?:[cm]?js|mts|py|java|kt|kts|gradle)$/u;
+const TEST_FILE = /\.test\.(?:[cm]?js|mts)$/u;
 const KOTLIN_FILE = /kotlin/iu;
 const PYTHON_FILE = /\.py$/u;
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu;
@@ -50,6 +50,12 @@ const RULES_BUILT_FROM = new Map([
   [RULE_IDS.featureInternalImport, 'feature-internals-only-through-index'],
   [RULE_IDS.sharedImportsFeature, 'shared-does-not-import-features'],
   [RULE_IDS.featureCycle, 'no-production-cycles'],
+  [RULE_IDS.domainImportsAdapter, 'domain-does-not-import-adapters|io-in-domain'],
+  [RULE_IDS.domainImportsIo, 'domain-does-not-import-node-io|io-in-domain'],
+  [RULE_IDS.domainImportsClient, 'domain-does-not-import-network-or-database-clients|io-in-domain'],
+  [RULE_IDS.domainImportsLogger, 'domain-does-not-import-the-logger|logger-in-domain'],
+  [RULE_IDS.domainImportsRandom, 'domain-does-not-import-id-libraries|random-in-domain'],
+  [RULE_IDS.domainReachesIo, 'domain-does-not-reach-io-through-shared|helper-chain'],
 ]);
 
 const LANGUAGE_SOURCES = {

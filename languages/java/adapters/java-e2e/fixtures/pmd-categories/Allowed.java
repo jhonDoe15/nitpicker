@@ -106,6 +106,20 @@ public class Allowed {
     }
   }
 
+  public String label(String name, int ignoredWidth) { return name; }
+
+  public static void main(String[] args) {}
+
+  @Deprecated
+  public String handler(String name, Object request) { return name; }
+
+  public String bound(String name, @Deprecated Object request) { return name; }
+
+  static class Rank implements Comparable<Rank> {
+    @Override
+    public int compareTo(Rank other) { return 0; }
+  }
+
   static class Worker extends Thread {
     @Override
     public void run() { super.run(); }

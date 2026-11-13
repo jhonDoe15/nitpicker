@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "unbounded-collection",
+    "mention": "Remove the entry when its request, session or run ends"
+  }
+]

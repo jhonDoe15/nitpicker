@@ -33,6 +33,13 @@ function securityRuleIds(filename, code, options = {}) {
     .filter((ruleId) => /tls|timeout|sql|hash|deserialization/u.test(ruleId ?? ''));
 }
 
+function secretRuleIds(filename, code) {
+  const config = productionPolicyConfigFor(defaultResolvedLayout);
+  return lintFixture({ config, filename, code })
+    .map((message) => message.ruleId)
+    .filter((ruleId) => /secret/u.test(ruleId ?? ''));
+}
+
 describe('security facts', () => {
   it.each(['vue', 'svelte', 'preact', 'solid-js', '@angular/core', 'react'])(
     'treats a %s project as browser code, so fetch needs no timeout',
@@ -120,6 +127,27 @@ describe('security rule scope', () => {
     expect(securityRuleIds('src/feature/agent.ts', code)).toEqual([
       'nitpicker/no-disabled-tls-verification',
       'nitpicker/require-http-timeout',
+    ]);
+  });
+});
+
+describe('secret rule scope', () => {
+  const code =
+    'export const url = "postgres://app:Hunter2x@db/app";\nexport const log = (token: string) => console.log(token);\n';
+
+  it.each([
+    'src/test-support/credentials.ts',
+    'src/mocks/handlers.ts',
+    'src/__fixtures__/credentials.ts',
+    'src/components/Button.stories.ts',
+  ])('does not apply to the test support file %s', (file) => {
+    expect(secretRuleIds(file, code)).toEqual([]);
+  });
+
+  it('applies to production code', () => {
+    expect(secretRuleIds('src/feature/credentials.ts', code)).toEqual([
+      'nitpicker/no-hardcoded-secret',
+      'nitpicker/no-secret-in-log',
     ]);
   });
 });

@@ -150,11 +150,11 @@ export function parseGoArguments(runnerArguments) {
 
 export function runGo(runnerArguments, { spawn, environment } = {}) {
   const { projectRoot, settings, policy, part } = parseGoArguments(runnerArguments);
-  const { conventions, layout, testConsole } = readHeadPolicyFile(environment);
+  const { conventions, layout, testConsole, protocols } = readHeadPolicyFile(environment);
   return analyzeGoSnapshot({
     projectRoot: realpathSync(projectRoot),
     settings,
-    policy: { ...policy, conventions, layout, testConsole },
+    policy: { ...policy, conventions, layout, testConsole, protocols },
     spawn,
     environment,
     part,

@@ -6,6 +6,7 @@ from credentials.spec import (
     EMBEDDED_SECRET_PATTERNS,
     IDENTIFIER_PATTERNS,
     MARKER_TOKEN_WORDS,
+    MASKED_NAME_WORDS,
     NOT_SECRET_PATTERNS,
     PASSPHRASE_LENGTH,
     PASSPHRASE_NAME_WORDS,
@@ -62,7 +63,8 @@ def joined_letters(words):
 def is_secret_name(name):
     words = name_words(name)
     marker = len(words) > 1 and words[-1] == "token" and words[-2] in MARKER_TOKEN_WORDS
-    return not marker and bool(SECRET_NAME.search(joined_letters(words)))
+    masked = any(word in MASKED_NAME_WORDS for word in words)
+    return not (marker or masked) and bool(SECRET_NAME.search(joined_letters(words)))
 
 
 def is_candidate(text):
