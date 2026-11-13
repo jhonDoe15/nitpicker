@@ -2003,6 +2003,20 @@ skipped and planned again on the new text. Recipes repeat until nothing changes,
 and a fix still left after that is named in a "Fix notes:" line. A recipe that fails is reported as
 a tool error, and the other recipes still run.
 
+### Fixes in the reports
+
+A new finding whose rule has a recipe in the table above carries a `fix` in `new-findings.json`:
+`{ recipe, safety, path, sha256, textLength, edits }`. The edits use the engine's shape (`replace` with
+`start` and `end` offsets in UTF-16 code units, or `write` of the whole file) and are only a plan:
+nitpicker writes no file for them. Apply them only when `path` still has the `sha256` given. A fix
+that touches more than one file has `recipe` and `safety` only. An analyzer that already knows the
+edit may set `fix` on its finding, and nitpicker keeps it. Presets whose recipes are not shipped yet
+(TypeScript, JavaScript, Python, Go) have findings without a `fix` for now.
+
+In `report.sarif` and `report-baseline.sarif`, the result of such a finding has `fixes[]` with
+`artifactChanges[].replacements[]`: a `deletedRegion` with `charOffset` and `charLength`, and the
+`insertedContent.text`. Editors and code review tools can offer it as one click.
+
 ## Java preset
 
 Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,

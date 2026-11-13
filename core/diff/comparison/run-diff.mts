@@ -221,6 +221,7 @@ function runAndCombine(context: RunContext): DiffReport {
     runHeadAnalyzers(context, baselineMovesFile),
   );
   return combineAnalyzerReports({
+    headRoot: context.roots.headSnapshotRoot,
     analyzers: settings.analyzers,
     baseRun,
     headRun,

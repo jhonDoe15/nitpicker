@@ -1,4 +1,5 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { parseFix } from './schema/fix-field.mjs';
 import { parseLineRanges, parseNotRunFields } from './schema/not-run-fields.mjs';
 import {
   isRecord,
@@ -94,6 +95,7 @@ const OPTIONAL_PARSERS = {
   anchor: parseAnchor,
   helpUri: parseHelpUri,
   cause: parseCause,
+  fix: parseFix,
 };
 
 function parseOptionalFields(value, classification, context) {
