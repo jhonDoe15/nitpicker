@@ -1,0 +1,63 @@
+def minuteMs = 60_000L
+def windowsCommandLimit = 30000
+
+def stopTree = { Process process ->
+    def descendants = process.metaClass.respondsTo(process, 'descendants') ? process.descendants().toList() : []
+    descendants.each { it.destroyForcibly() }
+    process.destroyForcibly()
+    process.waitFor()
+}
+
+def launcherJava9 = { JavaExec task ->
+    task.javaLauncher.isPresent() ? task.javaLauncher.get().metadata.languageVersion.asInt() >= 9
+        : JavaVersion.current().isJava9Compatible()
+}
+
+def launchCommand = { JavaExec task, File directory ->
+    def launcher = task.javaLauncher.isPresent() ? task.javaLauncher.get().executablePath.asFile.absolutePath : null
+    def java = launcher ?: task.executable ?: new File(System.getProperty('java.home'), 'bin/java').absolutePath
+    def arguments = task.allJvmArgs.collect { it.toString() } +
+        ['-cp', task.classpath.files*.absolutePath.join(File.pathSeparator), task.mainClass.get()] +
+        task.args.collect { it.toString() }
+    if (File.separatorChar != ('\\' as char) || arguments.join(' ').length() < windowsCommandLimit || !launcherJava9(task)) {
+        return [java] + arguments
+    }
+    def file = new File(directory, 'launch.args')
+    file.text = arguments.collect { argument ->
+        '"' + argument.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r') + '"\n'
+    }.join('')
+    [java, "@${file.absolutePath}".toString()]
+}
+
+def limitText = { long ms ->
+    ms < minuteMs ? "${Math.max(1L, Math.round(ms / 1000d))} ${Math.round(ms / 1000d) == 1 ? 'second' : 'seconds'}"
+        : "${Math.round(ms / (double) minuteMs)} ${Math.round(ms / (double) minuteMs) == 1 ? 'minute' : 'minutes'}"
+}
+
+project.ext.nitpickerRunPit = { JavaExec task, File directory, long deadlineMs ->
+    def remaining = deadlineMs - System.currentTimeMillis()
+    if (remaining < minuteMs) {
+        return [notStarted: true, exitValue: 0, output: '']
+    }
+    def log = File.createTempFile('nitpicker-pit', '.log')
+    def builder = new ProcessBuilder(launchCommand(task, directory)).directory(task.workingDir)
+        .redirectErrorStream(true).redirectOutput(log)
+    task.environment.each { key, value -> builder.environment().put(key.toString(), value.toString()) }
+    def process = builder.start()
+    def hook = new Thread({ stopTree(process) })
+    Runtime.runtime.addShutdownHook(hook)
+    try {
+        def finished = process.waitFor(remaining, java.util.concurrent.TimeUnit.MILLISECONDS)
+        if (!finished) {
+            stopTree(process)
+        }
+        [timedOut: !finished, exitValue: finished ? process.exitValue() : -1, output: log.getText('UTF-8'),
+         limit: limitText(remaining)]
+    } finally {
+        try {
+            Runtime.runtime.removeShutdownHook(hook)
+        } catch (IllegalStateException ignored) {
+        }
+        log.delete()
+    }
+}

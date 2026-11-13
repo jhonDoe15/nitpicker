@@ -53,6 +53,7 @@ function runJavaPreset(
       policy,
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
+      budget,
     });
     const checkTests = testsFailedModules.length === 0;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };

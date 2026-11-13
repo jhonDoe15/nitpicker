@@ -7,7 +7,7 @@ import {
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mjs';
-import { pitFailureFindings } from './pit-failure.mjs';
+import { gradlePitDeadlineMs, pitFailureFindings } from './pit-failure.mjs';
 
 const roots = [];
 
@@ -140,5 +140,21 @@ describe('the time PIT gets on Maven', () => {
         TROUBLESHOOTING_ANCHORS.pitFails,
       ),
     );
+  });
+});
+
+describe('the time PIT gets on Gradle', () => {
+  const MINUTE = 60_000;
+
+  it('ends a report reserve before the Gradle command limit', () => {
+    expect(gradlePitDeadlineMs({ commandTimeoutMs: 15 * MINUTE }, MINUTE, 1000)).toBe(
+      14 * MINUTE + 1000,
+    );
+  });
+
+  it('never runs past the Java analyzer deadline', () => {
+    const budget = { commandTimeoutMs: 15 * MINUTE, pitDeadlineMs: 5 * MINUTE };
+
+    expect(gradlePitDeadlineMs(budget, MINUTE, 0)).toBe(5 * MINUTE);
   });
 });
