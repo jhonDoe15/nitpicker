@@ -1,15 +1,24 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { transpiled } from '../../../../../scripts/typescript/emit.mjs';
 
 const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../../../../..'));
 const LISTING_MODULE = 'languages/typescript/adapters/oxlint/plan/rule-listing.mjs';
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const GIT_TIMEOUT_MS = 10_000;
+const typescript = createRequire(import.meta.url)('typescript-js-api');
+
+function shippedContents(file, contents) {
+  const source = checkoutModulePath(path.join(PACKAGE_ROOT, file));
+  return source.endsWith('.mts') ? transpiled(contents, source, typescript) : contents;
+}
 
 function installedInIgnoredFolder(clone) {
   execFileSync('git', ['init', '--quiet'], {
@@ -21,7 +30,7 @@ function installedInIgnoredFolder(clone) {
   const installed = path.join(clone, 'node_modules/nitpicker');
   for (const [file, contents] of importClosure([LISTING_MODULE, 'package.json'], PACKAGE_ROOT)) {
     mkdirSync(path.dirname(path.join(installed, file)), { recursive: true });
-    writeFileSync(path.join(installed, file), contents);
+    writeFileSync(path.join(installed, file), shippedContents(file, contents));
   }
   symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(installed, 'node_modules'), 'dir');
   return installed;

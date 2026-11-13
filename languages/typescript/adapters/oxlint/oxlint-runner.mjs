@@ -6,6 +6,7 @@ import {
   untrackTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mjs';
 import { eslintShapedResults } from './oxlint-diagnostics.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { oxlintBinary, spawnJson, spawnJsonAsync, tsgolintBinary } from './oxlint-process.mjs';
 import {
   messageIdResolver,
@@ -27,21 +28,19 @@ import {
 } from './stage/oxlint-stage.mjs';
 
 const MAX_ARGUMENT_BYTES = 1024 * 1024;
+const PLAN_PATH = checkoutModulePath(path.join(import.meta.dirname, 'oxlint-plan.mjs'));
 const MAX_CONFIGURATION_ATTEMPTS = 20;
 const MAX_LINT_SLICES = 4;
 const MIN_FILES_PER_SLICE = 200;
 const CPUS_PER_LINT_SLICE = 4;
 
 export async function lintWithOxlint({ options, environment, projectConfigPath, runEslintCli }) {
-  const plan = spawnJson(
-    [path.join(import.meta.dirname, 'oxlint-plan.mjs'), options.projectRoot, ...options.patterns],
-    {
-      cwd: options.projectRoot,
-      env: environment,
-      context: 'oxlint planning',
-      timeoutMs: options.timeoutMs,
-    },
-  );
+  const plan = spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
+    cwd: options.projectRoot,
+    env: environment,
+    context: 'oxlint planning',
+    timeoutMs: options.timeoutMs,
+  });
   const files = plan.groups.flatMap((group) => group.files);
   const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
   try {
