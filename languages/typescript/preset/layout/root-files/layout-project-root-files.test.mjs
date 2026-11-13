@@ -103,4 +103,23 @@ describe('the type check root files', () => {
     expect([...contextOnlyFiles(withFiles, root, resolveLayout())]).toEqual(['benchmarks/read.ts']);
     expect(JSON.parse(readFileSync(without, 'utf8')).files).toBeUndefined();
   });
+
+  it('keeps supplemental imports as context while reporting imports reached from layout code', () => {
+    const root = project(
+      {
+        'src/mode.ts': "import '../support/shared.js';\nexport const mode = process.platform;\n",
+        'benchmarks/read.ts':
+          "import '../support/shared.js';\nimport '../support/only-context.js';\n",
+        'support/shared.ts': 'export const shared: number = "invalid";\n',
+        'support/only-context.ts': 'export const context: number = "invalid";\n',
+      },
+      { compilerOptions: COMPILER_OPTIONS, include: ['src', 'benchmarks'] },
+    );
+    const config = nitpickerConfig(root, { projectRootFiles: true });
+
+    expect([...contextOnlyFiles(config, root, resolveLayout())].sort()).toEqual([
+      'benchmarks/read.ts',
+      'support/only-context.ts',
+    ]);
+  });
 });
