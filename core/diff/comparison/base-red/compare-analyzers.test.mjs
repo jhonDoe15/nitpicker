@@ -136,3 +136,69 @@ describe('a PIT run that failed on one side', () => {
     });
   });
 });
+
+describe('a head with a tool error of a tool of its own', () => {
+  const finding = (tool, identity) => ({
+    tool,
+    rule: `rule-${identity}`,
+    path: 'src/A.java',
+    identity,
+    message: 'm',
+    classification: 'enforceable',
+    location: { line: 1 },
+  });
+  const skipped = (tool) => ({
+    tool,
+    rule: 'tool-skipped',
+    path: '.',
+    identity: 'tool-skipped',
+    message: `${tool} did not run.`,
+    classification: 'tool-error',
+  });
+  const testsFailed = { ...skipped('tests'), rule: 'tests-failed', identity: 'tests-failed' };
+
+  function comparedWith(baseFindings, headFindings) {
+    const toolErrors = [];
+    const { outcomes } = compareAnalyzers({
+      analyzers: [{ name: 'java' }],
+      baseRun: { ...run(baseFindings), toolErrors: [] },
+      headRun: run(headFindings),
+      toolErrors,
+      touchedCode: { changedLines: new Map(), isStrictRule: () => false },
+    });
+    return {
+      new: outcomes[0].result.newFindings.map(({ identity }) => identity),
+      toolErrors: toolErrors.map(({ tool, rule }) => `${tool} ${rule}`),
+    };
+  }
+
+  it('keeps comparing the findings of the other tools when the head tests fail', () => {
+    expect(comparedWith([], [finding('pmd', 'a'), testsFailed])).toEqual({
+      new: ['a'],
+      toolErrors: ['tests tests-failed'],
+    });
+  });
+
+  it('leaves out only the skipped tool of the head, on both snapshots', () => {
+    expect(
+      comparedWith(
+        [finding('pmd', 'a')],
+        [
+          finding('pmd', 'a'),
+          finding('pmd', 'b'),
+          finding('errorprone', 'c'),
+          skipped('errorprone'),
+        ],
+      ),
+    ).toEqual({ new: ['b'], toolErrors: ['errorprone tool-skipped'] });
+  });
+
+  it('leaves out the findings of a tool skipped on the base only', () => {
+    expect(
+      comparedWith(
+        [finding('errorprone', 'c'), skipped('errorprone')],
+        [finding('errorprone', 'd')],
+      ),
+    ).toEqual({ new: [], toolErrors: ['errorprone tool-skipped'] });
+  });
+});

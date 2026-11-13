@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import {
-  isBaseTestFailure,
+  isTestFailure,
   runOrNoteFailingTests,
   testsFailedFinding,
   withRootSourceRoots,
@@ -76,26 +76,28 @@ esac
   return { root, script, calls };
 }
 
-describe('isBaseTestFailure', () => {
-  it('is true only for named failing tests on the base snapshot', () => {
+describe('isTestFailure', () => {
+  it('is true only for named failing tests', () => {
     const failure = Object.assign(new Error('red'), {
       failures: [{ module: '.', tests: ['shop.T.t: no'] }],
     });
 
     expect([
-      isBaseTestFailure(failure, { snapshot: 'base' }),
-      isBaseTestFailure(failure, { snapshot: 'head' }),
-      isBaseTestFailure(failure, undefined),
-      isBaseTestFailure(Object.assign(new Error('x'), { failures: [] }), { snapshot: 'base' }),
-      isBaseTestFailure(new Error('x'), { snapshot: 'base' }),
-    ]).toEqual([true, false, false, false, false]);
+      isTestFailure(failure),
+      isTestFailure(Object.assign(new Error('x'), { failures: [] })),
+      isTestFailure(new Error('x')),
+    ]).toEqual([true, false, false]);
   });
 });
 
 describe('testsFailedFinding', () => {
   it('is a tool error of the preset that names the module and the failing tests', () => {
     expect(
-      testsFailedFinding('kotlin', { module: 'core', tests: ['shop.T.a: no', 'shop.T.b: no'] }),
+      testsFailedFinding(
+        'kotlin',
+        { module: 'core', tests: ['shop.T.a: no', 'shop.T.b: no'] },
+        'base',
+      ),
     ).toEqual({
       tool: 'kotlin',
       rule: 'tests-failed',
@@ -107,8 +109,23 @@ describe('testsFailedFinding', () => {
     });
   });
 
+  it('words a head failure like the other presets: what was skipped, then the failing tests', () => {
+    const finding = testsFailedFinding(
+      'java',
+      { module: 'core', tests: ['shop.T.a: no', 'shop.T.b: no'] },
+      'head',
+    );
+
+    expect([finding.rule, finding.classification, finding.message]).toEqual([
+      'tests-failed',
+      'tool-error',
+      '2 tests fail in core; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+        '  shop.T.a: no\n  shop.T.b: no',
+    ]);
+  });
+
   it('words the root project without a module and cuts a long message', () => {
-    const finding = testsFailedFinding('java', { module: '.', tests: ['x'.repeat(5000)] });
+    const finding = testsFailedFinding('java', { module: '.', tests: ['x'.repeat(5000)] }, 'base');
 
     const [cut, link] = finding.message.split('\n').slice(1);
 
@@ -139,11 +156,14 @@ describe('collectJavaFindings on a failing Gradle build', () => {
     ]);
   });
 
-  it('does not rerun a failed head: a red head fails', () => {
-    const fake = fakeGradle([['']]);
+  it('runs a failed head again without the tests of every failing module, letting every module run first', () => {
+    const fake = fakeGradle([['core', 'api']]);
 
-    expect(() => collect(fake, 'head')).toThrow('1 test fails; the build stopped');
-    expect(fake.calls()).toEqual([{ continued: false, testsFailed: undefined }]);
+    expect(() => collect(fake, 'head')).toThrow('Execution failed for task :compileJava');
+    expect(fake.calls()).toEqual([
+      { continued: true, testsFailed: undefined },
+      { continued: true, testsFailed: '-Pnitpicker.testsFailed=core,api' },
+    ]);
   });
 
   it('does not rerun a base that failed without a failing test', () => {
@@ -202,14 +222,15 @@ describe('runOrNoteFailingTests', () => {
     );
   });
 
-  it('lets a red head fail', () => {
-    const failure = failureOf('core');
-    const { run, calls } = runner(failure);
+  it('reruns a red head like a red base, so its failures are reported beside the other findings', () => {
+    const { run, calls } = runner(failureOf('core'));
 
-    expect(() => runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } })).toThrow(
-      failure,
-    );
-    expect(calls).toEqual([[]]);
+    expect([
+      runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } }).map(
+        ({ module }) => module,
+      ),
+      calls,
+    ]).toEqual([['core'], [[], ['core']]]);
   });
 });
 
@@ -222,8 +243,10 @@ describe('withTestsFailures', () => {
     ];
 
     expect([
-      withTestsFailures(findings, 'java', undefined),
-      withTestsFailures(findings, 'java', failures).map(({ rule, symbol }) => `${rule} ${symbol}`),
+      withTestsFailures(findings, undefined, { preset: 'java' }),
+      withTestsFailures(findings, failures, { preset: 'java' }).map(
+        ({ rule, symbol }) => `${rule} ${symbol}`,
+      ),
     ]).toEqual([findings, ['x undefined', 'tests-failed .', 'tests-failed core']]);
   });
 });

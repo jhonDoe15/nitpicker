@@ -157,7 +157,15 @@ tasks.register('nitpickerErrorProne') {
         }
         def errorProne = errorProneClasspath()
         def modular = compiles.main.source.files.any { it.name == 'module-info.java' }
-        def java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
+        def java
+        try {
+            java = runnerJava(compiles.values().findAll { !it.source.isEmpty() })
+        } catch (GradleException e) {
+            new File(report.parentFile, 'errorprone-skipped.txt').text =
+                e.message.replaceAll(/\s+/, ' ').trim() + '\n'
+            report.text = '[]\n'
+            return
+        }
         def run = { String mode ->
             def argumentFiles = compiles.collect { name, compile ->
                 writeArguments(name, compile, errorProne, name != 'main', name == 'main' ? mode : 'plain')

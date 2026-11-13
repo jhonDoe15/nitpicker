@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
+import { skipWithoutJdk, sourceLevel, structureJava } from '../errorprone/maven-jdk.mjs';
+import { STRUCTURE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { relativeTo } from '../module/module-paths.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mjs';
@@ -10,20 +11,22 @@ export function runStructure({ module, reportDir, spawn, timeoutMs }) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
-  runJava({
-    java: parserJava({ level: sourceLevel(module.compiler) }).java,
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(reportDir, 'structure.json'),
-      path.join(reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-    timeoutMs,
+  skipWithoutJdk({ reportDir, file: STRUCTURE_SKIPPED }, () => {
+    runJava({
+      java: structureJava({ level: sourceLevel(module.compiler) }).java,
+      tool: 'StructureMetrics',
+      args: [
+        path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
+        path.join(reportDir, 'structure.json'),
+        path.join(reportDir, 'classes.json'),
+        module.basedir,
+        ...roots,
+      ],
+      cwd: module.basedir,
+      accept: (result) => result.status === 0,
+      spawn,
+      timeoutMs,
+    });
   });
 }
 

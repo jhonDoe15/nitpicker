@@ -6,7 +6,7 @@ import {
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mts';
 import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
-import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -62,9 +62,13 @@ const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unkn
   selectAnalyzers;
 const inWorktree: (
   repositoryRoot: string,
-  snapshot: { readonly commitSha: unknown; readonly warn: (message: string) => unknown },
+  snapshot: {
+    readonly commitSha: unknown;
+    readonly directoryName: string;
+    readonly warn: (message: string) => unknown;
+  },
   operation: (worktreeRoot: string) => SnapshotReport,
-) => SnapshotReport = withTemporaryWorktree;
+) => SnapshotReport = withNamedTemporaryWorktree;
 const failingTestsOf: (toolErrors: unknown) => readonly unknown[] = failingHeadTests;
 const capturedTree: Capture = captureWorkingTree;
 const prepareDependencies: (options: {
@@ -94,7 +98,11 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     currentProjectRoot,
     isCapture(cli.captureHead) ? cli.captureHead : capturedTree,
   );
-  const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
+  const snapshot = {
+    commitSha: capturedSha,
+    directoryName: 'head',
+    warn: stderrWarning(stderr),
+  };
   const report = inWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree(
       {

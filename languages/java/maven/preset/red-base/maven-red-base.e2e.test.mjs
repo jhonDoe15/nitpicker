@@ -5,7 +5,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mjs';
 import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
-import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
+import {
+  TESTS_FAILED_RULE,
+  testsFailOnBase,
+} from '../../../../../shared/rules/finding-helpers.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const maven = process.env.NITPICKER_MAVEN;
@@ -139,9 +142,14 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
     });
 
     it('fails a head whose tests still fail', () => {
-      expect(() => diffOf(root, 'still-red')).toThrow(
-        /^\d+ tests? fails?(?: in [^;]+)?; the build stopped, so no other check ran\./u,
-      );
+      const result = diffOf(root, 'still-red');
+
+      expect({
+        failed: result.failed,
+        toolErrors: result.newFindings
+          .filter(({ classification }) => classification === 'tool-error')
+          .map(({ rule }) => rule),
+      }).toEqual({ failed: true, toolErrors: [TESTS_FAILED_RULE] });
     });
   },
 );

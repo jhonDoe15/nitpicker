@@ -53,10 +53,11 @@ Part of the [Java preset guide](../java-preset.md).
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build. When the failed build left JUnit
   reports with failing tests (the init script lists the report directory of every test task in
-  `test-results.json` of the report base), it is a `java/tests-failed` tool error (exit 1) that
-  names up to 50 of them with the same text as on Maven (`1 test fails; the build stopped, so no
-other check ran. Fix the tests and rerun:`) instead of Gradle's own failure output, with the path
-  of the full Gradle log on its last line; otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
+  `test-results.json` of the report base), the run is repeated without the Test tasks, PIT and
+  JaCoCo of the failing modules, and the failure is a `java/tests-failed` tool error (exit 1) that
+  names up to 50 of them with the same text as on Maven (`1 test fails; coverage, CRAP and mutation
+were skipped. Fix the tests and rerun:`); otherwise it is a `java/gradle-failure` tool error.
+  Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
   runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a

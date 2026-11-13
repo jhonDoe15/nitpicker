@@ -53,6 +53,7 @@ describe('Kotlin analyzer', () => {
       ...JAVA_TOOLS,
       'facts',
       'build',
+      'tests',
       'detekt',
       'ktlint',
       'ktfmt',

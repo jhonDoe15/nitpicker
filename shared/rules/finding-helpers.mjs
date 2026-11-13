@@ -8,6 +8,8 @@ export const TESTS_FAILED_RULE = 'tests-failed';
 export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
 export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
+/** One tool of an analyzer did not run; its findings are left out of the comparison on both snapshots. */
+export const TOOL_SKIPPED_RULE = 'tool-skipped';
 /** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
 export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 /** A mutation run that failed for one module; its `symbol` is that module's directory. */

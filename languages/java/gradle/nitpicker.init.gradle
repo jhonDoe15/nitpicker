@@ -1207,7 +1207,16 @@ allprojects {
                 def roots = mainSources.files.findAll { it.exists() }.collect { relativeToRoot(it) }
                 def output = reportDir.get().file('structure.json').asFile
                 def classesOutput = reportDir.get().file('classes.json').asFile
-                def java = project.ext.nitpickerSourceJava().java
+                def java
+                try {
+                    java = project.ext.nitpickerSourceJava().java
+                } catch (Exception e) {
+                    reportDir.get().file('structure-skipped.txt').asFile.text =
+                        ("The structure metrics parse the sources with the javac of the JVM they run on, and Gradle " +
+                            "found no JDK that new: install one where Gradle looks for toolchains, or let Gradle " +
+                            "download it. ${e.message ?: ''}").replaceAll(/\s+/, ' ').trim() + '\n'
+                    return
+                }
                 def process = new ProcessBuilder([java, metricsSource.absolutePath,
                         output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
                     .directory(projectDir).redirectErrorStream(true).start()
@@ -1501,6 +1510,54 @@ allprojects {
                     dependsOn 'compileJava', 'compileTestJava'
                     onlyIf { !kotlinLintedDirs().isEmpty() }
                     dependsOn 'nitpickerDetektLayers'
+                    def runningJdk = JavaVersion.current().majorVersion as int
+                    def detektNewestJdk = 21
+                    def detektOldestJdk = 17
+                    def detektLauncher = null
+                    def chooseDetektLauncher = {
+                        if (detektLauncher == null) {
+                            def failure = null
+                            for (int version = detektNewestJdk;
+                                 version >= detektOldestJdk && detektLauncher == null; version--) {
+                                try {
+                                    def candidate = project.extensions.getByType(JavaToolchainService).launcherFor {
+                                        languageVersion = JavaLanguageVersion.of(version)
+                                    }
+                                    candidate.get()
+                                    detektLauncher = candidate
+                                } catch (Exception e) {
+                                    failure = failure ?: e
+                                }
+                            }
+                            if (detektLauncher == null) {
+                                throw failure
+                            }
+                        }
+                        detektLauncher
+                    }
+                    if (runningJdk > detektNewestJdk) {
+                        javaLauncher.set(project.provider { chooseDetektLauncher() }.flatMap { it })
+                    }
+                    onlyIf {
+                        def skipped = reportDir.get().file('detekt-skipped.txt').asFile
+                        skipped.delete()
+                        if (runningJdk <= detektNewestJdk) {
+                            return true
+                        }
+                        try {
+                            chooseDetektLauncher()
+                            return true
+                        } catch (Exception e) {
+                            reportDir.get().asFile.mkdirs()
+                            skipped.text = ("detekt runs on JDK ${detektOldestJdk} to ${detektNewestJdk} only, " +
+                                "and Gradle runs on JDK ${runningJdk}. Gradle found no such JDK: install one where " +
+                                "Gradle looks for toolchains, or let Gradle download it (the " +
+                                "org.gradle.toolchains.foojay-resolver-convention plugin). ${e.message ?: ''}")
+                                .replaceAll(/\s+/, ' ').trim() + '\n'
+                            report.get().asFile.text = ''
+                            return false
+                        }
+                    }
                     doFirst {
                         reportDir.get().asFile.mkdirs()
                         standardOutput = log

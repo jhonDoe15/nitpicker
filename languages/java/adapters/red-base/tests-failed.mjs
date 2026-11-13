@@ -4,11 +4,13 @@ import {
   testsFailOnBase,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import {
-  TROUBLESHOOTING_ANCHORS,
+  testsFailAnchor,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { failingTestsText } from '../../builds/test-failures.mjs';
 
 const ROOT_MODULE = '.';
+export const HEAD_TESTS_TOOL = 'tests';
 const MAX_MESSAGE_LENGTH = 4000;
 const OWN_ROOT_LISTS = [
   'sourceRoots',
@@ -28,8 +30,8 @@ export function withRootSourceRoots(failures, modules) {
   );
 }
 
-export function isBaseTestFailure(error, policy) {
-  return error?.failures?.length > 0 && policy?.snapshot === 'base';
+export function isTestFailure(error) {
+  return error?.failures?.length > 0;
 }
 
 export function runOrNoteFailingTests(run, projectRoot, options) {
@@ -37,7 +39,7 @@ export function runOrNoteFailingTests(run, projectRoot, options) {
     run(projectRoot, { ...options, testsFailedModules: [] });
     return [];
   } catch (error) {
-    if (!isBaseTestFailure(error, options.policy)) {
+    if (!isTestFailure(error)) {
       throw error;
     }
     run(projectRoot, {
@@ -48,16 +50,24 @@ export function runOrNoteFailingTests(run, projectRoot, options) {
   }
 }
 
-export function testsFailedFinding(preset, { module, tests, roots = [] }) {
-  const message = testsFailOnBase(tests, module === ROOT_MODULE ? '' : ` in ${module}`);
+function failureMessage(snapshot, failure) {
+  const where = failure.module === ROOT_MODULE ? '' : ` in ${failure.module}`;
+  return snapshot === 'base'
+    ? testsFailOnBase(failure.tests, where)
+    : failingTestsText([failure], 'coverage, CRAP and mutation were skipped', where);
+}
+
+export function testsFailedFinding(preset, failure, snapshot) {
+  const { module, roots = [] } = failure;
+  const message = failureMessage(snapshot, failure);
   return {
-    tool: preset,
+    tool: snapshot === 'base' ? preset : HEAD_TESTS_TOOL,
     rule: TESTS_FAILED_RULE,
     path: '.',
     identity: module === ROOT_MODULE ? TESTS_FAILED_RULE : `${TESTS_FAILED_RULE}:${module}`,
     message: withTroubleshooting(
       message.length > MAX_MESSAGE_LENGTH ? `${message.slice(0, MAX_MESSAGE_LENGTH)}...` : message,
-      TROUBLESHOOTING_ANCHORS.baseTestsFail,
+      testsFailAnchor(snapshot),
     ),
     classification: 'tool-error',
     symbol:
@@ -67,6 +77,6 @@ export function testsFailedFinding(preset, { module, tests, roots = [] }) {
   };
 }
 
-export function withTestsFailures(findings, preset, failures = []) {
-  return [...findings, ...failures.map((failure) => testsFailedFinding(preset, failure))];
+export function withTestsFailures(findings, failures = [], { preset, snapshot }) {
+  return [...findings, ...failures.map((failure) => testsFailedFinding(preset, failure, snapshot))];
 }
