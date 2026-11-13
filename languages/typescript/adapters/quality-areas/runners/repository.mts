@@ -22,9 +22,9 @@ import {
   layoutKnipConfig,
   moduleImportsSection,
   projectImports,
-  spawnedEntryFiles,
   typescriptStructureProjectFindings,
 } from '../typed/repository.mts';
+import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';

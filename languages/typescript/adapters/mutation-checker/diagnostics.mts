@@ -1,8 +1,11 @@
-import { ts } from '../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
 import path from 'node:path';
-import { enclosingSymbol } from '../typecheck/typescript-program.mjs';
+import { enclosingSymbol } from '../typecheck/typescript-program.mts';
+import { typescriptApi } from '../typed/typescript-program.mts';
 
-function keyOf(diagnostic) {
+const ts = typescriptApi();
+
+function keyOf(diagnostic: TypeScript.Diagnostic): string {
   const file = diagnostic.file;
   const symbol =
     file === undefined || diagnostic.start === undefined
@@ -16,8 +19,10 @@ function keyOf(diagnostic) {
   ]);
 }
 
-export function diagnosticCounts(diagnostics) {
-  const counts = new Map();
+export function diagnosticCounts(
+  diagnostics: readonly TypeScript.Diagnostic[],
+): Map<string, number> {
+  const counts = new Map<string, number>();
   for (const diagnostic of diagnostics) {
     const key = keyOf(diagnostic);
     counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -25,7 +30,10 @@ export function diagnosticCounts(diagnostics) {
   return counts;
 }
 
-export function addedDiagnostics(diagnostics, baseline) {
+export function addedDiagnostics(
+  diagnostics: readonly TypeScript.Diagnostic[],
+  baseline: ReadonlyMap<string, number>,
+): TypeScript.Diagnostic[] {
   const remaining = new Map(baseline);
   return diagnostics.filter((diagnostic) => {
     const key = keyOf(diagnostic);
