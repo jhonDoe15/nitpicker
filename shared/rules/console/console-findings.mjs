@@ -47,8 +47,8 @@ function newMessages(report, { allow, exceptions }) {
 
 const MIN_TOKENS = 3;
 
-function tokensOf(message) {
-  const tokens = message.split(' ');
+export function consoleTokens(message) {
+  const tokens = message.split(' ').filter((token) => token !== '');
   return tokens.length < MIN_TOKENS ? {} : { tokens };
 }
 
@@ -64,7 +64,7 @@ function findingFor({ file, message, test }, analyzerName) {
       exception: exceptionText(RULE_IDS.testConsoleOutput, file),
     }),
     classification: 'enforceable',
-    ...tokensOf(message),
+    ...consoleTokens(message),
   };
 }
 
