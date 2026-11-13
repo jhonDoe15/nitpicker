@@ -45,10 +45,11 @@ function filesUnder(projectRoot, roots) {
   return [...new Set(roots.flatMap((root) => kotlinFiles(projectRoot, root)))].toSorted();
 }
 
-function scannedFiles(projectRoot, files, keep = () => true) {
+function scannedFiles(projectRoot, files, { keep, assertionNames = [] } = {}) {
   return files.flatMap((file) => {
     const text = readInside(projectRoot, file, 'utf8') ?? '';
-    const scanned = keep(text) ? scanTestFile(text) : undefined;
+    const scanned =
+      keep === undefined || keep(text) ? scanTestFile(text, assertionNames) : undefined;
     return scanned === undefined ? [] : [{ file, scanned }];
   });
 }
@@ -69,12 +70,18 @@ export function fileReports(scanned, project) {
   ].toSorted((left, right) => left.offset - right.offset);
 }
 
-export function testHonestyFindings({ projectRoot, testRoots = [], contextRoots = [], finding }) {
+export function testHonestyFindings({
+  projectRoot,
+  testRoots = [],
+  contextRoots = [],
+  assertionNames = [],
+  finding,
+}) {
   const testFiles = filesUnder(projectRoot, testRoots);
   const own = new Set(testFiles);
-  const files = scannedFiles(projectRoot, testFiles);
+  const files = scannedFiles(projectRoot, testFiles, { assertionNames });
   const others = filesUnder(projectRoot, contextRoots).filter((file) => !own.has(file));
-  const context = scannedFiles(projectRoot, others, (text) => CONTEXT_MARKERS.test(text));
+  const context = scannedFiles(projectRoot, others, { keep: (text) => CONTEXT_MARKERS.test(text) });
   const project = projectFlags([...files, ...context]);
   return files.flatMap(({ file, scanned }) =>
     fileReports(scanned, project).map((report) =>
