@@ -7,8 +7,10 @@ import {
   applyAreaExceptions,
   existingRoots,
   loadDependencyGraph,
-  withTypeScriptHint,
+  isInvokedModule,
+  writeAdapterFindings,
 } from './typed/static-checks.mts';
+import type { Finding } from './static-checks/shared.mts';
 import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
 import { type Layout, readLayout } from './typed/head-policy.mts';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
@@ -24,28 +26,21 @@ type EntryPointOptions = {
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
 
-const invokedPath = process.argv[1];
+if (isInvokedModule(import.meta.url)) {
+  process.exitCode = await writeAdapterFindings('Entry-point differential adapter', () =>
+    entryPointFindings(parseArguments(process.argv.slice(2))),
+  );
+}
 
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const options = parseArguments(process.argv.slice(2));
-    const analyzeEntryPoints = await loadPolicyModules(options.policyRoot);
-    const layout = readLayout();
-    const graphFor = graphLoader(options, layout);
-    const findings = applyAreaExceptions(
-      options.sourceRoots.flatMap((sourceRoot) =>
-        toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
-      ),
-    );
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (failure) {
-    const error = withTypeScriptHint(failure);
-    process.stderr.write(`Entry-point differential adapter failed: ${error.message}\n`);
-    process.exitCode = 2;
-  }
+async function entryPointFindings(options: EntryPointOptions): Promise<Finding[]> {
+  const analyzeEntryPoints = await loadPolicyModules(options.policyRoot);
+  const layout = readLayout();
+  const graphFor = graphLoader(options, layout);
+  return applyAreaExceptions(
+    options.sourceRoots.flatMap((sourceRoot) =>
+      toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
+    ),
+  );
 }
 
 async function loadPolicyModules(policyRoot: string) {
@@ -85,6 +80,7 @@ function loadModules(options: EntryPointOptions, patterns: readonly string[]): C
     policyRoot: options.policyRoot,
     patterns,
     exclude: EXCLUDED_PATH_PATTERN,
+    reportsConfigErrors: false,
   });
   if (!Array.isArray(graph.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
@@ -92,10 +88,10 @@ function loadModules(options: EntryPointOptions, patterns: readonly string[]): C
   return graph;
 }
 
-function collectArguments(runnerArguments: readonly string[]) {
+function collectArguments(arguments_: readonly string[]) {
   const values = new Map<string, string>();
   const sourceRoots: string[] = [];
-  const remaining = runnerArguments.values();
+  const remaining = arguments_.values();
   for (const name of remaining) {
     const { value } = remaining.next();
     if (!ARGUMENT_NAMES.includes(name) || value === undefined) {
@@ -110,8 +106,8 @@ function collectArguments(runnerArguments: readonly string[]) {
   return { values, sourceRoots };
 }
 
-function parseArguments(runnerArguments: readonly string[]): EntryPointOptions {
-  const { values, sourceRoots } = collectArguments(runnerArguments);
+function parseArguments(arguments_: readonly string[]): EntryPointOptions {
+  const { values, sourceRoots } = collectArguments(arguments_);
   if (sourceRoots.length === 0) {
     throw new Error('--source-root is required');
   }

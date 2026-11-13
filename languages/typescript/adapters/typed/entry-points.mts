@@ -3,7 +3,7 @@ import type { CruiseReport } from './static-checks.mts';
 import type { Layout } from './head-policy.mts';
 import { toEntryPointDiffFindings as untypedToEntryPointDiffFindings } from '../entry-points.mjs';
 
-export type PublicAlternativeBypass = {
+type PublicAlternativeBypass = {
   readonly source: string;
   readonly target: string;
   readonly publicEntryPoint: string;
