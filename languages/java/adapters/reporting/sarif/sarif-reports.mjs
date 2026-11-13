@@ -14,6 +14,7 @@ import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
+import { withoutClassesWithoutSource } from './spotbugs-sources.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -67,9 +68,9 @@ function withOneAliasRule(log) {
   };
 }
 
-export function sarifFindings(context) {
-  const { allSourceRoots, projectRoot } = context;
-  const pmd = withOneAliasRule(
+function pmdLog(context) {
+  const { projectRoot } = context;
+  return withOneAliasRule(
     withLockEvidence(
       withPrintedRules(
         withLoadEffectSubjects(
@@ -84,7 +85,19 @@ export function sarifFindings(context) {
       { projectRoot },
     ),
   );
+}
+
+function spotbugsFindings(context) {
+  const { projectRoot } = context;
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
+  return ingestSarif(
+    withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+    { tool: 'spotbugs' },
+  ).findings;
+}
+
+export function sarifFindings(context) {
+  const { allSourceRoots, projectRoot } = context;
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
     ...withFanOutDetails(
@@ -95,7 +108,9 @@ export function sarifFindings(context) {
               withJpaFilters(
                 withGeneratedMembers(
                   withSpringTransactionFilters(
-                    withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+                    withoutSpringCoveredReads(
+                      ingestSarif(pmdLog(context), { tool: 'pmd' }).findings,
+                    ),
                     context,
                   ),
                   { projectRoot },
@@ -112,9 +127,7 @@ export function sarifFindings(context) {
       ),
       { projectRoot },
     ),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings,
+    ...spotbugsFindings(context),
   ];
 }
 

@@ -19,3 +19,7 @@ and a header below the code exempt nothing; hand-written code carrying `@Generat
 annotation whose name contains `Generated`) stays the
 `pmd/GeneratedOnHandWrittenCode` finding. The evals harness fails a case whose agent wrote one of
 these markers into a file it wrote by hand.
+
+SpotBugs reports a class by its package path. A SpotBugs finding whose class has no source file
+under a project source root, such as a class compiled from `target/generated-sources/annotations`
+(the Hibernate JPA metamodel `*_` classes), is dropped, never shown with a package-relative path.
