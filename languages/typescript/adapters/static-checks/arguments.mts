@@ -104,7 +104,7 @@ function directoryRoot(value: string, name: string): string {
   return root;
 }
 
-function validatedSnapshotRoot(value: string, name: string): string {
+export function validatedSnapshotRoot(value: string, name: string): string {
   const root = directoryRoot(value, name);
   if (root === TRUSTED_TOOL_ROOT) {
     return root;

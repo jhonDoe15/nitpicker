@@ -84,9 +84,17 @@ export async function writeAdapterFindings(
   findingsOf: () => Promise<readonly Finding[]>,
   output: AdapterOutput,
 ): Promise<number> {
+  return writeAdapterReport(failurePrefix, async () => ({ findings: await findingsOf() }), output);
+}
+
+export async function writeAdapterReport(
+  failurePrefix: string,
+  reportOf: () => Promise<{ readonly findings: readonly Finding[] }>,
+  output: AdapterOutput,
+): Promise<number> {
   try {
-    const findings = await findingsOf();
-    output.stdout.write(`${JSON.stringify({ findings })}\n`);
+    const report = await reportOf();
+    output.stdout.write(`${JSON.stringify(report)}\n`);
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);

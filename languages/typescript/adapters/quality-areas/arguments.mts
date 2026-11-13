@@ -1,19 +1,18 @@
-import { QUALITY_AREA_RUNNERS } from './registry.mjs';
+import { QUALITY_AREA_RUNNERS, type QualityAreaOptions } from './registry.mts';
 import { realpathSync, lstatSync } from 'node:fs';
 import { TRUSTED_TOOL_ROOT } from './runners/tooling.mjs';
 import path from 'node:path';
-import {
-  PACKAGE_ROOT,
-  SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
-import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
+import { validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import {
   MUTATION_SCOPE_OPTION,
-  parseMutationScope,
+  parseMutationScope as parseUntypedMutationScope,
 } from '../../../../core/tooling/runner-arguments.mjs';
+
+const parseMutationScope: (text: string) => readonly string[] = parseUntypedMutationScope;
 
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
@@ -31,7 +30,7 @@ const VALUE_ARGUMENTS = new Set([
   MUTATION_SCOPE_OPTION,
 ]);
 
-export function parseArguments(arguments_) {
+export function parseArguments(arguments_: readonly string[]): QualityAreaOptions {
   const values = collectArguments(arguments_);
   const kind = supportedKind(values);
   const snapshot = snapshotOf(values);
@@ -48,17 +47,21 @@ export function parseArguments(arguments_) {
     projectPolicyRoot,
     policyRoot: validatedSnapshotRoot(requiredValue(values, '--policy-root'), '--policy-root'),
     toolRoot,
-    liveProjectRoot: optionalValue(values.get('--live-project-root'), realpathSync, PACKAGE_ROOT),
+    liveProjectRoot: optionalValue(
+      values.get('--live-project-root'),
+      (value: string) => realpathSync(value),
+      PACKAGE_ROOT,
+    ),
     snapshot,
     legacyInventory: values.get('--legacy-inventory') ?? DEFAULT_LEGACY_INVENTORY,
     crapScoreLimit: optionalValue(
       values.get('--crap-score-limit'),
-      (value) => parsePositiveNumber(value, '--crap-score-limit'),
+      (value: string) => parsePositiveNumber(value, '--crap-score-limit'),
       DEFAULT_CRAP_SCORE_LIMIT,
     ),
     baselineRoot: optionalValue(
       values.get('--baseline-root'),
-      (value) => validatedSnapshotRoot(value, '--baseline-root'),
+      (value: string) => validatedSnapshotRoot(value, '--baseline-root'),
       undefined,
     ),
     baselineMovesFile: optionalValue(values.get('--baseline-moves-file'), movesFileOf, undefined),
@@ -66,13 +69,13 @@ export function parseArguments(arguments_) {
   };
 }
 
-function collectArguments(arguments_) {
-  const values = new Map();
+function collectArguments(arguments_: readonly string[]): Map<string, string> {
+  const values = new Map<string, string>();
   const remaining = arguments_.values();
   for (const name of remaining) {
     const { value } = remaining.next();
     if (value === undefined) {
-      throw new Error(`${name ?? '<missing>'} requires a value`);
+      throw new Error(`${name} requires a value`);
     }
     if (!VALUE_ARGUMENTS.has(name)) {
       throw new Error(`Unknown quality-area adapter argument: ${name}`);
@@ -82,11 +85,15 @@ function collectArguments(arguments_) {
   return values;
 }
 
-function optionalValue(value, convert, fallback) {
+function optionalValue<Value, Fallback>(
+  value: string | undefined,
+  convert: (text: string) => Value,
+  fallback: Fallback,
+): Value | Fallback {
   return value === undefined ? fallback : convert(value);
 }
 
-function supportedKind(values) {
+function supportedKind(values: ReadonlyMap<string, string>): string {
   const kind = requiredValue(values, '--kind');
   if (!QUALITY_AREA_RUNNERS.has(kind)) {
     throw new Error(`Unsupported quality area: ${kind}`);
@@ -94,7 +101,7 @@ function supportedKind(values) {
   return kind;
 }
 
-function snapshotOf(values) {
+function snapshotOf(values: ReadonlyMap<string, string>): 'base' | 'head' {
   const snapshot = requiredValue(values, '--snapshot');
   if (snapshot !== 'base' && snapshot !== 'head') {
     throw new Error('--snapshot must be base or head');
@@ -102,7 +109,7 @@ function snapshotOf(values) {
   return snapshot;
 }
 
-function trustedToolRoot(values) {
+function trustedToolRoot(values: ReadonlyMap<string, string>): string {
   const toolRoot = realpathSync(requiredValue(values, '--tool-root'));
   if (toolRoot !== TRUSTED_TOOL_ROOT) {
     throw new Error('--tool-root must be the project checkout containing this adapter');
@@ -110,7 +117,7 @@ function trustedToolRoot(values) {
   return toolRoot;
 }
 
-function movesFileOf(value) {
+function movesFileOf(value: string): string {
   const file = realpathSync(path.resolve(value));
   if (!lstatSync(file).isFile()) {
     throw new Error('--baseline-moves-file must be a file');
@@ -118,10 +125,10 @@ function movesFileOf(value) {
   return file;
 }
 
-function projectPolicyRootOf(values, projectRoot) {
+function projectPolicyRootOf(values: ReadonlyMap<string, string>, projectRoot: string): string {
   const projectPolicyRoot = optionalValue(
     values.get('--project-policy-root'),
-    (value) => realpathSync(path.resolve(value)),
+    (value: string) => realpathSync(path.resolve(value)),
     projectRoot,
   );
   if (!lstatSync(projectPolicyRoot).isDirectory()) {
@@ -130,29 +137,7 @@ function projectPolicyRootOf(values, projectRoot) {
   return projectPolicyRoot;
 }
 
-function validatedSnapshotRoot(value, name) {
-  const root = realpathSync(path.resolve(value));
-  if (!lstatSync(root).isDirectory()) {
-    throw new Error(`${name} must be a directory`);
-  }
-  if (root === TRUSTED_TOOL_ROOT) {
-    return root;
-  }
-  const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), root);
-  const segments = relativeToTemporaryRoot.split(path.sep);
-  if (
-    relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativeToTemporaryRoot) ||
-    segments.length < 2 ||
-    !(segments[0] ?? '').startsWith('nitpicker-diff-') ||
-    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1] ?? '')
-  ) {
-    throw new Error(`${name} must be inside a generated quality-diff worktree`);
-  }
-  return root;
-}
-
-function requiredValue(values, name) {
+function requiredValue(values: ReadonlyMap<string, string>, name: string): string {
   const value = values.get(name);
   if (typeof value !== 'string' || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);

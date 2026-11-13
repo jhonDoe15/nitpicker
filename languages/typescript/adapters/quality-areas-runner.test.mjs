@@ -15,8 +15,8 @@ import { installStrykerTsconfig } from './quality-areas/runners/mutation.mjs';
 import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mjs';
 import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
 import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
-import { parseArguments } from './quality-areas/arguments.mjs';
-import { runQualityArea } from './quality-areas-runner.mjs';
+import { parseArguments } from './quality-areas/arguments.mts';
+import { runQualityArea } from './quality-areas-runner.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 
 const temporaryRoots = [];
@@ -134,7 +134,7 @@ describe('coverage runner invoked as a script', () => {
     const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     process.argv = [
       originalArguments[0],
-      path.join(import.meta.dirname, 'quality-areas-runner.mjs'),
+      path.join(import.meta.dirname, 'quality-areas-runner.mts'),
       '--analyzer-name',
       'coverage',
       '--kind',
@@ -150,7 +150,7 @@ describe('coverage runner invoked as a script', () => {
     ];
     vi.resetModules();
 
-    await import('./quality-areas-runner.mjs');
+    await import('./quality-areas-runner.mts');
 
     expect(stderr).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(originalExitCode);
