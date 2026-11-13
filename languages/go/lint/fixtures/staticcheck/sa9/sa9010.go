@@ -8,7 +8,8 @@ func Missed() {
 	defer cleanup() // want SA9010
 }
 
-func Called() {
+func Called(work func()) {
 	stop := cleanup()
 	defer stop()
+	work()
 }

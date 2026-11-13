@@ -3,13 +3,13 @@ import { RULE_IDS } from '../../policy.mjs';
 import { testConsoleFindings } from '../console/console-findings.mjs';
 import { docCommentFindings } from '../doc-comments/doc-comments.mjs';
 import { exceptionMatcher } from '../exceptions.mjs';
+import { featureCycleAnalysis } from '../features/feature-cycles.mjs';
 import {
-  featureInternalImportFindings,
-  sharedImportsFeatureFindings,
-} from '../features/feature-boundaries.mjs';
-import { featureCycleAnalysis, featureCycleFindings } from '../features/feature-cycles.mjs';
-import { featureLayout, featureRoleContract, featureRoles } from '../features/feature-roles.mjs';
-import { sharedUsageFindings, sharedUsedByOneFeature } from '../features/shared-usage.mjs';
+  FEATURE_EVALUATORS,
+  featureContext,
+  layoutRoles,
+  withoutGenerated,
+} from '../features/feature-evaluators.mjs';
 import {
   publicAlternativeBypasses,
   publicAlternativeFindings,
@@ -29,32 +29,6 @@ import { validateFacts } from './schema.mjs';
 import { DESIGN_EVALUATORS } from '../design/design-findings.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
-
-function sharedUsageSubjects(modules) {
-  return modules
-    .filter(({ role, generated, initializer }) => role !== 'test' && !generated && !initializer)
-    .map(({ file }) => file);
-}
-
-function withoutGenerated(facts) {
-  const generated = new Set(
-    facts.modules.filter((module) => module.generated).map(({ file }) => file),
-  );
-  return {
-    ...facts,
-    imports: facts.imports.filter(({ from, to }) => !(generated.has(from) || generated.has(to))),
-  };
-}
-
-function featureContext(context, options) {
-  const roleOf = featureRoleContract(options.policy.layout, options.publicFace);
-  return { ...context, roleOf };
-}
-
-function featureBoundaryRule(findings) {
-  return ({ facts, context, options }) =>
-    findings(withoutGenerated(facts), featureContext(context, options));
-}
 
 function acrossPackages(modules) {
   return modules.map((module) => ({ ...module, packageRoot: '' }));
@@ -83,17 +57,6 @@ const EVALUATORS = {
     decidedConditionFindings(facts.nearDuplicateUnits, context),
   'duplicate-branch': ({ facts, context }) =>
     duplicateBranchFindings(facts.nearDuplicateUnits, context),
-  'shared-used-by-one-feature': ({ facts, context, options }) =>
-    sharedUsageFindings(
-      sharedUsedByOneFeature(
-        { modules: sharedUsageSubjects(facts.modules), imports: withoutGenerated(facts).imports },
-        { roleOf: featureRoles(featureLayout(options.policy.layout)) },
-      ),
-      context,
-    ),
-  'feature-internal-import': featureBoundaryRule(featureInternalImportFindings),
-  'shared-imports-feature': featureBoundaryRule(sharedImportsFeatureFindings),
-  'feature-cycle': featureBoundaryRule(featureCycleFindings),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
@@ -107,6 +70,7 @@ const EVALUATORS = {
         exceptions: options.policy.exceptions ?? [],
       },
     ),
+  ...FEATURE_EVALUATORS,
   ...DESIGN_EVALUATORS,
 };
 
@@ -207,6 +171,17 @@ function isOptionalObject(value) {
   return value === undefined || isPlainObject(value);
 }
 
+const LAYOUT_GLOBS = [
+  ['sharedRoots', 'an array of folder globs'],
+  ['notFeatures', 'an array of folder names'],
+  ['notFeatureFolders', 'an array of folders'],
+  ['featureRoots', 'an array of folder globs'],
+].map(([key, shape]) => [
+  `policy.layout.${key}`,
+  (policy) => policy.layout?.[key] === undefined || isGlobs(policy.layout[key]),
+  shape,
+]);
+
 const POLICY_SHAPES = [
   ['policy.testConsole', (policy) => isOptionalObject(policy.testConsole), 'an object'],
   ['policy.layout', (policy) => isOptionalObject(policy.layout), 'an object'],
@@ -225,15 +200,14 @@ const POLICY_SHAPES = [
     (policy) => isListOf(policy.testConsole?.allow, isAllowEntry),
     'an array of { contains, paths? } entries',
   ],
+  ...LAYOUT_GLOBS,
   [
-    'policy.layout.sharedRoots',
-    (policy) => policy.layout?.sharedRoots === undefined || isGlobs(policy.layout.sharedRoots),
-    'an array of folder globs',
-  ],
-  [
-    'policy.layout.featureRoots',
-    (policy) => policy.layout?.featureRoots === undefined || isGlobs(policy.layout.featureRoots),
-    'an array of folder globs',
+    'policy.layout.aliases',
+    (policy) =>
+      policy.layout?.aliases === undefined ||
+      (isPlainObject(policy.layout.aliases) &&
+        Object.values(policy.layout.aliases).every((folder) => typeof folder === 'string')),
+    'an object of folder to folder',
   ],
 ];
 
@@ -288,7 +262,7 @@ export function featureFactAnalysis(facts, options) {
     ...prepared,
     rules: prepared.rules.filter((rule) => rule !== RULE_IDS.featureCycle),
   };
-  const roleOf = featureRoles(featureLayout(prepared.options.policy.layout));
+  const roleOf = layoutRoles(prepared.options);
   return {
     findings: uniqueFindings([...evaluated(others), ...cycles.findings]),
     explainedCycles: cycles.cycles,

@@ -19,7 +19,7 @@ import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
-import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
+import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';

@@ -43,6 +43,7 @@ const GO_CATALOG_TOOLS = [
   'usestdlibvars',
   'sloglint',
   'spancheck',
+  'gocritic',
 ];
 export const GO_LINTER_TOOLS = [
   'vet',
@@ -62,6 +63,14 @@ export const GO_EXCEPTION_RULES = [
   RULE_IDS.stabilityDirection,
   RULE_IDS.testOnlyExport,
   RULE_IDS.sharedUsedByOneFeature,
+  RULE_IDS.featureInternalImport,
+  RULE_IDS.sharedImportsFeature,
+  RULE_IDS.featureCycle,
+  RULE_IDS.domainImportsAdapter,
+  RULE_IDS.domainImportsIo,
+  RULE_IDS.domainImportsClient,
+  RULE_IDS.domainImportsLogger,
+  RULE_IDS.domainImportsRandom,
   PACKAGE_RULE_IDS.unusedDependency,
   PACKAGE_RULE_IDS.unlistedDependency,
 ];

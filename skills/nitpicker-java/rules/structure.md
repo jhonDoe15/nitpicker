@@ -29,6 +29,16 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A class in a `shared` package that only one feature (a package under `features`) uses belongs in
   that feature (`coupling/shared-used-by-one-feature`); `layout.sharedRoots` and
   `layout.featureRoots` name other folders.
+- Features (`**/features/<name>`, or in a Spring app the sub-packages of the root package): other
+  code uses only the classes directly in a feature's package, never its sub-packages
+  (`feature-internal-import`), and never another feature's entities or repositories
+  (`foreign-feature-persistence`): call its services. `shared` never uses a feature
+  (`shared-imports-feature`); features and packages never depend on each other in a cycle
+  (`feature-cycle`, `package-cycle`).
+- Code in a package with a `domain` segment holds rules only: no adapter, file, network, thread,
+  database, HTTP, messaging, logger, random or container class, also not through a helper
+  (`domain-imports-*`, `domain-reaches-io`). Declare an interface (port) in the domain, implement it
+  in an adapter, and pass ids, clocks and values in.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations), an aggregate holds
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
