@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseXml } from '../../../../shared/ingest/common.mjs';
 import { compilerSettings } from './maven-compiler.mjs';
-import { processorTool } from './maven-errorprone.mjs';
+import { processorTool } from './maven-errorprone.mts';
 
 const project = (body) => parseXml(`<project><artifactId>app</artifactId>${body}</project>`);
 

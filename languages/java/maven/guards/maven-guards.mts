@@ -9,7 +9,7 @@ import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
 import { runDependencies } from './maven-dependencies.mts';
 import { runCpd } from './maven-pmd.mts';
 import { guardCompiler } from '../errorprone/maven-compiler.mjs';
-import { processorPath } from '../errorprone/maven-errorprone.mjs';
+import { processorPath } from '../errorprone/maven-errorprone.mts';
 import { toolCommand } from '../../builds/tools/tool-commands.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';

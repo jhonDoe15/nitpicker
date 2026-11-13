@@ -6,7 +6,7 @@ import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
-import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
+import { runErrorProne } from '../errorprone/maven-errorprone.mts';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
 import { runGuards } from '../guards/maven-guards.mts';
