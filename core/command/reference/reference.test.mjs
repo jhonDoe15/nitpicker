@@ -339,9 +339,9 @@ describe('nitpicker rules', () => {
     );
     const reported = new Set(idsReportedBy('java'));
     expect(ids).toEqual(
-      ENTRIES.filter(({ id, fix }) => reported.has(id) && fix.java === 'automatic').map(
-        ({ id }) => id,
-      ),
+      ENTRIES.filter(
+        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix.java),
+      ).map(({ id }) => id),
     );
     expect(
       ids.filter((id) =>
