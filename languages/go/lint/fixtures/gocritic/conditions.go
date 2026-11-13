@@ -28,7 +28,7 @@ func FirstIsTenChecked(values []int) bool {
 }
 
 func Narrowed(small int8, large int16) bool {
-	return int8(large) < small // want truncateCmp
+	return int8(large) < small // want truncateCmp G115
 }
 
 func Widened(small int8, large int16) bool {
