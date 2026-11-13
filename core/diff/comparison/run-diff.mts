@@ -4,7 +4,7 @@ import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mjs';
-import { combineAnalyzerReports, noChangesReport } from './results.mjs';
+import { type DiffReport, combineAnalyzerReports, noChangesReport } from './results.mts';
 import {
   type RunSettings,
   type SnapshotRoots,
@@ -22,7 +22,8 @@ import {
   withSnapshotRoots,
 } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
-import { fieldsOf, textOf } from '../../../shared/values/readers.mts';
+import { fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import { type ReportEntry, entriesOf } from '../../../shared/values/findings.mts';
 
 type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
 
@@ -61,7 +62,8 @@ type Settings = Omit<DiffOptions, 'includeWorkingTree'> &
   RunSettings & {
     readonly includeWorkingTree: boolean;
     readonly captureHead: CaptureHead;
-    readonly additionalToolErrors: unknown;
+    readonly additionalToolErrors: readonly ReportEntry[];
+    readonly configOverrides: unknown[];
   };
 
 type BaseSetup = {
@@ -72,11 +74,6 @@ type BaseSetup = {
   readonly policyLoosenings: unknown;
   readonly policyKinds?: unknown;
   readonly policyDigest?: unknown;
-};
-
-type DiffReport = {
-  readonly summary: { elapsedMs?: number; readonly [field: string]: unknown };
-  text?: unknown;
 };
 
 type SnapshotContext = {
@@ -98,8 +95,6 @@ const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Compa
   resolveComparison;
 const sameTree: (repositoryRoot: string, left: string, right: string) => boolean = hasSameTree;
 const captureTree: CaptureHead = captureWorkingTree;
-const unchangedReport: (context: object) => DiffReport = noChangesReport;
-const combinedReport: (context: object) => DiffReport = combineAnalyzerReports;
 const partialRunOf: (partialRun: unknown) => object = partialRunField;
 const writeReports: (
   outputRoot: string,
@@ -115,7 +110,7 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
   const startedAt = Date.now();
   const comparison = resolveSnapshots(settings);
   const report = sameTree(settings.repositoryRoot, comparison.mergeBaseSha, comparison.headSha)
-    ? unchangedReport({ ...settings, comparison, startedAt })
+    ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
   Object.assign(report.summary, partialRunOf(settings.partialRun));
@@ -148,8 +143,8 @@ function withDefaults(options: DiffOptions): Settings {
       options.headProjectRoot ?? path.join(options.repositoryRoot, options.projectRelativePath),
     includeWorkingTree: options.includeWorkingTree === true,
     captureHead: isCapture(options.captureHead) ? options.captureHead : captureTree,
-    additionalToolErrors: given(options.additionalToolErrors, []),
-    configOverrides: given(options.configOverrides, []),
+    additionalToolErrors: entriesOf(options.additionalToolErrors),
+    configOverrides: listOf(options.configOverrides),
     headPolicy: given(options.headPolicy, {}),
   };
 }
@@ -227,7 +222,7 @@ function runAndCombine(context: RunContext): DiffReport {
   const headRun = withMoves(layout.moves.files, (baselineMovesFile) =>
     runHeadAnalyzers(context, baselineMovesFile),
   );
-  return combinedReport({
+  return combineAnalyzerReports({
     analyzers: settings.analyzers,
     baseRun,
     headRun,
@@ -239,7 +234,7 @@ function runAndCombine(context: RunContext): DiffReport {
     additionalToolErrors: settings.additionalToolErrors,
     configOverrides: settings.configOverrides,
     policyChanges: baseSetup.policyChanges,
-    policyLoosenings: baseSetup.policyLoosenings,
+    policyLoosenings: listOf(baseSetup.policyLoosenings),
     policyKinds: baseSetup.policyKinds,
     policyDigest: baseSetup.policyDigest,
     policies: { base: baseSetup.headPolicy, head: settings.headPolicy },
@@ -249,11 +244,12 @@ function runAndCombine(context: RunContext): DiffReport {
     reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,
     staged: settings.staged,
-    notices:
+    notices: listOf(
       settings.describeNotices?.([...layout.touchedCode.changedLines.keys()], {
         mergeBaseSha: comparison.mergeBaseSha,
         touchedPaths: [...layout.touchedPaths],
-      }) ?? [],
+      }),
+    ),
   });
 }
 

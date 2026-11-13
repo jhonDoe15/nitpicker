@@ -26,8 +26,8 @@ export type Comparison = {
 type Changes = ReturnType<typeof readRepositoryChanges>;
 
 type Moves = {
-  readonly files: unknown;
-  readonly directories: unknown;
+  readonly files: Map<string, string>;
+  readonly directories: Map<string, string>;
   readonly inferred: Map<string, string>;
 };
 

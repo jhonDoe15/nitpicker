@@ -3,7 +3,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
-import { parseAnalyzerReportKeepingValid } from './invalid-findings.mjs';
+import { parseAnalyzerReportKeepingValid } from './invalid-findings.mts';
 
 const finding = (overrides = {}) => ({
   tool: 'java',

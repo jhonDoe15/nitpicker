@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareAnalyzers } from './compare-analyzers.mjs';
+import { compareAnalyzers } from './compare-analyzers.mts';
 
 const COMPILE_ERROR = {
   tool: 'build',
