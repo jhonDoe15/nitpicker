@@ -50,4 +50,37 @@ describe('reuse findings', () => {
       ['duplicate-definition', 'src/b.ts', 'duplicate:f'],
     ]);
   });
+
+  it("reports a feature using another feature's persistence, also through its index", () => {
+    const features = 'src/main/features';
+    const files = {
+      [`${features}/billing/invoice.entity.ts`]:
+        "import { Entity, Column } from 'typeorm';\n@Entity()\nexport class Invoice {\n  @Column() total = 0;\n}\n",
+      [`${features}/billing/invoice.repository.ts`]:
+        "import { DataSource } from 'typeorm';\nexport function invoices(source: DataSource) {\n  return source;\n}\n",
+      [`${features}/billing/billing.service.ts`]:
+        "import { invoices } from './invoice.repository';\nexport function bill() {\n  return invoices;\n}\n",
+      [`${features}/billing/index.ts`]:
+        "export { invoices } from './invoice.repository';\nexport { bill } from './billing.service';\n",
+      [`${features}/orders/cart.ts`]:
+        "import { Invoice } from '../billing/invoice.entity';\nimport { invoices } from '../billing';\nexport const cart = [Invoice, invoices];\n",
+      [`${features}/orders/totals.ts`]:
+        "import { bill } from '../billing';\nexport const totals = bill;\n",
+    };
+
+    expect(
+      rows(findingsOf(files)).filter(([rule]) => rule === 'foreign-feature-persistence'),
+    ).toEqual([
+      [
+        'foreign-feature-persistence',
+        `${features}/orders/cart.ts`,
+        `foreign-persistence:${features}/billing/invoice.entity.ts`,
+      ],
+      [
+        'foreign-feature-persistence',
+        `${features}/orders/cart.ts`,
+        `foreign-persistence:${features}/billing/invoice.repository.ts`,
+      ],
+    ]);
+  });
 });

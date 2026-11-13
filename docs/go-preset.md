@@ -90,34 +90,35 @@ per source hash and toolchain into the nitpicker cache.
 
 ## What runs
 
-| Check                  | Tool                       | Finding                                                                             |
-| ---------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| Format                 | gofmt, gofumpt, goimports  | `<formatter>/format`, one per file                                                  |
-| Compile errors         | `go vet`                   | `build/compile-error` at the position the compiler names                            |
-| Vet                    | `go vet` (all analyzers)   | `vet/<analyzer>`, for example `vet/printf`                                          |
-| More vet passes        | lint program               | `vet/<analyzer>`, for example `vet/nilness`                                         |
-| staticcheck            | lint program               | `staticcheck/<check>`, for example `staticcheck/SA4006`                             |
-| Unchecked errors       | lint program (errcheck)    | `errcheck/unchecked`                                                                |
-| Modern forms           | lint program (modernize)   | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
-| Security               | lint program (gosec)       | `gosec/<rule>`, for example `gosec/G404`                                            |
-| Own one-way rules      | lint program (go-rules)    | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                         |
-| Failing tests          | `go test -json`            | `tests/tests-failed` tool error quoting each failure                                |
-| Data races             | `go test -race`            | `race/data-race`, one per pair of conflicting functions                             |
-| No tests ran           | `go test -json`            | `tests/no-tests-ran`                                                                |
-| Slow tests             | `go test -json`            | `test-runtime/slow-test`                                                            |
-| Branch coverage        | coverage profile           | `coverage/changed-branch-coverage`                                                  |
-| CRAP                   | coverage profile           | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                               |
-| Mutation testing       | metrics program, `go test` | `mutation/mutant-survived`, `mutation/mutant-nocoverage`, `mutation/mutant-timeout` |
-| Function limits        | metrics program            | `structure/function-*-limit`                                                        |
-| Type limits            | metrics program            | `structure/class-methods-limit`, `class-fields-limit`                               |
-| File and folder limits | metrics program            | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
-| Duplicates             | jscpd, renamed-clone pass  | `duplicates/duplicate-clone`                                                        |
-| Package coupling       | metrics program            | `coupling/stability-direction`                                                      |
-| Feature layout         | metrics program            | `facts/shared-used-by-one-feature`                                                  |
-| Test-only code         | metrics program            | `facts/test-only-export`                                                            |
-| Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                         |
-| Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                |
-| Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                              |
+| Check                  | Tool                       | Finding                                                                                                  |
+| ---------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Format                 | gofmt, gofumpt, goimports  | `<formatter>/format`, one per file                                                                       |
+| Compile errors         | `go vet`                   | `build/compile-error` at the position the compiler names                                                 |
+| Vet                    | `go vet` (all analyzers)   | `vet/<analyzer>`, for example `vet/printf`                                                               |
+| More vet passes        | lint program               | `vet/<analyzer>`, for example `vet/nilness`                                                              |
+| staticcheck            | lint program               | `staticcheck/<check>`, for example `staticcheck/SA4006`                                                  |
+| Unchecked errors       | lint program (errcheck)    | `errcheck/unchecked`                                                                                     |
+| Modern forms           | lint program (modernize)   | `modernize/<analyzer>`, for example `modernize/rangeint`                                                 |
+| Security               | lint program (gosec)       | `gosec/<rule>`, for example `gosec/G404`                                                                 |
+| Own one-way rules      | lint program (go-rules)    | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                                              |
+| Failing tests          | `go test -json`            | `tests/tests-failed` tool error quoting each failure                                                     |
+| Data races             | `go test -race`            | `race/data-race`, one per pair of conflicting functions                                                  |
+| No tests ran           | `go test -json`            | `tests/no-tests-ran`                                                                                     |
+| Slow tests             | `go test -json`            | `test-runtime/slow-test`                                                                                 |
+| Branch coverage        | coverage profile           | `coverage/changed-branch-coverage`                                                                       |
+| CRAP                   | coverage profile           | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                                                    |
+| Mutation testing       | metrics program, `go test` | `mutation/mutant-survived`, `mutation/mutant-nocoverage`, `mutation/mutant-timeout`                      |
+| Function limits        | metrics program            | `structure/function-*-limit`                                                                             |
+| Type limits            | metrics program            | `structure/class-methods-limit`, `class-fields-limit`                                                    |
+| File and folder limits | metrics program            | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`                      |
+| Duplicates             | jscpd, renamed-clone pass  | `duplicates/duplicate-clone`                                                                             |
+| Package coupling       | metrics program            | `coupling/stability-direction`                                                                           |
+| Feature layout         | metrics program            | `facts/shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle` |
+| Domain boundaries      | metrics program            | `coupling/domain-imports-adapter`, `domain-imports-io`, `-client`, `-logger`, `-random`                  |
+| Test-only code         | metrics program            | `facts/test-only-export`                                                                                 |
+| Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                                              |
+| Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                                     |
+| Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                                                   |
 
 ## Format check: following the project
 
@@ -460,6 +461,26 @@ message does not already name it, and by its exception entry:
     function takes a context or request, typed attributes such as
     `slog.String("name", name)` instead of key-value pairs, `slog.DiscardHandler`), spancheck
     (`span.End()` on every path after `tracer.Start`).
+- **go-critic**, run as one analyzer under the tool name `gocritic` and printed under each
+  checker's name, such as `gocritic/appendAssign`. 80 of its 108 checkers run (the 67 Go
+  checkers and the 41 rules it embeds through ruleguard); each of the others is in the table of
+  checkers left out below. Bugs: appendAssign, argOrder, badCall, badCond, badLock, badRegexp,
+  badSyncOnceFunc, codegenComment, deprecatedComment, dupArg, dupCase, dupOption, emptyDecl,
+  evalOrder, exitAfterDefer, filepathJoin (`filepath.Join("/", path)`, which roots a path,
+  passes), flagDeref, flagName, mapKey, nilValReturn, offBy1, rangeAppendAll, regexpPattern,
+  returnAfterHttpError, sloppyLen, sortSlice, sqlQuery, syncMapLoadAndDelete, truncateCmp,
+  uncheckedInlineErr, unnecessaryDefer, weakCond. Forms: appendCombine, assignOp,
+  boolExprSimplify, captLocal (parameters), commentedOutCode, commentedOutImport, deferUnlambda,
+  docStub, elseif, emptyFallthrough, emptyStringTest, equalFold, exposedSyncMutex, hexLiteral,
+  httpNoBody, ifElseChain, indexAlloc, initClause, methodExprCall, newDeref, octalLiteral,
+  preferDecodeRune, preferFilepathJoin, preferFprint, preferStringWriter, preferWriteByte,
+  ptrToRefParam, redundantSprint, regexpMust, regexpSimplify, sloppyReassign,
+  stringConcatSimplify, stringXbytes, stringsCompare, switchTrue,
+  typeAssertChain, typeDefFirst, typeUnparen, underef, unlabelStmt, unlambda, unnecessaryBlock,
+  unslice, valSwap, wrapperFunc, zeroByteRepeat. Each checker's Go version checks use the version
+  of the file's module, so a module on an older Go is not asked for a newer form. The lint program
+  fails with a `go/go-lint-failed` tool error when a go-critic upgrade adds a checker the preset
+  has not decided on.
 
 - **gosec**: every rule, the AST rules (G1xx to G6xx) and the SSA and taint analyzers (G113, G115,
   G118 to G124, G407, G408, G602, G701 to G710), except the six in the table below, on test
@@ -538,6 +559,72 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | usestdlibvars `time-month`, `time-weekday`, `crypto-hash`, `sql-isolation-level`, `tls-signature-scheme`, `constant-kind` | they flag a bare word such as `"May"`, `"MD5"`, `"Ed25519"` or `"Int"` in any string, a type-name table or a JWT algorithm label included, where the constant is not meant         |
 | sloglint `static-msg`                                                                                                     | flags a constant from another package (`msgs.Started`) and a logging wrapper that passes its message on, with no other form to write                                               |
 
+**go-critic checkers left out**, with the reason:
+
+| go-critic checker                            | Reason                                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `builtinShadow`, `builtinShadowDecl`         | revive's `redefines-builtin-id` reports the same names                                                                                                                                     |
+| `commentFormatting`                          | revive's `comment-spacings` reports the same comments, and it would count `//nolint` as a directive                                                                                        |
+| `defaultCaseOrder`                           | revive's `enforce-switch-style` asks for the stricter form, `default` last                                                                                                                 |
+| `deferInLoop`                                | revive's `defer` reports the same loops                                                                                                                                                    |
+| `singleCaseSwitch`                           | revive's `unnecessary-stmt` reports every one-case `switch`, type switches included                                                                                                        |
+| `todoCommentWithoutDetail`                   | `go-rules/todo-without-issue` reports every `TODO` without an issue reference, a bare `// TODO` included                                                                                   |
+| `dupBranchBody`                              | revive's `identical-branches` reports the same if and else                                                                                                                                 |
+| `importShadow`                               | revive's `import-shadowing` reports the same names                                                                                                                                         |
+| `paramTypeCombine`                           | revive's `enforce-repeated-arg-type-style` (short) asks for the same `a, b int`                                                                                                            |
+| `unnamedResult`                              | it asks for names on any two results, `(int, string)` included, which is a preference, not one form; revive's `confusing-results` reports the results of one type that a reader can mix up |
+| `badSorting`                                 | SA4029 reports the same `x = sort.StringSlice(x)`                                                                                                                                          |
+| `caseOrder`                                  | SA4020 reports the same unreachable case                                                                                                                                                   |
+| `dupImport`                                  | ST1019 reports the same import                                                                                                                                                             |
+| `dupSubExpr`                                 | SA4000 reports the same expression                                                                                                                                                         |
+| `sloppyTypeAssert`                           | S1040 reports the same assertion                                                                                                                                                           |
+| `typeSwitchVar`                              | S1034 reports the same type switch                                                                                                                                                         |
+| `yodaStyleExpr`                              | ST1017 reports the same comparison                                                                                                                                                         |
+| `dynamicFmtString`                           | `go vet` printf (modules on Go 1.24 and later) and SA1006 (earlier modules) report the same non-constant format string                                                                     |
+| `externalErrorReassign`                      | reassign reports the same assignment to another package's error                                                                                                                            |
+| `sprintfQuotedString`                        | `%q` writes Go escapes such as `\x00`, which are wrong in an HTTP header, SQL or a shell line, so `"%s"` has no single replacement                                                         |
+| `sliceClear`                                 | its suggested form is a loop; `clear(s)` is Go's form, and modernize `rangeint` reports the loop                                                                                           |
+| `timeExprSimplify`                           | its rewrites are wrong: `t.Unix() / 1000` is not `t.UnixMilli()`                                                                                                                           |
+| `hugeParam`, `rangeValCopy`, `rangeExprCopy` | a byte threshold for copies, with no single form: whether a value or a pointer is right depends on the type, not on its size                                                               |
+| `nestingReduce`                              | a body-length threshold, not one form; revive's `early-return` covers the if and else form                                                                                                 |
+| `tooManyResultsChecker`                      | a result-count threshold, not one form                                                                                                                                                     |
+| `ruleguard`                                  | runs a project's own ruleguard rule files, which the preset does not read                                                                                                                  |
+| `whyNoLint`                                  | `//nolint` comments do nothing in this preset, so an explanation for one changes nothing                                                                                                   |
+
+**go-critic checkers tagged experimental, opinionated or performance that run**, each with the
+one form it asks for. The tagged bug finders (badLock, badRegexp, badSyncOnceFunc, dupOption,
+evalOrder, filepathJoin, nilValReturn, rangeAppendAll, regexpPattern, returnAfterHttpError,
+sortSlice, sqlQuery, syncMapLoadAndDelete, truncateCmp, uncheckedInlineErr, weakCond) run because
+each reports a likely bug and names the fix.
+
+| go-critic checker                                                        | One form                                                                                                           |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `appendCombine`, `zeroByteRepeat`                                        | one `append` call for consecutive appends; `make([]byte, n)` for zeroed bytes                                      |
+| `indexAlloc`, `stringXbytes`, `preferDecodeRune`                         | no conversion the call does not need: `bytes.Index(data, ...)`, `copy(b, s)`, `utf8.DecodeRuneInString(s)`         |
+| `preferFprint`, `preferStringWriter`, `preferWriteByte`                  | write to the writer directly: `fmt.Fprintf(w, ...)`, `w.WriteString(s)`, `w.WriteByte('\n')`                       |
+| `equalFold`, `emptyStringTest`, `stringsCompare`, `stringConcatSimplify` | `strings.EqualFold(a, b)`, `s == ""`, `a < b`, `a + "/" + b`                                                       |
+| `redundantSprint`, `preferFilepathJoin`                                  | `name.String()` or the string itself over `fmt.Sprint`; `filepath.Join(dir, file)` over `string(os.PathSeparator)` |
+| `boolExprSimplify`                                                       | the simplest comparison: `a >= b` for `a > b \|\| a == b`                                                          |
+| `commentedOutCode`, `commentedOutImport`                                 | dead code is deleted; version control keeps it (the Kotlin and Python presets ask the same)                        |
+| `docStub`                                                                | a doc comment describes; a stub such as `// Name ...` only silences doc-comment checks                             |
+| `deferUnlambda`                                                          | `defer f(0)` for a deferred literal that only calls `f` with constants                                             |
+| `emptyDecl`                                                              | no empty `var ()` block                                                                                            |
+| `emptyFallthrough`                                                       | `case a, b:` instead of a case that only falls through; in an untagged switch too, where revive does not look      |
+| `exposedSyncMutex`                                                       | a mutex in an unexported field, so callers cannot lock the type                                                    |
+| `httpNoBody`                                                             | `http.NoBody` for a request without a body                                                                         |
+| `hexLiteral`, `octalLiteral`                                             | hex digits in one case, `0o644` for octal                                                                          |
+| `initClause`                                                             | an if or switch init clause declares variables; other calls go before it                                           |
+| `methodExprCall`                                                         | `value.Method()` rather than `Type.Method(value)`                                                                  |
+| `ptrToRefParam`                                                          | a map, channel or interface is passed as is, not through a pointer                                                 |
+| `regexpSimplify`                                                         | the shortest pattern: `\d` for `[0-9]`                                                                             |
+| `sloppyReassign`                                                         | `if err := f(); err != nil { return err }` when the branch only returns the error                                  |
+| `sortSlice`                                                              | the less function compares the slice it sorts, with `i` on the left: `xs[i] > xs[j]` for a descending sort         |
+| `typeAssertChain`                                                        | a type switch for repeated type assertions                                                                         |
+| `typeDefFirst`                                                           | a type's definition comes before its methods                                                                       |
+| `typeUnparen`                                                            | no parentheses around a type                                                                                       |
+| `unlabelStmt`, `unnecessaryBlock`                                        | no label or braces that change nothing                                                                             |
+| `unnecessaryDefer`                                                       | a call right before a return is made directly                                                                      |
+
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
 | Kept                                                             | Dropped                                                                                   |
@@ -580,6 +667,22 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | ST1018 (format characters in text)                               | bidichk                                                                                   |
 | contextcheck                                                     | `go-rules/context-outside-entry`                                                          |
 | `go-rules/http-without-timeout`                                  | noctx                                                                                     |
+| QF1004, S1003                                                    | gocritic `wrapperFunc`                                                                    |
+| SA1018 (`strings.Replace` with n 0)                              | gocritic `badCall`                                                                        |
+| SA2001, SA2003 (lock and unlock)                                 | gocritic `badLock`                                                                        |
+| SA4013 (double negation)                                         | gocritic `boolExprSimplify`                                                               |
+| SA4024 (`len` below 0)                                           | gocritic `sloppyLen`                                                                      |
+| SA6005 (`strings.ToLower` compare)                               | gocritic `equalFold`                                                                      |
+| SA9010 (deferred call not called)                                | gocritic `unnecessaryDefer`                                                               |
+| S1025, S1039, perfsprint `string-format`                         | gocritic `redundantSprint`                                                                |
+| QF1003 (tagged switch)                                           | gocritic `ifElseChain`                                                                    |
+| QF1012 (`fmt.Fprintf` to a writer)                               | gocritic `preferFprint`                                                                   |
+| revive `useless-fallthrough`                                     | gocritic `emptyFallthrough`                                                               |
+| revive `identical-switch-conditions`                             | gocritic `dupCase`                                                                        |
+| nilerr                                                           | gocritic `nilValReturn`                                                                   |
+| gocritic `badRegexp`                                             | gocritic `regexpSimplify`                                                                 |
+| gocritic `sqlQuery` (`Exec` for no rows)                         | sqlclosecheck, rowserrcheck                                                               |
+| gocritic `regexpMust`                                            | errcheck on `regexp.Compile`                                                              |
 
 Those two compare the column too, because one line can hold a second, different problem (`found ==
 true || ready && false`). revive keeps the rules staticcheck lacks in the same areas:
@@ -708,6 +811,115 @@ and says more, so a comment with one is never reported as restating its name. `_
 generated files are not read, and neither is the package comment. The exception takes it as
 printed, `facts/doc-comment-content`.
 
+## Design rules
+
+The shared deep-module design rules (listed in [`spec/checks.md`](../spec/checks.md)) read two more
+lists of the Go facts, `types` and `callables`, that the metrics program writes under `design` in
+`inspect.json` (`languages/go/inspect/design/`). A `.go` file is a module, a package is not. Test
+files, generated files and files with a build constraint (`//go:build`, `_linux.go`) are not read,
+and neither are files that do not parse.
+
+The program types what it can prove without the compiler: package-level names, imports of the
+module's own packages, parameter and receiver types, struct fields, and local variables whose every
+assignment agrees on one type (`x := New()`, `var x T`, `x := y.Field`, `for _, x := range xs`). A
+call on a value it cannot type, a function value, a dot import, a type alias or a generic type
+argument is left out rather than guessed, so the rules see less, never more.
+
+- A struct is a `class` (it has methods) or `data` (it has none); a named type with constants of its
+  type (`type Status int` with `const (Open Status = iota; ...)`) is an `enum` with those `cases`; an
+  interface is an `interface` with bodyless methods; every file with a top-level function is a
+  `module` that owns them, and its package-level variables are its fields.
+- Exported means a capitalised name, and a method also needs a capitalised type. A field is private
+  when its name is lower case, and mutable when its type is a slice, a map or a pointer.
+- A method's owner is its receiver type, wherever in the package the method is declared. Methods
+  promoted through an embedded struct or interface of the project resolve to the embedded type, and
+  an embedded type is a supertype.
+
+**`mutable-state-escape`.** A caller in another file that changes the value an exported method
+returned fails when that value is a private slice, map or pointer field of the receiver
+(`return c.items`). A change is an element or field assignment (`lines[0] = x`, `cfg.Timeout = 3`,
+also `++` and `+=`), `delete`, `clear` or `copy` on it, and `sort.*`, `slices.Sort*`,
+`slices.Reverse`, `maps.DeleteFunc` or `maps.Copy` called on it, made directly on the call or on a
+local that holds the result and is never reassigned. `append` is not a change: it copies unless
+the capacity is left over, which the rule cannot see. A method of the same type is the owner even
+in another file of the package, so it may change the value. Return a copy (`slices.Clone`) or add
+the operation to the owner.
+
+**`context-threading`.** Report-only. A function whose parameter is a struct or interface of the
+project with 5 or more fields (or methods) and that passes it whole through 2 or more functions, one
+in another file, which together read at most a third of those fields. A use is `ctx.Field` or
+`ctx.Method()` (it reads `Field` or `Method`), or the value (`ctx`, `&ctx` or `*ctx`) as an argument
+of a function or method the program resolved. Any other use makes the evidence incomplete and the
+chain is not reported: returning or storing the value, a composite literal, a closure that captures
+it, an unresolved callee, a variadic or spread argument. A comparison with `nil` is not a use.
+
+**`caller-protocol`.** Report-only. The same 3 or more method calls, in the same order, on one value
+of a struct or interface of the project, repeated by 3 or more functions in 2 or more files. The
+value is a parameter or local (`s`), a field of the receiver (`this.session`, which is `r.session`)
+or the receiver itself (`this`); a call on the result of another call has no value to group by and
+is left out. Methods promoted from an embedded type are steps of the embedding value, and a call
+through an interface value is a step of the interface.
+
+**`protocol-contract`.** Fails a call that breaks a lifecycle listed in `protocols` (see
+[Design signals](usage.md#design-signals)): an `open` method of the type without a `close` method
+on every exit, or a listed step before `open`. A deferred close call counts as closing on every
+exit, and so does a `defer func() { ... }()` whose body makes the close call, also inside an `if`
+(`if c, err := Open(); err == nil { defer c.Close() }`), a loop or a function literal. A close call
+that is not deferred does not count (a `return` before it skips it). A `return` of the value (also
+as the first result of `(T, error)`), or a value held in or stored into a field of the receiver
+(`s.conn = c`), hands the lifecycle over and is not reported. Two calls in different
+arms of one `if`, `switch` or `select` never run in one execution, so a step on one arm is not
+before an `open` on the other. A contract on an interface also covers the structs of the project
+that implement it, and on a struct also the structs that embed it: a struct implements an interface
+when its method set (embedded types included) has every method name with the same number of
+parameters and results; the methods it implements are entries, like `String` and `Error`.
+
+**`forwarding-chain`.** Report-only. Two or more hops in a row, each in another file, whose whole
+body is `return f(a, b)` (or the bare call `f(a, b)` when there is no result) with every parameter
+passed in order and nothing else, and that have the same parameter types and result as the function
+they call. The call may be a package function (`store.Load(id, limit)`) or a method on a value the
+program can type (`s.backend.Fetch(id, limit)`). A hop with a variadic parameter or a spread
+argument, a call with another argument (a constant, an expression, a field), a result that is
+converted or wrapped, and an unexported hop into an unexported function are not forwarding. Call
+the last function directly, or let a hop own something.
+
+**`disjoint-consumer-groups`.** Report-only. A struct (or a file with top-level functions, its module)
+whose exported methods, used from other files, split into 2 or more groups of 2 or more that no
+caller file uses together and that share no field or helper. The fields a method uses are the
+fields of its receiver it selects (`r.rows`); for a top-level function they are the package-level
+variables of its own file. A function used as a value counts as a use like a call: passed as an
+argument, stored, returned, a method value (`l.Add`), held in a package-level table the caller reads
+(`var routes = map[string]func(){"audit": ledger.Audit}`, one level deep), and what a file's
+package-level variable initializers and `init` functions call or use count for that file.
+
+**`data-clump`.** Report-only. The same 3 or more parameters (name and type) in 3 or more exported
+functions or methods of 2 or more files. A type is written without spaces (`func(int)bool`,
+`[]*Item`, `context.Context`), and a struct or interface of the project is its id, so two packages'
+`Item` types stay apart. Blank (`_`) and variadic parameters, a method's receiver, entries and
+functions of a package other modules can import are left out, and so are numeric parameters with
+coordinate names (`x, y, z float64`).
+
+**`repeated-policy-decision`.** Report-only. Two decisions in different files over the same enum or
+field that group its constants the same way, with an arm covering 2 or more constants (and, for an
+enum, fewer than all of them). A decision is a `switch` on a value, a tagless `switch` whose
+cases are `||` chains of `x == C`, or an `if` / `else if` chain of such tests (a lone
+`if x == A || x == B` too), all comparing one subject with constants: the constants of an enum
+type of the project (`case pay.Card, pay.Paypal:`), or literals and named constants for a field of a
+struct of the project (`o.Status == "open"`, subject `Order.Status`). A subject that has an enum
+type is the enum, whether it is a variable or a field. A decision with any other arm (a variable,
+a call, `!=`, `&&`) is not listed, nor is a `switch` on a type. `default` and the last `else` are
+`otherwise`.
+
+**`foreign-state-decision`.** Report-only. Two functions in other files than a struct with methods
+that branch on the same 2 or more of its fields. A field is decided when it is selected on a
+parameter or local of the struct type (or on a field of the receiver) inside the condition of an
+`if` or `for`, the tag of a `switch`, or a case expression of a tagless `switch`; reading it in a
+body does not count. Methods of the struct, structs without methods and fields reached through a
+call result or a second selector are not judged.
+
+Unexported names count as private even though the other files of the package can reach them, and
+callers in the same file as the owner are not judged, as in the other languages.
+
 ## Duplicates
 
 jscpd's `go` format runs over the module's non-test, non-generated files, and the renamed-clone pass
@@ -731,8 +943,29 @@ message suggests an interface the stable package owns.
 `layout.featureRoots` and `layout.sharedRoots` (defaults `**/features` and `**/shared`) feed
 `shared-used-by-one-feature`: a file under a shared root that only one feature uses, directly or
 through other shared code, fails. A blank import (`import _ ".../shared/drivers"`) counts as a use
-of every file of the package. The compiler already enforces `internal/` visibility and rejects
-import cycles, so the preset has no rule for either.
+of every file of the package. The same layout feeds the feature boundary rules every preset runs
+(see [Stability direction](usage.md#stability-direction) and the
+[checks table](../spec/checks.md#custom-rules)): `feature-internal-import` (a file outside a feature
+uses a package below the feature's top package; the public face of `features/billing` is the package
+directly in that folder), `shared-imports-feature` (a file under a shared root uses a feature) and
+`feature-cycle` (a use between two features that closes a cycle of features). The compiler already
+enforces `internal/` visibility and rejects package import cycles, so the preset has no rule for
+either; a cycle of features is still possible, since a feature holds several packages.
+
+A file in a package folder with a `domain` segment (and no `adapter`, `adapters`, `infrastructure`
+or `infra` segment) keeps to the domain rules every preset runs (see
+[Domain boundaries](java-preset/domain-boundaries.md)): it imports no adapter package of the module
+(`domain-imports-adapter`), no `os`, `os/exec`, `net`, `syscall` or `plugin` (`domain-imports-io`),
+no database, HTTP, RPC, messaging or cloud client such as `database/sql`, `net/http`, pgx, GORM,
+go-redis, Kafka, gRPC or the AWS SDK (`domain-imports-client`), no logger such as `log`, `log/slog`,
+zap, logrus or zerolog (`domain-imports-logger`) and no random source such as `math/rand` or
+`crypto/rand` (`domain-imports-random`). An id library (`google/uuid`, `gofrs/uuid`, ulid, xid,
+ksuid) counts only when the file calls a generator such as `uuid.New` or `ulid.Make`; `uuid.Parse`,
+the `uuid.UUID` type and the name-based `uuid.NewSHA1` are values. Value types and sentinel errors
+of the I/O and client packages (`net.IP`, `net.ParseIP`, `sql.NullString`, `sql.ErrNoRows`,
+`http.StatusOK`, `os.ErrNotExist`) do not count either. Go has no framework container, so
+`domain-imports-framework-context` does not apply, and `domain-reaches-io` (I/O reached through a
+helper outside the domain) is not run for Go yet. Tests and generated files are left out.
 
 ## Dead code
 
@@ -786,8 +1019,9 @@ add a test.
 | `tools.gofumpt.precedence`, `tools.goimports.precedence` | read the formatter's options from the golangci-lint config   |
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
-| `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `layout.featureRoots`, `layout.sharedRoots`              | the feature layout the feature rules read                    |
 | `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
+| `protocols`                                              | the lifecycles `protocol-contract` checks                    |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 
@@ -831,7 +1065,6 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   `go.work` workspace's other modules are not analyzed.
 - Generated files are listed but not measured, format-checked, linted or duplicate-scanned; they
   still compile and vet, and the names they use count as uses.
-- The feature boundary rules other than `shared-used-by-one-feature` are not run for Go yet.
 - Mutants run one after another, each a `go test` of its test packages, so mutation testing costs
   roughly one test run of those packages per mutant on the changed lines. Go's build cache keeps the
   unchanged packages compiled.

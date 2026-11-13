@@ -96,6 +96,13 @@ allowed form and ends with its exception entry.
   directive one the compiler knows (gocheckcompilerdirectives).
 - Defer one call: keep a returned function first, `stop := start(); defer stop()`, never
   `defer start()()`.
+- Write the one form go-critic asks for: `s == ""` for an empty string, `x += y`, `else if`,
+  a `switch {}` over an if-else chain of three or more branches, a type switch over repeated type
+  assertions, `0o644` and hex digits in one case, `http.NoBody`,
+  `strings.EqualFold`, `a + b` over `strings.Join` of two strings, `f` over
+  `func(x int) int { return f(x) }`, methods after their type, lower-case parameter names, and no
+  label, braces, parentheses or `[:]` that change nothing. Delete commented-out code, keep a mutex in an unexported field, and call `regexp.MustCompile` for a
+  constant pattern (gocritic, printed as `gocritic/<checker>`).
 
 ## Shapes revive asks for
 

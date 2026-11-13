@@ -155,6 +155,7 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
     const result = gate(project, 'conf-opted-in');
     expect(newFindings(result)).toEqual([
       'errcheck/unchecked shop/lookup.go',
+      'gocritic/wrapperFunc shop/lookup.go',
       'modernize/any shop/lookup.go',
       'nitpicker-config/policy-loosened nitpicker.config.json',
       'nitpicker-config/policy-loosened nitpicker.config.json',
