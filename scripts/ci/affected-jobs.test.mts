@@ -2,7 +2,16 @@ import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { matchesPaths, pushPaths, selectJobs, selectWorkflowJobs } from './affected-jobs.mjs';
+import {
+  type ChangedFile,
+  type Changes,
+  type WorkflowScript,
+  matchesPaths,
+  pushPaths,
+  selectJobs,
+  selectWorkflowJobs,
+} from './affected-jobs.mts';
+import { fieldAt, fieldsOf, listOf } from '../json/fields.mts';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const workflowsDirectory = path.join(root, '.github/workflows');
@@ -10,13 +19,24 @@ const workflows = readdirSync(workflowsDirectory)
   .filter((name) => name.endsWith('.yml'))
   .map((name) => {
     const text = readFileSync(path.join(workflowsDirectory, name), 'utf8');
-    return { name, text, parsed: parse(text) };
+    const parsed: unknown = parse(text);
+    return { name, text, parsed };
   });
-const selecting = workflows.filter(({ parsed }) => parsed.jobs.changes !== undefined);
+const selecting = workflows.filter(
+  ({ parsed }) => fieldAt(parsed, 'jobs', 'changes') !== undefined,
+);
+
+function workflowNamed(name: string): { name: string; text: string; parsed: unknown } {
+  const found = workflows.find((workflow) => workflow.name === name);
+  if (found === undefined) {
+    throw new Error(`no workflow named ${name}`);
+  }
+  return found;
+}
 
 const PATTERNS = ['core/**', 'languages/java/**', 'package.json', '.github/workflows/java-e2e.yml'];
 
-function changes(...entries) {
+function changes(...entries: (string | string[])[]): Changes {
   return { entries: entries.map((entry) => [entry].flat()), total: entries.length };
 }
 
@@ -47,9 +67,9 @@ describe('pushPaths', () => {
   });
 
   it.each(workflows.map(({ name }) => name))('agrees with the YAML parser on %s', (name) => {
-    const { text, parsed } = workflows.find((workflow) => workflow.name === name);
+    const { text, parsed } = workflowNamed(name);
 
-    expect(pushPaths(text)).toEqual(parsed.on?.push?.paths ?? []);
+    expect(pushPaths(text)).toEqual(fieldAt(parsed, 'on', 'push', 'paths') ?? []);
   });
 });
 
@@ -145,13 +165,23 @@ describe('selectJobs', () => {
 describe('selectWorkflowJobs', () => {
   const workflow = '.github/workflows/java-e2e.yml';
 
-  function actionsScript({ eventName, files, failure }) {
-    const calls = [];
+  function actionsScript({
+    eventName,
+    files,
+    failure,
+  }: {
+    readonly eventName: string;
+    readonly files?: readonly ChangedFile[];
+    readonly failure?: string;
+  }): { calls: unknown[][]; script: WorkflowScript } {
+    const calls: unknown[][] = [];
     const github = {
       rest: { pulls: { listFiles: 'listFiles' } },
-      paginate: (method, options) => {
+      paginate: (method: unknown, options: Readonly<Record<string, unknown>>) => {
         calls.push(['paginate', method, options]);
-        return failure === undefined ? Promise.resolve(files) : Promise.reject(new Error(failure));
+        return failure === undefined
+          ? Promise.resolve(files ?? [])
+          : Promise.reject(new Error(failure));
       },
     };
     const context = {
@@ -160,9 +190,15 @@ describe('selectWorkflowJobs', () => {
       payload: { pull_request: { number: 7, changed_files: files?.length ?? 0 } },
     };
     const core = {
-      notice: (text) => calls.push(['notice', text]),
-      warning: (text) => calls.push(['warning', text]),
-      setOutput: (name, value) => calls.push(['setOutput', name, value]),
+      notice: (text: string) => {
+        calls.push(['notice', text]);
+      },
+      warning: (text: string) => {
+        calls.push(['warning', text]);
+      },
+      setOutput: (name: string, value: string) => {
+        calls.push(['setOutput', name, value]);
+      },
     };
     return { calls, script: { github, context, core, workflow: path.join(root, workflow) } };
   }
@@ -222,22 +258,22 @@ describe('selectWorkflowJobs', () => {
   });
 });
 
-function selectionStep(name) {
+function selectionStep(name: string): string {
   return [
-    'const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);',
+    'const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mts`);',
     `await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/${name}' });`,
     '',
   ].join('\n');
 }
 
-function ungatedJobs(parsed) {
-  return Object.entries(parsed.jobs)
+function ungatedJobs(parsed: unknown): string[] {
+  return Object.entries(fieldsOf(fieldAt(parsed, 'jobs')) ?? {})
     .filter(([job]) => job !== 'changes')
     .filter(
       ([, definition]) =>
-        ![definition.needs].flat().includes('changes') ||
-        (!String(definition.if).includes('always()') &&
-          definition.if !== "needs.changes.outputs.run == 'true'"),
+        ![fieldAt(definition, 'needs')].flat().includes('changes') ||
+        (!String(fieldAt(definition, 'if')).includes('always()') &&
+          fieldAt(definition, 'if') !== "needs.changes.outputs.run == 'true'"),
     )
     .map(([job]) => job);
 }
@@ -245,7 +281,9 @@ function ungatedJobs(parsed) {
 describe('workflows that select their jobs from the changed files', () => {
   it('are every workflow that runs on the run-ci label except the typescript one', () => {
     const labeled = workflows
-      .filter(({ parsed }) => parsed.on?.pull_request?.types?.includes('labeled'))
+      .filter(({ parsed }) =>
+        listOf(fieldAt(parsed, 'on', 'pull_request', 'types')).includes('labeled'),
+      )
       .map(({ name }) => name);
 
     expect(selecting.map(({ name }) => name)).toEqual(
@@ -256,16 +294,20 @@ describe('workflows that select their jobs from the changed files', () => {
   it.each(selecting.map(({ name }) => name))(
     '%s: lists its own file and the selection in its paths and selects with its own paths',
     (name) => {
-      const { parsed } = selecting.find((workflow) => workflow.name === name);
-      const own = ['scripts/ci/**', `.github/workflows/${name}`];
+      const { parsed } = workflowNamed(name);
+      const own: unknown[] = ['scripts/ci/**', `.github/workflows/${name}`];
 
-      expect(parsed.on.push.paths.filter((pattern) => own.includes(pattern))).toEqual(own);
-      expect(parsed.jobs.changes.steps.at(-1).with.script).toBe(selectionStep(name));
+      expect(
+        listOf(fieldAt(parsed, 'on', 'push', 'paths')).filter((pattern) => own.includes(pattern)),
+      ).toEqual(own);
+      expect(fieldAt(parsed, 'jobs', 'changes', 'steps', -1, 'with', 'script')).toBe(
+        selectionStep(name),
+      );
     },
   );
 
   it.each(selecting.map(({ name }) => name))('%s: gates every job on the selection', (name) => {
-    const { parsed } = selecting.find((workflow) => workflow.name === name);
+    const { parsed } = workflowNamed(name);
 
     expect(ungatedJobs(parsed)).toEqual([]);
   });
@@ -273,9 +315,13 @@ describe('workflows that select their jobs from the changed files', () => {
   it.each(selecting.map(({ name }) => name))(
     '%s: selects on the run-ci label with read-only access to the pull request',
     (name) => {
-      const { changes } = selecting.find((workflow) => workflow.name === name).parsed.jobs;
+      const changes = fieldAt(workflowNamed(name).parsed, 'jobs', 'changes');
 
-      expect([changes.if, changes.permissions, changes.steps[0].with]).toEqual([
+      expect([
+        fieldAt(changes, 'if'),
+        fieldAt(changes, 'permissions'),
+        fieldAt(changes, 'steps', 0, 'with'),
+      ]).toEqual([
         "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
         { contents: 'read', 'pull-requests': 'read' },
         { 'sparse-checkout': '.github/workflows\nscripts/ci\n' },
@@ -285,15 +331,19 @@ describe('workflows that select their jobs from the changed files', () => {
 });
 
 describe('the required checks of the typescript workflow', () => {
-  const { jobs } = workflows.find(({ name }) => name === 'typescript.yml').parsed;
+  const jobs = fieldAt(workflowNamed('typescript.yml').parsed, 'jobs');
 
   it('run on every label of a pull request, so a newer run never hides a failure behind a skip', () => {
-    expect([jobs.test.if, jobs['self-gate'].if, jobs['test-shard'].if]).toEqual([
+    expect([
+      fieldAt(jobs, 'test', 'if'),
+      fieldAt(jobs, 'self-gate', 'if'),
+      fieldAt(jobs, 'test-shard', 'if'),
+    ]).toEqual([
       'always()',
       "github.ref != 'refs/heads/main'",
       "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     ]);
-    expect(jobs.test.steps[0].run).toBe(
+    expect(fieldAt(jobs, 'test', 'steps', 0, 'run')).toBe(
       [
         'if [ "$RESULT" = skipped ]; then',
         '  echo "::error::The tests did not run: add the run-ci label to run CI on this pull request."',
@@ -306,7 +356,7 @@ describe('the required checks of the typescript workflow', () => {
 
   it('lets no workflow that runs on a label look at which label was added', () => {
     const labeled = workflows.filter(({ parsed }) =>
-      parsed.on?.pull_request?.types?.includes('labeled'),
+      listOf(fieldAt(parsed, 'on', 'pull_request', 'types')).includes('labeled'),
     );
 
     expect(labeled.filter(({ text }) => text.includes('github.event.label.name'))).toEqual([]);
