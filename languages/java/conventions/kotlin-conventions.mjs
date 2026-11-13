@@ -17,6 +17,7 @@ export const KOTLIN_TRAILING_COMMAS = 'kotlin.trailingCommas';
 export const KOTLIN_WILDCARD_IMPORTS = 'kotlin.wildcardImports';
 export const KOTLIN_LINE_LENGTH = 'kotlin.lineLength';
 const KOTLIN_ASSERTION_HELPERS = 'kotlin.assertionHelpers';
+const KOTLIN_DETACHED_WORK_RUNNERS = 'kotlin.detachedWorkRunners';
 
 export const KOTLIN_CONVENTIONS = [
   {
@@ -66,5 +67,14 @@ export const KOTLIN_CONVENTIONS = [
     files: testAndSupportGlobs('kt'),
     measure: (text, file) => assertionEvidence(text, file, 'kotlin'),
     choose: followedHelpers,
+  },
+  {
+    id: KOTLIN_DETACHED_WORK_RUNNERS,
+    label: 'Detached-work runners',
+    kind: 'names',
+    namesMeaning:
+      'the names of the functions or scopes that run detached work and handle its failure',
+    fallback: [],
+    files: [],
   },
 ];

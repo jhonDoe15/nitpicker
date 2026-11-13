@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "pending-unsettled-on-close",
+    "mention": "fail every pending future"
+  }
+]
