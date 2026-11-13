@@ -251,3 +251,24 @@ concurrent job limit; it costs wall time per run and, with the larger suite, abo
 minutes. Setup is about 4 percent of a shard job, so the setup repeated by additional shards is
 not what limits the shard count. Reaching the target again means returning to roughly 16 to 20
 shards, which only the queue delay (a median of 16 minutes in this sample) argues against.
+
+### Kotlin: 3 shards, 63 files, 261 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 2,365 s | 2,039 to 2,778 s |
+| Median shard job | 2,088 s | 1,806 to 2,631 s |
+| Runner minutes per run | 104.8 | 94.9 to 131.9 |
+| Setup overhead per shard job | 42.5 s | 33 to 47 s |
+| Queue delay per shard job | 923 s | 3 to 4,116 s |
+
+The sequencer plans 2,078 to 2,081 seconds of test time per shard. Six of the 63 weights had
+drifted by more than a quarter and ten seconds (the review rules findings file, 227 to 345
+seconds, is the largest) and are refreshed; the profile now sums to 6,238 seconds against 5,635.
+
+Outcome against the target of two to three minutes per runner: not met. A shard runs about 35
+minutes of tests, against 110 to 206 seconds per job in the 10-shard sample recorded above, and
+the suite has grown from 79 to 261 cases since then. As for Java, the lower shard count is the
+maintainers' choice to stay within the concurrent job limit, and it costs wall time per run (the
+slowest shard is 39 minutes, under the 60-minute job limit but with little margin: the maximum
+was 46 minutes). Setup is about 2 percent of a shard job.
