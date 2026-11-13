@@ -155,6 +155,23 @@ describe('analyzing a Python snapshot', () => {
     ]);
   });
 
+  it('reports a swallowed exception once, without the unused variable ruff finds on its line', () => {
+    const root = project({
+      'violations.txt':
+        'F841|src/demo/a.py|Local variable `e` is assigned to but never used\nF401|src/demo/a.py|unused\n',
+      'rules.json': JSON.stringify([
+        { rule: 'swallowed-exception', path: 'src/demo/a.py', subject: 'ValueError', line: 1 },
+      ]),
+    });
+
+    const findings = withoutCoupling(analyze(root));
+
+    expect(findings.map(({ tool, rule }) => `${tool} ${rule}`)).toEqual([
+      'ruff F401',
+      'python-rules swallowed-exception',
+    ]);
+  });
+
   it('words the logging and validation hints after the libraries the project declares', () => {
     const root = project({
       'requirements.txt': 'loguru\nmarshmallow\n',
