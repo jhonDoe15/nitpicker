@@ -40,7 +40,7 @@ type Step = {
   readonly fixedFindings?: readonly unknown[];
 };
 type RecipeResult = Step & { readonly files: readonly FixFile[] };
-type SharedInputs = { readonly inputs: unknown; readonly toolErrors: readonly unknown[] };
+type SharedInputs = { readonly inputs: object; readonly toolErrors: readonly unknown[] };
 
 const runRecipeSet = runRecipes as (options: object) => RecipeResult;
 const sharedRecipeInputs = sharedInputs as (options: object) => SharedInputs;
@@ -78,7 +78,7 @@ function recipeRun({
   readonly settings: FixSettings;
   readonly files: readonly FixFile[];
   readonly accepts: (name: string) => boolean;
-  readonly inputs: unknown;
+  readonly inputs: object;
 }) {
   return runRecipeSet({
     projectRoot: settings.projectRoot,
@@ -88,7 +88,7 @@ function recipeRun({
     preset: settings.config?.preset ?? 'typescript',
     selectedRules: settings.selectedRules,
     accepts,
-    inputs,
+    inputs: { ...inputs, layout: settings.layout, headPolicy: settings.headPolicy },
   });
 }
 
