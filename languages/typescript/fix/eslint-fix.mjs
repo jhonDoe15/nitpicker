@@ -18,8 +18,11 @@ import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
 import { applySuggestions } from './suggestions/apply-suggestions.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
+const loggingPolicy = eslintChecks.find(({ name }) => name === 'eslint-logging');
 
 const TOOL = 'eslint --fix';
+
+const EXTRA_POLICY_VARIABLE = 'NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG';
 
 const REPORT_EXCERPT_LENGTH = 200;
 
@@ -46,6 +49,7 @@ function runEslint(settings, files, linked) {
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
+      [EXTRA_POLICY_VARIABLE]: path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
       [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
         liveProjectRoot: projectRoot,
         addsRules: true,

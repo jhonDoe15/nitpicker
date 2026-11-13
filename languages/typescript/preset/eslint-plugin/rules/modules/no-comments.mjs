@@ -4,12 +4,22 @@ import {
   isJsdocBlock,
   parseJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
+import { commentRemoval } from '../../fixes/comments/comment-removal.mjs';
+import { fixable } from '../../fixes/support/descriptors.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const typescriptSuppression = /@ts-(?:ignore|expect-error|nocheck)\b/;
 const eslintSuppression = /^\s*eslint-(?:disable|enable)\b/;
 const coverageSuppression = /^[\s*]*((?:istanbul|c8|v8)\s+ignore|stryker\s+(?:disable|restore))\b/i;
+const REMOVABLE = new Set([
+  'comment',
+  'internalDocComment',
+  'restatingDocComment',
+  'typescriptSuppression',
+  'eslintSuppression',
+  'coverageSuppression',
+]);
 const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
@@ -100,6 +110,7 @@ function commentReports(comment, { jsdocTypes, sourceCode, suppressionsOnly }) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description:
         'Allow only non-suppression tool directives as comments, plus doc comments on exported API',
@@ -146,7 +157,10 @@ export const rule = {
         for (const comment of context.sourceCode.getAllComments()) {
           if (comment.type === 'Shebang') continue;
           for (const report of commentReports(comment, settings)) {
-            context.report({ loc: comment.loc, ...report });
+            const plan = REMOVABLE.has(report.messageId)
+              ? commentRemoval(context.sourceCode, comment)
+              : undefined;
+            context.report(fixable({ loc: comment.loc, ...report }, plan));
           }
         }
       },

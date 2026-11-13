@@ -297,4 +297,60 @@ describe('fixTypeScript', () => {
       ]);
     });
   });
+
+  it('applies the suggestion of a selected rule from an unfixed report and nothing else', () => {
+    const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
+    const arguments_ = [];
+    const result = fixWorkingTree({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      baseRef: 'base',
+      selectedRules: ['eslint-lint/nitpicker/no-falsy-default'],
+      executeFixCommand: (invocation) => {
+        if (invocation.operation !== 'eslint-fix') {
+          return undefined;
+        }
+        arguments_.push(invocation.args);
+        return {
+          status: 1,
+          stderr: '',
+          stdout: JSON.stringify([
+            {
+              filePath: path.join(repository.root, 'src/a.ts'),
+              messages: [
+                { ruleId: 'nitpicker/no-comments', fix: { range: [0, 6], text: '' } },
+                {
+                  ruleId: 'nitpicker/no-falsy-default',
+                  suggestions: [{ fix: { range: [35, 37], text: '??' } }],
+                },
+              ],
+            },
+          ]),
+        };
+      },
+    });
+
+    expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n ?? 10;\n');
+    expect(arguments_).toHaveLength(1);
+    expect(arguments_[0]).not.toContain('--fix-dry-run');
+    expect(result.notes.some((note) => note.includes('eslint --fix rewrote src/a.ts'))).toBe(true);
+  });
+  it('never applies a suggestion when no rule is selected', () => {
+    const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
+    const arguments_ = [];
+    fixWorkingTree({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      baseRef: 'base',
+      executeFixCommand: (invocation) => {
+        if (invocation.operation === 'eslint-fix') {
+          arguments_.push(invocation.args);
+        }
+        return invocation.operation === 'eslint-fix' ? eslintReply(repository, {}) : undefined;
+      },
+    });
+
+    expect(arguments_[0].includes('--fix-dry-run')).toBe(true);
+    expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n || 10;\n');
+  });
 });
