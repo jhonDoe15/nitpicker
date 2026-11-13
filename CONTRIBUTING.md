@@ -56,7 +56,11 @@ so the package stays plain JavaScript.
 - Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
   file list that is hashed) keeps the packaged `.mjs` name and resolves it with
   `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
-  the `.mts` source in a checkout.
+  the `.mts` source in a checkout when Node.js strips types and the emitted `.mjs` otherwise.
+- `npm pack` and the container build run on Node.js 22.14, which cannot strip types: they emit the
+  `.mjs` files first (`node scripts/typescript/emit.mjs`, cleaned with `--clean`). Their own
+  scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
+  `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
 
 ## Running the checks
 
@@ -82,7 +86,7 @@ below (pushes to `main` that touch the paths they list, a manual run, and the `r
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
-(`scripts/ci/affected-jobs.mjs`) that compares the pull request's changed files with the workflow's own
+(`scripts/ci/affected-jobs.mts`) that compares the pull request's changed files with the workflow's own
 push `paths`. When none of them matches, the workflow's other jobs are skipped and its summary job
 passes; when the files cannot be listed, all jobs run. Changing a shared path such as `core/`, `shared/`,
 `package.json` or `vitest.config.mts` runs them all.
@@ -96,12 +100,12 @@ The TypeScript red-base test (`npm run test:typescript`, which runs real vitest 
 not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
 the Stryker report is read.
 
-The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mjs` on Linux,
+The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mts` on Linux,
 macOS and Windows, and the TypeScript sample under Deno. It fails when a run's findings differ from the
-Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mjs`.
-Reproduce one sample with `node scripts/platforms/smoke.mjs typescript --output reports/platforms/local`
+Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mts`.
+Reproduce one sample with `node scripts/platforms/smoke.mts typescript --output reports/platforms/local`
 (add `--runtime deno` for Deno), then compare two such directories with
-`node scripts/platforms/compare-runs.mjs <reference> <other>`. After changing a workflow's versions or the
+`node scripts/platforms/compare-runs.mts <reference> <other>`. After changing a workflow's versions or the
 expected differences, run `npm run gen:checks` so that [docs/compatibility.md](docs/compatibility.md)
 matches; a test fails until it does.
 
@@ -189,5 +193,12 @@ first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
 network; see [docs/python-preset.md](docs/python-preset.md).
+
+## Changelog
+
+Pull requests do not edit [CHANGELOG.md](CHANGELOG.md). Its entry for a release is written when the
+release is cut, from the pull requests merged since the last tag
+([docs/releasing.md](docs/releasing.md), step 2), so give a pull request a title that says what
+changes for people who use nitpicker: the release draft starts from it.
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).

@@ -30,7 +30,7 @@ export function buildGoals({ quick, pinned, modules }) {
     ];
   }
   return [
-    `${jacocoPlugin(pinned)}:prepare-agent`,
+    `${jacocoPlugin(pinned, modules)}:prepare-agent`,
     `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
     ...lifecycleArgs(modules),
   ];

@@ -10,7 +10,7 @@ import {
   fixtures,
   copyOf,
   comparable,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 const gradleFixtures = path.join(import.meta.dirname, '../../adapters/fixtures');
 const BUILD_FILES = new Set(['build.gradle', 'pom.xml']);
 function withoutGradle(root) {

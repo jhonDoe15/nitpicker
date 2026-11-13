@@ -81,6 +81,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
   `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
   dependencies up.
+- Test a `String?` configuration property (a `@ConfigurationProperties` class, `@Value`) with
+  `isNullOrBlank()`, not only `!= null`, `?.let` or `?:`: an empty property binds as `""`, which those
+  count as set (`pmd/SpringNullOnlyConfigCheck`). Default it with `props.x?.ifBlank { null } ?: fallback`.
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:

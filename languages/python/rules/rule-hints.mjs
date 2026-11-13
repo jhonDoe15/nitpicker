@@ -21,6 +21,7 @@ import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { PERSISTENCE_HINTS } from './hints/persistence/orm-hints.mjs';
 import { QUERY_HINTS } from './hints/persistence/query-hints.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
+import { SIMPLER_LOGIC_HINTS } from './hints/logic/simpler-logic.mjs';
 import { STREAM_HINTS } from './hints/streams/streams.mjs';
 import { TIME_UNIT_HINTS } from './hints/time/time-units.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
@@ -53,6 +54,7 @@ const USE_REPLACEMENT =
 
 export const RULE_HINTS = [
   ...STYLE_HINTS,
+  ...SIMPLER_LOGIC_HINTS,
   ...PITFALL_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,

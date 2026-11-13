@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { SUPPORTED_PRESETS } from '../configuration/validate.mjs';
-import { packageVersion } from '../help/package-version.mjs';
+import { packageVersion } from '../help/package-version.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 
 const skillsRoot = path.join(PACKAGE_ROOT, 'skills');

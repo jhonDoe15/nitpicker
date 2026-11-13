@@ -384,6 +384,8 @@
                         "coupling/shared-imports-feature",
                         "feature-cycle",
                         "coupling/feature-cycle",
+                        "public-alternative-bypass",
+                        "entry-points/public-alternative-bypass",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -1883,6 +1885,8 @@
                             "coupling/shared-imports-feature",
                             "feature-cycle",
                             "coupling/feature-cycle",
+                            "public-alternative-bypass",
+                            "entry-points/public-alternative-bypass",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2124,6 +2128,8 @@
                             "coupling/shared-imports-feature",
                             "feature-cycle",
                             "coupling/feature-cycle",
+                            "public-alternative-bypass",
+                            "entry-points/public-alternative-bypass",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2160,6 +2166,7 @@
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/SortForExtreme",
                             "kotlin-source/ConfigurationReadOutsideCompositionRoot",
+                            "kotlin-source/FutureWithoutException",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",
@@ -2260,6 +2267,7 @@
                             "pmd/SpringNoPostConstructIo",
                             "pmd/SpringTypedConfiguration",
                             "pmd/SpringValueSecretDefault",
+                            "pmd/SpringNullOnlyConfigCheck",
                             "pmd/SpringProfileOnConfiguration",
                             "pmd/SpringProxyMethodVisibility",
                             "pmd/SpringProxySelfCall",
@@ -2473,6 +2481,8 @@
                         "coupling/shared-imports-feature",
                         "feature-cycle",
                         "coupling/feature-cycle",
+                        "public-alternative-bypass",
+                        "entry-points/public-alternative-bypass",
                         "test-only-export",
                         "dead-code/test-only-export",
                         "coupling/test-only-export",
@@ -2640,6 +2650,8 @@
                             "coupling/shared-imports-feature",
                             "feature-cycle",
                             "coupling/feature-cycle",
+                            "public-alternative-bypass",
+                            "entry-points/public-alternative-bypass",
                             "test-only-export",
                             "dead-code/test-only-export",
                             "coupling/test-only-export",
@@ -2672,7 +2684,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|go-rules|deadcode)/[\\s\\S]"
+                          "pattern": "^(?:vet|staticcheck|errcheck|modernize|gosec|revive|bodyclose|rowserrcheck|sqlclosecheck|noctx|errorlint|nilerr|nilnil|errname|contextcheck|containedctx|fatcontext|exhaustive|recvcheck|durationcheck|makezero|reassign|unconvert|wastedassign|thelper|tparallel|testifylint|usetesting|asciicheck|bidichk|gocheckcompilerdirectives|canonicalheader|musttag|perfsprint|usestdlibvars|sloglint|spancheck|go-rules|deadcode)/[\\s\\S]"
                         }
                       ]
                     }

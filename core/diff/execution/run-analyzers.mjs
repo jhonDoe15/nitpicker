@@ -77,7 +77,7 @@ export function runAnalyzers({
   headPolicyFile,
   mutationScope,
   logRoot,
-  runTasks = runScheduler,
+  runTasks,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
     throw new TypeError('liveProjectRoot is required');
@@ -95,7 +95,11 @@ export function runAnalyzers({
     logRoot,
   });
 
-  const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  const scheduled = scheduleTasks(tasks, {
+    runTasks: runTasks ?? runScheduler,
+    headPolicyFile,
+    snapshot,
+  });
   return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
 }
 

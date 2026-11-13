@@ -13,12 +13,17 @@ import {
   GORM_MIGRATED,
   GORM_MODELS,
   LOOKUP,
+  LOOKUP_TEST,
   OWN_RULES,
+  OWN_RULES_TEST,
   PROJECT_STATICCHECK,
   SKIP_S1003,
   STATUS,
+  STATUS_TEST,
   STOCK,
   STOCK_REFRESH,
+  STOCK_TEST,
+  TOKEN,
 } from './test-support/go-lint-fixtures.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
@@ -29,21 +34,31 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, BASE_FILES);
-    commitBranch(project, 'lint', { 'shop/lookup.go': LOOKUP });
-    commitBranch(project, 'own-rules', { 'shop/rules.go': OWN_RULES });
+    commitBranch(project, 'lint', { 'shop/lookup.go': LOOKUP, 'shop/lookup_test.go': LOOKUP_TEST });
+    commitBranch(project, 'gosec', { 'shop/token.go': TOKEN });
+    commitBranch(project, 'own-rules', {
+      'shop/rules.go': OWN_RULES,
+      'shop/rules_test.go': OWN_RULES_TEST,
+    });
     commitBranch(project, 'catalog', {
       'shop/stock.go': STOCK,
+      'shop/stock_test.go': STOCK_TEST,
       'shop/stock/stock.go': STOCK_REFRESH,
     });
-    commitBranch(project, 'catalog-values', { 'shop/status.go': STATUS });
+    commitBranch(project, 'catalog-values', {
+      'shop/status.go': STATUS,
+      'shop/status_test.go': STATUS_TEST,
+    });
     commitBranch(project, 'foreign-keys', GORM_MODELS);
     commitBranch(project, 'foreign-keys-migrated', GORM_MIGRATED);
     commitBranch(project, 'conf-ignored', {
       'shop/lookup.go': LOOKUP,
+      'shop/lookup_test.go': LOOKUP_TEST,
       'staticcheck.conf': SKIP_S1003,
     });
     commitBranch(project, 'conf-opted-in', {
       'shop/lookup.go': LOOKUP,
+      'shop/lookup_test.go': LOOKUP_TEST,
       'staticcheck.conf': SKIP_S1003,
       'nitpicker.config.json': PROJECT_STATICCHECK,
     });
@@ -65,6 +80,14 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
       'interface{} can be replaced by any. `go fix ./...` applies this rewrite. If this is intended, add {"rule":"modernize/any","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'use map[type]type{} instead of make(map[type]type). Write `map[K]V{}`; keep `make` only with a size: `make(map[K]V, n)`. If this is intended, add {"rule":"revive/enforce-map-style","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'should use strings.Contains(name, "-") instead. If this is intended, add {"rule":"staticcheck/S1003","paths":["shop/lookup.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+
+  it('fails gosec findings with the safe form, whatever #nosec says', () => {
+    const result = gate(project, 'gosec');
+    expect(newFindings(result)).toEqual(['gosec/G404 shop/token.go']);
+    expect(newMessages(result)).toEqual([
+      'Use of weak random number generator (math/rand or math/rand/v2 instead of crypto/rand). Use crypto/rand (`rand.Text()`, `rand.Read`) for anything an attacker must not guess. For simulations, jitter or sampling, add an exception for this rule with the reason. If this is intended, add {"rule":"gosec/G404","paths":["shop/token.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 

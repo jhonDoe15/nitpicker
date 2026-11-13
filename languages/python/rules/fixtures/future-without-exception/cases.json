@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "future-without-exception",
+    "mention": "set_exception"
+  }
+]

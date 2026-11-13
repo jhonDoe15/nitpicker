@@ -78,7 +78,7 @@ export const PYLINT_WARNING_HINTS = [
     tool: 'ruff',
     rules: ['PLW1508'],
     allowed:
-      'Pass a `str` default and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT", "8080"))`.',
+      'Give the fallback with `or` and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT") or "8080")`.',
   },
   {
     tool: 'ruff',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../arguments.mjs';
-import { policyAcceptance } from './policy-acceptance.mjs';
+import { parseArguments } from '../arguments.mts';
+import { policyAcceptance } from './policy-acceptance.mts';
 
 const DIGEST = '0a1b2c3d4e5f';
 const variable = (value, ci) => ({

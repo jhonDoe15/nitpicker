@@ -4,10 +4,11 @@ import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { describeConfigOverrides } from '../config.mjs';
 import { configureAnalyzers } from '../configure-analyzers.mjs';
-import { presetAnalyzers } from '../preset-analyzers.mjs';
+import { presetAnalyzers } from '../preset-analyzers.mts';
 import { validateConfig } from '../validate.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
-const ENTRY = fileURLToPath(new URL('../../cli.mjs', import.meta.url));
+const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../cli.mjs', import.meta.url)));
 const PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
 
 describe('history config', () => {

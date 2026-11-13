@@ -1,3 +1,4 @@
+import { GOSEC_HINTS, gosecMessage } from './gosec-hints.mjs';
 import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
 
 function deferredClose(value) {
@@ -148,6 +149,7 @@ const HINTS = new Map([
     'spancheck',
     'Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
   ],
+  ...GOSEC_HINTS,
 ]);
 const MESSAGE_HINTS = [
   [
@@ -198,6 +200,7 @@ function hintOf(tool, rule, message) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule, message);
-  const text = sentence(stable(tool, rule, message));
+  const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
+  const text = sentence(stable(tool, rule, own));
   return hint === undefined ? text : `${text} ${hint}`;
 }
