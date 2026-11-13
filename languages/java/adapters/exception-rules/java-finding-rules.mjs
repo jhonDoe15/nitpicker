@@ -3,7 +3,7 @@ import { checkstyleRuleName } from '../../messages/rule-messages.mjs';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 
 const KOTLIN_PATH = /\.kts?$/u;
-const KOTLIN_CLASS_TOOLS = ['archunit'];
+const CLASS_TOOLS = new Set(['archunit', 'coupling']);
 
 /** Whether `rule` is `<tool>/<rule>` of a tool whose findings name their own rules. */
 export function isJavaFindingRule(rule) {
@@ -21,7 +21,7 @@ export function validateJavaFindingRule(entry, label) {
     );
   }
   if (
-    !KOTLIN_CLASS_TOOLS.includes(tool) &&
+    !CLASS_TOOLS.has(tool) &&
     Array.isArray(entry.paths) &&
     entry.paths.length > 0 &&
     entry.paths.every(isKotlinPath)
