@@ -186,6 +186,7 @@
       "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
     }
   ],
+  "analyzerTimeoutMinutes": { "coding-standards": 5, "structure": 5 },
   "tools": {
     "tests": {
       "timeouts": {
