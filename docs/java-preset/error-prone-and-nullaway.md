@@ -34,9 +34,8 @@ Part of the [Java preset guide](../java-preset.md).
   checks' findings are kept. Each crashed check is one more report entry,
   `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
   check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
-  Seen with Error Prone 2.50.0: `ForEachIterable` on a record pattern with `var` bindings
-  (`case And(var left, var right)`), and `FieldCanBeStatic` on a Lombok `@Getter` field
-  initialized from a constant of the same class.
+  The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
+  off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -110,11 +109,11 @@ Part of the [Java preset guide](../java-preset.md).
   (`reviewedChecks` in `checks.json`, with the reviewed Error Prone and NullAway versions under
   `reviewed`; a unit test fails when the init script or the Maven path pins other versions, and
   the e2e test fails when the jar's checks differ from the reviewed ones). On: every ERROR and
-  WARNING check Error Prone enables by default except 10, plus 109 of its off-by-default checks (for
+  WARNING check Error Prone enables by default except 10, plus 107 of its off-by-default checks (for
   example `FieldCanBeLocal`, `FieldCanBeFinal`, `IdentifierName`,
   `PrivateConstructorForUtilityClass`, `RedundantThrows`, `CheckedExceptionNotThrown`,
   `ThrowSpecificExceptions`, `NonFinalStaticField`, `BanSerializableRead`,
-  `UseCorrectAssertInTests`): 595 checks. A check is off only when another check that is always on
+  `UseCorrectAssertInTests`): 593 checks. A check is off only when another check that is always on
   reports every case it does at the same place, it fights another tool, needs an annotation library a project would add only for it (Error Prone's own
   annotations, Guava, auto-common), flags legitimate code with no allowed form, or picks one of two
   forms that are both valid conventions (`var` or the explicit type, `final` on parameters and
@@ -227,7 +226,7 @@ Part of the [Java preset guide](../java-preset.md).
   `java-spans.test.mjs` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
   (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mjs`
   (which positions and checks count as generated),
-  `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the pinned ones on
+  `adapters/errorprone/checks/checks-policy.test.mts` (reviewed versions equal the pinned ones on
   Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
   the exceptions route or spared in annotated classes is documented below),
   `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,
@@ -289,8 +288,10 @@ Part of the [Java preset guide](../java-preset.md).
 | `EmptyIf`                        | off     | errorprone/UnnecessarySemicolon, which is always on, reports every if (c); at the same position with a clearer fix                                                                                                                        |
 | `EqualsGetClass`                 | on      | getClass() and instanceof in equals are both valid conventions, with different semantics for subclasses                                                                                                                                   |
 | `EqualsMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `FieldCanBeStatic`               | off     | Crashes Error Prone (2.26 to 2.52) when it rewrites a Lombok @Getter field initialized from a constant; spotbugs/SS_SHOULD_BE_STATIC reports such a field when its initializer is a compile-time constant                                 |
 | `FieldMissingNullable`           | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `IfChainToSwitch`                | on      | An if-chain and a switch are both valid forms                                                                                                                                                                                             |
+| `ForEachIterable`                | off     | Crashes Error Prone (2.26 to 2.52) on a record pattern with var bindings; pmd/ForLoopCanBeForeach reports the same loops                                                                                                                  |
 | `ImmutableMemberCollection`      | off     | Its allowed form is a Guava immutable type, even in projects without Guava                                                                                                                                                                |
 | `ImmutableRefactoring`           | off     | A migration to Error Prone's @Immutable annotation, a dependency nitpicker does not ask for                                                                                                                                               |
 | `InlineFormatString`             | on      | A format string inline or in a named constant are both valid forms                                                                                                                                                                        |
@@ -464,7 +465,7 @@ this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file
 runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
 dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
 The overlap table serves both builds, so both must report the same findings. To probe a new case,
-add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mts
 --check` writes nothing and exits 1 with the added and removed findings when the committed file
 differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
 Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
@@ -513,7 +514,6 @@ The pairs:
 - line: `errorprone/CheckReturnValue`, `errorprone/ReturnValueIgnored` over `spotbugs/RV_RETURN_VALUE_IGNORED`, `pmd/UselessOperationOnImmutable`
 - line: `errorprone/SelfAssignment` over `spotbugs/SA_FIELD_SELF_ASSIGNMENT`, `spotbugs/SA_LOCAL_SELF_ASSIGNMENT`, `pmd/IdempotentOperations`
 - line: `pmd/CheckSkipResult` over `spotbugs/SR_NOT_CHECKED`
-- line: `errorprone/FieldCanBeStatic` over `spotbugs/SS_SHOULD_BE_STATIC`
 - line: `errorprone/UnnecessarySemicolon` over `spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE`, `checkstyle/NeedBraces`, `errorprone/MissingBraces`
 - line: `checkstyle/NeedBraces` over `errorprone/MissingBraces`
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
@@ -545,7 +545,7 @@ The pairs:
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
-- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/GoogleNonConstantFieldName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
 - file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
@@ -576,7 +576,6 @@ The pairs:
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
 - file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
 - line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`, `pmd/UseArrayListInsteadOfVector`

@@ -10,7 +10,7 @@ import {
   IN_PROCESS_TASKS,
   worktreePaths,
 } from '../test-support/quality-diff-harness.mjs';
-import { runCli } from '../../../../cli.mjs';
+import { runCli } from '../../../../cli.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
 import {

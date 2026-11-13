@@ -239,6 +239,7 @@ export const strictProductionRules = {
   'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-singular-and-plural-prop': 'error',
   'nitpicker/no-unbounded-query-array': 'error',
+  'nitpicker/no-undefined-only-env-check': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
   'nitpicker/no-unordered-query': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',

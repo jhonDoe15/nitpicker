@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   UNBOUND_FINDINGS,
   unboundProjects,
-} from '../../java-e2e/spring-unbound/unbound-project.mjs';
+} from '../../java-e2e/spring-unbound/unbound-project.mts';
 
 const projects = unboundProjects();
 

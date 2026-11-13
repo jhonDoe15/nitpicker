@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runCli } from '../../../../../core/cli.mjs';
+import { runCli } from '../../../../../core/cli.mts';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 
 const COMMAND_TIMEOUT_MS = 60_000;

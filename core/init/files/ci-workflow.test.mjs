@@ -1,17 +1,17 @@
 import { symlinkSync, writeFileSync } from 'node:fs';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
-import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mjs';
-import { describePackageManager } from '../detection/package-manager.mjs';
+import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mts';
+import { describePackageManager } from '../detection/package-manager.mts';
 import { readText, useProjects } from '../test-support/projects.mjs';
-import { unifiedDiff } from './line-diff.mjs';
+import { unifiedDiff } from './line-diff.mts';
 import {
   APPROVAL_WORKFLOW,
   placeApprovalWorkflow,
   placeWorkflow,
   renderWorkflow,
   workflowPath,
-} from './ci-workflow.mjs';
+} from './ci-workflow.mts';
 
 const project = useProjects();
 const VERSION = '1.2.3';

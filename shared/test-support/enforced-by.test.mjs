@@ -20,6 +20,10 @@ const JVM_RUNTIME_EDGES_ONLY = {
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   java: {
+    'public-alternative-bypass': {
+      file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
+      evidence: /kotlin \? kotlinEntryPointFindings/u,
+    },
     'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
   },
   kotlin: {

@@ -6,7 +6,7 @@ import { renderJunitReport } from '../diff/reporting/junit.mjs';
 import { renderSarifReport } from '../diff/reporting/sarif.mjs';
 import { renderTextReport } from '../diff/reporting/text.mjs';
 import { report } from '../diff/reporting/test-support/report-builders.mjs';
-import { writeSnapshotReports } from '../snapshot/reporters.mjs';
+import { writeSnapshotReports } from '../snapshot/reporters.mts';
 import { quickSummary, runProfileSummary } from './summary.mjs';
 
 const QUICK = quickSummary(['coverage', 'mutation']);

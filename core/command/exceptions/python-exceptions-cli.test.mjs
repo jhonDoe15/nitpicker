@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../../configuration/validate.mjs';
 import { RULE_IDS } from '../../../shared/policy.mjs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from '../python/test-support/python-cli-harness.mjs';

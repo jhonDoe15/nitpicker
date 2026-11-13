@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
-import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mjs';
+import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mts';
 
 // Most tests here are about snapshot report logic, so the analyzer task graph and the fixture
 // analyzers run in-process. A test that passes `runTasks: undefined` keeps the real

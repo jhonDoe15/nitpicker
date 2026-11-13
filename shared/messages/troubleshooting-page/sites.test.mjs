@@ -23,7 +23,7 @@ const EDGE_PUNCTUATION = /^[\s.:;,(]+|[\s.:;,(]+$/gu;
 const MESSAGES_BUILT_ELSEWHERE = [
   'core/configuration/project-checks/project-root.mjs',
   'core/diff/execution/process.mjs',
-  'core/diff/sharding/aggregate-shards.mjs',
+  'core/diff/sharding/aggregate-shards.mts',
   'core/fix/common/fix-command.mjs',
   'languages/java/adapters/red-base/tests-failed.mjs',
 ];

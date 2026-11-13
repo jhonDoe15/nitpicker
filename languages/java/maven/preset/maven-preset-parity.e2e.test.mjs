@@ -22,7 +22,7 @@ import {
   copyOf,
   twinProjects,
   comparable,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 
 const MODE_TEST = `package demo;
 

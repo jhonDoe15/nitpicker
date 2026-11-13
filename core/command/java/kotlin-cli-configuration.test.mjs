@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';

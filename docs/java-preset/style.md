@@ -57,7 +57,18 @@ came from (`"conventions.java.lineLength" is "120", but google-java-format (decl
 file) fixes it at "100"`). When the formatter is only the default or was measured, the contradiction
 means the project does not use it: the formatter becomes `none` and the run prints why (`from your
 conventions.java.lineLength pin in nitpicker.config.json`). A repository without Java files never
-fails on this. With `java.formatter` set to `none`, `java.lineLength` is measured from wrapped
+fails on this.
+
+The formatters need JDK 21 or newer to run. On Gradle `nitpickerFormat` runs on a toolchain of the
+highest of 21, the JDK Gradle runs on and the JDKs the sources compile with; on Maven on the
+project's `java` when it is 21 or newer, else on the lowest installed JDK 21 or newer (see
+[Maven builds](maven-builds.md)). `--fix` formats on the newest installed JDK from 21 to 25, or on
+the project's `java` when that is newer, so a Gradle toolchain newer than `JAVA_HOME` still parses.
+A formatter that fails (exit code other than 0) is a tool error with its message, never an empty
+check. palantir-java-format 2.90.0 cannot parse `import module` yet; google-java-format 1.35.0
+parses every Java 25 form.
+
+With `java.formatter` set to `none`, `java.lineLength` is measured from wrapped
 code the way `kotlin.lineLength` is (unbreakable lines, such as imports, URLs, string literals and
 text blocks, do not vote).
 

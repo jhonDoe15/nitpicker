@@ -1,7 +1,6 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import {
   SUITES,
@@ -11,25 +10,10 @@ import {
   workflowProblems,
 } from './e2e-gates.mts';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
+import { temporaryRepositories } from '../test-support/temporary-repositories.mts';
 
 const ENV = ['process', 'env'].join('.');
-const roots: string[] = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function repository(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-e2e-gates-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-  return root;
-}
+const repository = temporaryRepositories('nitpicker-e2e-gates-');
 
 describe('the E2E gate candidates', () => {
   it('are the .e2e.test. files and the tests that read a suite flag directly or through imports', () => {
