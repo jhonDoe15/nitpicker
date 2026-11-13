@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { hasProjectFile, insideProject } from '../support/inside-project.mjs';
+import { hasProjectFile, insideProject } from '../support/inside-project.mts';
 import { installCommand } from '../peers/peer-plan.mts';
 import { requiredPythonPeers } from '../peers/python-peers.mts';
 import {
@@ -34,8 +34,6 @@ type WorkflowParts = {
   readonly notes: readonly string[];
 };
 
-const insidePath: (root: string, relative: string) => string = insideProject;
-const hasFile: (root: string, ...names: string[]) => boolean = hasProjectFile;
 const condaFileOf: (projectRoot: string) => string | undefined = condaFile;
 const condaNameOf: (file: string) => string | undefined = condaEnvironmentName;
 
@@ -71,7 +69,7 @@ const CONDA_ENVIRONMENT = 'nitpicker';
 const LOGIN_SHELL = { shell: 'bash -el {0}' };
 
 function lockedPnpmMajor(manager: NodeManager): number {
-  const lockfile = insidePath(manager.root, 'pnpm-lock.yaml');
+  const lockfile = insideProject(manager.root, 'pnpm-lock.yaml');
   const version = manager.locked
     ? LOCKFILE_VERSION.exec(readFileSync(lockfile, 'utf8'))?.groups?.['version']
     : undefined;
@@ -85,7 +83,7 @@ function pnpmSetup(manager: NodeManager, repository: string): string[] {
   if (declaration === undefined || !String(declaration.field).startsWith('pnpm@')) {
     return step('pnpm/action-setup@v4.4.0', { version: lockedPnpmMajor(manager) });
   }
-  const file = repositoryPath(repository, insidePath(declaration.directory, 'package.json'));
+  const file = repositoryPath(repository, insideProject(declaration.directory, 'package.json'));
   return step(
     'pnpm/action-setup@v4.4.0',
     file === 'package.json' ? {} : { package_json_file: file },
@@ -120,16 +118,16 @@ function nodeInstallCommand(manager: NodeManager): string {
 }
 
 function nodeInstall(root: string, manager: NodeManager): string[] {
-  return hasFile(root, 'package.json') ? run(nodeInstallCommand(manager)) : [];
+  return hasProjectFile(root, 'package.json') ? run(nodeInstallCommand(manager)) : [];
 }
 
 function installsItself(root: string): boolean {
-  if (hasFile(root, 'setup.py', 'setup.cfg')) {
+  if (hasProjectFile(root, 'setup.py', 'setup.cfg')) {
     return true;
   }
   return (
-    hasFile(root, 'pyproject.toml') &&
-    BUILDABLE_PYPROJECT.test(readFileSync(insidePath(root, 'pyproject.toml'), 'utf8'))
+    hasProjectFile(root, 'pyproject.toml') &&
+    BUILDABLE_PYPROJECT.test(readFileSync(insideProject(root, 'pyproject.toml'), 'utf8'))
   );
 }
 
@@ -211,7 +209,7 @@ const FAMILY_STEPS: Readonly<
 
 function gateInputs(root: string, { project, version, repository }: WorkflowContext): string[] {
   const folder = repositoryPath(repository, root);
-  const ownsNodeProject = project.family === 'node' && hasFile(root, 'package.json');
+  const ownsNodeProject = project.family === 'node' && hasProjectFile(root, 'package.json');
   const inputs = {
     ...(folder === '' ? {} : { 'working-directory': folder }),
     ...(ownsNodeProject ? {} : { package: `nitpicker@${textOf(version)}` }),

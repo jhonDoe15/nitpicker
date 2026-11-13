@@ -1,12 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { hasProjectFile, insideProject } from '../../support/inside-project.mjs';
+import { hasProjectFile, insideProject } from '../../support/inside-project.mts';
 import { MINIMUM_PYTHON } from '../../../../languages/python/ingest/rules-report.mjs';
 import { type StepSettings, repositoryPath } from './yaml-steps.mts';
 
 type VersionChoice = { readonly settings: StepSettings; readonly notes: readonly string[] };
 
-const insidePath: (root: string, relative: string) => string = insideProject;
-const hasFile: (root: string, ...names: string[]) => boolean = hasProjectFile;
 const minimumPython: string = MINIMUM_PYTHON;
 
 const PYTHON_VERSION = '3.13';
@@ -39,7 +37,7 @@ function allowsFloor(spec: string): boolean {
 }
 
 function pinnedVersionFile(root: string, repository: string): VersionChoice {
-  const file = insidePath(root, '.python-version');
+  const file = insideProject(root, '.python-version');
   const pinned = PINNED_VERSION.exec(readFileSync(file, 'utf8'))?.groups?.['version'];
   const notes =
     pinned !== undefined && isOlder(pinned, minimumPython)
@@ -73,11 +71,11 @@ function boundedVersion(spec: string): VersionChoice {
 }
 
 export function pythonVersion(root: string, repository: string): VersionChoice {
-  if (hasFile(root, '.python-version')) {
+  if (hasProjectFile(root, '.python-version')) {
     return pinnedVersionFile(root, repository);
   }
-  const pyproject = hasFile(root, 'pyproject.toml')
-    ? readFileSync(insidePath(root, 'pyproject.toml'), 'utf8')
+  const pyproject = hasProjectFile(root, 'pyproject.toml')
+    ? readFileSync(insideProject(root, 'pyproject.toml'), 'utf8')
     : '';
   const spec = (REQUIRES_PYTHON.exec(pyproject) ?? POETRY_PYTHON.exec(pyproject))?.groups?.['spec'];
   return boundedVersion(spec ?? '');

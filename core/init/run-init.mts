@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { packageVersion } from '../help/package-version.mts';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
-import { detectProject } from './detection/detect-project.mjs';
+import { detectProject } from './detection/detect-project.mts';
 import { appendSnippet, hasSnippet, INSTRUCTION_FILES } from './files/agents-md.mts';
 import {
   APPROVAL_WORKFLOW,
@@ -9,18 +9,12 @@ import {
   placeWorkflow,
   workflowPath,
 } from './files/ci-workflow.mts';
-import { placeConfig } from './files/config-file.mjs';
+import { placeConfig } from './files/config-file.mts';
 import { parseInitArguments } from './init-arguments.mts';
-import {
-  type Peers,
-  type Placed,
-  type PlacedFile,
-  type Project,
-  renderReport,
-} from './init-report.mts';
+import { type Peers, type Placed, type Project, renderReport } from './init-report.mts';
 import { planPeers } from './peers/peer-plan.mts';
 import { skillSource } from './skill/skill-source.mts';
-import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mjs';
+import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mts';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mts';
 import type { TextOutput } from '../cli-context.mts';
 
@@ -39,11 +33,6 @@ type Target = readonly [root: string, relative: string];
 
 type Targets = { readonly repository: string; readonly workflowFile: string };
 
-const projectOf: (projectRoot: string) => Project = detectProject;
-const configOf: (projectRoot: string, preset: string) => PlacedFile = placeConfig;
-const insideTarget: (root: string, relative: string) => void = assertNothingInTheWay;
-const hasFile: (root: string, relative: string) => boolean = hasProjectFile;
-
 export function runInitCommand(cli: InitCli): number {
   const options = parseInitArguments(cli.arguments_);
   if (options.help) {
@@ -54,7 +43,7 @@ export function runInitCommand(cli: InitCli): number {
   assertSupportedNode(nodeVersion);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
   const repository = requireRepository(projectRoot);
-  const project = projectOf(projectRoot);
+  const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
   const source = skillSource(projectRoot, { repository, version: packageVersion() });
@@ -80,7 +69,7 @@ function checkTargets(
     : [];
   const targets = [...ciTargets, ...agentTargets];
   for (const [root, relative] of targets) {
-    insideTarget(root, relative);
+    assertNothingInTheWay(root, relative);
   }
 }
 
@@ -93,14 +82,14 @@ function placeFiles(
   const workflowFile = workflowPath(projectRoot, repository);
   checkTargets(projectRoot, options, { repository, workflowFile });
   return {
-    config: configOf(projectRoot, project.preset),
+    config: placeConfig(projectRoot, project.preset),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
     approval: options.ci.length === 0 ? undefined : placeApprovalWorkflow(repository),
     workflowFile,
     agents: options.agentsMd ? appendSnippet(projectRoot) : undefined,
     offers: {
       agents: !(options.agentsMd || hasSnippet(projectRoot)),
-      workflow: options.ci.length === 0 && !hasFile(repository, workflowFile),
+      workflow: options.ci.length === 0 && !hasProjectFile(repository, workflowFile),
     },
   };
 }

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../cli.mts';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { insideProject } from '../support/inside-project.mjs';
+import { insideProject } from '../support/inside-project.mts';
 
 const SNAPSHOT_REPORTS = 'reports/quality/snapshot';
 

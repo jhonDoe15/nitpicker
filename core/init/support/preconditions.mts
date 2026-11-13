@@ -1,10 +1,8 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { repositoryRootOf } from '../detection/repository.mjs';
+import { repositoryRootOf } from '../detection/repository.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-
-const rootOf: (projectRoot: string) => string | undefined = repositoryRootOf;
 
 const MINIMUM_RANGE = /^>=\s*(?<version>\d+(?:\.\d+){0,2})$/u;
 
@@ -40,7 +38,7 @@ export function assertSupportedNode(
 }
 
 export function requireRepository(projectRoot: string): string {
-  const repository = rootOf(projectRoot);
+  const repository = repositoryRootOf(projectRoot);
   if (repository === undefined) {
     throw new Error(
       `${projectRoot} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init in the project folder or one above it, and run nitpicker init again.`,
