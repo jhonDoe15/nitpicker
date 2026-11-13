@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { readErrorProneFindings } from '../../errorprone/java-errorprone.mjs';
-import { writeSpringRuleset } from '../proxies/proxy-ruleset.mjs';
+import { writeSpringRuleset } from '../proxies/proxy-ruleset.mts';
 
 import {
   enabled,
