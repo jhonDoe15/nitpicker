@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { javaSpans, lineLocator } from './java-spans.mjs';
+import { javaSpans, lineLocator } from './java-spans.mts';
 
 const SOURCE = [
   'package demo;',

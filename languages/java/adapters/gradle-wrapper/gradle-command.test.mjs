@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gradleTarget } from './gradle-command.mjs';
-import { analyzeJavaSnapshot } from '../java-runner.mjs';
+import { analyzeJavaSnapshot } from '../java-runner.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];

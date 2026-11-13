@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../core/configuration/validate.mjs';
-import { readRunnerPolicy } from '../java-runner.mjs';
+import { readRunnerPolicy } from '../java-runner.mts';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
 import { springRolesFact, writeSpringRoles } from './spring-roles.mjs';
 

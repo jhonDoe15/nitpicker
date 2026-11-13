@@ -2,7 +2,7 @@ import { chmodSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
+import { analyzeJavaSnapshot } from '../adapters/java-runner.mts';
 import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';

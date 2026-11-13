@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
-import { withoutFollowedImports } from './followed-imports.mjs';
+import { withoutFollowedImports } from './followed-imports.mts';
 
 const MAIN = 'src/main/java/demo/A.java';
 const TEST = 'src/test/java/demo/ATest.java';

@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';

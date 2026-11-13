@@ -24,7 +24,7 @@ import {
 } from '../test-support/java-preset-data.mjs';
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from '../test-support/wide-sources.mjs';
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 

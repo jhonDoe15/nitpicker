@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { runJavaDiff } from '../../../java-diff.mjs';
+import { runJavaDiff } from '../../../java-diff.mts';
 import { runGitIn } from '../../../test-support/gradle-e2e.mjs';
 import {
   useJavaPresetProject,

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
-import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
+import { runJava } from '../../../../languages/java/adapters/java-runner.mts';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
@@ -12,9 +12,8 @@ import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
-const javaRunnerPath = path.resolve(
-  import.meta.dirname,
-  '../../../../languages/java/adapters/java-runner.mjs',
+const javaRunnerPath = checkoutModulePath(
+  path.resolve(import.meta.dirname, '../../../../languages/java/adapters/java-runner.mjs'),
 );
 const pythonRunnerPath = path.resolve(
   import.meta.dirname,

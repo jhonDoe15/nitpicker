@@ -1,7 +1,7 @@
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 
 export const PROBE_FILE = path.resolve(import.meta.dirname, '../fixtures/probe-findings.json');
 const PROJECT = path.resolve(import.meta.dirname, '../../fixtures/gradle-project');

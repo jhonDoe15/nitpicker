@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';

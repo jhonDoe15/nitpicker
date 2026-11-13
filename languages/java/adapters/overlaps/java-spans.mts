@@ -1,3 +1,31 @@
+type FrameKind = 'class' | 'catch' | 'member' | 'block';
+type Frame = {
+  readonly kind: FrameKind;
+  readonly name?: string | undefined;
+  readonly start: number;
+};
+type SpanKind = FrameKind | 'javadoc';
+export type JavaSpan = {
+  readonly kind: SpanKind;
+  readonly name?: string | undefined;
+  readonly start: number;
+  readonly end: number;
+};
+type SpanState = {
+  readonly spans: JavaSpan[];
+  readonly stack: Frame[];
+  header: string;
+  headerLine: number | undefined;
+  line: number;
+};
+export type LineLocation = {
+  readonly className: string | undefined;
+  readonly member: string | undefined;
+  readonly javadoc: number | undefined;
+  readonly catchLine: number | undefined;
+  readonly field: string | undefined;
+};
+
 const CLASS_HEADER = /(?:^|[^\w@.])(?:class|interface|enum|record|@interface)\s+(\w+)/u;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/gu;
 const CALLABLE = /(\w+)\s*\(/u;
@@ -21,47 +49,51 @@ const LITERAL = /^(?:["']|\/\/|\/\*)/u;
 const STRING = /^"(?!"")/u;
 const JAVADOC = /^\/\*\*(?!\/)/u;
 
-function memberName(header) {
+function memberName(header: string): string {
   const plain = header.replace(ANNOTATION, ' ');
   const initialized = INITIALIZED.exec(plain);
   const callable = CALLABLE.exec(plain);
   if (initialized !== null && (callable === null || initialized.index < callable.index)) {
-    return initialized[1];
+    return initialized[1] ?? '<init>';
   }
   return callable?.[1] ?? '<init>';
 }
 
-function frameFor(header, parent, line) {
+function frameFor(header: string, parent: Frame | undefined, line: number): Frame {
   const named = /\bnew\s/u.test(header) ? undefined : (CLASS_HEADER.exec(header) ?? undefined);
   if (named !== undefined) {
-    const name = parent?.kind === 'class' ? `${parent.name}$${named[1]}` : named[1];
+    const name = parent?.kind === 'class' ? `${parent.name ?? ''}$${named[1] ?? ''}` : named[1];
     return { kind: 'class', name, start: line };
   }
   if (CATCH.test(header)) {
     return { kind: 'catch', start: line };
   }
   if (parent?.kind === 'class') {
-    return { kind: 'member', name: `${parent.name}#${memberName(header)}@${line}`, start: line };
+    return {
+      kind: 'member',
+      name: `${parent.name ?? ''}#${memberName(header)}@${String(line)}`,
+      start: line,
+    };
   }
   return { kind: 'block', start: line };
 }
 
-function newlines(text) {
+function newlines(text: string): number {
   return text.split('\n').length - 1;
 }
 
-function resetHeader(state) {
+function resetHeader(state: SpanState): void {
   state.header = '';
   state.headerLine = undefined;
 }
 
-function openFrame(state) {
+function openFrame(state: SpanState): void {
   const parent = state.stack.findLast((frame) => frame.kind !== 'block');
   state.stack.push(frameFor(state.header, parent, state.headerLine ?? state.line));
   resetHeader(state);
 }
 
-function closeFrame(state) {
+function closeFrame(state: SpanState): void {
   const frame = state.stack.pop();
   if (frame !== undefined && frame.kind !== 'block') {
     state.spans.push({ ...frame, end: state.line });
@@ -69,7 +101,7 @@ function closeFrame(state) {
   resetHeader(state);
 }
 
-function addText(state, text) {
+function addText(state: SpanState, text: string): void {
   const start = text.search(/\S/u);
   if (state.headerLine === undefined && start !== -1) {
     state.headerLine = state.line + newlines(text.slice(0, start));
@@ -77,13 +109,13 @@ function addText(state, text) {
   state.header += text;
 }
 
-const ACTIONS = new Map([
+const ACTIONS = new Map<string, (state: SpanState) => void>([
   ['{', openFrame],
   ['}', closeFrame],
   [';', resetHeader],
 ]);
 
-function step(state, token) {
+function step(state: SpanState, token: string): void {
   if (JAVADOC.test(token)) {
     state.spans.push({ kind: 'javadoc', start: state.line, end: state.line + newlines(token) });
   }
@@ -99,8 +131,8 @@ function step(state, token) {
   action(state);
 }
 
-export function javaSpans(text) {
-  const state = { spans: [], stack: [], header: '', headerLine: undefined, line: 1 };
+export function javaSpans(text: string): JavaSpan[] {
+  const state: SpanState = { spans: [], stack: [], header: '', headerLine: undefined, line: 1 };
   for (const [token] of text.matchAll(TOKEN)) {
     step(state, token);
     state.line += newlines(token);
@@ -108,16 +140,16 @@ export function javaSpans(text) {
   return state.spans;
 }
 
-function innermost(spans, kind, line) {
+function innermost(spans: readonly JavaSpan[], kind: SpanKind, line: number): JavaSpan | undefined {
   return spans
     .filter((span) => span.kind === kind && span.start <= line && line <= span.end)
-    .reduce(
+    .reduce<JavaSpan | undefined>(
       (inner, span) => (inner === undefined || span.start >= inner.start ? span : inner),
       undefined,
     );
 }
 
-export function lineLocator(text) {
+export function lineLocator(text: string): (line: number) => LineLocation {
   const spans = javaSpans(text);
   const lines = text.split('\n');
   return (line) => ({
@@ -131,8 +163,8 @@ export function lineLocator(text) {
   });
 }
 
-function withoutTypeArguments(text) {
-  return [...text].reduce(
+function withoutTypeArguments(text: string): string {
+  return Array.from(text).reduce(
     ({ kept, depth }, character) => ({
       kept: depth === 0 && character !== '<' ? `${kept}${character}` : kept,
       depth: Math.max(0, depth + (character === '<' ? 1 : 0) - (character === '>' ? 1 : 0)),

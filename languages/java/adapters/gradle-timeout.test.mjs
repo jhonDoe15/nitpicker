@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createJavaAnalyzer } from './java-analyzer.mjs';
-import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot, withPitDeadline } from './java-runner.mjs';
+import { createJavaAnalyzer } from './java-analyzer.mts';
+import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot, withPitDeadline } from './java-runner.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 vi.mock('node:child_process', async (importOriginal) => ({

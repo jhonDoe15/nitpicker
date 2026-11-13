@@ -7,15 +7,41 @@ import { JAVA_TOOLS } from './gradle-presets.mjs';
 import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
-import { javaExecutionBudget } from './java-runner.mjs';
+import { javaExecutionBudget } from './java-runner.mts';
 import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
+import { fieldsOf, textOf } from '../../../shared/values/readers.mts';
+import type { JavaSpawn } from './typed/java-values.mts';
+
+type InvocationContext = {
+  readonly projectRoot: string;
+  readonly toolRoot: string;
+  readonly mutationScope?: unknown;
+};
+type Invocation = { readonly command: string; readonly args: string[]; readonly cwd: string };
+type JavaAnalyzer = {
+  readonly name: string;
+  readonly publishesModuleImports: boolean;
+  readonly version: string;
+  readonly resolveVersion: () => string;
+  readonly configurationHash: string;
+  readonly exclusions: readonly string[];
+  readonly reportedTools: readonly unknown[];
+  readonly timeoutMs: number;
+  readonly comparisonKey: unknown;
+  readonly createInvocation: (context: InvocationContext) => Invocation;
+};
+
+const sourcePath: (file: string) => string = checkoutModulePath;
+const closureOf: (files: readonly string[], root: string) => Map<string, string> = importClosure;
+const javaBinary: (name: string) => string = javaCommand;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
-const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
+const runnerPath = sourcePath(path.join(import.meta.dirname, 'java-runner.mjs'));
 const ENTRY_FILES = [
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-runner.mjs',
@@ -63,17 +89,26 @@ const RESOURCE_FILES = [
   'languages/java/messages/spotbugs.json',
 ];
 
-function javaSources(directory, entries) {
+function javaSources(directory: string, entries: readonly string[]): string[] {
   return entries
     .filter((entry) => entry.endsWith('.java'))
     .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
 }
 
-function configurationContents() {
-  const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
-  const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
-  const design = readdirSync(path.join(packageRoot, DESIGN_DIRECTORY), { recursive: true });
-  return importClosure(
+function configurationContents(): Map<string, string> {
+  const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
+  const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
+  const design = readdirSync(path.join(packageRoot, DESIGN_DIRECTORY), {
+    recursive: true,
+    encoding: 'utf8',
+  });
+  return closureOf(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
@@ -85,19 +120,21 @@ function configurationContents() {
   );
 }
 
-export function configurationFiles() {
+export function configurationFiles(): string[] {
   return [...configurationContents().keys()].sort();
 }
 
-function readPinnedVersions(initScript = INIT_SCRIPT) {
-  const versions = Object.entries(readPinnedTools(initScript)).map(
-    ([name, version]) => `${name}@${version}`,
+function readPinnedVersions(initScript: string = INIT_SCRIPT): string {
+  const pinned: unknown = readPinnedTools(initScript);
+  const versions = Object.entries(fieldsOf(pinned)).map(
+    ([name, version]) => `${name}@${textOf(version)}`,
   );
-  return [...versions, `jscpd@${jscpdVersion()}`].join(';');
+  const jscpd: unknown = jscpdVersion();
+  return [...versions, `jscpd@${textOf(jscpd)}`].join(';');
 }
 
-export function javaRuntimeVersion(spawn = spawnSync) {
-  const java = javaCommand('java');
+export function javaRuntimeVersion(spawn: JavaSpawn = spawnSync): string {
+  const java = javaBinary('java');
   const result = spawn(java, ['-version'], { encoding: 'utf8', timeout: 60_000 });
   if (result.status !== 0) {
     return `jdk:unavailable(${java})`;
@@ -108,12 +145,12 @@ export function javaRuntimeVersion(spawn = spawnSync) {
   return `jdk:${lines.join(' | ')}`;
 }
 
-function hashConfiguration() {
+function hashConfiguration(): string {
   const hash = createHash('sha256');
   const contents = configurationContents();
   for (const relativePath of [...contents.keys()].sort()) {
     hash.update(`${relativePath}\0`);
-    hash.update(contents.get(relativePath));
+    hash.update(contents.get(relativePath) ?? '');
     hash.update('\0');
   }
   return hash.digest('hex');
@@ -122,9 +159,9 @@ function hashConfiguration() {
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
 const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL];
 
-export function createJavaAnalyzer({ kotlin = false } = {}) {
+export function createJavaAnalyzer({ kotlin = false } = {}): JavaAnalyzer {
   const budget = javaExecutionBudget();
-  let runtimeVersion;
+  let runtimeVersion: string | undefined;
   return {
     name: kotlin ? 'kotlin' : 'java',
     publishesModuleImports: true,

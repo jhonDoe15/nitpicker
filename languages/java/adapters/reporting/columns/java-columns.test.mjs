@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import { fakeGradleRun } from '../../test-support/in-process-gradle.mjs';
-import { checkstyleTabWidth } from './java-columns.mjs';
+import { checkstyleTabWidth } from './java-columns.mts';
 
 const MAIN = 'src/main/java/demo/A.java';
 const SOURCE = 'package demo;\n\n\timport java.util.*;\n/* é😀 */\timport java.io.*;\n';

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../java-analyzer.mjs';
+import { configurationFiles } from '../java-analyzer.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const RULESETS = configurationFiles().filter((file) => file.endsWith('-ruleset.xml'));

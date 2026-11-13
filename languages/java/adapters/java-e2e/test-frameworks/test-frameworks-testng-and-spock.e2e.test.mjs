@@ -1,7 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { analyzeJavaSnapshot } from '../../java-runner.mjs';
+import { analyzeJavaSnapshot } from '../../java-runner.mts';
 import { runMaven } from '../../../maven/maven-command.mjs';
 import { archunitMatcher } from '../../../maven/maven-tests.mjs';
 import { requireTestngRun } from '../../../maven/results/maven-test-results.mjs';

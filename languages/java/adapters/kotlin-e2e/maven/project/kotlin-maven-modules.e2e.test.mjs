@@ -2,7 +2,7 @@ import path from 'node:path';
 import { cpSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../java-diff.mjs';
+import { collectJavaFindings } from '../../../java-diff.mts';
 import { BAD } from '../../test-support/kotlin-lint-data.mjs';
 import {
   copyFixture,
