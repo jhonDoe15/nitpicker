@@ -260,7 +260,9 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   `runtimeOnly`, `compileOnly` and test configurations are not checked. The finding sits on the
   build file. On a Maven build see [Maven builds](#maven-builds) for which dependencies count.
   Versions are not checked: how a project pins its versions is its own choice.
-- **Tests.** The test rules run on test sources only. `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
+- **Tests.** The test rules run on test sources only. `DisabledTest` (`@Disabled`, `@Ignore`, TestNG `@Test(enabled = false)`,
+  `assumeTrue(false)`, `assumeTrue(!true)` and `assumeFalse(true)`, with the literal in any argument position (JUnit 4 takes the message first); JUnit has no focused-test annotation, so there is no
+  focus rule), `AssertionInControlFlow` (an
   assertion or `verify` inside an `if`, `switch`, loop, `?:` or iterating callback (`forEach`, `map`,
   `filter`, `peek`, `anyMatch` and the like) of a test method: an empty collection runs no assertion.
   Allowed: assert the whole collection at once, `assertAll(() -> ..., () -> ...)`, a
@@ -286,8 +288,20 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   non-final fields or a static
   collection it changes is an `errorprone/NonFinalStaticField` or `pmd/MutableStaticCollection` finding
   like production code. A test with no assertion at all is still
-  `pmd/UnitTestShouldIncludeAssert`. Assumptions (`assumeTrue`) and tests that only `verify` a
-  call are not reported: environment guards and verifying a `void` collaborator are legitimate.
+  `pmd/UnitTestShouldIncludeAssert`. An assumption on a real condition (`assumeTrue(isLinux())`) and a test
+  that only `verify`s a call are not reported: environment guards and verifying a `void` collaborator are
+  legitimate.
+- **Test honesty by preset.** The four checks that keep a test honest exist in every preset that
+  has tests: a test with no assertion, a skipped or focused test, a fixed sleep, and an assertion
+  that may not run.
+
+  | Check                      | Java (Gradle and Maven)                | Kotlin                                | Python                                   | TypeScript and JavaScript                                         |
+  | -------------------------- | -------------------------------------- | ------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------- |
+  | No assertion               | `pmd/UnitTestShouldIncludeAssert`      | `test-without-assertion`              | `test-without-assertion`                 | `vitest/expect-expect`                                            |
+  | Skipped or focused test    | `pmd/DisabledTest` (no focus in JUnit) | `pmd/DisabledTest`, `pmd/FocusedTest` | `switched-off-test` (no focus in pytest) | `nitpicker/no-switched-off-tests`, `vitest/no-focused-tests`      |
+  | Sleep in a test            | `pmd/FixedSleepInTest`                 | `pmd/FixedSleepInTest`                | `sleep-in-test`                          | `nitpicker/no-fixed-sleep-synchronization`                        |
+  | Assertion that may not run | `pmd/AssertionInControlFlow`           | `pmd/AssertionInControlFlow`          | `conditional-assertion-in-test`          | `nitpicker/no-assertion-in-loop`, `vitest/no-conditional-in-test` |
+
 - **Fixture.** `languages/java/guards/guards.e2e.test.mjs` runs the Gradle tasks on
   `languages/java/adapters/fixtures/guards-project`, whose sources hold one violating and one clean
   sample per rule with a `// violation: <tool>/<rule>` marker, and expects exactly the marked
