@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../../../cli.mjs';
+import { runCli as nitpickerCli } from '../../../../cli.mts';
 import { useCliFixtures, fakeAnalyzer } from '../../../../command/test-support/cli-harness.mjs';
 import {
   finding,

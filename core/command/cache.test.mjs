@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { startTestHttpServer } from '../diff/cache/test-support/test-http-server.mjs';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';

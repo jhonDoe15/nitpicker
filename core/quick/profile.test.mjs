@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
-import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
+import { presetAnalyzers } from '../configuration/preset-analyzers.mts';
 import { applyRunProfile } from './profile.mjs';
 
 function namedAnalyzers(...names) {

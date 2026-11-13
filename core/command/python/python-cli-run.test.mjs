@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
-import { runCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
+import { runCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
