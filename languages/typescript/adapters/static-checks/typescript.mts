@@ -14,7 +14,7 @@ import {
   enclosingSymbol,
   preEmitDiagnostics,
   projectTypeScript,
-} from '../typed/typescript-program.mts';
+} from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
 
 type TypeScriptDiagnostics = {

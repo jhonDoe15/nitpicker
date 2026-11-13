@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
-import { normalizeEslintResults } from './normalize.mjs';
+import { normalizeEslintResults } from './normalize.mts';
 
 const temporaryRoots = [];
 const REPORTED = 'state.total += await load()';

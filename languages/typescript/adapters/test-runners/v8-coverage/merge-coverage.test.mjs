@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mergedCoverage } from './merge-coverage.mjs';
+import { mergedCoverage } from './merge-coverage.mts';
 
 const at = (line, column) => ({
   start: { line, column },

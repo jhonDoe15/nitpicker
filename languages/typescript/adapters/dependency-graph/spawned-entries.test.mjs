@@ -6,7 +6,7 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { spawnedEntryFiles } from './spawned-entries.mjs';
+import { spawnedEntryFiles } from './spawned-entries.mts';
 
 const { gitCheckout } = useGitCheckouts();
 

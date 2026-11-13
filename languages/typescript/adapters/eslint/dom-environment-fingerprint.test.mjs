@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
-import { normalizeEslintResults } from './normalize.mjs';
+import { normalizeEslintResults } from './normalize.mts';
 
 const RULE = 'nitpicker/no-unused-dom-environment';
 const directive = ['@vitest', 'environment'].join('-');
