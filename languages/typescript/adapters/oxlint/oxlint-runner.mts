@@ -1,46 +1,81 @@
 import { rmSync } from 'node:fs';
-import { availableParallelism } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { trackTemporaryPath, untrackTemporaryPath } from '../typed/tooling.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import type { LintEngineOptions, RunEslintCli } from '../lint-engine/typed/tools.mts';
 import {
-  trackTemporaryPath,
-  untrackTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
-import { eslintShapedResults } from './oxlint-diagnostics.mjs';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
-import { oxlintBinary, spawnJson, spawnJsonAsync, tsgolintBinary } from './oxlint-process.mjs';
+  type LintResult,
+  type NativeRules,
+  type OxlintPlan,
+  type ResidualGroup,
+  type Translation,
+  lintResultsOf,
+  planOf,
+} from './plan/oxlint-shapes.mts';
+import { type LintTiming, type StageRun, lintConfigs } from './run/stage-lint.mts';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { oxlintBinary, spawnJson } from './oxlint-process.mts';
+import type { Environment } from '../../../../shared/processes/environment.mts';
 import {
   messageIdResolver,
   nativeRuleIndex,
   PARITY_BRIDGED_RULES,
   rejectedRuleIds,
   translatePlan,
-} from './oxlint-translation.mjs';
+} from './oxlint-translation.mts';
 import {
+  type DirectiveFile,
   directiveFilesOf,
   neutralizeInlineConfig,
   oxlintDirectiveLocations,
   rewriteDirectiveComments,
-} from './stage/oxlint-directives.mjs';
+} from './stage/oxlint-directives.mts';
 import {
+  type StageConfig,
   createStage,
   hideNestedTypeScriptConfigs,
   writeStageConfigs,
-} from './stage/oxlint-stage.mjs';
+} from './stage/oxlint-stage.mts';
 
-const MAX_ARGUMENT_BYTES = 1024 * 1024;
-const PLAN_PATH = checkoutModulePath(path.join(import.meta.dirname, 'oxlint-plan.mjs'));
+type AttemptContext = LintTiming & {
+  readonly plan: OxlintPlan;
+  readonly stage: string;
+  readonly projectRoot: string;
+  readonly runEslintCli: RunEslintCli;
+  readonly neutralized: ReadonlyMap<string, ReadonlySet<string>>;
+  readonly directiveFiles: readonly DirectiveFile[];
+  readonly native: { readonly nativeRules: NativeRules };
+  readonly bridgedRules: Set<string>;
+  readonly residualRuns: Map<string, Promise<LintResult[]>>;
+};
+
+type Accepted = { readonly results: LintResult[]; readonly residual: LintResult[] };
+
+type Outcome = Accepted | { readonly results: undefined };
+
+const PLAN_PATH = fileURLToPath(checkoutModuleUrl(new URL('oxlint-plan.mjs', import.meta.url)));
 const MAX_CONFIGURATION_ATTEMPTS = 20;
-const MAX_LINT_SLICES = 4;
-const MIN_FILES_PER_SLICE = 200;
-const CPUS_PER_LINT_SLICE = 4;
 
-export async function lintWithOxlint({ options, environment, projectConfigPath, runEslintCli }) {
-  const plan = spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
-    cwd: options.projectRoot,
-    env: environment,
-    context: 'oxlint planning',
-    timeoutMs: options.timeoutMs,
-  });
+export async function lintWithOxlint({
+  options,
+  environment,
+  projectConfigPath,
+  runEslintCli,
+}: {
+  readonly options: LintEngineOptions;
+  readonly environment: Environment;
+  readonly projectConfigPath: string | undefined;
+  readonly runEslintCli: RunEslintCli;
+}): Promise<LintResult[]> {
+  const plan = planOf(
+    spawnJson([PLAN_PATH, options.projectRoot, ...options.patterns], {
+      cwd: options.projectRoot,
+      env: environment,
+      context: 'oxlint planning',
+      timeoutMs: options.timeoutMs,
+    }),
+  );
   const files = plan.groups.flatMap((group) => group.files);
   const stage = trackTemporaryPath(createStage(options.projectRoot, projectConfigPath));
   try {
@@ -72,8 +107,12 @@ export async function lintWithOxlint({ options, environment, projectConfigPath, 
   }
 }
 
-async function lintUntilAccepted({ plan, environment, ...run }) {
-  const context = {
+async function lintUntilAccepted({
+  plan,
+  environment,
+  ...run
+}: Omit<AttemptContext, 'native' | 'bridgedRules' | 'residualRuns'>): Promise<Accepted> {
+  const context: AttemptContext = {
     plan,
     environment,
     ...run,
@@ -100,7 +139,7 @@ async function lintAttempt({
   neutralized,
   directiveFiles,
   ...run
-}) {
+}: AttemptContext): Promise<Outcome> {
   const translation = translatePlan(plan, { ...native, bridgedRules });
   const sampleFile = plan.groups[0]?.files[0];
   const configs = writeStageConfigs({ stage, projectRoot, sampleFile, translation });
@@ -135,15 +174,28 @@ async function lintAttempt({
   });
 }
 
-function residualRun(residualRuns, residual, start) {
+function residualRun(
+  residualRuns: Map<string, Promise<LintResult[]>>,
+  residual: readonly ResidualGroup[],
+  start: () => Promise<LintResult[]>,
+): Promise<LintResult[]> {
   const key = JSON.stringify(residual);
-  if (!residualRuns.has(key)) {
-    residualRuns.set(key, start());
-  }
-  return residualRuns.get(key);
+  const running = residualRuns.get(key) ?? start();
+  residualRuns.set(key, running);
+  return running;
 }
 
-async function lintBesideResidual({ residual, translation, bridgedRules, ...run }) {
+async function lintBesideResidual({
+  residual,
+  translation,
+  bridgedRules,
+  ...run
+}: StageRun & {
+  readonly residual: Promise<LintResult[]>;
+  readonly translation: Translation;
+  readonly bridgedRules: Set<string>;
+  readonly configs: readonly StageConfig[];
+}): Promise<Outcome> {
   const [linted, residualOutcome] = await Promise.allSettled([
     lintConfigs({ ...run, typeAware: translation.typeAware }),
     residual,
@@ -159,37 +211,17 @@ async function lintBesideResidual({ residual, translation, bridgedRules, ...run 
     : { results: linted.value, residual: residualOutcome.value };
 }
 
-async function lintConfigs({ configs, ...run }) {
-  const results = [];
-  for (const config of configs) {
-    const slices = fileSlices(config.files);
-    const reports = await Promise.allSettled(
-      slices.map((files) => lintStage({ ...run, configPath: config.configPath, files })),
-    );
-    const failed = reports.find(({ status }) => status === 'rejected');
-    if (failed !== undefined) {
-      throw failed.reason;
-    }
-    results.push(...reports.flatMap(({ value }) => value));
-  }
-  return results;
-}
-
-function fileSlices(files) {
-  const count = Math.max(
-    1,
-    Math.min(
-      MAX_LINT_SLICES,
-      Math.floor(availableParallelism() / CPUS_PER_LINT_SLICE),
-      Math.floor(files.length / MIN_FILES_PER_SLICE),
-    ),
-  );
-  return Array.from({ length: count }, (_slice, index) =>
-    files.filter((_file, position) => position % count === index),
-  );
-}
-
-function checkNativeConfigs({ stage, configs, sampleFile, environment, timeoutMs }) {
+function checkNativeConfigs({
+  stage,
+  configs,
+  sampleFile,
+  environment,
+  timeoutMs,
+}: LintTiming & {
+  readonly stage: string;
+  readonly configs: readonly StageConfig[];
+  readonly sampleFile: string | undefined;
+}): void {
   if (sampleFile === undefined) return;
   for (const { nativeConfigPath } of configs) {
     spawnJson(
@@ -208,71 +240,39 @@ function checkNativeConfigs({ stage, configs, sampleFile, environment, timeoutMs
   }
 }
 
-function bridgeRejectedRules(error, ruleNames, bridgedRules) {
-  const rejected = rejectedRuleIds(String(error.message), ruleNames);
+function bridgeRejectedRules(
+  error: unknown,
+  ruleNames: ReadonlyMap<string, string>,
+  bridgedRules: Set<string>,
+): void {
+  const rejected = rejectedRuleIds(String(fieldOf(error, 'message')), ruleNames);
   if (rejected.length === 0 || rejected.every((ruleId) => bridgedRules.has(ruleId))) throw error;
   for (const ruleId of rejected) bridgedRules.add(ruleId);
 }
 
-async function lintStage({ stage, configPath, files, typeAware, naming, environment, timeoutMs }) {
-  const typeAwareEnvironment = typeAware ? { OXLINT_TSGOLINT_PATH: tsgolintBinary() } : {};
-  const results = [];
-  for (const chunk of argumentChunks(files)) {
-    const report = await spawnJsonAsync(
-      [
-        oxlintBinary(),
-        '--config',
-        configPath,
-        '--format',
-        'json',
-        '--no-ignore',
-        '--disable-nested-config',
-        '--report-unused-disable-directives',
-        ...(typeAware ? ['--type-aware'] : []),
-        ...chunk,
-      ],
-      {
-        cwd: stage,
-        env: { ...environment, ...typeAwareEnvironment },
-        context: 'oxlint',
-        timeoutMs,
-        acceptedStatuses: [0, 1],
-      },
-    );
-    results.push(...eslintShapedResults(stage, report.diagnostics, naming));
-  }
-  return results;
-}
-
-function argumentChunks(files) {
-  const chunks = [[]];
-  let size = 0;
-  for (const file of files) {
-    if (size + file.length > MAX_ARGUMENT_BYTES && chunks.at(-1).length > 0) {
-      chunks.push([]);
-      size = 0;
-    }
-    chunks.at(-1).push(file);
-    size += file.length + 1;
-  }
-  return chunks.filter((chunk) => chunk.length > 0);
-}
-
-async function residualResults(projectRoot, residual, runEslintCli) {
+async function residualResults(
+  projectRoot: string,
+  residual: readonly ResidualGroup[],
+  runEslintCli: RunEslintCli,
+): Promise<LintResult[]> {
   if (residual.length === 0) return [];
   const files = [...new Set(residual.flatMap((group) => group.files))].sort();
   const rules = [...new Set(residual.flatMap((group) => group.rules))].sort();
-  const results = await runEslintCli(files, {
-    NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules),
-  });
+  const results = lintResultsOf(
+    await runEslintCli(files, {
+      NITPICKER_DIFF_ESLINT_ONLY_RULES: JSON.stringify(rules),
+    }),
+  );
   return results.map((result) => ({
     filePath: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-    messages: result.messages.filter((message) => rules.includes(message.ruleId)),
+    messages: result.messages.filter(
+      (message) => message.ruleId !== undefined && rules.includes(message.ruleId),
+    ),
   }));
 }
 
-function mergeResults(results) {
-  const byFile = new Map();
+function mergeResults(results: readonly LintResult[]): LintResult[] {
+  const byFile = new Map<string, LintResult['messages'][number][]>();
   for (const result of results) {
     byFile.set(result.filePath, [...(byFile.get(result.filePath) ?? []), ...result.messages]);
   }
@@ -281,7 +281,10 @@ function mergeResults(results) {
     .map(([filePath, messages]) => ({ filePath, messages: messages.sort(byPosition) }));
 }
 
-function byPosition(left, right) {
+function byPosition(
+  left: LintResult['messages'][number],
+  right: LintResult['messages'][number],
+): number {
   return (
     left.line - right.line ||
     left.column - right.column ||

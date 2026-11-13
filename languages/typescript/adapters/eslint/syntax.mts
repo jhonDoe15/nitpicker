@@ -1,12 +1,30 @@
 import { createHash } from 'node:crypto';
+import type TypeScript from 'typescript';
 import {
-  formatAgnosticTokens,
-  sourceLanguage,
+  formatAgnosticTokens as untypedFormatAgnosticTokens,
+  sourceLanguage as untypedSourceLanguage,
 } from '../../../../shared/source-text/format-tokens.mjs';
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { chainOf } from '../../../../shared/traversal.mjs';
-import { nameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
-export function commentAt(text, position, endPosition) {
+import { chainOf, parentOf, typescriptApi } from '../typed/typescript-program.mts';
+import { nameFreeHash as untypedNameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
+
+type Node = TypeScript.Node;
+type SourceFile = TypeScript.SourceFile;
+
+const formatAgnosticTokens: (
+  text: string,
+  language: unknown,
+  options: { readonly comments: boolean },
+) => readonly { readonly text: string }[] = untypedFormatAgnosticTokens;
+const sourceLanguage: (filePath: string) => unknown = untypedSourceLanguage;
+const nameFreeHash: (text: string, name: string) => string = untypedNameFreeHash;
+
+const ts = typescriptApi();
+
+export function commentAt(
+  text: string,
+  position: number,
+  endPosition: number | undefined,
+): string | undefined {
   const isLine = text.startsWith('//', position);
   if (!isLine && !text.startsWith('/*', position)) {
     return undefined;
@@ -22,13 +40,13 @@ export function commentAt(text, position, endPosition) {
   return text.slice(position, close === -1 ? text.length : close + 2);
 }
 
-export function commentFingerprint(comment) {
+export function commentFingerprint(comment: string): string {
   return createHash('sha256').update(normalizeMessageText(comment)).digest('hex').slice(0, 24);
 }
 
-export function findStartedNode(sourceFile, position) {
-  let deepest = sourceFile;
-  function visit(node) {
+export function findStartedNode(sourceFile: SourceFile, position: number): Node {
+  let deepest: Node = sourceFile;
+  function visit(node: Node): void {
     if (node.getStart(sourceFile) <= position && position < node.end) {
       deepest = node;
       ts.forEachChild(node, visit);
@@ -38,9 +56,13 @@ export function findStartedNode(sourceFile, position) {
   return deepest;
 }
 
-export function findReportedNode(sourceFile, position, endPosition) {
-  const containingNodes = [];
-  function visit(node) {
+export function findReportedNode(
+  sourceFile: SourceFile,
+  position: number,
+  endPosition: number | undefined,
+): Node {
+  const containingNodes: Node[] = [];
+  function visit(node: Node): void {
     if (node.pos <= position && position < node.end) {
       containingNodes.push(node);
       ts.forEachChild(node, visit);
@@ -60,7 +82,7 @@ export function findReportedNode(sourceFile, position, endPosition) {
   return containingNodes.at(-1) ?? sourceFile;
 }
 
-export function eslintNodeType(node) {
+export function eslintNodeType(node: Node): string {
   if (ts.isSourceFile(node)) {
     return 'Program';
   }
@@ -76,24 +98,25 @@ export function eslintNodeType(node) {
   return ts.SyntaxKind[node.kind];
 }
 
-export function stableSyntaxAnchor(node) {
+export function stableSyntaxAnchor(node: Node): Node {
+  const parent = parentOf(node);
   if (
     node.kind === ts.SyntaxKind.EqualsGreaterThanToken &&
-    node.parent !== undefined &&
-    ts.isArrowFunction(node.parent)
+    parent !== undefined &&
+    ts.isArrowFunction(parent)
   ) {
-    return node.parent;
+    return parent;
   }
   return node;
 }
 
-export function nodeChain(node) {
-  return chainOf(node, (current) => current.parent);
+export function nodeChain(node: Node): Node[] {
+  return chainOf(node, parentOf);
 }
 
-export function enclosingFunctionHash(node, symbol) {
+export function enclosingFunctionHash(node: Node, symbol: string | undefined): string | undefined {
   const owner = nodeChain(node).find(
-    (current) => ts.isFunctionLike(current) && current.body !== undefined,
+    (current) => ts.isFunctionLike(current) && 'body' in current && current.body !== undefined,
   );
   if (owner === undefined || symbol === undefined) {
     return undefined;
@@ -102,8 +125,8 @@ export function enclosingFunctionHash(node, symbol) {
   return nameFreeHash(lines.map((line) => line.trim()).join('\n'), symbol);
 }
 
-export function enclosingSymbol(node) {
-  const names = [];
+export function enclosingSymbol(node: Node): string | undefined {
+  const names: string[] = [];
   for (const current of nodeChain(node)) {
     const name = declarationName(current);
     if (name !== undefined && names.at(-1) !== name) {
@@ -113,7 +136,7 @@ export function enclosingSymbol(node) {
   return names.length === 0 ? undefined : names.reverse().join('.');
 }
 
-function declarationName(node) {
+function declarationName(node: Node): string | undefined {
   if (
     ts.isFunctionDeclaration(node) ||
     ts.isClassDeclaration(node) ||
@@ -131,8 +154,8 @@ function declarationName(node) {
   return undefined;
 }
 
-function fingerprintText(node) {
-  if (ts.isFunctionLike(node) && node.body !== undefined) {
+function fingerprintText(node: Node): string {
+  if (ts.isFunctionLike(node) && 'body' in node && node.body !== undefined) {
     return node.getSourceFile().text.slice(node.getStart(), node.body.getStart());
   }
   return node.getText();
@@ -141,7 +164,7 @@ function fingerprintText(node) {
 const SCRIPT = sourceLanguage('script.ts');
 const FINGERPRINT_LENGTH = 24;
 
-export function syntaxFingerprint(node, nodeType) {
+export function syntaxFingerprint(node: Node, nodeType: string): string {
   if (nodeType === 'Program') {
     return 'program';
   }
@@ -152,11 +175,11 @@ export function syntaxFingerprint(node, nodeType) {
     .slice(0, FINGERPRINT_LENGTH);
 }
 
-export function normalizeMessageText(value) {
+export function normalizeMessageText(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
-export function scriptKind(filePath) {
+export function scriptKind(filePath: string): TypeScript.ScriptKind {
   if (filePath.endsWith('.tsx')) {
     return ts.ScriptKind.TSX;
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accumulatingSpreadCheck, accumulatingSpreadReport } from './accumulating-spread-check.mjs';
+import { accumulatingSpreadCheck, accumulatingSpreadReport } from './accumulating-spread-check.mts';
 
 const REDUCE = 'Do not spread accumulators in Array.prototype.reduce()';
 const LOOP = 'Do not spread accumulators in loops';

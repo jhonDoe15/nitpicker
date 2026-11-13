@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
-import { lintWithOxlint } from '../oxlint-runner.mjs';
+import { lintWithOxlint } from '../oxlint-runner.mts';
 
 const presetRoot = path.join(import.meta.dirname, '../../../preset');
 const moduleUrl = (relativePath) => JSON.stringify(path.join(presetRoot, relativePath));

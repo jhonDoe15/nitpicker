@@ -1,27 +1,48 @@
-import { spawn } from 'node:child_process';
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import { type SpawnSyncReturns, spawn } from 'node:child_process';
+import { spawnSyncWithOutputFile, toolBinaryPath } from '../typed/tooling.mts';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-  withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
+import { troubleshootingError, withTroubleshooting } from '../lint-engine/typed/tools.mts';
+import { parseJson } from '../../../../shared/values/readers.mts';
+import type { Environment } from '../../../../shared/processes/environment.mts';
+
+type Status = SpawnSyncReturns<string>['status'];
+
+export type CollectedRun = {
+  readonly status: Status;
+  readonly error: (Error & { readonly code?: unknown }) | undefined;
+  readonly stdout: string;
+  readonly stderr: string;
+};
+
+type JsonRun = {
+  readonly cwd: string;
+  readonly env: Environment | undefined;
+  readonly context: string;
+  readonly timeoutMs: number;
+  readonly acceptedStatuses?: readonly Status[];
+};
+
+type CollectedOutput = {
+  readonly stdout: Buffer[];
+  readonly stderr: Buffer[];
+  collect(chunks: Buffer[]): (chunk: Buffer) => void;
+};
 
 const MAX_OUTPUT_BYTES = 200 * 1024 * 1024;
 const MAX_INVALID_OUTPUT_CHARACTERS = 2000;
 const ENGINE_HINT =
   'Set "tools": { "eslint": { "engine": "eslint" } } in nitpicker.config.json to lint with ESLint instead.';
 
-export function oxlintBinary() {
-  return resolveTool('oxlint', { bin: 'bin/oxlint' }).binPath;
+export function oxlintBinary(): string {
+  return toolBinaryPath('oxlint', { bin: 'bin/oxlint' });
 }
 
-export function tsgolintBinary() {
-  const packageRoot = path.dirname(resolveTool('oxlint-tsgolint', { bin: 'package.json' }).binPath);
+export function tsgolintBinary(): string {
+  const packageRoot = path.dirname(toolBinaryPath('oxlint-tsgolint', { bin: 'package.json' }));
   const executable = process.platform === 'win32' ? 'tsgolint.exe' : 'tsgolint';
   const platformPackage = `@oxlint-tsgolint/${process.platform}-${process.arch}`;
   try {
@@ -37,20 +58,23 @@ export function tsgolintBinary() {
   }
 }
 
-export function withEngineHint(detail) {
+export function withEngineHint(detail: string): string {
   return detail.includes(CONFIG_FILE_NAME)
     ? detail
     : withTroubleshooting(`${detail}\n${ENGINE_HINT}`, TROUBLESHOOTING_ANCHORS.engineUnavailable);
 }
 
-export function withCompileCache(environment) {
+export function withCompileCache(environment: Environment | undefined): Environment {
   return {
     NODE_COMPILE_CACHE: path.join(tmpdir(), 'nitpicker-node-compile-cache'),
     ...environment,
   };
 }
 
-export function spawnJson(argumentList, { cwd, env, context, timeoutMs, acceptedStatuses = [0] }) {
+export function spawnJson(
+  argumentList: readonly string[],
+  { cwd, env, context, timeoutMs, acceptedStatuses = [0] }: JsonRun,
+): unknown {
   const result = spawnSyncWithOutputFile(process.execPath, argumentList, {
     cwd,
     env: withCompileCache(env),
@@ -62,9 +86,9 @@ export function spawnJson(argumentList, { cwd, env, context, timeoutMs, accepted
 }
 
 export async function spawnJsonAsync(
-  argumentList,
-  { cwd, env, context, timeoutMs, acceptedStatuses = [0] },
-) {
+  argumentList: readonly string[],
+  { cwd, env, context, timeoutMs, acceptedStatuses = [0] }: JsonRun,
+): Promise<unknown> {
   const result = await spawnCollected(process.execPath, argumentList, {
     cwd,
     env: withCompileCache(env),
@@ -74,11 +98,25 @@ export async function spawnJsonAsync(
   return parsedReport(result, { context, acceptedStatuses });
 }
 
-export function spawnCollected(command, argumentList, { cwd, env, maxBuffer, timeoutMs }) {
+export function spawnCollected(
+  command: string,
+  argumentList: readonly string[],
+  {
+    cwd,
+    env,
+    maxBuffer,
+    timeoutMs,
+  }: {
+    readonly cwd: string;
+    readonly env: Environment;
+    readonly maxBuffer: number;
+    readonly timeoutMs: number | undefined;
+  },
+): Promise<CollectedRun> {
   return new Promise((resolve) => {
     const child = spawn(command, argumentList, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
-    const failures = [];
-    function stop(code) {
+    const failures: (Error & { readonly code?: unknown })[] = [];
+    function stop(code: string): void {
       if (child.killed) {
         return;
       }
@@ -108,7 +146,10 @@ export function spawnCollected(command, argumentList, { cwd, env, maxBuffer, tim
   });
 }
 
-function deadline(timeoutMs, onTimeout) {
+function deadline(
+  timeoutMs: number | undefined,
+  onTimeout: () => void,
+): NodeJS.Timeout | undefined {
   return timeoutMs === undefined
     ? undefined
     : setTimeout(() => {
@@ -116,10 +157,10 @@ function deadline(timeoutMs, onTimeout) {
       }, timeoutMs);
 }
 
-function outputCollector(maxBuffer, onOverflow) {
-  const stdout = [];
-  const stderr = [];
-  function collect(chunks) {
+function outputCollector(maxBuffer: number, onOverflow: () => void): CollectedOutput {
+  const stdout: Buffer[] = [];
+  const stderr: Buffer[] = [];
+  function collect(chunks: Buffer[]): (chunk: Buffer) => void {
     let bytes = 0;
     return (chunk) => {
       bytes += chunk.length;
@@ -133,7 +174,15 @@ function outputCollector(maxBuffer, onOverflow) {
   return { stdout, stderr, collect };
 }
 
-function parsedReport(result, { context, acceptedStatuses }) {
+function parsedReport(
+  result: Pick<CollectedRun, 'status' | 'stdout' | 'stderr'> & {
+    readonly error?: Error | undefined;
+  },
+  {
+    context,
+    acceptedStatuses,
+  }: { readonly context: string; readonly acceptedStatuses: readonly Status[] },
+): unknown {
   if (result.error !== undefined) {
     throw new Error(`${context} failed: ${result.error.message}`, { cause: result.error });
   }
@@ -142,7 +191,7 @@ function parsedReport(result, { context, acceptedStatuses }) {
     throw new Error(`${context} exited with ${String(result.status)}: ${withEngineHint(detail)}`);
   }
   try {
-    return JSON.parse(result.stdout);
+    return parseJson(result.stdout);
   } catch (error) {
     const detail = (result.stderr.trim() || result.stdout).slice(0, MAX_INVALID_OUTPUT_CHARACTERS);
     throw new Error(`${context} did not produce valid JSON: ${detail}`, { cause: error });
