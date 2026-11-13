@@ -12,7 +12,7 @@ import path from 'node:path';
 import { type Fields, requiredFields, requiredText } from '../../scripts/json/fields.mts';
 import { readAgentResult } from '../lib/agent-result.mts';
 import { type CommandOptions, type CommandResult, command, write } from '../lib/consumer.mts';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 import {
   type CaseDefinition,
   readJson,
