@@ -93,7 +93,8 @@ function messageOf(value: unknown): unknown {
 function failureMessage(error: TestFailure | undefined): string {
   const cause = error?.cause;
   const message = cause instanceof Error ? cause.stack : (messageOf(cause) ?? error?.message);
-  return typeof message === 'string' ? message : String(cause ?? error ?? 'failed');
+  const described: unknown = cause ?? error ?? 'failed';
+  return typeof message === 'string' ? message : String(described);
 }
 
 function statusOf(failed: boolean, data: ResultData): AssertionResult['status'] {
