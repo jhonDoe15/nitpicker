@@ -116,12 +116,13 @@ export function neutralReuseFacts(facts, resolve) {
       .flatMap((fact) => neutralImports(fact, resolve))
       .filter(({ to }) => files.has(to)),
     nearDuplicateUnits: facts.flatMap((fact) =>
-      fact.nearDuplicateUnits.map(({ file, name, start, end, tokens, tree }) => ({
+      fact.nearDuplicateUnits.map(({ file, name, start, end, tokens, final, tree }) => ({
         file,
         name,
         start,
         end,
         tokens,
+        final,
         tree,
       })),
     ),

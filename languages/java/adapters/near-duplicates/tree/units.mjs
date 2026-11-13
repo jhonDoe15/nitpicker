@@ -1,15 +1,6 @@
 import { EXPRESSIONS, lambdaOf } from './expressions.mjs';
 import { EMPTY_CLASS_SCOPE, boundNames, classScope, fileScope } from './names.mjs';
-import {
-  NONE,
-  at,
-  codeChildren,
-  field,
-  isStatementNode,
-  opaque,
-  textOf,
-  typeNode,
-} from './nodes.mjs';
+import { NONE, at, codeChildren, field, isStatementNode, textOf, typeNode } from './nodes.mjs';
 import { STATEMENTS } from './statements.mjs';
 import { languageUnits } from './unit-driver.mjs';
 
@@ -27,7 +18,21 @@ const UNIT_TYPES = new Set([
   'compact_constructor_declaration',
 ]);
 
-function joined(qualifier, part) {
+const CLOSED_MODIFIERS = new Set(['private', 'static', 'final']);
+
+function isFinal(source) {
+  const modifiers =
+    source.type === 'method_declaration'
+      ? codeChildren(source).find((child) => child.type === 'modifiers')
+      : undefined;
+  return (
+    modifiers !== undefined &&
+    modifiers.text.split(/\s+/u).some((word) => CLOSED_MODIFIERS.has(word))
+  );
+}
+
+/** `part` qualified by `qualifier`, or `part` alone when there is no qualifier. */
+export function joined(qualifier, part) {
   return qualifier === '' ? part : `${qualifier}.${part}`;
 }
 
@@ -135,6 +140,7 @@ const JAVA = {
   outerScope: () => EMPTY_CLASS_SCOPE,
   boundNames,
   isUnit,
+  isFinal,
   unitLabel,
   scopeOf,
   functionOf,

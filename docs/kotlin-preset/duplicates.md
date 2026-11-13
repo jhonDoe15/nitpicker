@@ -21,8 +21,10 @@ any clone: add either file of the pair to `exclude`.
 
 `near-duplicate` (tool `structure`) runs on Kotlin and Java sources together: two functions,
 accessors, secondary constructors or property lambdas whose syntax trees are proved copies (the
-same apart from renamed locals, up to 4 changed values or types, or a shared run of 3 or more
-statements) fail, also across modules. A copy large enough for the renamed `duplicate-clone` pass
+same apart from renamed locals, up to 4 changed values or types, a shared run of 3 or more
+statements, or the same logic written another way: a loop and the `any`/`all` call that replaces
+it, a call to a non-`open` helper in the same file and that helper's body, or guards and locals a
+solver proves equal) fail, also across modules. A copy large enough for the renamed `duplicate-clone` pass
 and different only in names and literals is left to it; type-specialized families and the
 platform variants of one Kotlin Multiplatform declaration are not reported (see "Reuse rules" in
 `java-preset.md`). Lift a pair with an `exceptions` entry for either file.

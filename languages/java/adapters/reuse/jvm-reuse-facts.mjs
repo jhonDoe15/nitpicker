@@ -80,14 +80,17 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
 
 function unitFacts(projectRoot, files) {
   const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
-  return readJvmUnits(projectRoot, sources).map(({ file, name, start, end, tokens, tree }) => ({
-    file,
-    name,
-    start,
-    end,
-    tokens,
-    tree,
-  }));
+  return readJvmUnits(projectRoot, sources).map(
+    ({ file, name, start, end, tokens, final, tree }) => ({
+      file,
+      name,
+      start,
+      end,
+      tokens,
+      final,
+      tree,
+    }),
+  );
 }
 
 function baselineReader(projectRoot, { baselineRoot, baselineMovesFile }) {

@@ -44,7 +44,8 @@ function unitOf(root, file, language) {
   const names = { bound: language.boundNames(root.node), scope: root.scope, file };
   const tree = language.functionOf(root.node, convertedTree(root.node, names, language));
   const tokens = root.node.text.match(TOKEN)?.length ?? 0;
-  return { name: root.label, start: tree.start, end: tree.end, tokens, tree };
+  const final = language.isFinal(root.node);
+  return { name: root.label, start: tree.start, end: tree.end, tokens, final, tree };
 }
 
 export function languageUnits(language, program, file) {

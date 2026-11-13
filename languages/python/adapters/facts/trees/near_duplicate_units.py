@@ -95,6 +95,7 @@ def near_duplicate_units(tree, text, bindings, relative):
             "start": unit_tree["start"],
             "end": unit_tree["end"],
             "tokens": token_count(text, function),
+            "final": "." not in label,
             "tree": unit_tree,
         })
     return units

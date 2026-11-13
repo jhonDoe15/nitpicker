@@ -52,7 +52,10 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mjs` parses the same `.java` and
   `.kt` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java` and
   `tree-sitter-kotlin` grammars, in a child process) into one tree per method, constructor,
-  accessor and field lambda, and the shared engine (`shared/near-duplicates/`) proves which pairs are copies. Each pair is reported
+  accessor and field lambda, and the shared engine (`shared/near-duplicates/`) proves which pairs are copies,
+  also when one copy is a loop and the other its stream call, one calls a `private`, `static` or
+  `final` helper of the same file that the other spells out, or a solver proves their guards and
+  locals equal (reordered guards; arithmetic is an opaque value, since `int` and `long` overflow). Each pair is reported
   once, at the copy whose `file#name` sorts last, and keeps its identity while both copies stay, so
   a pair the base already had is never new. A type-specialized family is left out: copies that
   differ only in primitive, boxed or generic types (`int[]`/`long[]`, `Integer`, `Object`, `T`),

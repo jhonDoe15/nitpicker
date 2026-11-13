@@ -107,4 +107,49 @@ describe('TypeScript and JavaScript trees for near-duplicate detection', () => {
       withoutLines(plain[0].tree.children[2]),
     );
   });
+
+  it('marks the units a call always reaches, so their bodies can be inlined', () => {
+    const text = [
+      'function declared(a: number) { return a; }',
+      'const constant = (a: number) => a;',
+      'let reassignable = (a: number) => a;',
+      'class Shape {',
+      '  area(a: number) { return a; }',
+      '  private scaled(a: number) { return a; }',
+      '  #hidden(a: number) { return a; }',
+      '}',
+    ].join('\n');
+    const marks = unitsOf(text, 'shapes.ts').map(({ name, final }) => [name, final]);
+
+    expect(marks).toEqual([
+      ['declared', true],
+      ['constant', true],
+      ['reassignable', false],
+      ['Shape.area', false],
+      ['Shape.scaled', true],
+      ['Shape.#hidden', true],
+    ]);
+  });
+
+  it('proves a loop and the some call that replaces it the same in TypeScript', () => {
+    const text = `
+export function hasOverdueLoop(loans: Loan[], today: Date): boolean {
+  audit.record('overdue', loans.length, today);
+  for (const loan of loans) {
+    if (!loan.returned && loan.due < today) {
+      return true;
+    }
+  }
+  return false;
+}
+export function hasOverdueSome(loans: Loan[], today: Date): boolean {
+  audit.record('overdue', loans.length, today);
+  return loans.some((loan) => !loan.returned && loan.due < today);
+}
+`;
+
+    expect(verdicts(findNearDuplicates(unitsOf(text, 'loans.ts')))).toEqual([
+      { verdict: 'same', units: ['loans.ts#hasOverdueLoop', 'loans.ts#hasOverdueSome'] },
+    ]);
+  });
 });
