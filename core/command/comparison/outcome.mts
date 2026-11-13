@@ -34,7 +34,8 @@ type Outcome = {
 const exitCodeOf: (report: unknown) => number = comparisonExitCode;
 
 function isUnchanged(report: unknown): boolean {
-  return fieldOf(fieldOf(report, 'summary'), 'noChanges') === true;
+  const summary = fieldOf(report, 'summary');
+  return fieldOf(summary, 'noChanges') === true || fieldOf(summary, 'skippedAll') === true;
 }
 
 function consoleSummary({ cli, report, outputRoot }: Omit<Outcome, 'base'>): string {

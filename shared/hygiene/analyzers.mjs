@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { importClosure } from '../import-closure.mjs';
 import { REPOSITORY_HYGIENE_TOOL } from './files/repository-files.mjs';
+import { REPOSITORY_INPUTS } from '../input-sets/inputs.mjs';
 
 const sharedRoot = path.resolve(import.meta.dirname, '..');
 const HYGIENE_RUNNER = 'hygiene/runner.mjs';
@@ -35,6 +36,7 @@ function withEnvironmentToken(sourceHash, environmentToken) {
 
 export function createCheckAnalyzer({
   name,
+  inputs,
   command,
   runner,
   entryPath,
@@ -44,6 +46,7 @@ export function createCheckAnalyzer({
   const sourceHash = hashConfiguration(runner);
   return {
     name,
+    inputs,
     version: ANALYZER_VERSION,
     configurationHash: sourceHash,
     exclusions: [],
@@ -78,6 +81,7 @@ export function createHygieneAnalyzers(entryPath) {
       runner: HYGIENE_RUNNER,
       entryPath,
       extraArguments: comparedBase,
+      inputs: REPOSITORY_INPUTS,
     }),
   ];
 }

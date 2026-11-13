@@ -11,7 +11,11 @@ import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
 import { createQualityChecks } from '../quality-checks.mjs';
 import { eslintVersion } from '../checks/constants.mjs';
 import { hashFiles } from '../checks/hash.mjs';
+import { codeExtensionNames, stylesheetExtensionNames } from '../layout.mjs';
+import { EXECUTION_INPUTS, sourceInputs } from '../../../../shared/input-sets/inputs.mjs';
 
+const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
+const EXECUTION_ANALYZERS = new Set([...TEST_RUNNER_ANALYZERS, 'test-runtime', 'crap']);
 const ANALYZER_RUNTIME_FILES = [
   'core/diff/execution/analyzer-scheduler.mjs',
   'core/diff/execution/run-analyzers.mjs',
@@ -116,7 +120,17 @@ function createQualityAreaCheckAnalyzer(check, adapterArguments = check.adapterA
   );
 }
 
+const SOURCE_INPUTS = sourceInputs([
+  ...codeExtensionNames,
+  ...stylesheetExtensionNames,
+  'html',
+  'vue',
+  'svelte',
+  'astro',
+]);
+
 function withPackagePolicy(analyzer) {
+  analyzer.inputs = EXECUTION_ANALYZERS.has(analyzer.name) ? EXECUTION_INPUTS : SOURCE_INPUTS;
   analyzer.resolveVersion = (projectRoot) => resolveAnalyzerVersion(analyzer.name, projectRoot);
   analyzer.policyFromPackage = true;
   return analyzer;
@@ -158,7 +172,6 @@ export function applyLayout(analyzers, headPolicy) {
   );
 }
 
-const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
 const TYPESCRIPT_FREE_ANALYZERS = new Set(['prettier-format', 'duplicates', 'dead-code']);
 
 export function runsProjectTests(analyzerName) {

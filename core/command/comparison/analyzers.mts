@@ -22,7 +22,7 @@ const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unkn
 
 export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelection): {
   readonly analyzers: readonly unknown[];
-  readonly partialRun: unknown;
+  readonly runFields: object;
 } {
   const selectedAnalyzers =
     options.shardCount === undefined || options.shardIndex === undefined
@@ -35,6 +35,9 @@ export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelect
   }
   return {
     analyzers: selectedAnalyzers,
-    partialRun: runPartOf(options.analyzerNames, analyzers, selectedAnalyzers),
+    runFields: {
+      partialRun: runPartOf(options.analyzerNames, analyzers, selectedAnalyzers),
+      sharded: options.shardCount !== undefined,
+    },
   };
 }

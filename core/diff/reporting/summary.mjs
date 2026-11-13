@@ -14,6 +14,7 @@ import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/r
 import { appendReviewSummary } from './review/notices.mjs';
 import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
+import { skippedLines, unaffectedLine } from '../skipping/lines.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { failingHeadTests, failingTestLines } from './failing-tests/failing-tests.mjs';
 import {
@@ -24,11 +25,14 @@ import {
 const SHORT_SHA_LENGTH = 12;
 
 export function renderConsoleSummary(report, options = {}) {
-  if (report.summary?.noChanges !== true) {
+  if (report.summary?.noChanges !== true && report.summary?.skippedAll !== true) {
     return renderGateSummary(report, options);
   }
-  const { requestedBaseRef, mergeBaseSha } = report.summary;
-  const line = `No changes since ${requestedBaseRef} (${mergeBaseSha.slice(0, SHORT_SHA_LENGTH)}); nothing to check.\n`;
+  const { requestedBaseRef, mergeBaseSha, skippedAnalyzers } = report.summary;
+  const line =
+    report.summary.skippedAll !== true
+      ? `No changes since ${requestedBaseRef} (${mergeBaseSha.slice(0, SHORT_SHA_LENGTH)}); nothing to check.\n`
+      : `${unaffectedLine(report.summary, skippedAnalyzers)}\n`;
   return report.toolErrors.length === 0 ? line : `${line}${renderGateSummary(report, options)}`;
 }
 
@@ -76,11 +80,15 @@ function renderGateSummary(
   lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, otherErrors, color);
-  for (const line of [...partialRunLines(report.summary), ...quickLines(report.summary)]) {
+  for (const line of footerLines(report.summary)) {
     lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
   }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
+}
+
+function footerLines(summary) {
+  return [...partialRunLines(summary), ...skippedLines(summary), ...quickLines(summary)];
 }
 
 function splitToolErrors(toolErrors) {

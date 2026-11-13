@@ -19,15 +19,16 @@ import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-po
 import { analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { combineAnalyzerReports, noChangesReport } from './results.mjs';
+import { combineAnalyzerReports, noChangesReport, allSkippedReport } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
 import { quickScoped, runHeadAnalyzers } from './quick/head-run.mjs';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mjs';
 import {
-  prepareSnapshotDependencies,
-  removeSnapshotDependencies,
-} from '../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+  requiresPreparedDependencies,
+  withPreparedAnalyzerDependencies,
+} from './dependencies/prepared-dependencies.mjs';
+import { carryBaseReports, endsEarly, skipPlanOf, runUnlessSkipped } from '../skipping/apply.mjs';
 
 export function runQualityDiff(options) {
   const settings = withDefaults(options);
@@ -136,7 +137,8 @@ function withSnapshotRoots({ settings, comparison, layout }, operation) {
 }
 
 function compareSnapshots(context) {
-  const { settings, layout, roots } = context;
+  const { settings, layout, roots, comparison, startedAt } = context;
+  const skipPlan = skipPlanOf(settings, comparison);
   const baseSetup = {
     analyzers: settings.analyzers,
     headPolicy: settings.headPolicy,
@@ -150,8 +152,18 @@ function compareSnapshots(context) {
       analyzers: settings.analyzers,
     }),
   };
-  const setupContext = { ...context, baseSetup };
-  return requiresPreparedDependencies(settings.analyzers)
+  if (endsEarly(skipPlan, baseSetup)) {
+    return allSkippedReport({
+      ...settings,
+      comparison,
+      startedAt,
+      skippedAnalyzers: skipPlan.skipped,
+    });
+  }
+  const setupContext = { ...context, baseSetup, skipPlan };
+  return requiresPreparedDependencies(
+    settings.analyzers.filter(({ name }) => skipPlan.affected.includes(name)),
+  )
     ? withPreparedAnalyzerDependencies(
         {
           baseProjectRoot: roots.baseProjectRoot,
@@ -182,11 +194,19 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 function runAndCombine(context) {
   const { settings, comparison, layout, startedAt } = context;
   const baseRun = runBaseSide(context);
-  const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
+  const ranHead = withMovesFile(layout.moves.files, (baselineMovesFile) =>
     runHeadAnalyzers(context, baselineMovesFile),
   );
-  return combineAnalyzerReports({
+  const { analyzers, headRun } = carryBaseReports({
     analyzers: settings.analyzers,
+    baseRun,
+    headRun: ranHead,
+    skipPlan: context.skipPlan,
+  });
+  return combineAnalyzerReports({
+    analyzers,
+    policyAnalyzers: settings.analyzers,
+    skippedAnalyzers: context.skipPlan.skipped,
     baseRun,
     headRun,
     baseToHeadRenames: layout.moves.files,
@@ -217,16 +237,18 @@ function runAndCombine(context) {
 
 function runBaseAnalyzers(context, baseAnalyzers) {
   const { settings, roots, basePolicyFile } = context;
-  return runAnalyzers({
-    analyzers: baseAnalyzers,
-    projectRoot: roots.baseProjectRoot,
-    policyRoot: roots.headSnapshotRoot,
-    toolRoot: PACKAGE_ROOT,
-    liveProjectRoot: settings.headProjectRoot,
-    headPolicyFile: basePolicyFile,
-    snapshot: 'base',
-    ...analyzerRunOptions(settings),
-  });
+  return runUnlessSkipped(baseAnalyzers, context.skipPlan, (analyzersToRun) =>
+    runAnalyzers({
+      analyzers: analyzersToRun,
+      projectRoot: roots.baseProjectRoot,
+      policyRoot: roots.headSnapshotRoot,
+      toolRoot: PACKAGE_ROOT,
+      liveProjectRoot: settings.headProjectRoot,
+      headPolicyFile: basePolicyFile,
+      snapshot: 'base',
+      ...analyzerRunOptions(settings),
+    }),
+  );
 }
 
 function runBaseSide(context) {
@@ -257,42 +279,4 @@ function runBaseSide(context) {
       policyRoot: roots.headSnapshotRoot,
     },
   });
-}
-
-function requiresPreparedDependencies(analyzers) {
-  return analyzers.some(
-    (analyzer) =>
-      typeof analyzer === 'object' && analyzer !== null && analyzer.requiresDependencies === true,
-  );
-}
-
-function withPreparedAnalyzerDependencies(
-  { baseProjectRoot, headSnapshotRoot, liveProjectRoot },
-  operation,
-) {
-  const preparedDependencies = [];
-  try {
-    const baseDependencies = prepareSnapshotDependencies({
-      projectRoot: baseProjectRoot,
-      liveProjectRoot,
-      toolRoot: PACKAGE_ROOT,
-    });
-    if (baseDependencies !== undefined) {
-      preparedDependencies.push(baseDependencies);
-    }
-    const headDependencies = prepareSnapshotDependencies({
-      projectRoot: headSnapshotRoot,
-      liveProjectRoot,
-      toolRoot: PACKAGE_ROOT,
-    });
-    if (headDependencies !== undefined) {
-      preparedDependencies.push(headDependencies);
-    }
-
-    return operation();
-  } finally {
-    for (const dependencies of preparedDependencies.reverse()) {
-      removeSnapshotDependencies(dependencies);
-    }
-  }
 }

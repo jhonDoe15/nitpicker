@@ -4,6 +4,7 @@ import { cachedLine } from '../../execution/progress.mjs';
 import { analyzerRunOptions, runAnalyzers } from '../../execution/run-analyzers.mjs';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { scopeToTouchedFiles } from './scope.mjs';
+import { runUnlessSkipped } from '../../skipping/apply.mjs';
 
 export function quickScoped(settings, layout, analyzers) {
   return settings.quick === undefined
@@ -43,19 +44,21 @@ function runQuickHead({ settings, comparison, roots, layout }, run) {
 
 export function runHeadAnalyzers(context, baselineMovesFile) {
   const { settings, roots, headPolicyFile } = context;
-  return runQuickHead(context, (analyzers) =>
-    runAnalyzers({
-      analyzers,
-      projectRoot: roots.headSnapshotRoot,
-      policyRoot: roots.headSnapshotRoot,
-      toolRoot: PACKAGE_ROOT,
-      liveProjectRoot: settings.headProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      baselineRoot: roots.baseProjectRoot,
-      baselineMovesFile,
-      mutationScope: settings.scope?.paths,
-      ...analyzerRunOptions(settings),
-    }),
+  return runQuickHead(context, (scoped) =>
+    runUnlessSkipped(scoped, context.skipPlan, (analyzers) =>
+      runAnalyzers({
+        analyzers,
+        projectRoot: roots.headSnapshotRoot,
+        policyRoot: roots.headSnapshotRoot,
+        toolRoot: PACKAGE_ROOT,
+        liveProjectRoot: settings.headProjectRoot,
+        headPolicyFile,
+        snapshot: 'head',
+        baselineRoot: roots.baseProjectRoot,
+        baselineMovesFile,
+        mutationScope: settings.scope?.paths,
+        ...analyzerRunOptions(settings),
+      }),
+    ),
   );
 }

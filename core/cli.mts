@@ -270,7 +270,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     requestedBaseRef,
     outputRoot,
     analyzers,
-    partialRun: selection.partialRun,
+    ...selection.runFields,
     cacheStore,
     includeWorkingTree: true,
     captureHead: cli.captureHead,

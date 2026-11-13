@@ -11,6 +11,7 @@ import {
   toolErrorList,
 } from './markdown.mjs';
 import { scopeLine } from '../../../scope/scope-findings.mjs';
+import { skippedLines } from '../../skipping/lines.mjs';
 import { partialRunLines } from '../partial-run/partial-run.mjs';
 import { failingHeadTests } from '../failing-tests/failing-tests.mjs';
 
@@ -24,6 +25,9 @@ function failingTestsHeadline(report) {
 }
 
 function headline(report) {
+  if (report.summary.skippedAll === true && report.toolErrors.length === 0) {
+    return '✓ No analyzer reads the changed files; nothing to check';
+  }
   if (report.summary.noChanges === true && report.toolErrors.length === 0) {
     return '✓ No changes since the merge base; nothing to check';
   }
@@ -110,7 +114,10 @@ export function renderDiffSummary(report, context) {
     `**${headline(report)}**`,
     '',
     ...scopeLine(report.summary).flatMap((line) => [line, '']),
-    ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
+    ...[...partialRunLines(report.summary), ...skippedLines(report.summary)].flatMap((line) => [
+      `> ${line}`,
+      '',
+    ]),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),

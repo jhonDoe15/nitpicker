@@ -264,6 +264,35 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   `git stash`, or after you undo a change), no finding can be new, so no analyzer runs. The run
   prints `No changes since <base> (<merge base>); nothing to check.`, exits 0, and writes the
   reports with zero counts and `"noChanges": true` in `summary.json`.
+- **Unaffected analyzers**: each built-in analyzer declares which changed files can change its
+  result, and an analyzer none of the changed files (head against base, untracked files included)
+  can affect is skipped on both sides. Its base findings are shown as unchanged when the
+  [findings cache](#findings-cache) holds them. The summary names the skipped analyzers in one line
+  (`Skipped <names>: no changed file is in their inputs.`) and `summary.json` lists them in
+  `skippedAnalyzers`. A change to a Markdown file or a `LICENSE`, `README`, `CHANGELOG` or
+  `NOTICE` file touches no analyzer, unless it sits under a source or test root of the layout, or in
+  a folder named `src`, `lib`, `main`, `test`, `tests`, `spec`, `fixtures`, `resources`, `e2e`,
+  `__snapshots__`, `__mocks__`, `assets`, `public`, `static`, `examples`, `samples`, `data` or
+  `templates`. A docs-only change therefore skips the test-running analyzers: a test that reads a
+  Markdown file outside those folders is not re-run. An image touches only the analyzers that run
+  tests, which may read it. The analyzers that build or test the project (`java`, `kotlin`,
+  `python`, `go`, every `mutation` run, `coverage`, `test-console`, `test-runtime` and `crap`) read
+  every other file, so they are skipped only for such documentation. The TypeScript and JavaScript
+  static analyzers (`eslint-*`, `prettier-format`, `entry-points`, `typescript-typecheck`,
+  `dependency-architecture`, `coding-standards`, `coupling`, `structure`, `duplicates` and
+  `dead-code`) read code, stylesheet, markup and configuration files and dotfiles, so a change to
+  a test data file such as a `.csv` runs only the analyzers that run tests. The repository checks
+  (`repository-hygiene`) run for a documentation file that is added, removed or renamed, grows
+  past 1 MB or holds a private key header. `change-history`, custom analyzers and an analyzer
+  without declared inputs always run. A change to `nitpicker.config.json`, a lockfile, a manifest
+  (`package.json`, `pyproject.toml`, `go.mod`), a build file (`build.gradle*`, `settings.gradle*`,
+  `pom.xml`, the Gradle and Maven wrappers), a `tsconfig*.json` or a tool configuration file
+  (ESLint, Prettier, Vitest, Jest, Stryker, ruff, mypy, checkstyle, PMD and the like) runs every
+  analyzer, and so does a removed or renamed file that is not documentation. Policy checks always
+  run: an unaffected run still compares the policy of both sides, and a policy change runs the
+  analyzers. When no analyzer is affected the run exits 0 after one line that begins "No analyzer
+  reads the files changed since", and writes `"skippedAll": true` next to `skippedAnalyzers` (not `noChanges`, which means the head
+  equals the base). A shard run and a run with config-file overrides skip nothing.
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
@@ -490,7 +519,9 @@ line; here it is spread out:
   held findings are counts only; the files in `reports` list them.
 - `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
   (such as failing tests) and `headline`, its first line.
-- A comparison run has `base`, and `"noChanges": true` when nothing changed since the merge base.
+- A comparison run has `base`, `"noChanges": true` when nothing changed since the merge base, and
+  `"skippedAll": true` when no analyzer reads the changed files; `skippedAnalyzers` names the
+  analyzers a change could not affect.
   `--all` has no `base` and no `counts.held`. A run narrowed with `--analyzer` adds
   `partialRun: { ran, skipped }`.
 - A run that stops before it has a result, such as on an unknown argument, prints

@@ -4,6 +4,7 @@ import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
 import { quickLines, stagedLines } from '../../quick/summary.mjs';
+import { skippedLines } from '../skipping/lines.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
@@ -43,6 +44,7 @@ function summaryLines(report) {
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
     ...partialRunLines(report.summary),
+    ...skippedLines(report.summary),
     ...quickLines(report.summary),
   ];
 }
@@ -54,7 +56,10 @@ function configOverrideLines(configOverrides) {
   return ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)];
 }
 
-function toolCountLines({ tools, noChanges }) {
+function toolCountLines({ tools, noChanges, skippedAll }) {
+  if (skippedAll === true) {
+    return ['Analyzers: none ran, no changed file is in their inputs'];
+  }
   if (noChanges === true) {
     return ['Analyzers: none ran, the head has the same files as the merge base'];
   }

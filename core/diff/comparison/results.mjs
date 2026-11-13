@@ -7,6 +7,7 @@ import {
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
+import { skippedSummary } from '../skipping/lines.mjs';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 
 export function combineAnalyzerReports(context) {
@@ -33,6 +34,12 @@ export function noChangesReport(context) {
     reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
+export function allSkippedReport(context) {
+  const report = noChangesReport(context);
+  const { noChanges, ...summary } = report.summary;
+  return { ...report, summary: { ...summary, skippedAll: noChanges } };
 }
 
 const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
@@ -96,7 +103,7 @@ function buildReport(context) {
       resolvedBaseSha: comparison.resolvedBaseSha,
       mergeBaseSha: comparison.mergeBaseSha,
       headSha: comparison.headSha,
-      policyHash: policyHash(analyzers, configOverrides),
+      policyHash: policyHash(context.policyAnalyzers ?? analyzers, configOverrides),
       configOverrides,
       policyChanges,
       policyLoosenings,
@@ -107,8 +114,9 @@ function buildReport(context) {
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...runAndScopeSummary(context, outcomes),
+      ...skippedSummary(context),
       tools: outcomes.map(({ tool }) => tool),
-      exclusions: declaredExclusions(analyzers),
+      exclusions: declaredExclusions(context.policyAnalyzers ?? analyzers),
       renamedPaths: context.baseToHeadRenames.size,
       elapsedMs: Date.now() - startedAt,
       overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',
