@@ -10,7 +10,7 @@ import { readReportModules } from '../gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { mergedRoots, readModuleReport } from '../../builds/java-modules.mjs';
+import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
 import { resolveKotlinRun } from '../kotlin/kotlin-run.mjs';
 import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mjs';
@@ -149,7 +149,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
     configs,
   });
   const moduleDirs = textsOf(fieldOf(run, 'moduleDirs'));
-  const manifest: unknown = mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY);
+  const manifest = mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY);
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
     manifest,
@@ -159,15 +159,15 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
   if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
-  const read: unknown = readModuleReport(projectRoot, moduleDirs, {
+  const read = readModuleReport(projectRoot, moduleDirs, {
     ...readOptions(options.policy),
     formatAdvice: fieldOf(run, 'formatAdvice'),
     reportDirectory: MAVEN_REPORT_DIRECTORY,
   });
   const design = mavenDesignFindings(projectRoot, moduleDirs, options.policy);
   return {
-    findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
-    imports: fieldOf(read, 'imports'),
+    findings: [...read.findings, ...design],
+    imports: read.imports,
     testsFailures: fieldOf(run, 'testsFailures'),
   };
 }

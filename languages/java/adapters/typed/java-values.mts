@@ -13,7 +13,7 @@ export type JavaFinding = {
   readonly rule: string;
   readonly path: string;
   readonly identity?: string;
-  readonly message?: string;
+  readonly message?: string | undefined;
   readonly classification?: string;
   readonly location?: JavaLocation;
   readonly [field: string]: unknown;
