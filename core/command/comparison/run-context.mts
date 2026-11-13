@@ -1,4 +1,4 @@
-import { policyAcceptance } from '../policy-review/policy-acceptance.mjs';
+import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
 import { resolveCacheStore } from '../../diff/cache/cache-stores.mjs';
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';

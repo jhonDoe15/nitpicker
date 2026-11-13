@@ -1,24 +1,35 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import type { TextOutput } from '../../cli-context.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+
+type ChangelogCli = {
+  readonly arguments_: readonly string[];
+  readonly stdout: TextOutput;
+  readonly stderr: TextOutput;
+  readonly packageRoot?: string;
+};
+
+type Section = { readonly heading: string; readonly body: string };
 
 const HEADING = /^## \[([^\]]+)\]/u;
 const LINK_DEFINITION = /^\[[^\]]+\]: /u;
 const USAGE = 'Usage: nitpicker changelog [<version>]';
 const HELP_FLAGS = new Set(['--help', '-h']);
 
-export function changelogVersions(text) {
+export function changelogVersions(text: string): string[] {
   return text
     .split(/\r?\n/u)
     .map((line) => HEADING.exec(line)?.[1])
     .filter((version) => version !== undefined);
 }
 
-function sameVersion(heading, requested) {
+function sameVersion(heading: string, requested: string): boolean {
   return heading.toLowerCase() === requested.replace(/^v(?=\d)/u, '').toLowerCase();
 }
 
-export function changelogSection(text, version) {
+export function changelogSection(text: string, version: string): Section | undefined {
   const lines = text.split(/\r?\n/u);
   const start = lines.findIndex((line) => {
     const heading = HEADING.exec(line)?.[1];
@@ -30,14 +41,17 @@ export function changelogSection(text, version) {
   const following = lines.slice(start + 1);
   const length = following.findIndex((line) => HEADING.test(line) || LINK_DEFINITION.test(line));
   const body = (length === -1 ? following : following.slice(0, length)).join('\n').trim();
-  return { heading: lines[start], body };
+  return { heading: lines[start] ?? '', body };
 }
 
-function installedVersion(packageRoot) {
-  return JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version;
+function installedVersion(packageRoot: string): string {
+  const manifest: unknown = JSON.parse(
+    readFileSync(path.join(packageRoot, 'package.json'), 'utf8'),
+  );
+  return textOf(fieldOf(manifest, 'version'));
 }
 
-function missingEntry(text, version, section) {
+function missingEntry(text: string, version: string, section: Section | undefined): string {
   const problem = section === undefined ? 'has no entry' : 'has an empty entry';
   return `nitpicker: CHANGELOG.md ${problem} for ${version}. Versions: ${changelogVersions(text).join(', ')}\n`;
 }
@@ -47,7 +61,7 @@ export function runChangelogCommand({
   stdout,
   stderr,
   packageRoot = PACKAGE_ROOT,
-}) {
+}: ChangelogCli): number {
   if (commandArguments.some((argument) => HELP_FLAGS.has(argument))) {
     stdout.write(`${USAGE}\n`);
     return 0;

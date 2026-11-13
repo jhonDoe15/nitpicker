@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../command/arguments.mjs';
+import { parseArguments } from '../command/arguments.mts';
 import { usageText } from '../help/usage-text.mjs';
 
 const DEFAULTS = {
