@@ -79,6 +79,14 @@ export const ASYNC_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['blocking-helper-in-async'],
+    describe: (subject) =>
+      `\`${subject}\`, so this async function blocks the event loop and stalls every other task`,
+    allowed:
+      'Run the helper in a worker thread: `await asyncio.to_thread(fetch_profile, url)` or `await loop.run_in_executor(None, fetch_profile, url)`, or use an async client (`httpx.AsyncClient`, `aiohttp`) and `await asyncio.sleep(...)`. Work done at startup, before the loop serves requests, takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['unbounded-wait'],
     describe: (subject) =>
       `\`${subject}\` waits without a timeout, so a task that never finishes hangs this thread for good`,
