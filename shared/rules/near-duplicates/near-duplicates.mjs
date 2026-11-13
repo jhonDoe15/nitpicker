@@ -18,6 +18,12 @@ const FIXES = {
   'partial-run': 'Extract lines {run} into one function, and call it from both places.',
 };
 
+const SAME_DIFFERENCES = {
+  names: 'apart from renamed names',
+  logic: 'apart from how its logic is written (a solver proved both give the same results)',
+  inlined: 'once same-file helper calls are inlined',
+};
+
 function unitIdOf({ file, name }) {
   return `${file}#${name}`;
 }
@@ -59,7 +65,7 @@ function lines({ start, end }) {
 
 function differenceOf(finding, [here, other]) {
   if (finding.verdict === 'same') {
-    return 'apart from renamed names';
+    return SAME_DIFFERENCES[finding.proof ?? 'names'];
   }
   if (finding.verdict === 'parameterizable') {
     const count = finding.parameters.length;

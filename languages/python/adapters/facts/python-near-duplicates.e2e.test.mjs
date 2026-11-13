@@ -76,4 +76,49 @@ describe.skipIf(!pythonE2eEnabled)('near-duplicate over Python functions', () =>
       ],
     ]);
   });
+
+  it('proves a loop equal to the any call that replaces it, and inlines a module helper', () => {
+    const file = 'src/shop/checks.py';
+    const source = [
+      'def has_overdue_loop(loans, today):',
+      '    audit.record("overdue", len(loans), today)',
+      '    metrics.count("overdue-check", len(loans))',
+      '    for loan in loans:',
+      '        if loan.due < today and not loan.returned:',
+      '            return True',
+      '    return False',
+      '',
+      '',
+      'def has_overdue_any(loans, today):',
+      '    audit.record("overdue", len(loans), today)',
+      '    metrics.count("overdue-check", len(loans))',
+      '    return any(loan.due < today and not loan.returned for loan in loans)',
+      '',
+      '',
+      'def trimmed(text, limit):',
+      '    if len(text) > limit:',
+      '        return text[:limit].strip()',
+      '    return text.strip()',
+      '',
+      '',
+      'def via_helper(text, limit):',
+      '    if text is None:',
+      '        raise ValueError("missing text for the label")',
+      '    return trimmed(text, limit)',
+      '',
+      '',
+      'def spelled_out(value, most):',
+      '    if value is None:',
+      '        raise ValueError("missing text for the label")',
+      '    if len(value) > most:',
+      '        return value[:most].strip()',
+      '    return value.strip()',
+      '',
+    ].join('\n');
+
+    expect(nearDuplicates({ [file]: source }).map(({ identity }) => identity)).toEqual([
+      `near-duplicate:${file}#has_overdue_any|${file}#has_overdue_loop`,
+      `near-duplicate:${file}#spelled_out|${file}#via_helper`,
+    ]);
+  });
 });

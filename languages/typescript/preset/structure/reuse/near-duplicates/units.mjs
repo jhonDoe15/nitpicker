@@ -135,12 +135,32 @@ function unitContext(root, shared) {
   };
 }
 
+function isConstant(declaration) {
+  return (
+    ts.isVariableDeclaration(declaration) &&
+    (ts.getCombinedNodeFlags(declaration) & ts.NodeFlags.Const) !== 0
+  );
+}
+
+function isFinal(node) {
+  if (ts.isFunctionDeclaration(node)) {
+    return true;
+  }
+  if (ts.isArrowFunction(node) || ts.isFunctionExpression(node)) {
+    return isConstant(node.parent);
+  }
+  const isPrivate = (ts.getModifiers(node) ?? []).some(
+    ({ kind }) => kind === ts.SyntaxKind.PrivateKeyword,
+  );
+  return ts.isMethodDeclaration(node) && (isPrivate || ts.isPrivateIdentifier(node.name));
+}
+
 function unitOf({ node, label }, shared) {
   const context = convertedTree(node, unitContext(node, shared));
   const parts = [context.typeOf(node.type), ...lambdaParts(node, context)];
   const tree = at({ kind: 'function', ...withModifiers(node) }, node, parts);
   const tokens = tokenCount(node, shared.sourceFile);
-  return { name: label, start: tree.start, end: tree.end, tokens, tree };
+  return { name: label, start: tree.start, end: tree.end, tokens, final: isFinal(node), tree };
 }
 
 const TOKEN = /[\w$]+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`|\S/gu;

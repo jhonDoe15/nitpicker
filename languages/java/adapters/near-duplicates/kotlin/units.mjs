@@ -1,4 +1,6 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 import { NONE, at, codeChildren, field, textOf, typeNode } from '../tree/nodes.mjs';
+import { joined } from '../tree/units.mjs';
 import { languageUnits } from '../tree/unit-driver.mjs';
 import { EXPRESSIONS } from './expressions.mjs';
 import { boundNames, classMembers, fileScope, memberScope, topLevelScope } from './names.mjs';
@@ -28,16 +30,35 @@ function isConditionOf(node, parent) {
   return parent.childrenForFieldName('condition').some((condition) => condition?.id === node.id);
 }
 
-function isStatement(source) {
-  let node = source;
-  while (BRANCHING.has(node.parent?.type) && !isConditionOf(node, node.parent)) {
-    node = node.parent;
-  }
-  return STATEMENT_PARENTS.has(node.parent?.type);
+function branchParent(node) {
+  return BRANCHING.has(node.parent?.type) && !isConditionOf(node, node.parent)
+    ? node.parent
+    : undefined;
 }
 
-function joined(qualifier, part) {
-  return qualifier === '' ? part : `${qualifier}.${part}`;
+function isStatement(source) {
+  return STATEMENT_PARENTS.has(chainOf(source, branchParent).at(-1).parent?.type);
+}
+
+const OPEN_MODIFIERS = new Set(['open', 'override', 'abstract']);
+const CLOSED_MODIFIERS = new Set(['private', 'final']);
+
+function modifierWords(source) {
+  const modifiers = codeChildren(source).find((child) => child.type === 'modifiers');
+  return modifiers === undefined ? [] : modifiers.text.split(/\s+/u);
+}
+
+function isFinal(source) {
+  if (source.type !== 'function_declaration') {
+    return false;
+  }
+  const words = modifierWords(source);
+  const owner = source.parent?.type === 'class_body' ? source.parent.parent : undefined;
+  return (
+    words.some((word) => CLOSED_MODIFIERS.has(word)) ||
+    (!words.some((word) => OPEN_MODIFIERS.has(word)) &&
+      owner?.children.some((child) => child.type === 'interface') !== true)
+  );
 }
 
 function isType(node) {
@@ -178,6 +199,7 @@ const KOTLIN = {
   outerScope: topLevelScope,
   boundNames,
   isUnit,
+  isFinal,
   unitLabel,
   scopeOf,
   functionOf,
