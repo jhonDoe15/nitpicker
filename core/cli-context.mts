@@ -6,9 +6,15 @@ export type TextOutput = {
 };
 
 export type CliOptions = {
-  readonly analyzerNames?: readonly string[];
-  readonly shardCount?: number;
-  readonly shardIndex?: number;
+  readonly analyzerNames: readonly string[];
+  readonly ruleFilters: readonly string[];
+  readonly fix: boolean;
+  readonly details: boolean;
+  readonly quick: boolean;
+  readonly deferExit: boolean;
+  readonly acceptPolicyChange?: string;
+  readonly shardCount?: number | undefined;
+  readonly shardIndex?: number | undefined;
   readonly paths?: readonly string[];
   readonly all: boolean;
   readonly help: boolean;
