@@ -81,6 +81,7 @@ import { rule as ruleNoUiFrameworkInDomain } from './rules/syntax/no-ui-framewor
 import { rule as ruleNoUnboundedQueryArray } from './rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from './rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from './test-isolation/no-uncollected-tests.mjs';
+import { rule as ruleNoUndefinedOnlyEnvCheck } from './rules/config/no-undefined-only-env-check.mjs';
 import { rule as ruleNoUnhandledUrlParse } from './rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUnindexedForeignKey } from './rules/foreign-keys/no-unindexed-foreign-key.mjs';
@@ -98,6 +99,7 @@ import { rule as ruleNoWaitForWithFakeTimers } from './rules/testing/assertions/
 import { rule as ruleNoWeakAssertion } from './test-assertions/weak-assertion/no-weak-assertion.mjs';
 import { rule as ruleNoWeakHash } from './rules/security/hash/no-weak-hash.mjs';
 import { rule as rulePreserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
+import { rule as rulePromiseWaitDeadline } from './rules/promises/executors/promise-wait-deadline.mjs';
 import { rule as ruleReactControlledInput } from './rules/react/forms/react-controlled-input.mjs';
 import { rule as ruleReactFieldHasLabel } from './rules/react/forms/react-field-has-label.mjs';
 import { rule as ruleReactNoDirectDom } from './rules/react/render/react-no-direct-dom.mjs';
@@ -110,9 +112,11 @@ import { rule as ruleReactSingleStylingApproach } from './rules/react/react-sing
 import { rule as ruleReactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 import { rule as ruleReportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as ruleRequireAtomicUpdates } from './rules/wrapped/require-atomic-updates.mjs';
+import { rule as ruleRequireClientTimeout } from './rules/clients/require-client-timeout.mjs';
 import { rule as ruleRequireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
+import { rule as ruleRequirePromiseReject } from './rules/promises/executors/require-promise-reject.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as ruleReusableObjectPerCall } from './rules/reuse/reusable-object-per-call.mjs';
 import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
@@ -211,6 +215,7 @@ export const directoryRules = {
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
@@ -228,6 +233,7 @@ export const directoryRules = {
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
   'preserve-error-cause': rulePreserveErrorCause,
+  'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,
   'react-field-has-label': ruleReactFieldHasLabel,
   'react-no-direct-dom': ruleReactNoDirectDom,
@@ -240,9 +246,11 @@ export const directoryRules = {
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
   'report-module-load-effects': ruleReportModuleLoadEffects,
   'require-atomic-updates': ruleRequireAtomicUpdates,
+  'require-client-timeout': ruleRequireClientTimeout,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
+  'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'reusable-object-per-call': ruleReusableObjectPerCall,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,

@@ -581,15 +581,22 @@ Switching engines reports the differences between them as new once; see
 
 ### The TypeScript config cannot be read
 
-**Symptom.** `The TypeScript config could not be read: ...` or a TypeScript diagnostic such as
-`error TS5083: Cannot read file '.../tsconfig.json'` or `error TS5057`.
+**Symptom.** `The TypeScript config could not be read: ...`, a TypeScript diagnostic such as
+`error TS5083: Cannot read file '.../tsconfig.json'` or `error TS5057`, or `oxlint rejected the
+tsconfig nitpicker derives from the project tsconfig, so it ran no type-aware lint rule: ...`.
 
 **Cause.** The `tsconfig.json` (or the file `tools.typescript.project` names, or one of the files it
-`extends`) is missing, is not valid JSON with comments, or names an option TypeScript rejects.
+`extends`) is missing, is not valid JSON with comments, or names an option TypeScript rejects. The
+type-aware lint rules run on TypeScript 7, which rejects some options older TypeScript versions
+accept; nitpicker adjusts the ones it knows (`rootDir`, `isolatedDeclarations`, removed options,
+`types` that are not installed), and any other error stops the lint analyzer rather than letting it
+report without its type-aware rules.
 
 **Fix.** Fix the config the diagnostic names. `npx tsc --noEmit -p <config>` shows the same error.
 If you set `tools.typescript.project`, the path is relative to the project root and must be a JSON
-file inside the project. See [TypeScript project config](usage.md#typescript-project-config).
+file inside the project. See [TypeScript project config](usage.md#typescript-project-config). When
+your own `tsc` accepts the config but oxlint rejects it, report it, and lint with ESLint meanwhile:
+`{"tools": {"eslint": {"engine": "eslint"}}}`.
 
 ### Mutation testing is skipped for this runner
 
@@ -787,11 +794,37 @@ that is downloading a distribution, a large test suite, or mutation testing with
 message warns that its post-integration-test steps may not have run, so containers or servers the build
 started may still be running.
 
-**Fix.** Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` to a positive whole number of minutes, for example
-`NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker`. It applies to base and head alike, and empty
-values, fractions, units such as `45m` and numbers above 17895 are refused. Warm the Gradle cache in CI
-and run on a faster runner. Maven's budget is fixed; check for and stop leftover containers or servers
-after a Maven timeout.
+**Fix.** Set `NITPICKER_GRADLE_TIMEOUT_MINUTES` (Gradle) or `NITPICKER_MAVEN_TIMEOUT_MINUTES` (Maven)
+to a positive whole number of minutes, for example `NITPICKER_GRADLE_TIMEOUT_MINUTES=45 npx nitpicker`.
+It applies to base and head alike, and empty values, fractions, units such as `45m` and numbers above
+17895 are refused. On Maven it also covers each Java tool nitpicker starts after the build (PIT, Error
+Prone, SpotBugs and the others). Warm the Gradle cache in CI and run on a faster runner. Check for and
+stop leftover containers or servers after a Maven timeout.
+
+### PIT fails or times out
+
+**Symptom.** A `pit-failure` tool error of the `pit` tool on `base` or `head`, such as `PIT did not
+finish in <dir> within 15 minutes and was stopped. Set NITPICKER_MAVEN_TIMEOUT_MINUTES ...` or `PIT
+failed with exit code 1: ...` followed by PIT's last output lines, or `PIT was not started in <dir>:
+less than a minute of the Java analyzer's time limit was left`. The other Java or Kotlin findings of
+that run are still reported; only that module's mutation findings are missing (all of them, even when
+only one of its Gradle test tasks failed, since the other tasks' results alone would show mutants the
+failed task's tests kill as surviving; the message names that task). A failure on `base` makes the
+module's `head` mutants count as new only on changed lines, and a failure on `head` resolves none of
+its `base` mutants.
+
+**Cause.** Mutation testing runs the tests once per mutated class, in a fresh JVM, so a large module,
+slow tests or Spring application contexts make it the longest step. `--all` mutates every class; see
+[Mutation in a comparison](java-preset/mutation-in-a-comparison.md) for what a comparison mutates. PIT
+also fails when a test fails or hangs under its agent, or when it cannot start the project's test
+engine.
+
+**Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
+gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
+keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
+inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
+stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
+PIT usually depends on test order or on state another test left behind.
 
 ### Error Prone cannot find a JDK
 

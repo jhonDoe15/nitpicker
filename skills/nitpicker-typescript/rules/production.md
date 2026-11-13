@@ -30,6 +30,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
+- Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
+  `process.env.PORT || '3000'`, or a schema with `z.string().min(1)`. `API_URL=` gives `''`, which passes
+  `!== undefined`, `in` and `??` (`nitpicker/no-undefined-only-env-check`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
   across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
@@ -39,6 +42,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
   or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
   shorter one.
+- A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
+  failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
+  node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
+  that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
+  `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
+  socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -52,6 +61,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
   with `| 0` (`nitpicker/time-unit-mismatch`).
+- A database or AWS SDK client gets a timeout once, where it is built:
+  `new Pool({ statement_timeout: 30_000 })`, `extra: { statement_timeout: 30_000 }` on a TypeORM data source,
+  `requestHandler: { requestTimeout: 30_000, throwOnRequestTimeout: true }` on an AWS SDK client
+  (`nitpicker/require-client-timeout`).
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).

@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { packageVersion } from '../../help/package-version.mjs';
+import { packageVersion } from '../../help/package-version.mts';
 import { useProjects } from '../test-support/projects.mjs';
 import {
   assertTypeScriptNode,
   missingNodePeers,
   nodePeerNeeds,
   requiredNodePeers,
-} from './node-peers.mjs';
+} from './node-peers.mts';
 
 const project = useProjects();
 const NITPICKER = `nitpicker@${packageVersion()}`;

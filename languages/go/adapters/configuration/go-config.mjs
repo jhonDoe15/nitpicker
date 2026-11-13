@@ -50,6 +50,7 @@ export const GO_LINTER_TOOLS = [
   'staticcheck',
   'errcheck',
   'modernize',
+  'gosec',
   'revive',
   ...GO_CATALOG_TOOLS,
   'go-rules',

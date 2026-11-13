@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';

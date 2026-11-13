@@ -114,7 +114,7 @@ describe('null in a React project', () => {
 
     expect(message).toBe(
       'Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. ' +
-        '`null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument, and the `useRef` and `createContext` argument.' +
+        '`null` is only for strict comparison with a library value and as a value in the data passed to `JSON.stringify` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing, and the `useRef` and `createContext` argument.' +
         ' An exception fits only when a framework or library requires it.',
     );
   });

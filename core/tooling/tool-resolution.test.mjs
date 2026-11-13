@@ -21,7 +21,7 @@ import {
   applyLegacyInventory,
   configuredAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
+import { runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 
 const packageAnalyzers = configuredAnalyzers();
 const temporaryRoots = [];

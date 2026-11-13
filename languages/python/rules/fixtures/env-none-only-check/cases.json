@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "env-none-only-check",
+    "mention": "Test the value for truth"
+  }
+]

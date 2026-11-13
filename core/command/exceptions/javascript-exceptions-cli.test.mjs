@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../../cli.mjs';
+import { runCli } from '../../cli.mts';
 import { validateConfig } from '../../configuration/validate.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';

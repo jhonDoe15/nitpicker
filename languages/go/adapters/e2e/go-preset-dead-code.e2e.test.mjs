@@ -15,6 +15,7 @@ import {
   REBATE,
   REBATE_TEST,
   REFUND,
+  REFUND_TEST,
   ROUNDING,
   ROUNDING_TEST,
 } from './test-support/go-app-fixtures.mjs';
@@ -29,6 +30,7 @@ describe.skipIf(!goE2eEnabled)('Go preset duplicates and dead code end to end', 
     project = goRepository(workspace, APP_FILES);
     commitBranch(project, 'copied', {
       'internal/billing/refund.go': REFUND,
+      'internal/billing/refund_test.go': REFUND_TEST,
       'cmd/shop/main.go': MAIN_WITH_REFUND,
     });
     commitBranch(project, 'test-only', {

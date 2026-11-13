@@ -29,6 +29,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).
+- A continuation or future that a callback resumes also gets the failure path: `continuation.resumeWithException(error)`
+  or `deferred.completeExceptionally(error)` from the error callback, or a suspending API that throws by itself
+  (`kotlin-source/FutureWithoutException`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -42,6 +45,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A list bound into a query (`setParameter("ids", ids)`, `findAllById(ids)`) has an empty check first and goes in
   chunks (`ids.chunked(1000)`), or goes as one array parameter (`id = any(:ids)`): an empty list renders `in ()`
   and PostgreSQL takes at most 65,535 bound parameters (`kotlin-source/UnboundedQueryArray`).
+- Database queries have a deadline: with a database server in `spring.datasource.url`, set
+  `spring.jpa.properties.jakarta.persistence.query.timeout`, `spring.transaction.default-timeout`,
+  `spring.jdbc.template.query-timeout` or a driver `socketTimeout` (`spring/datasource-without-timeout`).
 - A stream, reader, JAR file or connection you open is closed with `.use { }`, also one used
   once: `resource.inputStream.use { it.readBytes() }`, not `resource.inputStream.readBytes()`
   (`kotlin-source/UnclosedInlineResource`; Java sources: `pmd/UnclosedInlineResource`).

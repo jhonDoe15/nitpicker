@@ -192,7 +192,6 @@ public final class Segments {
   record And(Segment left, Segment right) implements Segment {}
 
   record Leaf(String value) implements Segment {}
-
   private Segments() {}
 
   static int count(Segment segment) {
@@ -460,7 +459,10 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
 
   it('turns off a check that crashes, names it, and keeps the findings of the others', () => {
     const crashing = writeProject(DEPENDENCIES, { 'src/main/java/demo/Segments.java': SEGMENTS });
-    const result = runGradle(crashing, 'nitpickerErrorProne');
+    const settings = path.join(crashing, 'errorprone-settings.json');
+    writeFileSync(settings, JSON.stringify(['-Xep:ForEachIterable:WARN']));
+    const turnedOn = `-Pnitpicker.errorprone.settings=${settings}`;
+    const result = runGradle(crashing, turnedOn, 'nitpickerErrorProne');
     const findings = readErrorProneFindings({
       reportRoot: path.join(crashing, 'build/nitpicker'),
       roots: [crashing],
@@ -474,7 +476,7 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
         .filter((finding) => finding.classification === 'tool-error')
         .map((finding) => finding.message),
     ).toEqual([
-      "Error Prone's ForEachIterable check crashed on src/main/java/demo/Segments.java:14 " +
+      "Error Prone's ForEachIterable check crashed on src/main/java/demo/Segments.java:13 " +
         '(java.lang.AssertionError: isSameType UNKNOWN), so it was turned off for this run and the ' +
         'findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.',
     ]);
