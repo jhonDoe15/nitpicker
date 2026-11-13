@@ -21,9 +21,9 @@ import {
   isFieldRecord as isRecord,
   routedEslintFields,
   withoutFatalDirectives,
-  withoutSupersededMessages,
 } from './typed/engine.mts';
 import { positiveInteger } from './arguments.mts';
+import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mts';
 import {
   type RatchetPlan,
   assignSemanticOccurrences,

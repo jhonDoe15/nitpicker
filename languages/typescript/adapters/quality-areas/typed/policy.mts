@@ -1,6 +1,5 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import type { Layout } from '../../typed/head-policy.mts';
-import { readHeadPolicy as readUntypedHeadPolicy } from '../../../preset/head-policy.mjs';
 import { exceptionMatcher as untypedExceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import {
   layoutKnipProductionConfig as untypedLayoutKnipProductionConfig,
@@ -12,15 +11,6 @@ import {
 } from '../../../preset/unused-api/test-only/test-only-exports.mjs';
 import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
 import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mjs';
-
-export type HeadPolicy = {
-  readonly exceptions: unknown[];
-  readonly testConsole: { readonly allow?: unknown[] };
-  readonly tools: { readonly knip?: unknown };
-  readonly history: unknown;
-};
-
-export const readHeadPolicy: () => HeadPolicy = readUntypedHeadPolicy;
 
 export const testConsoleFindings: (
   report: { readonly entries: readonly unknown[] },

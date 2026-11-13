@@ -9,7 +9,8 @@ import {
 import { projectToolLayer as untypedProjectToolLayer } from '../../../preset/project-tools/project-tool-policy.mjs';
 import { KNIP_TOOL } from '../../../preset/project-tools/project-config-files.mjs';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
-import { type KnipConfig, readHeadPolicy } from '../typed/policy.mts';
+import type { KnipConfig } from '../typed/policy.mts';
+import { readHeadPolicy } from '../../typed/head-policy.mts';
 import { runNodeTool } from '../typed/tooling.mts';
 import { type KnipLayer, layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
 

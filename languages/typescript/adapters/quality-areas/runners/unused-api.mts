@@ -1,14 +1,13 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
-import { readLayout } from '../../typed/head-policy.mts';
+import { readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
 import {
   type KnipConfig,
   exceptionMatcher,
   layoutKnipProductionConfig,
   loadPackages,
   needsProductionRun,
-  readHeadPolicy,
   testOnlyExportFindings,
   withEntryExports,
 } from '../typed/policy.mts';

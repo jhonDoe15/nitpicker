@@ -1,3 +1,7 @@
+export function parseJson(text: string): unknown {
+  return JSON.parse(text);
+}
+
 export function textOf(value: unknown): string {
   return typeof value === 'string' ? value : String(value);
 }

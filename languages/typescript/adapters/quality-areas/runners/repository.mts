@@ -13,8 +13,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { existingRoots } from '../../typed/static-checks.mts';
-import { type Layout, readLayout } from '../../typed/head-policy.mts';
-import { type KnipConfig, readHeadPolicy } from '../typed/policy.mts';
+import { type Layout, readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
+import type { KnipConfig } from '../typed/policy.mts';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../typed/reporting.mts';
 import {
   baselinePathsOf,
