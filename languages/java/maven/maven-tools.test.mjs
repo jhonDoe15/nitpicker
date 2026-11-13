@@ -84,6 +84,20 @@ describe('formatTool', () => {
   });
 });
 
+describe('formatTool with a declared version', () => {
+  it('asks for the version the build file pins, for either formatter', () => {
+    expect(formatTool('palantir', pinned, '2.90.0')).toEqual([
+      {
+        name: 'format-palantir',
+        coordinates: ['com.palantir.javaformat:palantir-java-format:2.90.0'],
+      },
+    ]);
+    expect(formatTool('aosp', pinned, '1.17.0')).toEqual([
+      { name: 'format', coordinates: ['com.google.googlejavaformat:google-java-format:1.17.0'] },
+    ]);
+  });
+});
+
 describe('archunitTool', () => {
   it('asks for the pinned ArchUnit jar only for a build with a module that runs the architecture rules', () => {
     expect([archunitTool(true, pinned), archunitTool(false, pinned)]).toEqual([

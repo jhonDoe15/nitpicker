@@ -56,15 +56,17 @@ describe('the Gradle init script and the formatter style', () => {
     expect(linesContaining("nitpickerArgument('nitpicker.java.")).toEqual([
       "def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'",
       "def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'",
+      "def javaFormatterVersion = nitpickerArgument('nitpicker.java.formatterVersion')",
+      "def javaFormatterFlags = (nitpickerArgument('nitpicker.java.formatterFlags') ?: '').toString().split(',').findAll { it }",
     ]);
   });
 
   it('puts the palantir jar on the formatter classpath for palantir, the google jar unless none', () => {
     expect(blockStartingWith("if (javaStyle == 'palantir') {")).toEqual([
       "if (javaStyle == 'palantir') {",
-      'nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"',
+      `nitpickerFormat "com.palantir.javaformat:palantir-java-format:\${javaFormatterVersion ?: pinned.palantirJavaFormat}"`,
       "} else if (javaStyle != 'none') {",
-      'nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"',
+      `nitpickerFormat "com.google.googlejavaformat:google-java-format:\${javaFormatterVersion ?: pinned.googleJavaFormat}"`,
       '}',
     ]);
   });
@@ -93,7 +95,7 @@ describe('the Gradle init script and the formatter style', () => {
       'doFirst {',
       'reportDir.get().asFile.mkdirs()',
       "standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)",
-      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)",
+      "args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFormatterFlags + javaFiles()*.absolutePath)",
       '}',
       'doLast {',
       'def exit = executionResult.get().exitValue',

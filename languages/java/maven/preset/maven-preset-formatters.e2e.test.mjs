@@ -59,4 +59,47 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       `palantir-java-format format ${MESSY}`,
     ]);
   }, 180_000);
+  const PALANTIR = {
+    tool: 'palantir-java-format',
+    source: MESSY_SOURCE,
+    policy: {
+      javaStyle: 'palantir',
+      conventions: {
+        'java.formatter': 'palantir',
+        'java.formatterVersion': '2.50.0',
+        'java.formatterOptions': ['skipJavadocFormatting', 'skipReflowingLongStrings'],
+        'java.indentation': '4',
+        'java.lineLength': '120',
+      },
+    },
+  };
+  const GOOGLE = {
+    tool: 'google-java-format',
+    source: 'package demo;\n\nclass Messy {\n  int  a;\n}\n',
+    policy: {
+      javaStyle: 'google',
+      conventions: {
+        'java.formatterVersion': '1.17.0',
+        'java.formatterOptions': ['skipJavadocFormatting', 'skipReflowingLongStrings'],
+      },
+    },
+  };
+  it.each([PALANTIR, GOOGLE])(
+    'formats with the release and options the build file pins for $tool, on both builds',
+    ({ tool, source, policy }) => {
+      const [gradleProject, mavenProject] = twinProjects();
+      for (const root of [gradleProject, mavenProject]) {
+        writeFileSync(path.join(root, MESSY), source);
+      }
+      const ours = ({ path: file, ...finding }) => file === MESSY && isFormatting(finding);
+
+      expect(summaryOf(collectJavaFindings(gradleProject, { gradle, policy }), ours)).toEqual([
+        `${tool} format ${MESSY}`,
+      ]);
+      expect(summaryOf(collectJavaFindings(mavenProject, { maven, policy }), ours)).toEqual([
+        `${tool} format ${MESSY}`,
+      ]);
+    },
+    180_000,
+  );
 });

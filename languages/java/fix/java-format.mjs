@@ -9,18 +9,20 @@ import {
   writeWorkspaceFile,
 } from './formatter-run.mjs';
 
-export function javaFormatterPlan(style, pinned) {
+export function javaFormatterPlan(style, pinned, version) {
   const formatter = JAVA_FORMATTERS[style];
   return formatter === undefined
     ? undefined
     : {
         label: formatter.label,
         operation: 'java-format-fix',
-        tools: { 'java-format': { coordinates: formatter.coordinates(pinned), transitive: true } },
+        tools: {
+          'java-format': { coordinates: formatter.coordinates(pinned, version), transitive: true },
+        },
       };
 }
 
-export function javaFormat({ style, classpath, java, executeFixCommand }) {
+export function javaFormat({ style, flags: optionFlags = [], classpath, java, executeFixCommand }) {
   const { label, mainClass, flags } = JAVA_FORMATTERS[style];
   return function format(sources) {
     return withWorkspace((directory) => {
@@ -40,6 +42,7 @@ export function javaFormat({ style, classpath, java, executeFixCommand }) {
         jvmArgs: JAVAC_EXPORTS,
         args: [
           ...flags,
+          ...optionFlags,
           '--replace',
           ...entries.map(({ relative }) => containedPath(directory, relative)),
         ],

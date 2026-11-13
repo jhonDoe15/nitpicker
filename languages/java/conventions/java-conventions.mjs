@@ -6,12 +6,15 @@ import {
   testAndSupportGlobs,
 } from './measures/assertion-helpers.mjs';
 import { COLUMNS } from '../../../shared/conventions/settings.mjs';
+import { FORMATTER_VERSION } from './build-style/java-formatter-options.mjs';
 import { formatterProfile, javaIndentation, javaLineLength } from './measures/java-layout.mjs';
 import { TEST_SOURCE_GLOB, testStaticImports, wildcardImports } from './measures/java-imports.mjs';
 
 export const JAVA_INDENTATION_ID = 'java.indentation';
 export const JAVA_FORMATTER = 'java.formatter';
 export const JAVA_LINE_LENGTH_ID = 'java.lineLength';
+export const JAVA_FORMATTER_VERSION = 'java.formatterVersion';
+export const JAVA_FORMATTER_OPTIONS = 'java.formatterOptions';
 
 const JAVA_INDENTATION = {
   id: JAVA_INDENTATION_ID,
@@ -37,6 +40,31 @@ const JAVA_FORMATTERS = {
   strictMajority: true,
   files: ['**/*.java'],
   measure: formatterProfile,
+};
+
+const JAVA_FORMATTER_VERSIONS = {
+  id: JAVA_FORMATTER_VERSION,
+  label: 'Java formatter version',
+  options: ['pinned'],
+  optionLabels: { pinned: 'the version nitpicker pins' },
+  valuePattern: FORMATTER_VERSION,
+  range: 'a version such as "2.90.0"',
+  fallback: 'pinned',
+  hidden: true,
+  nameOnly: true,
+  files: ['**/*.java'],
+  measure: () => undefined,
+};
+
+const JAVA_FORMATTER_FLAGS = {
+  id: JAVA_FORMATTER_OPTIONS,
+  label: 'Java formatter options',
+  kind: 'names',
+  fallback: [],
+  hidden: true,
+  nameOnly: true,
+  files: ['**/*.java'],
+  measure: () => [],
 };
 
 const JAVA_LINE_WIDTH = {
@@ -90,6 +118,8 @@ const JAVA_ASSERTIONS = {
 
 export const JAVA_CONVENTIONS = [
   JAVA_FORMATTERS,
+  JAVA_FORMATTER_VERSIONS,
+  JAVA_FORMATTER_FLAGS,
   JAVA_INDENTATION,
   JAVA_LINE_WIDTH,
   JAVA_IMPORTS,
