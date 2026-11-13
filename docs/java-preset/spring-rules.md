@@ -301,7 +301,19 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   different branches of one `if`, `?:`, `switch` or `try`/`catch` count once, as do a write in an
   `if` branch that ends in `return` or `throw` and a write after that `if`; a `finally` block always
   runs, so its write counts. One `saveAll` is one
-  write. `SpringCacheWriteInTransaction` reports, in a writing transaction (`@Transactional` without
+  write. Nitpicker drops a `SpringMultiWriteWithoutTransaction` finding when the project's main sources
+  (Java and Kotlin, tests aside) call the method and every call runs in a transaction. Calls are matched
+  by method name on any receiver, in any file, so a same-named call elsewhere is a caller too and keeps
+  the finding; the filter errs toward reporting. A call runs in a transaction when its method is
+  `@Transactional` (Spring's, or `jakarta`/`javax` with `REQUIRED`, `REQUIRES_NEW` or `MANDATORY`), or the
+  method has no annotation of its own and its class is; `NOT_SUPPORTED`, `NEVER` and `SUPPORTS` do not
+  count, and a method-level annotation decides alone. A call inside a lambda, method reference or
+  anonymous class does not count, unless the lambda is the callback of a `TransactionTemplate`,
+  `TransactionOperations` or `TransactionalOperator` call on a variable declared with that type. A method
+  with no caller in the project, or with one caller outside a transaction, stays reported, so a `@Service`
+  entry point and a repository called from a controller are still found; a repository method that only
+  transactional services call is not, because the service is the transaction boundary.
+  `SpringCacheWriteInTransaction` reports, in a writing transaction (`@Transactional` without
   `readOnly = true` or a `NOT_SUPPORTED`, `NEVER` or `SUPPORTS` propagation, on the method or, for a
   public non-static method, on the class; a `TransactionTemplate` callback; a non-public helper that such a
   method calls), `put`, `putIfAbsent`, `evict`, `evictIfPresent`, `clear` and `invalidate` on a
