@@ -12,6 +12,8 @@ import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
 import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
 import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
+import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { onlyUnparsableFiles } from '../adapters/python-tools.mjs';
 import {
@@ -23,8 +25,10 @@ import {
 import { reviewCodesSelected, selectedRuffCodes } from './review/review-rules.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
 import { fixOptions } from './source/fix-options.mjs';
-import { createPythonRecipes } from './source/python-recipes.mjs';
 import { FIX_SCRIPT, SCRIPT_OPERATION } from './source/script-edits.mjs';
+import { createPythonRecipes } from './recipes/python-recipes.mjs';
+import { dependencyInputs } from './recipes/inputs/dependency-inputs.mjs';
+import { docstringInputs } from './recipes/inputs/docstring-inputs.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
 const JUPYTER_MISSING = /Jupyter dependencies are not installed/u;
@@ -150,9 +154,30 @@ function formattedFiles({ files, settings, projectRoot, before }, written) {
       );
 }
 
-function recipeStep({ context, run, settings, files }) {
-  const excluded = excludedBy(settings.headPolicy.exclude);
-  const recipes = createPythonRecipes({
+const DEPENDENCY_SELECTIONS = [
+  'dependencies/unused-dependency',
+  'dependencies/unlisted-dependency',
+  'dependencies/no-dev-dependency-in-production',
+];
+
+function recipeInputs(context, files, selectedRules) {
+  try {
+    return {
+      inputs: {
+        pythonDocstrings: docstringInputs(context, files),
+        ...(selectedRules.some((rule) => DEPENDENCY_SELECTIONS.includes(rule))
+          ? { pythonDependencies: dependencyInputs(context) }
+          : {}),
+      },
+      toolErrors: [],
+    };
+  } catch (error) {
+    return { inputs: {}, toolErrors: [fixFailure('python-recipe-inputs', error)] };
+  }
+}
+
+function pythonRecipes(context, run) {
+  return createPythonRecipes({
     runScript: (input) =>
       run({
         operation: SCRIPT_OPERATION,
@@ -162,15 +187,32 @@ function recipeStep({ context, run, settings, files }) {
       }).stdout,
     optionsFor: fixOptions(context),
   });
-  return runRecipes({
+}
+
+function recipeStep({ context, run, settings, files, accepts }) {
+  const selectedRules = settings.selectedRules ?? [];
+  const shared = sharedInputs({
+    projectRoot: settings.projectRoot,
+    headPolicy: settings.headPolicy,
+    selectedRules,
+  });
+  const gathered = recipeInputs(context, files, selectedRules);
+  const recipes = runRecipes({
     projectRoot: settings.projectRoot,
     files,
-    recipes,
-    preset: settings.config?.preset ?? 'python',
-    selectedRules: settings.selectedRules,
+    recipes: [...pythonRecipes(context, run), ...SHARED_RECIPES],
     writer: settings.writer,
-    accepts: (name) => PYTHON_FILE.test(name) && !excluded(name),
+    preset: settings.config?.preset ?? 'python',
+    selectedRules,
+    accepts,
+    inputs: { ...shared.inputs, ...gathered.inputs },
   });
+  return {
+    files: recipes.files,
+    fixedFindings: recipes.fixedFindings,
+    toolErrors: [...shared.toolErrors, ...gathered.toolErrors, ...recipes.toolErrors],
+    notes: recipes.notes,
+  };
 }
 
 function runFixers(settings, files, mergeBaseSha) {
@@ -178,7 +220,7 @@ function runFixers(settings, files, mergeBaseSha) {
     return withPythonFixContext(settings, (context) => {
       const run = commandRunner(context, settings.executeFixCommand);
       const before = readBytes(settings.projectRoot, files);
-      const recipes = recipeStep({ context, run, settings, files });
+      const recipes = recipeStep({ context, run, settings, files, accepts: settings.accepts });
       const step = {
         context,
         run,
@@ -215,14 +257,17 @@ function runFixers(settings, files, mergeBaseSha) {
 export function fixPython(settings) {
   const { repositoryRoot, projectRoot, baseRef, scope, headPolicy = {} } = settings;
   const excluded = excludedBy(headPolicy.exclude);
+  function accepts(name) {
+    return PYTHON_FILE.test(name) && !excluded(name);
+  }
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     scope,
-    accepts: (name) => PYTHON_FILE.test(name) && !excluded(name),
+    accepts,
   });
-  if (files.length === 0) {
+  if (files.length === 0 && (settings.selectedRules ?? []).length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
@@ -232,7 +277,7 @@ export function fixPython(settings) {
     toolErrors,
     notes,
   } = runFixers(
-    { ...settings, headPolicy, selectedRules: settings.selectedRules ?? [] },
+    { ...settings, headPolicy, accepts, selectedRules: settings.selectedRules ?? [] },
     files,
     comparison.mergeBaseSha,
   );

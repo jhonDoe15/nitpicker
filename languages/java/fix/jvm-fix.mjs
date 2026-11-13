@@ -10,6 +10,8 @@ import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
 import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
+import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
@@ -150,6 +152,25 @@ function runSteps(settings, steps, mergeBaseSha) {
   ];
 }
 
+function recipeRun({ settings, files, accepts, selectedRules }) {
+  const shared = sharedInputs({
+    projectRoot: settings.projectRoot,
+    headPolicy: settings.headPolicy,
+    selectedRules,
+  });
+  const run = runRecipes({
+    projectRoot: settings.projectRoot,
+    files,
+    recipes: settings.recipes ?? [...JVM_RECIPES, ...SHARED_RECIPES],
+    writer: settings.writer,
+    preset: settings.config.preset ?? 'java',
+    selectedRules,
+    accepts,
+    inputs: shared.inputs,
+  });
+  return { ...run, toolErrors: [...shared.toolErrors, ...run.toolErrors] };
+}
+
 export function fixJvm(settings) {
   const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
   const selectedRules = settings.selectedRules ?? [];
@@ -173,20 +194,12 @@ export function fixJvm(settings) {
     scope,
     accepts,
   });
-  if (files.length === 0) {
+  if (files.length === 0 && selectedRules.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const resolved = { ...settings, headPolicy, config };
-  const recipes = runRecipes({
-    projectRoot,
-    files,
-    recipes: settings.recipes ?? JVM_RECIPES,
-    writer: settings.writer,
-    preset: config.preset ?? 'java',
-    selectedRules,
-    accepts,
-  });
+  const recipes = recipeRun({ settings: resolved, files, accepts, selectedRules });
   const formatted =
     selectedRules.length === 0 ? recipes.files : changedFiles(projectRoot, recipes.files, before);
   const outcomes = runSteps(resolved, plannedSteps(resolved, formatted), comparison.mergeBaseSha);

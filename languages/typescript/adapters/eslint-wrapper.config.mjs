@@ -11,7 +11,7 @@ const extraPolicyPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_EXTRA_POL
 const extraPolicyModule =
   extraPolicyPath === undefined ? undefined : await import(pathToFileURL(extraPolicyPath).href);
 
-if (!Array.isArray(policyModule.default) || !Array.isArray(extraPolicyModule?.default ?? [])) {
+if (!(Array.isArray(policyModule.default) && Array.isArray(extraPolicyModule?.default ?? []))) {
   throw new TypeError(`ESLint policy ${policyConfigPath} must export a flat configuration array`);
 }
 
@@ -21,9 +21,12 @@ export default (
   await layeredPolicy([...policyModule.default, ...scopedEntries(extraPolicyModule)], process.env)
 ).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath));
 
+function isIgnoreOnly(entry) {
+  return Object.keys(entry).join() === 'ignores';
+}
+
 function scopedEntries(module) {
   const entries = module?.default ?? [];
-  const isIgnoreOnly = (entry) => Object.keys(entry).join() === 'ignores';
   const ignores = entries.filter(isIgnoreOnly).flatMap((entry) => entry.ignores);
   return entries
     .filter((entry) => !isIgnoreOnly(entry))

@@ -9,6 +9,7 @@ import { runCli as nitpickerCli } from '../../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
 import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { spawnInvocation } from '../run-fix.mts';
 import { defineRecipes } from '../engine/recipes.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { applyPatch, treeOf } from './test-support/tree.mjs';
@@ -168,12 +169,17 @@ Fix notes (from the dry run):
     expect(result.applied).not.toEqual(result.before);
   });
   it('leaves a TypeScript tree as it was and writes the patch that gives the real --fix tree', () => {
-    const result = comparison(typescriptRepository, ['--fix'], () => undefined);
+    const result = comparison(typescriptRepository, ['--fix'], () => ({
+      executeFixCommand: (invocation) =>
+        invocation.operation === 'knip-fix'
+          ? { status: 0, stdout: '', stderr: '' }
+          : spawnInvocation(invocation),
+    }));
 
     expect(result.unchanged).toEqual(result.before);
     expect(result.applied).toEqual(result.real);
     expect(result.applied).not.toEqual(result.before);
-  }, 90_000);
+  });
   it('removes a stale dry-run patch when --fix runs for real in the same output folder', () => {
     const repository = javaRepository();
     const dry = run(repository, ['--fix', '--dry-run'], fakeJvmTools());

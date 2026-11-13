@@ -25,6 +25,7 @@ export function fakePythonTools({
   jupyterMissing = false,
   missingFormatter = false,
   sourceFixes = false,
+  scanned = '{}',
 } = {}) {
   const calls = [];
   function lint(invocation) {
@@ -73,6 +74,9 @@ export function fakePythonTools({
     }
     calls.push(invocation);
     if (invocation.operation === 'python-probe') {
+      if (invocation.args.some((arg) => arg.endsWith('import-scan.py'))) {
+        return { status: 0, stdout: scanned, stderr: '' };
+      }
       return invocation.command === 'poetry' && poetryEnvironment !== undefined
         ? { status: 0, stdout: `${poetryEnvironment}\n`, stderr: '' }
         : { status: 1, stdout: '', stderr: '' };

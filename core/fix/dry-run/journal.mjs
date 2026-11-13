@@ -2,11 +2,12 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { applyFixes } from '../engine/edits/apply-edits.mjs';
 import { sourceOf } from '../engine/edits/check-fixes.mjs';
 import { checkRealPath } from '../engine/edits/real-paths.mjs';
+import { indexListing } from '../engine/edits/untrack.mjs';
 
 export const MODE_MASK = 0o7777;
 
 export function createJournal(projectRoot) {
-  return { projectRoot, originals: new Map(), events: [] };
+  return { projectRoot, originals: new Map(), indexListings: new Map(), events: [] };
 }
 
 function missingTop(projectRoot, file) {
@@ -48,9 +49,19 @@ function noteOriginal(journal, name) {
   }
 }
 
+function noteIndex(journal, name) {
+  if (!journal.indexListings.has(name)) {
+    journal.indexListings.set(name, indexListing(journal.projectRoot, name));
+  }
+}
+
 function noteOriginals(journal, entries) {
-  for (const name of entries.flatMap(({ fix }) => fix.edits.flatMap(namesOf))) {
+  const edits = entries.flatMap(({ fix }) => fix.edits);
+  for (const name of edits.flatMap(namesOf)) {
     noteOriginal(journal, name);
+  }
+  for (const { path: name } of edits.filter(({ type }) => type === 'untrack')) {
+    noteIndex(journal, name);
   }
 }
 

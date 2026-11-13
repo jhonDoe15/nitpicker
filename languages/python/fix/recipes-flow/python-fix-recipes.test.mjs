@@ -70,7 +70,12 @@ describe('--fix for Python source recipes', () => {
     expect(result.fixedFindings).toEqual([
       'app/load.py:10 python-rules/catch-log-without-exception (python-exc-info)',
     ]);
-    expect(tools.operations()).toEqual(['python-probe', 'ruff-fix', 'ruff-format-fix']);
+    expect(tools.operations()).toEqual([
+      'python-probe',
+      'python-probe',
+      'ruff-fix',
+      'ruff-format-fix',
+    ]);
     expect(tools.callsOf('ruff-fix')[0].input).toBe(EXC_INFO);
     expect(tools.callsOf('ruff-format-fix')[0].input).toBe(EXC_INFO);
   });

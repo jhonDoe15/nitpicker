@@ -1,4 +1,4 @@
-import { docCommentContentReports } from './doc-comment-content.mjs';
+import { docCommentContentReports, publicApiNode } from './doc-comment-content.mjs';
 import {
   castTags,
   isJsdocBlock,
@@ -20,8 +20,6 @@ const REMOVABLE = new Set([
   'eslintSuppression',
   'coverageSuppression',
 ]);
-const exportDeclarations = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
-const typeMembers = new Set(['TSPropertySignature', 'TSMethodSignature']);
 const validationName = validationBehavior(readHeadPolicy().libraries).name;
 const TOOL_DIRECTIVES = [
   'eslint\\b',
@@ -56,33 +54,6 @@ function jsdocReports(comment, sourceCode) {
     ...problems,
     ...(castsNextExpression && castTags(tags).length > 0 ? [{ messageId: 'jsdocCast' }] : []),
   ];
-}
-
-function declarationStartingAt(sourceCode, token) {
-  const innermost = sourceCode.getNodeByRangeIndex(token.range[0]);
-  if (!innermost) return undefined;
-  return [...sourceCode.getAncestors(innermost), innermost].find(
-    (node) => node.type !== 'Program' && node.range[0] === token.range[0],
-  );
-}
-
-function isExportedTypeMember(node) {
-  if (!typeMembers.has(node.type)) return false;
-  const typeLiteral = node.parent;
-  const alias = typeLiteral?.parent;
-  return (
-    typeLiteral?.type === 'TSTypeLiteral' &&
-    alias?.type === 'TSTypeAliasDeclaration' &&
-    exportDeclarations.has(alias.parent?.type)
-  );
-}
-
-function publicApiNode(sourceCode, comment) {
-  const token = sourceCode.getTokenAfter(comment);
-  if (!token) return undefined;
-  const node = declarationStartingAt(sourceCode, token);
-  if (!node) return undefined;
-  return exportDeclarations.has(node.type) || isExportedTypeMember(node) ? node : undefined;
 }
 
 function plainCommentReports(comment, sourceCode) {

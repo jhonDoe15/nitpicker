@@ -23,6 +23,10 @@ import { modifierOrderRecipe } from './kotlin/modifiers/modifier-order.mjs';
 import { optionalAbstractRecipe } from './kotlin/modifiers/optional-abstract.mjs';
 import { focusedTestRecipe } from './kotlin/tests/focused-tests.mjs';
 import { validationTargetRecipe } from './kotlin/validation/validation-target.mjs';
+import {
+  javaRestatingDocCommentRecipe,
+  kotlinRestatingDocCommentRecipe,
+} from './restating-doc-comment.mjs';
 import { upperEllRecipe } from './upper-ell.mjs';
 
 export const JVM_RECIPES = defineRecipes([
@@ -53,4 +57,6 @@ export const JVM_RECIPES = defineRecipes([
   optionalAbstractRecipe,
   focusedTestRecipe,
   validationTargetRecipe,
+  javaRestatingDocCommentRecipe,
+  kotlinRestatingDocCommentRecipe,
 ]);

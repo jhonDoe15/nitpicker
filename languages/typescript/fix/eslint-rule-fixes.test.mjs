@@ -301,6 +301,8 @@ describe('the fixes of nitpicker own ESLint rules', () => {
     const { result, read } = fix(repository);
 
     expect(result.toolErrors).toEqual([]);
-    expect(read('src/main/log.ts')).toContain("logger.error({ err: error }, 'failed');");
+    expect(read('src/main/log.ts').split('\n')[8]).toBe(
+      "    logger.error({ err: error }, 'failed');",
+    );
   });
 });

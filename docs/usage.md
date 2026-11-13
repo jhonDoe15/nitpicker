@@ -2016,6 +2016,17 @@ runs only when `--fix --rule` names one of its rules.
 | python       | `mutmut/mutant-ignored`                                                                                                                                                                                                                                                                                                 | `python-mutmut-pragma`                                                                                               | removes `# pragma: no mutate` comments from production code (review)                                                                            |
 | java, kotlin | `spring/ddl-auto`, `open-in-view`, `error-details`, `actuator-exposure`, `risky-startup-flags`, `unsafe-diagnostics`, `literal-secret`, `active-profile` | `spring-<rule>`         | edits the one setting in `application*.properties` and `application*.yml` under `src/main/resources`, and nothing else in the file (review fix) |
 | java, kotlin | `spring/missing-enable`                                                                                                                                  | `spring-missing-enable` | adds the missing `@Enable...` annotation and its import to the `@SpringBootApplication` class (review fix)                                      |
+| typescript   | `eslint/nitpicker/no-comments`                                                                                                                                                                                                                                            | `typescript-restating-doc-comment`                                                                                   | deletes the lines of an exported JSDoc comment that only restates the name of its declaration or type member                                    |
+| java         | `facts/doc-comment-content`                                                                                                                                                                                                                                               | `java-restating-doc-comment`                                                                                         | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration                                      |
+| kotlin       | `facts/doc-comment-content`                                                                                                                                                                                                                                               | `kotlin-restating-doc-comment`                                                                                       | the same for KDoc, and for Javadoc in the Java files of the project                                                                             |
+| python       | `facts/doc-comment-content`                                                                                                                                                                                                                                               | `python-restating-docstring`                                                                                         | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass`  |
+
+The TypeScript, Java and Kotlin recipes are safe: `--fix` runs them with no further choice. The Python
+recipe is a review recipe, because a docstring is the `__doc__` of its object: `--fix --rule
+facts/doc-comment-content` runs it. Go has no `--fix` yet, so the Go
+preset has no recipes. A doc comment is left alone when it shares its line with code, when an
+`exceptions` entry for `doc-comment-content` covers its file, and in the places where the rule does
+not look (tests, and for Python anything outside the production modules).
 
 The rule reference says what `--fix` does about each rule, in a "Fix" line that `nitpicker explain`
 prints too: `automatic` (a safe recipe, or a fixer that runs under `--fix`: ESLint rules that
@@ -2042,7 +2053,29 @@ A fix marked review changes behaviour on purpose, so it runs only when its rule 
 `--rule`. knip runs on a temporary copy of the project, and only edits to changed files are written
 back, through the same checked write as the recipes. A `package.json` edit keeps its indentation.
 
-A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
+Review recipes can be wrong for a project, so `--fix` runs them only when you select their rule with
+`--rule <tool/rule>`:
+
+| Preset | Rule                                                                                                           | Recipe                    | What it does                                                                                                                                                                                    |
+| ------ | -------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| all    | `repository-hygiene/committed-env-file`, `committed-build-output`, `committed-binary`, `committed-private-key` | `untrack-committed-files` | untracks the file or folder with `git rm --cached` and adds an anchored line to the `.gitignore` of the project (created when missing, line endings kept, no duplicate); the working copy stays |
+| python | `dependencies/unused-dependency`                                                                               | `python-dependencies`     | removes the dependency from `pyproject.toml` (PEP 621 `[project] dependencies`, or Poetry `[tool.poetry.dependencies]`)                                                                         |
+| python | `dependencies/unlisted-dependency`                                                                             | `python-dependencies`     | adds `name>=<installed version>` to `pyproject.toml`: the project dependencies, or the uv `dev` group, `[tool.uv] dev-dependencies` or the Poetry dev table when only tests import it           |
+| python | `dependencies/no-dev-dependency-in-production`                                                                 | `python-dependencies`     | moves the entry from the development group to the project dependencies as it was written                                                                                                        |
+
+The installed version is read with `importlib.metadata` in the interpreter the Python checks use. When
+it cannot be read, needs a newer Python than the `requires-python` of `pyproject.toml` allows (checked when the
+`packaging` module is installed), or `pyproject.toml` has no list to edit, the dependency is left alone and a "Fix
+notes:" line names it. Other manifests (`requirements.txt`, `setup.py`, `Pipfile`) are not edited.
+
+`--fix` never commits and never stages a file. The one thing it does to the git index is the untracking
+above: `git rm --cached` on the path of a finding of those four rules (the removal stays staged), run
+after the `.gitignore` edit succeeds and with literal path matching, so no other index entry changes. A
+`committed-private-key` fix untracks the file but is not listed as fixed: a "Fix notes:" line says the
+key has to be rotated, because it stays in the history.
+
+A recipe edits a file only when it still holds the bytes the recipe read (a recipe that lists a
+file of its own, such as `.gitignore` or `pyproject.toml`, may edit that file as well). A file that changed in the
 meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is
 skipped and planned again on the new text. Recipes repeat until nothing changes, up to three passes,
 and a fix still left after that is named in a "Fix notes:" line. A recipe that fails is reported as

@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { MODE_MASK } from './journal.mjs';
+import { restoreIndex } from '../engine/edits/untrack.mjs';
 import { unifiedPatch } from './patch.mjs';
 
 function currentOf(file) {
@@ -64,6 +65,11 @@ function restore(journal) {
     } catch (error) {
       failures.push(`${file}: ${error.message}`);
     }
+  }
+  try {
+    restoreIndex(journal.projectRoot, [...journal.indexListings.values()]);
+  } catch (error) {
+    failures.push(`the git index: ${error.message}`);
   }
   const created = new Set([...journal.originals.values()].map(({ createdUnder }) => createdUnder));
   for (const directory of [...created].filter((entry) => entry !== undefined)) {
