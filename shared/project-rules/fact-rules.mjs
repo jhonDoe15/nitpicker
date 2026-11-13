@@ -16,15 +16,22 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
 
 export const OWN_TOOL = 'own-tool';
 
+export const FEATURE_RULE_IDS = {
+  featureInternalImport: 'feature-internal-import',
+  sharedImportsFeature: 'shared-imports-feature',
+  featureCycle: 'feature-cycle',
+  foreignFeaturePersistence: 'foreign-feature-persistence',
+};
+
 const JVM = { java: true, kotlin: true };
 
 const FEATURE_BOUNDARY_LANGUAGES = {
   typescript: OWN_TOOL,
   javascript: OWN_TOOL,
-  java: false,
+  java: true,
   python: true,
-  kotlin: false,
-  go: false,
+  kotlin: true,
+  go: true,
 };
 
 const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
@@ -48,6 +55,14 @@ export const FACT_RULE_LANGUAGES = {
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'foreign-feature-persistence': {
+    typescript: true,
+    javascript: true,
+    java: true,
+    python: true,
+    kotlin: true,
+    go: false,
+  },
   'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
@@ -82,6 +97,7 @@ export const FACT_RULE_LISTS = {
   'shared-imports-feature': ['modules', 'imports'],
   'feature-cycle': ['modules', 'imports'],
   'public-alternative-bypass': ['modules', 'imports'],
+  'foreign-feature-persistence': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],
@@ -93,6 +109,7 @@ export const FACT_RULE_SETTINGS = {
   'feature-internal-import': FEATURE_LAYOUT_SETTINGS,
   'shared-imports-feature': FEATURE_LAYOUT_SETTINGS,
   'feature-cycle': FEATURE_LAYOUT_SETTINGS,
+  'foreign-feature-persistence': FEATURE_LAYOUT_SETTINGS,
   'test-console-output': ['testConsole'],
   ...DESIGN_RULE_SETTINGS,
 };

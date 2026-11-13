@@ -1,3 +1,4 @@
+import { isExplainedCycle } from '../../../../shared/graph/explained-cycles.mjs';
 import { stronglyConnected } from '../../../../shared/graph/strongly-connected.mjs';
 import { listed } from '../../../../shared/rules/features/feature-boundaries.mjs';
 import { importEdges } from '../analysis/python-coupling.mjs';
@@ -52,33 +53,12 @@ function packageAnchors(modules) {
   return anchor;
 }
 
-function staysCyclic(members, packaged, cycleEdges) {
-  const inside = new Set(members);
-  const removed = new Set(cycleEdges.map(({ from, to }) => `${from}\0${to}`));
-  const rest = packaged.filter(
-    ({ source, target, files }) => inside.has(source) && inside.has(target) && !removed.has(files),
-  );
-  return stronglyConnected(members, rest).length > 0;
-}
-
-function isExplained(members, { packaged, anchor, features }) {
-  const directories = members.map((member) => features.featureOf(anchor.get(member)));
-  if (directories.includes(undefined) || new Set(directories).size < 2) {
-    return false;
-  }
-  return features.explainedCycles.some(
-    (cycle) =>
-      directories.every((directory) => cycle.features.includes(directory)) &&
-      !staysCyclic(members, packaged, cycle.edges),
-  );
-}
-
 function packageCycles(modules, edges, features) {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
   const packaged = packageEdges(byName, edges);
   const anchor = packageAnchors(modules);
   return stronglyConnected([...anchor.keys()], packaged)
-    .filter((members) => !isExplained(members, { packaged, anchor, features }))
+    .filter((members) => !isExplainedCycle(members, { packaged, anchor, features }))
     .flatMap((members) =>
       members.map((member) => ({
         tool: COUPLING_TOOL,
