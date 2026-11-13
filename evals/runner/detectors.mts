@@ -1,4 +1,4 @@
-import { detectShortcuts } from '../detectors/index.mjs';
+import { detectShortcuts } from '../detectors/index.mts';
 import { type Preset } from '../lib/presets.mts';
 
 export type Trees = ReadonlyMap<string, string>;
