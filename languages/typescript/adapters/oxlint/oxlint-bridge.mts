@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint } from 'eslint';
-import { fieldOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 
 type BridgeRequest = {
   readonly namespace: string;
@@ -40,10 +40,6 @@ async function coreRules({
   const config: unknown = await eslint.calculateConfigForFile(sampleFile);
   const rules = fieldOf(fieldOf(fieldOf(config, 'plugins'), '@'), 'rules');
   return Object.fromEntries(ruleNames.map((name) => [name, fieldOf(rules, name)]));
-}
-
-function listOf(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? value : [];
 }
 
 async function pluginRules(namespace: string): Promise<unknown> {
