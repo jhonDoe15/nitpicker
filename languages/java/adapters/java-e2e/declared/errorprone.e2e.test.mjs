@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../java-diff.mts';
 import { declaredToolChoices } from '../../tool-config/declared/declared-choices.mjs';
-import { runErrorProne } from '../../../maven/errorprone/maven-errorprone.mjs';
+import { runErrorProne } from '../../../maven/errorprone/maven-errorprone.mts';
 import {
   ORDERINGS,
   enabled,

@@ -12,7 +12,7 @@ import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mts'
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
-import { processorTool } from './errorprone/maven-errorprone.mjs';
+import { processorTool } from './errorprone/maven-errorprone.mts';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
