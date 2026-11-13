@@ -37,7 +37,7 @@ const OWNER_LOOKBEHIND = 200;
 const UNICODE_ESCAPE_LENGTH = 5;
 const ESCAPES = { t: '\t', b: '\b', n: '\n', r: '\r', "'": "'", '"': '"', '\\': '\\', $: '$' };
 
-function trimmed(code, { start, end }) {
+export function trimmed(code, { start, end }) {
   const text = code.slice(start, end);
   const from = start + text.length - text.trimStart().length;
   return { start: from, end: from + text.trim().length };
