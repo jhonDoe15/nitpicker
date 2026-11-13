@@ -212,6 +212,7 @@ describe('readKotlinSourceFindings', () => {
         'UnboundedReactiveFanOut',
         'UnboundedWait',
         'UnclosedInlineResource',
+        'UnhandledRootCoroutine',
         'UnorderedQuery',
         'UnquotedRegexValue',
         'UnsafeCastOperator',

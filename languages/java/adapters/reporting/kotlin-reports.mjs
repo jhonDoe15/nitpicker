@@ -145,6 +145,7 @@ export function readKotlinFindings(context, crapLimit) {
   const views = reviewViews(context);
   const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
+  const runners = context.conventions?.['kotlin.detachedWorkRunners'] ?? [];
   const ruleFindings = withDetektCountRatchets(
     applyKotlinRuleMessages(
       withoutCoveredCasts([
@@ -153,7 +154,9 @@ export function readKotlinFindings(context, crapLimit) {
           spring: manifest.spring === true,
           testRoots,
         }),
-        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...readKotlinSourceFindings(projectRoot, manifest, runners).filter(
+          leftToFanOut(fanOut.calls),
+        ),
         ...fanOut.findings,
         ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
       ]),

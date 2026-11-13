@@ -51,6 +51,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
   (`kotlin-source/UnboundedWait`, `kotlin-source/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work
   takes an exception).
+- A coroutine started on a scope you build (`CoroutineScope(...)`, `MainScope()`) handles its failure: put a
+  `CoroutineExceptionHandler` in the scope's context, or catch and log in the block, and await every `async`
+  (`kotlin-source/UnhandledRootCoroutine`).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
   `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
   (`kotlin-source/HttpWithoutTimeout`).
