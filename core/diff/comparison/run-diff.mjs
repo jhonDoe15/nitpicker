@@ -4,6 +4,7 @@ import {
 } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { writeDiffReports } from '../reporting/reporters.mjs';
 import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
+import { runStamp } from '../reporting/run-stamp/run-stamp.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
@@ -33,12 +34,13 @@ import { carryBaseReports, endsEarly, skipPlanOf, runUnlessSkipped } from '../sk
 export function runQualityDiff(options) {
   const settings = withDefaults(options);
   const startedAt = Date.now();
+  const stamp = runStamp({ ...settings, projectRoot: settings.headProjectRoot });
   const comparison = resolveSnapshots(settings);
   const report = hasSameTree(settings.repositoryRoot, comparison.mergeBaseSha, comparison.headSha)
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
-  Object.assign(report.summary, partialRunField(settings.partialRun));
+  Object.assign(report.summary, stamp, partialRunField(settings.partialRun));
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
     repositoryRoot: settings.repositoryRoot,

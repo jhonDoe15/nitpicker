@@ -6,6 +6,7 @@ import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
 import { runBaseCommand } from './command/base.mts';
+import { runShowCommand } from './command/show/show.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
 import { resolveRunTarget } from './scope/run-target.mts';
 import { realpathSync } from 'node:fs';
@@ -76,6 +77,7 @@ const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
   cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
   init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
   base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
+  show: (cli, rest) => runShowCommand({ ...cli, arguments_: rest }),
   explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
   rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
 };

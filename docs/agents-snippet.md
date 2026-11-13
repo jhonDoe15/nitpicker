@@ -33,6 +33,10 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
   says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
+- `npx nitpicker show` prints the summary of the last run again without running anything. Add
+  `--rule <substring>`, `--path <file or folder>` or `--details` to read one rule, one folder or the
+  full messages instead of running again. It names the run it shows and warns when the working tree
+  changed since. It exits 0 when that run passed, 1 when it did not and 2 when there is no report.
 
 ### Exit codes
 
@@ -82,7 +86,8 @@ and metric changes are reported but never fail.
 
 ### Handle a finding
 
-1. Read the message. It says what is wrong.
+1. Read the message. It says what is wrong. To read one rule or one folder of the last run again
+   without running it, use `npx nitpicker show --rule <substring>` or `--path <folder>`.
 2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0.
 3. **Never suppress a finding.** Do not add `eslint-disable` comments, `@ts-ignore` or
    `@ts-expect-error`, edit the rule configuration, add to `exclude`, `disable` or `exceptions` in
