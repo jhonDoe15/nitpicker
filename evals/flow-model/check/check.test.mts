@@ -6,6 +6,8 @@ import type { Fixture } from '../fixtures/source.mts';
 import type { Bounds, Contracts } from '../model/contract-types.mts';
 import type { AnalysisResult, ReportedViolation } from '../model/run-types.mts';
 import { stepsOf } from '../report/view.mts';
+import { compareWithOracle } from '../oracle/compare.mts';
+import { runOracle } from '../oracle/oracle.mts';
 
 const PAID_A = 'paid-before-publish|bus.publish|A';
 
@@ -72,6 +74,36 @@ describe('hand-labeled fixtures', () => {
     })).filter(({ result }) => (result.status === 'partial') !== result.reasons.length > 0);
 
     expect(inconsistent.map(({ name }) => name)).toEqual([]);
+  });
+});
+
+describe('computed destructuring', () => {
+  it.each([
+    ['local', 'const { ["id"]: id } = order; bus.publish("OrderPaid", id);', ''],
+    [
+      'parameter',
+      'announce(order, bus);',
+      'function announce({ ["id"]: id }, bus) { bus.publish("OrderPaid", id); }',
+    ],
+    ['catch', 'try { throw order; } catch ({ ["id"]: id }) { bus.publish("OrderPaid", id); }', ''],
+  ])('keeps a %s pattern partial and covers the observed violation', (_name, body, helper) => {
+    const options = {
+      file: 'computed.ts',
+      text: `${helper}\n${snippet(body)}`,
+      entry: 'payOrder',
+      contracts: ORDER_CONTRACTS,
+      inputs: ORDER_INPUTS,
+    };
+    const { result } = analyzeSource(options);
+    const comparison = compareWithOracle(result, runOracle({ ...options, exploreUnknown: true }));
+
+    expect(result.status).toBe('partial');
+    expect(result.reasons.map((item) => item.reason)).toContain('unsupported-syntax');
+    expect(comparison).toMatchObject({
+      agree: true,
+      observedViolations: [PAID_A],
+      violationsOnlyObserved: [],
+    });
   });
 });
 
