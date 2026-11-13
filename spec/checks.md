@@ -222,6 +222,15 @@ Boolean flag parameters: `nitpicker/no-boolean-flag-parameter` (strict preset, p
 `boolean-flag-parameter` in the Python preset, `pmd/BooleanFlagParameter` in the Java preset (main sources,
 Gradle and Maven), the `BooleanFlagParameter` source check in the Kotlin preset and revive `flag-parameter`
 in the Go preset. The allowed form is two functions, an options object or an enum.
+Cleanup that stops at the first failed release: `nitpicker/no-cleanup-skipped-on-failure` (strict preset,
+production source and tests) reports, in a close, dispose, stop or shutdown function, an `afterAll` or
+`afterEach` callback and a shutdown-signal callback, an awaited release (`close`, `disconnect`, `destroy`,
+`end`, `quit`, `stop`, `unsubscribe`) followed in the same block by another release or a state reset, and
+`Promise.all` over releases. The same form runs as `cleanup-skipped-on-failure` in the Python preset (also
+the part of a fixture after its `yield`, and `asyncio.gather` over releases without `return_exceptions=True`),
+`pmd/CleanupSkippedOnFailure` in the Java preset, `kotlin-source/CleanupSkippedOnFailure` in the Kotlin
+preset and `go-rules/cleanup-skipped` in the Go preset (an early `return` after a failed `Close`). A release
+inside `try`/`finally`, try-with-resources, `use`, `ExitStack` or `errors.Join` is left alone.
 
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same

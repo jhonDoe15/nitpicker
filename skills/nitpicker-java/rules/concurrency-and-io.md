@@ -18,6 +18,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
+- A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
+  `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
