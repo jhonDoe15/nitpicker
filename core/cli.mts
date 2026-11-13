@@ -28,7 +28,7 @@ import { detachLocalGitVariables } from './diff/git/environment/local-variables.
 import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
-import { runQualityDiff } from './diff/comparison/run-diff.mjs';
+import { runQualityDiff } from './diff/comparison/run-diff.mts';
 import { fixIfRequested } from './command/fix-request.mts';
 import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
@@ -253,7 +253,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const selection = selectComparisonAnalyzers(cli);
-  const analyzers: unknown = selection.analyzers;
+  const { analyzers } = selection;
   clearDiffReports(outputRoot);
   const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult: unknown = fixIfRequested(

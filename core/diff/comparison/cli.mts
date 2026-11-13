@@ -1,18 +1,39 @@
 import { didYouMean } from '../../../shared/messages/closest-match.mjs';
 
+type OptionEntry = readonly [argument: string, value: string | undefined];
+
+export type DrillDownOptions = {
+  readonly analyzerNames: readonly string[];
+  readonly ruleFilters: readonly string[];
+  readonly shardCount: number | undefined;
+  readonly shardIndex: number | undefined;
+  readonly deferExit: boolean;
+  readonly remainingArguments: readonly string[];
+};
+
+const closestSuggestion: (
+  argument: string,
+  candidates: readonly string[],
+  quote: string,
+) => string = didYouMean;
+
 const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
 const DEFER_EXIT = '--defer-exit';
 
 export const DRILL_DOWN_OPTIONS = [...VALUE_OPTIONS, DEFER_EXIT];
 
-export function unknownArgumentError(argument, candidates, guidance) {
-  const suggestion = didYouMean(argument, candidates, '');
+export function unknownArgumentError(
+  argument: string,
+  candidates: readonly string[],
+  guidance: string,
+): Error {
+  const suggestion = closestSuggestion(argument, candidates, '');
   return new Error(
     `Unknown argument: ${argument}${suggestion === '' ? '.' : suggestion} ${guidance}`,
   );
 }
 
-export function takeOptionValue(remaining, argument) {
+export function takeOptionValue(remaining: Iterator<string, undefined>, argument: string): string {
   const { value } = remaining.next();
   if (value === undefined || value.startsWith('--')) {
     throw new Error(`${argument} requires a value`);
@@ -20,9 +41,9 @@ export function takeOptionValue(remaining, argument) {
   return value;
 }
 
-function tokenize(arguments_) {
-  const entries = [];
-  const remaining = arguments_.values();
+function tokenize(commandArguments: readonly string[]): OptionEntry[] {
+  const entries: OptionEntry[] = [];
+  const remaining = commandArguments.values();
   for (const argument of remaining) {
     const value = VALUE_OPTIONS.has(argument) ? takeOptionValue(remaining, argument) : undefined;
     entries.push([argument, value]);
@@ -30,12 +51,14 @@ function tokenize(arguments_) {
   return entries;
 }
 
-function valuesOf(entries, name) {
-  return entries.filter(([argument]) => argument === name).map(([, value]) => value);
+function valuesOf(entries: readonly OptionEntry[], name: string): string[] {
+  return entries.flatMap(([argument, value]) =>
+    argument === name && value !== undefined ? [value] : [],
+  );
 }
 
-export function parseDrillDownOptions(arguments_) {
-  const entries = tokenize(arguments_);
+export function parseDrillDownOptions(commandArguments: readonly string[]): DrillDownOptions {
+  const entries = tokenize(commandArguments);
   const analyzerNames = valuesOf(entries, '--analyzer');
   const shardCount = valuesOf(entries, '--shard-count').map(Number).at(-1);
   const shardIndex = valuesOf(entries, '--shard-index').map(Number).at(-1);

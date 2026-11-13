@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mjs';
 import { runEslint } from '../../../../../languages/typescript/adapters/eslint-runner.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import {
   toolRoot,
   fakeEslintCliPath,

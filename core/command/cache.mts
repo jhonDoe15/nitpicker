@@ -4,7 +4,7 @@ import { resolveProjectRoot } from '../configuration/project-checks/project-root
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
 import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
-import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
+import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-stores.mjs';
 import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';

@@ -17,11 +17,13 @@ const runPartOf: (
   analyzers: unknown,
   selected: readonly unknown[],
 ) => unknown = partialRunOf;
-const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
+const selectAll: (
+  analyzers: readonly ProfiledAnalyzer[],
+  names: readonly string[],
+) => readonly ProfiledAnalyzer[] = selectAnalyzers;
 
 export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelection): {
-  readonly analyzers: readonly unknown[];
+  readonly analyzers: readonly ProfiledAnalyzer[];
   readonly partialRun: unknown;
 } {
   const selectedAnalyzers =
