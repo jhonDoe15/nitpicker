@@ -3,6 +3,7 @@ import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-polic
 import { readVetFindings } from './build/go-vet.mjs';
 import { goCouplingFindings } from './coupling/go-coupling.mjs';
 import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
+import { goDomainFindings } from './domain/go-domain.mjs';
 import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
 import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
 import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mjs';
@@ -71,6 +72,7 @@ export function readGoFindings(context, policy = {}) {
     ...goCoverageFindings(context, { report, testRun }, policy),
     ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),
     ...goCouplingFindings(report, context.module),
+    ...goDomainFindings(report, context.module),
     ...deadCodeFindings(context, { policy, lint }),
   ];
 }

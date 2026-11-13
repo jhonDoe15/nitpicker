@@ -15,6 +15,10 @@ export const PUBLIC_FACES = {
     isPublic: () => true,
     describe: (directory) => `a class directly in ${directory}/`,
   },
+  go: {
+    isPublic: () => true,
+    describe: (directory) => `the package directly in ${directory}/`,
+  },
   typescript: {
     isPublic: (name) => INDEX_MODULE.test(name),
     describe: (directory) => `${directory}/index.ts`,
@@ -26,6 +30,9 @@ export function featureLayout(layout = {}) {
     sharedRoots: layout.sharedRoots ?? DEFAULT_FEATURE_LAYOUT.sharedRoots,
     featureRoots: layout.featureRoots ?? DEFAULT_FEATURE_LAYOUT.featureRoots,
     sharedInsideFeatures: layout.sharedInsideFeatures ?? layout.sharedRoots !== undefined,
+    notFeatures: layout.notFeatures ?? [],
+    notFeatureFolders: layout.notFeatureFolders ?? [],
+    aliases: layout.aliases ?? {},
   };
 }
 
@@ -51,22 +58,37 @@ function isShared(sharedFolder, featureDirectory, sharedInsideFeatures) {
   );
 }
 
-export function featureRoles({ sharedRoots, featureRoots, sharedInsideFeatures = false }) {
+export function featureRoles({
+  sharedRoots,
+  featureRoots,
+  sharedInsideFeatures = false,
+  notFeatures = [],
+  notFeatureFolders = [],
+  aliases = {},
+}) {
   const shared = sharedRoots.map((glob) => globMatcher(glob));
   const features = featureRoots.map((glob) => globMatcher(glob));
+  const excluded = new Set(notFeatures);
+  const excludedFolders = new Set(notFeatureFolders);
   return (file) => {
     const prefixes = folderPrefixes(file);
     const sharedFolder = prefixes.find(({ folder }) => matchesAny(shared, folder))?.folder;
     const feature = prefixes.findLast(
-      ({ folder, isLast }) => !isLast && matchesAny(features, folder),
+      ({ folder, child, isLast }) =>
+        !isLast &&
+        !excluded.has(child) &&
+        !excludedFolders.has(`${folder}/${child}`) &&
+        matchesAny(features, folder),
     );
-    const directory = feature === undefined ? undefined : `${feature.folder}/${feature.child}`;
-    if (isShared(sharedFolder, directory, sharedInsideFeatures)) {
+    const folder = feature === undefined ? undefined : `${feature.folder}/${feature.child}`;
+    if (isShared(sharedFolder, folder, sharedInsideFeatures)) {
       return { kind: 'shared' };
     }
-    return directory === undefined
-      ? { kind: 'other' }
-      : { kind: 'feature', directory, name: feature.child };
+    if (folder === undefined) {
+      return { kind: 'other' };
+    }
+    const role = { kind: 'feature', directory: folder, name: feature.child };
+    return Object.hasOwn(aliases, folder) ? { ...role, directory: aliases[folder], folder } : role;
   };
 }
 
@@ -89,7 +111,7 @@ export function withPublicFace(roleOf, publicFace) {
     if (role.kind !== 'feature') {
       return role;
     }
-    const inside = file.slice(role.directory.length + 1);
+    const inside = file.slice((role.folder ?? role.directory).length + 1);
     return {
       ...role,
       isPublic: !inside.includes('/') && publicFace.isPublic(inside),
