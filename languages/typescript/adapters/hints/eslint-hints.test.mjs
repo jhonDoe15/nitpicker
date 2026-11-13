@@ -7,8 +7,8 @@ import {
   eslintMessageWithHint,
   routedEslintFields,
   withoutFatalDirectives,
-} from './eslint-hints.mjs';
-import { growthAdviceFor } from './growth-advice.mjs';
+} from './eslint-hints.mts';
+import { growthAdviceFor } from './growth-advice.mts';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;

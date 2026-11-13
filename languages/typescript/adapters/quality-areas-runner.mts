@@ -6,11 +6,8 @@ import type {
   QualityAreaOptions,
 } from './quality-areas/typed/area-types.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
-import {
-  applyAreaExceptions,
-  isInvokedModule,
-  writeAdapterReport,
-} from './typed/static-checks.mts';
+import { isInvokedModule, writeAdapterReport } from './typed/static-checks.mts';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { hasProjectTests } from './test-runners/test-run.mjs';
 import type { Finding } from './static-checks/shared.mts';
 

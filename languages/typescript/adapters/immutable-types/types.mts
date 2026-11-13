@@ -1,5 +1,28 @@
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { KINDS } from './kinds.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../typed/typescript-program.mts';
+import { type Kind, KINDS } from './kinds.mts';
+
+type TypeNode = TypeScript.TypeNode;
+type SourceFile = TypeScript.SourceFile;
+
+export type TypeKind = { readonly kind?: Kind | 'class'; readonly label?: string };
+
+type PendingType = {
+  readonly node: TypeNode;
+  readonly trail: readonly string[];
+  readonly depth: number;
+  readonly notReadonly: boolean;
+};
+
+export type MutablePart = {
+  readonly trail: readonly string[];
+  readonly typeNode: TypeNode;
+  readonly notReadonly: boolean;
+};
+
+type ReadonlyMember = TypeScript.PropertySignature & { readonly type: TypeNode };
+
+const ts = typescriptApi();
 
 const READONLY_WRAPPERS = new Set(['Readonly', 'ReadonlyArray', 'ReadonlySet', 'ReadonlyMap']);
 
@@ -18,7 +41,7 @@ const MUTABLE_CLASSES = new Set([
   'WeakSet',
 ]);
 
-export function kindOfType(typeNode, sourceFile) {
+export function kindOfType(typeNode: TypeNode, sourceFile: SourceFile): TypeKind {
   if (ts.isArrayTypeNode(typeNode)) {
     return { kind: 'array', label: KINDS.array.label };
   }
@@ -33,7 +56,7 @@ export function kindOfType(typeNode, sourceFile) {
   return MUTABLE_CLASSES.has(name) ? { kind: 'class', label: name } : {};
 }
 
-const TYPE_NAME_KINDS = new Map([
+const TYPE_NAME_KINDS = new Map<string, Kind>([
   ['Array', 'array'],
   ['Set', 'set'],
   ['Map', 'map'],
@@ -43,14 +66,14 @@ const TYPE_NAME_KINDS = new Map([
   ['RegExpMatchArray', 'execArray'],
 ]);
 
-export function kindOfTypeName(name) {
+export function kindOfTypeName(name: string): Kind | undefined {
   return TYPE_NAME_KINDS.get(name);
 }
 
 const MAX_ALIAS_DEPTH = 4;
 
-export function mutablePart(typeNode, sourceFile) {
-  const pending = [{ node: typeNode, trail: [], depth: 0, notReadonly: false }];
+export function mutablePart(typeNode: TypeNode, sourceFile: SourceFile): MutablePart | undefined {
+  const pending: PendingType[] = [{ node: typeNode, trail: [], depth: 0, notReadonly: false }];
   for (const item of pending) {
     if (item.depth > MAX_ALIAS_DEPTH) {
       continue;
@@ -64,7 +87,7 @@ export function mutablePart(typeNode, sourceFile) {
   return undefined;
 }
 
-function isMutableType(node, sourceFile) {
+function isMutableType(node: TypeNode, sourceFile: SourceFile): boolean {
   if (ts.isArrayTypeNode(node)) {
     return true;
   }
@@ -75,7 +98,7 @@ function isMutableType(node, sourceFile) {
   return MUTABLE_CLASSES.has(name) || kindOfTypeName(name) !== undefined;
 }
 
-function childrenOf(node, item, sourceFile) {
+function childrenOf(node: TypeNode, item: PendingType, sourceFile: SourceFile): PendingType[] {
   const same = { trail: item.trail, depth: item.depth, notReadonly: false };
   if (ts.isTypeOperatorNode(node)) {
     const operand =
@@ -94,11 +117,15 @@ function childrenOf(node, item, sourceFile) {
   return [];
 }
 
-function elementOf(typeNode) {
+function elementOf(typeNode: TypeNode): TypeNode {
   return ts.isArrayTypeNode(typeNode) ? typeNode.elementType : typeNode;
 }
 
-function childrenOfReference(node, item, sourceFile) {
+function childrenOfReference(
+  node: TypeScript.TypeReferenceNode,
+  item: PendingType,
+  sourceFile: SourceFile,
+): PendingType[] {
   const name = node.typeName.getText(sourceFile);
   const deeper = { trail: item.trail, depth: item.depth + 1, notReadonly: false };
   if (READONLY_WRAPPERS.has(name)) {
@@ -107,7 +134,7 @@ function childrenOfReference(node, item, sourceFile) {
       .map((argument) => ({ ...deeper, node: argument }));
   }
   const declaration = sourceFile.statements.find(
-    (statement) =>
+    (statement): statement is TypeScript.TypeAliasDeclaration | TypeScript.InterfaceDeclaration =>
       (ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)) &&
       statement.name.text === name,
   );
@@ -119,9 +146,16 @@ function childrenOfReference(node, item, sourceFile) {
     : membersAsItems(declaration.members, { ...item, depth: item.depth + 1 }, sourceFile);
 }
 
-function membersAsItems(members, item, sourceFile) {
+function membersAsItems(
+  members: readonly TypeScript.TypeElement[],
+  item: PendingType,
+  sourceFile: SourceFile,
+): PendingType[] {
   return members
-    .filter((member) => ts.isPropertySignature(member) && member.type !== undefined)
+    .filter(
+      (member): member is ReadonlyMember =>
+        ts.isPropertySignature(member) && member.type !== undefined,
+    )
     .map((member) => ({
       node: member.type,
       trail: [...item.trail, member.name.getText(sourceFile)],

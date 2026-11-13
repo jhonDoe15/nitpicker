@@ -43,5 +43,7 @@ export const KINDS = {
   },
 };
 
+export type Kind = keyof typeof KINDS;
+
 export const ERROR_CLASS_HINT =
   'Error is a class and always mutable: type the field `unknown` (domain/ allows `error` and `cause` typed unknown for a caught error) or carry `message: string`.';

@@ -1,13 +1,20 @@
-import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
-import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
-import { definedField } from '../../../../shared/messages/messages.mjs';
-import { readLayout } from '../../preset/head-policy.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { readLayout } from '../typed/head-policy.mts';
 import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
-import { regexpRuleHints } from '../../preset/eslint-config/regexp/regexp-rules.mjs';
-import { immutableTypesParts } from './immutable-types-hint.mjs';
-import { withStatedForm } from './stated-form.mjs';
-import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
+import { immutableTypesParts } from './immutable-types-hint.mts';
+import { withStatedForm } from './stated-form.mts';
 import { logicRuleHints } from '../../preset/eslint-config/logic/logic-rules.mjs';
+import {
+  type HintInput,
+  type HintedFields,
+  type Rewriter,
+  definedField,
+  regexpRuleHints,
+  restrictedMatcherText,
+  withEslintRoute,
+} from './eslint-routes.mts';
+
+type RewriteInput = Parameters<Rewriter>[0];
 
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
@@ -109,24 +116,24 @@ const UNUSED_VARIABLE_HINT = ' Remove it, or use it.';
 
 const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
-function hinted(text, hint) {
+function hinted(text: string, hint: string): HintedFields {
   return { message: `${text}${hint}`, allowedForm: hint.replace(/^[.\s]+/u, '') };
 }
 
-function directive(message) {
+function directive(message: string): HintedFields {
   return { message, allowedForm: message };
 }
 
-function immutableTypesRewrite({ text, node, sourceFile }) {
+function immutableTypesRewrite({ text, node, sourceFile }: RewriteInput): string | HintedFields {
   const kind = IMMUTABLE_TYPES_PREFIX.exec(text)?.[1];
   return kind === undefined ? text : immutableTypesParts({ kind, node, sourceFile });
 }
 
-function rejectErrorsMessage({ text, relativePath }) {
+function rejectErrorsMessage({ text, relativePath }: RewriteInput): string | HintedFields {
   return readLayout().isTestFile(relativePath) ? hinted(text, REJECT_ERRORS_TEST_HINT) : text;
 }
 
-function legacyAnyHint(relativePath) {
+function legacyAnyHint(relativePath: string): string {
   const inDomain = DOMAIN_PATH.test(relativePath);
   if (readLayout().javascript) {
     return inDomain ? JAVASCRIPT_DOMAIN_LEGACY_ANY_HINT : JAVASCRIPT_LEGACY_ANY_HINT;
@@ -134,7 +141,7 @@ function legacyAnyHint(relativePath) {
   return inDomain ? DOMAIN_LEGACY_ANY_HINT : LEGACY_ANY_HINT;
 }
 
-function unsafeAnyMessage({ text, relativePath }) {
+function unsafeAnyMessage({ text, relativePath }: RewriteInput): string | HintedFields {
   if (UNRESOLVED_TYPE.test(text)) {
     return hinted(text, UNRESOLVED_TYPE_HINT);
   }
@@ -144,7 +151,7 @@ function unsafeAnyMessage({ text, relativePath }) {
   return hinted(text, legacyAnyHint(relativePath));
 }
 
-function onlyThrowErrorMessage({ text, relativePath }) {
+function onlyThrowErrorMessage({ text, relativePath }: RewriteInput): string | HintedFields {
   if (text !== ONLY_THROW_ERROR_TEXT) {
     return text;
   }
@@ -153,68 +160,68 @@ function onlyThrowErrorMessage({ text, relativePath }) {
   );
 }
 
-function expectExpectMessage({ text }) {
+function expectExpectMessage({ text }: RewriteInput): string | HintedFields {
   return text === NO_ASSERTIONS_TEXT ? hinted(NO_ASSERTIONS_TEXT, NO_ASSERTIONS_HINT) : text;
 }
 
-function duplicateConstituentsMessage({ text }) {
+function duplicateConstituentsMessage({ text }: RewriteInput): string | HintedFields {
   return hinted(text, DUPLICATE_CONSTITUENTS_HINT);
 }
 
-function invalidVoidMessage({ text }) {
+function invalidVoidMessage({ text }: RewriteInput): string | HintedFields {
   return hinted(text, INVALID_VOID_HINT);
 }
 
-function switchExhaustivenessMessage({ text }) {
+function switchExhaustivenessMessage({ text }: RewriteInput): string | HintedFields {
   return text.startsWith(SWITCH_NOT_EXHAUSTIVE_TEXT)
     ? hinted(text, SWITCH_NOT_EXHAUSTIVE_HINT)
     : text;
 }
 
-function disabledTestMessage({ text }) {
+function disabledTestMessage({ text }: RewriteInput): string | HintedFields {
   return hinted(text.replace(DISABLED_TEST_TAIL, '').replace(/\.$/u, ''), DISABLED_TEST_HINT);
 }
 
-function restrictedMatcherMessage({ text }) {
+function restrictedMatcherMessage({ text }: RewriteInput): string | HintedFields {
   const matcher = BACKTICKED_MATCHER.exec(text)?.[1];
-  const replacement = matcher === undefined ? undefined : restrictedMatchers[matcher];
+  const replacement = matcher === undefined ? undefined : restrictedMatcherText(matcher);
   return replacement === undefined ? text : directive(replacement);
 }
 
-function floatingPromiseMessage({ text }) {
+function floatingPromiseMessage({ text }: RewriteInput): string | HintedFields {
   return FLOATING_PROMISE_TEXT.test(text) ? directive(FLOATING_PROMISE_MESSAGE) : text;
 }
 
-function boundaryTypesMessage({ text }) {
+function boundaryTypesMessage({ text }: RewriteInput): string | HintedFields {
   return RETURN_TYPE_TEXT.test(text)
     ? directive(RETURN_TYPE_MESSAGE)
     : hinted(text.replace(/\.?$/u, '.'), ARGUMENT_TYPE_HINT);
 }
 
-function unusedVariableMessage({ text }) {
+function unusedVariableMessage({ text }: RewriteInput): string | HintedFields {
   return UNUSED_PARAMETER_TAIL.test(text)
     ? hinted(text.replace(UNUSED_PARAMETER_TAIL, ''), UNUSED_PARAMETER_HINT)
     : hinted(text, UNUSED_VARIABLE_HINT);
 }
 
-function appendHint(hint) {
+function appendHint(hint: string): Rewriter {
   return ({ text }) => hinted(text, hint);
 }
 
-function sentenceHint(hint) {
+function sentenceHint(hint: string): Rewriter {
   return ({ text }) => hinted(text.trimEnd().replace(/(?<![.!?])$/u, '.'), hint);
 }
 
-function nodeTestMessage({ text }) {
+function nodeTestMessage({ text }: RewriteInput): string | HintedFields {
   return hinted(text, NODE_TEST_HINT);
 }
 
-const MESSAGE_REWRITERS = new Map([
+const MESSAGE_REWRITERS = new Map<string, Rewriter>([
   ['vitest/no-import-node-test', nodeTestMessage],
   ['vitest/no-disabled-tests', disabledTestMessage],
   ['vitest/no-restricted-matchers', restrictedMatcherMessage],
-  ['vitest/prefer-called-with', () => directive(PREFER_CALLED_WITH_TEXT)],
-  ['vitest/require-to-throw-message', () => directive(THROW_MESSAGE_TEXT)],
+  ['vitest/prefer-called-with', (): HintedFields => directive(PREFER_CALLED_WITH_TEXT)],
+  ['vitest/require-to-throw-message', (): HintedFields => directive(THROW_MESSAGE_TEXT)],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
@@ -232,54 +239,32 @@ const MESSAGE_REWRITERS = new Map([
   ['nitpicker/naming-convention', appendHint(NAMING_HINT)],
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
   ['nitpicker/require-atomic-updates', appendHint(ATOMIC_UPDATE_HINT)],
-  ['no-eval', () => directive(EVAL_MESSAGE)],
+  ['no-eval', (): HintedFields => directive(EVAL_MESSAGE)],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
   ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
-  ...regexpRuleHints().map(([rule, hint]) => [rule, appendHint(hint)]),
+  ...regexpRuleHints().map(([rule, hint]): [string, Rewriter] => [rule, appendHint(hint)]),
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
   ['no-unused-vars', unusedVariableMessage],
-  ...Object.entries(logicRuleHints).map(([rule, hint]) => [rule, sentenceHint(hint)]),
+  ...Object.entries(logicRuleHints).map(([rule, hint]): [string, Rewriter] => [
+    rule,
+    sentenceHint(hint),
+  ]),
 ]);
 
-const NO_ROUTE_RULES = new Set([
-  'eslint/unused-disable-directive',
-  'eslint/inline-config-disabled',
-]);
-
-export function eslintRoute({ rule, path: relativePath }) {
-  return NO_ROUTE_RULES.has(rule) ? undefined : exceptionRoute({ rule, path: relativePath });
-}
-
-function withEslintRoute(text, finding) {
-  return appendSentence(text, eslintRoute(finding));
-}
-
-const METRIC_GROWTH_ADVICE = 'Put new code in a new function.';
-
-export function metricGrowth(finding, plan) {
-  return {
-    worseMessage: withEslintRoute(
-      `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. ${METRIC_GROWTH_ADVICE}`,
-      finding,
-    ),
-    worseAllowedForm: METRIC_GROWTH_ADVICE,
-  };
-}
-
-function eslintHint({ ruleId, text, relativePath, node, sourceFile }) {
+function eslintHint({ ruleId, text, relativePath, node, sourceFile }: HintInput): HintedFields {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
   const rewritten =
     rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
   return withStatedForm(ruleId, typeof rewritten === 'string' ? { message: rewritten } : rewritten);
 }
 
-export function eslintMessageWithHint(options) {
+export function eslintMessageWithHint(options: HintInput): string {
   return eslintHint(options).message;
 }
 
-export function routedEslintFields(options) {
+export function routedEslintFields(options: HintInput): HintedFields {
   const { message, allowedForm } = eslintHint(options);
   return {
     message: withEslintRoute(message, { rule: options.ruleId, path: options.relativePath }),
@@ -289,9 +274,13 @@ export function routedEslintFields(options) {
 
 const UNSUPPORTED_DIRECTIVE_TEXT = '/* eslint-env */ comments are no longer supported';
 
-export function withoutFatalDirectives(messages) {
-  return messages.filter(
-    (message) =>
-      !(message?.fatal === true && message.message?.startsWith(UNSUPPORTED_DIRECTIVE_TEXT)),
-  );
+export function withoutFatalDirectives<T>(messages: readonly T[]): T[] {
+  return messages.filter((message) => {
+    const text = fieldOf(message, 'message');
+    return !(
+      fieldOf(message, 'fatal') === true &&
+      typeof text === 'string' &&
+      text.startsWith(UNSUPPORTED_DIRECTIVE_TEXT)
+    );
+  });
 }

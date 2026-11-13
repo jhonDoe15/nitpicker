@@ -14,12 +14,12 @@ import {
   type CruiseReport,
   type CruiseSummary,
   type CruiseViolation,
-  applyAreaExceptions,
   existingRoots,
   loadDependencyGraph,
   sharedReachPath,
-  withTypeScriptHint,
 } from './typed/static-checks.mts';
+import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
+import { withTypeScriptHint } from './hints/tool-failure-hint.mts';
 import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
 
 type ViolationText = {

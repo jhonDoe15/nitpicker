@@ -19,9 +19,8 @@ import {
   type EslintFinding,
   type EslintMessage,
   isFieldRecord as isRecord,
-  routedEslintFields,
-  withoutFatalDirectives,
 } from './typed/engine.mts';
+import { routedEslintFields, withoutFatalDirectives } from '../hints/eslint-hints.mts';
 import { positiveInteger } from './arguments.mts';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mts';
 import {
