@@ -37,6 +37,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
   name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
   (`doc-comment-content`).
+- A `TODO` or `FIXME` names its issue (`TODO(#123): ...`), and commented-out code is deleted
+  (`pmd/TodoWithoutIssue`, `pmd/CommentedOutCode`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security, a broad-catch rule, the boolean simplification rules and its own guard rules),
   forbiddenapis, javac lint and Google checks. A project's `config/pmd/ruleset.xml` or

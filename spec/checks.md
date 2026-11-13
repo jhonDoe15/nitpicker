@@ -210,6 +210,13 @@ Gradle and Maven) and as the `HardcodedSecret`, `CredentialLiteral` and `SecretI
 Kotlin preset. All presets share one definition of the names and the values
 (`shared/naming/secret-words.mjs`). Spring configuration files have their own `literal-secret` check.
 
+Task markers and commented-out code: `todo-without-issue` and `commented-out-code` report a `TODO` or
+`FIXME` comment with no issue reference, and a comment that reads as code. The Python preset runs them as
+`todo-without-issue` and ruff `ERA001`, the Kotlin preset as detekt `ForbiddenComment` and the `CommentedOutCode`
+source check, the Java preset as `pmd/TodoWithoutIssue` and `pmd/CommentedOutCode` (a scan of the source
+comments, on `.java` files of Kotlin projects too), and the Go preset as `go-rules/todo-without-issue` and
+go-critic `commentedOutCode`. The TypeScript and JavaScript presets ban comments outright.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
