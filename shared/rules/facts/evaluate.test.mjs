@@ -19,6 +19,7 @@ import {
 
 const CONSOLE = 'test-console-output';
 const FEATURE_RULES = ['feature-internal-import', 'shared-imports-feature', 'feature-cycle'];
+const PERSISTENCE = 'foreign-feature-persistence';
 
 function factRulesOf(language) {
   return Object.entries(FACT_RULE_LANGUAGES)
@@ -61,10 +62,10 @@ describe('the shared fact rules', () => {
       FEATURE_RULES.map(() => ({
         typescript: true,
         javascript: true,
-        java: false,
+        java: true,
         python: true,
-        kotlin: false,
-        go: false,
+        kotlin: true,
+        go: true,
       })),
     );
     expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
@@ -74,6 +75,8 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('typescript')).toEqual(factRulesOf('typescript'));
     expect(registeredFactRules('javascript')).toEqual(factRulesOf('javascript'));
     expect(registeredFactRules('python')).toEqual(factRulesOf('python'));
+    expect(registeredFactRules('java')).toEqual(factRulesOf('java'));
+    expect(registeredFactRules('kotlin')).toEqual(factRulesOf('kotlin'));
     expect(registeredFactRules('cobol')).toEqual([]);
   });
 
@@ -138,6 +141,15 @@ describe('the shared fact rules', () => {
       { protocols: [{ type: 'S', open: ['o'], close: ['c'], reason: '' }] },
       'policy.protocols must be an array of { type, open, close, steps?, reason? } entries',
     ],
+    [
+      { layout: { notFeatureFolders: [1] } },
+      'policy.layout.notFeatureFolders must be an array of folders',
+    ],
+    [{ layout: { aliases: [] } }, 'policy.layout.aliases must be an object of folder to folder'],
+    [
+      { layout: { aliases: { a: 1 } } },
+      'policy.layout.aliases must be an object of folder to folder',
+    ],
     [{ testConsole: 'x' }, 'policy.testConsole must be an object'],
     [{ layout: 'x' }, 'policy.layout must be an object'],
     [{ layout: [] }, 'policy.layout must be an object'],
@@ -193,6 +205,7 @@ describe('the shared fact rules', () => {
       'sibling-copy-edit',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
+      PERSISTENCE,
       'public-alternative-bypass',
       'test-only-export',
       'doc-comment-content',
@@ -204,13 +217,14 @@ describe('the shared fact rules', () => {
       'duplicate-definition',
       'sibling-copy-edit',
       'shared-used-by-one-feature',
+      ...FEATURE_RULES,
       'test-only-export',
       'doc-comment-content',
       'test-console-output',
     ]);
-    withLanguageRegistered('feature-cycle', 'kotlin', () => {
+    withLanguageRegistered('public-alternative-bypass', 'go', () => {
       expect(sharedFactExceptionRules()).toEqual(python);
-      expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
+      expect(registeredFactRules('go').includes('public-alternative-bypass')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });
   });
