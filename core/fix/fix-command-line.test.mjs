@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { runCli as nitpickerCli } from '../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
@@ -80,6 +81,7 @@ describe('nitpicker --fix for a Python project', () => {
     expect(tools.operations()).toEqual([
       'python-probe',
       'ruff-fix',
+      'ruff-fix',
       'ruff-format-fix',
       'ruff-format-fix',
       'ruff-format-fix',
@@ -118,5 +120,25 @@ describe('nitpicker --fix for a Python project', () => {
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toBe('nitpicker failed: --fix cannot be combined with --all\n');
+  });
+});
+
+describe('nitpicker --fix with a recipe', () => {
+  it('lists the findings a recipe fixed with the recipe that fixed them', () => {
+    const repository = createRepository({
+      'nitpicker.config.json': '{ "preset": "java" }\n',
+      'build.gradle': "plugins { id 'java' }\n",
+      'quality-policy.json': policy(),
+    });
+    writeFiles(repository.root, { 'src/main/java/A.java': 'class A { long a = 1l; }\n' });
+
+    const { output } = run(repository, ['--fix'], fakeJvmTools());
+
+    expect(output.stdoutText.slice(0, output.stdoutText.indexOf('Base: '))).toBe(
+      'Fixed files:\nsrc/main/java/A.java\nFixed findings:\n  src/main/java/A.java:1 checkstyle/UpperEll (java-upper-ell)\n',
+    );
+    expect(readFileSync(path.join(repository.root, 'src/main/java/A.java'), 'utf8')).toBe(
+      'class A { long a = 1L; }\n',
+    );
   });
 });

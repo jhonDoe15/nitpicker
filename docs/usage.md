@@ -747,12 +747,14 @@ nitpicker rules [--preset <name>] [--tool <name>]
   is. Only files whose bytes changed are listed under "Fixed files:", and a
   formatter leaves alone a file that already failed its format check on the base (ktlint, whose
   findings are per line, formats only the code around your change in such a file). ESLint,
-  Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
+  `ruff check --fix`, Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
-  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
-  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
-  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
-  other fixers and the comparison still run. Cannot be combined with `--all`.
+  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint, `ruff check --fix`
+  and the Python, Java and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
+  `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)) and
+  lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
+  error; the other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
@@ -1948,6 +1950,23 @@ A timeout is not policy: changing it is not listed as a policy change, and a pul
 raises it runs both snapshots with the head's timeouts. A lowered timeout that makes an analyzer
 time out is still a tool error (exit 2).
 
+## Fix recipes
+
+A fix recipe rewrites the code a single rule flags, where one rewrite is correct in every case the
+rule reports. Recipes run with `--fix` on the changed files, before the formatter, so they never
+format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`.
+
+| Preset | Rule | Recipe | What it does |
+| --- | --- | --- | --- |
+| java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
+| kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
+
+A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
+meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is
+skipped and planned again on the new text. Recipes repeat until nothing changes, up to three passes,
+and a fix still left after that is named in a "Fix notes:" line. A recipe that fails is reported as
+a tool error, and the other recipes still run.
+
 ## Java preset
 
 Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
@@ -2184,8 +2203,9 @@ error.
 
 `--fix` runs inside that environment, on the changed `.py`, `.pyi` and `.ipynb` files, the files
 the gate's ruff and format checks cover: `ruff check --fix` with nitpicker's selected rules and
-ruff's safe fixes, then the formatter the run names (ruff format or black) with the options of the
-"Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
+ruff's safe fixes, one file at a time over stdin so that nitpicker writes the result the same safe
+way it writes formatter output, then the formatter the run names (ruff format or black) with the
+options of the "Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
 never deleted (the gate's check ignores them, but only on the lines you change). Like ESLint on
 TypeScript, it fixes the whole changed file, not only the changed lines. Notebooks go to Black too,
 which formats them, as the gate checks them, only when its `jupyter` extra (`black[jupyter]`) is
