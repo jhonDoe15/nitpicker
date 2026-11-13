@@ -14,7 +14,7 @@ import {
 import { scopeLine } from '../../../scope/scope-findings.mjs';
 import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mts';
 import { failingHeadTests as failingTests } from '../failing-tests/failing-tests.mts';
-import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
+import type { ReportData } from '../../../../shared/values/findings.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
 
 type Summary = ReportData['summary'];

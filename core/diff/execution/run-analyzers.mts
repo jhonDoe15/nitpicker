@@ -7,6 +7,7 @@ import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
+import { recoverAnalyzerVersion, resolveAnalyzerMetadata } from './report/analyzer-metadata.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 
@@ -53,10 +54,6 @@ type PreparedTask = {
 
 type ScheduledRun = Omit<AnalyzerRun, 'reports'> & { readonly reports: Map<string, unknown> };
 
-export type MetadataContext = { readonly liveProjectRoot: unknown; readonly policyRoot: unknown };
-
-type Resolver = (root: unknown) => unknown;
-
 const reportsNamed: (
   reports: Map<string, unknown>,
   snapshotRoot: object | undefined,
@@ -69,32 +66,8 @@ const errorText: (error: unknown) => string = describeError;
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 
-function isResolver(value: unknown): value is Resolver {
-  return typeof value === 'function';
-}
-
 function isRunTasks(value: unknown): value is RunTasks {
   return typeof value === 'function';
-}
-
-function isAnalyzerObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-export function resolveAnalyzerMetadata(
-  analyzer: unknown,
-  { liveProjectRoot, policyRoot }: MetadataContext,
-): void {
-  if (!isAnalyzerObject(analyzer)) {
-    return;
-  }
-  const { resolveVersion, resolveConfigurationHash } = analyzer;
-  if (isResolver(resolveVersion)) {
-    analyzer['version'] = resolveVersion.call(analyzer, liveProjectRoot);
-  }
-  if (isResolver(resolveConfigurationHash)) {
-    analyzer['configurationHash'] = resolveConfigurationHash.call(analyzer, policyRoot);
-  }
 }
 
 export function runAnalyzers({
@@ -286,14 +259,4 @@ function createTask(analyzer: unknown, context: TaskContext): PreparedTask {
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
     invocation,
   };
-}
-
-function recoverAnalyzerVersion(analyzer: unknown): void {
-  if (
-    isAnalyzerObject(analyzer) &&
-    typeof analyzer['resolveVersion'] === 'function' &&
-    analyzer['version'] === 'unresolved'
-  ) {
-    analyzer['version'] = 'unknown';
-  }
 }

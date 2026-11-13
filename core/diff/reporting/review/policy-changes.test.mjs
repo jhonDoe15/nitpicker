@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { appendPolicyChangeSummary, policyChangeSection } from './policy-changes.mts';
+import { policyChangeSection, policyChangeSummaryLines } from './policy-changes.mts';
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 
 describe('policy change rendering', () => {
   it('renders nothing without changes', () => {
-    const lines = ['kept'];
-    appendPolicyChangeSummary(lines, { policyChanges: [] }, (text) => `<${text}>`);
-    appendPolicyChangeSummary(lines, undefined, (text) => `<${text}>`);
+    const lines = [
+      'kept',
+      ...policyChangeSummaryLines({ policyChanges: [] }, (text) => `<${text}>`),
+      ...policyChangeSummaryLines(undefined, (text) => `<${text}>`),
+    ];
 
     expect(policyChangeSection()).toEqual([]);
     expect(policyChangeSection({ policyChanges: [] })).toEqual([]);
@@ -16,8 +18,7 @@ describe('policy change rendering', () => {
 
   it('renders a heading and one indented line per change', () => {
     const summary = { policyChanges: ['exclude added: a/**', 'analyzer disabled: mutation'] };
-    const lines = [];
-    appendPolicyChangeSummary(lines, summary, (text) => `<${text}>`);
+    const lines = policyChangeSummaryLines(summary, (text) => `<${text}>`);
 
     expect(policyChangeSection(summary)).toEqual([
       '',

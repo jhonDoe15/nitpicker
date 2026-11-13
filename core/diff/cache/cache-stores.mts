@@ -170,11 +170,11 @@ export function createHttpStore({
 export function createLayeredStore({
   local,
   remote,
-  writeRemote = false,
+  writeRemote,
 }: {
   readonly local: CacheStore | undefined;
   readonly remote: CacheStore | undefined;
-  readonly writeRemote?: boolean;
+  readonly writeRemote: boolean;
 }): CacheStore {
   return {
     get(key: string): string | undefined {
@@ -199,9 +199,11 @@ export function createLayeredStore({
 
 export function resolveCacheStore({
   projectRoot,
-  environment = process.env,
-  writeRemote = false,
-}: CacheLocation & { readonly writeRemote?: boolean }): {
+  environment,
+}: {
+  readonly projectRoot: string;
+  readonly environment: NodeJS.ProcessEnv;
+}): {
   readonly store: CacheStore | undefined;
   readonly remote: CacheStore | undefined;
   readonly warnings: string[];
@@ -214,7 +216,7 @@ export function resolveCacheStore({
     warnings.push(NO_CACHE_WARNING);
     return { store: undefined, remote, warnings };
   }
-  const store = { ...createLayeredStore({ local, remote, writeRemote }), directory };
+  const store = { ...createLayeredStore({ local, remote, writeRemote: false }), directory };
   return { store, remote, warnings };
 }
 
@@ -223,7 +225,9 @@ function resolveRemoteStore(
   warnings: string[],
 ): CacheStore | undefined {
   const url = environment['NITPICKER_CACHE_URL'];
-  if (typeof url !== 'string' || url.length === 0) return undefined;
+  if (typeof url !== 'string' || url.length === 0) {
+    return undefined;
+  }
   if (!/^https?:\/\/[^\s/]/u.test(url)) {
     warnings.push(
       textOf(

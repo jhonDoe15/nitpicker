@@ -11,7 +11,7 @@ const ABBREVIATION = /\b(?:e\.g|i\.e)\.$/iu;
 export function designNoteLines(
   findings: readonly ReportEntry[],
   diagnosticsPath: string,
-  { snapshot = false }: { readonly snapshot?: boolean } = {},
+  { snapshot }: { readonly snapshot: boolean },
 ): string[] {
   const descriptive = findings.filter(({ classification }) => classification === 'descriptive');
   if (descriptive.length === 0) {

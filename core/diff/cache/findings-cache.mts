@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto';
 import { type CacheStore, createDirectoryStore, resolveCacheDirectory } from './cache-stores.mts';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
-import { type MetadataContext, resolveAnalyzerMetadata } from '../execution/run-analyzers.mts';
+import {
+  type MetadataContext,
+  resolveAnalyzerMetadata,
+} from '../execution/report/analyzer-metadata.mts';
 import { nitpickerCodeFingerprint } from './code-fingerprint.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
-import { fieldOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, textsOf } from '../../../shared/values/readers.mts';
+import { analyzerNameOf as nameOf } from '../../../shared/values/analyzers.mts';
 
 export type FindingsCache = {
   readonly read: (analyzer: unknown) => AnalyzerReport | undefined;
@@ -44,10 +48,6 @@ const reportOf: (value: unknown, analyzerName: unknown) => AnalyzerReport = pars
 const parseJson: (text: string) => unknown = JSON.parse;
 
 const CACHE_SCHEMA = 1;
-
-function nameOf(analyzer: unknown): string {
-  return textOf(fieldOf(analyzer, 'name'));
-}
 
 const UNAVAILABLE_STORE: CacheStore = {
   get(): undefined {
@@ -174,7 +174,9 @@ export function runBaseWithCache<T extends CachedRun>({
     toRun.size === 0
       ? { reports: new Map(), timings: new Map(), toolErrors: [] }
       : run(analyzers.filter((analyzer) => toRun.has(nameOf(analyzer))));
-  for (const analyzer of analyzers) applyCachedReport(analyzer, { result, cached, cache });
+  for (const analyzer of analyzers) {
+    applyCachedReport(analyzer, { result, cached, cache });
+  }
   return result;
 }
 
@@ -218,14 +220,12 @@ export function isCacheable(
     readonly reports?: ReadonlyMap<string, AnalyzerReport>;
   },
 ): boolean {
-  const name = fieldOf(analyzer, 'name');
+  const failedTools = new Set(toolErrors.map((error) => error.tool));
   return (
-    !toolErrors.some((error) => error.tool === name) &&
-    !hasToolErrorFinding(report) &&
+    !(failedTools.has(nameOf(analyzer)) || hasToolErrorFinding(report)) &&
     textsOf(fieldOf(analyzer, 'dependencies')).every(
       (dependency) =>
-        !toolErrors.some((error) => error.tool === dependency) &&
-        !hasToolErrorFinding(reports.get(dependency)),
+        !(failedTools.has(dependency) || hasToolErrorFinding(reports.get(dependency))),
     )
   );
 }
@@ -270,8 +270,12 @@ function applyCachedReport(
   const report = result.reports.get(name);
   if (report === undefined) {
     const hit = cached.get(name);
-    if (hit !== undefined) result.reports.set(name, hit);
+    if (hit !== undefined) {
+      result.reports.set(name, hit);
+    }
     return;
   }
-  if (isCacheable(analyzer, report, result)) cache.write(analyzer, report);
+  if (isCacheable(analyzer, report, result)) {
+    cache.write(analyzer, report);
+  }
 }

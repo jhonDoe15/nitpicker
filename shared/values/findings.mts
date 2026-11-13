@@ -1,4 +1,4 @@
-export type Location = {
+type Location = {
   readonly line: number;
   readonly column?: number;
   readonly endLine?: number;

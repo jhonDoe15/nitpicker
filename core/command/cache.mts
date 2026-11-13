@@ -38,7 +38,7 @@ type CacheCli = {
   readonly arguments_: readonly string[];
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;
-  readonly environment?: NodeJS.ProcessEnv | undefined;
+  readonly environment: NodeJS.ProcessEnv;
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
@@ -158,7 +158,7 @@ export function runCacheCommand(cli: CacheCli): number {
   );
   const config: NitpickerConfig = loadConfig(projectRoot);
   const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
-    maven: cli.environment?.['NITPICKER_MAVEN'],
+    maven: cli.environment['NITPICKER_MAVEN'],
   });
   const selected = selectedAnalyzers(
     configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),

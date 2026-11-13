@@ -27,7 +27,6 @@ export type CliOptions = {
   readonly outputRoot?: string;
 };
 
-
 export type CliInput = {
   readonly arguments_?: readonly string[] | undefined;
   readonly environment?: NodeJS.ProcessEnv | undefined;

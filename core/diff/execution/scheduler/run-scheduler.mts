@@ -8,6 +8,7 @@ import {
   troubleshootingError,
 } from '../../../../shared/messages/troubleshooting.mjs';
 import type { RunTaskOptions } from '../progress.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
 
 type SchedulerRun = {
   readonly status: unknown;
@@ -57,20 +58,19 @@ export function runScheduler(
       input: JSON.stringify({
         tasks:
           liveProgress && progress !== undefined ? withProgressLabel(tasks, progress.label) : tasks,
+        environment: {
+          ...(headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile)),
+          ...sharedEnvironment,
+        },
       }),
       stdio: ['pipe', 'pipe', 'pipe', ...(liveProgress ? [progress?.stream.fd] : [])],
-      env: {
-        ...process.env,
-        ...(headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile)),
-        ...sharedEnvironment,
-      },
       encoding: 'utf8',
       maxBuffer: tasks.length * MAX_ANALYZER_OUTPUT_BYTES + SCHEDULER_OUTPUT_OVERHEAD_BYTES,
       timeout: schedulerDeadline(tasks),
     }),
   );
   if (result.error !== undefined) {
-    throw result.error;
+    throw result.error instanceof Error ? result.error : new Error(textOf(result.error));
   }
   if (result.status !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';

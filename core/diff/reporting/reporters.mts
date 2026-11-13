@@ -13,7 +13,7 @@ import type { ReferenceLinks, ReportData } from '../../../shared/values/findings
 
 export type { ReferenceLinks };
 
-export type RenderOptions = {
+type RenderOptions = {
   readonly reference: ReferenceLinks;
   readonly projectPath?: string | undefined;
   readonly repositoryRoot?: string | undefined;

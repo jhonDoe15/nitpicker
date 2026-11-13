@@ -10,6 +10,11 @@ import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs'
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import {
+  findingSectionLines,
+  ruleFilterSection,
+  toolErrorSectionLines,
+} from './console/text-sections.mts';
 
 type Summary = ReportData['summary'];
 
@@ -37,12 +42,12 @@ export function renderTextReport(
     ...noticeSection(listOf(report.summary['notices'])),
     ...toolCountLines(report.summary),
   ];
-  appendFindingSection(lines, 'New findings', report.newFindings);
+  lines.push(...findingSectionLines('New findings', report.newFindings));
   lines.push(...ruleReferenceLines(report.newFindings, reference));
   appendHeldSection(lines, report.unchangedFindings);
-  appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
+  lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
   appendMetricSection(lines, report.changedMetrics);
-  appendToolErrorSection(lines, report.toolErrors);
+  lines.push(...toolErrorSectionLines(report.toolErrors));
   lines.push(...noteLines(report.notes));
   return `${lines.join('\n')}\n`;
 }
@@ -101,37 +106,11 @@ export function renderRuleFilterSection(
   report: ReportData,
   ruleFilters: readonly string[],
 ): string {
-  if (ruleFilters.length === 0) {
-    return '';
-  }
-  function matches(finding: ReportEntry): boolean {
-    return ruleFilters.some((filter) =>
-      `${textOf(finding.tool)}/${textOf(finding.rule)}`.includes(filter),
-    );
-  }
-  const lines = ['', `Findings matching --rule ${ruleFilters.join(', ')}:`];
-  appendFindingSection(lines, '  New', report.newFindings.filter(matches));
-  appendFindingSection(lines, '  Unchanged', report.unchangedFindings.filter(matches));
-  appendFindingSection(lines, '  Resolved', report.resolvedFindings.filter(matches));
-  return `${lines.join('\n')}\n`;
-}
-
-function appendFindingSection(
-  lines: unknown[],
-  heading: string,
-  findings: readonly ReportEntry[],
-): void {
-  if (findings.length === 0) {
-    return;
-  }
-  lines.push('', `${heading}:`);
-  for (const finding of findings) {
-    const location =
-      finding['location'] === undefined ? '' : `:${field(finding['location'], 'line')}`;
-    lines.push(
-      `${textOf(finding.tool)}/${textOf(finding.rule)} ${textOf(finding.path)}${location} ${textOf(finding.message)}`,
-    );
-  }
+  return ruleFilterSection(ruleFilters, [
+    ['  New', report.newFindings],
+    ['  Unchanged', report.unchangedFindings],
+    ['  Resolved', report.resolvedFindings],
+  ]);
 }
 
 export function ruleReferenceLines(
@@ -169,16 +148,6 @@ function appendMetricSection(lines: unknown[], metrics: readonly ReportEntry[]):
     lines.push(
       `${textOf(metric.tool)}/${textOf(metric.rule)} ${textOf(metric.path)} ${field(metric, 'metric')}: ${change}`,
     );
-  }
-}
-
-function appendToolErrorSection(lines: unknown[], toolErrors: readonly ReportEntry[]): void {
-  if (toolErrors.length === 0) {
-    return;
-  }
-  lines.push('', 'Tool errors:');
-  for (const error of toolErrors) {
-    lines.push(`${textOf(error.tool)} (${textOf(error.snapshot)}): ${textOf(error.message)}`);
   }
 }
 
