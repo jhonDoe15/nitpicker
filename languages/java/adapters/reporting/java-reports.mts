@@ -11,7 +11,7 @@ import {
   withModuleIdentity,
   withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mts';
-import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
+import { readErrorProneFindings } from '../errorprone/java-errorprone.mts';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';

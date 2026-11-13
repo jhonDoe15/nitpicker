@@ -25,7 +25,7 @@ import { applyRuleMessages } from '../messages/rule-messages.mjs';
 import { readGuardFindings } from './index.mts';
 import { coveredByCpd } from './cpd-duplicates.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
-import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mjs';
+import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mts';
 import { readCpdFindings } from './cpd-duplicates.mjs';
 import { readLintFindings } from './javac-lint.mjs';
 import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
