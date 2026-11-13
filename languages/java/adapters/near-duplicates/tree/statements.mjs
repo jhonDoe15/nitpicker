@@ -1,5 +1,5 @@
 import { listOf, statementsOf } from '../../../../../shared/near-duplicates/unit-parts.mjs';
-import { NONE, at, codeChildren, field, fields, typeNode } from './nodes.mjs';
+import { NONE, at, codeChildren, field, fields, grouped, typeNode } from './nodes.mjs';
 
 function blockOf(source, context) {
   if (source === undefined) {
@@ -8,10 +8,6 @@ function blockOf(source, context) {
   return source.type === 'block'
     ? context.get(source)
     : at('block', source, statementsOf(source, context));
-}
-
-function grouped(value, source, children) {
-  return at({ kind: 'statement', value }, source, children);
 }
 
 function optionalChild(source, context) {

@@ -116,6 +116,31 @@ describe('near-duplicate over near-duplicate units', () => {
     expect(findings(unitsOf(literals, large))).toEqual([]);
   });
 
+  it('leaves out the platform variants of one declaration in Kotlin Multiplatform source sets', () => {
+    const [readUri, readUrl] = unitsOf().filter(({ name }) => name.startsWith('readUr'));
+    const placed = (unit, file) => ({ ...unit, file, name: 'read' });
+    const platform = (set) => `core/src/${set}Main/kotlin/net/Read.kt`;
+    const identities = (pair) => findings(pair).map(({ identity }) => identity);
+
+    expect(
+      identities([placed(readUri, platform('jvm')), placed(readUrl, platform('native'))]),
+    ).toEqual([]);
+    expect(
+      identities([
+        { ...readUri, file: 'core/src/jvmMain/kotlin/net/Uri.kt' },
+        { ...readUrl, file: 'core/src/nativeMain/kotlin/net/Url.kt' },
+      ]),
+    ).toHaveLength(1);
+    expect(
+      identities([
+        placed(readUri, platform('common')),
+        placed(readUrl, `web/${platform('common')}`),
+      ]),
+    ).toEqual([
+      `${RULE}:core/src/commonMain/kotlin/net/Read.kt#read|web/core/src/commonMain/kotlin/net/Read.kt#read`,
+    ]);
+  });
+
   it('runs over the facts of a registered language and applies the policy exceptions', () => {
     const facts = {
       modules: [{ file: FILE, role: 'production' }],

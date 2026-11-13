@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { nearDuplicateFindings } from '../../../../shared/rules/near-duplicates/near-duplicates.mjs';
-import { javaParser } from './tree/test-support/parse-java.mjs';
+import { javaParser } from './test-support/parse-jvm.mjs';
 
 let parse;
 

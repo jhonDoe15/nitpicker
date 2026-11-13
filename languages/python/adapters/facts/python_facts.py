@@ -2,6 +2,7 @@ import ast
 import io
 import tokenize
 
+from near_duplicate_units import near_duplicate_units
 from python_docs import doc_comments, is_script
 from python_references import attribute_uses, fetched_names, references_of
 
@@ -252,4 +253,5 @@ def facts_of(relative, tree, text, imports):
         "fetchedNames": fetched_names(tree),
         "script": is_script(tree),
         "docComments": doc_comments(tree),
+        "nearDuplicateUnits": near_duplicate_units(tree, text, bindings, relative),
     }

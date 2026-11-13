@@ -191,6 +191,7 @@ describe('the shared fact rules', () => {
       'duplicate-definition',
       'exported-name-collision',
       'sibling-copy-edit',
+      'near-duplicate',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       'public-alternative-bypass',
@@ -209,7 +210,7 @@ describe('the shared fact rules', () => {
       'test-console-output',
     ]);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
-      expect(sharedFactExceptionRules()).toEqual(python.toSpliced(3, 0, 'near-duplicate'));
+      expect(sharedFactExceptionRules()).toEqual(python);
       expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });

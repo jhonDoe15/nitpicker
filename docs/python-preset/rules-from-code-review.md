@@ -66,6 +66,11 @@ members is not reported.
   alone; a function-local or type-checking import is how a cycle through the package is broken.
   Any other import that goes around the package on purpose takes an exception for the importing
   file.
+- `near-duplicate` (tool `facts`) reads the functions and methods of the same scan: two production
+  functions whose syntax trees are proved copies (the same apart from renamed locals, up to 4
+  changed values, or a shared run of 3 or more statements) fail, at the copy whose `file#name`
+  sorts last, also across distributions; test modules are not compared. A copy large enough for
+  the renamed `duplicate-clone` pass and different only in names and literals is left to it.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.

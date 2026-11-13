@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs';
-import { readJavaUnits } from '../near-duplicates/java-trees.mjs';
+import { readJvmUnits } from '../near-duplicates/jvm-trees.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
@@ -15,7 +15,12 @@ import {
 const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
 const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
@@ -69,13 +74,13 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
       ),
     ),
     imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
-    nearDuplicateUnits: kotlin ? [] : javaUnitFacts(projectRoot, files),
+    nearDuplicateUnits: unitFacts(projectRoot, files),
   };
 }
 
-function javaUnitFacts(projectRoot, files) {
-  const javaFiles = files.map(({ file }) => file).filter((file) => file.endsWith('.java'));
-  return readJavaUnits(projectRoot, javaFiles).map(({ file, name, start, end, tokens, tree }) => ({
+function unitFacts(projectRoot, files) {
+  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+  return readJvmUnits(projectRoot, sources).map(({ file, name, start, end, tokens, tree }) => ({
     file,
     name,
     start,
@@ -128,7 +133,7 @@ export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {
     ...sharedFactFindings(facts, {
       language,
       analyzerName: REUSE_TOOL,
-      rules: kotlin ? REUSE_RULES : [...REUSE_RULES, 'near-duplicate'],
+      rules: REUSE_RULES,
       policy: { exceptions },
       baseline: baselineOf(projectRoot, policy),
       collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),

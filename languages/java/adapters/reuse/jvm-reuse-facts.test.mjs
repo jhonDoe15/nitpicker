@@ -1,27 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { jvmReuseFacts, readJvmReuse, readJvmReuseFindings } from './jvm-reuse-facts.mjs';
+import { createReuseProjects } from './test-support/reuse-projects.mjs';
 
-const roots = [];
+const { project, cleanup } = createReuseProjects();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'jvm-reuse-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+afterEach(cleanup);
 
 const JAVA_ROOT = 'src/main/java';
 const KOTLIN_ROOT = 'src/main/kotlin';
@@ -379,7 +364,7 @@ const RETRY = `  public Response send(Request request, int attempts) {
   }
 `;
 
-describe('near-duplicate on Java', () => {
+describe('near-duplicate on Java and Kotlin', () => {
   const orders = `${JAVA_ROOT}/shop/orders/OrderClient.java`;
   const invoices = `${JAVA_ROOT}/shop/invoices/InvoiceClient.java`;
 
@@ -409,18 +394,40 @@ describe('near-duplicate on Java', () => {
     );
   });
 
-  it('is not run on Kotlin, which has no near-duplicate trees yet', () => {
-    const kotlin = `${KOTLIN_ROOT}/shop/Retry.kt`;
-    const twice = 'fun a(x: Int): Int {\n  val y = x * 2 + 1\n  return y * y - x\n}\n';
+  it('reports a Kotlin function copied into another file with one changed literal', () => {
+    const retry = (pkg, metric) =>
+      [
+        `package shop.${pkg}`,
+        '',
+        'fun send(request: Request, attempts: Int): Response {',
+        '  for (attempt in 0 until attempts) {',
+        '    val response = client.execute(request.withHeader("X-Attempt", attempt.toString()))',
+        '    if (response.status < 500) {',
+        '      return response',
+        '    }',
+        `    metrics.increment("${metric}", request.path)`,
+        '  }',
+        '  throw IllegalStateException("gave up after $attempts attempts")',
+        '}',
+        '',
+      ].join('\n');
+    const orders = `${KOTLIN_ROOT}/shop/orders/Orders.kt`;
+    const invoices = `${KOTLIN_ROOT}/shop/invoices/Invoices.kt`;
 
     expect(
-      findings(
-        { [kotlin]: `package shop\n\n${twice}${twice.replace('fun a', 'fun b')}` },
-        {
-          kotlin: true,
-        },
-      ).filter(({ rule }) => rule === 'near-duplicate'),
-    ).toEqual([]);
+      rows(
+        findings(
+          { [orders]: retry('orders', 'retry'), [invoices]: retry('invoices', 'again') },
+          { kotlin: true },
+        ).filter(({ rule }) => rule === 'near-duplicate'),
+      ),
+    ).toEqual([
+      [
+        'near-duplicate',
+        orders,
+        `near-duplicate:${invoices}#send(Request,Int)|${orders}#send(Request,Int)`,
+      ],
+    ]);
   });
 });
 

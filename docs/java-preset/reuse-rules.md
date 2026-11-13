@@ -49,17 +49,21 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
-- **`near-duplicate`.** Java only for now. `adapters/near-duplicates/java-trees.mjs` parses the
-  same `.java` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java`
-  grammar, in a child process) into one tree per method, constructor and field lambda, and the
-  shared engine (`shared/near-duplicates/`) proves which pairs are copies. Each pair is reported
+- **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mjs` parses the same `.java` and
+  `.kt` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java` and
+  `tree-sitter-kotlin` grammars, in a child process) into one tree per method, constructor,
+  accessor and field lambda, and the shared engine (`shared/near-duplicates/`) proves which pairs are copies. Each pair is reported
   once, at the copy whose `file#name` sorts last, and keeps its identity while both copies stay, so
   a pair the base already had is never new. A type-specialized family is left out: copies that
   differ only in primitive, boxed or generic types (`int[]`/`long[]`, `Integer`, `Object`, `T`),
   in the own helpers or classes named after those types (`Ints.reverse`/`Longs.reverse`) and in
   number literals next to them, in one file or in sibling files whose names carry the types
   (`Ints.java`, `Longs.java`), and a run shared by two members whose signatures differ only that
-  way. Java cannot merge them into one method without boxing (`type-families.mjs`).
+  way. Java cannot merge them into one method without boxing (`type-families.mjs`). The platform
+  variants of one Kotlin Multiplatform declaration are left out too: two units in different
+  `src/<platform>Main/` source sets with the same name or the same path below the source set
+  (`jvmMain` and `nativeMain` copies of `FileSink.write`), which the platform APIs keep apart
+  (`platform-variants.mjs`).
 - **`shared-used-by-one-feature`.** The same facts feed the feature rule: a source file under a
   folder that `layout.sharedRoots` matches (default `**/shared`, such as
   `src/main/java/com/acme/shared`) that only the files of one feature use, directly or through

@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findNearDuplicates } from '../../../../../shared/near-duplicates/engine.mjs';
-import { readJavaUnits } from '../java-trees.mjs';
+import { readJvmUnits } from '../jvm-trees.mjs';
 import { JAVA_COPIES, JAVA_FORMS } from './test-support/java-sources.mjs';
-import { javaParser } from './test-support/parse-java.mjs';
+import { javaParser } from '../test-support/parse-jvm.mjs';
 
 const parsers = [];
 
@@ -95,7 +95,7 @@ describe('Java trees for near-duplicate detection', () => {
     });
 
     it('gives the same units as parsing in this process', () => {
-      expect(readJavaUnits(roots[0], ['Adapters.java'])).toEqual(unitsOf(JAVA_COPIES));
+      expect(readJvmUnits(roots[0], ['Adapters.java'])).toEqual(unitsOf(JAVA_COPIES));
     });
   });
 });
