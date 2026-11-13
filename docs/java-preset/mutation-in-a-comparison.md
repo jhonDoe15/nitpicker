@@ -3,14 +3,43 @@
 Part of the [Java preset guide](../java-preset.md). Issue
 [#656](https://github.com/jhonDoe15/nitpicker/issues/656) records the options.
 
-**Decision: in a comparison, head starts from the PIT results of the base run (PIT's own
-incremental analysis), and the base side still mutates every class.** Head still reports every
-mutant of every class with a status, so the legacy matching against base works as before; only the
-mutants PIT can tell are unaffected by the change keep their base status instead of running again
-(the one case where that status can be wrong is under "What this gives up"). The Kotlin preset
-gets the same, on Gradle and Maven.
+**Decision: a comparison mutates what the change wrote and what its changed tests use, as the
+TypeScript preset does.** Before, both sides mutated every class, which on a Spring Boot app with a
+few hundred tests ran past the time limit on each side, so a one-file change reported nothing. The
+Kotlin preset gets the same, on Gradle and Maven.
 
-**How it works.** On the base side, every PIT run also writes PIT's history file
+- **Changed classes.** Head mutates the classes compiled from each production `.java` or `.kt` file
+  with changed lines (from `git diff --unified=0 --diff-algorithm=patience --find-renames` between
+  the base and head snapshots), and keeps only the mutants on those lines. A mutant on a line the
+  change wrote has no counterpart on base, so each one that survives or is not covered is new. A
+  file whose change only deletes lines is not mutated.
+- **Changed tests.** When the change adds, edits, renames or deletes a test file (a `.java` or `.kt`
+  file in the source set after the first `src` folder when that source set is `test`, `tests`, `it`,
+  starts with `test` (`testFixtures`) or ends with `Test`, `Tests`, `-test` or `_test`, such as
+  `src/integrationTest`; without a `src` folder, a file under a `test`, `tests` or `it` folder), both
+  sides mutate,
+  whole, the production files that test uses: the file named like the test without its `Test`,
+  `Tests`, `IT`, `ITCase` or `Spec` part, then each production class the test names, in the order it
+  names them, when it is in the test's package or imported (single, wildcard or static imports).
+  The head version of the test is read on head, and the base version of an edited, renamed or
+  deleted test on base. Their mutants are matched against base by identity as before, so a mutant
+  the base tests killed and the changed tests let survive is new, and a legacy survivor stays held.
+  At most ten files are mutated this way; the others are named in a descriptive
+  `tested-modules-capped` finding of the `pit` tool, which never fails the run.
+- **Base.** The base side runs PIT only for the files reached by changed tests, so a change that
+  touches no test runs no mutation on base at all. A reached file that the change renamed is mutated
+  at its base path on base. Because that depends on the change, the base findings cache of a
+  comparison is keyed by the changed test files, their head contents and the files they reach on
+  head; comparisons without changed tests share one entry per base. A base entry from
+  `nitpicker cache publish`, which mutates every class, is therefore not used by a Java or Kotlin
+  comparison.
+- Paths given to the run (`nitpicker src/orders --base main`) narrow the head side further.
+- The `mutation-summary` counts are left out of a comparison, since the two sides mutate different
+  classes.
+
+**PIT history.** When both sides mutate the classes reached by changed tests, head also starts from
+the PIT results of the base run (PIT's own incremental analysis). On the base side, every PIT run
+also writes PIT's history file
 (`--historyOutputLocation`) into the build directory of its module, under
 `nitpicker-pit-history/` (`<test task>.history` on Gradle, `test.history` on Maven). The head side
 looks for the file at the same place in the base snapshot and passes it to its own run of that
@@ -29,7 +58,7 @@ the mutant on base), of classes whose tests changed, and every mutant with no ba
 those in new classes. Coverage is still measured on head, so a mutant without a kept result that
 no test reaches is reported as not covered, as before. A module or test task that has no history
 on base (a new module, a base whose tests failed, so PIT did not run there) runs every mutant.
-`--all` runs and runs with no base snapshot use no history.
+`--all` runs and runs with no base snapshot use no history, and mutate every class.
 
 **When head runs every mutant anyway.** PIT compares only the bytes of classes, so a change to what
 the tests run with would keep base results it should not. Head therefore ignores the history when
@@ -40,34 +69,21 @@ any build input differs between base and head: a `pom.xml`, `.mvn/` settings (`e
 configuration a Spring context reads. Build output directories (`build`, `target`) are not
 compared.
 
-**What this gives up.** PIT decides from the bytes of the mutated class and of its tests, not from
-everything the tests run. When a change edits only a class that a test uses as a collaborator (a
-helper, a fixture builder, a bean the Spring context wires in), and that edit makes
-the test stop killing a mutant of another, unchanged class, head keeps the base `KILLED` result and
-the new survivor is not reported. The other way round, an edit that makes a test start killing a
-survivor of an unchanged class leaves that survivor reported as unchanged instead of resolved, and
-a timed-out mutant of an unchanged class stays timed out; neither adds a new finding. The
-TypeScript preset has the same gap (see
-[Scope in a comparison](../mutation-testing.md#scope-in-a-comparison)): a comparison reports the
-mutants of what the change wrote and of the tests it changed; `--all` mutates everything again.
+**What this gives up.** Mutants on lines the change did not write are not reported for a changed
+class, and classes the change did not touch are not mutated unless a changed test uses them. So a
+change that makes the tests stop killing a mutant elsewhere (an edit to a collaborator, a fixture
+builder, a bean the Spring context wires in, a dependency or a config) goes unseen; so does a
+changed test that reaches a production class only through other classes, or that names it in a way
+the import rules above miss (a fully qualified name, a Kotlin top-level function). The TypeScript
+preset has the same gap (see [Scope in a comparison](../mutation-testing.md#scope-in-a-comparison)).
+`--all` (for example on a schedule) still mutates every class.
 
-**When the base findings come from the cache.** The base side then does not run, writes no history,
-and head runs every mutant, as before.
+**When the base findings come from the cache.** The base side then does not run and writes no
+history, so head runs every mutant of the classes it mutates.
 
-**Measured.** Builds of two modules with ten classes each (580 mutants on Java, 4 CPUs), with one
-class and its test changed, gave identical mutant statuses and findings with and without the
-history. On Gradle, head's `nitpickerPit` took 3.8 s instead of 15.7 s (551 of the 580 mutants
-came from the history). The whole head side of the analyzer, every tool included:
-
-| Build          | Without history | With history |
-| -------------- | --------------- | ------------ |
-| Gradle, Java   | 38 s            | 28 s         |
-| Maven, Java    | 41 s            | 29 s         |
-| Gradle, Kotlin | 46 s            | 33 s         |
-
-Recording the history costs the base run about half a second.
-
-**Not done: scoping mutation to the change.** Mutating only the classes with changed lines on head,
-and nothing on base, as the TypeScript preset does, would also cut the base run, but mutants on
-unchanged lines would no longer be reported, which drops the legacy matching the Java preset relies
-on. The measurement is in [#656](https://github.com/jhonDoe15/nitpicker/issues/656).
+**Measured.** With the history, builds of two modules with ten classes each (580 mutants on Java,
+4 CPUs), with one class and its test changed, gave identical mutant statuses and findings with and
+without the history, and head's `nitpickerPit` on Gradle took 3.8 s instead of 15.7 s. Scoping to
+the change removes most of the base run as well: the prototype on
+[#656](https://github.com/jhonDoe15/nitpicker/issues/656), which mutated only the changed class on
+head and nothing on base, took 3.7 s in all instead of 28 s (14 s per side).
