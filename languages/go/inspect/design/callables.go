@@ -6,6 +6,7 @@ import (
 
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/decide"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
@@ -101,6 +102,7 @@ func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) C
 		Forward:      chain.Of(env, info.Decl, known),
 		Calls:        calls.Collect(env, info.Decl.Body, known),
 		ParamUses:    uses.Params(env, info.Decl, hasMembers, known),
+		Decisions:    decide.Of(env, info.Decl.Body),
 		OwnFields:    uses.OwnFields(env, info),
 		ReturnsField: returnedField(env, info),
 		References:   uses.References(env, info.Decl.Body, known),

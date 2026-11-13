@@ -3,6 +3,7 @@ package design
 import (
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/decide"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
 
@@ -37,20 +38,21 @@ type Param struct {
 }
 
 type Callable struct {
-	ID           string          `json:"id"`
-	File         string          `json:"file"`
-	Name         string          `json:"name"`
-	Line         int             `json:"line"`
-	Kind         string          `json:"kind"`
-	Exported     bool            `json:"exported"`
-	Owner        string          `json:"owner,omitempty"`
-	Entry        bool            `json:"entry,omitempty"`
-	Params       []Param         `json:"params,omitempty"`
-	Returns      string          `json:"returns,omitempty"`
-	Forward      *chain.Forward  `json:"forward,omitempty"`
-	Calls        []calls.Call    `json:"calls,omitempty"`
-	ParamUses    []uses.ParamUse `json:"paramUses,omitempty"`
-	OwnFields    []string        `json:"ownFields,omitempty"`
-	ReturnsField string          `json:"returnsField,omitempty"`
-	References   []string        `json:"references,omitempty"`
+	ID           string            `json:"id"`
+	File         string            `json:"file"`
+	Name         string            `json:"name"`
+	Line         int               `json:"line"`
+	Kind         string            `json:"kind"`
+	Exported     bool              `json:"exported"`
+	Owner        string            `json:"owner,omitempty"`
+	Entry        bool              `json:"entry,omitempty"`
+	Params       []Param           `json:"params,omitempty"`
+	Returns      string            `json:"returns,omitempty"`
+	Forward      *chain.Forward    `json:"forward,omitempty"`
+	Calls        []calls.Call      `json:"calls,omitempty"`
+	ParamUses    []uses.ParamUse   `json:"paramUses,omitempty"`
+	Decisions    []decide.Decision `json:"decisions,omitempty"`
+	OwnFields    []string          `json:"ownFields,omitempty"`
+	ReturnsField string            `json:"returnsField,omitempty"`
+	References   []string          `json:"references,omitempty"`
 }

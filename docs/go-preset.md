@@ -797,6 +797,17 @@ functions or methods of 2 or more files. A type is written without spaces (`func
 functions of a package other modules can import are left out, and so are numeric parameters with
 coordinate names (`x, y, z float64`).
 
+**`repeated-policy-decision`.** Report-only. Two decisions in different files over the same enum or
+field that group its constants the same way, with an arm covering 2 or more constants (and, for an
+enum, fewer than all of them). A decision is a `switch` on a value, a tagless `switch` whose
+cases are `||` chains of `x == C`, or an `if` / `else if` chain of such tests (a lone
+`if x == A || x == B` too), all comparing one subject with constants: the constants of an enum
+type of the project (`case pay.Card, pay.Paypal:`), or literals and named constants for a field of a
+struct of the project (`o.Status == "open"`, subject `Order.Status`). A subject that has an enum
+type is the enum, whether it is a variable or a field. A decision with any other arm (a variable,
+a call, `!=`, `&&`) is not listed, nor is a `switch` on a type. `default` and the last `else` are
+`otherwise`.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 
