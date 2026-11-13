@@ -108,6 +108,23 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
+  walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
+  `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
+  is left alone), `find(p)` with an inline callback used only as a test (`!== undefined`, `!= null`,
+  `!`, `Boolean(...)`, an `if`, loop or ternary test; allowed form: `some(p)`), `map(f).flat()`
+  (allowed form: `flatMap(f)`), a lone spread of an array that is already new (`[...xs.slice(1)]`,
+  `[...Object.keys(o)]`, `[...await Promise.all(ps)]`; not `map` or `filter`, which iterator
+  helpers share) or of an iterable into a call that copies it at once (`new Set([...xs])`,
+  `Array.from([...xs])`, `Promise.all([...ps])`; a spread before `for...of` or `yield*` is a
+  snapshot and stays), `{ ...(options || {}) }` and `?? {}` (spreading `undefined` adds nothing),
+  `xs.length > 0 && xs.some(p)` and `xs.length === 0 || xs.every(p)` when `xs` calls nothing,
+  `Promise.all([one])` (allowed form: `[await one]`) and `Promise.race([one])`, and an `await`
+  inside the list given to `Promise.all`, `allSettled`, `any` or `race`. With type information,
+  `@typescript-eslint/prefer-find` and `@typescript-eslint/prefer-includes` cover the typed forms.
+  The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
+  `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
+  (Python).
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`

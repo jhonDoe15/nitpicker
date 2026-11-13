@@ -84,6 +84,7 @@ function productionRules({ react, routeHandlers }) {
     'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
+    'nitpicker/no-wasted-collection-step': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

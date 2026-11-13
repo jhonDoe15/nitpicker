@@ -93,6 +93,11 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
   a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
   rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
+- Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
+  `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
+  into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
+  before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
+  `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

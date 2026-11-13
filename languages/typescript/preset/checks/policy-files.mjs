@@ -1,4 +1,5 @@
 import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
+import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/collection-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
@@ -8,6 +9,7 @@ export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-pr
 export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
+  ...COLLECTION_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
@@ -66,13 +68,6 @@ export const POLICY_FILES = [
   'shared/rules/doc-comments/doc-comments.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs',
   'languages/typescript/preset/eslint-plugin/rules/control/no-self-recursion.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/array-membership.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/keyed-lookup.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/no-costly-collection-form.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/repeated-runs.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/collections/costly-forms/sorted-extreme.mjs',
   'languages/typescript/preset/eslint-plugin/rules/streams/no-collected-stream-rows.mjs',
   'languages/typescript/preset/eslint-plugin/rules/streams/stream-sources.mjs',
   'languages/typescript/preset/eslint-plugin/rules/errors/no-throw.mjs',

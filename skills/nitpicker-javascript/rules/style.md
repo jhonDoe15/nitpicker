@@ -73,6 +73,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
+  `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
+  into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
+  before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
+  `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
