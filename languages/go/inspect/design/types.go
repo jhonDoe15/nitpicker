@@ -2,10 +2,13 @@ package design
 
 import (
 	"go/ast"
+	"go/token"
 	"path"
 	"strings"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
 
 func typeKind(info *index.TypeInfo) string {
@@ -52,7 +55,7 @@ func fieldFact(field index.Field) Field {
 	return Field{Name: field.Name, Mutable: field.Type.IsReference(), Private: !ast.IsExported(field.Name)}
 }
 
-func moduleFact(file *index.FileCtx) Type {
+func moduleFact(file *index.FileCtx, known func(string) bool) Type {
 	name := path.Base(file.Path)
 	fact := Type{
 		ID: file.Path, File: file.Path, Name: strings.TrimSuffix(name, path.Ext(name)),
@@ -67,6 +70,7 @@ func moduleFact(file *index.FileCtx) Type {
 			fact.Fields = append(fact.Fields, variableFields(file, spec.(*ast.ValueSpec))...)
 		}
 	}
+	fact.References = uses.ImportTime(scope.ForFile(file), importTimeNodes(file), known)
 	return fact
 }
 
@@ -105,4 +109,25 @@ func unaddressed(expression ast.Expr) ast.Expr {
 func isAddressed(expression ast.Expr) bool {
 	_, ok := expression.(*ast.UnaryExpr)
 	return ok
+}
+
+func importTimeNodes(file *index.FileCtx) []ast.Node {
+	var nodes []ast.Node
+	for _, declaration := range file.Syntax.Decls {
+		switch typed := declaration.(type) {
+		case *ast.GenDecl:
+			for _, spec := range typed.Specs {
+				if value, ok := spec.(*ast.ValueSpec); ok && typed.Tok == token.VAR {
+					for _, expression := range value.Values {
+						nodes = append(nodes, expression)
+					}
+				}
+			}
+		case *ast.FuncDecl:
+			if typed.Recv == nil && typed.Name.Name == "init" && typed.Body != nil {
+				nodes = append(nodes, typed.Body)
+			}
+		}
+	}
+	return nodes
 }

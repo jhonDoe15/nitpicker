@@ -125,3 +125,28 @@ func (c Callee) Signature() *ast.FuncType {
 	}
 	return nil
 }
+
+func (e *Env) FuncValue(expression ast.Expr) string {
+	switch typed := expression.(type) {
+	case *ast.ParenExpr:
+		return e.FuncValue(typed.X)
+	case *ast.Ident:
+		if function := e.File.Pkg.Funcs[typed.Name]; function != nil && !e.Declared(typed.Name) && function.Decl.Body != nil {
+			return function.ID()
+		}
+	case *ast.SelectorExpr:
+		return e.selectorCallee(typed).Target()
+	}
+	return ""
+}
+
+func (e *Env) PackageVar(name string) *index.VarInfo {
+	if e.Declared(name) {
+		return nil
+	}
+	return e.File.Pkg.Vars[name]
+}
+
+func ForFile(file *index.FileCtx) *Env {
+	return &Env{Index: file.Index, File: file, Vars: map[string]*Binding{}, Reassigned: map[string]int{}}
+}
