@@ -1,6 +1,19 @@
 import { configError } from '../../../../shared/config.mjs';
 import { GitCommandError, listRemotes, runGit } from './command.mjs';
 
+type BaseChoice = { readonly baseRef: string; readonly source: string };
+
+type BaseRequest = {
+  readonly repositoryRoot: string;
+  readonly explicitBase?: unknown;
+  readonly configuredBase?: unknown;
+  readonly environment?: Readonly<Record<string, string | undefined>>;
+  readonly staged: boolean;
+};
+
+const remotesOf: (repositoryRoot: string) => string[] = listRemotes;
+const git: (repositoryRoot: string, args: readonly string[]) => string = runGit;
+
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
 export const CI_TARGET_VARIABLES = [
   'CHANGE_TARGET',
@@ -32,7 +45,7 @@ const NO_COMMITS_FOR_HOOK_MESSAGE = [
   'Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
 ].join(' ');
 
-export function assertHasCommit(repositoryRoot, staged = false) {
+export function assertHasCommit(repositoryRoot: string, staged = false): void {
   if (commitOf(repositoryRoot, 'HEAD') === undefined) {
     throw new Error(staged ? NO_COMMITS_FOR_HOOK_MESSAGE : NO_COMMITS_MESSAGE);
   }
@@ -43,8 +56,8 @@ export function resolveBase({
   explicitBase,
   configuredBase,
   environment = {},
-  staged = false,
-}) {
+  staged,
+}: BaseRequest): BaseChoice {
   assertHasCommit(repositoryRoot, staged);
   if (isNonEmpty(explicitBase)) {
     return { baseRef: explicitBase, source: 'argument' };
@@ -68,8 +81,8 @@ export function resolveBase({
   return inferredBase(repositoryRoot, staged);
 }
 
-function inferredBase(repositoryRoot, staged) {
-  const remotes = listRemotes(repositoryRoot);
+function inferredBase(repositoryRoot: string, staged: boolean): BaseChoice {
+  const remotes = remotesOf(repositoryRoot);
   const branch = currentBranch(repositoryRoot);
   const onDefault = defaultBranchAtHead(repositoryRoot, branch);
   const found =
@@ -85,7 +98,7 @@ function inferredBase(repositoryRoot, staged) {
   return found;
 }
 
-function remoteBase(repositoryRoot, remotes) {
+function remoteBase(repositoryRoot: string, remotes: readonly string[]): BaseChoice | undefined {
   const remote = remotes.includes('upstream') ? 'upstream' : 'origin';
   const remoteHead = gitOrUndefined(repositoryRoot, [
     'symbolic-ref',
@@ -102,7 +115,7 @@ function remoteBase(repositoryRoot, remotes) {
   return fallback === undefined ? undefined : { baseRef: fallback, source: 'fallback' };
 }
 
-function upstreamBase(repositoryRoot, branch) {
+function upstreamBase(repositoryRoot: string, branch: string | undefined): BaseChoice | undefined {
   if (branch === undefined) {
     return undefined;
   }
@@ -123,7 +136,10 @@ function upstreamBase(repositoryRoot, branch) {
   return isNonEmpty(upstream) ? { baseRef: upstream, source: 'upstream' } : undefined;
 }
 
-function defaultBranchAtHead(repositoryRoot, branch) {
+function defaultBranchAtHead(
+  repositoryRoot: string,
+  branch: string | undefined,
+): string | undefined {
   if (branch !== undefined) {
     return LOCAL_DEFAULT_BRANCHES.includes(branch) ? branch : undefined;
   }
@@ -133,7 +149,10 @@ function defaultBranchAtHead(repositoryRoot, branch) {
   );
 }
 
-function localBranchBase(repositoryRoot, onDefault) {
+function localBranchBase(
+  repositoryRoot: string,
+  onDefault: string | undefined,
+): BaseChoice | undefined {
   if (onDefault !== undefined) {
     return undefined;
   }
@@ -143,16 +162,16 @@ function localBranchBase(repositoryRoot, onDefault) {
   if (local === undefined) {
     return undefined;
   }
-  const baseRef = runGit(repositoryRoot, ['rev-parse', '--abbrev-ref', local]).trim();
+  const baseRef = git(repositoryRoot, ['rev-parse', '--abbrev-ref', local]).trim();
   return { baseRef, source: 'local-branch' };
 }
 
-function noBaseError(remotes, onDefault) {
+function noBaseError(remotes: readonly string[], onDefault: string | undefined): Error {
   const local = onDefault === undefined ? 'no local main or master' : `you are on ${onDefault}`;
   return new Error(`No base found: ${remoteGap(remotes)}, and ${local}. ${NO_BASE_OPTIONS}`);
 }
 
-function remoteGap(remotes) {
+function remoteGap(remotes: readonly string[]): string {
   if (remotes.length === 0) {
     return 'no remote';
   }
@@ -163,14 +182,14 @@ function remoteGap(remotes) {
   return `no ${remote}/HEAD, origin/main or origin/master`;
 }
 
-function currentBranch(repositoryRoot) {
+function currentBranch(repositoryRoot: string): string | undefined {
   const ref = gitOrUndefined(repositoryRoot, ['symbolic-ref', '--quiet', 'HEAD'])?.trim();
   return ref?.startsWith(BRANCH_REF_PREFIX) === true
     ? ref.slice(BRANCH_REF_PREFIX.length)
     : undefined;
 }
 
-function followsHead(repositoryRoot, configuredBase) {
+function followsHead(repositoryRoot: string, configuredBase: string): boolean {
   if (COMMIT_ID.test(configuredBase) || HEAD_SYNTAX.test(configuredBase)) {
     return true;
   }
@@ -178,7 +197,7 @@ function followsHead(repositoryRoot, configuredBase) {
   return name !== undefined && name !== '' && name === symbolicName(repositoryRoot, 'HEAD');
 }
 
-function notCheckedOutCommit(repositoryRoot, configuredBase) {
+function notCheckedOutCommit(repositoryRoot: string, configuredBase: string): string {
   const base = commitOf(repositoryRoot, configuredBase);
   if (
     base === undefined ||
@@ -192,11 +211,11 @@ function notCheckedOutCommit(repositoryRoot, configuredBase) {
   );
 }
 
-function symbolicName(repositoryRoot, ref) {
+function symbolicName(repositoryRoot: string, ref: string): string | undefined {
   return gitOrUndefined(repositoryRoot, ['rev-parse', '--symbolic-full-name', ref])?.trim();
 }
 
-function commitOf(repositoryRoot, ref) {
+function commitOf(repositoryRoot: string, ref: string): string | undefined {
   return gitOrUndefined(repositoryRoot, [
     'rev-parse',
     '--verify',
@@ -205,17 +224,17 @@ function commitOf(repositoryRoot, ref) {
   ])?.trim();
 }
 
-function branchName(target) {
+function branchName(target: string): string {
   return target.startsWith(BRANCH_REF_PREFIX) ? target.slice(BRANCH_REF_PREFIX.length) : target;
 }
 
-function isNonEmpty(value) {
+function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
 }
 
-function gitOrUndefined(repositoryRoot, args) {
+function gitOrUndefined(repositoryRoot: string, args: readonly string[]): string | undefined {
   try {
-    return runGit(repositoryRoot, args);
+    return git(repositoryRoot, args);
   } catch (error) {
     if (error instanceof GitCommandError) {
       return undefined;
