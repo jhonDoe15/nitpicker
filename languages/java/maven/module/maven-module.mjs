@@ -61,7 +61,7 @@ function runSourceTools(options) {
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
   ];
-  runToolsConcurrently(tasks, { spawn: options.spawn, concurrent: options.quick === true });
+  runToolsConcurrently(tasks, { spawn: options.spawn });
 }
 
 function analyzeSources(options) {

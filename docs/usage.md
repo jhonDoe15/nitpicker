@@ -782,10 +782,9 @@ nitpicker rules [--preset <name>] [--tool <name>]
   `eslint-module-effects`) look only at the changed files on both sides, since their findings depend
   on one file alone; the typed rules (`eslint-lint`), the type check, the dependency, coupling,
   dead-code, duplicates, structure and coding-standards checks still read the whole project. Gradle
-  runs with `--build-cache` in a quick run, so tasks whose inputs did not change (an unchanged module,
-  the base after the head, a repeated run) are restored from the Gradle build cache (the local one
-  in the Gradle user home, and a remote one only as the build's own `settings.gradle` configures it);
-  Maven runs PMD, SpotBugs, Error Prone, the format check and Checkstyle of a module side by side.
+  runs with `--build-cache` in every run, quick or full (see
+  [Gradle build cache](java-preset/how-it-works.md#build-cache-and-side-by-side-tools)); Maven runs
+  the tools of a module side by side in every run too.
   The console summary, `report.txt`, `summary.json`, `report.junit.xml` and `report.sarif` name what
   was skipped, and exit codes keep their meaning, but a quick run is never a pass: run `nitpicker`
   without `--quick` before you finish. `--quick` works with `--base`, `--all`, `--analyzer` (a name

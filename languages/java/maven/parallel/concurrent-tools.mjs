@@ -32,8 +32,8 @@ function runInProcesses(tasks) {
   return JSON.parse(result.stdout);
 }
 
-export function runToolsConcurrently(tasks, { spawn, concurrent }) {
-  if (!concurrent || spawn !== undefined) {
+export function runToolsConcurrently(tasks, { spawn } = {}) {
+  if (spawn !== undefined) {
     for (const task of tasks) {
       task.run({ ...task.options, spawn });
     }
