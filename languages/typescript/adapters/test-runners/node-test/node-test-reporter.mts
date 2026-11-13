@@ -1,71 +1,18 @@
 import path from 'node:path';
 import { formattedValue } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 
-type FailureDetail = {
-  readonly expected: string;
-  readonly actual: string;
-  readonly formatted: true;
-};
-
-type AssertionResult = {
-  readonly fullName: string;
-  readonly title: string;
-  readonly status: 'pending' | 'failed' | 'passed';
-  readonly failureMessages: readonly string[];
-  readonly failureDetails?: readonly FailureDetail[];
-  readonly duration: number | undefined;
-  readonly location: { readonly line: number | undefined; readonly column: number | undefined };
-};
-
-type PendingEntry = {
-  readonly nesting: number;
-  readonly entry: AssertionResult;
-  readonly cancelled: boolean;
-};
-
-type FileState = { pending: PendingEntry[]; loadFailures: string[]; stderr: string };
-
-type TestFailure = {
-  readonly cause?: unknown;
-  readonly message?: unknown;
-  readonly failureType?: unknown;
-};
-
-type ResultData = {
-  readonly name: string;
-  readonly nesting: number;
-  readonly file?: string;
-  readonly line?: number;
-  readonly column?: number;
-  readonly skip?: unknown;
-  readonly todo?: unknown;
-  readonly details?: {
-    readonly type?: string;
-    readonly duration_ms?: number;
-    readonly error?: TestFailure;
-  };
-};
-
-type ResultEvent = { readonly type: 'test:pass' | 'test:fail'; readonly data: ResultData };
-
-type StderrEvent = {
-  readonly type: 'test:stderr';
-  readonly data: { readonly file?: string; readonly message?: unknown };
-};
-
-export type ReporterEvent =
-  ResultEvent | StderrEvent | { readonly type: string; readonly data?: { readonly file?: string } };
-
-export type NodeTestReport = {
-  readonly numTotalTests: number;
-  readonly numFailedTests: number;
-  readonly testResults: readonly {
-    readonly name: string;
-    readonly status: 'failed' | 'passed';
-    readonly message: string;
-    readonly assertionResults: readonly AssertionResult[];
-  }[];
-};
+import type {
+  FailureDetail,
+  AssertionResult,
+  PendingEntry,
+  FileState,
+  TestFailure,
+  ResultData,
+  ResultEvent,
+  StderrEvent,
+  ReporterEvent,
+  NodeTestReport,
+} from './node-test-report-types.mts';
 
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
 const CANCELLED_BY_PARENT = 'cancelledByParent';
