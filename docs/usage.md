@@ -2779,6 +2779,12 @@ Only these parts of each entry of the project's config apply:
 | `files`, `ignores`, `basePath` and `name` of the other entries                      | Scope the entry, as in ESLint (`basePath` is folded into the patterns).                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `languageOptions` other than `globals`, `linterOptions`, `processor` and `language` | Ignored. nitpicker's parser and type information, its lock on inline configuration (`noInlineConfig` for source files) and its report of unused disable directives stay.                                                                                                                                                                                                                                                                                                                                 |
 
+An `eslint-disable` comment that suppresses nothing is reported once as `eslint/unused-disable-directive`,
+not once per ESLint analyzer: a directive counts as unused only when every ESLint analyzer that lints its
+file found nothing for it to suppress, so a directive that `eslint-errors` or `eslint-logging` needs is
+not reported by `eslint-lint`. This holds for the `oxlint` and `eslint` engines and in the JavaScript
+preset.
+
 So, as for PMD, listing `"project"` never switches a nitpicker rule off, and `["project"]` is the same as
 `["project", "nitpicker"]`. A rule is lifted for some paths with an `exceptions` entry, the one reviewed
 route; with `"project"` listed that includes a rule only the project's config adds (`no-alert`, say), and
