@@ -1,18 +1,27 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { reportFromEvents } from './node-test-reporter.mjs';
+import { type ReporterEvent, reportFromEvents } from './node-test-reporter.mts';
 
 const file = path.resolve('test/a.test.ts');
 
-function event(type, name, nesting, details = {}, extra = {}) {
-  return { type, data: { name, nesting, file, line: 3, column: 5, details, ...extra } };
+function event(
+  type: string,
+  name: string,
+  nesting: number,
+  details: object = {},
+  extra: object = {},
+): ReporterEvent {
+  const data = { name, nesting, file, line: 3, column: 5, details, ...extra };
+  return { type, data };
 }
 
-const failure = (message) => ({
-  type: 'test',
-  duration_ms: 2,
-  error: { failureType: 'testCodeFailure', cause: { message } },
-});
+function failure(message: string): object {
+  return {
+    type: 'test',
+    duration_ms: 2,
+    error: { failureType: 'testCodeFailure', cause: { message } },
+  };
+}
 
 describe('the node:test report', () => {
   it('names each test after its suites and keeps only the tests', () => {
@@ -65,7 +74,7 @@ describe('the node:test report', () => {
     ]);
 
     expect(
-      report.testResults[0].assertionResults.map(({ fullName, status }) => [fullName, status]),
+      report.testResults[0]?.assertionResults.map(({ fullName, status }) => [fullName, status]),
     ).toEqual([
       ['holder one', 'passed'],
       ['skipped', 'pending'],
@@ -115,7 +124,7 @@ describe('the node:test report', () => {
     ]);
 
     expect(
-      report.testResults[0].assertionResults.map(({ fullName, status, failureMessages }) => [
+      report.testResults[0]?.assertionResults.map(({ fullName, status, failureMessages }) => [
         fullName,
         status,
         failureMessages,
