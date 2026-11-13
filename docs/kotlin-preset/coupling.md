@@ -22,3 +22,18 @@ classes Kotlin generates. The package is the one in the bytecode, that is the `p
 the file and not its directory. Of a `@JvmMultifileClass` facade, each file lists its own part
 (`Facade__FileKt`) and the first file (in path order) lists the facade class, so callers of the
 facade belong to that file. A class that no file lists is its own module.
+
+## Feature packages and domain boundaries
+
+`feature-internal-import`, `shared-imports-feature`, `feature-cycle` and
+`foreign-feature-persistence` run as for Java, over the same jdeps graph, and `shared-used-by-one-feature`
+over the same source facts (see [Feature packages](../java-preset/feature-packages.md)): the
+public face of a feature is the classes and file facades directly in its package, a feature split
+over `src/main/java` and `src/main/kotlin` is one feature, and a Java class calling a top-level
+Kotlin function of another feature is an edge to that function's file. Kotlin's `internal` is
+visible in the whole module, so it is not feature-private; what counts is the package.
+
+- **Persistence.** `foreign-feature-persistence` knows the Kotlin forms too: an Exposed `Table`,
+  `IdTable` (`IntIdTable`, `LongIdTable`, `UUIDTable`) or DAO `Entity` subclass is an entity, and a
+  repository declared as `interface PaymentRepository : CrudRepository<Payment, Long>` is a
+  repository even when it shares its file with the entity; the file is the unit.
