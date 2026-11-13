@@ -4,6 +4,7 @@ import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mts';
+import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
 import { type DiffReport, combineAnalyzerReports, noChangesReport } from './results.mts';
 import {
   type RunSettings,
@@ -280,7 +281,11 @@ function runBaseSide(context: RunContext): unknown {
     configOverrides: baseSetup.configOverrides,
     headPolicy: baseSetup.headPolicy,
     label: 'base',
-    analyzers,
+    analyzers: withComparisonKeys(analyzers, {
+      touchedPaths: [...layout.touchedPaths],
+      headRoot: roots.headSnapshotRoot,
+      quick: settings.quick !== undefined,
+    }),
     policyRoot: roots.headSnapshotRoot,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
   });

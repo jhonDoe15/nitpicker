@@ -41,6 +41,7 @@ import { withProjectSourceRules } from './regexes/regex-defects.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
+import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mjs';
 
 const CLOCK_SLACK_MS = 2000;
 const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
@@ -145,6 +146,7 @@ function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
+    pitDeadline: options.budget?.pitDeadlineMs,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
   const duplicates = {
@@ -174,10 +176,15 @@ export function collectJavaFindings(root, options = {}) {
 
 export function collectJavaReport(root, options = {}) {
   const projectRoot = path.resolve(root);
-  const { findings, imports, testsFailures } =
-    detectJavaBuild(projectRoot) === 'maven'
-      ? mavenFindings(projectRoot, options)
-      : withGradleReports(projectRoot, options);
+  const plan = mutationPlanOf(projectRoot, options);
+  const {
+    findings: collected,
+    imports,
+    testsFailures,
+  } = detectJavaBuild(projectRoot) === 'maven'
+    ? mavenFindings(projectRoot, plan.options)
+    : withGradleReports(projectRoot, plan.options);
+  const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
   const parsed = parseAnalyzerReport(

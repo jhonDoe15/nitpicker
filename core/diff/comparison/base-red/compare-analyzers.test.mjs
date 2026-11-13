@@ -74,3 +74,65 @@ describe('a head that stopped at compile errors', () => {
     });
   });
 });
+
+describe('a PIT run that failed on one side', () => {
+  const failure = {
+    tool: 'pit',
+    rule: 'pit-failure',
+    path: '.',
+    identity: 'pit-failure:shop',
+    symbol: 'shop',
+    message: 'PIT failed with exit code 1: boom',
+    classification: 'tool-error',
+  };
+  const mutant = (file, line) => ({
+    tool: 'pit',
+    rule: 'mutant-survived',
+    path: file,
+    identity: `mutant:${file}:${String(line)}`,
+    message: 'survived',
+    classification: 'enforceable',
+    location: { line },
+  });
+  const OLD = mutant('shop/src/Cart.java', 3);
+  const EDITED = mutant('shop/src/Cart.java', 9);
+  const ELSEWHERE = mutant('web/src/Page.java', 3);
+
+  function comparedSides(baseFindings, headFindings) {
+    const toolErrors = [];
+    const { outcomes } = compareAnalyzers({
+      analyzers: [{ name: 'java' }],
+      baseRun: run(baseFindings),
+      headRun: run(headFindings),
+      toolErrors,
+      touchedCode: {
+        changedLines: new Map([['shop/src/Cart.java', { added: false, ranges: [[9, 9]] }]]),
+      },
+    });
+    const { result } = outcomes[0];
+    return {
+      new: result.newFindings.map(({ identity }) => identity),
+      unchanged: result.unchangedFindings.map(({ identity }) => identity),
+      resolved: result.resolvedFindings.map(({ identity }) => identity),
+      toolErrors: toolErrors.map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+    };
+  }
+
+  it('counts mutants of that module as new only on changed lines when the base failed', () => {
+    expect(comparedSides([failure], [OLD, EDITED, ELSEWHERE])).toEqual({
+      new: [EDITED.identity, ELSEWHERE.identity],
+      unchanged: [OLD.identity],
+      resolved: [],
+      toolErrors: ['base pit-failure'],
+    });
+  });
+
+  it('resolves no mutant of that module when the head failed', () => {
+    expect(comparedSides([OLD, ELSEWHERE], [failure])).toEqual({
+      new: [],
+      unchanged: [],
+      resolved: [ELSEWHERE.identity],
+      toolErrors: ['head pit-failure'],
+    });
+  });
+});

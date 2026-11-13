@@ -83,6 +83,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',
+  'nitpicker/require-client-timeout',
   'nitpicker/promise-wait-deadline',
   'nitpicker/reusable-object-per-call',
   'nitpicker/require-error-listener',

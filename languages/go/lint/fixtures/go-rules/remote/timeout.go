@@ -18,7 +18,7 @@ func Status(url string) (status int, err error) {
 }
 
 func Send(request *http.Request) (*http.Response, error) {
-	return http.DefaultClient.Do(request) // want http-without-timeout
+	return http.DefaultClient.Do(request) // want http-without-timeout G704
 }
 
 func NewClient() *http.Client {

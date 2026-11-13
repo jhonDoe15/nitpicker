@@ -55,9 +55,13 @@ func supersededBy() map[string][]string {
 		"gocheckcompilerdirectives":   {"SA9009"},
 		"usestdlibvars":               {"ST1013"},
 		"bidichk":                     {"ST1018"},
+		"SA1019":                      {"G506", "G507"},
+		"G118":                        {"lostcancel"},
+		"G115":                        {"G109"},
+		"G601":                        {"range-val-address"},
+		"contextcheck":                {"G118"},
 		"context-outside-entry":       {"contextcheck"},
 		"todoCommentWithoutDetail":    {"todo-without-issue"},
-		"G101":                        {"hardcoded-secret", "credential-shape"},
 		"skipped-test-without-reason": {"switched-off-test"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
@@ -97,10 +101,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			rule, message := catalog.Rule(action.Analyzer.Name, diagnostic)
-			if rule == action.Analyzer.Name {
-				rule = ruleName(action.Analyzer)
-			}
+			rule, message := ruleOf(action.Analyzer, diagnostic)
 			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
 			found.Message = message
 			seen[found] = true
@@ -117,8 +118,8 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 	for _, found := range revived {
 		seen[found] = true
 	}
-	findings, err := selected(handWritten(kept(seen), sources(loaded)), settings.project)
-	result.Findings = findings
+	chosen, err := selected(slices.Collect(maps.Keys(seen)), settings.project)
+	result.Findings = handWritten(kept(present(chosen)), sources(loaded))
 	return result, err
 }
 
@@ -239,6 +240,14 @@ func kept(seen map[Finding]bool) []Finding {
 			cmp.Compare(left.Message, right.Message))
 	})
 	return findings
+}
+
+func present(findings []Finding) map[Finding]bool {
+	set := map[Finding]bool{}
+	for _, found := range findings {
+		set[found] = true
+	}
+	return set
 }
 
 func lineKey(found Finding) string {
