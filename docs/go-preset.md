@@ -114,6 +114,7 @@ per source hash and toolchain into the nitpicker cache.
 | Duplicates             | jscpd, renamed-clone pass  | `duplicates/duplicate-clone`                                                                             |
 | Package coupling       | metrics program            | `coupling/stability-direction`                                                                           |
 | Feature layout         | metrics program            | `facts/shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle` |
+| Domain boundaries      | metrics program            | `coupling/domain-imports-adapter`, `domain-imports-io`, `-client`, `-logger`, `-random`                  |
 | Test-only code         | metrics program            | `facts/test-only-export`                                                                                 |
 | Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                                              |
 | Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                                     |
@@ -739,6 +740,21 @@ directly in that folder), `shared-imports-feature` (a file under a shared root u
 `feature-cycle` (a use between two features that closes a cycle of features). The compiler already
 enforces `internal/` visibility and rejects package import cycles, so the preset has no rule for
 either; a cycle of features is still possible, since a feature holds several packages.
+
+A file in a package folder with a `domain` segment (and no `adapter`, `adapters`, `infrastructure`
+or `infra` segment) keeps to the domain rules every preset runs (see
+[Domain boundaries](java-preset/domain-boundaries.md)): it imports no adapter package of the module
+(`domain-imports-adapter`), no `os`, `os/exec`, `net`, `syscall` or `plugin` (`domain-imports-io`),
+no database, HTTP, RPC, messaging or cloud client such as `database/sql`, `net/http`, pgx, GORM,
+go-redis, Kafka, gRPC or the AWS SDK (`domain-imports-client`), no logger such as `log`, `log/slog`,
+zap, logrus or zerolog (`domain-imports-logger`) and no random source such as `math/rand` or
+`crypto/rand` (`domain-imports-random`). An id library (`google/uuid`, `gofrs/uuid`, ulid, xid,
+ksuid) counts only when the file calls a generator such as `uuid.New` or `ulid.Make`; `uuid.Parse`,
+the `uuid.UUID` type and the name-based `uuid.NewSHA1` are values. Value types and sentinel errors
+of the I/O and client packages (`net.IP`, `net.ParseIP`, `sql.NullString`, `sql.ErrNoRows`,
+`http.StatusOK`, `os.ErrNotExist`) do not count either. Go has no framework container, so
+`domain-imports-framework-context` does not apply, and `domain-reaches-io` (I/O reached through a
+helper outside the domain) is not run for Go yet. Tests and generated files are left out.
 
 ## Dead code
 

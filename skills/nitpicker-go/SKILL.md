@@ -108,6 +108,11 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   code only one feature uses lives in that feature. Other code uses only the package directly in a
   feature folder, never its sub-packages (`feature-internal-import`); `shared` never uses a feature
   (`shared-imports-feature`); features never depend on each other in a cycle (`feature-cycle`).
+- A package under a `domain` folder imports no adapter package, `os`, `net`, database, HTTP or
+  messaging client, logger or random source, and calls no id generator such as `uuid.New`
+  (`domain-imports-*`): declare an interface (a port) in the domain, implement it in an adapter,
+  and pass ids, times and random values in. Value types such as `uuid.UUID`, `net.IP` and
+  `sql.ErrNoRows` are fine.
 - `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
   import (`unused-dependency`, `unlisted-dependency`).
 
