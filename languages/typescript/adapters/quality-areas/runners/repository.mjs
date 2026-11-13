@@ -28,6 +28,7 @@ import { runDesignSignals } from './program/design-signals.mjs';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mjs';
 import { baselinePathsOf } from '../../../../../shared/rules/facts/baseline.mjs';
+import { withPackageEntries } from '../knip/package-entries.mjs';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mjs';
 import { projectImports } from '../../../preset/dependency-graph/cruise.mjs';
 import { moduleImportsSection } from '../../../../../shared/history/co-change/dependencies/module-imports.mjs';
@@ -246,19 +247,24 @@ function withSpawnedEntries(config, projectRoot) {
 }
 
 export function runDeadCode(options) {
-  const config = withProjectKnipConfig(
-    withSpawnedEntries(
-      layoutKnipConfig(
-        parseReportJson(
-          readFileSync(
-            path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
-            'utf8',
+  const layout = readLayout();
+  const config = withPackageEntries(
+    withProjectKnipConfig(
+      withSpawnedEntries(
+        layoutKnipConfig(
+          parseReportJson(
+            readFileSync(
+              path.join(options.policyRoot, 'languages/typescript/preset/defaults/knip.json'),
+              'utf8',
+            ),
           ),
+          layout,
         ),
-        readLayout(),
+        options.projectRoot,
       ),
-      options.projectRoot,
     ),
+    options.projectRoot,
+    layout,
   );
   const normal = knipReport(options, config);
   return [
