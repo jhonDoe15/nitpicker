@@ -4,8 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
-import { parseArguments } from '../../adapters/quality-areas/arguments.mjs';
-import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mjs';
+import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
+import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
 import { projectImports } from './cruise.mjs';
 
 const roots = [];

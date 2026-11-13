@@ -14,8 +14,8 @@ import { byText } from '../text-order/by-text.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 const IGNORED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__', 'e2e', '__pycache__']);
-const SOURCE_FILE = /\.(?:[cm]?js|py|java|kt|kts|gradle)$/u;
-const TEST_FILE = /\.test\.[cm]?js$/u;
+const SOURCE_FILE = /\.(?:[cm]?js|mts|py|java|kt|kts|gradle)$/u;
+const TEST_FILE = /\.test\.(?:[cm]?js|mts)$/u;
 const KOTLIN_FILE = /kotlin/iu;
 const PYTHON_FILE = /\.py$/u;
 const BLOCK_COMMENT = /\/\*[\s\S]*?\*\//gu;
