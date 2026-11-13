@@ -80,7 +80,7 @@ export type AdapterOutput = {
 };
 
 export async function writeAdapterFindings(
-  adapterName: string,
+  failurePrefix: string,
   findingsOf: () => Promise<readonly Finding[]>,
   output: AdapterOutput,
 ): Promise<number> {
@@ -90,7 +90,7 @@ export async function writeAdapterFindings(
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);
-    output.stderr.write(`${adapterName} failed: ${error.message}\n`);
+    output.stderr.write(`${failurePrefix}: ${error.message}\n`);
     return 2;
   }
 }
