@@ -63,6 +63,7 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.duplicateDefinition, ['structure']],
   [RULE_IDS.siblingCopyEdit, ['structure']],
   [RULE_IDS.nearDuplicate, ['structure']],
+  [RULE_IDS.decidedCondition, ['structure']],
   [RULE_IDS.exportedNameCollision, ['structure']],
   [RULE_IDS.redefinedLibraryComponent, ['structure']],
   [RULE_IDS.newIconAsset, ['structure']],

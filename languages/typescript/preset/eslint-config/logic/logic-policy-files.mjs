@@ -5,6 +5,7 @@ export const LOGIC_POLICY_FILES = [
   'shared/logic/propositional.mjs',
   'shared/logic/sync/decide-sync.mjs',
   'shared/logic/sync/decide-worker.mjs',
+  'shared/logic/sync/solve-facts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/decided/facts.mjs',
   'languages/typescript/preset/eslint-plugin/rules/decided/no-decided-condition.mjs',
   'languages/typescript/preset/eslint-plugin/rules/decided/statement-flow.mjs',

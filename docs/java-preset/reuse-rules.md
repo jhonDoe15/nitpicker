@@ -2,8 +2,8 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
-`duplicate-definition`, `sibling-copy-edit`, `exported-name-collision` and `near-duplicate` are the
-shared rules of the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+`duplicate-definition`, `sibling-copy-edit`, `exported-name-collision`, `near-duplicate` and
+`decided-condition` are the shared rules of the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
 (`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
 Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
 The findings have tool `structure` and are lifted with the top-level `exceptions`.
@@ -49,6 +49,15 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`decided-condition`.** The same trees feed `shared/decided/`, which walks each method body
+  with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
+  return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`) and asks
+  the solver whether the condition can still be both true and false. Only a proof reports: always
+  false is dead code, always true a redundant check, and the message names the guard that decides
+  it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
+  what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
+  opaque value because JVM integers overflow. SpotBugs `UC_USELESS_CONDITION` reports a few of
+  these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
 - **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mjs` parses the same `.java` and
   `.kt` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java` and
   `tree-sitter-kotlin` grammars, in a child process) into one tree per method, constructor,

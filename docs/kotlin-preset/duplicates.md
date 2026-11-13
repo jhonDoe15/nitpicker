@@ -29,6 +29,13 @@ and different only in names and literals is left to it; type-specialized familie
 platform variants of one Kotlin Multiplatform declaration are not reported (see "Reuse rules" in
 `java-preset.md`). Lift a pair with an `exceptions` entry for either file.
 
+`decided-condition` (tool `structure`) reads the same trees: an `if`, `while`, `when` arm, ternary
+or `&&`/`||` operand that the guards before it in the same function decide fails, when a solver
+proves it always true (a redundant check) or always false (dead code). The guards are enclosing
+`if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
+of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
+lambda captures, forgets what was known.
+
 The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
 Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion

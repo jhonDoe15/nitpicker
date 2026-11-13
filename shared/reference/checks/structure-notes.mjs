@@ -49,6 +49,11 @@ export const STRUCTURE_NOTES = {
     'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
     'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
   ],
+  'decided-condition': [
+    'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
+    'The dead case is often a real bug: the branch the author meant to run never can.',
+    'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

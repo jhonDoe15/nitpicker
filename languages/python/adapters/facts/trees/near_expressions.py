@@ -1,4 +1,7 @@
-from near_tree_parts import BaseConverter, literal_of, located, operator
+import ast
+from types import SimpleNamespace
+
+from near_tree_parts import BaseConverter, literal_of, located, operator, shortened
 
 
 class ExpressionConverter(BaseConverter):
@@ -42,11 +45,24 @@ class ExpressionConverter(BaseConverter):
 
     def on_Compare(self, source):
         operands = [self.get(source.left), *[self.get(comparator) for comparator in source.comparators]]
+        sides = [source.left, *source.comparators]
         parts = [
-            located("binary", source, [operands[index], operands[index + 1]], value=operator(op))
+            located(
+                "binary", source, [operands[index], operands[index + 1]],
+                value=operator(op), text=self.span(sides[index], sides[index + 1]),
+            )
             for index, op in enumerate(source.ops)
         ]
+        if len(parts) == 1:
+            del parts[0]["text"]
         return self.chained(parts, "&&", source)
+
+    def span(self, first, last):
+        segment = ast.get_source_segment(self.text, SimpleNamespace(
+            lineno=first.lineno, col_offset=first.col_offset,
+            end_lineno=last.end_lineno, end_col_offset=last.end_col_offset,
+        ))
+        return shortened(segment or "")
 
     def on_UnaryOp(self, source):
         return located("unary", source, [self.get(source.operand)], value=operator(source.op))
