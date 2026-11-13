@@ -120,3 +120,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 Under the kotlin preset the Java sources get the same checks. Kotlin sources follow the
 `nitpicker-kotlin` skill; if it isn't installed, install it with the
 command `npx nitpicker init` prints, with `--skill nitpicker-kotlin`.
+
+Why each fix decision was made, and what --fix leaves alone: [SOURCES.md](SOURCES.md).

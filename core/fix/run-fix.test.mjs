@@ -100,13 +100,19 @@ describe('fixWorkingTree', () => {
   it('runs only the Java fixers for the java preset', () => {
     const { operations, result } = operationsFor({ preset: 'java' });
 
-    expect(operations).toEqual(['fix-tools', 'java-probe', 'java-format-fix']);
+    expect(operations).toEqual(['error-prone-patch', 'fix-tools', 'java-probe', 'java-format-fix']);
     expect(result.fixedFiles).toEqual(['src/main/java/A.java']);
   });
   it('runs the Java and Kotlin fixers for the kotlin preset', () => {
     const { operations, result } = operationsFor({ preset: 'kotlin' });
 
-    expect(operations).toEqual(['fix-tools', 'java-probe', 'java-format-fix', 'ktlint-fix']);
+    expect(operations).toEqual([
+      'error-prone-patch',
+      'fix-tools',
+      'java-probe',
+      'java-format-fix',
+      'ktlint-fix',
+    ]);
     expect(result.fixedFiles).toEqual(['src/main/java/A.java', 'src/main/kotlin/A.kt']);
   });
   it('runs only the Go formatter for the go preset', () => {

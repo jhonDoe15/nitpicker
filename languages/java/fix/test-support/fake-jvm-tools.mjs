@@ -2,11 +2,20 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { mavenPatchResponse } from './fake-maven-patch.mjs';
 
 const MARKER = 'nitpicker-fix-tool';
+const SETTINGS_PROPERTY = '-Pnitpicker.errorprone.settings=';
 const TOOL_PROPERTY = '-Pnitpicker.fix.tools=';
 const DEFAULTS_OPTION = '--editorconfig=';
 const CLASS_ARGUMENTS_OFFSET = 3;
+
+function recordedFlags(invocation) {
+  const argument = invocation.args.find((entry) => entry.startsWith(SETTINGS_PROPERTY));
+  return argument === undefined
+    ? []
+    : JSON.parse(readFileSync(argument.slice(SETTINGS_PROPERTY.length), 'utf8'));
+}
 
 function squeezed(source) {
   return source.replaceAll(/ {2,}/g, ' ');
@@ -76,8 +85,14 @@ function launched(invocation) {
   };
 }
 
-export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 'BROKEN' } = {}) {
+export function fakeJvmTools({
+  transform = squeezed,
+  failure = {},
+  unparsable = 'BROKEN',
+  patch,
+} = {}) {
   const calls = [];
+  const patchCalls = [];
   const launches = [];
   function format(invocation) {
     const launch = launched(invocation);
@@ -104,9 +119,20 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
     }
     return { status: failed.length > 0 ? 1 : 0, stdout: '', stderr: failed.join('\n') };
   }
+  function patchResponse(invocation) {
+    const gradle = invocation.args.some((argument) => argument.startsWith(SETTINGS_PROPERTY));
+    return gradle
+      ? (patch?.gradle?.(invocation) ?? { status: 0, stdout: '', stderr: '' })
+      : mavenPatchResponse(invocation, { patch: patch?.maven, mavenClasspaths });
+  }
+
   function executeFixCommand(invocation) {
     if (invocation.operation === 'java-probe') {
       return { status: 0, stdout: '', stderr: 'openjdk version "21.0.1"' };
+    }
+    if (invocation.operation === 'error-prone-patch') {
+      patchCalls.push({ ...invocation, flags: recordedFlags(invocation) });
+      return failure[invocation.operation] ?? patchResponse(invocation);
     }
     calls.push(invocation);
     if (failure[invocation.operation] !== undefined) {
@@ -124,6 +150,7 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
   return {
     executeFixCommand,
     calls,
+    patchCalls,
     launches,
     operations: () => calls.map(({ operation }) => operation),
   };
