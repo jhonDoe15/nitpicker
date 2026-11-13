@@ -1,0 +1,124 @@
+def tooling = project.ext.nitpickerKotlinTooling
+def pinned = tooling.pinned
+def nitpickerArgument = tooling.argument
+def nitpickerStyle = tooling.style
+def relative = tooling.relative
+def reportDir = tooling.reportDir
+def analysisRoot = tooling.analysisRoot
+def kotlinLintedDirs = tooling.lintedDirs
+def kotlinLintedFiles = tooling.lintedFiles
+def kotlinFormatter = { nitpickerArgument('nitpicker.kotlin.formatter')?.toString() ?: 'none' }
+def writeFormatList = { List<String> files ->
+    reportDir.get().asFile.mkdirs()
+    reportDir.get().file('ktfmt.txt').asFile.text = files.unique().sort().collect { it + '\n' }.join('')
+}
+
+configurations {
+    nitpickerKtlint { canBeConsumed = false }
+    nitpickerKtfmt { canBeConsumed = false }
+}
+dependencies {
+    nitpickerKtlint("com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all") { transitive = false }
+    nitpickerKtfmt("com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies") { transitive = false }
+}
+
+// ktlint, and ktfmt when it reads .editorconfig files, run in a mirror of the Kotlin sources: the
+// .editorconfig files above the checkout and the ones the project did not list cannot reach them. The
+// mirror has the .editorconfig files of the style file at their repository relative paths and the
+// sources of this module below the folder of the build, so a section such as [src/**/*.kt] of any of
+// them matches the same files as in the repository. ktfmt without .editorconfig runs in the analysis root.
+def styleMirrorNeeded = {
+    kotlinFormatter() == 'ktlint' ||
+        (kotlinFormatter() == 'ktfmt' && nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true')
+}
+tasks.register('nitpickerKotlinStyleWorkspace') {
+    group = 'nitpicker'
+    def workspace = new File(temporaryDir, 'workspace')
+    ext.workspace = workspace
+    ext.moduleWorkspace = workspace
+    ext.defaultsFile = new File(temporaryDir, 'ktlint-defaults.editorconfig')
+    onlyIf { styleMirrorNeeded() && !kotlinLintedFiles().isEmpty() }
+    doLast {
+        project.delete(workspace)
+        workspace.mkdirs()
+        def style = nitpickerStyle()
+        ext.moduleWorkspace = style.offset ? new File(workspace, style.offset) : workspace
+        (style.editorconfigs ?: [[path: '.editorconfig', text: 'root = true\n']]).each { entry ->
+            def target = new File(workspace, entry.path.toString())
+            if (!target.canonicalPath.startsWith(workspace.canonicalPath + File.separator)) {
+                throw new GradleException("The style file names ${entry.path}, which is outside the mirror")
+            }
+            target.parentFile.mkdirs()
+            target.text = entry.text
+        }
+        kotlinLintedFiles().each { file ->
+            def target = new File(ext.moduleWorkspace, relative(file))
+            target.parentFile.mkdirs()
+            target.bytes = file.bytes
+        }
+        ext.defaultsFile.delete()
+        def defaults = style.ktlintDefaults
+        if (defaults) {
+            ext.defaultsFile.text = defaults
+        }
+    }
+}
+
+tasks.register('nitpickerKtlint', JavaExec) {
+    group = 'nitpicker'
+    classpath = configurations.nitpickerKtlint
+    mainClass = 'com.pinterest.ktlint.Main'
+    ignoreExitValue = true
+    def log = new ByteArrayOutputStream()
+    def report = reportDir.map { it.file('ktlint.sarif') }
+    dependsOn 'nitpickerKotlinStyleWorkspace'
+    onlyIf { kotlinFormatter() == 'ktlint' && !kotlinLintedFiles().isEmpty() }
+    doFirst {
+        reportDir.get().asFile.mkdirs()
+        standardOutput = log
+        errorOutput = log
+        report.get().asFile.delete()
+        def styleWorkspace = tasks.named('nitpickerKotlinStyleWorkspace').get()
+        workingDir = styleWorkspace.ext.moduleWorkspace
+        def defaultsArguments = styleWorkspace.ext.defaultsFile.exists()
+            ? ["--editorconfig=${styleWorkspace.ext.defaultsFile.absolutePath}".toString()] : []
+        args(['--relative', "--reporter=sarif,output=${report.get().asFile.absolutePath}".toString()] +
+            defaultsArguments + kotlinLintedDirs().collect { "${relative(it)}/**/*.kt".toString() })
+    }
+    doLast {
+        if (executionResult.get().exitValue > 1 || !report.get().asFile.exists()) {
+            throw new GradleException("ktlint failed: ${log.toString('UTF-8').trim()}")
+        }
+    }
+}
+
+tasks.register('nitpickerKtfmt', JavaExec) {
+    group = 'nitpicker'
+    classpath = configurations.nitpickerKtfmt
+    mainClass = 'com.facebook.ktfmt.cli.Main'
+    ignoreExitValue = true
+    def changed = new ByteArrayOutputStream()
+    def errors = new ByteArrayOutputStream()
+    dependsOn 'nitpickerKotlinStyleWorkspace'
+    onlyIf { kotlinFormatter() == 'ktfmt' && !kotlinLintedFiles().isEmpty() }
+    doFirst {
+        standardOutput = changed
+        errorOutput = errors
+        workingDir = styleMirrorNeeded() ? tasks.named('nitpickerKotlinStyleWorkspace').get().ext.moduleWorkspace : analysisRoot
+        def style = "--${nitpickerArgument('nitpicker.kotlin.ktfmtStyle') ?: 'meta'}-style".toString()
+        def argumentFile = new File(temporaryDir, 'ktfmt.args')
+        def maxWidth = nitpickerArgument('nitpicker.kotlin.ktfmtMaxWidth')
+        argumentFile.text = ([style, '--dry-run'] +
+            (maxWidth ? ["--max-width=${maxWidth}".toString()] : []) +
+            (nitpickerArgument('nitpicker.kotlin.ktfmtEditorconfig') == 'true' ? ['--enable-editorconfig'] : []) +
+            kotlinLintedFiles().collect { relative(it) }).collect { it + '\n' }.join('')
+        args("@${argumentFile.absolutePath}".toString())
+    }
+    doLast {
+        def problems = errors.toString('UTF-8').trim()
+        if (executionResult.get().exitValue != 0 || problems.contains('Error formatting')) {
+            throw new GradleException("ktfmt failed: ${problems}")
+        }
+        writeFormatList(changed.toString('UTF-8').readLines().collect { it.trim() }.findAll { it.endsWith('.kt') })
+    }
+}

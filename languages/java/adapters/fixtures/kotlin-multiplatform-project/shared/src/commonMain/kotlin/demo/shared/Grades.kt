@@ -1,0 +1,13 @@
+package demo.shared
+
+fun grade(name: String): String =
+    when (name) {
+        "a" -> "A"
+        "b" -> "B"
+        "c" -> "C"
+        "d" -> "D"
+        "e" -> "E"
+        "f" -> "F"
+        "g" -> "G"
+        else -> "H"
+    }

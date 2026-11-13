@@ -1,0 +1,49 @@
+def context = project.ext.nitpickerKotlinJvmTarget
+def reportDir = context.reportDir
+def pinned = context.pinned
+def testsFailed = context.testsFailed
+def target = context.target
+def mainClasses = context.mainClasses
+def sourceRoots = context.sourceRoots
+
+def testTask = tasks.findByName("${target.name}Test")
+if (!(testTask instanceof Test)) {
+    return
+}
+pluginManager.apply('jacoco')
+jacoco { toolVersion = pinned.jacoco }
+if (testsFailed) {
+    testTask.enabled = false
+}
+testTask.extensions.findByType(JacocoTaskExtension)?.with {
+    includes = []
+    excludes = []
+    excludeClassLoaders = []
+}
+
+tasks.register('nitpickerJacoco', JacocoReport) {
+    group = 'nitpicker'
+    dependsOn testTask
+    executionData(testTask)
+    classDirectories.setFrom(mainClasses)
+    sourceDirectories.setFrom(sourceRoots)
+    reports {
+        xml.required = true
+        xml.outputLocation = reportDir.map { it.file('jacoco.xml') }
+        html.required = false
+        csv.required = false
+    }
+    onlyIf { !testsFailed && testTask.enabled }
+}
+
+tasks.named('nitpickerJava') {
+    dependsOn 'nitpickerJacoco'
+    doLast {
+        if (gradle.taskGraph.hasTask(testTask)) {
+            copy {
+                from(testTask.reports.junitXml.outputLocation) { include 'TEST-*.xml', 'nitpicker-containers.json' }
+                into reportDir.get().dir("test-results/${testTask.name}")
+            }
+        }
+    }
+}

@@ -94,12 +94,12 @@ function hasMainClasses(reportRoot) {
 }
 
 export function readModuleJacoco(module, preset) {
-  if (module.manifest.kotlinSourceModule === true) {
-    return undefined;
-  }
   const file = path.join(module.reportRoot, JACOCO_FILE);
   if (existsSync(file)) {
     return readFileSync(file, 'utf8');
+  }
+  if (module.manifest.kotlinSourceModule === true) {
+    return undefined;
   }
   if (!hasMainClasses(module.reportRoot)) {
     return EMPTY_JACOCO_REPORT;

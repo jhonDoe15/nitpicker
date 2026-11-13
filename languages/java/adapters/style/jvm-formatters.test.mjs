@@ -4,10 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
-const INIT_SCRIPT = readFileSync(
-  path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle'),
-  'utf8',
-);
+const INIT_SCRIPT = ['nitpicker.init.gradle', 'kotlin/kotlin-format.gradle']
+  .map((file) => readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8'))
+  .join('\n');
 const GROOVY_PINNED = new Proxy({}, { get: (target, name) => `\${pinned.${String(name)}}` });
 const FORMATTERS = [...Object.values(JAVA_FORMATTERS), ...Object.values(KOTLIN_FORMATTERS)];
 

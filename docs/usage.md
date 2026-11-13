@@ -2009,7 +2009,8 @@ Troubleshooting: the failures this preset meets are listed in the
 
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules or a Maven project that applies
 `kotlin-maven-plugin`, including modules that mix Java and Kotlin. Kotlin Multiplatform and Android modules of a Gradle
-build get the source checks only (see [Known limits](kotlin-preset/known-limits.md)). The build tool is detected, as for
+build get the source checks, the format check and, for a Multiplatform JVM target, detekt, the kotlinc lint, tests,
+coverage and CRAP (see [Known limits](kotlin-preset/known-limits.md)). The build tool is detected, as for
 the Java preset, and never configured. It runs everything the Java preset runs on the Java sources, plus detekt and a
 format check (ktlint or ktfmt, whichever the project uses, and none for a project that uses
 neither; `"kotlin": { "formatter": "ktfmt" }` overrides the detection) on the Kotlin sources,
