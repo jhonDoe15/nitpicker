@@ -111,11 +111,40 @@ describe('the Error Prone recipes', () => {
     expect(readFileSync(path.join(root, NAME), 'utf8')).toBe(SOURCE);
   });
 
+  it('map a hunk of an own check to the finding of the rule it fixes', () => {
+    const root = project();
+    const swap = entry(
+      'UseStandardCharsets',
+      '-  void run() {}\n+  void run() { }\n',
+      '@@ -3,1 +3,1 @@',
+    );
+
+    const result = run(root, [swap]);
+
+    expect(result.fixedFindings).toEqual([`${NAME}:3 pmd/UseStandardCharsets (java-source-safe)`]);
+  });
+
+  it('keep the review own checks for the run that selects their rule', () => {
+    const root = project();
+    const retry = entry('RetryInTest', '-  void run() {}\n+  void run() { }\n', '@@ -3,1 +3,1 @@');
+
+    const plain = run(root, [retry]);
+    const selected = run(root, [retry], ['pmd/RetryInTest']);
+
+    expect(plain.fixedFindings).toEqual([]);
+    expect(selected.fixedFindings).toEqual([`${NAME}:3 pmd/RetryInTest (java-source-review)`]);
+  });
+
   it('cover the java and kotlin presets', () => {
-    const [safe, review] = errorProneRecipes(new Map());
+    const [safe, review, ownSafe, ownReview] = errorProneRecipes(new Map());
 
     expect(safe.presets).toEqual(['java', 'kotlin']);
     expect([safe.safety, review.safety]).toEqual(['safe', 'review']);
     expect(safe.rules).toEqual(SAFE_CHECKS.map(ruleOf));
+    expect([ownSafe, ownReview].map(({ presets }) => presets)).toEqual([
+      ['java', 'kotlin'],
+      ['java', 'kotlin'],
+    ]);
+    expect([ownSafe.safety, ownReview.safety]).toEqual(['safe', 'review']);
   });
 });

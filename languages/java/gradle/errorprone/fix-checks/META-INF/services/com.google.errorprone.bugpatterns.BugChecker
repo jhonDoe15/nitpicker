@@ -1,0 +1,12 @@
+nitpicker.fix.DetachedTestCase
+nitpicker.fix.GeneratedOnHandWrittenCode
+nitpicker.fix.LiteralsFirstInComparisons
+nitpicker.fix.LogStringConcatenation
+nitpicker.fix.MutationIgnoreMarker
+nitpicker.fix.PreserveStackTrace
+nitpicker.fix.RetryInTest
+nitpicker.fix.SpringComposedMapping
+nitpicker.fix.SpringConstructorInjection
+nitpicker.fix.SpringRestController
+nitpicker.fix.UseCollectionIsEmpty
+nitpicker.fix.UseStandardCharsets

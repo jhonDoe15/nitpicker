@@ -7,7 +7,7 @@ import {
 } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
-import { SAFE_CHECKS } from '../checks/error-prone-checks.mjs';
+import { patchChecks } from '../checks/error-prone-checks.mjs';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { fakeErrorPronePatch, patchChecksOf } from '../../test-support/fake-error-prone-patch.mjs';
 import { fakeJvmTools } from '../../test-support/fake-jvm-tools.mjs';
@@ -173,7 +173,7 @@ describe('--fix with Error Prone on Gradle', () => {
 
     expect(call.args.at(-1)).toBe('nitpickerErrorProne');
     expect(call.args.slice(at, at + 2)).toEqual(['-I', INIT_SCRIPT]);
-    expect(patchChecksOf(call)).toEqual(SAFE_CHECKS);
+    expect(patchChecksOf(call)).toEqual(patchChecks([]));
     expect(call.flags.some((flag) => flag.endsWith(':IN_PLACE'))).toBe(false);
     expect(call.flags.some((flag) => flag.startsWith('-XepPatchLocation:'))).toBe(true);
   });
@@ -273,7 +273,7 @@ tasks.withType(JavaCompile).configureEach {
 
     expect([declared, checks]).toEqual([
       '-Xep:ReturnMissingNullable:WARN',
-      `-XepPatchChecks:${SAFE_CHECKS.join(',')}`,
+      `-XepPatchChecks:${patchChecks([]).join(',')}`,
     ]);
     expect(location).toMatch(/^-XepPatchLocation:\S+\/patches$/u);
   });

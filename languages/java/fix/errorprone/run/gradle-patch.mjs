@@ -3,11 +3,16 @@ import path from 'node:path';
 import { runFixCommand } from '../../../../../core/fix/common/fix-command.mjs';
 import { gradleTarget } from '../../../adapters/gradle-wrapper/gradle-command.mjs';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { OWN_CHECKS_DIRECTORY, usesOwnChecks } from '../own/own-checks.mjs';
 
 const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
 
 export function patchFlags({ checks, patchRoot }) {
-  return [`-XepPatchChecks:${checks.join(',')}`, `-XepPatchLocation:${patchRoot}`];
+  return [
+    `-XepPatchChecks:${checks.join(',')}`,
+    `-XepPatchLocation:${patchRoot}`,
+    ...(usesOwnChecks(checks) ? [`-XepNitpickerFixChecks:${OWN_CHECKS_DIRECTORY}`] : []),
+  ];
 }
 
 export function gradleArguments({ settingsFile, reportRoot, initScript = INIT_SCRIPT }) {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { OWN_CHECKS_DIRECTORY } from '../own/own-checks.mjs';
 import { gradleArguments, patchFlags, runGradlePatch } from './gradle-patch.mjs';
 
 const directories = [];
@@ -19,6 +20,15 @@ describe('patchFlags', () => {
       '-XepPatchChecks:A,B',
       '-XepPatchLocation:/work/patches',
     ]);
+  });
+
+  it('points at the fix-only checks when one of them is asked for', () => {
+    const flags = patchFlags({
+      checks: ['MissingOverride', 'UseStandardCharsets'],
+      patchRoot: '/p',
+    });
+
+    expect(flags.at(-1)).toBe(`-XepNitpickerFixChecks:${OWN_CHECKS_DIRECTORY}`);
   });
 });
 
