@@ -94,12 +94,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
-  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` treats as shared and
-  as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
+  `<sourceRoot>/main/features`) change which folders `shared-used-by-one-feature` and
+  `foreign-feature-persistence` treat as shared and as features; `[]` in `featureRoots` turns it off. The ESLint boundary rules keep the default layout.
   When feature roots nest, a file belongs to the innermost one. A folder a configured `sharedRoots`
   glob matches is shared even inside a feature folder; while `sharedRoots` is not set, a folder the
   default shared root matches inside a feature folder is part of that feature, so
-  `shared-used-by-one-feature` does not report its modules. A configured glob that matches no
+  `shared-used-by-one-feature` does not report its modules and `foreign-feature-persistence` counts
+  them as that feature's own. A configured glob that matches no
   folder is named in a notice.
 - `layout.excludedGlobs`, `layout.entryPoints` and `layout.sourceRoots`/`layout.testRoots` are all valid `layout` keys. The
   default `testRoots` are `test`, `tests`, `__tests__` and `e2e` (repo-root folders only, so

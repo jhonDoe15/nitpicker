@@ -23,6 +23,7 @@ import {
   PALANTIR_ROOMY,
 } from '../test-support/java-preset-data.mjs';
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
+import { DOMAIN_FILES, FEATURE_FILES } from '../test-support/boundaries/feature-sources.mjs';
 import {
   WIDE,
   WIDE_EXTENDED,
@@ -142,6 +143,8 @@ export function useJavaPresetProject() {
     );
     runGitIn(repository, 'add', '-A');
     runGitIn(repository, 'commit', '-q', '-m', 'stability-edited');
+    branchWith('features', FEATURE_FILES);
+    branchWith('domain', DOMAIN_FILES);
     // --- end coupling branches ---
   });
   afterAll(() => {

@@ -187,6 +187,26 @@ describe('Go lint messages', () => {
       },
       "parameter 'text' seems to be unused, consider removing or renaming it as _.",
     ],
+    [
+      {
+        tool: 'gocritic',
+        rule: 'sortSlice',
+        message: 'unusual order of {i,j} params in comparison',
+      },
+      'unusual order of {i,j} params in comparison. Keep `i` on the left and flip the operator: `names[i] > names[j]` sorts in descending order.',
+    ],
+    [
+      { tool: 'gocritic', rule: 'unlabelStmt', message: 'change `continue outer` to `break`' },
+      'change `continue outer` to `break`.',
+    ],
+    [
+      {
+        tool: 'gocritic',
+        rule: 'appendAssign',
+        message: 'append result not assigned to the same slice',
+      },
+      'append result not assigned to the same slice. Append to the slice you assign: `items = append(items, item)`.',
+    ],
   ])('names the allowed form for %j', (entry, message) => {
     expect(lintMessage(entry)).toBe(message);
   });

@@ -12,6 +12,7 @@ import { uniqueFindings } from '../../../../../shared/rules/reuse/reuse-finding.
 import { importSourceText, neutralReuseFacts } from './definition-facts.mjs';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
+import { typescriptFeatureLayout } from '../../coupling/feature-layout.mjs';
 import { iconAssetFindings } from './rules/icon-assets.mjs';
 import { redefinedLibraryComponentFindings } from './rules/library-components.mjs';
 
@@ -24,6 +25,7 @@ const REUSE_RULES = [
   'near-duplicate',
   'duplicate-branch',
 ];
+const FEATURE_RULES = ['foreign-feature-persistence'];
 
 function projectTarget(target, source) {
   const located = source === undefined ? undefined : { ...target, path: source };
@@ -71,7 +73,7 @@ export function reuseFindings(
   { projectRoot, analyzerName, baselineRoot, baselinePaths = new Map() },
   environment,
 ) {
-  const { exceptions, react } = readHeadPolicy(environment);
+  const { exceptions, react, layout: configured } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
   const facts = productionFacts(projectRoot, layout, (specifier, file) =>
@@ -83,13 +85,20 @@ export function reuseFindings(
       ? undefined
       : { readFile: baselineFileReader({ projectRoot, baselineRoot, baselinePaths }) };
   const inReactScope = react.enabled ?? hasScopePackage(projectRoot, 'react');
+  const neutral = neutralReuseFacts(facts, resolve);
   return uniqueFindings([
-    ...sharedFactFindings(neutralReuseFacts(facts, resolve), {
+    ...sharedFactFindings(neutral, {
       language: 'typescript',
       analyzerName,
       rules: REUSE_RULES,
       policy: { exceptions },
       baseline,
+    }),
+    ...sharedFactFindings(neutral, {
+      language: 'typescript',
+      analyzerName,
+      rules: FEATURE_RULES,
+      policy: { exceptions, layout: typescriptFeatureLayout(configured, layout.sourceRoots) },
     }),
     ...(inReactScope ? reactFindings({ facts, context, projectRoot, layout, react }) : []),
   ]);
