@@ -54,6 +54,11 @@ export const STRUCTURE_NOTES = {
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
+  'duplicate-branch': [
+    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
+    'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
+    'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

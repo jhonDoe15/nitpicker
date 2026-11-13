@@ -21,6 +21,7 @@ const REUSE_RULES = [
   'sibling-copy-edit',
   'near-duplicate',
   'decided-condition',
+  'duplicate-branch',
 ];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };

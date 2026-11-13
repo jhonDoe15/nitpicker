@@ -78,8 +78,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
-  `sibling-copy-edit`, `near-duplicate`, `exported-name-collision`, `redefined-library-component`,
-  `new-icon-asset`),
+  `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`),
   the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
   ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
   (required for `changed-branch-coverage`) that limits the entry to one function. The message of
@@ -90,7 +90,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `near-duplicate`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `near-duplicate`, `duplicate-branch`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and

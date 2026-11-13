@@ -36,6 +36,13 @@ proves it always true (a redundant check) or always false (dead code). The guard
 of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
 lambda captures, forgets what was known.
 
+`duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
+bodies have the same canonical tree (locals declared in the arm may have other names) fail, except
+arms picked by an `is` test, where the same call can resolve differently for each type; merge
+the conditions or labels into one arm, or change the arm that was meant to differ. The statements
+every arm of a complete `if` chain or `when` starts or ends with are reported, not failed, when
+moving them before or after it keeps behaviour.
+
 The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
 Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion

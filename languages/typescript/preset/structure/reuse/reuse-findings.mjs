@@ -22,6 +22,7 @@ const REUSE_RULES = [
   'exported-name-collision',
   'sibling-copy-edit',
   'near-duplicate',
+  'duplicate-branch',
 ];
 
 function projectTarget(target, source) {

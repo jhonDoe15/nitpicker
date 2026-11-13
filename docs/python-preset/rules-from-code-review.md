@@ -77,6 +77,11 @@ members is not reported.
   are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
   `continue`, and the left side of `and` and `or`; an assignment to a name, or a call when the name
   is a module name, forgets what was known, and arithmetic is an opaque value.
+- `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
+  conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
+  adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The
+  statements every arm of a complete chain starts or ends with are reported, not failed, when
+  moving them keeps behaviour.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.
