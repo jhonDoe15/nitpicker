@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { moduleProject } from '../../builds/java-modules.mts';
-import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { DESIGN_FACTS_FILE, designFindings } from './design-findings.mts';
 import type { DesignModule } from './producer/design-facts.mts';

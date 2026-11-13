@@ -6,7 +6,7 @@ import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../maven/configuration/maven-classpaths.mjs';
+} from '../../maven/configuration/maven-classpaths.mts';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import { readReactor } from './maven-project.mjs';
-import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
@@ -16,7 +16,7 @@ import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
-import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
@@ -24,13 +24,13 @@ import {
   type JavaPolicy,
   callUntyped,
 } from '../adapters/typed/java-values.mts';
+import {
+  type Classpaths,
+  type Dependency,
+  type MavenModule,
+  mavenModuleOf,
+} from './typed/maven-values.mts';
 
-type MavenModule = Readonly<Record<string, unknown>> & {
-  readonly coordinates: string;
-  readonly packaging: string;
-  readonly basedir: string;
-  readonly buildDirectory: string;
-};
 type MavenRun = {
   readonly projectRoot: string;
   readonly maven: string | undefined;
@@ -42,7 +42,7 @@ type MavenRun = {
 type BuildRequest = MavenRun & { readonly work: string; readonly modules: readonly MavenModule[] };
 type AnalyzedModule = {
   readonly module: MavenModule;
-  readonly classpaths: Readonly<Record<string, unknown>>;
+  readonly classpaths: Classpaths;
 };
 type AnalyzeRequest = MavenRun & {
   readonly analyzed: readonly AnalyzedModule[];
@@ -88,16 +88,6 @@ const PROJECT_CHECKS_OFF = [
   '-Ddetekt.skip=true',
 ];
 
-function mavenModuleOf(value: unknown): MavenModule {
-  return {
-    ...fieldsOf(value),
-    coordinates: textOf(fieldOf(value, 'coordinates')),
-    packaging: textOf(fieldOf(value, 'packaging')),
-    basedir: textOf(fieldOf(value, 'basedir')),
-    buildDirectory: textOf(fieldOf(value, 'buildDirectory')),
-  };
-}
-
 function dependencyFile(work: string, module: MavenModule): string {
   const [groupId = '', artifactId = ''] = module.coordinates.split(':');
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
@@ -135,11 +125,12 @@ export function buildAndTest({
   });
 }
 
-function readClasspaths(work: string, module: MavenModule): Readonly<Record<string, unknown>> {
-  const dependencies: unknown = parseDependencyList(
-    readFileSync(dependencyFile(work, module), 'utf8'),
-  );
-  return { ...fieldsOf(callUntyped(moduleClasspaths, module, dependencies)), dependencies };
+function readClasspaths(
+  work: string,
+  module: MavenModule,
+): Classpaths & { readonly dependencies: readonly Dependency[] } {
+  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
+  return { ...moduleClasspaths(module, dependencies), dependencies };
 }
 
 function guardProject(
@@ -204,7 +195,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeReques
   const springRules: unknown = writeSpringRuleset(shared.projectRoot, work);
   return analyzed
     .map(({ module, classpaths }) =>
-      callUntyped(analyzeModule, {
+      analyzeModule({
         ...shared,
         module,
         classpaths,

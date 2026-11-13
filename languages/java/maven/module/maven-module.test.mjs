@@ -151,7 +151,7 @@ describe('buildAndTest', () => {
 describe('the tools a module runs in parallel processes', () => {
   it('names each tool function in the module that a process imports it from', async () => {
     const directory = path.dirname(fileURLToPath(import.meta.url));
-    const source = readFileSync(path.join(directory, 'maven-module.mjs'), 'utf8');
+    const source = readFileSync(path.join(directory, 'maven-module.mts'), 'utf8');
     const urls = Object.fromEntries(
       [...source.matchAll(/const (\w+_URL) = new URL\('([^']+)'/gu)].map(([, name, file]) => [
         name,
