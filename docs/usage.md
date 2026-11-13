@@ -3333,9 +3333,10 @@ of these is visible in the report. Remove them as the codebase improves.
 The repository's `Dockerfile` builds one image per preset family, so the gate runs in any CI without
 installing a toolchain on the host. Every image has Node 24, Git, nitpicker installed from source as
 `nitpicker` (the entrypoint), Corepack (pnpm and Yarn, downloaded on first use), Bun 1.4.2 for the
-base's dependency install, and `/work` as the working directory. The images are built for
-`linux/amd64` only; arm64 images are tracked in
-[#562](https://github.com/jhonDoe15/nitpicker/issues/562).
+base's dependency install, and `/work` as the working directory. The images are published for
+`linux/amd64` and `linux/arm64`: every tag is a multi-arch manifest, so Docker on Apple Silicon or
+on an arm64 CI runner pulls the native image without emulation. Each variant is built and
+smoke-tested on a native runner of both architectures before it is published.
 
 | Image (target) | Presets                | Adds to the base                                                          | Size         |
 | -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
@@ -3392,9 +3393,10 @@ What each project provides:
   # Bun:  --entrypoint bun nitpicker:typescript install --frozen-lockfile
   ```
 
-  A `node_modules` installed on the host works only on a Linux x86-64 host: on macOS, Windows or an
-  arm64 machine its native packages (esbuild, Rollup, SWC) are built for the host and fail in the
-  container. A project that pins another Bun than 1.4.2 needs its own image.
+  A `node_modules` installed on the host works only when the host and the image have the same
+  operating system and architecture (a Linux x86-64 host with the amd64 image, a Linux arm64 host
+  with the arm64 image): on macOS or Windows, or on another architecture, its native packages
+  (esbuild, Rollup, SWC) are built for the host and fail in the container. A project that pins another Bun than 1.4.2 needs its own image.
 
 - **Java and Kotlin.** A `nitpicker.config.json` with the preset. Gradle runs through the project's
   `gradlew` and Maven through its `mvnw` when it has them, else through the image's `gradle` and

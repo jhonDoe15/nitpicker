@@ -1,9 +1,11 @@
 name: container
 
-# Builds each image variant of the Dockerfile and gates a sample project of every preset in it
-# (.github/container-smoke). The github-release workflow calls this one with publish: true, which
-# pushes each image from the job that tested it to the registry named in env below, then moves the
-# latest tags once every variant has passed. Not a required check.
+# Builds each image variant of the Dockerfile for linux/amd64 and linux/arm64, each on a runner of its
+# own architecture, and gates a sample project of every preset in it (.github/container-smoke). The
+# github-release workflow calls this one with publish: true, which pushes each image from the job that
+# tested it to the registry named in env below under a tag with its architecture, then joins the two
+# architectures into one multi-arch manifest per tag, and moves the latest tags once every variant has
+# passed on both. Not a required check.
 on:
   push:
     branches: [main]
@@ -85,10 +87,12 @@ jobs:
   # Each case runs as the host user with a home directory mounted, or as <case>@root, or as
   # <case>@<uid>:<gid>, a user with no passwd entry and no home mount (.github/container-smoke/run.sh).
   image:
-    name: image ${{ matrix.variant }}
+    name: image ${{ matrix.variant }} ${{ matrix.platform }}
     needs: changes
     if: needs.changes.outputs.run == 'true'
-    runs-on: ubuntu-latest
+    # The smoke cases run Gradle, Maven, PIT and Stryker, which are far too slow under emulation, so
+    # each architecture builds and runs on a native runner.
+    runs-on: ${{ matrix.platform == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
     timeout-minutes: 90
     # packages: write is used only to push, when publish is set; the checkout keeps no credentials,
     # so the smoke test never sees the token.
@@ -98,6 +102,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        variant: [typescript, jvm, python, all]
+        platform: [amd64, arm64]
         include:
           - variant: typescript
             cases: typescript javascript@root pnpm@12345:12345
@@ -126,19 +132,20 @@ jobs:
           load: true
           provenance: false
           tags: nitpicker:${{ matrix.variant }}
+          platforms: linux/${{ matrix.platform }}
           build-args: |
             SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
           labels: |
             org.opencontainers.image.revision=${{ inputs.commit || github.sha }}
             org.opencontainers.image.version=${{ inputs.version || 'dev' }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-from: type=gha,scope=${{ matrix.variant }}-${{ matrix.platform }}
           cache-to: >-
             ${{ (github.ref == 'refs/heads/main' || inputs.publish)
-            && format('type=gha,scope={0}', matrix.variant) || '' }}
+            && format('type=gha,scope={0}-{1}', matrix.variant, matrix.platform) || '' }}
       - name: Report the image size
         run: |
           size=$(docker image inspect nitpicker:${{ matrix.variant }} --format '{{.Size}}')
-          echo "${{ matrix.variant }}: $((size / 1000000)) MB" >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ matrix.variant }} ${{ matrix.platform }}: $((size / 1000000)) MB" >> "$GITHUB_STEP_SUMMARY"
       - name: Gate the sample projects in the image
         run: .github/container-smoke/run.sh nitpicker:${{ matrix.variant }} ${{ matrix.cases }}
       # The image pushed is the one the cases above just passed in, never a rebuild.
@@ -149,26 +156,57 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # The registry path must be lower case, and the owner name may not be.
+      # The registry path must be lower case, and the owner name may not be. Each architecture is
+      # pushed under its own tag; the manifest job joins them under the tags users pull.
       - name: Push the image
         if: ${{ inputs.publish }}
         env:
           VERSION: ${{ inputs.version }}
           VARIANT: ${{ matrix.variant }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
-          tags=("${image}:${VERSION}-${VARIANT}")
-          if [ "$VARIANT" = "typescript" ]; then tags+=("${image}:${VERSION}"); fi
-          for tag in "${tags[@]}"; do
-            docker tag "nitpicker:${VARIANT}" "$tag"
-            docker push "$tag"
+          tag="${image}:${VERSION}-${VARIANT}-${PLATFORM}"
+          docker tag "nitpicker:${VARIANT}" "$tag"
+          docker push "$tag"
+
+  # Joins the amd64 and arm64 images that passed into one multi-arch manifest per tag, in the
+  # registry, without rebuilding anything.
+  manifest:
+    needs: [changes, image]
+    if: always() && needs.image.result == 'success' && inputs.publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3.12.0
+      - uses: docker/login-action@v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish the multi-arch manifests
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          for variant in typescript jvm python all; do
+            tags=("${image}:${VERSION}-${variant}")
+            if [ "$variant" = "typescript" ]; then tags+=("${image}:${VERSION}"); fi
+            for tag in "${tags[@]}"; do
+              docker buildx imagetools create --tag "$tag" \
+                "${image}:${VERSION}-${variant}-amd64" "${image}:${VERSION}-${variant}-arm64"
+            done
           done
 
-  # A stable release moves the latest tags only after every variant passed and was pushed, so they
-  # never point at a mix of versions. The manifests are copied in the registry, not rebuilt.
+  # A stable release moves the latest tags only after every variant passed on both architectures and
+  # its manifest was published, so they never point at a mix of versions. The manifests are copied in
+  # the registry, not rebuilt.
   latest:
-    needs: [changes, image]
-    if: always() && needs.image.result == 'success' && inputs.publish && inputs.latest
+    needs: [changes, manifest]
+    if: always() && needs.manifest.result == 'success' && inputs.publish && inputs.latest
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

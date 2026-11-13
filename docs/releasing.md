@@ -151,10 +151,11 @@ The root `Dockerfile` has one target per image variant (`typescript`, `jvm`, `py
 `npm ci --omit=dev`, so the images must be built from the same commit as the tag, and base images are
 pinned to exact versions. Bump them together, and keep Node, Bun, the JDK, Gradle, Python, uv and
 Poetry equal to the versions CI uses (`core/container-image.test.mjs` fails when they drift, and when
-the `container` workflow's matrix misses a variant). The images are `linux/amd64` only; arm64 is
-tracked in [#562](https://github.com/jhonDoe15/nitpicker/issues/562).
+the `container` workflow's matrix misses a variant). The base images are tags of multi-arch indexes
+that include `linux/arm64`, and the images are built for `linux/amd64` and `linux/arm64`.
 
-The `container` workflow builds every variant and gates a sample project of each preset in it
+The `container` workflow builds every variant on a native runner of each architecture (`ubuntu-latest`
+for amd64, `ubuntu-24.04-arm` for arm64) and gates a sample project of each preset in it
 (`.github/container-smoke`): a harmless change must exit 0 and a change with a known violation must
 exit 1. Some cases run as the host user with a home directory mounted, some as root and some as a
 user with no passwd entry (`<case>@root`, `<case>@12345:12345`). It runs on pushes to `main` that
@@ -164,16 +165,19 @@ runs on `main` and releases write the build cache; every run reads it. Run the s
 locally with `.github/container-smoke/run.sh nitpicker:jvm java-gradle java-maven@12345:12345 kotlin`.
 
 The `github-release` workflow calls `container` before it creates the release, which waits for it.
-Each image job builds its variant from the released commit, runs the smoke test, and only then pushes
-that same image to GitHub Container Registry (`ghcr.io/<owner>/nitpicker`, the owner in lower case)
-with the job's `GITHUB_TOKEN` and `packages: write`; no secret is needed. The images carry the
+Each image job builds its variant for its architecture from the released commit, runs the smoke test,
+and only then pushes that same image to GitHub Container Registry (`ghcr.io/<owner>/nitpicker`, the
+owner in lower case) as `<version>-<variant>-<arch>` (`amd64` or `arm64`), with the job's
+`GITHUB_TOKEN` and `packages: write`; no secret is needed. A `manifest` job then joins the two
+architectures of each variant into the tags below with `docker buildx imagetools create`, in the
+registry and without rebuilding; the per-architecture tags stay beside them. The images carry the
 version, the commit and the source repository as OCI labels, and no provenance attestation. The tags
 are:
 
-- `<version>-<variant>` for every variant, for example `0.2.0-jvm`;
-- `<version>` for the TypeScript image;
+- `<version>-<variant>` for every variant, for example `0.2.0-jvm`, a multi-arch manifest;
+- `<version>` for the TypeScript image, also a multi-arch manifest;
 - `latest-<variant>` and `latest` for a stable release (not for a pre-release), moved by a final job
-  only after every variant passed and was pushed.
+  only after every variant passed on both architectures and its manifest was published.
 
 The first release after this change creates the package, private by default; until then no image
 exists. Make it public under the package's settings, so that the images can be pulled without logging
