@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand } from '../../../maven/maven-command.mjs';
 import { lintFingerprint } from '../lint-baseline.mjs';
-import { runJavacLint } from '../javac-lint-runner.mjs';
+import { runJavacLint } from '../javac-lint-runner.mts';
 
 export const JAVAC = javaCommand('javac');
 const NO_SETTINGS = { release: '17', source: undefined, target: undefined, args: [] };
