@@ -7,7 +7,9 @@ import { matchingFiles } from './matching-files.mts';
 const temporaryRoots: string[] = [];
 
 afterAll(() => {
-  for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
+  for (const root of temporaryRoots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
 
 function project(): string {
