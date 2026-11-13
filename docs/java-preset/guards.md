@@ -261,8 +261,11 @@ A Checkstyle rule prints as its check name, for example `checkstyle/MagicNumber`
   build file. On a Maven build see [Maven builds](#maven-builds) for which dependencies count.
   Versions are not checked: how a project pins its versions is its own choice.
 - **Tests.** The test rules run on test sources only. `DisabledTest` (`@Disabled`, `@Ignore`), `AssertionInControlFlow` (an
-  assertion or `verify` inside an `if`, `switch`, loop or `?:` of a test method; an `if` that only
-  calls `fail` is fine),
+  assertion or `verify` inside an `if`, `switch`, loop, `?:` or iterating callback (`forEach`, `map`,
+  `filter`, `peek`, `anyMatch` and the like) of a test method: an empty collection runs no assertion.
+  Allowed: assert the whole collection at once, `assertAll(() -> ..., () -> ...)`, a
+  `@ParameterizedTest` for a table of cases, and a loop that only builds data before an unconditional
+  assertion; an `if` that only calls `fail` is fine),
   `TryCatchInTest` (use `assertThrows`; a `try` inside a lambda or an anonymous class is fine),
   `TautologicalAssertion` (`assertThat(true)`, `assertTrue(true)`,
   `assertEquals(1, 1)`; `assertEquals(a, a)` is a reflexivity test and is fine),
