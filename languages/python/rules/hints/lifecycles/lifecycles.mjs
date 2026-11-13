@@ -19,4 +19,12 @@ export const LIFECYCLE_HINTS = [
     allowed:
       'In the close method, fail every pending future and then clear the dict: `for future in self._pending.values(): future.set_exception(ConnectionError("closed"))` (or `future.cancel()`), or hand the dict to a helper that does. An exception fits only when the futures are failed elsewhere before the object closes.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['handle-unreleased-on-close'],
+    describe: (subject) =>
+      `\`${subject}\` registers a timer, callback or signal handler that the close method never cancels, so it fires after close and registrations pile up on each start`,
+    allowed:
+      'Keep the handle (`self._handle = loop.call_later(...)`) and call `self._handle.cancel()` in the close method, remove a signal handler with `loop.remove_signal_handler(...)` there, or stop a `threading.Timer` with `cancel()`. An exception fits only when the timer or handler dies with this object.',
+  },
 ];

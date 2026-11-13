@@ -241,6 +241,16 @@ the Java preset (a `Map` of `CompletableFuture`, `Future` and the like), `kotlin
 in the Kotlin preset (also `CompletableDeferred`) and `go-rules/pending-not-closed` in the Go preset (a map of
 channels). A close that fails or completes each entry, or hands the collection to a helper that does, is left alone.
 
+Listeners and timers a close never releases: `nitpicker/release-listeners-on-close` (strict preset, production
+source outside composition roots) reports, in a class or factory with a close, dispose, stop or shutdown function,
+`on`, `addListener` or `addEventListener` on a long-lived emitter (a field, a closure or module variable,
+`process`) and a `setInterval` or kept `setTimeout` handle that nothing in the scope removes or clears. `once`,
+an `AbortSignal` and a short-lived emitter are left alone. The same form runs as `handle-unreleased-on-close` in
+the Python preset (`call_later`, `call_at`, `threading.Timer` and signal handlers), `pmd/TimerNotStoppedOnClose`
+in the Java preset and `kotlin-source/TimerNotStoppedOnClose` in the Kotlin preset (a scheduled executor or
+`Timer` that close never shuts down) and `go-rules/ticker-not-stopped` in the Go preset (`time.NewTicker`
+without `Stop`).
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

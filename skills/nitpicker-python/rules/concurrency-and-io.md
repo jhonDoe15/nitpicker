@@ -14,6 +14,8 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A `close` that clears a dict of futures kept for pending requests fails every one first
   (`future.set_exception(ConnectionError("closed"))` or `future.cancel()`), so no awaiting caller hangs
   (`pending-unsettled-on-close`).
+- A class with a `close` keeps the handle of every `loop.call_later`, `call_at` or `threading.Timer` and cancels it
+  there, and removes its `add_signal_handler` registrations (`handle-unreleased-on-close`).
 - Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
   `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
   blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`

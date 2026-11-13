@@ -127,6 +127,7 @@ const REVIEW_RULES = new Set([
   'SecretInLog',
   'CleanupSkippedOnFailure',
   'PendingFuturesNotFailedOnClose',
+  'TimerNotStoppedOnClose',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

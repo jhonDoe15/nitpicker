@@ -856,6 +856,16 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   a method it reaches: `set_exception`, `cancel`, `set_result`, `reject` or `resolve` on each entry, or the
   attribute passed to a call, or the attribute (or a local alias of it) iterated or looped on with `while self._pending:` around a settle call. A `.clear()` alone leaves every awaiting caller waiting forever. Allowed: fail
   each future, then clear.
+- `handle-unreleased-on-close` reports a timer or signal handler that a class never releases in its close. In a
+  class with a `close`, `aclose`, `__exit__`, `__aexit__`, `dispose`, `destroy`, `shutdown`, `stop` or
+  `disconnect` method, a method outside the close path that calls `loop.call_later`, `call_at` or `call_repeatedly`
+  (`call_soon` fires once and returns no handle that needs cancelling), creates a `threading.Timer`, or calls `add_signal_handler` is reported unless a close method (or
+  a method it reaches) calls `cancel` or `stop` on the `self.` attribute that holds the handle, or
+  `remove_signal_handler`, or when a collection that holds the handles is iterated and cancelled in close, the
+  attribute (or a local alias of it) is handed to a helper such as `cancel_all(self._t)`, or the handle is a
+  local that the same method cancels or joins. A handle that is stored nowhere is reported. Allowed:
+  `self._handle = loop.call_later(...)` with `self._handle.cancel()` in close. `functools.lru_cache` on methods is
+  left to ruff `B019`.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group

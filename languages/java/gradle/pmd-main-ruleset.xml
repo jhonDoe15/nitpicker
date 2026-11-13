@@ -1406,6 +1406,36 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="TimerNotStoppedOnClose" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This scheduler or timer is created by a class that has a close method, but close never shuts it down, so its scheduled tasks keep running and its thread keeps the JVM alive after close. Call shutdown() (then awaitTermination) on the executor, or cancel() on the Timer, in close (Spring beans are covered by SpringUnreleasedResource). An exception fits only when the scheduler is shared and owned elsewhere.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $closers := ('close', 'shutdown', 'stop', 'disconnect', 'destroy', 'dispose', 'end', 'cleanup'),
+    $releasing := ('shutdown', 'shutdownNow', 'close', 'cancel', 'purge', 'awaitTermination')
+return //ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
+  [ClassType[pmd-java:typeIs('java.util.concurrent.ScheduledExecutorService') or pmd-java:typeIs('java.util.Timer')]]
+  [empty(ancestor::ClassDeclaration[1]/ModifierList/Annotation[@SimpleName = ('Component', 'Service', 'Repository',
+                                                               'Configuration', 'Controller', 'RestController')])]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $closing := $body/MethodDeclaration[@Name = $closers],
+       $called := $closing//MethodCall/@MethodName,
+       $reachable := $closing | $body/MethodDeclaration[@Name = $called],
+       $created := exists(VariableDeclarator[ConstructorCall or MethodCall])
+         or exists($body//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+                                               [*[2][self::ConstructorCall or self::MethodCall]])
+   return $created and exists($closing)
+     and empty($reachable//*[self::MethodCall or self::Resource or self::VariableDeclarator]
+                [.//*[(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+                [self::Resource or self::VariableDeclarator
+                 or @MethodName = $releasing
+                 or ArgumentList//*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="TriStateBoolean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.">
     <priority>3</priority>
