@@ -1,6 +1,6 @@
 import { runNodeTool, parseReportJson } from './tooling.mjs';
 import path from 'node:path';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import {
   COVERAGE_REPORT_PATH,
   coverageFailureFindings,
@@ -43,10 +43,25 @@ export async function runCoverage(options) {
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, run.runnerName)];
   }
+  keepCoverageReport(options);
   return [
     ...readCoverageFindings(options, run.report),
     ...(await readSlowTestFindings(options, run.report)),
   ];
+}
+
+function keepCoverageReport(options) {
+  const directory = options.keepCoverageReport;
+  const source = path.join(options.projectRoot, COVERAGE_REPORT_PATH);
+  if (!(directory && existsSync(source))) {
+    return;
+  }
+  const target = path.resolve(directory, `${options.snapshot}-coverage-final.json`);
+  if (path.relative(directory, target).startsWith('..')) {
+    return;
+  }
+  mkdirSync(directory, { recursive: true });
+  copyFileSync(source, target);
 }
 
 function noTestsRanFinding(options, runnerName) {

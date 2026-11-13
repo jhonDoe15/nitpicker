@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -16,6 +16,7 @@ import {
   normalizedRun,
   toolErrorKey,
 } from './smoke.mts';
+import { coverageEvidenceNotes } from './coverage-evidence.mts';
 import { renderSupportMatrix } from './support-matrix.mts';
 
 const GREET = 'src/main/features/greeting/domain/greet.ts';
@@ -252,5 +253,31 @@ describe('the compatibility table', () => {
       ['Where', 'Sample', 'Analyzers', 'Why'],
       ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[0]?.reason],
     ]);
+  });
+});
+
+describe('coverage evidence', () => {
+  const WINDOWS_KEY = String.raw`c:\Temp\head\src\main\features\greeting\domain\greet.ts`;
+  it('names the coverage keys of a differing file, whatever their path form', () => {
+    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-platform-evidence-'));
+    try {
+      const evidence = path.join(directory, 'typescript-reports/coverage-evidence/change');
+      mkdirSync(evidence, { recursive: true });
+      writeFileSync(
+        path.join(evidence, 'head-coverage-final.json'),
+        JSON.stringify({ [WINDOWS_KEY]: {} }),
+      );
+      const reference = run({});
+      const windows = run({
+        platform: 'win32',
+        change: { findings: [finding('coverage', 'changed-branch-coverage')] },
+      });
+      expect(coverageEvidenceNotes(directory, reference, windows)).toEqual([
+        'coverage evidence: no base coverage report kept for typescript',
+        `coverage evidence: typescript head keys for ${GREET}: ${JSON.stringify([WINDOWS_KEY])} of 1 files`,
+      ]);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
