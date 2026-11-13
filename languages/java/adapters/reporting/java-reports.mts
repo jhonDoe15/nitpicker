@@ -11,7 +11,7 @@ import {
   readReportModules,
   withModuleIdentity,
   withoutExcludedFiles,
-} from '../gradle-reports/report-modules.mjs';
+} from '../gradle-reports/report-modules.mts';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
@@ -44,7 +44,7 @@ import {
   sourceFileOf,
   sourceLocator,
 } from './kotlin-reports.mjs';
-import { withJavaCountRatchets } from './counts/java-counts.mjs';
+import { withJavaCountRatchets } from './counts/java-counts.mts';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
 import { callUntyped } from '../typed/java-values.mts';

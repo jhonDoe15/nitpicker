@@ -6,7 +6,7 @@ import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 import { readOptions } from '../options/java-read-options.mts';
 import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mts';
-import { readReportModules } from '../gradle-reports/report-modules.mjs';
+import { readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';

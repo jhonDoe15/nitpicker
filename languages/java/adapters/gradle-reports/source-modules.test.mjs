@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readModuleJacoco, withoutExcludedFiles } from './report-modules.mjs';
+import { readModuleJacoco, withoutExcludedFiles } from './report-modules.mts';
 
 const finding = (file) => ({ tool: 'detekt', rule: 'MagicNumber', path: file });
 
