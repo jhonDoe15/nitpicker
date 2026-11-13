@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
-import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
+import type { CruiseViolation } from '../dependency-graph/project-dependency-graph.mts';
 import { withTypeScriptHint } from '../hints/tool-failure-hint.mts';
 import {
   prepareSnapshotDependencies as prepareUntypedSnapshotDependencies,
@@ -10,44 +10,19 @@ import {
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mjs';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mjs';
 
-export type CruiseViolation = {
-  readonly rule?: unknown;
-  readonly from?: unknown;
-  readonly to?: unknown;
-  readonly type?: unknown;
-  readonly cycle?: unknown;
-  readonly via?: unknown;
-};
-
-export type CruiseSummary = {
-  readonly violations?: unknown;
-  readonly ruleSetUsed?: {
-    readonly forbidden?: readonly unknown[];
-    readonly required?: readonly unknown[];
-  };
-};
-
-export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?: unknown };
-
-export type DependencyGraphRequest = {
-  readonly projectRoot: string;
-  readonly policyRoot: string;
-  readonly liveProjectRoot?: string;
-  readonly patterns: readonly string[];
-  readonly exclude: string | undefined;
-  readonly includeOnly?: string | undefined;
-  readonly configRelativePath?: string;
-  readonly reportsConfigErrors: boolean;
-};
-
 export type SnapshotDependencyRequest = {
   readonly projectRoot: string;
   readonly policyRoot: string;
   readonly liveProjectRoot: string;
 };
 
-export const loadDependencyGraph: (request: DependencyGraphRequest) => CruiseReport =
-  loadUntypedDependencyGraph;
+export {
+  type CruiseReport,
+  type CruiseSummary,
+  type CruiseViolation,
+  type DependencyGraphRequest,
+  loadDependencyGraph,
+} from '../dependency-graph/project-dependency-graph.mts';
 
 export const sharedReachPath: (
   violation: CruiseViolation,

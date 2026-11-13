@@ -1,7 +1,7 @@
 import { QUALITY_AREA_RUNNERS } from './registry.mts';
 import type { QualityAreaOptions } from './typed/area-types.mts';
 import { realpathSync, lstatSync } from 'node:fs';
-import { TRUSTED_TOOL_ROOT } from './runners/tooling.mjs';
+import { TRUSTED_TOOL_ROOT } from './runners/tooling.mts';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';

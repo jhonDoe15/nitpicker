@@ -1,29 +1,86 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { createHash } from 'node:crypto';
 import { statSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildOnce, TransientBuildError } from '../../../../core/tooling/build-once/build-once.mjs';
-import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
-import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import {
+  buildOnce as untypedBuildOnce,
+  TransientBuildError,
+} from '../../../../core/tooling/build-once/build-once.mjs';
+import {
+  linkPolicyFile,
+  spawnSyncWithOutputFile,
+  toolBinaryPath,
+  trackTemporaryPath,
+} from '../typed/tooling.mts';
 import {
   ARCHITECTURE_CONFIG,
-  dependencyGraphTsconfig,
+  dependencyGraphTsconfig as untypedDependencyGraphTsconfig,
 } from '../../preset/dependency-graph/cruise.mjs';
-import { readLayout } from '../../preset/head-policy.mjs';
-import { revivedExpression } from '../../preset/project-tools/config-values.mjs';
-import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
-import { projectGraphLayer } from './project-config/graph-layer.mjs';
+import { readLayout as readUntypedLayout } from '../../preset/head-policy.mjs';
+import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { textOf } from '../../../../shared/values/readers.mts';
+import {
+  type GraphLayer,
+  projectExcludePaths,
+} from './project-config/dependency-cruiser-layers.mts';
+import { projectGraphLayer } from './project-config/graph-layer.mts';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import type { SpawnSyncReturns } from 'node:child_process';
+
+export type CruiseViolation = {
+  readonly rule?: unknown;
+  readonly from?: unknown;
+  readonly to?: unknown;
+  readonly type?: unknown;
+  readonly cycle?: unknown;
+  readonly via?: unknown;
+};
+
+export type CruiseSummary = {
+  readonly violations?: unknown;
+  readonly ruleSetUsed?: {
+    readonly forbidden?: readonly unknown[];
+    readonly required?: readonly unknown[];
+  };
+};
+
+export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?: unknown };
+
+export type DependencyGraphRequest = {
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly liveProjectRoot?: string;
+  readonly patterns: readonly string[];
+  readonly exclude: string | undefined;
+  readonly includeOnly?: string | undefined;
+  readonly configRelativePath?: string;
+  readonly reportsConfigErrors?: unknown;
+};
+
+type Cruise = {
+  readonly projectRoot: string;
+  readonly projectLayer: GraphLayer | undefined;
+  readonly patterns: readonly string[];
+  readonly includeOnly: string | undefined;
+  readonly policyConfig: string;
+  readonly policyTypeScriptConfig: string;
+  readonly exclusion: string;
+  readonly tool: string;
+};
+
+const buildOnce: (key: string, build: () => string) => string = untypedBuildOnce;
+const dependencyGraphTsconfig: (layout: unknown) => unknown = untypedDependencyGraphTsconfig;
+const readLayout: () => { readonly excludePattern?: string } = readUntypedLayout;
+const revivedExpression: (value: unknown) => string = untypedRevivedExpression;
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
-const LAYERS_MODULE = pathToFileURL(
-  path.join(import.meta.dirname, 'project-config', 'dependency-cruiser-layers.mjs'),
+const LAYERS_MODULE = checkoutModuleUrl(
+  pathToFileURL(path.join(import.meta.dirname, 'project-config', 'dependency-cruiser-layers.mjs')),
 ).href;
 
-export function loadDependencyGraph(request) {
+export function loadDependencyGraph(request: DependencyGraphRequest): CruiseReport {
   const cruise = cruiseSpecification(request);
   const text = buildOnce(graphKey(cruise), () => runCruise(cruise));
   return parseGraph(text);
@@ -38,10 +95,10 @@ function cruiseSpecification({
   includeOnly,
   configRelativePath = ARCHITECTURE_CONFIG,
   reportsConfigErrors,
-}) {
+}: DependencyGraphRequest): Cruise {
   const projectLayer = projectGraphLayer({ reportsConfigErrors });
   const requested = [exclude, ...projectExcludePaths(projectLayer)].filter(
-    (pattern) => pattern !== undefined && pattern.length > 0,
+    (pattern) => pattern !== undefined && textOf(pattern).length > 0,
   );
   return {
     projectRoot,
@@ -57,21 +114,21 @@ function cruiseSpecification({
       requested.length === 0 ? undefined : requested.join('|'),
       readLayout().excludePattern,
     ),
-    tool: resolveTool('dependency-cruiser', {
-      projectRoot: liveProjectRoot,
+    tool: toolBinaryPath('dependency-cruiser', {
+      ...(liveProjectRoot === undefined ? {} : { projectRoot: liveProjectRoot }),
       bin: 'bin/dependency-cruise.mjs',
-    }).binPath,
+    }),
   };
 }
 
-function graphExclusion(requested, layoutPattern) {
+function graphExclusion(requested: string | undefined, layoutPattern: string | undefined): string {
   const layoutAlreadyIncluded = layoutPattern !== undefined && requested?.includes(layoutPattern);
   return [requested, layoutAlreadyIncluded ? undefined : layoutPattern]
     .filter((pattern) => pattern !== undefined)
     .join('|');
 }
 
-function policyPath(policyRoot, relativePath) {
+function policyPath(policyRoot: string, relativePath: string): string {
   const filePath = path.resolve(policyRoot, relativePath);
   const relativeToPolicy = path.relative(policyRoot, filePath);
   if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
@@ -83,7 +140,7 @@ function policyPath(policyRoot, relativePath) {
   return filePath;
 }
 
-function graphKey(cruise) {
+function graphKey(cruise: Cruise): string {
   const { projectRoot, patterns, includeOnly, policyConfig, policyTypeScriptConfig } = cruise;
   const identity = [
     projectRoot,
@@ -98,7 +155,7 @@ function graphKey(cruise) {
   return createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
 }
 
-function runCruise(cruise) {
+function runCruise(cruise: Cruise): string {
   const wrapper = installWrapperConfig(cruise);
   try {
     const result = spawnSyncWithOutputFile(
@@ -118,7 +175,7 @@ function runCruise(cruise) {
   }
 }
 
-function assertCruised(result) {
+function assertCruised(result: SpawnSyncReturns<string>): void {
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -126,23 +183,24 @@ function assertCruised(result) {
     throw new TransientBuildError(`dependency-cruiser was terminated by ${result.signal}`);
   }
   if (
-    ![0, 1].includes(result.status) ||
-    (result.status === 1 && parseJson(result.stdout).error !== undefined)
+    !(result.status === 0 || result.status === 1) ||
+    (result.status === 1 && 'error' in parseJson(result.stdout))
   ) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
     throw new Error(`dependency-cruiser exited with ${String(result.status)}: ${detail}`);
   }
 }
 
-function parseJson(text) {
+function parseJson(text: string): { readonly value: unknown } | { readonly error: unknown } {
   try {
-    return { value: JSON.parse(text) };
+    const value: unknown = JSON.parse(text);
+    return { value };
   } catch (error) {
     return { error };
   }
 }
 
-function cruiseArguments(cruise, wrapperConfig) {
+function cruiseArguments(cruise: Cruise, wrapperConfig: string): string[] {
   const arguments_ = [cruise.tool, ...cruise.patterns, '--config', wrapperConfig];
   arguments_.push('--output-type', 'json');
   if (cruise.includeOnly !== undefined) {
@@ -154,7 +212,7 @@ function cruiseArguments(cruise, wrapperConfig) {
   return arguments_;
 }
 
-function installWrapperConfig(cruise) {
+function installWrapperConfig(cruise: Cruise): { readonly path: string; remove(): void } {
   const suffix = String(process.pid);
   const wrapperPath = path.join(
     cruise.projectRoot,
@@ -183,7 +241,7 @@ function installWrapperConfig(cruise) {
   };
 }
 
-function layeredImports({ policyConfig, projectLayer }) {
+function layeredImports({ policyConfig, projectLayer }: Cruise): string[] {
   const policy = `import policy from ${JSON.stringify(pathToFileURL(policyConfig).href)};`;
   if (projectLayer === undefined) {
     return [policy, 'const config = policy;'];
@@ -195,7 +253,7 @@ function layeredImports({ policyConfig, projectLayer }) {
   ];
 }
 
-function wrapperSource(cruise, typeScriptConfig) {
+function wrapperSource(cruise: Cruise, typeScriptConfig: string): string {
   return [
     ...layeredImports(cruise),
     'export default {',
@@ -209,9 +267,14 @@ function wrapperSource(cruise, typeScriptConfig) {
   ].join('\n');
 }
 
-function parseGraph(text) {
+function isCruiseReport(value: unknown): value is CruiseReport {
+  return typeof value === 'object' && value !== null;
+}
+
+function parseGraph(text: string): CruiseReport {
   try {
-    return JSON.parse(text);
+    const report: unknown = JSON.parse(text);
+    return isCruiseReport(report) ? report : {};
   } catch (error) {
     throw new Error('dependency-cruiser did not produce valid JSON', { cause: error });
   }
