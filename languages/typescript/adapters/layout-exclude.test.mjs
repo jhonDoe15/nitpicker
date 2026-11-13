@@ -10,7 +10,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mts';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mts';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
 

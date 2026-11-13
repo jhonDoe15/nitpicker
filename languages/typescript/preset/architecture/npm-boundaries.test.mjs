@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
 import { configuredAnalyzers } from '../diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
 

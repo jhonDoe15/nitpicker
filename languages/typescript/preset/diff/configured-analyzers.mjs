@@ -14,7 +14,7 @@ import { hashFiles } from '../checks/hash.mjs';
 
 const ANALYZER_RUNTIME_FILES = [
   'core/diff/execution/analyzer-scheduler.mjs',
-  'core/diff/execution/run-analyzers.mjs',
+  'core/diff/execution/run-analyzers.mts',
   'languages/typescript/preset/syntax/children.mjs',
   'shared/filesystem.mjs',
 ];

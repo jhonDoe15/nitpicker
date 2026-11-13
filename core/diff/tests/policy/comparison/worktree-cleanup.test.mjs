@@ -210,12 +210,12 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'unknown-analyzer-0',
         snapshot: 'base',
-        message: "Cannot read properties of null (reading 'resolveVersion')",
+        message: 'Analyzer configuration must be an object',
       },
       {
         tool: 'unknown-analyzer-0',
         snapshot: 'head',
-        message: "Cannot read properties of null (reading 'resolveVersion')",
+        message: 'Analyzer configuration must be an object',
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);

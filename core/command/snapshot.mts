@@ -5,7 +5,7 @@ import {
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mts';
-import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
@@ -24,6 +24,7 @@ import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/par
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
 import type { TextOutput } from '../cli-context.mts';
+import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 
 type SnapshotCli = {
@@ -34,7 +35,7 @@ type SnapshotCli = {
     readonly outputRoot?: string;
   };
   readonly currentProjectRoot: string;
-  readonly analyzers: unknown;
+  readonly analyzers: readonly ProfiledAnalyzer[];
   readonly quick: unknown;
   readonly captureHead?: unknown;
   readonly headPolicy: unknown;
@@ -58,8 +59,6 @@ type WorktreeRun = {
   readonly scope: unknown;
 };
 
-const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
 const inWorktree: (
   repositoryRoot: string,
   snapshot: { readonly commitSha: unknown; readonly warn: (message: string) => unknown },
@@ -84,7 +83,7 @@ function stderrWarning(stderr: TextOutput): (message: string) => unknown {
 export function runSnapshotCli(cli: SnapshotCli): number {
   const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
   const outputRoot = textOf(outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot'));
-  const selectedAnalyzers = selectAll(analyzers, options.analyzerNames);
+  const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
   }

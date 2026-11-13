@@ -26,7 +26,11 @@ export function ancestorDirectories(directory) {
   return found;
 }
 
-export function* filesUnder(root, { skipDirectory = () => false, includeLinks = false } = {}) {
+function skipNoDirectory(_absolute, _entry) {
+  return false;
+}
+
+export function* filesUnder(root, { skipDirectory = skipNoDirectory, includeLinks = false } = {}) {
   function children(frame) {
     if (frame.entry && (!frame.entry.isDirectory() || skipDirectory(frame.absolute, frame.entry)))
       return [];

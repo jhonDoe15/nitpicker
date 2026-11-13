@@ -1,4 +1,4 @@
-import { selectAnalyzers } from '../../diff/execution/run-analyzers.mjs';
+import { selectAnalyzers } from '../../diff/execution/run-analyzers.mts';
 import { partialRunOf } from '../../diff/reporting/partial-run/partial-run.mjs';
 import { selectAnalyzerShard } from '../../diff/sharding/sharding.mts';
 import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
