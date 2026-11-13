@@ -160,6 +160,7 @@ describe('readKotlinSourceFindings', () => {
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
         'ChildCoroutineOutlivesResource',
+        'CleanupSkippedOnFailure',
         'CommentedOutCode',
         'CompatibilityShim',
         'ConfigurationReadOutsideCompositionRoot',

@@ -32,6 +32,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A continuation or future that a callback resumes also gets the failure path: `continuation.resumeWithException(error)`
   or `deferred.completeExceptionally(error)` from the error callback, or a suspending API that throws by itself
   (`kotlin-source/FutureWithoutException`).
+- A `close()`, `@AfterEach` or `@PreDestroy` function that releases several resources uses `use` or `try`/`finally`
+  per release, never `a.close()` then `b.close()` in sequence (`kotlin-source/CleanupSkippedOnFailure`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).

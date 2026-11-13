@@ -125,6 +125,7 @@ const REVIEW_RULES = new Set([
   'HardcodedSecret',
   'CredentialLiteral',
   'SecretInLog',
+  'CleanupSkippedOnFailure',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

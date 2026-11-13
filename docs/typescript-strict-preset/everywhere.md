@@ -30,6 +30,19 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
+- `nitpicker/no-cleanup-skipped-on-failure`: cleanup must not stop at the first failed release. In a
+  function named `close`, `dispose`, `destroy`, `shutdown`, `stop`, `teardown`, `disconnect` or `end` (also
+  `onModuleDestroy`, `onApplicationShutdown`, `[Symbol.dispose]`), in an `afterAll`, `afterEach` or `after`
+  callback, in a callback registered for `SIGTERM`, `SIGINT` or `beforeExit`, and in an `onClose` hook (`app.addHook('onClose', ...)`), it reports a
+  release call, awaited or not, (`close`, `disconnect`, `destroy`, `end`, `quit`, `stop`, `terminate`, `unsubscribe`,
+  `dispose`) that a later statement of the same block follows with another release call or a state reset
+  (an assignment of `undefined`, `null`, a literal or a new collection, or `.clear()`), also when the release sits
+  in an `if`, a loop or a `return`, since a rejection
+  skips those steps and leaves the next start with a half-closed client. It also reports `Promise.all`
+  over two or more release calls or a `.map` callback that releases, which rejects at the first failure
+  and leaves the others unobserved. Allowed: `Promise.allSettled` over the releases and a rethrow of the
+  first failure, `try { await a.close(); } finally { this.a = undefined; }`, a `try`/`catch` around each
+  release, or one release per block.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),

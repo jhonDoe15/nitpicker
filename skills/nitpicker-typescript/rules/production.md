@@ -5,6 +5,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - `async`/`await`, never `.then()`. No floating promises.
   Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
   timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
+- A close, dispose, stop or `afterAll` function releases every resource even when one release fails:
+  `Promise.allSettled` over the releases, then rethrow the first failure, or `try { ... } finally { reset }`;
+  never `await a.close(); await b.close();` or `Promise.all` of releases
+  (`nitpicker/no-cleanup-skipped-on-failure`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

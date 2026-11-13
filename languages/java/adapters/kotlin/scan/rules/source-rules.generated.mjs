@@ -5,6 +5,7 @@ import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs
 import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
+import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesSimplerLogic } from '../logic/simpler-logic.mjs';
@@ -40,6 +41,7 @@ export const directoryRules = [
   rulesCostlyCollections,
   rulesConfigurationReads,
   rulesFutureCompletions,
+  rulesCleanupOrder,
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesSimplerLogic,
