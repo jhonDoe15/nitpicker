@@ -47,7 +47,7 @@ export const STRUCTURE_NOTES = {
   'near-duplicate': [
     'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, or sharing a run of statements.',
     'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
-    'Extract one function, with the differing values as parameters, and call it from both places.',
+    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
   ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',

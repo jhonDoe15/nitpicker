@@ -54,7 +54,12 @@ object`. Instance methods are left to the duplicates check, as class methods are
   grammar, in a child process) into one tree per method, constructor and field lambda, and the
   shared engine (`shared/near-duplicates/`) proves which pairs are copies. Each pair is reported
   once, at the copy whose `file#name` sorts last, and keeps its identity while both copies stay, so
-  a pair the base already had is never new.
+  a pair the base already had is never new. A type-specialized family is left out: copies that
+  differ only in primitive, boxed or generic types (`int[]`/`long[]`, `Integer`, `Object`, `T`),
+  in the own helpers or classes named after those types (`Ints.reverse`/`Longs.reverse`) and in
+  number literals next to them, in one file or in sibling files whose names carry the types
+  (`Ints.java`, `Longs.java`), and a run shared by two members whose signatures differ only that
+  way. Java cannot merge them into one method without boxing (`type-families.mjs`).
 - **`shared-used-by-one-feature`.** The same facts feed the feature rule: a source file under a
   folder that `layout.sharedRoots` matches (default `**/shared`, such as
   `src/main/java/com/acme/shared`) that only the files of one feature use, directly or through

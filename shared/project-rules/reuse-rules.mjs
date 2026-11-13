@@ -63,7 +63,7 @@ export function reuseRules(ids, reactEnforcedBy) {
       id: ids.nearDuplicate,
       check: 'structure',
       limit:
-        'two production functions whose syntax trees are proved copies: the same apart from renamed locals, or apart from at most 4 values, literals or types, or sharing a run of at least 3 statements (30 tree nodes) that leaves at most one value for the code after it; both need at least 30 shared tree nodes, 80% of each function. Each pair is one finding, at the copy that sorts last. Copies that differ only in names and string or number literals, both large enough for `duplicate-clone` (5 lines, 100 tokens), are left to it',
+        'two production functions whose syntax trees are proved copies: the same apart from renamed locals, or apart from at most 4 values, literals or types, or sharing a run of at least 3 statements (30 tree nodes) that leaves at most one value for the code after it; both need at least 30 shared tree nodes, 80% of each function. Each pair is one finding, at the copy that sorts last. Copies that differ only in names and string or number literals, both large enough for `duplicate-clone` (5 lines, 100 tokens), are left to it. Java and Kotlin copies that differ only in primitive, boxed or generic types (`int`/`long`, `Integer`, `Object`, `T`), the helpers named after those types and sizes, in one file or in sibling files named after the types (`Ints`, `Longs`), are a type-specialized family and are left out',
     },
     {
       id: ids.exportedNameCollision,
