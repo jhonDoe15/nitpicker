@@ -1,48 +1,46 @@
-import { pathToFileURL } from 'node:url';
 import path from 'node:path';
-import { parseArguments } from './eslint/arguments.mjs';
+import { type EslintOptions, parseArguments } from './eslint/arguments.mts';
 import { realpathSync, statSync } from 'node:fs';
 import {
+  isInvokedModule,
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from './static-checks/dependencies.mjs';
+  writeAdapterFindings,
+} from './typed/static-checks.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { runLintEngine } from './lint-engine/lint-engine.mjs';
 import {
   linkDependencies,
   installPolicyFiles,
   restorePolicyFiles,
   removeDependencyLinks,
-} from './eslint/policy.mjs';
-import { validatedContainedFile } from './eslint/paths.mjs';
-import { normalizeEslintResults } from './eslint/normalize.mjs';
+  type DependencyLink,
+} from './eslint/policy.mts';
+import type { LinkedPolicyFile } from './typed/tooling.mts';
+import { validatedContainedFile } from './eslint/paths.mts';
+import { normalizeEslintResults } from './eslint/normalize.mts';
 import {
+  type EslintFinding,
+  runLintEngine,
   testEnvironmentNotices,
   testEnvironmentsFor,
-} from '../preset/test-environment/resolve-environment.mjs';
-import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
+} from './eslint/typed/engine.mts';
 
-const invokedPath = process.argv[1];
+type EslintState = {
+  linkedDependencies: DependencyLink[];
+  installedPolicyFiles: LinkedPolicyFile[];
+  preparedDependencies: unknown;
+};
 
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const options = parseArguments(process.argv.slice(2), process.env);
-    const findings = await runEslint(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (failure) {
-    const error = withTypeScriptHint(failure);
-    process.stderr.write(
-      `ESLint differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-    process.exitCode = 2;
-  }
+if (isInvokedModule(import.meta.url)) {
+  process.exitCode = await writeAdapterFindings(
+    'ESLint differential adapter failed',
+    () => runEslint(parseArguments(process.argv.slice(2), process.env)),
+    process,
+  );
 }
 
-export async function runEslint(options) {
-  const state = {
+export async function runEslint(options: EslintOptions): Promise<EslintFinding[]> {
+  const state: EslintState = {
     linkedDependencies: [],
     installedPolicyFiles: [],
     preparedDependencies: undefined,
@@ -74,7 +72,7 @@ export async function runEslint(options) {
   }
 }
 
-function prepareEslint(options, state) {
+function prepareEslint(options: EslintOptions, state: EslintState): LinkedPolicyFile[] {
   const dependencyRoot = realpathSync(path.join(options.liveProjectRoot, 'node_modules'));
   if (!statSync(dependencyRoot).isDirectory()) {
     throw new Error(`Installed ESLint dependencies are missing at ${dependencyRoot}`);
@@ -88,7 +86,7 @@ function prepareEslint(options, state) {
   return installedPolicyFiles;
 }
 
-function cleanUpEslint(state) {
+function cleanUpEslint(state: EslintState): void {
   try {
     restorePolicyFiles(state.installedPolicyFiles);
   } finally {

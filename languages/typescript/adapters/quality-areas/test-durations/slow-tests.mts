@@ -5,7 +5,8 @@ import type { Finding } from '../../static-checks/shared.mts';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../../shared/policy.mjs';
 import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { exceptionMatcher } from '../typed/policy.mts';
-import { parseChangedLines, pathInside, typescriptApi } from '../typed/mutation.mts';
+import { parseChangedLines, pathInside } from '../typed/mutation.mts';
+import { typescriptApi } from '../../typed/typescript-program.mts';
 import { diffAgainstBase } from '../runners/mutation-scope.mts';
 
 const exceptionHint: (rule: string, path: string) => string = untypedExceptionHint;

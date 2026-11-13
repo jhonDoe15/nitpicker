@@ -1,6 +1,7 @@
-import { validatedProjectFile } from './paths.mjs';
+import type TypeScript from 'typescript';
+import { validatedProjectFile } from './paths.mts';
 import { readFileSync } from 'node:fs';
-import { ts } from '../../typescript-api/typescript-api.mjs';
+import { typescriptApi } from '../typed/typescript-program.mts';
 import {
   scriptKind,
   commentAt,
@@ -13,21 +14,66 @@ import {
   syntaxFingerprint,
   commentFingerprint,
   normalizeMessageText,
-  nodeChain,
-} from './syntax.mjs';
+} from './typed/syntax.mts';
 import {
-  metricGrowth,
+  type EslintFinding,
+  type EslintMessage,
+  isFieldRecord as isRecord,
   routedEslintFields,
   withoutFatalDirectives,
-} from '../hints/eslint-hints.mjs';
-import { growthAdviceFor } from '../hints/growth-advice.mjs';
-import { requiredString, positiveInteger } from './arguments.mjs';
-import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
-import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
+  withoutSupersededMessages,
+} from './typed/engine.mts';
+import { positiveInteger } from './arguments.mts';
+import {
+  type RatchetPlan,
+  assignSemanticOccurrences,
+  metricOf,
+  ratchetPlan,
+  withRatchets,
+} from './ratchets/ratchets.mts';
+import { requiredString } from '../static-checks/arguments.mts';
+
+type NormalizedMessage = {
+  readonly finding: EslintFinding;
+  readonly plan: RatchetPlan | undefined;
+};
+
+type Positions = {
+  readonly line: number;
+  readonly column: number;
+  readonly sourcePosition: number;
+  readonly endPosition: number | undefined;
+};
+
+type LocatedReport = {
+  readonly comment: string | undefined;
+  readonly locatedNode: TypeScript.Node;
+  readonly reportedNode: TypeScript.Node;
+  readonly nodeType: string;
+  readonly syntax: string;
+};
+
+type MessageContext = {
+  readonly message: unknown;
+  readonly context: string;
+  readonly analyzerName: string;
+  readonly relativePath: string;
+  readonly sourceFile: TypeScript.SourceFile;
+};
+
+const ts = typescriptApi();
 
 const REPORT_ONLY_RULES = new Set(['nitpicker/promise-wait-deadline']);
 
-export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
+export function normalizeEslintResults({
+  value,
+  projectRoot,
+  analyzerName,
+}: {
+  readonly value: unknown;
+  readonly projectRoot: string;
+  readonly analyzerName: string;
+}): EslintFinding[] {
   if (!Array.isArray(value)) {
     throw new TypeError('ESLint JSON output must be an array');
   }
@@ -40,7 +86,17 @@ export function normalizeEslintResults({ value, projectRoot, analyzerName }) {
   );
 }
 
-function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
+function normalizeResult({
+  result,
+  resultIndex,
+  projectRoot,
+  analyzerName,
+}: {
+  readonly result: unknown;
+  readonly resultIndex: number;
+  readonly projectRoot: string;
+  readonly analyzerName: string;
+}): NormalizedMessage[] {
   if (!isRecord(result) || typeof result.filePath !== 'string') {
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain filePath`);
   }
@@ -72,79 +128,14 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
   );
 }
 
-function metricRules() {
-  return {
-    'nitpicker/cognitive-complexity': {
-      pattern: /cognitive complexity of (\d+);/u,
-      label: 'cognitive complexity',
-    },
-    complexity: { pattern: /complexity of (\d+)\./u, label: 'complexity' },
-    'max-lines-per-function': { pattern: /too many lines \((\d+)\)/u, label: 'line count' },
-    'max-statements': { pattern: /too many statements \((\d+)\)/u, label: 'statement count' },
-    'max-params': { pattern: /too many parameters \((\d+)\)/u, label: 'parameter count' },
-    'max-depth': { pattern: /nested too deeply \((\d+)\)/u, label: 'block nesting' },
-  };
-}
-
-function metricOf(ruleId, messageText) {
-  const rule = metricRules()[ruleId];
-  const amount = rule === undefined ? undefined : rule.pattern.exec(messageText)?.[1];
-  return amount === undefined ? undefined : { value: Number(amount), label: rule.label };
-}
-
-function countGroupOf(finding, plan) {
-  return JSON.stringify([finding.rule, finding.path, finding.symbol, plan.kind, plan.key]);
-}
-
-function anchorOf(plan, subject) {
-  return plan.anchorHash === undefined
-    ? {}
-    : { anchor: { key: `${plan.kind}:${subject}:text:${plan.anchorHash}` } };
-}
-
-function withRatchets(findings, plans) {
-  const counts = new Map();
-  const occurrences = new Map();
-  for (const [index, finding] of findings.entries()) {
-    const plan = plans[index];
-    if (plan?.kind === 'count') {
-      counts.set(countGroupOf(finding, plan), (counts.get(countGroupOf(finding, plan)) ?? 0) + 1);
-    }
-  }
-  return findings.map((finding, index) => {
-    const plan = plans[index];
-    if (plan === undefined) {
-      return finding;
-    }
-    if (plan.kind === 'count') {
-      const growth = growthAdviceFor(finding.rule);
-      return {
-        ...finding,
-        ...anchorOf(plan, plan.key),
-        ratchet: {
-          key: `count:${plan.key}`,
-          value: counts.get(countGroupOf(finding, plan)),
-          existingCodeOnly: true,
-          ...growth,
-        },
-      };
-    }
-    const group = JSON.stringify([finding.rule, finding.path, finding.symbol]);
-    const occurrence = (occurrences.get(group) ?? 0) + 1;
-    occurrences.set(group, occurrence);
-    return {
-      ...finding,
-      ...anchorOf(plan, plan.label),
-      ratchet: {
-        key: `metric:occurrence:${String(occurrence)}`,
-        value: plan.value,
-        ...metricGrowth(finding, plan),
-      },
-    };
-  });
-}
-
-function normalizeMessage({ message, context, analyzerName, relativePath, sourceFile }) {
+function normalizeMessage({
+  message,
+  context,
+  analyzerName,
+  relativePath,
+  sourceFile,
+}: MessageContext): NormalizedMessage {
+  assertMessageRecord(message, context);
   const messageText = validatedMessageText(message, context);
   const ruleId =
     typeof message.ruleId === 'string' && message.ruleId.length > 0
@@ -155,7 +146,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
   const messageIdentity = messageIdentityOf(message, messageText);
   const metric = metricOf(ruleId, messageText);
   const symbol = enclosingSymbol(report.reportedNode);
-  const finding = {
+  const finding: EslintFinding = {
     tool: analyzerName,
     rule: ruleId,
     path: relativePath,
@@ -181,13 +172,19 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
   }
   const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
   const anchorHash = plan && enclosingFunctionHash(report.reportedNode, symbol);
-  return { finding, plan: anchorHash === undefined ? plan : { ...plan, anchorHash } };
+  return {
+    finding,
+    plan: plan === undefined || anchorHash === undefined ? plan : { ...plan, anchorHash },
+  };
 }
 
-function validatedMessageText(message, context) {
+function assertMessageRecord(message: unknown, context: string): asserts message is EslintMessage {
   if (!isRecord(message)) {
     throw new TypeError(`${context} must be an object`);
   }
+}
+
+function validatedMessageText(message: EslintMessage, context: string): string {
   const messageText = requiredString(message.message, `${context}.message`);
   if (message.fatal === true) {
     throw new Error(`${context} is fatal: ${messageText}`);
@@ -195,7 +192,10 @@ function validatedMessageText(message, context) {
   return messageText;
 }
 
-function locateReport(sourceFile, { sourcePosition, endPosition }) {
+function locateReport(
+  sourceFile: TypeScript.SourceFile,
+  { sourcePosition, endPosition }: Positions,
+): LocatedReport {
   const comment = commentAt(sourceFile.text, sourcePosition, endPosition);
   const locatedNode =
     comment === undefined
@@ -208,7 +208,21 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
   return { comment, locatedNode, reportedNode, nodeType, syntax };
 }
 
-function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
+function hintedMessage({
+  ruleId,
+  messageText,
+  relativePath,
+  comment,
+  locatedNode,
+  sourceFile,
+}: {
+  readonly ruleId: string;
+  readonly messageText: string;
+  readonly relativePath: string;
+  readonly comment: string | undefined;
+  readonly locatedNode: TypeScript.Node;
+  readonly sourceFile: TypeScript.SourceFile;
+}): { readonly message: string; readonly allowedForm?: string } {
   return routedEslintFields({
     ruleId,
     text: messageText,
@@ -218,7 +232,11 @@ function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode
   });
 }
 
-function reportedPositions(message, context, sourceFile) {
+function reportedPositions(
+  message: EslintMessage,
+  context: string,
+  sourceFile: TypeScript.SourceFile,
+): Positions {
   const line = positiveInteger(message.line, `${context}.line`);
   const column = positiveInteger(message.column, `${context}.column`);
   const sourcePosition = sourceFile.getPositionOfLineAndCharacter(line - 1, column - 1);
@@ -232,47 +250,13 @@ function reportedPositions(message, context, sourceFile) {
   return { line, column, sourcePosition, endPosition };
 }
 
-function messageIdentityOf(message, messageText) {
+function messageIdentityOf(message: EslintMessage, messageText: string): string {
   return typeof message.messageId === 'string' && message.messageId.length > 0
     ? message.messageId
     : normalizeMessageText(messageText);
 }
 
-function ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) {
-  if (metric !== undefined) {
-    return { kind: 'metric', ...metric };
-  }
-  return symbol !== undefined && isInsideFunction(reportedNode)
-    ? { kind: 'count', key: messageIdentity }
-    : undefined;
-}
-
-function isInsideFunction(node) {
-  return nodeChain(node).some(
-    (current) => ts.isFunctionLike(current) && current.body !== undefined,
-  );
-}
-
-function assignSemanticOccurrences(findings) {
-  const occurrences = new Map();
-  return findings.map((finding) => {
-    const semanticKey = JSON.stringify([
-      finding.tool,
-      finding.rule,
-      finding.path,
-      finding.symbol ?? '',
-      finding.identity,
-    ]);
-    const occurrence = (occurrences.get(semanticKey) ?? 0) + 1;
-    occurrences.set(semanticKey, occurrence);
-    return {
-      ...finding,
-      identity: `${finding.identity}|occurrence:${String(occurrence)}`,
-    };
-  });
-}
-
-function nonRuleDiagnosticId(message, context) {
+function nonRuleDiagnosticId(message: string, context: string): string {
   if (message.startsWith('Unused eslint-disable directive')) {
     return 'eslint/unused-disable-directive';
   }

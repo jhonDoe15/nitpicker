@@ -1,12 +1,28 @@
-import {
-  PACKAGE_ROOT,
-  SNAPSHOT_DIRECTORY_NAMES,
-} from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { realpathSync, statSync } from 'node:fs';
-import { normalizedRelativePath, assertContainedPath } from './paths.mjs';
+import { normalizedRelativePath, assertContainedPath } from './paths.mts';
+import { validatedWorktreeRoot as validatedSnapshotRoot } from '../static-checks/arguments.mts';
+import { positiveInteger as untypedPositiveInteger } from '../../../../core/diff/comparison/schema/values.mjs';
 import path from 'node:path';
-import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
 import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+
+export type EslintOptions = {
+  readonly analyzerName: string;
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly liveProjectRoot: string;
+  readonly toolRoot: string;
+  readonly configRelativePath: string;
+  readonly timeoutMs: number;
+  readonly eslintCliPath: string | undefined;
+  readonly environment: Readonly<Record<string, string>>;
+  readonly patterns: readonly string[];
+  readonly policyFiles: readonly string[];
+};
+
+type CollectedArguments = { readonly values: Map<string, string>; readonly patterns: string[] };
+
+export const positiveInteger: (value: unknown, context: string) => number = untypedPositiveInteger;
 
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 
@@ -24,14 +40,14 @@ const VALUE_ARGUMENTS = new Set([
   '--environment',
 ]);
 
-function requiredValue(name, value) {
+function requiredValue(name: string, value: string | undefined): string {
   if (value === undefined) {
     throw new Error(`${name} requires a value`);
   }
   return value;
 }
 
-function environmentEntry(value) {
+function environmentEntry(value: string): [string, string] {
   const separator = value.indexOf('=');
   if (separator < 1) {
     throw new Error('--environment requires NAME=value');
@@ -39,7 +55,11 @@ function environmentEntry(value) {
   return [value.slice(0, separator), value.slice(separator + 1)];
 }
 
-function recordArgument({ values, patterns }, name, value) {
+function recordArgument(
+  { values, patterns }: CollectedArguments,
+  name: string,
+  value: string | undefined,
+): void {
   if (name === '--pattern') {
     patterns.push(requiredValue(name, value));
     return;
@@ -51,32 +71,37 @@ function recordArgument({ values, patterns }, name, value) {
   if (!VALUE_ARGUMENTS.has(name)) {
     throw new Error(`Unknown ESLint adapter argument: ${name}`);
   }
-  requiredValue(name, value);
+  const present = requiredValue(name, value);
   if (name !== '--environment') {
-    values.set(name, value);
+    values.set(name, present);
     return;
   }
-  const [variable, variableValue] = environmentEntry(value);
+  const [variable, variableValue] = environmentEntry(present);
   values.set(`environment:${variable}`, variableValue);
 }
 
-function collectArguments(arguments_) {
-  const collected = { values: new Map(), patterns: [] };
-  const remaining = arguments_.values();
+function collectArguments(argumentList: readonly string[]): CollectedArguments {
+  const collected: CollectedArguments = { values: new Map(), patterns: [] };
+  const remaining = argumentList.values();
   for (const name of remaining) {
     recordArgument(collected, name, remaining.next().value);
   }
   return collected;
 }
 
-function prefixedValues(values, prefix) {
+function prefixedValues(values: ReadonlyMap<string, string>, prefix: string): [string, string][] {
   return [...values]
     .filter(([name]) => name.startsWith(prefix))
-    .map(([name, value]) => [name.slice(prefix.length), value]);
+    .map(([name, value]): [string, string] => [name.slice(prefix.length), value]);
 }
 
-export function parseArguments(arguments_, processEnvironment = {}) {
-  const { values, patterns } = collectArguments(arguments_);
+export function parseArguments(
+  argumentList: readonly string[],
+  processEnvironment: Readonly<Record<string, string | undefined>> = {},
+): EslintOptions {
+  const { values, patterns } = collectArguments(argumentList);
+  const liveProjectRoot = values.get('--live-project-root');
+  const eslintCli = values.get('--eslint-cli');
   if (patterns.length === 0) {
     throw new Error('ESLint adapter requires at least one --pattern');
   }
@@ -89,10 +114,7 @@ export function parseArguments(arguments_, processEnvironment = {}) {
       '--project-root',
     ),
     policyRoot: validatedPolicyRoot(requiredArgument(values, '--policy-root')),
-    liveProjectRoot:
-      values.get('--live-project-root') === undefined
-        ? PACKAGE_ROOT
-        : realpathSync(values.get('--live-project-root')),
+    liveProjectRoot: liveProjectRoot === undefined ? PACKAGE_ROOT : realpathSync(liveProjectRoot),
     toolRoot: validatedToolRoot(requiredArgument(values, '--tool-root')),
     configRelativePath: normalizedRelativePath(requiredArgument(values, '--config'), '--config'),
     timeoutMs: positiveInteger(
@@ -103,42 +125,19 @@ export function parseArguments(arguments_, processEnvironment = {}) {
       ),
       '--timeout-ms',
     ),
-    eslintCliPath:
-      values.get('--eslint-cli') === undefined
-        ? undefined
-        : validatedEslintCli(values.get('--eslint-cli')),
+    eslintCliPath: eslintCli === undefined ? undefined : validatedEslintCli(eslintCli),
     environment,
     patterns: patterns.map(validatePattern),
     policyFiles: policyFiles.map((value) => normalizedRelativePath(value, '--policy-file')),
   };
 }
 
-function validatedSnapshotRoot(value, context) {
-  const canonicalRoot = realpathSync(path.resolve(value));
-  if (!statSync(canonicalRoot).isDirectory()) {
-    throw new Error(`${context} must be a directory`);
-  }
-
-  const relativeToTemporaryRoot = path.relative(realTemporaryDirectory(), canonicalRoot);
-  const segments = relativeToTemporaryRoot.split(path.sep);
-  if (
-    relativeToTemporaryRoot.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativeToTemporaryRoot) ||
-    segments.length < 2 ||
-    !(segments[0] ?? '').startsWith('nitpicker-diff-') ||
-    !SNAPSHOT_DIRECTORY_NAMES.includes(segments[1] ?? '')
-  ) {
-    throw new Error(`${context} must be inside a generated quality-diff worktree`);
-  }
-  return canonicalRoot;
-}
-
-function validatedPolicyRoot(value) {
+function validatedPolicyRoot(value: string): string {
   const root = realpathSync(path.resolve(value));
   return root === PACKAGE_ROOT ? root : validatedSnapshotRoot(value, '--policy-root');
 }
 
-function validatedToolRoot(value) {
+function validatedToolRoot(value: string): string {
   const canonicalRoot = realpathSync(path.resolve(value));
   if (canonicalRoot !== TRUSTED_TOOL_ROOT) {
     throw new Error('--tool-root must be the project checkout containing this adapter');
@@ -146,7 +145,7 @@ function validatedToolRoot(value) {
   return canonicalRoot;
 }
 
-function validatedEslintCli(value) {
+function validatedEslintCli(value: string): string {
   const canonicalPath = realpathSync(path.resolve(value));
   assertContainedPath(TRUSTED_TOOL_ROOT, canonicalPath, '--eslint-cli');
   if (!statSync(canonicalPath).isFile()) {
@@ -155,7 +154,7 @@ function validatedEslintCli(value) {
   return canonicalPath;
 }
 
-function validatePattern(value) {
+function validatePattern(value: string): string {
   const normalizedPattern = value.replaceAll('\\', '/');
   if (
     normalizedPattern.length === 0 ||
@@ -168,24 +167,10 @@ function validatePattern(value) {
   return normalizedPattern;
 }
 
-function requiredArgument(values, name) {
+function requiredArgument(values: ReadonlyMap<string, string>, name: string): string {
   const value = values.get(name);
   if (value === undefined || value.length === 0) {
     throw new Error(`${name} is required`);
-  }
-  return value;
-}
-
-export function requiredString(value, context) {
-  if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`${context} must be a non-empty string`);
-  }
-  return value;
-}
-
-export function positiveInteger(value, context) {
-  if (!Number.isInteger(value) || value < 1) {
-    throw new TypeError(`${context} must be a positive integer`);
   }
   return value;
 }
