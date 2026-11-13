@@ -121,6 +121,9 @@ const REVIEW_RULES = new Set([
   'LinearLookupInLoop',
   'SortForExtreme',
   'StreamedRowsCollected',
+  'HardcodedSecret',
+  'CredentialLiteral',
+  'SecretInLog',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

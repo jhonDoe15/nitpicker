@@ -35,6 +35,7 @@ import { rule as ruleNoForwardingWrapper } from './rules/api-shape/no-forwarding
 import { rule as ruleNoGenericName } from './rules/naming/no-generic-name.mjs';
 import { rule as ruleNoGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as ruleNoHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as ruleNoHardcodedSecret } from './rules/secrets/no-hardcoded-secret.mjs';
 import { rule as ruleNoInMemoryQuery } from './rules/queries/no-in-memory-query.mjs';
 import { rule as ruleNoInternalModuleMocks } from './rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as ruleNoIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
@@ -63,6 +64,7 @@ import { rule as ruleNoRaisedTestTimeout } from './rules/testing/assertions/no-r
 import { rule as ruleNoRealTimeRandomOrNetwork } from './test-isolation/no-real-time-random-or-network.mjs';
 import { rule as ruleNoRepeatedStringLiteral } from './rules/literals/no-repeated-string-literal.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
+import { rule as ruleNoSecretInLog } from './rules/secrets/no-secret-in-log.mjs';
 import { rule as ruleNoSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as ruleNoServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as ruleNoServiceLocator } from './rules/service-locator/no-service-locator.mjs';
@@ -171,6 +173,7 @@ export const directoryRules = {
   'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
+  'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
@@ -200,6 +203,7 @@ export const directoryRules = {
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
+  'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,

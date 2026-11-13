@@ -108,6 +108,31 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
+  that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
+  preset: six characters or more with letters and digits, or three character classes; placeholders,
+  paths, message keys, URLs and a value equal to the name are not secrets) given to a name ending in
+  `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`,
+  `accessKey`, `secretKey`, `authKey`, `signingKey`, `encryptionKey`, `hmacKey` or `jwtKey`: a variable,
+  a class field, an object property, an assignment to a variable or member (`config["api_key"] = ...`), a
+  parameter default, and the fallback of an environment read (`process.env.API_TOKEN ?? "..."`,
+  `import.meta.env`, `Deno.env.get`). The literal may be built from parts (`"..." + suffix`), cast, trimmed
+  or wrapped in `Buffer.from`, or sit in either branch of a conditional or in a `||`/`??` fallback. It also
+  reports, anywhere, a string shaped like an AWS key, a GitHub or Slack token, a `sk_live_` or `sk-proj-` key,
+  a private key header, a URL with `user:password@`, or a `Bearer`/`Basic`/`Token` value. Allowed form: read
+  it from the environment or a secrets manager and inject it. Test code and the support folders (`test-support/`,
+  `mocks/`, `__fixtures__/`, stories) are not production code, so neither secret rule runs there. An exception fits a
+  public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
+  `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
+  source checks (Kotlin).
+- `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
+  `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
+  `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
+  template, in a `+`, in a `||`/`??`/conditional branch, as an object property or key, inside `String(...)`,
+  `JSON.stringify(...)` or `.toString()`, or an environment read of such a name. `hasToken`, `isSecret`, a
+  `SCREAMING_CASE` constant, `token.length`, `typeof token`, a masking call and a property whose value is a
+  status are fine. Allowed form: log that the secret is set, or a masked tail. The same form runs as
+  `secret-in-log` (Python and Go), `pmd/SecretInLog` (Java) and the `SecretInLog` source check (Kotlin).
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`

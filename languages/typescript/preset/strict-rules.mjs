@@ -25,6 +25,8 @@ export const strictEslintRuleIds = [
   'nitpicker/no-accumulating-spread',
   'nitpicker/no-costly-collection-form',
   'nitpicker/no-collected-stream-rows',
+  'nitpicker/no-hardcoded-secret',
+  'nitpicker/no-secret-in-log',
   'nitpicker/no-branch-in-composition-root',
   'nitpicker/no-comments',
   'nitpicker/no-compatibility-shim',
