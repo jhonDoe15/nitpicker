@@ -81,11 +81,17 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'utf8',
     );
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
-    const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
-      ([, line]) => Number(line),
-    );
+    const linesWith = (counter) =>
+      [
+        ...generatedFile.matchAll(
+          new RegExp(`<line nr="(\\d+)"[^>]* ${counter}="[1-9]\\d*"`, 'gu'),
+        ),
+      ].map(([, line]) => Number(line));
 
-    expect(missedLines).toEqual([33, 34, 35]);
+    expect({ covered: linesWith('cb'), missed: linesWith('mb') }).toEqual({
+      covered: [15, 22],
+      missed: [],
+    });
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {

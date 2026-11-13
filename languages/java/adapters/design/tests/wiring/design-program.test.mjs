@@ -75,6 +75,33 @@ describe('the design facts program', () => {
     ]);
   });
 
+  it('compiles the program for Java 21, so a newer javac still builds classes an older JDK runs', () => {
+    const { launches, spawn } = fakeSpawn(() => ({ status: 0, stdout: '', stderr: '' }));
+
+    compileDesignProgram({ sources: sources(), cache: folder(), spawn });
+
+    expect(launches.map(({ tokens }) => tokens.slice(0, 2))).toEqual([['"--release"', '"21"']]);
+  });
+
+  it('starts the program on the JDK the sources compile with when the build names one', () => {
+    const commands = [];
+    const spawn = (command) => {
+      commands.push(command);
+      return { status: 0, stdout: '', stderr: '' };
+    };
+
+    runDesignProgram({
+      classes: '/classes',
+      projectRoot: folder(),
+      fileList: '/files.txt',
+      output: '/out.json',
+      java: '/jdk25/bin/java',
+      spawn,
+    });
+
+    expect(commands).toEqual(['/jdk25/bin/java']);
+  });
+
   it('starts the program with a larger thread stack for deeply nested sources', () => {
     const { launches, spawn } = fakeSpawn(() => ({ status: 0, stdout: '', stderr: '' }));
 

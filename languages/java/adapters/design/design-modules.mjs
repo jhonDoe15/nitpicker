@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { moduleProject } from '../../builds/java-modules.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
@@ -15,6 +15,7 @@ export function gradleDesignModules(report) {
     dir: module.dir,
     sourceRoots: module.manifest.sourceRoots ?? [],
     published: module.manifest.published === true,
+    sourceJava: module.manifest.sourceJava,
   }));
 }
 
@@ -25,10 +26,12 @@ export function mavenDesignModules(projectRoot, moduleDirs, reportDirectory) {
       throw new Error(`The design rules found no manifest.json for the Maven module ${name}`);
     }
     const project = moduleProject(projectRoot, moduleDir, { reportDirectory });
+    const manifest = resolveInside(moduleDir, `${reportDirectory}/manifest.json`);
     return {
       dir: project.qualifier,
       sourceRoots: project.sourceRoots,
       published: project.published,
+      sourceJava: JSON.parse(readFileSync(manifest, 'utf8')).sourceJava,
     };
   });
 }

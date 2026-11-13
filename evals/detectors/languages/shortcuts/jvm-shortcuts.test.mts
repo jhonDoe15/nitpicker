@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { toTree } from '../../tree.mts';
 import { detectLanguageCodeShortcuts } from './index.mts';
+import { kinds, overTrees } from '../test-support/detection.mts';
 import type { Shortcut } from '../../common/types.mts';
 
 const JAVA = 'src/main/java/demo/Cart.java';
 const KOTLIN = 'src/main/kotlin/demo/Cart.kt';
+const detectInTrees = overTrees(detectLanguageCodeShortcuts);
 function detect(file: string, before: string, after: string) {
-  return detectLanguageCodeShortcuts(toTree({ [file]: before }), toTree({ [file]: after }));
-}
-function kinds(found: readonly Shortcut[]) {
-  return found.map((shortcut) => shortcut.kind);
+  return detectInTrees({ [file]: before }, { [file]: after });
 }
 
 function javaClass(body: string) {
@@ -157,7 +155,7 @@ describe('JVM test files', () => {
       '        val z = x as String\n        try { run() } catch (e: Exception) { }\n' +
       '        try { run() } catch (e: Exception) { log(e) }\n' +
       '    }\n}\n';
-    expect(kinds(detectLanguageCodeShortcuts(toTree({}), toTree({ [test]: code })))).toEqual([
+    expect(kinds(detectInTrees({}, { [test]: code }))).toEqual([
       'ignored-error',
       'broad-catch',
       'non-null-assertion',

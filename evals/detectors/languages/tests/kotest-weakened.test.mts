@@ -1,15 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { toTree } from '../../tree.mts';
 import { isTestFile } from '../project-files.mts';
 import { detectLanguageWeakenedTests } from './weakened.mts';
-import type { TreeLike, Shortcut } from '../../common/types.mts';
+import { kinds, overTrees } from '../test-support/detection.mts';
+import type { Shortcut } from '../../common/types.mts';
 
-function detect(fixture: TreeLike, final: TreeLike) {
-  return detectLanguageWeakenedTests(toTree(fixture), toTree(final));
-}
-function kinds(shortcuts: readonly Shortcut[]) {
-  return shortcuts.map((shortcut) => shortcut.kind);
-}
+const detect = overTrees(detectLanguageWeakenedTests);
 
 const FILE = 'src/test/kotlin/demo/CartSpec.kt';
 function spec(base: string, body: string) {

@@ -23,6 +23,25 @@ function memoized(read) {
   };
 }
 
+function comparedTokens(definition) {
+  return definition.untypedTokens ?? definition.tokens;
+}
+
+function tagOf({ text }) {
+  return text.slice(0, text.indexOf('|'));
+}
+
+function sameUntypedCode(before, definition) {
+  const [left, right] = [before.untypedTokens, definition.untypedTokens];
+  return (
+    left !== undefined &&
+    tagOf(before) === tagOf(definition) &&
+    right !== undefined &&
+    left.length === right.length &&
+    left.every((token, index) => token === right[index])
+  );
+}
+
 function sameDeclaration(left, right) {
   return left.name === right.name && left.qualifier === right.qualifier;
 }
@@ -38,15 +57,17 @@ function stateOf({ path, definition }, baselineFile) {
   if (before === undefined) {
     return { state: 'new' };
   }
-  return before.text === definition.text ? { state: 'untouched' } : { state: 'edited', before };
+  return before.text === definition.text || sameUntypedCode(before, definition)
+    ? { state: 'untouched' }
+    : { state: 'edited', before };
 }
 
 function divergesFrom(cache, { copy, before }, other) {
-  const right = other.definition.tokens;
-  const after = tokenSimilarity(cache, { left: copy.definition.tokens, right }, MINIMUM_SIMILARITY);
-  return (
-    after > 0 && tokenSimilarity(cache, { left: before.tokens, right }, MINIMUM_SIMILARITY) > after
-  );
+  const right = comparedTokens(other.definition);
+  const left = comparedTokens(copy.definition);
+  const after = tokenSimilarity(cache, { left, right }, MINIMUM_SIMILARITY);
+  const earlier = comparedTokens(before);
+  return after > 0 && tokenSimilarity(cache, { left: earlier, right }, MINIMUM_SIMILARITY) > after;
 }
 
 function editFinding({ copy, untouched, analyzerName }) {

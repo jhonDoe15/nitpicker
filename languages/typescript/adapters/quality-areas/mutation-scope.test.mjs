@@ -6,7 +6,8 @@ import {
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
-import { mutationTargets } from './runners/mutation-scope.mjs';
+import { configuredTargets, mutationTargets } from './runners/mutation-scope.mjs';
+import { createQualityAreaAnalyzer } from './analyzer.mjs';
 
 const layout = { isSourceFile };
 const BASE_SOURCE = [
@@ -142,5 +143,78 @@ describe('mutationTargets', () => {
     expect(
       mutationTargets({ snapshot: 'head', projectRoot: roots.projectRoot }, layout),
     ).toBeUndefined();
+  });
+
+  it('mutates the source files under the given paths in a whole-project run', () => {
+    const roots = snapshots({
+      headChanges: {
+        'src/orders/order.ts': 'export const order = 1;\n',
+        'src/orders/order.test.ts': 'export {};\n',
+        'src/orders/notes.md': 'notes\n',
+      },
+    });
+    const options = { snapshot: 'head', projectRoot: roots.projectRoot };
+
+    expect(mutationTargets({ ...options, mutationScope: ['src/orders'] }, layout)).toEqual([
+      'src/orders/order.ts',
+    ]);
+    expect(mutationTargets({ ...options, mutationScope: ['src/math.ts'] }, layout)).toEqual([
+      'src/math.ts',
+    ]);
+  });
+
+  it('keeps only the changed lines inside the given paths in a comparison', () => {
+    const roots = snapshots({
+      headChanges: {
+        'src/math.ts': 'export const one = 2;\n',
+        'src/orders/order.ts': 'export const order = 1;\n',
+      },
+    });
+
+    expect(headTargets({ ...roots, mutationScope: ['src/orders'] })).toEqual([
+      'src/orders/order.ts:1-1',
+    ]);
+  });
+});
+
+describe('configuredTargets', () => {
+  const patterns = ['src/**/*.ts', '!src/**/__tests__/**', '!src/**/*.d.ts'];
+
+  it('drops whole files the configured mutate patterns leave out, never line ranges', () => {
+    expect(
+      configuredTargets(
+        ['src/a.ts', 'src/__tests__/helper.ts', 'src/types.d.ts', 'src/__tests__/b.ts:1-2'],
+        patterns,
+      ),
+    ).toEqual(['src/a.ts', 'src/__tests__/b.ts:1-2']);
+    expect(configuredTargets(['src/a.ts'], undefined)).toEqual(['src/a.ts']);
+  });
+
+  it('hands Stryker file names with glob characters as literal patterns', () => {
+    expect(configuredTargets(['src/app/[id]/page.ts', 'src/(group)/a.ts:3-4'], patterns)).toEqual([
+      'src/app/[[]id[]]/page.ts',
+      'src/[(]group[)]/a.ts:3-4',
+    ]);
+  });
+});
+
+describe('the mutation scope argument', () => {
+  function invocationArguments(kind, mutationScope) {
+    return createQualityAreaAnalyzer({ name: kind, kind }).createInvocation({
+      projectRoot: '/project',
+      policyRoot: '/policy',
+      toolRoot: '/tool',
+      snapshot: 'head',
+      mutationScope,
+    }).args;
+  }
+
+  it('reaches the mutation runner only', () => {
+    expect(invocationArguments('mutation', ['src/orders']).slice(-2)).toEqual([
+      '--mutation-scope',
+      '["src/orders"]',
+    ]);
+    expect(invocationArguments('coverage', ['src/orders'])).not.toContain('--mutation-scope');
+    expect(invocationArguments('mutation', undefined)).not.toContain('--mutation-scope');
   });
 });
