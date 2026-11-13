@@ -67,6 +67,7 @@
   "languages/java/maven/preset/maven-preset-spring-arch.e2e.test.mjs": 63,
   "languages/java/maven/preset/quick/maven-preset-quick.e2e.test.mjs": 19,
   "languages/java/maven/preset/reactor/maven-pit-history.e2e.test.mjs": 120,
+  "languages/java/maven/preset/reactor/maven-preset-module-root.e2e.test.mjs": 90,
   "languages/java/maven/preset/reactor/maven-preset-reactor-change.e2e.test.mjs": 76,
   "languages/java/maven/preset/reactor/maven-preset-reactor-modules.e2e.test.mjs": 45,
   "languages/java/maven/preset/red-base/maven-compile-errors.e2e.test.mjs": 61,

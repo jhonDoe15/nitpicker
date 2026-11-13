@@ -18,8 +18,10 @@ import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
 import { mavenScope } from './reactor/maven-scope.mjs';
+import { reactorRootFor } from './reactor/reactor-root.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
+const REPORT_CLOCK_SKEW_MS = 2000;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -91,11 +93,11 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules({ projectRoot, maven, work, spawn, timeoutMs, changedFiles }) {
-  const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs });
-  const reactor = readReactor(projectRoot, effectivePom);
+function readModules({ projectRoot, mavenRoot, maven, work, spawn, timeoutMs, changedFiles }) {
+  const effectivePom = readEffectivePom({ projectRoot: mavenRoot, maven, work, spawn, timeoutMs });
+  const reactor = readReactor(mavenRoot, effectivePom);
   const built = reactor.filter((module) => module.packaging !== 'pom');
-  const scope = mavenScope({ modules: reactor, projectRoot, changedFiles });
+  const scope = mavenScope({ modules: reactor, projectRoot, mavenRoot, changedFiles });
   const modules = scope.reported.filter((module) => module.packaging !== 'pom');
   if (modules.length === 0) {
     throw new Error(
@@ -147,19 +149,50 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
   ];
 }
 
-export function runMavenPreset(
-  projectRoot,
-  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
-) {
+function requireMavenPreset(policy) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
       `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
     );
   }
-  const pinned = readPinnedTools();
+}
+
+function prepare(run, { policy, environment, work }) {
+  const { pinned, quick } = run;
+  const { modules, built, scope, effectivePom } = readModules({
+    ...run,
+    work,
+    changedFiles: policy.changedFiles,
+  });
+  const kotlin = kotlinSetup({ ...run, policy, modules: built, effectivePom, work, environment });
+  const since = Date.now() - REPORT_CLOCK_SKEW_MS;
+  const mavenRoot = { projectRoot: run.mavenRoot };
+  buildAndTest({ ...run, ...mavenRoot, work, modules: built, selection: scope.selection });
+  const analyzed = modules.map((module) => ({
+    module,
+    classpaths: readClasspaths(work, module),
+  }));
+  const tools = resolveTools({
+    ...run,
+    ...mavenRoot,
+    launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
+  });
+  return { modules, built, scope, kotlin, since, analyzed, tools };
+}
+
+export function runMavenPreset(
+  projectRoot,
+  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
+) {
+  requireMavenPreset(policy);
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
+  const other = policy.snapshot === 'base' ? policy.policyRoot : policy.baselineRoot;
+  const mavenRoot = reactorRootFor(projectRoot, other);
+  const pinned = readPinnedTools();
   const run = {
     projectRoot,
+    mavenRoot,
     maven,
     spawn,
     timeoutMs,
@@ -167,35 +200,16 @@ export function runMavenPreset(
     quick: policy.quick === true,
   };
   try {
-    const { modules, built, scope, effectivePom } = readModules({
-      ...run,
+    const { modules, built, scope, kotlin, ...prepared } = prepare(run, {
+      policy,
+      environment,
       work,
-      changedFiles: policy.changedFiles,
-    });
-    const kotlin = kotlinSetup({ ...run, policy, modules: built, effectivePom, work, environment });
-    const since = Date.now() - 2000;
-    buildAndTest({
-      ...run,
-      work,
-      modules: built,
-      selection: scope.selection,
-    });
-    const analyzed = modules.map((module) => ({
-      module,
-      classpaths: readClasspaths(work, module),
-    }));
-    const tools = resolveTools({
-      ...run,
-      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
     });
     const testsFailures = analyzeAll({
       ...run,
+      ...prepared,
       pitDeadline,
-      analyzed,
-      tools,
       configs,
-      since,
       policy,
       kotlin,
       work,
