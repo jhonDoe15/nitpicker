@@ -1999,9 +1999,11 @@ format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`. A re
 runs only when `--fix --rule` names one of its rules.
 
 | Preset | Rule                                     | Recipe                 | What it does                                                                                 |
-| ------ | ---------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | java   | `checkstyle/UpperEll`                    | `java-upper-ell`       | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF                                  |
+| java, kotlin | `spring/ddl-auto`, `open-in-view`, `error-details`, `actuator-exposure`, `risky-startup-flags`, `unsafe-diagnostics`, `literal-secret`, `active-profile` | `spring-<rule>`         | edits the one setting in `application*.properties` and `application*.yml` under `src/main/resources`, and nothing else in the file (review fix) |
+| java, kotlin | `spring/missing-enable`                                                                                                                                  | `spring-missing-enable` | adds the missing `@Enable...` annotation and its import to the `@SpringBootApplication` class (review fix)                                      |
 
 The rule reference says what `--fix` does about each rule, in a "Fix" line that `nitpicker explain`
 prints too: `automatic` (a safe recipe, or a fixer that runs under `--fix`: ESLint rules that

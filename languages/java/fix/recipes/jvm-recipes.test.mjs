@@ -21,7 +21,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function fixTopic(base, changes, config) {
+function fixTopic(base, changes, config, extra = {}) {
   vi.stubEnv('XDG_CACHE_HOME', temporaryRoot('nitpicker-fix-cache-'));
   const repository = createGitRepository(base, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
@@ -34,6 +34,7 @@ function fixTopic(base, changes, config) {
     headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
     config,
     environment: { NITPICKER_GRADLE: '', NITPICKER_MAVEN: 'fake-mvn' },
+    ...extra,
   });
   return { result, read: (name) => readFileSync(path.join(repository.root, name), 'utf8') };
 }
@@ -79,4 +80,26 @@ describe('--fix runs the JVM recipes before the formatter', () => {
     expect(read('scripts/Tool.java')).toBe('class Tool { long a = 1l; }\n');
     expect(result.fixedFindings).toBeUndefined();
   });
+  it.each(Object.entries(BUILDS))(
+    'runs the Spring recipes on changed config files only when the rule is selected (%s)',
+    (_, build) => {
+      const name = 'src/main/resources/application.yml';
+      const text = 'spring:\n  jpa:\n    hibernate:\n      ddl-auto: update\n';
+      const files = { [name]: text, [`${JAVA}/New.java`]: 'class  New {}\n' };
+      const untouched = fixTopic(build, files, { preset: 'java' });
+      const fixed = fixTopic(
+        build,
+        files,
+        { preset: 'kotlin' },
+        { selectedRules: ['spring/ddl-auto'] },
+      );
+
+      expect(untouched.read(name)).toBe(text);
+      expect(fixed.read(name)).toBe(text.replace('update', 'validate'));
+      expect(fixed.result.fixedFiles).toEqual([name]);
+      expect(fixed.read(`${JAVA}/New.java`)).toBe('class  New {}\n');
+      expect(fixed.result.fixedFindings).toEqual([`${name}:4 spring/ddl-auto (spring-ddl-auto)`]);
+      expect(fixed.result.notes.join('\n')).not.toContain('application.yml');
+    },
+  );
 });

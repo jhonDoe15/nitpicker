@@ -20,6 +20,7 @@ import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
 import { JVM_RECIPES } from './recipes/jvm-recipes.mjs';
+import { SPRING_CONFIG_FILE } from './recipes/spring/config/config-targets.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
 
 const JAVA_FILE = /\.java$/u;
@@ -158,10 +159,11 @@ export function fixJvm(settings) {
   const roots = declaredSourceRoots(projectRoot);
   function accepts(name) {
     return (
-      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
-      !excluded(name) &&
-      inJvmSourceSets(name, roots) &&
-      !isGeneratedJvm(projectRoot, name)
+      (SPRING_CONFIG_FILE.test(name) && !excluded(name)) ||
+      ((JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+        !excluded(name) &&
+        inJvmSourceSets(name, roots) &&
+        !isGeneratedJvm(projectRoot, name))
     );
   }
   const { comparison, files, links } = collectFixFiles({

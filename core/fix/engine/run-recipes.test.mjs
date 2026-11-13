@@ -94,6 +94,20 @@ describe('runRecipes', () => {
     expect(run(root, [review], { selectedRules: ['demo/shout'] }).fixedFindings).toHaveLength(1);
     expect(read(root, 'a.txt')).toBe('LOUD\n');
   });
+  it('hands the plan the project root and the file filter', () => {
+    const root = project({ 'a.txt': 'quiet\n' });
+    const seen = [];
+    const spy = recipe({
+      plan: ({ projectRoot, accepts }) => {
+        seen.push([projectRoot, accepts('a.txt')]);
+        return { fixes: [] };
+      },
+    });
+
+    run(root, [spy]);
+
+    expect(seen[0]).toEqual([root, true]);
+  });
   it('skips recipes of other presets', () => {
     const root = project({ 'a.txt': 'quiet\n' });
 

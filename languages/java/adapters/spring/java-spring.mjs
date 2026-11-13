@@ -32,7 +32,7 @@ const STARTUP_FLAGS = new Set(STARTUP_FLAG_NAMES.map(relaxKey));
 const OPEN_IN_VIEW_MESSAGE =
   'Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries.';
 
-const ENTRY_RULES = [
+export const ENTRY_RULES = [
   {
     rule: 'ddl-auto',
     exempt: isTestOrLocal,
@@ -164,7 +164,7 @@ function documentFindings({ projectRoot, sourceRoots, documents, occurrences }) 
   ];
 }
 
-function openInViewFindings(documents, occurrences) {
+export function openInViewSites(documents) {
   const key = relaxKey(OPEN_IN_VIEW);
   const entries = documents
     .filter((document) => !isTest(document))
@@ -174,6 +174,15 @@ function openInViewFindings(documents, occurrences) {
         .map((entry) => ({ document, entry })),
     );
   const enabled = entries.filter(({ entry }) => isTrue(entry));
+  return {
+    enabled,
+    missingIn: entries.length > 0 ? undefined : documents.find((document) => document.main),
+  };
+}
+
+function openInViewFindings(documents, occurrences) {
+  const key = relaxKey(OPEN_IN_VIEW);
+  const { enabled, missingIn } = openInViewSites(documents);
   if (enabled.length > 0) {
     return enabled.map(({ document, entry }) =>
       buildFinding({
@@ -186,16 +195,12 @@ function openInViewFindings(documents, occurrences) {
       }),
     );
   }
-  if (entries.length > 0) {
-    return [];
-  }
-  const anchor = documents.find((document) => document.main);
-  return anchor === undefined
+  return missingIn === undefined
     ? []
     : [
         buildFinding({
           rule: 'open-in-view',
-          document: anchor,
+          document: missingIn,
           key: `${key}:missing`,
           message: OPEN_IN_VIEW_MESSAGE,
           occurrences,
@@ -203,22 +208,32 @@ function openInViewFindings(documents, occurrences) {
       ];
 }
 
-function entryFindings(documents, { rule, exempt, problem, lists = false }, occurrences) {
+export function flaggedEntries(documents, { exempt, problem, lists = false }) {
   return documents
     .filter((document) => !exempt(document))
     .flatMap((document) =>
       document.entries
         .filter((entry) => lists || !entry.list)
-        .map((entry) => ({ entry, message: problem(entry, relaxKey(entry.key)) }))
+        .map((entry) => ({ document, entry, message: problem(entry, relaxKey(entry.key)) }))
         .filter(({ message }) => message !== undefined)
         .filter(
           ({ entry }, index, found) =>
             found.findIndex((other) => sameLine(other.entry, entry)) === index,
-        )
-        .map(({ entry, message }) =>
-          buildFinding({ rule, document, entry, key: relaxKey(entry.key), message, occurrences }),
         ),
     );
+}
+
+function entryFindings(documents, spec, occurrences) {
+  return flaggedEntries(documents, spec).map(({ document, entry, message }) =>
+    buildFinding({
+      rule: spec.rule,
+      document,
+      entry,
+      key: relaxKey(entry.key),
+      message,
+      occurrences,
+    }),
+  );
 }
 
 function sameLine(left, right) {

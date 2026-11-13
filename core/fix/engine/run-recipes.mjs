@@ -23,7 +23,12 @@ function selectedFixes(planned, recipe, run) {
 }
 
 function planRecipe(recipe, snapshot, run) {
-  const planned = recipe.plan({ files: snapshot.files, read: snapshot.read });
+  const planned = recipe.plan({
+    files: snapshot.files,
+    read: snapshot.read,
+    projectRoot: run.settings.projectRoot,
+    accepts: run.settings.accepts,
+  });
   const fixes = selectedFixes(planned, recipe, run);
   for (const fix of fixes) {
     checkFix(fix, recipe, { ...run.settings, snapshot, changed: new Set(run.state.names) });
