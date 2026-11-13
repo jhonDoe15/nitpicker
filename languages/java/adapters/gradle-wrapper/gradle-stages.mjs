@@ -71,7 +71,8 @@ export function gradleStages(
 ) {
   const common = [
     ...baseArguments,
-    ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
+    ...(policy.quick ? ['-Pnitpicker.quick=true'] : []),
+    '--build-cache',
   ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;

@@ -261,7 +261,9 @@ describe('the Gradle hand-off', () => {
     return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
       (argument) =>
         !(
-          argument.startsWith('-Pnitpicker.reportDir=') || argument.startsWith('-Pnitpicker.node=')
+          argument.startsWith('-Pnitpicker.reportDir=') ||
+          argument.startsWith('-Pnitpicker.node=') ||
+          argument.startsWith('-Pnitpicker.pit.deadline=')
         ),
     );
   };
@@ -298,12 +300,14 @@ describe('the Gradle hand-off', () => {
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=none',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
+      '--build-cache',
       '-I',
       INIT_SCRIPT,
       'nitpickerJava',
     ]);
     expect(argumentsOf(root, { preset: 'java' })).toEqual([
       ...common,
+      '--build-cache',
       '-I',
       INIT_SCRIPT,
       'nitpickerJava',

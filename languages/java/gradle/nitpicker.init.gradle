@@ -545,6 +545,7 @@ allprojects {
                 ignoreFailures = true
                 showViolations = false
                 maxWarnings = Integer.MAX_VALUE
+                outputs.doNotCacheIf('its report names files by absolute path, and the guard rules are written while it runs') { true }
                 dependsOn writeCheckstyleConfig
                 checkstyleClasspath = configurations.nitpickerCheckstyle
                 configFile = (mergedCheckstyleConfig ? new File(mergedCheckstyleConfig.toString()) : nitpickerCheckstyleConfig.get().asFile)
@@ -1130,6 +1131,7 @@ allprojects {
         afterEvaluate {
             def followedTest = { String name -> !name.startsWith('nitpickerArchunit') }
             tasks.withType(Test).configureEach { testTask ->
+                testTask.outputs.doNotCacheIf('nitpicker runs the tests of every snapshot') { true }
                 if (followedTest(testTask.name)) {
                     testTask.exclude archunitIncludes
                     if (testsFailed) {

@@ -106,3 +106,27 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   that is a note and the run goes on (see [A base whose tests fail](../usage.md#a-base-whose-tests-fail)).
   A base that fails for another reason, or whose tests fail without a named failing test, still
   fails.
+
+## Build cache and side-by-side tools
+
+- **Gradle build cache.** Every Gradle run, quick or full, passes `--build-cache` for Java and
+  Kotlin, so tasks whose inputs did not change between the base and the head snapshot (an unchanged
+  module, a repeated run) are restored from the build cache (the local one in the Gradle user home,
+  and a remote one only as the build's own `settings.gradle` configures it). The project's `Test`
+  tasks, the ArchUnit ones included, are never served from the cache (`outputs.doNotCacheIf` in the init script): a test can read
+  inputs Gradle does not track (a file read by a relative path, the environment), so the head
+  snapshot runs its own tests. Checkstyle tasks are not cached either, since their report names
+  files by absolute path and the guard rules are written while they run. An ArchUnit run can read
+  inputs Gradle does not track (a freeze store, `archunit.properties`), and a cache hit would skip
+  the check that it ran. Compilation and the JaCoCo report stay cacheable; the other nitpicker
+  tasks (PMD, SpotBugs, Error Prone, PIT, the report tasks) are not cacheable. Measured on the
+  multi-project fixture, a second run after a one-file edit took 20.8 s with the cache against
+  21.7 s without (median of 3): most of that time is in the analyzers, so the gain grows with the
+  number of unchanged modules and with compile time, Kotlin in particular.
+- **Maven tools side by side.** The per-module tools (PMD, SpotBugs, Error Prone, the format
+  check, Checkstyle, structure metrics, jdeps) run side by side in every Maven run, through the
+  process supervisor in `languages/java/maven/parallel/`, at most one per CPU. Measured against
+  running the same tools one after another (full runs, findings identical): 14.1 s against 17.0 s
+  on the single-module fixture (median of 4) and 23.0 s against 28.7 s on the three-module fixture
+  (median of 3). With an injected process runner (tests) the tools run one after another in the
+  calling process.
