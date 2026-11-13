@@ -26,6 +26,7 @@ const MESSAGES_BUILT_ELSEWHERE = [
   'core/diff/sharding/aggregate-shards.mts',
   'core/fix/common/fix-command.mjs',
   'languages/java/adapters/red-base/tests-failed.mjs',
+  'languages/java/builds/pit-failure/pit-failure.mjs',
 ];
 const symptoms = new Map(pageEntries().map(({ slug, symptom }) => [slug, symptom]));
 

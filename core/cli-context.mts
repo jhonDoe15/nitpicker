@@ -1,4 +1,4 @@
-import type { Analyzer } from '../shared/values/analyzers.mts';
+import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 
 export type TextOutput = {
@@ -77,7 +77,7 @@ export type ConfiguredRun = {
 };
 
 export type RunSetup = {
-  readonly analyzers: unknown;
+  readonly analyzers: readonly ProfiledAnalyzer[];
   readonly quick: unknown;
   readonly captureHead: unknown;
 };
