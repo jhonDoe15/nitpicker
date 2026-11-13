@@ -3,44 +3,76 @@ import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSyn
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { createSampleRepository, inside, REPOSITORY_ROOT } from './samples.mjs';
+import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
+import { createSampleRepository, REPOSITORY_ROOT } from './samples.mts';
+import { containedPath } from '../../core/fix/common/contained-path.mjs';
 
 const CLI = path.join(REPOSITORY_ROOT, 'core/cli.mjs');
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
-const RUNTIMES = {
+const RUNTIMES: Readonly<Record<string, () => readonly [string, ...string[]]>> = {
   node: () => [process.execPath],
   deno: () => ['deno', 'run', '-A'],
 };
 
-function slashed(text) {
-  return String(text ?? '').replaceAll('\\', '/');
+export type NormalizedRun = {
+  readonly exitCode: number | undefined;
+  readonly findings: readonly string[];
+  readonly toolErrors: readonly string[];
+  readonly toolErrorMessages: readonly string[];
+};
+
+export type PlatformRun = {
+  readonly sample: string;
+  readonly runtime: string;
+  readonly platform: string;
+  readonly all: NormalizedRun;
+  readonly change: NormalizedRun;
+};
+
+function slashed(text: unknown): string {
+  return typeof text === 'string' ? text.replaceAll('\\', '/') : '';
 }
 
-export function findingKey({ tool, rule, path: file, identity, classification }) {
+export function findingKey({ tool, rule, path: file, identity, classification }: Fields): string {
   return JSON.stringify([tool, rule, slashed(file), slashed(identity), classification]);
 }
 
-export function toolErrorKey({ snapshot, tool, rule }) {
+export function toolErrorKey({ snapshot, tool, rule }: Fields): string {
   return JSON.stringify([snapshot, tool, rule ?? 'crash']);
 }
 
-function readReport(directory, name) {
-  const file = inside(directory, name);
-  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+function readReport(directory: string, name: string): Fields[] {
+  const file = containedPath(directory, name);
+  const parsed: unknown = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  return listOf(parsed).map((entry) => fieldsOf(entry) ?? {});
 }
 
-export function normalizedRun({ exitCode, reports, findingsFile }) {
+export function normalizedRun({
+  exitCode,
+  reports,
+  findingsFile,
+}: {
+  readonly exitCode: number | undefined;
+  readonly reports: string;
+  readonly findingsFile: string;
+}): NormalizedRun {
   const toolErrors = readReport(reports, 'tool-errors.json');
   return {
     exitCode,
     findings: readReport(reports, findingsFile).map(findingKey).toSorted(),
     toolErrors: toolErrors.map(toolErrorKey).toSorted(),
-    toolErrorMessages: toolErrors.map((error) => `${toolErrorKey(error)}: ${error.message}`),
+    toolErrorMessages: toolErrors.map(
+      (error) => `${toolErrorKey(error)}: ${String(error['message'])}`,
+    ),
   };
 }
 
-function runNitpicker(runtime, root, args) {
-  const [command, ...prefix] = RUNTIMES[runtime]();
+function runNitpicker(runtime: string, root: string, args: readonly string[]): number | undefined {
+  const launcher = RUNTIMES[runtime];
+  if (launcher === undefined) {
+    throw new Error(`Unknown runtime ${runtime}`);
+  }
+  const [command, ...prefix] = launcher();
   const result = spawnSync(command, [...prefix, CLI, ...args], {
     cwd: root,
     stdio: 'inherit',
@@ -49,17 +81,21 @@ function runNitpicker(runtime, root, args) {
   if (result.error !== undefined) {
     throw result.error;
   }
-  return result.status;
+  return result.status === null ? undefined : result.status;
 }
 
-function keepReports(repository, directory) {
+function keepReports(repository: { readonly root: string }, directory: string): void {
   const reports = path.join(repository.root, 'reports');
   if (existsSync(reports)) {
     cpSync(reports, directory, { recursive: true });
   }
 }
 
-export function runSample(sample, runtime, reportsDirectory) {
+export function runSample(
+  sample: string,
+  runtime: string,
+  reportsDirectory: string | undefined,
+): PlatformRun {
   const repository = createSampleRepository(sample);
   try {
     const allReports = path.join(repository.root, 'reports/all');
@@ -91,7 +127,7 @@ export function runSample(sample, runtime, reportsDirectory) {
   }
 }
 
-function main() {
+function main(): void {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
@@ -100,11 +136,17 @@ function main() {
     },
   });
   if (!Object.hasOwn(RUNTIMES, values.runtime)) {
-    throw new Error(`Unknown runtime ${values.runtime}; choose one of ${Object.keys(RUNTIMES)}`);
+    throw new Error(
+      `Unknown runtime ${values.runtime}; choose one of ${Object.keys(RUNTIMES).join(',')}`,
+    );
   }
   mkdirSync(values.output, { recursive: true });
   for (const sample of positionals) {
-    const run = runSample(sample, values.runtime, inside(values.output, `${sample}-reports`));
+    const run = runSample(
+      sample,
+      values.runtime,
+      containedPath(values.output, `${sample}-reports`),
+    );
     writeFileSync(path.join(values.output, `${sample}.json`), `${JSON.stringify(run, null, 2)}\n`);
   }
 }
