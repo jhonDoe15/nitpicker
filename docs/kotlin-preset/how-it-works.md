@@ -5,7 +5,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 ```
 gradle -Pnitpicker.kotlin=true -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snapshot)
   -> everything the Java preset writes, plus {detekt.sarif, ktlint.sarif | ktfmt.txt} in each project's report directory
-  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mjs)
+  -> readJavaFindings(root, { preset: 'kotlin' })   (languages/java/adapters/reporting/java-reports.mts)
        -> readKotlinFindings                         (languages/java/adapters/reporting/kotlin-reports.mjs)
   -> compareFindings(base, head, renames)
 ```

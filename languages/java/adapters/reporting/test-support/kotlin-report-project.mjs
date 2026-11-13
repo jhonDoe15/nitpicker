@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { EMPTY_MUTATION_FACTS } from '../../test-support/fake-gradle/kotlin-empty-reports.mjs';
-import { readJavaFindings as readFindings } from '../java-reports.mjs';
+import { readJavaFindings as readFindings } from '../java-reports.mts';
 import {
   readingFrom,
   reportBaseOf,

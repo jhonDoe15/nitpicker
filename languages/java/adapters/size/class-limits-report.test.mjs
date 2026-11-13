@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
+import { readJavaFindings as readFindings } from '../reporting/java-reports.mts';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 
 const readJavaFindings = readingFrom(readFindings);

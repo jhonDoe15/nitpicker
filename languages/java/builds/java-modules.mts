@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
+import { readJavaFindings } from '../adapters/reporting/java-reports.mts';
 import { readProjectDuplicateFindings } from '../adapters/kotlin/kotlin-duplicates.mjs';
 import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
 import { inModule } from './module-path.mjs';
