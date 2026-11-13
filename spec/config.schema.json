@@ -2195,6 +2195,7 @@
                             "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/FutureWithoutException",
                             "kotlin-source/CleanupSkippedOnFailure",
+                            "kotlin-source/PendingFuturesNotFailedOnClose",
                             "kotlin-source/RepeatedStringLiteral",
                             "kotlin-source/LogFormatArguments",
                             "kotlin-source/LogExceptionFirst",

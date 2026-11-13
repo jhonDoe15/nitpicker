@@ -93,3 +93,58 @@ def blocks_of(function):
         yield block
         for statement in block:
             pending.extend(statement_lists(statement))
+
+
+def class_attributes(cls):
+    declared = {}
+    for node in ast.walk(cls):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                name = self_attribute(target)
+                if name is not None:
+                    declared.setdefault(name, (node, node.value, None))
+        elif isinstance(node, ast.AnnAssign):
+            name = self_attribute(node.target)
+            if name is None and isinstance(node.target, ast.Name) and node in cls.body:
+                name = node.target.id
+            if name is not None:
+                declared.setdefault(name, (node, node.value, node.annotation))
+    return declared
+
+
+def calls_in(function):
+    return [node for node in ast.walk(function) if isinstance(node, ast.Call)]
+
+
+def called_methods(function):
+    names = []
+    for call in calls_in(function):
+        name = self_attribute(call.func)
+        if name is not None:
+            names.append(name)
+    return names
+
+
+def reachable_methods(cls, closer, depth=3):
+    methods = {method.name: method for method in methods_of(cls)}
+    seen = [closer]
+    frontier = [closer]
+    for _ in range(depth):
+        frontier = [
+            methods[name]
+            for method in frontier
+            for name in called_methods(method)
+            if name in methods and methods[name] not in seen
+        ]
+        seen.extend(frontier)
+    return seen
+
+
+def attribute_aliases(method):
+    found = {}
+    for node in ast.walk(method):
+        if isinstance(node, ast.Assign) and self_attribute(node.value) is not None:
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    found[target.id] = self_attribute(node.value)
+    return found

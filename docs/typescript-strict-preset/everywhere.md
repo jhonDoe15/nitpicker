@@ -43,6 +43,17 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   and leaves the others unobserved. Allowed: `Promise.allSettled` over the releases and a rethrow of the
   first failure, `try { await a.close(); } finally { this.a = undefined; }`, a `try`/`catch` around each
   release, or one release per block.
+- `nitpicker/settle-pending-on-close`: a close function must settle the pending requests its scope keeps. For a
+  class or a factory function with a close, dispose, stop or shutdown function, it reports a `Map`, object or
+  array that gets `resolve` and `reject` pairs, deferreds or promise settle functions added (a function or an
+  object with such members under a name such as `resolve`, `reject`, `deferred`, `resolver` or `settle`, or any
+  function when the collection is named `pending`, `inFlight`, `waiting`, `waiters`, `callbacksById` or
+  `requests`; event handler registries such as `handlers` or `listeners` are not pending requests) when no
+  close function, nor a function it calls (three levels deep), passes the collection to a call or a
+  `forEach`, iterates it (also through a local alias or a snapshot) and settles or hands each entry on.
+  Failure paths that give up before close (a decode error, a give-up timeout) are not read: the preset has no
+  advisory level, and a report-only form would be a finding nobody can act on. A `.clear()` alone leaves every caller still waiting hanging forever. Allowed: reject
+  or resolve each entry before clearing, or hand the collection to a helper that does.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),

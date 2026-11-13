@@ -8,4 +8,8 @@ export const LIFECYCLE_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/release/cleanup-steps.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/release/no-cleanup-skipped-on-failure.mjs',
   'languages/typescript/preset/eslint-plugin/rules/lifecycles/scope/close-scopes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/pending/pending-values.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/pending/settle-pending-on-close.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/scope/close-owners.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/lifecycles/scope/collections.mjs',
 ];

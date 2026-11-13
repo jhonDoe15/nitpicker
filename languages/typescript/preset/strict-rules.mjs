@@ -69,6 +69,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-string-as-regex',
   'nitpicker/no-cleanup-skipped-on-failure',
   'nitpicker/no-task-outliving-resource',
+  'nitpicker/settle-pending-on-close',
   'nitpicker/no-sync-node-api-in-async',
   'nitpicker/no-test-retry',
   'nitpicker/no-throw',

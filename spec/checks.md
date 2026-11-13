@@ -232,6 +232,15 @@ the part of a fixture after its `yield`, and `asyncio.gather` over releases with
 preset and `go-rules/cleanup-skipped` in the Go preset (an early `return` after a failed `Close`). A release
 inside `try`/`finally`, try-with-resources, `use`, `ExitStack` or `errors.Join` is left alone.
 
+Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
+reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
+close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing
+the collection to a call), since a bare `.clear()` leaves every waiting caller hanging. The same form runs as
+`pending-unsettled-on-close` in the Python preset (a dict of futures), `pmd/PendingFuturesNotFailedOnClose` in
+the Java preset (a `Map` of `CompletableFuture`, `Future` and the like), `kotlin-source/PendingFuturesNotFailedOnClose`
+in the Kotlin preset (also `CompletableDeferred`) and `go-rules/pending-not-closed` in the Go preset (a map of
+channels). A close that fails or completes each entry, or hands the collection to a helper that does, is left alone.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

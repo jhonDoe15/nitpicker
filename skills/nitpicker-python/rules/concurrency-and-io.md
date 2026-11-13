@@ -11,6 +11,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - A `close`, `aclose`, `__exit__`, `__aexit__` or fixture teardown that releases several resources registers them on
   `contextlib.ExitStack` / `AsyncExitStack` (or `gather(..., return_exceptions=True)`, or `try`/`finally`), never
   `await a.aclose()` then `await b.aclose()` (`cleanup-skipped-on-failure`).
+- A `close` that clears a dict of futures kept for pending requests fails every one first
+  (`future.set_exception(ConnectionError("closed"))` or `future.cancel()`), so no awaiting caller hangs
+  (`pending-unsettled-on-close`).
 - Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
   `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
   blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`
