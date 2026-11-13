@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { readPinnedTools } from '../../../builds/java-build.mjs';
 import { toolDependencies } from '../../../maven/maven-tools.mjs';
-import { CHECKS, documentedChecks } from './checks-docs.mjs';
+import { errorProneChecks, documentedChecks } from './checks-docs.mts';
+import type { ErrorProneChecks } from './checks-shape.mts';
+
+const CHECKS = errorProneChecks();
 
 const OFF = 'Checks that are off';
 const ROUTE_KEPT = 'ERROR checks that keep the exceptions route';
 const SPARED = 'Checks spared in annotated classes';
-const LISTS = [
+const LISTS: readonly (keyof Omit<ErrorProneChecks, 'reviewed' | 'classExemptions'>)[] = [
   'reviewedChecks',
   'enable',
   'disable',
@@ -15,12 +18,23 @@ const LISTS = [
   'lombokUnsuppressedOff',
 ];
 
+function field(value: unknown, key: string): unknown {
+  return typeof value === 'object' && value !== null
+    ? Object.entries(value).find(([name]) => name === key)?.[1]
+    : undefined;
+}
+
 describe('Error Prone check policy', () => {
   it('was reviewed for the Error Prone and NullAway versions both builds run', () => {
-    const pinned = readPinnedTools();
-    const reviewed = { errorProne: pinned.errorProne, nullAway: pinned.nullAway };
-    const maven = toolDependencies(pinned).errorprone.map((dependency) =>
-      /<artifactId>([^<]+)<\/artifactId><version>([^<]+)</u.exec(dependency).slice(1),
+    const pinned: unknown = readPinnedTools();
+    const reviewed = {
+      errorProne: field(pinned, 'errorProne'),
+      nullAway: field(pinned, 'nullAway'),
+    };
+    const dependencies: unknown = toolDependencies(pinned);
+    const errorprone = field(dependencies, 'errorprone');
+    const maven = (Array.isArray(errorprone) ? errorprone : []).map((dependency) =>
+      /<artifactId>([^<]+)<\/artifactId><version>([^<]+)</u.exec(String(dependency))?.slice(1),
     );
 
     expect(CHECKS.reviewed).toStrictEqual(reviewed);
