@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatTestFailures } from '../../quality-areas/reporting/test-report.mjs';
-import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
+import { formatTestFailures } from '../../quality-areas/reporting/test-report.mts';
+import { loadFailureReport, reportFromMocha } from './mocha-report.mts';
 
 const passed = {
   title: 'adds',

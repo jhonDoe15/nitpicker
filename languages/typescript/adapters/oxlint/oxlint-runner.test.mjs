@@ -2,8 +2,8 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { oxlintBinary } from './oxlint-process.mjs';
-import { rejectedRuleIds } from './oxlint-translation.mjs';
+import { oxlintBinary } from './oxlint-process.mts';
+import { rejectedRuleIds } from './oxlint-translation.mts';
 import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
 const PLUGIN = import.meta.resolve('../../preset/eslint-plugin/index.mjs');

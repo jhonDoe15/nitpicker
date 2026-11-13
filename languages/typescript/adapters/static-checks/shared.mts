@@ -14,7 +14,7 @@ export type Finding = {
   path: string;
   identity: string;
   message: string;
-  classification: 'enforceable' | 'descriptive';
+  classification: string;
   symbol?: string;
   location?: { line: number; column?: number; endLine?: number };
 };
@@ -77,9 +77,17 @@ export function projectFile(projectRoot: string, filePath: string): string {
 
 export function policyFile(options: StaticCheckOptions, relativePath: string): string {
   const normalizedPath = normalizedRelativePath(relativePath, relativePath);
-  const filePath = path.resolve(options.policyRoot, normalizedPath);
-  const relativeToPolicy = path.relative(options.policyRoot, filePath);
-  if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
+  return policyPath(options.policyRoot, relativePath, normalizedPath);
+}
+
+export function policyPath(
+  policyRoot: string,
+  relativePath: string,
+  resolved = relativePath,
+): string {
+  const root = path.resolve(policyRoot);
+  const filePath = path.resolve(root, resolved);
+  if (!filePath.startsWith(root + path.sep)) {
     throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
   }
   if (!statSync(filePath).isFile()) {

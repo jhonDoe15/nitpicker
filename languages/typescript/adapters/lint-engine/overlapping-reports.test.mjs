@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withoutSupersededMessages } from './overlapping-reports.mjs';
+import { withoutSupersededMessages } from './overlapping-reports.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const noLet = { ruleId: 'functional/no-let', line: 4, column: 3, endLine: 4, endColumn: 40 };

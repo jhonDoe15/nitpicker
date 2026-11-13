@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { eslintShapedResults } from './oxlint-diagnostics.mjs';
+import { eslintShapedResults } from './oxlint-diagnostics.mts';
 import {
   escapeGlob,
   messageIdResolver,
@@ -12,7 +12,7 @@ import {
   reportedRuleKey,
   translatePlan,
   translateRule,
-} from './oxlint-translation.mjs';
+} from './oxlint-translation.mts';
 
 const nativeRules = nativeRuleIndex([
   { scope: 'eslint', value: 'no-debugger', type_aware: false },

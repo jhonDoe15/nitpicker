@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mjs';
+import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
 import { applyRuleHints } from '../../../languages/python/rules/rule-hints.mjs';
 import { withRuleMessage } from '../../../languages/java/messages/rule-messages.mjs';
 import { ingestErrorProne } from '../../../languages/java/ingest/errorprone/errorprone.mjs';

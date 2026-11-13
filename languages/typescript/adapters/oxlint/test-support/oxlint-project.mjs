@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { lintWithOxlint } from '../oxlint-runner.mjs';
+import { lintWithOxlint } from '../oxlint-runner.mts';
 
 export const TYPED_POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 
