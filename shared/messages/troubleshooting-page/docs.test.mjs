@@ -35,6 +35,7 @@ const PRESET_GUIDES = [
     others: [PROJECT_TOOL_CONFIG],
   },
   { guide: 'docs/python-preset.md', sections: ['Python'], others: [PROJECT_TOOL_CONFIG, WINDOWS] },
+  { guide: 'docs/go-preset.md', sections: ['Go'], others: [] },
   {
     guide: 'docs/typescript-strict-preset.md',
     sections: ['TypeScript and JavaScript', 'Tests'],
