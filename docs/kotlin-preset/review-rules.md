@@ -760,7 +760,14 @@ guessed at.
   `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. An
   assertion is a call of a real assertion API: `assert*`, kotlin.test and Strikt `expect`, the Kotest
   `should*` matchers, MockK and Mockito `verify` (when the file imports them), Spring `andExpect`, and `fail`,
-  `error` or `TODO`; a condition (`if (isValid(x))`) is not read as an assertion. Allowed: an `if`/`else` or a
+  `error` or `TODO`, any imported function whose name starts with `expect` (`import demo.expectValid`, or a star import of a
+  package that is not `kotlin.*`, `java.*`, `javax.*` or `kotlinx.*`; a `fun expectX` declaration is not a call), an
+  import alias of any of these (`import org.junit.jupiter.api.Assertions.assertEquals as eq`), and the names of the
+  project's `kotlin.assertionHelpers` convention (the helpers its tests end with, as for the test without an
+  assertion, called without a receiver or on `this`); a condition (`if (isValid(x))`) is not read as an assertion, and neither are matcher builders
+  (`argThat { }`, `match { }`) or stubbing (`every { }`). An `if` or `when` that only calls a same-file
+  helper which asserts is reported like one that asserts, as in the Python preset (and as a loop that does is):
+  the helper call may be skipped just as the assertion would be. Allowed: an `if`/`else` or a
   `when` whose every branch asserts or fails (a `when` with an `else`, or over `is` types or the constants of
   a sealed type), a check inside Kotest `checkAll`, `forAll`, `forNone`, `forOne`, `forSome` or JUnit
   `assertAll`, `@Property` and `@Example` tests, and generated cases (`@TestFactory`, registrations in a
