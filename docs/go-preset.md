@@ -781,6 +781,15 @@ argument, a call with another argument (a constant, an expression, a field), a r
 converted or wrapped, and an unexported hop into an unexported function are not forwarding. Call
 the last function directly, or let a hop own something.
 
+**`disjoint-consumer-groups`.** Report-only. A struct (or a file with top-level functions, its module)
+whose exported methods, used from other files, split into 2 or more groups of 2 or more that no
+caller file uses together and that share no field or helper. The fields a method uses are the
+fields of its receiver it selects (`r.rows`); for a top-level function they are the package-level
+variables of its own file. A function used as a value counts as a use like a call: passed as an
+argument, stored, returned, a method value (`l.Add`), held in a package-level table the caller reads
+(`var routes = map[string]func(){"audit": ledger.Audit}`, one level deep), and what a file's
+package-level variable initializers and `init` functions call or use count for that file.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 

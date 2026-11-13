@@ -133,6 +133,8 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
 - A function whose whole body is `return other(a, b)` into another file, called through a second
   such function, is a pass-through chain (`forwarding-chain`, report-only): call the last function
   where the first is used, or let a hop own something (a conversion, a default, a dependency).
+- A struct whose methods serve two groups of callers that never meet and share no field
+  (`disjoint-consumer-groups`, report-only) is two types: split it by who calls what.
 
 ## Size and tests
 

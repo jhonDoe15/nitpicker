@@ -101,7 +101,9 @@ func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) C
 		Forward:      chain.Of(env, info.Decl, known),
 		Calls:        calls.Collect(env, info.Decl.Body, known),
 		ParamUses:    uses.Params(env, info.Decl, hasMembers, known),
+		OwnFields:    uses.OwnFields(env, info),
 		ReturnsField: returnedField(env, info),
+		References:   uses.References(env, info.Decl.Body, known),
 	}
 }
 

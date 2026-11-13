@@ -25,7 +25,7 @@ func Build(module string, sources []Source) Facts {
 	for _, function := range functions {
 		if function.Recv == nil && !modules[function.File] {
 			modules[function.File] = true
-			facts.Types = append(facts.Types, moduleFact(function.File))
+			facts.Types = append(facts.Types, moduleFact(function.File, isKnown))
 		}
 	}
 	for _, file := range x.Files {

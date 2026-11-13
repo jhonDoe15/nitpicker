@@ -43,3 +43,64 @@ export const OWNING_HOP_FILES = {
   'internal/service/orders.go': service('store.Load(id, 10)'),
   'internal/api/orders.go': API,
 };
+
+const LEDGER = `package ledger
+
+type Ledger struct {
+	readings []int
+	writes   []int
+}
+
+func (l *Ledger) ReadFirst() int {
+	return l.readings[0]
+}
+
+func (l *Ledger) ReadLast() int {
+	return l.readings[len(l.readings)-1]
+}
+
+func (l *Ledger) WriteOne(value int) {
+	l.writes = append(l.writes, value)
+}
+
+func (l *Ledger) WriteTwo(value int) {
+	l.writes = append(l.writes, value, value)
+}
+`;
+
+const REPORTS = `package reports
+
+import "shop/internal/ledger"
+
+func Render(l *ledger.Ledger) int {
+	return l.ReadFirst() + l.ReadLast()
+}
+`;
+
+export const DISJOINT_FILES = {
+  'internal/ledger/ledger.go': LEDGER,
+  'internal/reports/render.go': REPORTS,
+  'internal/imports/load.go': `package imports
+
+import "shop/internal/ledger"
+
+func Load(l *ledger.Ledger) {
+	l.WriteOne(1)
+	l.WriteTwo(2)
+}
+`,
+};
+
+export const SHARED_CALLER_FILES = {
+  'internal/ledger/ledger.go': LEDGER,
+  'internal/reports/render.go': REPORTS,
+  'internal/imports/load.go': `package imports
+
+import "shop/internal/ledger"
+
+func Load(l *ledger.Ledger) {
+	l.WriteOne(l.ReadFirst())
+	l.WriteTwo(2)
+}
+`,
+};

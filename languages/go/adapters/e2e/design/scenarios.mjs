@@ -4,7 +4,12 @@ import {
   TWO_CALLERS_FILES,
   UNCLOSED_FILES,
 } from './calls-fixtures.mjs';
-import { FORWARDING_FILES, OWNING_HOP_FILES } from './surface-fixtures.mjs';
+import {
+  DISJOINT_FILES,
+  FORWARDING_FILES,
+  OWNING_HOP_FILES,
+  SHARED_CALLER_FILES,
+} from './surface-fixtures.mjs';
 import {
   COPYING_FILES,
   ESCAPING_FILES,
@@ -71,6 +76,18 @@ export const SCENARIOS = [
     branch: 'owning-hop',
     title: 'passes a chain whose middle hop supplies one argument itself',
     files: OWNING_HOP_FILES,
+    expected: [],
+  },
+  {
+    branch: 'disjoint-groups',
+    title: 'reports a struct whose methods serve two groups of callers that share nothing',
+    files: DISJOINT_FILES,
+    expected: ['disjoint-consumer-groups internal/ledger/ledger.go descriptive'],
+  },
+  {
+    branch: 'shared-caller',
+    title: 'passes a struct that one caller uses across both groups',
+    files: SHARED_CALLER_FILES,
     expected: [],
   },
 ];

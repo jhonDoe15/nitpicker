@@ -27,6 +27,7 @@ type Type struct {
 	Fields     []Field  `json:"fields,omitempty"`
 	Supertypes []string `json:"supertypes,omitempty"`
 	Cases      []string `json:"cases,omitempty"`
+	References []string `json:"references,omitempty"`
 }
 
 type Param struct {
@@ -49,5 +50,7 @@ type Callable struct {
 	Forward      *chain.Forward  `json:"forward,omitempty"`
 	Calls        []calls.Call    `json:"calls,omitempty"`
 	ParamUses    []uses.ParamUse `json:"paramUses,omitempty"`
+	OwnFields    []string        `json:"ownFields,omitempty"`
 	ReturnsField string          `json:"returnsField,omitempty"`
+	References   []string        `json:"references,omitempty"`
 }
