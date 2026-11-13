@@ -3,17 +3,18 @@ import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { testCasesOf } from '../../adapters/test-times/slow-tests.mjs';
+import { testCasesOf as untypedTestCasesOf } from '../../adapters/test-times/slow-tests.mjs';
 
-const enabled = process.env.NITPICKER_JAVA_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const maven = process.env.NITPICKER_MAVEN;
+const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
+const maven = process.env['NITPICKER_MAVEN'];
 const fixtures = path.join(path.resolve(import.meta.dirname, '..'), 'fixtures');
 const gradleFixture = path.join(
   path.resolve(import.meta.dirname, '..'),
   '../adapters/fixtures/gradle-project',
 );
-const temporary = [];
+const testCasesOf: (xml: string, task: string) => unknown[] = untypedTestCasesOf;
+const temporary: string[] = [];
 const SHAPES = `package demo;
 
 public final class Shapes {
@@ -96,7 +97,7 @@ class GuardTest {
     }
 }
 `;
-function copyOf(...sources) {
+function copyOf(...sources: string[]): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
   temporary.push(root);
   for (const source of sources) {
@@ -104,7 +105,7 @@ function copyOf(...sources) {
   }
   return root;
 }
-function twinProjects() {
+function twinProjects(): [string, string] {
   const gradleProject = copyOf(gradleFixture);
   const mavenProject = copyOf(gradleFixture, path.join(fixtures, 'single'));
   for (const name of ['build.gradle', 'settings.gradle']) {
@@ -112,7 +113,7 @@ function twinProjects() {
   }
   return [gradleProject, mavenProject];
 }
-function copiedTestCases(project) {
+function copiedTestCases(project: string): unknown[] {
   const results = path.join(project, 'target/nitpicker/test-results');
   return readdirSync(results)
     .sort()
@@ -122,7 +123,7 @@ function copiedTestCases(project) {
         .flatMap((name) => testCasesOf(readFileSync(path.join(results, task, name), 'utf8'), task)),
     );
 }
-function lineCoverage(text, value) {
+function lineCoverage(text: string, value: number): Readonly<Record<string, unknown>> {
   return {
     tool: 'jacoco',
     rule: 'line-coverage',
@@ -133,9 +134,10 @@ function lineCoverage(text, value) {
     classification: 'descriptive',
   };
 }
-const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
-// Register cleanup separately in each isolated test file.
-export function useMavenPresetProject() {
+function comparable(findings: readonly unknown[]): string[] {
+  return findings.map((finding) => JSON.stringify(finding)).sort();
+}
+export function useMavenPresetProject(): void {
   afterAll(() => {
     for (const root of temporary.splice(0)) {
       rmSync(root, { recursive: true, force: true });
