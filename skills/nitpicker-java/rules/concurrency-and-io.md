@@ -37,6 +37,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Build shareable objects once: an `ObjectMapper`, `Gson`, `JAXBContext`, `ValidatorFactory` or
   `DateTimeFormatter.ofPattern("...")` goes in a `static final` constant, a final field or a `@Bean`,
   not inside a method that runs per call (`pmd/ReusableObjectPerCall`).
+- Database queries have a deadline: with a database server in `spring.datasource.url`, set
+  `spring.jpa.properties.jakarta.persistence.query.timeout`, `spring.transaction.default-timeout`,
+  `spring.jdbc.template.query-timeout` or a driver `socketTimeout` (`spring/datasource-without-timeout`).
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.

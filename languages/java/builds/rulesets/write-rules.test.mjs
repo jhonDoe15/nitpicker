@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { GRADLE_DIRECTORY } from '../java-build.mjs';
 import { withGuardChecks } from './checkstyle-config.mjs';
 import { scopedRuleset } from './pmd-rulesets.mjs';
-import { main, PMD_RULESETS_LIST, writeRules } from './write-rules.mjs';
+import { main, PMD_RULESETS_LIST, writeRules } from './write-rules.mts';
 
 const roots = [];
 

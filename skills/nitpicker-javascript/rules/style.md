@@ -80,6 +80,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
   with `| 0` (`nitpicker/time-unit-mismatch`).
+- A database or AWS SDK client gets a timeout once, where it is built:
+  `new Pool({ statement_timeout: 30_000 })`, `extra: { statement_timeout: 30_000 }` on a TypeORM data source,
+  `requestHandler: { requestTimeout: 30_000, throwOnRequestTimeout: true }` on an AWS SDK client
+  (`nitpicker/require-client-timeout`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,

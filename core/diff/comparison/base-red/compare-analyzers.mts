@@ -9,7 +9,8 @@ import {
   TESTS_FAILED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
-import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
+import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mjs';
+import { unknownOnBaseOf, withoutUnmeasuredMutants } from './unknown-findings.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 
 export type AnalyzerRun = {
@@ -81,8 +82,6 @@ const failuresOf: (request: {
   readonly redBase: RedBase;
 }) => readonly Finding[] | undefined = baseFailuresOf;
 const noteOf: (name: string, finding: Finding) => ReportEntry = baseNoteOf;
-const unknownOnBase: (failures: readonly Finding[], touchedCode: unknown) => unknown =
-  unknownOnBaseFor;
 const testsFailedRules: readonly unknown[] = TESTS_FAILED_RULES;
 
 export function compareAnalyzers(context: ComparisonRequest): {
@@ -189,18 +188,15 @@ function blocksComparison(error: ReportEntry, name: string, stopped: boolean): b
 }
 
 function compareOrReportError(context: ComparedContext): FindingComparison {
-  const { name, baseFindings, headFindings, toolErrors, unknownFailures } = context;
+  const { name, baseFindings, headFindings, toolErrors } = context;
   try {
     const result = findingsCompared({
-      baseFindings,
+      baseFindings: withoutUnmeasuredMutants(baseFindings, context),
       headFindings,
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       touchedCode: context.touchedCode,
-      unknownOnBase:
-        unknownFailures === undefined
-          ? undefined
-          : unknownOnBase(unknownFailures, context.touchedCode),
+      unknownOnBase: unknownOnBaseOf(context),
     });
     return {
       newFindings: withoutEmittedToolErrors(result['newFindings'] ?? [], 'head', toolErrors),

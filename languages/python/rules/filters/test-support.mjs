@@ -5,6 +5,7 @@ export const SECURITY_RULES = [
   'tls-verification-off',
   'weak-hmac',
   'http-without-timeout',
+  'client-without-timeout',
   'unsafe-deserialization',
 ];
 

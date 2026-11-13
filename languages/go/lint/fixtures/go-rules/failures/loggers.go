@@ -18,7 +18,7 @@ func Open(logger *zap.Logger, name string) (*os.File, error) {
 }
 
 func Create(logger *zerolog.Logger, name string) (*os.File, error) {
-	file, err := os.Create(name)
+	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		logger.Error().Err(err).Msg("create failed") // want logged-and-returned
 		return nil, fmt.Errorf("create %s: %w", name, err)
