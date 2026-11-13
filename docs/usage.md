@@ -2713,7 +2713,9 @@ removal (`-NAME`, also inside a comma list), an exclusion that matches everythin
 a JVM argument with a comma (PIT splits its list on commas), a number that is not a plain literal, a
 shorter timeout (a mutant that times out counts as killed), and the settings that
 decide what is mutated and reported (`targetClasses`, `targetTests`, `features`, groups, output
-formats, thresholds, `maxMutationsPerClass`, `skipFailingTests`, history files). An exclude filter is applied because it is the project's own
+formats, thresholds, `maxMutationsPerClass`, `skipFailingTests`, history files; nitpicker's own single retry with
+`--skipFailingTests` after tests fail without mutation is described under
+[PIT fails or times out](troubleshooting.md#pit-fails-or-times-out)). An exclude filter is applied because it is the project's own
 list of reviewed suppressions, as the project's Checkstyle `SuppressionFilter` files are: it names
 what it drops, and an edit of it is a policy change. Error Prone's `excludedPaths` is applied for
 the same reason, and so are PIT's excluded classes, methods and test classes. To lift a single finding without

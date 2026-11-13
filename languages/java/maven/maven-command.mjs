@@ -170,7 +170,12 @@ export function runJava({
         .filter((line) => line.trim() !== '' && !JVM_NOISE.test(line))
         .slice(0, MAX_ERROR_LINES)
         .join('\n');
-      throw new Error(`${tool} failed with exit code ${String(result.status)}: ${detail}`);
+      const failure = new Error(
+        `${tool} failed with exit code ${String(result.status)}: ${detail}`,
+      );
+      throw Object.defineProperty(failure, 'output', {
+        value: `${result.stderr}\n${result.stdout}`,
+      });
     }
     return result;
   } finally {

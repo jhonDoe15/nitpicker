@@ -828,7 +828,15 @@ its `base` mutants.
 slow tests or Spring application contexts make it the longest step. `--all` mutates every class; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md) for what a comparison mutates. PIT
 also fails when a test fails or hangs under its agent, or when it cannot start the project's test
-engine.
+engine. PIT stops when a test does not pass on the unmutated code, which happens when an earlier test
+leaves state that only PIT's single-JVM run exposes. Nitpicker then runs PIT once more with PIT's own
+`--skipFailingTests` (this retry is nitpicker's; a project's `skipFailingTests` is still never taken from
+its config) and keeps the mutation findings of the remaining tests. A `pit-skipped-tests` notice, not
+an error, says `15 tests in ExampleTest did not pass without mutation under PIT; they pass under the
+build's test task`, names the first five skipped tests and the count of the rest, and warns that
+mutants only the skipped tests would kill may count as surviving. When the second run fails too, the
+`pit-failure` tool error leads with that same summary line. On Maven the retry uses only the analyzer
+time that is left and is not started with less than a minute left.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
