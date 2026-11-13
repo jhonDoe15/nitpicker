@@ -21,7 +21,7 @@ const ruleTester = new RuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const testFile = '/repo/tests/integration/repository.test.ts';
+const testFile = '/repo/tests/repository.test.ts';
 const lines = (...parts) => parts.join('\n');
 ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
   valid: [
@@ -36,12 +36,20 @@ ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
                 languages: {
                   java: { testDeclarationCeilingMs: 120_000, hookDeclarationCeilingMs: 180_000 },
                 },
-                projects: { jvm: { language: 'java', include: ['**/tests/integration/**'] } },
+                projects: { jvm: { language: 'java', include: ['**/tests/*.test.ts'] } },
               },
             },
           },
         },
       },
+    },
+    {
+      filename: '/repo/tests/flow.e2e.test.ts',
+      code: "it('real build', () => {}, 180_000); beforeAll(() => {}, 300_000);",
+    },
+    {
+      filename: '/repo/tests/store.integration.spec.ts',
+      code: "it('real build', () => {}, 120_000); vi.setConfig({ hookTimeout: 200_000 });",
     },
     { filename: testFile, code: "it('runs', () => {});" },
     { filename: testFile, code: "it('runs', () => {}, 10_000);" },
@@ -76,6 +84,19 @@ ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
     })),
   ],
   invalid: [
+    {
+      filename: '/repo/tests/flow.e2e.test.ts',
+      code: "it('too long', () => {}, 180_001); beforeAll(() => {}, 300_001);",
+      errors: [
+        { messageId: 'raisedTimeout', data: { ceiling: '180000', kind: 'test' } },
+        { messageId: 'raisedTimeout', data: { ceiling: '300000', kind: 'hook' } },
+      ],
+    },
+    {
+      filename: '/repo/tests/flow.test.ts',
+      code: "it('unit tests keep the unit ceiling', () => {}, 20_000);",
+      errors: [{ messageId: 'raisedTimeout', data: { ceiling: '10000', kind: 'test' } }],
+    },
     ...["it('disabled', () => {}, 0);", 'beforeAll(() => {}, -1);'].map((code) => ({
       filename: testFile,
       code,
@@ -101,7 +122,7 @@ ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
       ],
     },
     {
-      filename: '/repo/tests/integration/strict-clean.test.ts',
+      filename: '/repo/tests/strict-clean.test.ts',
       code: lines(
         'const FIXTURE_TIMEOUT_MS = 300_000;',
         "it('passes --all', () => { run(); }, FIXTURE_TIMEOUT_MS);",
@@ -109,7 +130,7 @@ ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
       errors: [{ messageId: 'raisedTimeout', line: 2 }],
     },
     {
-      filename: '/repo/tests/integration/eslint-diff-policy.test.ts',
+      filename: '/repo/tests/eslint-diff-policy.test.ts',
       code: lines(
         "it('compares', () => {}, 60_000);",
         "it('compares typed', async () => {}, 120_000);",
