@@ -784,9 +784,20 @@ wrapper helps.
 
 ### Gradle or Maven times out
 
-**Symptom.** `Gradle did not finish within 15 minutes and was stopped. Set NITPICKER_GRADLE_TIMEOUT_MINUTES
-to give each Gradle command more time`, `Maven did not finish in <dir> within 15 minutes and was stopped`, or
-`NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1 to 17895 (minutes)`.
+**Symptom.** A `tests-timed-out` tool error, `Gradle did not finish the tests, coverage and mutation
+testing within 15 minutes, so they were skipped and the other checks ran without them` (or `Maven did
+not finish ...`); `Gradle did not finish within 15 minutes and was stopped. Set
+NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time`, `Maven did not finish in <dir>
+within 15 minutes and was stopped`; or `NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1
+to 17895 (minutes)`.
+
+When the full analysis command (tests, JaCoCo and PIT included) times out, nitpicker runs it once more
+without any test, coverage or mutation step, so PMD, SpotBugs, Error Prone, Checkstyle, the formatter
+check, structure, duplicates and the ArchUnit rule classes still report. The run then has no
+coverage, CRAP, slow-test or mutation results: on the head it is a `tests/tests-timed-out` tool error
+(exit 2) and none of the base's results of those rules counts as resolved; on the base it is a note,
+and the head's results of those rules count as new only on changed lines, as for a base whose tests
+fail. A `--quick` run, which runs no tests, and a second timeout stay the plain timeout error above.
 
 **Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional
 Checkstyle export and the analysis), and each Maven command 15 minutes. A cold Gradle cache, a wrapper
@@ -823,7 +834,7 @@ engine.
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
 keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
 inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
+reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
 
 ### Error Prone cannot find a JDK

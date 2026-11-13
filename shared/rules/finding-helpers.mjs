@@ -7,7 +7,11 @@ import { createHash } from 'node:crypto';
 export const TESTS_FAILED_RULE = 'tests-failed';
 export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
-export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
+/** A build whose tests did not finish in time; the other checks ran without them. */
+export const TESTS_TIMED_OUT_RULE = 'tests-timed-out';
+/** Rules of a test run that left the test results of its scope unknown. */
+export const TESTS_UNMEASURED_RULES = [TESTS_FAILED_RULE, TESTS_TIMED_OUT_RULE];
+export const TESTS_FAILED_RULES = [...TESTS_UNMEASURED_RULES, TESTS_FAILED_SKIPPED_RULE];
 /** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
 export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 /** A mutation run that failed for one module; its `symbol` is that module's directory. */

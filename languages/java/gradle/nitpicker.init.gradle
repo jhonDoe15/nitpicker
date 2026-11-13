@@ -451,7 +451,8 @@ allprojects {
         project.ext.nitpickerRunNode = runNode
         project.ext.nitpickerWriteRules = writeRules
         def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
-        def testsFailed = testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
+        def testsFailed = nitpickerArgument('nitpicker.testsSkipped') == 'true' ||
+            testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 

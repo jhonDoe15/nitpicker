@@ -2,8 +2,8 @@ import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
 import {
   COMPILE_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
+  TESTS_UNMEASURED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
 import {
@@ -54,8 +54,8 @@ function removalNotes(failureNotes) {
 }
 
 function withoutConsequenceNotes(notes) {
-  return notes.some(({ rule }) => rule === TESTS_FAILED_RULE)
-    ? notes.filter(({ rule }) => rule === TESTS_FAILED_RULE)
+  return notes.some(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
+    ? notes.filter(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
     : notes;
 }
 

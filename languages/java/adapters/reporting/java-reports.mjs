@@ -223,10 +223,10 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jac
 function pitFindings(context) {
   const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  const failures =
-    context.manifest.testsFailed === true
-      ? []
-      : pitFailureFindings(reportRoot, context.module?.moduleDir);
+  if (context.manifest.testsFailed === true) {
+    return [];
+  }
+  const failures = pitFailureFindings(reportRoot, context.module?.moduleDir);
   if (failures.length > 0 || !existsSync(pitReport)) {
     return failures;
   }
