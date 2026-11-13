@@ -7,6 +7,7 @@ import { simpleName } from '../../ingest/class-names.mjs';
 import { readClassGraph } from './class-graph.mjs';
 import { featurePlan, readSpringReports } from './feature-layout.mjs';
 import { persistenceOf } from './persistence-classes.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const GRAPH_RULES = [RULE_IDS.featureCycle, RULE_IDS.foreignFeaturePersistence];
@@ -24,7 +25,7 @@ export function featureFacts(
     imports.set(key, entry);
   }
   return {
-    modules: [...new Set(classes.map(({ file }) => file))].sort().map((file) => ({
+    modules: [...new Set(classes.map(({ file }) => file))].toSorted(byText).map((file) => ({
       file,
       role: 'production',
       generated: isGenerated(file),
@@ -32,7 +33,7 @@ export function featureFacts(
     })),
     imports: [...imports.values()].map((entry) => ({
       ...entry,
-      names: [...entry.names].sort().map((name) => ({ name })),
+      names: [...entry.names].toSorted(byText).map((name) => ({ name })),
     })),
   };
 }
@@ -61,7 +62,7 @@ function featureGraphFindings(graph, plan, { language, policy, persistence, isGe
           rules: plan.boundaryRules,
         });
   const generatedFiles = new Set(
-    facts.modules.filter(({ generated }) => generated).map(({ file }) => file),
+    facts.modules.map(({ file }) => file).filter((file) => isGenerated(file)),
   );
   return {
     findings: [...analysis.findings, ...boundaries.findings],

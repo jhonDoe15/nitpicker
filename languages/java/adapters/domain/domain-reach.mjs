@@ -6,14 +6,15 @@ function byName(left, right) {
 }
 
 function isHelper(entry) {
-  return !isDomain(entry) && !isAdapter(entry);
+  return !(isDomain(entry) || isAdapter(entry));
 }
 
 function directHits(libraryEdges) {
   const hits = new Map();
-  const sorted = libraryEdges.toSorted(
-    (left, right) => byName(left.source, right.source) || left.library.localeCompare(right.library),
-  );
+  const sorted = libraryEdges.toSorted((left, right) => {
+    const order = byName(left.source, right.source);
+    return order === 0 ? left.library.localeCompare(right.library) : order;
+  });
   for (const { source, library } of sorted) {
     const concern = concernOf(library);
     if (isHelper(source) && concern?.reach === true && !hits.has(source)) {

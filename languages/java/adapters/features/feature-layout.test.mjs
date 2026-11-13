@@ -9,6 +9,7 @@ import {
   projectFindings,
   rows,
 } from './test-support/feature-project.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const { project: featureProject, remove } = featureProjects();
 
@@ -142,7 +143,7 @@ describe('Spring layer packages', () => {
     );
     const [, listed] = /LAYER_PACKAGES =\s*Set\.of\(([^)]*)\)/u.exec(layoutRule);
 
-    expect([...listed.matchAll(/"(\w+)"/gu)].map(([, name]) => name).sort()).toEqual(
+    expect([...listed.matchAll(/"(\w+)"/gu)].map(([, name]) => name).toSorted(byText)).toEqual(
       SPRING_LAYER_PACKAGES.toSorted(),
     );
   });

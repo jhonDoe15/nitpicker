@@ -129,11 +129,13 @@ function fileEdges(edges, { packageOf, fileOf }) {
 }
 
 export function cycleFindings({ modules, edges, packageOf, fileOf }, tool, features = NO_FEATURES) {
-  const generated = features.generatedFiles ?? new Set();
+  const generated = features.generatedFiles;
   const known = new Set(modules.filter((name) => !generated.has(fileOf(name))));
   const internal = edges.filter((edge) => known.has(edge.source) && known.has(edge.target));
   const sorted = [...known].sort((left, right) => left.localeCompare(right));
-  const anchorOf = (member) => fileOf(sorted.find((name) => packageOf(name) === member));
+  function anchorOf(member) {
+    return fileOf(sorted.find((name) => packageOf(name) === member));
+  }
   const packaged = fileEdges(internal, { packageOf, fileOf });
   const components = cyclicComponents([...known].map(packageOf), packageEdges(internal, packageOf));
   return components

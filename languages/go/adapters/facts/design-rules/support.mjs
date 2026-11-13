@@ -11,7 +11,7 @@ export function goReport({ types = [], callables = [] }) {
   return {
     files: modules.map(({ file }) => ({
       path: file,
-      package: file.split('/').at(-2) ?? 'root',
+      package: file.split('/').toReversed()[1] ?? 'root',
       test: false,
       generated: false,
       constrained: false,

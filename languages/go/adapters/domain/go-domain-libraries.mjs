@@ -1,4 +1,5 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const IO_PACKAGES = new Set([
   'os',
@@ -117,9 +118,9 @@ export function libraryConcern(importPath, names) {
     const used = names.filter((name) => !isValueName(importPath, name));
     return names.length > 0 && used.length === 0
       ? undefined
-      : { rule, names: [...new Set(used)].sort() };
+      : { rule, names: [...new Set(used)].toSorted(byText) };
   }
-  const generators = [...new Set(generatorNames(importPath, names))].sort();
+  const generators = [...new Set(generatorNames(importPath, names))].toSorted(byText);
   return generators.length === 0
     ? undefined
     : { rule: RULE_IDS.domainImportsRandom, names: generators };

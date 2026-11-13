@@ -3,6 +3,7 @@ import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mjs';
 import { featureUnits } from './feature-units.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 export const SPRING_LAYER_PACKAGES = [
   'controller',
@@ -71,7 +72,7 @@ function rootFolder(root, { packageName, file }) {
 export function springRootFolders(roots, classes) {
   return [
     ...new Set(roots.flatMap((root) => classes.flatMap((entry) => rootFolder(root, entry)))),
-  ].sort();
+  ].toSorted(byText);
 }
 
 function literalGlob(folder) {

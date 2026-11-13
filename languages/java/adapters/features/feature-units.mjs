@@ -1,4 +1,5 @@
 import { featureLayout, featureRoles } from '../../../../shared/rules/features/feature-roles.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 function featurePackage(packageName, folder) {
   const parts = packageName.split('.');
@@ -33,7 +34,7 @@ function aliasesOf(folders) {
   }
   return Object.fromEntries(
     [...byPackage.values()].flatMap((group) => {
-      const [first] = group.toSorted();
+      const first = group.reduce((best, folder) => (byText(folder, best) < 0 ? folder : best));
       return group.filter((folder) => folder !== first).map((folder) => [folder, first]);
     }),
   );
@@ -52,7 +53,7 @@ export function featureUnits(layout, { classes, roots }) {
   const kept = new Map([...folders].filter(([folder]) => !outside.includes(folder)));
   return {
     ...layout,
-    ...(outside.length === 0 ? {} : { notFeatureFolders: outside.sort() }),
+    ...(outside.length === 0 ? {} : { notFeatureFolders: outside.toSorted(byText) }),
     aliases: aliasesOf(kept),
   };
 }

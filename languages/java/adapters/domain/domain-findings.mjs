@@ -11,6 +11,7 @@ import { simpleName } from '../../ingest/class-names.mjs';
 import { grouped, isAdapter, isDomain, libraryPackage } from './domain-roles.mjs';
 import { concernOf } from './infrastructure-classes.mjs';
 import { randomSourceCalls } from './random-sources.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 function shownName(className) {
   return simpleName(className)
@@ -19,7 +20,7 @@ function shownName(className) {
 }
 
 function distinct(values) {
-  return listed([...new Set(values)].sort());
+  return listed([...new Set(values)].toSorted(byText));
 }
 
 function sortedFindings(findings) {
@@ -76,7 +77,7 @@ function libraryFindings(graph, projectRoot) {
     ({ source, rule, library }) => `${source.file}\0${rule}\0${libraryPackage(library)}`,
   ).map((group) => {
     const [{ source, rule, library }] = group;
-    const shown = [...new Set(group.map((use) => use.shown))].sort();
+    const shown = [...new Set(group.map((use) => use.shown))].toSorted(byText);
     return domainFinding(
       { rule, file: source.file, identity: `library:${libraryPackage(library)}` },
       libraryMessage(rule, {
