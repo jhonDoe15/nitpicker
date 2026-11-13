@@ -17,7 +17,7 @@ import {
 import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
 import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from './configuration/preset-analyzers.mts';
-import { assertProjectPeers } from './init/preflight/project-peers.mjs';
+import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
 import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
@@ -38,7 +38,7 @@ import { baseSetupResolver } from './command/policy-review/base-setup.mts';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
-import { runInitCommand } from './init/run-init.mjs';
+import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -63,6 +63,8 @@ import type {
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 
+const selectFrom: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
+  selectAnalyzers;
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
     const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
@@ -189,7 +191,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     captureHead: stagedCapture(cli, currentProjectRoot),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
-  const selected: unknown = selectAnalyzers(setup.analyzers, options.analyzerNames);
+  const selected = selectFrom(setup.analyzers, options.analyzerNames);
   assertProjectPeers({
     projectRoot: currentProjectRoot,
     analyzers: selected,

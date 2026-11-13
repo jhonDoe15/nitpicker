@@ -12,7 +12,7 @@ import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
-import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mjs';
+import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mts';
 import { type Analyzer, analyzersOf } from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';

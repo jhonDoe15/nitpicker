@@ -3,7 +3,7 @@ import { runCli } from '../../cli.mts';
 import { useCliFixtures } from '../../command/test-support/cli-harness.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { useProjects, withPeers } from '../test-support/projects.mjs';
-import { assertProjectPeers } from './project-peers.mjs';
+import { assertProjectPeers } from './project-peers.mts';
 
 const project = useProjects();
 const cli = useCliFixtures(runCli);
