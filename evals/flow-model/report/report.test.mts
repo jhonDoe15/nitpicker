@@ -155,7 +155,7 @@ describe('flowDiff', () => {
 
   it('shows an inverted guard in the real lookup as a changed guard and swapped outcomes', () => {
     const { lookup } = diffs();
-    const resolved = '../execution/run-analyzers.mts#resolveAnalyzerMetadata:resolved';
+    const resolved = '../execution/report/analyzer-metadata.mts#resolveAnalyzerMetadata:resolved';
 
     expect(pick(lookup, ['changedFunctions', 'violations', 'outcomes'])).toEqual({
       changedFunctions: ['lookUpCachedReport'],
