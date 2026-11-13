@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
 import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
 import { applyAreaExceptions as applyUntypedAreaExceptions } from '../exceptions/area-exceptions.mjs';
@@ -36,7 +38,7 @@ export type DependencyGraphRequest = {
   readonly exclude: string | undefined;
   readonly includeOnly?: string | undefined;
   readonly configRelativePath?: string;
-  readonly reportsConfigErrors?: boolean;
+  readonly reportsConfigErrors: boolean;
 };
 
 export type SnapshotDependencyRequest = {
@@ -66,3 +68,23 @@ export const prepareSnapshotDependencies: (options: SnapshotDependencyRequest) =
 
 export const removeSnapshotDependencies: (dependencies: unknown) => void =
   removeUntypedSnapshotDependencies;
+
+export function isInvokedModule(moduleUrl: string): boolean {
+  const invokedPath = process.argv[1];
+  return invokedPath !== undefined && moduleUrl === pathToFileURL(path.resolve(invokedPath)).href;
+}
+
+export async function writeAdapterFindings(
+  adapterName: string,
+  findingsOf: () => Promise<readonly Finding[]>,
+): Promise<number> {
+  try {
+    const findings = await findingsOf();
+    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+    return 0;
+  } catch (failure) {
+    const error = withTypeScriptHint(failure);
+    process.stderr.write(`${adapterName} failed: ${error.message}\n`);
+    return 2;
+  }
+}

@@ -1,4 +1,3 @@
-import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import {
   type StaticCheckOptions,
@@ -18,7 +17,8 @@ import {
   existingRoots,
   loadDependencyGraph,
   sharedReachPath,
-  withTypeScriptHint,
+  isInvokedModule,
+  writeAdapterFindings,
 } from './typed/static-checks.mts';
 import { REACH_THROUGH_SHARED_RULE } from '../preset/architecture/strict-boundary-rules.mjs';
 
@@ -30,21 +30,10 @@ type ViolationText = {
   readonly cycle: readonly string[] | undefined;
 };
 
-const invokedPath = process.argv[1];
-
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const options = parseArguments(process.argv.slice(2));
-    const findings = await runStaticCheck(options);
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (failure) {
-    const error = withTypeScriptHint(failure);
-    process.stderr.write(`Static quality adapter failed: ${error.message}\n`);
-    process.exitCode = 2;
-  }
+if (isInvokedModule(import.meta.url)) {
+  process.exitCode = await writeAdapterFindings('Static quality adapter', () =>
+    runStaticCheck(parseArguments(process.argv.slice(2))),
+  );
 }
 
 async function runStaticCheck(options: StaticCheckOptions): Promise<Finding[]> {
