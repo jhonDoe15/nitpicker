@@ -3,7 +3,6 @@ import type { QualityAreaOptions } from './area-types.mts';
 import { importPolicyModule } from '../runners/tooling.mts';
 
 export {
-  type NodeToolInvocation,
   importPolicyModule,
   parseReportJson,
   policyFile,

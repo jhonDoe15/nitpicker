@@ -78,7 +78,7 @@ export type ShownValues = {
   readonly received?: string | undefined;
 };
 
-export type Position = { readonly line?: number; readonly column?: number };
+type Position = { readonly line?: number; readonly column?: number };
 
 export type Span = { readonly start?: Position; readonly end?: Position };
 
@@ -98,7 +98,7 @@ export type FileCoverage = {
 
 export type CoverageReport = Readonly<Record<string, FileCoverage>>;
 
-export type Percent = { readonly percent?: number };
+type Percent = { readonly percent?: number };
 
 export type CrapEntry = {
   readonly source: string;

@@ -15,7 +15,7 @@ import path from 'node:path';
 import { lstatSync } from 'node:fs';
 import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mjs';
 
-export type NodeToolSpawn = {
+type NodeToolSpawn = {
   readonly options: QualityAreaOptions;
   readonly relativeToolPath?: string | undefined;
   readonly absoluteToolPath?: string | undefined;
@@ -26,7 +26,7 @@ export type NodeToolSpawn = {
   readonly environment?: Readonly<Record<string, string>>;
 };
 
-export type NodeToolInvocation = NodeToolSpawn & {
+type NodeToolInvocation = NodeToolSpawn & {
   readonly acceptedStatuses: readonly NodeToolResult['status'][];
 };
 

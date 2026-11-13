@@ -7,7 +7,7 @@ import {
   normalizeTestRuntime,
   normalizeStructure,
 } from '../reporting/repository.mts';
-import { normalizeDeadCode } from '../reporting/dead-code.mts';
+import { normalizeDeadCode, withDeadCodeSourceHashes } from '../reporting/dead-code.mts';
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
@@ -16,7 +16,6 @@ import { existingRoots } from '../../typed/static-checks.mts';
 import { type Layout, readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
 import type { KnipConfig } from '../typed/policy.mts';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mts';
-import { withDeadCodeSourceHashes } from '../reporting/dead-code.mts';
 import {
   baselinePathsOf,
   hash,

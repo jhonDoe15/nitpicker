@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
@@ -20,6 +20,7 @@ import { readLayout as readUntypedLayout } from '../../preset/head-policy.mjs';
 import { revivedExpression as untypedRevivedExpression } from '../../preset/project-tools/config-values.mjs';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
+import { policyPath } from '../static-checks/shared.mts';
 import {
   type GraphLayer,
   projectExcludePaths,
@@ -47,7 +48,7 @@ export type CruiseSummary = {
 
 export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?: unknown };
 
-export type DependencyGraphRequest = {
+type DependencyGraphRequest = {
   readonly projectRoot: string;
   readonly policyRoot: string;
   readonly liveProjectRoot?: string;
@@ -126,18 +127,6 @@ function graphExclusion(requested: string | undefined, layoutPattern: string | u
   return [requested, layoutAlreadyIncluded ? undefined : layoutPattern]
     .filter((pattern) => pattern !== undefined)
     .join('|');
-}
-
-function policyPath(policyRoot: string, relativePath: string): string {
-  const filePath = path.resolve(policyRoot, relativePath);
-  const relativeToPolicy = path.relative(policyRoot, filePath);
-  if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
-    throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
-  }
-  if (!statSync(filePath).isFile()) {
-    throw new Error(`Policy path is not a regular file: ${relativePath}`);
-  }
-  return filePath;
 }
 
 function graphKey(cruise: Cruise): string {

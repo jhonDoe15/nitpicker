@@ -20,7 +20,6 @@ export {
   type CruiseReport,
   type CruiseSummary,
   type CruiseViolation,
-  type DependencyGraphRequest,
   loadDependencyGraph,
 } from '../dependency-graph/project-dependency-graph.mts';
 

@@ -9,6 +9,7 @@ import type { RunnerCommand, TestOptions, TestRun } from '../typed/runner-types.
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';
 import { startTestConsole } from '../test-console-run.mts';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   readRun,
   removeTemporary,
@@ -87,10 +88,15 @@ function typeStrippingArguments(
     : [];
 }
 
+function entryName(entry: unknown): string {
+  const name = fieldOf(entry, 'name');
+  return typeof name === 'string' ? name : String(entry);
+}
+
 function matchedFiles(projectRoot: string, patterns: readonly string[]): string[] {
   return globSync(patterns, {
     cwd: projectRoot,
-    exclude: (entry) => SKIPPED_DIRECTORY.test(path.basename(entry)),
+    exclude: (entry: unknown) => SKIPPED_DIRECTORY.test(path.basename(entryName(entry))),
   }).map((file) => path.resolve(projectRoot, file));
 }
 
