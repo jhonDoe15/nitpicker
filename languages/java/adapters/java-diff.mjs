@@ -44,7 +44,7 @@ import { gradleDesignFindings, mavenDesignFindings } from './design/design-modul
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache', '--continue'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
   return snapshot === 'head' && baselineRoot !== undefined
@@ -70,7 +70,6 @@ function runJavaPreset(
   withKotlin((kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
-      ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -187,12 +186,8 @@ export function collectJavaReport(root, options = {}) {
   const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
-  const parsed = parseAnalyzerReport(
-    {
-      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
-    },
-    preset,
-  ).findings;
+  const columns = withJavaColumns(findings, { projectRoot, policy: options.policy, readSource });
+  const parsed = parseAnalyzerReport({ findings: columns }, preset).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
       withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
@@ -202,7 +197,11 @@ export function collectJavaReport(root, options = {}) {
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
+  const snapshot = options.policy?.snapshot === 'base' ? 'base' : 'head';
+  return {
+    findings: withTestsFailures(policed, { preset, failures: testsFailures, snapshot }),
+    imports,
+  };
 }
 
 function collectBothSnapshots({

@@ -313,14 +313,19 @@ SARIF file) and the run is judged as follows.
   `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
   when the runner names it, so a flaky base counts as red.
 - A red head still fails, with exit 1. Its tool error is `tests-failed` in every preset. When base
-  and head are both red, both are listed as tool errors.
+  and head are both red, both are listed as tool errors. On Java and Kotlin a red head keeps the
+  checks that do not need the tests: the failing modules skip JaCoCo and PIT, as on the base, the
+  error is a `tests/tests-failed` one per module, and the other findings are compared as usual
+  (coverage, CRAP, mutation, slow-test and test-console results of a failing module are neither
+  new nor resolved). When
+  the base is red too, it is read as a red base.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
-- Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
-  rerun it without the tests of the failing modules (any failing `Test` task counts, not only
-  `test`) to read the other checks. A Maven base does not need a rerun: the build
-  runs with `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing
-  module are read and only that module skips JaCoCo and PIT.
+- Java and Kotlin Gradle builds run both snapshots with `--continue`, so every module's tests run,
+  and rerun a red one without the tests of the failing modules (any failing `Test` task counts, not
+  only `test`) to read the other checks. A Maven build does not need a rerun: it runs with
+  `-Dmaven.test.failure.ignore=true`, so the Surefire and Failsafe reports of a failing module are
+  read and only that module skips JaCoCo and PIT.
 
 The base ref is the first match of:
 
@@ -1934,8 +1939,8 @@ build log, `logs/<preset>-<base|head>-gradle.log` in the report folder, which th
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
 at a time (findings carry the module path); a Maven failure is a `java/maven-failure` tool error
-naming the cause, and a failing test on the head is a `java/tests-failed` one (exit 1; a base whose
-tests fail is a note, see "A base whose tests fail"). Maven runs through `mvnw` when the project has
+naming the cause, and a failing test on the head is a `tests/tests-failed` one for its module (exit 1;
+the other checks still run; a base whose tests fail is a note, see "A base whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset/maven-builds.md).
 
