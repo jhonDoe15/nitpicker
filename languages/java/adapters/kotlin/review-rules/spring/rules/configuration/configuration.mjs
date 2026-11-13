@@ -1,6 +1,6 @@
-import { isSecretKey } from '../../../../spring/spring-secrets.mjs';
-import { annotationIn, argumentOf, stringValue } from '../spring-names.mjs';
-import { entriesOf, symbolOf } from '../spring-scopes.mjs';
+import { isSecretKey } from '../../../../../spring/spring-secrets.mjs';
+import { annotationIn, argumentOf, stringValue } from '../../spring-names.mjs';
+import { entriesOf, symbolOf } from '../../spring-scopes.mjs';
 import {
   BEAN,
   CONFIG_INITIALIZERS,
@@ -12,7 +12,7 @@ import {
   PROPERTY_RESOLVERS,
   STEREOTYPES,
   VALUE,
-} from '../spring-types.mjs';
+} from '../../spring-types.mjs';
 
 const JVM_KEY = /^(?:java|user|os|file|line|path|javax|jdk|sun|com\.sun|http|https|ftp)\.|^socks/u;
 const SECRET_DEFAULT = /^\$\{([^}:]+):([^}]*)\}$/u;
@@ -41,7 +41,7 @@ function configurationClass(view, qualified) {
   );
 }
 
-function stereotype(view, qualified) {
+export function stereotype(view, qualified) {
   const declared = view.classes.get(qualified);
   return (
     declared !== undefined &&

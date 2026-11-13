@@ -2260,6 +2260,7 @@
                             "pmd/SpringNoPostConstructIo",
                             "pmd/SpringTypedConfiguration",
                             "pmd/SpringValueSecretDefault",
+                            "pmd/SpringNullOnlyConfigCheck",
                             "pmd/SpringProfileOnConfiguration",
                             "pmd/SpringProxyMethodVisibility",
                             "pmd/SpringProxySelfCall",

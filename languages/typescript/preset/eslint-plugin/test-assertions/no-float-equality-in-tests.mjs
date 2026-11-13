@@ -1,4 +1,4 @@
-import { chainOf } from '../rules/analysis/ancestry.mjs';
+import { chainOf, isIdentifierNamed } from '../rules/analysis/ancestry.mjs';
 import { moduleBindings } from '../rules/analysis/test-code-analysis.mjs';
 
 const MATCHERS = new Map([
@@ -127,10 +127,6 @@ function comparedFloat(expression) {
   return undefined;
 }
 
-function isNamed(node, name) {
-  return node.type === 'Identifier' && node.name === name;
-}
-
 function isMember(node) {
   return node.type === 'MemberExpression' && !node.computed && node.property.type === 'Identifier';
 }
@@ -140,12 +136,12 @@ function isExpectCall(node) {
     return false;
   }
   const { callee } = node;
-  if (isNamed(callee, 'expect')) {
+  if (isIdentifierNamed(callee, 'expect')) {
     return true;
   }
   return (
     isMember(callee) &&
-    ((isNamed(callee.object, 'expect') && EXPECT_VARIANTS.has(callee.property.name)) ||
+    ((isIdentifierNamed(callee.object, 'expect') && EXPECT_VARIANTS.has(callee.property.name)) ||
       callee.property.name === 'expect')
   );
 }
