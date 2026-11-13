@@ -1,7 +1,6 @@
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
-import { ingestCrap } from '../../ingest/crap.mjs';
 import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
 import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
@@ -16,50 +15,33 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';
-import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mts';
-import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
+import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';
 import { readClassLimitFindings } from '../size/class-limits.mts';
-import {
-  declarationUnits,
-  functionLocator,
-  modulesUnitLocator,
-  sourceTextReader,
-  structureFunctions,
-} from './function-locator.mjs';
+import { modulesUnitLocator, sourceTextReader } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mts';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
-import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
-import { ingestPit } from '../../ingest/pit.mts';
-import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mts';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
 import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
+import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mjs';
 import {
-  jacocoSourceRoots,
-  readKotlinFindings,
-  kotlinGeneratedFilter,
-  requireKotlinManifest,
-  sourceFileOf,
-  sourceLocator,
-} from './kotlin-reports.mjs';
+  type Findings,
+  type ModuleContext,
+  branchFindings,
+  coverageFindings,
+  findingsFrom,
+  ifTested,
+} from './test-coverage/coverage-findings.mts';
 import { withJavaCountRatchets } from './counts/java-counts.mts';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
-import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
 import { callUntyped } from '../typed/java-values.mts';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type Options = Readonly<Record<string, unknown>>;
-type Findings = readonly unknown[];
 type ReportRun = { readonly kotlinBuild: unknown; readonly foreignKeys: unknown };
 type ModuleRun = ReportRun & { manifest: unknown; modules: readonly unknown[]; options: Options };
-type ModuleContext = Options & {
-  projectRoot: string;
-  reportRoot: string;
-  kotlin: boolean;
-  quick: boolean;
-};
 type JavaReadout = { readonly findings: unknown; readonly imports: unknown };
 
 function listsOf(manifest: unknown, ...lists: readonly string[]): string[] {
@@ -91,83 +73,6 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
         baselineRoot: baselineRootOf(options),
       })
     : [];
-}
-
-function findingsFrom(read: unknown, ...args: readonly unknown[]): Findings {
-  return listOf(callUntyped(read, ...args));
-}
-
-function ifTested(jacoco: unknown, build: (report: unknown) => Findings): Findings {
-  return jacoco === undefined ? [] : build(jacoco);
-}
-
-function jacocoFindings(context: ModuleContext, jacoco: unknown): Findings {
-  return textsOf(callUntyped(jacocoSourceRoots, context)).flatMap((sourceRoot) =>
-    listOf(fieldOf(callUntyped(ingestJacoco, jacoco, { sourceRoot }), 'findings')).filter(
-      (finding) => existsSync(path.join(context.projectRoot, textOf(fieldOf(finding, 'path')))),
-    ),
-  );
-}
-
-function crapFindings(context: ModuleContext, jacoco: unknown, crapLimit: unknown): Findings {
-  const { reportRoot, projectRoot, reactorRoot } = context;
-  const sources = new Map();
-  const file = path.join(reportRoot, 'structure.json');
-  const structure: unknown = JSON.parse(readFileSync(file, 'utf8'));
-  const crap = callUntyped(ingestCrap, structure, jacoco, {
-    sourceRoots: context['sourceRoots'],
-    limit: crapLimit,
-    sourceText: (entry: unknown) =>
-      existsSync(path.join(projectRoot, textOf(fieldOf(entry, 'file'))))
-        ? callUntyped(javaMethodText, sources, { projectRoot, reactorRoot }, entry)
-        : undefined,
-  });
-  return listOf(fieldOf(crap, 'findings'));
-}
-
-function jacocoLocator(context: ModuleContext): unknown {
-  return callUntyped(sourceLocator, context.projectRoot, callUntyped(jacocoSourceRoots, context));
-}
-
-function pitFindings(context: ModuleContext): Findings {
-  const { reportRoot, projectRoot } = context;
-  const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  const failures =
-    fieldOf(context['manifest'], 'testsFailed') === true
-      ? []
-      : findingsFrom(pitFailureFindings, reportRoot, fieldOf(context['module'], 'moduleDir'));
-  if (failures.length > 0 || !existsSync(pitReport)) {
-    return failures;
-  }
-  const locate = jacocoLocator(context);
-  const pit = callUntyped(ingestPit, readFileSync(pitReport, 'utf8'), {
-    resolvePath: (className: unknown, sourceFile: unknown) =>
-      callUntyped(sourceFileOf, locate, className, sourceFile),
-    functionAt: callUntyped(functionLocator, context),
-    sourceText: sourceTextReader(projectRoot),
-    ...(context.kotlin ? { generated: callUntyped(kotlinGeneratedFilter, context) } : {}),
-  });
-  return listOf(fieldOf(pit, 'findings'));
-}
-
-function branchFindings(context: ModuleContext, jacoco: unknown): Findings {
-  const branches = callUntyped(ingestJacocoBranches, jacoco, {
-    functions: callUntyped(structureFunctions, context),
-    units: declarationUnits,
-    locate: jacocoLocator(context),
-    sourceText: sourceTextReader(context.projectRoot),
-  });
-  return listOf(fieldOf(branches, 'findings'));
-}
-
-function coverageFindings(context: ModuleContext, crapLimit: unknown): Findings {
-  return [
-    ...ifTested(context['jacoco'], (report) => jacocoFindings(context, report)),
-    ...findingsFrom(archunitFindings, context),
-    ...findingsFrom(springArchFindings, context),
-    ...ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit)),
-    ...(context.quick ? [] : pitFindings(context)),
-  ];
 }
 
 function readModuleFindings(context: ModuleContext, crapLimit: unknown): Findings {
@@ -248,7 +153,7 @@ function wideReport(projectRoot: string, run: ModuleRun, reportBase: string): Ja
     return { findings: [], imports: undefined };
   }
   const wide = callUntyped(projectWideReport, projectRoot, {
-    projects: reportModuleProjects(run.modules, 'root'),
+    projects: callUntyped(reportModuleProjects, run.modules, 'root'),
     mergedRoot: path.join(reportBase, 'project'),
     manifest: run.manifest,
     kotlin: run.options['preset'] === 'kotlin',
@@ -276,12 +181,12 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
   }
   const run = { manifest, modules, options, ...reportRun(projectRoot) };
   const moduleFindings = modules
-    .filter((module) => isEmptyModule(projectRoot, module) !== true)
+    .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       listOf(withModuleIdentity(moduleContextFindings(projectRoot, module, run), module)),
     );
   const wide = wideReport(projectRoot, run, reportBase);
-  const findings = applyRuleMessages(
+  const findings: unknown = applyRuleMessages(
     [
       ...moduleFindings,
       ...listOf(wide.findings),
@@ -290,9 +195,13 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
     ],
     { preset, javaStyle: options['javaStyle'] },
   );
-  const locate = modulesUnitLocator(projectRoot, modules, preset === 'kotlin');
+  const locate: unknown = modulesUnitLocator(projectRoot, modules, preset === 'kotlin');
   return {
-    findings: callUntyped(withJavaCountRatchets, withoutExcludedFiles(findings, modules), locate),
+    findings: callUntyped(
+      withJavaCountRatchets,
+      withoutExcludedFiles(listOf(findings), modules),
+      locate,
+    ),
     imports: wide.imports,
   };
 }

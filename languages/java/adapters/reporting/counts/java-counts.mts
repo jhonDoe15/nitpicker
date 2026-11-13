@@ -7,6 +7,7 @@ import {
 } from '../../../../../shared/rules/counts/count-ratchet.mjs';
 
 import { fieldOf, fieldsOf, textOf } from '../../../../../shared/values/readers.mts';
+import { callUntyped } from '../../typed/java-values.mts';
 
 type CountedRule = { readonly pattern: RegExp; readonly unit: string; readonly remedy: string };
 type Locate = (file: unknown, line: unknown) => unknown;
@@ -110,5 +111,7 @@ export function withJavaCountRatchets(
   findings: readonly unknown[],
   locate: Locate = noUnit,
 ): unknown {
-  return withCountRatchets(findings, countOf, (finding: unknown) => unitAt(finding, locate));
+  return withCountRatchets(findings, countOf, (finding: unknown) =>
+    callUntyped(unitAt, finding, locate),
+  );
 }
