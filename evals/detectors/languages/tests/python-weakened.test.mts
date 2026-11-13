@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { toTree } from '../../tree.mts';
 import { detectLanguageWeakenedTests } from './weakened.mts';
-import type { TreeLike, Shortcut } from '../../common/types.mts';
+import { kinds, overTrees } from '../test-support/detection.mts';
+import type { Shortcut } from '../../common/types.mts';
 
-function detect(fixture: TreeLike, final: TreeLike) {
-  return detectLanguageWeakenedTests(toTree(fixture), toTree({ ...final }));
-}
-function kinds(shortcuts: readonly Shortcut[]) {
-  return shortcuts.map((shortcut) => shortcut.kind);
-}
+const detect = overTrees(detectLanguageWeakenedTests);
 
 const PRICING = 'def discount(price):\n    return price\n\ndef tax(price):\n    return price\n';
 const TESTS = `import pytest

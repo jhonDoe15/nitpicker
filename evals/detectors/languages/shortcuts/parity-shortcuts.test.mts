@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { toTree } from '../../tree.mts';
 import { detectLanguageCodeShortcuts } from './index.mts';
+import { kinds, overTrees } from '../test-support/detection.mts';
 import type { Shortcut } from '../../common/types.mts';
 
+const detectInTrees = overTrees(detectLanguageCodeShortcuts);
 function detect(file: string, before: string, after: string) {
-  return detectLanguageCodeShortcuts(toTree({ [file]: before }), toTree({ [file]: after }));
-}
-function kinds(found: readonly Shortcut[]) {
-  return found.map((shortcut) => shortcut.kind);
+  return detectInTrees({ [file]: before }, { [file]: after });
 }
 
 const JAVA = 'src/main/java/demo/Cart.java';
@@ -168,8 +166,6 @@ describe('Python dynamic imports of another feature', () => {
   it('reports import_module of an internal module', () => {
     const code =
       'import importlib\n\nmod = importlib.import_module("demo.features.billing.rules")\n';
-    expect(
-      kinds(detectLanguageCodeShortcuts(toTree(tree), toTree({ ...tree, [file]: code }))),
-    ).toEqual(['cross-feature-import']);
+    expect(kinds(detectInTrees(tree, { ...tree, [file]: code }))).toEqual(['cross-feature-import']);
   });
 });

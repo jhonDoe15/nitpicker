@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { toTree } from '../../tree.mts';
 import { detectLanguageTampering } from './index.mts';
-import type { TreeLike, Shortcut } from '../../common/types.mts';
+import { kinds, overTrees } from '../test-support/detection.mts';
+import type { Shortcut } from '../../common/types.mts';
 
-function detect(fixture: TreeLike, final: TreeLike) {
-  return detectLanguageTampering(toTree(fixture), toTree(final));
-}
-function kinds(shortcuts: readonly Shortcut[]) {
-  return shortcuts.map((shortcut) => shortcut.kind);
-}
+const detect = overTrees(detectLanguageTampering);
 
 const JAVA = 'src/main/java/demo/Cart.java';
 const KOTLIN = 'src/main/kotlin/demo/Cart.kt';
