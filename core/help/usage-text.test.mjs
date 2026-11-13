@@ -7,7 +7,7 @@ import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
-import { INIT_OPTIONS } from '../init/init-arguments.mjs';
+import { INIT_OPTIONS } from '../init/init-arguments.mts';
 import { packageVersion } from './package-version.mjs';
 import {
   AGGREGATE_FLAGS,
@@ -16,7 +16,7 @@ import {
   FLAGS,
   INIT_FLAGS,
   INIT_USAGE_TEXT,
-} from './usage-text.mjs';
+} from './usage-text.mts';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
 const { temporaryRoot, createGitRepository } = useGitFixtures();

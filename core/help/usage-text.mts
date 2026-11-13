@@ -1,8 +1,15 @@
+import { textOf } from '../../shared/values/readers.mts';
+
+type Row = readonly [name: string, text: string];
+
+type AnalyzerListing =
+  { readonly preset: string; readonly names: readonly string[] } | { readonly error: string };
+
 const WRAP_WIDTH = 100;
 const LIST_INDENT = '  ';
-const HELP_ROW = ['--help', 'Print this help.'];
+const HELP_ROW: Row = ['--help', 'Print this help.'];
 
-export const COMMANDS = [
+export const COMMANDS: readonly Row[] = [
   ['nitpicker', 'Compare your changes with the merge base and fail on the problems they add.'],
   ['nitpicker init', 'Detect the project and set it up: config, install command, agent skill.'],
   ['nitpicker aggregate', 'Combine the reports of sharded runs into one result.'],
@@ -13,7 +20,7 @@ export const COMMANDS = [
   ['nitpicker rules', 'List the rules the preset of the project reports.'],
 ];
 
-export const FLAGS = [
+export const FLAGS: readonly Row[] = [
   ['--all', 'Report every finding in the checkout, with no baseline.'],
   ['--base <ref>', 'Compare against this ref instead of the detected base.'],
   ['--fix', 'Apply ESLint and Prettier fixes to the changed files, then compare.'],
@@ -33,7 +40,7 @@ export const FLAGS = [
   ['--version', 'Print the installed nitpicker version.'],
 ];
 
-export const INIT_FLAGS = [
+export const INIT_FLAGS: readonly Row[] = [
   [
     '--agents-md',
     'Append the agent guidance snippet to AGENTS.md (CLAUDE.md if only that exists).',
@@ -42,7 +49,7 @@ export const INIT_FLAGS = [
   HELP_ROW,
 ];
 
-export const AGGREGATE_FLAGS = [
+export const AGGREGATE_FLAGS: readonly Row[] = [
   ['--input-root <dir>', 'Read the shard reports from <dir>/0 to <dir>/n-1.'],
   ['--shard-count <n>', 'The number of shards the run was split into.'],
   ['--output <dir>', 'Write the combined reports here (default reports/quality/diff/combined).'],
@@ -51,7 +58,7 @@ export const AGGREGATE_FLAGS = [
   HELP_ROW,
 ];
 
-export const CACHE_PUBLISH_FLAGS = [
+export const CACHE_PUBLISH_FLAGS: readonly Row[] = [
   ['--analyzer <name>', 'Publish only this analyzer (repeatable).'],
   ['--shard-count <n>', 'Split the analyzers over n jobs (with --shard-index).'],
   ['--shard-index <i>', 'Publish shard i of the split (0 to n-1).'],
@@ -64,7 +71,7 @@ const AGGREGATE_USAGE =
   ' [--details]';
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
-const USAGE_LINES = [
+const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
@@ -78,18 +85,18 @@ const USAGE_LINES = [
   'nitpicker rules [--preset <name>] [--tool <name>]',
 ];
 
-function table(rows) {
+function table(rows: readonly Row[]): string {
   const width = Math.max(...rows.map(([name]) => name.length));
   return rows.map(([name, text]) => `  ${name.padEnd(width)}  ${text}\n`).join('');
 }
 
-function usageBlock() {
+function usageBlock(): string {
   const [first, ...rest] = USAGE_LINES;
   return [`Usage: ${first}`, ...rest.map((line) => `       ${line}`)].join('\n');
 }
 
-function wrappedList(names) {
-  const lines = [];
+function wrappedList(names: readonly string[]): string {
+  const lines: string[] = [];
   for (const [index, name] of names.entries()) {
     const item = index === names.length - 1 ? name : `${name},`;
     const last = lines.at(-1);
@@ -102,14 +109,14 @@ function wrappedList(names) {
   return lines.map((line) => `${line}\n`).join('');
 }
 
-function analyzerBlock(analyzers) {
-  return analyzers.error === undefined
-    ? `Analyzers of the ${analyzers.preset} preset (for --analyzer):\n${wrappedList(analyzers.names)}`
-    : `Analyzers: not listed (${analyzers.error})\n`;
+function analyzerBlock(analyzers: AnalyzerListing): string {
+  return 'error' in analyzers
+    ? `Analyzers: not listed (${analyzers.error})\n`
+    : `Analyzers of the ${analyzers.preset} preset (for --analyzer):\n${wrappedList(analyzers.names)}`;
 }
 
-function examples(analyzers) {
-  const analyzer = analyzers.names?.[0] ?? '<name>';
+function examples(analyzers: AnalyzerListing): string {
+  const analyzer = ('names' in analyzers ? analyzers.names[0] : undefined) ?? '<name>';
   return table([
     ['nitpicker', 'check your change against the detected base'],
     ['nitpicker --base origin/release', 'check it against a given base'],
@@ -120,9 +127,14 @@ function examples(analyzers) {
   ]);
 }
 
-/** The text of nitpicker --help for a project with `analyzers`, linking `referenceUrl` if known. */
-export function usageText({ analyzers, referenceUrl }) {
-  const reference = referenceUrl === undefined ? '' : ` Reference: ${referenceUrl}`;
+export function usageText({
+  analyzers,
+  referenceUrl,
+}: {
+  readonly analyzers: AnalyzerListing;
+  readonly referenceUrl?: unknown;
+}): string {
+  const reference = referenceUrl === undefined ? '' : ` Reference: ${textOf(referenceUrl)}`;
   return (
     `${usageBlock()}\n\nCommands (nitpicker <command> --help lists its options):\n${table(COMMANDS)}\n` +
     `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n` +

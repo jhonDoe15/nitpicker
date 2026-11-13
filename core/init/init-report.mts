@@ -1,19 +1,76 @@
 import { listNames } from '../../shared/messages/messages.mjs';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
 
-function runCommandOf(project) {
-  return project.family === 'node' ? project.packageManager.run : 'npx nitpicker';
+type PackageManager = { readonly run: string; readonly install: string; readonly add: string };
+
+export type Project = {
+  readonly family: string;
+  readonly preset: string;
+  readonly summary: string;
+  readonly notes: readonly string[];
+  readonly packageManager?: PackageManager;
+};
+
+export type Peers = {
+  readonly missing: readonly string[];
+  readonly uninstalled: readonly string[];
+  readonly installedOnly: readonly string[];
+  readonly command?: string;
+  readonly advice?: string;
+  readonly requirements?: string;
+};
+
+export type PlacedFile = {
+  readonly status: string;
+  readonly relative: string;
+  readonly reason?: string;
+  readonly diff?: string;
+  readonly notes?: readonly string[];
+};
+
+export type AgentsResult = { readonly status: string; readonly relative: string };
+
+export type Placed = {
+  readonly project: Project;
+  readonly peers: Peers;
+  readonly config: PlacedFile;
+  readonly workflow: PlacedFile | undefined;
+  readonly approval: PlacedFile | undefined;
+  readonly workflowFile: string;
+  readonly agents: AgentsResult | undefined;
+  readonly offers: { readonly agents: boolean; readonly workflow: boolean };
+  readonly skillSource: string;
+};
+
+type CiContext = {
+  readonly approval: PlacedFile | undefined;
+  readonly workflowFile: string;
+  readonly command: string;
+  readonly offered: boolean;
+};
+
+function namesOf(names: readonly string[]): string {
+  return textOf(listNames(names));
 }
 
-function skillsOf(project) {
+function runCommandOf(project: Project): string {
+  return project.family === 'node' && project.packageManager !== undefined
+    ? project.packageManager.run
+    : 'npx nitpicker';
+}
+
+function skillsOf(project: Project): string[] {
   const names = [`nitpicker-${project.preset}`];
-  return project.preset === 'kotlin' && project.javaSources ? [...names, 'nitpicker-java'] : names;
+  return project.preset === 'kotlin' && fieldOf(project, 'javaSources') === true
+    ? [...names, 'nitpicker-java']
+    : names;
 }
 
-function headline(project) {
+function headline(project: Project): string {
   return `nitpicker init: ${project.summary} (preset "${project.preset}")`;
 }
 
-function fileLines(result) {
+function fileLines(result: PlacedFile): string[] {
   if (result.status === 'created') {
     return [`created ${result.relative}`];
   }
@@ -21,19 +78,19 @@ function fileLines(result) {
     return [`${result.relative} is already set up`];
   }
   return [
-    `${result.relative} exists and was not changed. ${result.reason} The diff from your file to what init would write:`,
+    `${result.relative} exists and was not changed. ${textOf(result.reason)} The diff from your file to what init would write:`,
     '',
-    result.diff.trimEnd(),
+    textOf(result.diff).trimEnd(),
     '',
     `Apply the change by hand, or move ${result.relative} aside and run nitpicker init again.`,
   ];
 }
 
-function uninstalledSentence(names) {
-  return `${listNames(names)} ${names.length > 1 ? 'are' : 'is'} in package.json but not installed`;
+function uninstalledSentence(names: readonly string[]): string {
+  return `${namesOf(names)} ${names.length > 1 ? 'are' : 'is'} in package.json but not installed`;
 }
 
-function installHeading({ missing, uninstalled }) {
+function installHeading({ missing, uninstalled }: Peers): string {
   if (missing.length === 0) {
     return `${uninstalledSentence(uninstalled)}. Install ${uninstalled.length > 1 ? 'them' : 'it'}:`;
   }
@@ -44,18 +101,18 @@ function installHeading({ missing, uninstalled }) {
   return `Install what nitpicker needs from your project (missing: ${missing.join(', ')}${declared}):`;
 }
 
-function installLines(peers) {
+function installLines(peers: Peers): string[] {
   if (peers.missing.length === 0 && peers.uninstalled.length === 0) {
     return ['Nothing to install: every peer nitpicker needs is already there.'];
   }
   return [
     installHeading(peers),
-    `  ${peers.command}`,
+    `  ${textOf(peers.command)}`,
     ...(peers.advice === undefined ? [] : [peers.advice]),
   ];
 }
 
-function peerLines(peers) {
+function peerLines(peers: Peers): string[] {
   if (peers.requirements !== undefined) {
     return [`Needs ${peers.requirements}`];
   }
@@ -68,28 +125,32 @@ function peerLines(peers) {
   return [...installLines(peers), ...undeclared];
 }
 
-function skillLines(project, source) {
+function skillLines(project: Project, source: string): string[] {
   return [
     'Install the agent skill:',
     ...skillsOf(project).map((skill) => `  npx skills add ${source} --skill ${skill}`),
   ];
 }
 
-function agentsLines(agents, command, offered) {
+function agentsLines(
+  agents: AgentsResult | undefined,
+  command: string,
+  offered: boolean,
+): string[] {
   if (agents === undefined) {
     return offered
       ? [`To add the agent guidance to AGENTS.md, run: ${command} init --agents-md`]
       : [];
   }
-  const outcomes = {
+  const outcomes: Readonly<Record<string, string>> = {
     created: `created ${agents.relative} with the nitpicker section`,
     appended: `appended the nitpicker section to ${agents.relative}`,
     unchanged: `${agents.relative} already has the nitpicker section`,
   };
-  return [outcomes[agents.status]];
+  return [outcomes[agents.status] ?? ''];
 }
 
-function approvalNote(approval) {
+function approvalNote(approval: PlacedFile): string[] {
   return approval.status === 'created'
     ? [
         'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change',
@@ -97,7 +158,10 @@ function approvalNote(approval) {
     : [];
 }
 
-function ciLines(workflow, { approval, workflowFile, command, offered }) {
+function ciLines(
+  workflow: PlacedFile | undefined,
+  { approval, workflowFile, command, offered }: CiContext,
+): string[] {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
@@ -108,7 +172,7 @@ function ciLines(workflow, { approval, workflowFile, command, offered }) {
   ];
 }
 
-export function renderReport(placed) {
+export function renderReport(placed: Placed): string {
   const { project, peers, config, workflow, approval, workflowFile, agents, offers, skillSource } =
     placed;
   const command = runCommandOf(project);

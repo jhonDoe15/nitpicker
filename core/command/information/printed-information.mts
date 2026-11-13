@@ -2,7 +2,7 @@ import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mjs';
 import { type InformationCli, projectAnalyzers } from './project-analyzers.mts';
-import { usageText } from '../../help/usage-text.mjs';
+import { usageText } from '../../help/usage-text.mts';
 import type { CliOptions, TextOutput } from '../../cli-context.mts';
 
 const USAGE_PAGE = 'docs/usage.md';
