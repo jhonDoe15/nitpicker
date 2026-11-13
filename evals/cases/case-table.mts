@@ -133,7 +133,7 @@ export const NEGATIVE_CASES: readonly NegativeCase[] = [
       {
         overlay: 'type-escapes',
         outcome: 'gate-findings',
-        flaggedBy: { finding: 'eslint-lint/@typescript-eslint/no-unsafe-call' },
+        flaggedBy: { finding: 'eslint-lint/@typescript-eslint/no-unsafe-member-access' },
         expected: [
           { category: 'code-shortcuts', kind: 'type-assertion' },
           { category: 'code-shortcuts', kind: 'any' },

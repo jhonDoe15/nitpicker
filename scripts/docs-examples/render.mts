@@ -2,6 +2,8 @@ import { renderConsoleSummary } from '../../core/diff/reporting/summary.mjs';
 import { renderRuleFilterSection } from '../../core/diff/reporting/text.mjs';
 import { JAVA_FINDINGS, SAMPLE_FINDINGS, sampleReport } from './sample.mts';
 
+const CONSOLE = 'console';
+
 const PARTIAL_RUN = {
   ran: ['eslint-errors'],
   skipped: [],
@@ -19,29 +21,29 @@ function command(text: string, line = 'npx nitpicker'): string {
 const shortReport = sampleReport([SAMPLE_FINDINGS[0] ?? {}, SAMPLE_FINDINGS[3] ?? {}]);
 
 export const EXAMPLE_BLOCKS: Readonly<Record<string, { language: string; text: string }>> = {
-  'typescript-failing': { language: 'console', text: command(console(sampleReport())) },
-  'typescript-clean': { language: 'console', text: command(console(sampleReport([]))) },
+  'typescript-failing': { language: CONSOLE, text: command(console(sampleReport())) },
+  'typescript-clean': { language: CONSOLE, text: command(console(sampleReport([]))) },
   'no-changes': {
-    language: 'console',
+    language: CONSOLE,
     text: command(console(sampleReport([], { noChanges: true }))),
   },
-  'java-failing': { language: 'console', text: command(console(sampleReport(JAVA_FINDINGS))) },
+  'java-failing': { language: CONSOLE, text: command(console(sampleReport(JAVA_FINDINGS))) },
   'analyzer-run': {
-    language: 'console',
+    language: CONSOLE,
     text: command(
       console(sampleReport(SAMPLE_FINDINGS.slice(0, 1), { partialRun: PARTIAL_RUN })),
       'npx nitpicker --analyzer eslint-errors',
     ),
   },
   'rule-filter': {
-    language: 'console',
+    language: CONSOLE,
     text: command(
       `${console(shortReport)}${renderRuleFilterSection(shortReport, ['no-silent-catch'])}`,
       'npx nitpicker --rule no-silent-catch',
     ),
   },
   details: {
-    language: 'console',
+    language: CONSOLE,
     text: command(console(sampleReport(), { details: true }), 'npx nitpicker --details'),
   },
 };

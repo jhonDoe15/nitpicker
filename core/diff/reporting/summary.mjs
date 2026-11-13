@@ -22,6 +22,7 @@ import {
 import { snapshotToolLines } from './console/snapshot-tools.mjs';
 
 const SHORT_SHA_LENGTH = 12;
+const FINDING = 'finding';
 
 export function renderSnapshotConsole(report, options = {}) {
   const { findings, summary, toolErrors } = report;
@@ -131,7 +132,7 @@ function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosti
   if (metrics.length > 0) {
     lines.push(
       style(
-        `Note: ${String(metrics.length)} ${pluralize('finding', metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
+        `Note: ${String(metrics.length)} ${pluralize(FINDING, metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
         [ANSI.dim],
         color,
       ),
@@ -141,7 +142,7 @@ function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosti
   if (lint.length > 0) {
     lines.push(
       style(
-        `Note: ${String(lint.length)} existing lint ${pluralize('finding', lint.length)} in edited code (not failing, no more than before):`,
+        `Note: ${String(lint.length)} existing lint ${pluralize(FINDING, lint.length)} in edited code (not failing, no more than before):`,
         [ANSI.dim],
         color,
       ),
@@ -167,7 +168,7 @@ function appendNoteSummary(lines, notes, color) {
 
 function violationHeadline({ violations, incomplete, testsFail, policyCount, snapshot }, color) {
   const fresh = snapshot ? '' : 'new ';
-  const noun = snapshot ? 'finding' : 'violation';
+  const noun = snapshot ? FINDING : 'violation';
   const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
   const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   if (violations.length === 0 && policyCount > 0) {

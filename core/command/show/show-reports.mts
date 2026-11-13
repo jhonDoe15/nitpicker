@@ -25,11 +25,13 @@ const outputRootFor: (
 ) => string = untypedOutputRoot;
 const failingTestsOf: (toolErrors: readonly Entry[]) => readonly unknown[] = untypedFailingTests;
 
+const SNAPSHOT: ReportKind = 'snapshot';
+const SUMMARY_FILE = 'summary.json';
 const FINDINGS_FILE = { diff: 'new-findings.json', snapshot: 'findings.json' } as const;
 
 function hasReport(outputRoot: string, kind: ReportKind): boolean {
   return (
-    existsSync(path.join(outputRoot, 'summary.json')) &&
+    existsSync(path.join(outputRoot, SUMMARY_FILE)) &&
     existsSync(path.join(outputRoot, path.basename(FINDINGS_FILE[kind])))
   );
 }
@@ -47,7 +49,7 @@ type Request = { readonly all: boolean; readonly outputRoot?: string | undefined
 type Location = { readonly kind: ReportKind; readonly outputRoot: string };
 
 function generatedAtOf(outputRoot: string): number {
-  const summary: unknown = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+  const summary: unknown = JSON.parse(readFileSync(path.join(outputRoot, SUMMARY_FILE), 'utf8'));
   const time = Date.parse(textOf(fieldOf(summary, 'generatedAt')));
   return Number.isNaN(time) ? 0 : time;
 }
@@ -63,13 +65,13 @@ function newest(found: readonly Location[]): Location | undefined {
 }
 
 export function locateReport(projectRoot: string, { all, outputRoot }: Request): Location {
-  const order: readonly ReportKind[] = all ? ['snapshot'] : ['diff', 'snapshot'];
+  const order: readonly ReportKind[] = all ? [SNAPSHOT] : ['diff', SNAPSHOT];
   const candidates = order.map((kind) => ({
     kind,
     outputRoot: outputRootFor(projectRoot, outputRoot, kind),
   }));
   const found = newest(candidates.filter(({ kind, outputRoot: root }) => hasReport(root, kind)));
-  const fallbackKind: ReportKind = all ? 'snapshot' : 'diff';
+  const fallbackKind: ReportKind = all ? SNAPSHOT : 'diff';
   return (
     found ?? {
       kind: fallbackKind,
@@ -82,7 +84,7 @@ export function loadReport({ kind, outputRoot }: Location): LoadedReport | undef
   if (!hasReport(outputRoot, kind)) {
     return undefined;
   }
-  const summary: unknown = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+  const summary: unknown = JSON.parse(readFileSync(path.join(outputRoot, SUMMARY_FILE), 'utf8'));
   return {
     kind,
     outputRoot,

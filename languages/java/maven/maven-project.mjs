@@ -33,19 +33,23 @@ const VERIFY_BUILD = [
   '-Djapicmp.skip=true',
 ];
 
+const GROUP_ID = 'groupId';
+const DEPENDENCIES = 'dependencies';
+const DEPENDENCY = 'dependency';
+const DIRECTORY = 'directory';
 function coordinates(project) {
-  const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
+  const groupId = textAt(project, GROUP_ID) ?? textAt(project, 'parent', GROUP_ID);
   return `${groupId}:${textAt(project, 'artifactId')}`;
 }
 
 function coordinatesOf(element) {
-  const groupId = textAt(element, 'groupId');
+  const groupId = textAt(element, GROUP_ID);
   const artifactId = textAt(element, 'artifactId');
   return groupId === undefined || artifactId === undefined ? [] : [`${groupId}:${artifactId}`];
 }
 
 function importedCoordinates(project) {
-  return childrenAt(project, 'dependencyManagement', 'dependencies', 'dependency')
+  return childrenAt(project, 'dependencyManagement', DEPENDENCIES, DEPENDENCY)
     .filter((dependency) =>
       ['import', 'pom'].includes(textAt(dependency, 'scope') ?? textAt(dependency, 'type')),
     )
@@ -56,12 +60,12 @@ function requiredCoordinates(project, plugins, pomFile) {
   const parent = childAt(project, 'parent');
   return [
     ...(parent === undefined ? [] : coordinatesOf(parent)),
-    ...childrenAt(project, 'dependencies', 'dependency').flatMap(coordinatesOf),
+    ...childrenAt(project, DEPENDENCIES, DEPENDENCY).flatMap(coordinatesOf),
     ...importedCoordinates(project),
     ...(existsSync(pomFile) ? importedCoordinates(parseXml(readFileSync(pomFile, 'utf8'))) : []),
     ...[...plugins.entries()].flatMap(([key, plugin]) => [
       key,
-      ...childrenAt(plugin, 'dependencies', 'dependency').flatMap(coordinatesOf),
+      ...childrenAt(plugin, DEPENDENCIES, DEPENDENCY).flatMap(coordinatesOf),
     ]),
   ];
 }
@@ -106,7 +110,7 @@ function groovyTestRoots(plugin, basedir) {
     plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
   )
     .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
-    .map((source) => textAt(source, 'directory'))
+    .map((source) => textAt(source, DIRECTORY))
     .filter((directory) => directory !== undefined);
   const pluginDefault = plugin !== undefined && configured.length === 0;
   const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
@@ -160,7 +164,7 @@ function jacocoSettings(plugin, basedir) {
 
 function resourceRootsOf(build, basedir) {
   return childrenAt(build, 'resources', 'resource')
-    .map((resource) => textAt(resource, 'directory'))
+    .map((resource) => textAt(resource, DIRECTORY))
     .filter((directory) => directory !== undefined)
     .map((directory) => path.resolve(basedir, directory));
 }
@@ -168,7 +172,7 @@ function resourceRootsOf(build, basedir) {
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
-  const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
+  const buildDirectory = resolvedText(build, basedir, DIRECTORY) ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
   const failsafe = plugins.get(FAILSAFE);
   const reports = setting(surefire, 'test', 'reportsDirectory');
@@ -244,7 +248,7 @@ function matchProject(pomFile, candidates) {
   }
   const basedir = path.dirname(pomFile);
   const [nearest] = candidates
-    .map((project) => ({ project, build: textAt(project, 'build', 'directory') }))
+    .map((project) => ({ project, build: textAt(project, 'build', DIRECTORY) }))
     .filter(({ build }) => build !== undefined && insideOf(basedir, build))
     .sort(
       (left, right) =>
