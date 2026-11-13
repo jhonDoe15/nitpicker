@@ -102,6 +102,23 @@ describe('withFixStatus', () => {
   });
 });
 
+describe('rules the language fixers select', () => {
+  const found = (tool, rule, preset) =>
+    fixStatusFor(entry(tool, rule), preset, DEFAULT_FIX_SOURCES);
+
+  it('counts the ruff fixes the gate promotes as automatic and the reviewed ones as review', () => {
+    expect(found('ruff', 'PT018', 'python')).toBe('automatic');
+    expect(found('ruff', 'E711', 'python')).toBe('review');
+    expect(found('ruff', 'T201', 'python')).toBe('review');
+    expect(found('ruff', 'T201', 'java')).toBe('none');
+  });
+  it('counts ESLint suggestions by their safety', () => {
+    expect(found('eslint-lint', 'no-prototype-builtins', 'typescript')).toBe('automatic');
+    expect(found('eslint-lint', 'use-isnan', 'javascript')).toBe('review');
+    expect(found('eslint-lint', 'no-empty', 'typescript')).toBe('none');
+  });
+});
+
 describe('fixText', () => {
   it('says it in a sentence, or per preset when the presets differ', () => {
     const found = withFixStatus(entry('checkstyle', 'Demo'), sources([recipe('d')]));

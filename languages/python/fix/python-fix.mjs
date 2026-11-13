@@ -16,7 +16,9 @@ import {
   FORMAT_FAILURE_STATUS,
   formatStdinCommand,
   lintFixCommands,
+  reviewFixCommands,
 } from './python-fix-commands.mjs';
+import { reviewCodesSelected, selectedRuffCodes } from './review/review-rules.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
@@ -74,12 +76,11 @@ function stdinFormatter(context, run, skipped) {
   };
 }
 
-const RUFF_PREFIX = 'ruff/';
-
-function selectedRuffCodes(selectedRules) {
-  return selectedRules
-    .filter((name) => name.startsWith(RUFF_PREFIX))
-    .map((name) => name.slice(RUFF_PREFIX.length));
+function lintCommands(context, selectedRules) {
+  const safe = lintFixCommands(context, selectedRuffCodes(selectedRules));
+  const review = reviewCodesSelected(selectedRules);
+  const reviewCommand = review.length === 0 ? undefined : reviewFixCommands(context, review);
+  return (name) => (reviewCommand === undefined ? [safe(name)] : [safe(name), reviewCommand(name)]);
 }
 
 function lintStep({ context, run, projectRoot, files, selectedRules, writer }) {
@@ -89,17 +90,20 @@ function lintStep({ context, run, projectRoot, files, selectedRules, writer }) {
   if (selectedRules.length > 0 && codes.length === 0) {
     return { written: [], notes: [] };
   }
-  const commandFor = decodable.length === 0 ? undefined : lintFixCommands(context, codes);
+  const commandsFor = decodable.length === 0 ? undefined : lintCommands(context, selectedRules);
   const planned = decodable.flatMap(({ path: name }) => {
-    const source = before.get(name).toString('utf8');
-    const result = run({
-      operation: 'ruff-fix',
-      command: commandFor(name),
-      acceptedStatuses: [0, 1],
-      input: source,
-    });
-    const text = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
-    return text === source ? [] : [{ name, bytes: before.get(name), text }];
+    const original = before.get(name).toString('utf8');
+    let source = original;
+    for (const command of commandsFor(name)) {
+      const result = run({
+        operation: 'ruff-fix',
+        command,
+        acceptedStatuses: [0, 1],
+        input: source,
+      });
+      source = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
+    }
+    return source === original ? [] : [{ name, bytes: before.get(name), text: source }];
   });
   const { written, changedMeanwhile, unwritable } = writeTexts(writer, planned, 'ruff check --fix');
   return {

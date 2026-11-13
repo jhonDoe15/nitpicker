@@ -22,6 +22,24 @@ export function lintFixCommands(context, fixable = []) {
   ];
 }
 
+export function reviewFixCommands(context, codes) {
+  const [first] = lintFixCommands(context)('');
+  const [tool, subcommand, ...rest] = first;
+  const options = rest.filter(
+    (option) => !option.startsWith('--stdin-filename=') && option !== '-',
+  );
+  return (file) => [
+    tool,
+    subcommand,
+    ...options,
+    '--unsafe-fixes',
+    '--select',
+    codes.join(','),
+    `--stdin-filename=${file}`,
+    '-',
+  ];
+}
+
 function flagValues(options, flag) {
   return options.flatMap((option, index) => (option === flag ? [options[index + 1]] : []));
 }
