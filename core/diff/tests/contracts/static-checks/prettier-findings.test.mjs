@@ -219,7 +219,7 @@ describe('static differential adapters: Prettier', () => {
       ]);
     });
   });
-  function runPrettierOn(projectRoot) {
+  function runPrettierOn(projectRoot, liveProjectRoot = toolRoot) {
     return runPrettier(
       parseArguments([
         '--analyzer-name',
@@ -228,6 +228,8 @@ describe('static differential adapters: Prettier', () => {
         'prettier',
         '--project-root',
         projectRoot,
+        '--live-project-root',
+        liveProjectRoot,
         '--policy-root',
         toolRoot,
         '--config',
@@ -245,6 +247,54 @@ describe('static differential adapters: Prettier', () => {
       ]),
     );
   }
+  it.each([{ precedence: ['nitpicker'] }, { precedence: ['project', 'nitpicker'] }])(
+    'checks dotfiles and dot-folders with precedence %j, even without visible matches',
+    async ({ precedence }) => {
+      const projectRoot = generatedSnapshot();
+      const policyFile = path.join(projectRoot, '..', 'policy.json');
+      writeFileSync(policyFile, JSON.stringify({ tools: { prettier: { precedence } } }));
+      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+      writeFiles(projectRoot, {
+        '.x.json': '{"value":1}\n',
+        'src/main/.d/a.ts': 'export const a={value:1}\n',
+        'src/main/node_modules/.bad.json': '{broken',
+      });
+
+      const findings = await runPrettierOn(projectRoot, projectRoot);
+
+      expect(
+        findings
+          .map(({ path: file, rule }) => ({ file, rule }))
+          .toSorted((a, b) => a.file.localeCompare(b.file)),
+      ).toEqual([
+        { file: '.x.json', rule: 'prettier/prettier' },
+        { file: 'src/main/.d/a.ts', rule: 'prettier/prettier' },
+      ]);
+    },
+  );
+  it('honors policy, project and layout ignores for hidden formatting candidates', async () => {
+    const projectRoot = generatedSnapshot();
+    const policyFile = path.join(projectRoot, '..', 'policy.json');
+    writeFileSync(
+      policyFile,
+      JSON.stringify({
+        tools: { prettier: { precedence: ['project', 'nitpicker'] } },
+        exclude: ['src/main/.excluded/**'],
+      }),
+    );
+    vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+    writeFiles(projectRoot, {
+      '.prettierignore': 'src/main/.ignored/\n',
+      '.nitpicker-hidden.json': '{broken',
+      'src/main/.ignored/a.ts': 'export const = ;\n',
+      'src/main/.excluded/a.ts': 'export const = ;\n',
+      'src/main/.d/a.ts': 'export const a={value:1}\n',
+    });
+
+    const findings = await runPrettierOn(projectRoot, projectRoot);
+
+    expect(findings.map(({ path: file }) => file)).toEqual(['src/main/.d/a.ts']);
+  });
   it('ignores generated quality-diff files during formatting checks', async () => {
     const projectRoot = generatedSnapshot();
     writeFiles(projectRoot, {
