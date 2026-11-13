@@ -101,7 +101,7 @@ Quality gate summary
 Full diagnostics: ${outputRoot}/report.txt
 `);
     expect(output.stderrText).toBe('');
-    const fixOrder = ['eslint-fix', 'prettier-fix', 'prettier-base-check'];
+    const fixOrder = ['knip-fix', 'eslint-fix', 'prettier-fix', 'prettier-base-check'];
     expect(observer.operationsAtInvocations).toEqual([fixOrder, fixOrder]);
   });
   it('continues remaining fixers and comparison when a fixer fails', () => {

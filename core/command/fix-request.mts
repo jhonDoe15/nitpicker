@@ -1,5 +1,5 @@
 import { ALL_RECIPES } from '../fix/engine/all-recipes.mjs';
-import { fixWorkingTree } from '../fix/run-fix.mjs';
+import { fixWorkingTree } from '../fix/run-fix.mts';
 
 export const FIX_RECIPES: unknown = ALL_RECIPES;
 import type { TextOutput } from '../cli-context.mts';

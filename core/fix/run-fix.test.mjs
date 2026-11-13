@@ -5,7 +5,7 @@ import { fakePythonTools } from '../../languages/python/fix/test-support/fake-py
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
-import { fixWorkingTree, spawnInvocation } from './run-fix.mjs';
+import { fixWorkingTree, spawnInvocation } from './run-fix.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -31,6 +31,7 @@ function repository() {
 }
 
 const TYPESCRIPT_REPLIES = {
+  'knip-fix': '',
   'eslint-fix': '[]',
   'prettier-fix': JSON.stringify({ results: [{ path: 'src/a.ts', ignored: true }] }),
 };
@@ -73,7 +74,7 @@ describe('fixWorkingTree', () => {
     (config) => {
       const { operations, result } = operationsFor(config);
 
-      expect(operations).toEqual(['eslint-fix', 'prettier-fix']);
+      expect(operations).toEqual(['knip-fix', 'eslint-fix', 'prettier-fix']);
       expect(result).toEqual({ fixedFiles: [], toolErrors: [], notes: [] });
     },
   );

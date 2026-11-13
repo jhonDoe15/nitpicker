@@ -1971,14 +1971,15 @@ code is the one of a run without `--fix`. `--dry-run` only works with `--fix`. A
 removes an older `fix.patch` and `fixes.json` from the output folder.
 
 `nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the rules you name.
-Give the full name, as in the findings (`checkstyle/UpperEll`, `eslint/no-var`, `ruff/F401`).
+Give the full name, as in the findings (`checkstyle/UpperEll`, `eslint-lint/no-var`, `ruff/F401`).
 Naming a rule also allows its `review` recipes, which `--fix` alone never runs. Without `--rule`,
 `--fix` is unchanged. With `--rule`, a step that cannot be narrowed to a rule does not run on its
 own, so it never rewrites findings you did not name:
 
 - Recipes run for the named rules only.
-- ESLint applies the fixes of the named `eslint/<rule>` rules in one pass; with no ESLint rule
-  named, it does not run.
+- ESLint applies the fixes of the named rules in one pass, and the suggestion of a named rule that
+  offers exactly one. Name a rule as in the findings (`eslint-lint/<rule>`) or as `eslint/<rule>`.
+  With no ESLint rule named, it does not run.
 - `ruff check --fix` is limited to the named `ruff/<code>` rules (`--fixable`); with no ruff rule
   named, it does not run.
 - Prettier, the Python formatter and the Java and Kotlin formatters run only on the files the
@@ -2006,6 +2007,22 @@ rewritten) or `none`. The line is computed from the recipes and the fixers, so i
 test fails when the generated reference does not match them. An ESLint or ruff fix does not
 cover every case a rule reports. Checkstyle layout rules are not listed as fixed: with a Java
 formatter they are suppressed, and without one `--fix` does not format.
+
+TypeScript and JavaScript run three more fixers on the changed files, before ESLint's own fixes and
+the formatter. Each one reads the rules it fixes from `--fix --rule`; with no rule selected it applies
+only what is listed as safe. Every decision is recorded in
+[`skills/nitpicker-typescript/SOURCES.md`](../skills/nitpicker-typescript/SOURCES.md).
+
+| Preset                 | Rule                                                                  | Fixer               | What it does                                                                                                                                                                 |
+| ---------------------- | --------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| typescript, javascript | `eslint-lint/<rule>` of a rule that only offers suggestions           | ESLint suggestion   | applies the suggestion when the rule offers exactly one; a rule that offers two or more is left alone                                                                        |
+| typescript, javascript | `typescript-typecheck/TS<code>`                                       | TypeScript code fix | applies the language service's fix for an allowlisted error code, such as a missing `override` (safe) or a missing import, an unused declaration, a missing `await` (review) |
+| typescript, javascript | `dead-code/exports`, `dead-code/types`, `dead-code/unused-dependency` | knip `--fix`        | removes unused `export` keywords, unused exported types and unused dependencies, in changed files and a changed `package.json`                                               |
+| typescript, javascript | `dead-code/files`                                                     | knip `--fix`        | deletes an unused changed file, only when `--rule dead-code/files` selects it                                                                                                |
+
+A fix marked review changes behaviour on purpose, so it runs only when its rule is selected with
+`--rule`. knip runs on a temporary copy of the project, and only edits to changed files are written
+back, through the same checked write as the recipes. A `package.json` edit keeps its indentation.
 
 A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
 meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is

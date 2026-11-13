@@ -1,35 +1,55 @@
+import { singleSuggestionEdit } from '../suggestions/apply-suggestions.mjs';
+import { suggestionName } from '../suggestions/suggestion-rules.mjs';
+
 const BOM = '﻿';
-const ESLINT_PREFIX = 'eslint/';
+const ESLINT_PREFIXES = ['eslint/', 'eslint-lint/'];
 
 export function selectedEslintRules(selectedRules) {
-  return selectedRules
-    .filter((name) => name.startsWith(ESLINT_PREFIX))
-    .map((name) => name.slice(ESLINT_PREFIX.length));
+  return selectedRules.flatMap((name) => {
+    const prefix = ESLINT_PREFIXES.find((candidate) => name.startsWith(candidate));
+    return prefix === undefined ? [] : [name.slice(prefix.length)];
+  });
 }
 
-function fixesOf(messages, ruleIds) {
+function fixEdit({ fix }) {
+  const [start, end] = fix?.range ?? [];
+  return Number.isInteger(start) && Number.isInteger(end) && start <= end
+    ? { start, end, text: fix.text }
+    : undefined;
+}
+
+function editsOf(messages, ruleIds) {
   return messages
-    .filter(({ ruleId, fix }) => ruleIds.includes(ruleId) && Array.isArray(fix?.range))
-    .map(({ fix }) => fix)
-    .sort((left, right) => left.range[0] - right.range[0] || left.range[1] - right.range[1]);
+    .filter(({ ruleId }) => ruleIds.includes(ruleId))
+    .flatMap((message) => {
+      const fix = fixEdit(message);
+      const suggestion = fix === undefined ? singleSuggestionEdit(message) : undefined;
+      return fix === undefined && suggestion === undefined
+        ? []
+        : [{ ...(fix ?? suggestion), suggested: fix === undefined, message }];
+    })
+    .toSorted((left, right) => left.start - right.start || left.end - right.end);
 }
 
 export function selectedOutput(source, messages, ruleIds) {
   const bom = source.startsWith(BOM) ? BOM : '';
-  const text = source.slice(bom.length);
+  const body = source.slice(bom.length);
+  const applied = [];
   let output = '';
-  let applied = 0;
-  let lastPosition = -Infinity;
-  for (const { range, text: replacement } of fixesOf(messages, ruleIds)) {
-    const [start, end] = range;
-    if (lastPosition >= start || start > end) {
-      continue;
+  let position = 0;
+  let lastEnd = -Infinity;
+  for (const edit of editsOf(messages, ruleIds)) {
+    if (lastEnd < edit.start) {
+      output += body.slice(position, edit.start) + edit.text;
+      position = edit.end;
+      lastEnd = edit.end;
+      applied.push(edit);
     }
-    output += text.slice(applied, start) + replacement;
-    applied = end;
-    lastPosition = end;
   }
-  return applied === 0 && lastPosition === -Infinity
-    ? undefined
-    : bom + output + text.slice(applied);
+  return {
+    text: applied.length === 0 ? undefined : bom + output + body.slice(position),
+    suggested: applied
+      .filter(({ suggested }) => suggested)
+      .map(({ message }) => ({ rule: suggestionName(message.ruleId), line: message.line })),
+  };
 }
