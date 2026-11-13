@@ -22,6 +22,13 @@ describe('withoutSupersededMessages', () => {
     expect(withoutSupersededMessages([query, sort])).toEqual([query]);
   });
 
+  it('drops a wasted collection step report where the typed prefer-find reports the same start', () => {
+    const typed = { ruleId: '@typescript-eslint/prefer-find', line: 2, column: 9 };
+    const step = { ruleId: 'nitpicker/no-wasted-collection-step', line: 2, column: 9 };
+    const other = { ruleId: 'nitpicker/no-wasted-collection-step', line: 4, column: 9 };
+    expect(withoutSupersededMessages([typed, step, other])).toEqual([typed, other]);
+  });
+
   it('drops a loop accumulator report inside a let declaration that no-let already reports', () => {
     const messages = [noLet, spread('loopArray', 4, 7), spread('domainLoopObject', 4, 40)];
     expect(withoutSupersededMessages(messages)).toEqual([noLet]);

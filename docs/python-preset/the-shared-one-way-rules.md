@@ -795,6 +795,10 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `sorted(xs)[0]` and `sorted(xs)[-1]`, in tests too; the two script rules skip test files. The same rules run as
   `nitpicker/no-costly-collection-form` (TypeScript), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop`
   and `pmd/SortForExtreme` (Java) and `kotlin-source/` rules of the same names (Kotlin).
+- A collection step whose result is thrown away is Ruff's: the comprehension rules (`C4`, such as
+  `C419` for `any([...])`), `PERF` and `RUF015` (`list(xs)[0]` instead of `next(iter(xs))`). The
+  same forms run as `nitpicker/no-wasted-collection-step` (TypeScript), `pmd/RedundantStreamStep`
+  (Java) and `kotlin-source/RedundantStreamStep` (Kotlin).
 - `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
   over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
   `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,

@@ -187,6 +187,7 @@ describe('readKotlinSourceFindings', () => {
         'ParameterMutation',
         'PlainTextRegex',
         'ProcessWaitWithoutTimeout',
+        'RedundantStreamStep',
         'RegexPartDefect',
         'RepeatedStringLiteral',
         'SecretInLog',

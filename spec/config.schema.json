@@ -2172,6 +2172,7 @@
                             "kotlin-source/UnsafeCastOperator",
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
+                            "kotlin-source/RedundantStreamStep",
                             "kotlin-source/SortForExtreme",
                             "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/FutureWithoutException",
