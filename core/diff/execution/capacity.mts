@@ -1,13 +1,19 @@
-export function createWeightedSemaphore(capacity) {
-  let available = capacity;
-  const waiting = [];
+export type Release = () => void;
 
-  function release(weight) {
+export type Semaphore = { readonly acquire: (weight: number) => Promise<Release> };
+
+type Waiter = { readonly weight: number; readonly resolve: (release: Release) => void };
+
+export function createWeightedSemaphore(capacity: number): Semaphore {
+  let available = capacity;
+  const waiting: Waiter[] = [];
+
+  function release(weight: number): void {
     available += weight;
     drain();
   }
 
-  function drain() {
+  function drain(): void {
     for (const waiter of [...waiting]) {
       if (waiter.weight > available) {
         return;
@@ -21,7 +27,7 @@ export function createWeightedSemaphore(capacity) {
   }
 
   return {
-    acquire(weight) {
+    acquire(weight: number): Promise<Release> {
       return new Promise((resolve) => {
         waiting.push({ weight, resolve });
         drain();
