@@ -9,6 +9,8 @@ import { globMatcher } from '../paths/glob.mjs';
 import { didYouMean } from '../messages/closest-match.mjs';
 
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
+export const INTEGRATION_TEST_TIMEOUT_MS = 180_000;
+export const INTEGRATION_HOOK_TIMEOUT_MS = 300_000;
 export const TEST_TIMEOUT_LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
 export const TIMEOUT_LIMIT_KEYS = [
   'testTimeoutMs',
@@ -135,6 +137,24 @@ function limitsOf(settings = {}) {
   );
 }
 
+const INTEGRATION_FLOORS = {
+  testTimeoutMs: INTEGRATION_TEST_TIMEOUT_MS,
+  hookTimeoutMs: INTEGRATION_HOOK_TIMEOUT_MS,
+  testDeclarationCeilingMs: INTEGRATION_TEST_TIMEOUT_MS,
+  hookDeclarationCeilingMs: INTEGRATION_HOOK_TIMEOUT_MS,
+};
+
+function withIntegrationFloors(limits, integration) {
+  return integration === true
+    ? Object.fromEntries(
+        Object.entries(limits).map(([key, value]) => [
+          key,
+          key in INTEGRATION_FLOORS ? Math.max(value ?? 0, INTEGRATION_FLOORS[key]) : value,
+        ]),
+      )
+    : limits;
+}
+
 export function resolveTestTimeouts(config = {}, context = {}) {
   const thresholds = { ...TEST_TIME_DEFAULTS, ...config.thresholds };
   const settings = config.tools?.tests?.timeouts ?? {};
@@ -142,8 +162,7 @@ export function resolveTestTimeouts(config = {}, context = {}) {
   const selected = matchingProject(settings.projects ?? {}, context);
   const language = selected?.[1].language ?? context.language ?? config.preset ?? 'typescript';
   validateLanguage(language, 'timeout subject language');
-  return {
-    language,
+  const tiers = {
     testTimeoutMs:
       TEST_TIMEOUT_CEILING_MS +
       Math.ceil(
@@ -155,6 +174,10 @@ export function resolveTestTimeouts(config = {}, context = {}) {
     hookDeclarationCeilingMs: TEST_TIMEOUT_CEILING_MS,
     ...limitsOf(settings.languages?.[language]),
     ...limitsOf(settings.defaults),
+  };
+  return {
+    language,
+    ...withIntegrationFloors(tiers, context.integration),
     ...limitsOf(selected?.[1]),
     ...(selected === undefined ? {} : { project: selected[0] }),
   };

@@ -7,6 +7,7 @@ import {
   resolveTestTimeouts,
   TEST_TIMEOUT_CEILING_MS,
 } from '../../../../shared/test-timeouts/resolve.mjs';
+import { isIntegrationTestFor } from '../../preset/layout/end-to-end-tests.mjs';
 import { projectTestRunner } from '../../preset/test-runner/project-runner.mjs';
 import {
   COVERAGE_REPORT_PATH,
@@ -21,10 +22,11 @@ import {
 export const TEST_TIMEOUT_MS = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
 
-export function testTimeouts(file, policy = readHeadPolicyFile()) {
+export function testTimeouts(file, policy = readHeadPolicyFile(), { floors = true } = {}) {
   return resolveTestTimeouts(policy, {
     file,
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+    integration: floors && isIntegrationTestFor(file, policy),
   });
 }
 
@@ -33,11 +35,13 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
     return testTimeouts().testTimeoutMs;
   }
   const selected = files ?? options.rerun?.files ?? runnableTestFiles(options);
-  const limits = selected.map((file) =>
-    testTimeouts(path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file),
+  const relative = selected.map((file) =>
+    path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file,
   );
+  const policy = readHeadPolicyFile();
+  const limits = relative.map((file) => testTimeouts(file, policy, { floors: false }));
   if (limits.length === 0) {
-    limits.push(testTimeouts());
+    limits.push(testTimeouts(undefined, policy));
   }
   const timeout = limits[0].testTimeoutMs;
   if (!hooks && limits.some((limit) => limit.hookTimeoutMs !== undefined)) {
@@ -58,7 +62,13 @@ export function testTimeoutMs(options, files, { hooks = true } = {}) {
       TROUBLESHOOTING_ANCHORS.testTimeoutsNeedVitest,
     );
   }
-  return timeout;
+  return Math.max(
+    ...relative.map((file) => {
+      const { testTimeoutMs: test, hookTimeoutMs: hook } = testTimeouts(file, policy);
+      return Math.max(test, hook ?? 0);
+    }),
+    timeout,
+  );
 }
 
 export function workerCount(options) {

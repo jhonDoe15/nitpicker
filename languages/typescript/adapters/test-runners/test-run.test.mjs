@@ -72,6 +72,23 @@ describe('the limits of a test run', () => {
     ).toThrow('cannot set hook deadlines');
   });
 
+  it.each([
+    ['an end-to-end file only', ['test/a.e2e.test.js'], 300_000],
+    [
+      'a mixed list of end-to-end and unit files',
+      ['test/a.e2e.test.js', 'test/b.test.js'],
+      300_000,
+    ],
+    ['a unit file only', ['test/b.test.js'], 40_000],
+  ])(
+    'gives a runner with one shared timer the larger deadline for %s',
+    (_name, files, expected) => {
+      stubThresholds({});
+      expect(testTimeoutMs({ projectRoot: directory }, files)).toBe(expected);
+      expect(testTimeoutMs({ projectRoot: directory }, files, { hooks: false })).toBe(expected);
+    },
+  );
+
   it('runs the tests that time a rerun one at a time', () => {
     expect(workerCount({})).toBe(4);
     expect(workerCount({ rerun: { files: [], namePattern: '^$' } })).toBe(1);

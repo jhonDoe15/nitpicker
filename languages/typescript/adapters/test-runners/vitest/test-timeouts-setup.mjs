@@ -1,11 +1,14 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isIntegrationTestFor } from '../../../preset/layout/end-to-end-tests.mjs';
 import { resolveTestTimeouts } from '../../../../../shared/test-timeouts/resolve.mjs';
 
 export function applyVitestTimeouts(policy, { file, root = process.cwd() }, configure) {
+  const relative = path.relative(root, file).replaceAll('\\', '/');
   const limits = resolveTestTimeouts(policy, {
-    file: path.relative(root, file).replaceAll('\\', '/'),
+    file: relative,
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+    integration: isIntegrationTestFor(relative, policy),
   });
   const settings = Object.fromEntries(
     Object.entries(limits)
