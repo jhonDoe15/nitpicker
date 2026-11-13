@@ -28,4 +28,7 @@ export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/operands/constant-comparisons.mjs',
   'languages/typescript/preset/eslint-plugin/rules/literals/no-repeated-string-literal.mjs',
   'shared/literals/repeated-literal-exemptions.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/naming/no-generic-name.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/naming/generic-names.mjs',
+  'shared/naming/smell-words.mjs',
 ];

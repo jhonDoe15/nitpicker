@@ -139,6 +139,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
+        'nitpicker/no-generic-name': 'error',
         'nitpicker/no-unknown-main-folder': [
           'error',
           { sourceRoots: layout.sourceRoots, react: options.react === true },
