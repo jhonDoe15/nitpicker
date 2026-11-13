@@ -31,6 +31,8 @@ const ALLOWED = {
     'Read configuration through a @ConfigurationProperties data class and pass the values in through constructors or parameters, not @Value, System.getProperty or Environment.getProperty. JVM properties such as java.*, user.*, javax.*, jdk.* and http.* are fine.',
   SpringValueSecretDefault:
     'Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.',
+  SpringNullOnlyConfigCheck:
+    'Use isNullOrBlank() (or isNullOrEmpty()) to test this configuration string, not only a null check: if (props.issuerUri.isNullOrBlank()), props.issuerUri?.ifBlank { null } ?: fallback. A property set to an empty value binds as an empty string, which passes != null, ?.let and ?:, so the feature turns on with nothing to use. An exception fits only when an empty value is a real setting here.',
   SpringProfileOnConfiguration:
     'Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.',
   SpringProxyMethodVisibility:

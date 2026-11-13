@@ -56,7 +56,11 @@ so the package stays plain JavaScript.
 - Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
   file list that is hashed) keeps the packaged `.mjs` name and resolves it with
   `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
-  the `.mts` source in a checkout.
+  the `.mts` source in a checkout when Node.js strips types and the emitted `.mjs` otherwise.
+- `npm pack` and the container build run on Node.js 22.14, which cannot strip types: they emit the
+  `.mjs` files first (`node scripts/typescript/emit.mjs`, cleaned with `--clean`). Their own
+  scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
+  `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
 
 ## Running the checks
 
@@ -96,12 +100,12 @@ The TypeScript red-base test (`npm run test:typescript`, which runs real vitest 
 not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
 the Stryker report is read.
 
-The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mjs` on Linux,
+The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mts` on Linux,
 macOS and Windows, and the TypeScript sample under Deno. It fails when a run's findings differ from the
-Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mjs`.
-Reproduce one sample with `node scripts/platforms/smoke.mjs typescript --output reports/platforms/local`
+Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mts`.
+Reproduce one sample with `node scripts/platforms/smoke.mts typescript --output reports/platforms/local`
 (add `--runtime deno` for Deno), then compare two such directories with
-`node scripts/platforms/compare-runs.mjs <reference> <other>`. After changing a workflow's versions or the
+`node scripts/platforms/compare-runs.mts <reference> <other>`. After changing a workflow's versions or the
 expected differences, run `npm run gen:checks` so that [docs/compatibility.md](docs/compatibility.md)
 matches; a test fails until it does.
 

@@ -212,6 +212,48 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`new RedisStore({ client })`). Known limits: a static field, a parameter default and a
   constructor function outside a `class` are not read, and a variable assigned twice counts a
   listener on either value for both.
+- A rejection path in every `new Promise` that waits on something that can fail
+  (`nitpicker/require-promise-reject`, production code). When the executor settles through a
+  listener (`on`, `once`, `addListener`, `prependListener`, `prependOnceListener`, `addEventListener`
+  whose handler is `resolve` or calls it), a pipe into something that holds `resolve`
+  (`body.pipe(concat(resolve))`) or a callback passed to a call (an inline function that calls
+  `resolve`, `resolve` itself as in `server.listen(port, resolve)` or `task.then(resolve)`, or a call
+  that receives it, as in `concat(resolve)`), it must take `reject` and use it: called, passed as a
+  listener or callback, or stored (`{ resolve, reject }`). Otherwise the `'error'` event or the error a
+  callback reports never settles the promise and the caller waits forever. An executor without
+  `reject` passes when every such source already settles on failure: an `'error'` listener on the same
+  receiver settles it (`image.addEventListener('error', () => resolve(false))`), or the callback reads
+  its error argument (`fs.access(p, (err) => resolve(!err))`). The message names the first source that
+  does not. Callbacks that never reach `resolve` (`JSON.parse(text, (key, value) => value)`) are not
+  sources. Inside an executor that does take
+  `reject`, a node-style callback that calls `resolve` must read its error argument (a first
+  parameter named `err`, `error`, `e`, `ex`, `exc`, `exception` or `...Err`/`...Error`, with or without
+  leading underscores, or typed as an `Error` in TypeScript
+  files): `if (error) { reject(error); return; }`. With type information a callback that declares
+  no parameters where the callee passes an error first (`readFile(p, () => resolve())`, reported as
+  a missing error parameter), and
+  `resolve` passed straight where the callee passes an error first (`server.close(resolve)`), are
+  reported too. The forms that reject by themselves are the allowed alternative: `once` from
+  `node:events`, `pipeline` and `finished` from `node:stream/promises`, and `util.promisify`.
+  Timers (`setTimeout(resolve, ms)`, `setImmediate`, `process.nextTick`, `queueMicrotask`),
+  the DOM observers (`IntersectionObserver`, `MutationObserver`, `ResizeObserver`,
+  `PerformanceObserver`), `debounce`/`throttle`, in-place callbacks (`map`, `forEach`, `replace`), queues (`waiters.push(resolve)`, `add`, `set`),
+  events that cannot fail (`'abort'`, `'exit'`, `'beforeExit'`, `'DOMContentLoaded'`,
+  `'readystatechange'`, `'visibilitychange'`, `'load'` on `window`, `document`, `globalThis` or
+  `self`, and `process` signals) and `.then`/`.catch`/`.finally` callbacks for the error check are not reported. An
+  executor passed by name (`new Promise(executor)`) is not read. A design note, which does not fail
+  the change, goes with it (`nitpicker/promise-wait-deadline`): an executor that takes `reject` but
+  settles only from listeners on a network stream or socket (`Socket`, `TLSSocket`,
+  `IncomingMessage`, `ClientRequest`, `WebSocket` and the HTTP/2 streams by type, or a receiver
+  named `socket`, `sock`, `tlsSocket`, `ws`, `webSocket`, `websocket`, `conn`, `connection`, `req`,
+  `request`, `res`, `response` or `upstream` without types) when the enclosing function has
+  no deadline: no `'timeout'` literal and no identifier that contains `signal`, `timeout` or `deadline` (any
+  case, so `setTimeout`, `AbortSignal` and `withTimeout` count) or is exactly `race`. A peer that stops sending keeps such a promise pending; a timer that
+  rejects, `AbortSignal.timeout(ms)` or the socket's `setTimeout` bounds it. It stays a note because
+  the noise is structural: the code cannot tell a peer that may stay silent for good (a long-lived
+  subscription, a server push channel) from one that must answer, so no exception would make the
+  finding right. The adapter (`REPORT_ONLY_RULES` in `languages/typescript/adapters/eslint/normalize.mjs`)
+  records it as a design note for review.
 - Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
@@ -880,6 +922,27 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `nitpicker/no-shared-stateful-regex` wants a `g` or `y` regex created where it is used. The Java,
   Kotlin and Python presets report the same mistake as `pmd/ReusableObjectPerCall` and
   `reusable-object-per-call`.
+- `nitpicker/no-undefined-only-env-check` (production code): an environment variable tested only
+  for being missing counts an empty value as set. `API_URL=` gives `''`, which passes
+  `process.env.API_URL !== undefined`, so the feature turns on with nothing to use. Reported: an
+  `===`, `!==`, `==` or `!=` against `undefined`, `null` or `void 0`, `typeof ... === 'undefined'`,
+  `'API_URL' in process.env`, `Object.hasOwn(process.env, 'API_URL')` and
+  `process.env.hasOwnProperty('API_URL')`, on `process.env.X` (also `process.env['X']` and
+  `globalThis.process.env.X`), `import.meta.env.X`, `Bun.env.X`, `Deno.env.get('X')`, or a `const`
+  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`, or `env.X`
+  after `const env = process.env`); a local named `process`, `Bun` or `Deno` is not the global.
+  Also reported: `process.env.X ?? fallback`, `process.env.X ??= fallback` and a destructuring
+  default (`const { PORT = '3000' } = process.env`), which keep the empty value and skip the
+  fallback; a fallback of `''`, `undefined`, `null` or `void 0` gives the same result and passes,
+  and so do these fallbacks in a composition root, which `nitpicker/no-branch-in-composition-root`
+  already reports. The allowed forms test for a value: `if (!process.env.API_URL)`,
+  `process.env.API_URL || fallback`, or a test of the value next to the missing-value test in the
+  same `&&`/`||` condition (`url !== undefined && url !== ''`, `.length`, `Boolean(url)`, `url`
+  itself, `.trim()` first, or any method call on it, such as `url.startsWith('https')`), or a
+  schema that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
+  a real setting, add an exception for the rule. The Java and Kotlin presets report the same mistake
+  on Spring configuration (`pmd/SpringNullOnlyConfigCheck`) and the Python preset on `os.environ`
+  (`env-none-only-check`).
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an

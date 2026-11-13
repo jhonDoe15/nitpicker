@@ -42,7 +42,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`testRestrictedSyntax`) reuses the `as` selectors of `strict-escape-hatches.mjs` and the
   loop and `forEach` selectors of `strict-control-flow.mjs`, whose loop message also names
   `it.each`; promise chains in tests are `nitpicker/no-promise-chain`.
-  `evals/detectors/gate-agreement.test.mjs` checks that the evaluation harness's code-shortcuts
+  `evals/detectors/gate-agreement.test.mts` checks that the evaluation harness's code-shortcuts
   detector and this list report the same constructs in a test file.
 - `domain/` and `adapters/` rules are scoped by the globs `<sourceRoot>/main/features/*/domain/**`
   and `<sourceRoot>/main/features/*/adapters/**`. They follow the layout's source roots.
