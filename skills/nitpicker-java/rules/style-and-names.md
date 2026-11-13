@@ -15,7 +15,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+  for-each where the index is unused. Remove unused fields, locals, parameters, private methods, assignments; a
+  parameter a signature fixes without an annotation or `@Override` is named `unusedX` or `ignoredX`.
   Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
   (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
   resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
