@@ -534,6 +534,8 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `changed-metrics.json`: metrics that moved.
 - `held-findings.json`: findings that were already there and are no worse than at the base (for
   example a file over a size limit that did not grow); they are allowed, and any increase fails.
+- `fix-plans.json`: a plan for each new finding of a nitpicker check that needs judgment (see
+  [Fix plans](#fix-plans)).
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: informational notes the run reports but does not fail on, such as a base whose
   tests fail (see "A base whose tests fail" below).
@@ -2225,6 +2227,42 @@ code does or what the tests measure, so they run only when a run selects their r
 fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
 under the nearest rule. Which rules have a check, and why the others do not, is in
 `skills/nitpicker-java/SOURCES.md`.
+
+## Fix plans
+
+Most of what is left after formatting needs judgment: a function that is too long, a mutant that
+survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
+can rewrite these, but an agent still spends most of its work finding the code, its context and the
+form the rule allows. A comparison run writes that down in `fix-plans.json`, beside
+`new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The rule
+reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
+on) keeps its message and its help link and gets no plan.
+
+A plan changes no file, and nitpicker calls no language model for it: it is built from the finding,
+the project files and the allowed form of the rule. The schema is
+[`spec/fix-plans.schema.json`](../spec/fix-plans.schema.json), also exported by the package as
+`nitpicker/spec/fix-plans.schema.json`. Each plan has:
+
+- `finding`: the `tool`, `rule`, `path` and `line` of the finding.
+- `kind`: the change asked for. It is one of `extract-function`, `split-file`,
+  `add-test-for-branch`, `strengthen-assertion`, `kill-mutant`, `remove-duplicate`,
+  `invert-dependency`, `move-module`, `parse-at-boundary`, `reduce-complexity`, `group-parameters`,
+  `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
+  whose only guidance is their allowed form.
+- `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`.
+- `context`: only what the kind needs. It holds the measured value and the limit with candidate
+  blocks to move for a size rule, the branch and the nearest test file for coverage, the mutation
+  (the mutator, the original and the replacement) for a surviving mutant, both copies for a
+  duplicate, and the import edge or cycle for an architecture rule. Where no test file exists, the
+  context names the path the project's test layout suggests.
+- `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
+- `doneWhen`: the finding that stops being reported.
+
+The report lists one line per plan (`<tool>/<rule> <path>:<line> <kind>`) and the console summary
+one line, `Fix plans: <count>, see <folder>/fix-plans.json`. A project that ran no comparison, such
+as `--all`, has no plans. The plans come from one registry keyed by tool and rule
+(`shared/fix-plans/registry.mjs`), and the `fix plan` status of the rule reference is computed from
+the same registry, so the two cannot differ. A plan does not list the tests that ran a mutant.
 
 ## Java preset
 

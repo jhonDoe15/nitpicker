@@ -216,6 +216,7 @@ Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone: ${CLONE_MESSAGE}
     src/main/java/demo/First.java:3
+Fix plans: 1, see ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/fix-plans.json
 Design notes for review (not failing): 2 new
   ${CLONE_SIZE_NOTE} (lines 30)
   ${CLONE_SIZE_NOTE} (tokens 381)

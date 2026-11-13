@@ -1,0 +1,48 @@
+export const KOTLIN_SOURCE_RULES = Object.freeze([
+  'BooleanFlagParameter',
+  'CatchOnlyLogsOrReturnsDefault',
+  'CompatibilityShim',
+  'CredentialLiteral',
+  'GenericPackageName',
+  'GenericTypeName',
+  'HardcodedSecret',
+  'IoCallInLoop',
+  'MutableModuleState',
+  'ParameterMutation',
+  'RepeatedStringLiteral',
+  'SecretInLog',
+  'SqlStringBuilding',
+  'TestClassWithoutTestCases',
+  'TestHelperInSource',
+  'TlsVerificationOff',
+  'TriStateBoolean',
+  'UnboundedFanOut',
+  'UnsafeCastOperator',
+  'UnsafeDeserialization',
+  'WeakHash',
+]);
+
+export const KOTLIN_PMD_RULES = Object.freeze([
+  'AssertionInControlFlow',
+  'CoroutineEscapesTest',
+  'DisabledTest',
+]);
+
+export const ARCHUNIT_RULES = Object.freeze([
+  '<rule>',
+  'ddd-aggregate-reference',
+  'ddd-foreign-entity',
+  'ddd-value-object-reference',
+  'spring-controller-controller',
+  'spring-controller-entity',
+  'spring-controller-repository',
+  'spring-feature-boundary',
+  'spring-layout',
+  'spring-no-dirties-context',
+  'spring-repository-service',
+  'spring-request-state',
+  'spring-scope-capture',
+  'spring-service-web',
+  'spring-shared-pure',
+  'spring-test-placement',
+]);
