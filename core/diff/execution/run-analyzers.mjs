@@ -6,7 +6,7 @@ import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import path from 'node:path';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -25,8 +25,8 @@ const SCHEDULER_GRACE_MS = 60 * 1000;
 
 const TASK_STOP_GRACE_MS = 5 * 1000;
 
-const schedulerPath = checkoutModulePath(
-  fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url)),
+const schedulerPath = fileURLToPath(
+  checkoutModuleUrl(new URL('./analyzer-scheduler.mjs', import.meta.url)),
 );
 
 export function selectAnalyzers(analyzers, analyzerNames) {
