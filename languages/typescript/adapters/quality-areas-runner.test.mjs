@@ -11,8 +11,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { installStrykerTsconfig } from './quality-areas/runners/mutation.mjs';
-import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mjs';
+import {
+  createdFilesTracker,
+  installStrykerTsconfig,
+} from './quality-areas/runners/stryker/stryker-config.mts';
+import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mts';
 import { normalizeStructure } from './quality-areas/reporting/repository.mts';
 import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mts';
@@ -385,10 +388,9 @@ describe.each([
     include: ['src'],
   })}\n`;
   const stryker = async (projectRoot) => {
-    const created = [];
     const prepared = await installStrykerTsconfig(optionsFor('mutation', projectRoot), {
       sourceRelativePath: 'tsconfig.stryker.json',
-      createdFiles: created,
+      createdFiles: createdFilesTracker(),
       engine,
     });
     return {

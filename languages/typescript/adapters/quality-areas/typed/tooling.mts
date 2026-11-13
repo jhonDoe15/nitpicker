@@ -29,7 +29,8 @@ export const runNodeTool: (invocation: NodeToolInvocation) => NodeToolResult = r
 
 export const parseReportJson: (text: string) => unknown = parseUntypedReportJson;
 
-export const policyFile: (policyRoot: string, relativePath: string) => string = untypedPolicyFile;
+export const policyFile: (policyRoot: string, relativePath: string | undefined) => string =
+  untypedPolicyFile;
 
 export const relativeProjectPath: (projectRoot: string, filePath: string) => string =
   untypedRelativeProjectPath;
@@ -37,8 +38,11 @@ export const relativeProjectPath: (projectRoot: string, filePath: string) => str
 export const runDependencyCruiser: (options: QualityAreaOptions, layout: Layout) => CruiseReport =
   runUntypedDependencyCruiser;
 
-const importPolicyModule: (options: QualityAreaOptions, relativePath: string) => Promise<unknown> =
-  importUntypedPolicyModule;
+export const importPolicyModule: (
+  options: QualityAreaOptions,
+  relativePath: string,
+  suffix?: string,
+) => Promise<unknown> = importUntypedPolicyModule;
 
 function isPolicyFunction(value: unknown): value is PolicyFunction {
   return typeof value === 'function';

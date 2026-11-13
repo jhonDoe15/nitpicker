@@ -4,7 +4,7 @@ import {
   normalizeMutation,
   withUnreachedMutantsUncovered,
 } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
-import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/mutation.mjs';
+import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/stryker/stryker-config.mts';
 
 describe('mutation reporting in the quality-area analyzers', () => {
   it('reports surviving mutants and status totals without gating on score', () => {
