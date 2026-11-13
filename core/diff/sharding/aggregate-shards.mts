@@ -41,7 +41,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
-import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
 import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';

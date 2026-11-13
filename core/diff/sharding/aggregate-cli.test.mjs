@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { runAggregateCli } from './aggregate-shards.mts';
 import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mjs';
