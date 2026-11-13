@@ -967,3 +967,7 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   report it (`nitpicker/no-undefined-only-env-check`, `env-none-only-check`,
   `pmd/SpringNullOnlyConfigCheck`). It belongs to the one-way rules of GO3 (#416);
   `os.Getenv("X") != ""` is the allowed form.
+
+## Troubleshooting
+
+- [Troubleshooting](go-preset/troubleshooting.md)

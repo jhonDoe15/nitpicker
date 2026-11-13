@@ -16,6 +16,7 @@ checkout of the repository links to `main`. Findings about your code are explain
 - [Tests](#tests)
 - [TypeScript and JavaScript](#typescript-and-javascript)
 - [Python](#python)
+- [Go](#go)
 - [Java and Kotlin](#java-and-kotlin)
 - [Platforms](#platforms)
 
@@ -725,6 +726,73 @@ sources under `also_copy` in `[tool.mutmut]` of `pyproject.toml`. If mutation te
 set `"disable": ["mutation"]`. On native Windows mutmut does not run; see
 [Windows and WSL](#windows-and-wsl). See also
 [mutation testing for Python](python-preset.md#slice-6-mutation-testing).
+
+## Go
+
+### Go is missing from the PATH
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-missing`: `go was not found on the
+PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH`, or `go version could not
+run: <message>`.
+
+**Cause.** Every step of the Go preset starts with `go version`. The `go` that nitpicker runs is the
+one on the `PATH` of the process that started it, which is not always the one your shell has: a CI
+job that has not installed Go, an editor or a Git hook that starts with a shorter `PATH`.
+
+**Fix.** Install Go (https://go.dev/dl/) or add its `bin` folder to the `PATH` of the process that
+runs nitpicker, for example with `actions/setup-go` in GitHub Actions, and check that `go version`
+works from there. The project's `GOTOOLCHAIN`, `GOFLAGS` and `GOPROXY` apply to every Go command
+nitpicker runs. See [the Go preset](go-preset.md#selection).
+
+### A Go module does not load
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-mod-tidy-failed`, `go-list-failed`,
+`go-env-failed` or `go-inspect-failed`: `go mod exited 1: <output>` or `go list exited 1: <output>`,
+where the output names a `go.mod` that cannot be parsed, a module that cannot be found, or a package
+that cannot be loaded.
+
+**Cause.** The `go` command could not resolve the module of the snapshot: a `go.mod` with a syntax
+error or a `go` line newer than the installed toolchain, a requirement that cannot be downloaded
+(no network, a private module without `GOPRIVATE`, a `GOFLAGS=-mod=vendor` without a `vendor`
+folder), or a `go.sum` that does not match. The base snapshot is a checkout of the merge base, so a
+`go.mod` that only the head repairs fails on the base.
+
+**Fix.** Run the command from the message in the project (`go mod tidy -diff`, `go list ./...`) and
+fix what it prints. Download the modules before nitpicker runs in CI (`go mod download`) and set
+`GOPRIVATE` and the credentials for private modules. When the `go` line asks for a newer Go than the
+one installed, install it or leave `GOTOOLCHAIN` at its default so `go` fetches it.
+
+### `go vet` or `go test` fails to run
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-vet-failed` or `go-test-failed`:
+`go vet exited 1: <output>` or `go test exited 1: <output>`, where the output holds no diagnostic or
+failing test that nitpicker can read.
+
+**Cause.** `go vet -json ./...` and `go test -json ./...` ran but ended without a result nitpicker
+can use: the module does not load (see [A Go module does not load](#a-go-module-does-not-load)), a
+build tag set that excludes every file, a package that fails to build in a way that has no file
+position, or an environment problem such as a read-only module cache or no disk space. A test that
+fails normally is not this error: it is reported as a failing test, see [Tests fail](#tests-fail).
+
+**Fix.** Run the command from the message in the project with the same `GOFLAGS` and build tags
+(`go.buildTags` in `nitpicker.config.json` is passed as `-tags`) and fix what it prints. When the
+timeout is the cause, see [An analyzer times out](#an-analyzer-times-out).
+
+### A pinned Go tool fails to build
+
+**Symptom.** A tool error of the `go` analyzer with the rule `go-tool-install-failed`,
+`go-lint-build-failed` or `go-inspect-build-failed`. The message starts with the failed command, `go install`
+or `go build`, then `exited` with its status and the command's output.
+
+**Cause.** nitpicker builds gofumpt, goimports, deadcode and its own lint and inspect programs once
+into the cache (`~/.cache/nitpicker`, or `nitpicker` under `XDG_CACHE_HOME`). The pinned gofumpt and goimports need
+Go 1.26 or later and the lint program needs Go 1.27. With an older `go` and `GOTOOLCHAIN=local` the build
+fails; so does a build with no network or no access to the module proxy.
+
+**Fix.** Use a `go` of the required version, or leave `GOTOOLCHAIN` at its default so an older `go`
+downloads the newer toolchain for the build. Make the module proxy reachable (`GOPROXY`) the first time,
+and keep the cache between CI runs. A project that pins the formatter with a `tool` directive in its
+`go.mod` runs its own version instead, see [the Go preset](go-preset.md#selection).
 
 ## Java and Kotlin
 

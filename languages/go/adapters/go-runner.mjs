@@ -14,6 +14,10 @@ import { readMutationFindings } from './mutation/go-mutation.mjs';
 import { goRouteRule, readGoFindings } from './go-findings.mjs';
 import { createGoContext, runGoSteps } from './go-steps.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
 const GO_OPTIONS = ['--go-settings', '--part', '--baseline-moves-file'];
@@ -40,8 +44,30 @@ function withReportRoot(step) {
   }
 }
 
+const FIX_ANCHORS = new Map([
+  ['go-missing', TROUBLESHOOTING_ANCHORS.goMissing],
+  ['go-mod-tidy-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-list-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-env-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-inspect-failed', TROUBLESHOOTING_ANCHORS.goModuleFails],
+  ['go-vet-failed', TROUBLESHOOTING_ANCHORS.goVetOrTestFails],
+  ['go-test-failed', TROUBLESHOOTING_ANCHORS.goVetOrTestFails],
+  ['go-tool-install-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+  ['go-lint-build-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+  ['go-inspect-build-failed', TROUBLESHOOTING_ANCHORS.goToolBuildFails],
+]);
+
+function fixAnchor(rule) {
+  return FIX_ANCHORS.get(rule);
+}
+
 function partToolError(failure, part) {
-  return { ...toolError(failure), tool: part };
+  const error = toolError(failure);
+  return {
+    ...error,
+    tool: part,
+    message: withTroubleshooting(error.message, fixAnchor(error.rule)),
+  };
 }
 
 function partFindings(context, part, policy) {

@@ -2118,6 +2118,9 @@ Build tags for the tests go in `"go": { "buildTags": ["integration"] }`. Excepti
 as printed, `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or a shared
 rule. Details and the remaining slices: [go-preset.md](go-preset.md).
 
+Troubleshooting: the failures this preset meets are listed in the
+[Go preset guide](go-preset/troubleshooting.md).
+
 ## JavaScript preset
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
