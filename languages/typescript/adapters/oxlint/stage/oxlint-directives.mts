@@ -6,10 +6,22 @@ import {
   overlayFile,
   withoutDirectives,
   withRenamedRules,
-} from './oxlint-inline-config.mjs';
+} from './oxlint-inline-config.mts';
+import type { Directive } from './oxlint-inline-config.mts';
+import type { LintResult } from '../plan/oxlint-shapes.mts';
 
-export function neutralizeInlineConfig(stage, projectRoot, files) {
-  const neutralized = new Map();
+export type DirectiveFile = {
+  readonly file: string;
+  readonly text: string;
+  readonly directives: readonly Directive[];
+};
+
+export function neutralizeInlineConfig(
+  stage: string,
+  projectRoot: string,
+  files: readonly string[],
+): { readonly results: LintResult[]; readonly neutralized: Map<string, Set<string>> } {
+  const neutralized = new Map<string, Set<string>>();
   const results = files.flatMap((file) => {
     const text = readFileSync(path.join(projectRoot, file), 'utf8');
     const directives = directiveComments(text, file);
@@ -30,7 +42,11 @@ export function neutralizeInlineConfig(stage, projectRoot, files) {
   return { results, neutralized };
 }
 
-export function directiveFilesOf(projectRoot, files, noInlineConfig) {
+export function directiveFilesOf(
+  projectRoot: string,
+  files: readonly string[],
+  noInlineConfig: readonly string[],
+): DirectiveFile[] {
   const locked = new Set(noInlineConfig);
   return files
     .filter((file) => !locked.has(file))
@@ -40,24 +56,36 @@ export function directiveFilesOf(projectRoot, files, noInlineConfig) {
     .filter(({ directives }) => directives.length > 0);
 }
 
-function oxlintDirectives(directives) {
+function oxlintDirectives(directives: readonly Directive[]): Directive[] {
   return directives.filter(({ isEslint }) => !isEslint);
 }
 
-export function oxlintDirectiveLocations(directiveFiles) {
+export function oxlintDirectiveLocations(
+  directiveFiles: readonly DirectiveFile[],
+): [string, Set<string>][] {
   return directiveFiles
-    .map(({ file, directives }) => [
+    .map(({ file, directives }): [string, Set<string>] => [
       file,
       new Set(oxlintDirectives(directives).map(({ neutralizedLocation }) => neutralizedLocation)),
     ])
     .filter(([, locations]) => locations.size > 0);
 }
 
-export function rewriteDirectiveComments({ stage, projectRoot, directiveFiles, ruleNames }) {
+export function rewriteDirectiveComments({
+  stage,
+  projectRoot,
+  directiveFiles,
+  ruleNames,
+}: {
+  readonly stage: string;
+  readonly projectRoot: string;
+  readonly directiveFiles: readonly DirectiveFile[];
+  readonly ruleNames: ReadonlyMap<string, string>;
+}): void {
   const renames = new Map(
     [...ruleNames]
       .filter(([oxlintName]) => oxlintName.startsWith('js-'))
-      .map(([oxlintName, ruleId]) => [ruleId, oxlintName]),
+      .map(([oxlintName, ruleId]): [string, string] => [ruleId, oxlintName]),
   );
   for (const { file, text, directives } of directiveFiles) {
     const content = withRenamedRules(

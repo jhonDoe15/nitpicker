@@ -9,14 +9,9 @@ import {
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';
 import type { TestEnvironments } from '../eslint/typed/engine.mts';
-import {
-  type CollectedRun,
-  type LintEngineOptions,
-  lintWithOxlint,
-  projectLayerValue,
-  spawnCollected,
-  troubleshootingError,
-} from './typed/tools.mts';
+import { type LintEngineOptions, projectLayerValue, troubleshootingError } from './typed/tools.mts';
+import { type CollectedRun, spawnCollected } from '../oxlint/oxlint-process.mts';
+import { lintWithOxlint } from '../oxlint/oxlint-runner.mts';
 
 export type LintEngineRun = {
   readonly options: LintEngineOptions;

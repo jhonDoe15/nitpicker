@@ -1,6 +1,6 @@
 import type TypeScript from 'typescript';
 import { ERROR_CLASS_HINT, KINDS } from '../immutable-types/kinds.mts';
-import { typescriptApi } from '../typed/typescript-program.mts';
+import { parentOf, typescriptApi } from '../typed/typescript-program.mts';
 import {
   type MutablePart,
   type TypeKind,
@@ -73,10 +73,6 @@ function hintOf(finding: FlaggedPart | undefined): string {
   return finding.label === 'Error'
     ? ERROR_CLASS_HINT
     : `${String(finding.label)} is a class and always mutable: keep it in adapters/ and pass domain code a plain value.`;
-}
-
-function parentOf(node: Node): Node | undefined {
-  return node.parent;
 }
 
 function declarationOf(kind: string, node: Node): Declaration | undefined {

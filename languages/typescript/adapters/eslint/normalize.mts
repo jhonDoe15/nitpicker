@@ -14,7 +14,7 @@ import {
   syntaxFingerprint,
   commentFingerprint,
   normalizeMessageText,
-} from './typed/syntax.mts';
+} from './syntax.mts';
 import {
   type EslintFinding,
   type EslintMessage,

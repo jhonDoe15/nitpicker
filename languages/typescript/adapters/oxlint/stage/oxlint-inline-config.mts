@@ -1,16 +1,36 @@
 import { lstatSync, mkdirSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../typed/typescript-program.mts';
+import type { LintMessage } from '../plan/oxlint-shapes.mts';
 
-const TOGGLE_KEYWORD = String.raw`(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?`;
+export type Directive = {
+  readonly comment: string;
+  readonly start: number;
+  readonly keywordEnd: number;
+  readonly neutralizedAt: number;
+  readonly neutralizer: string;
+  readonly neutralizedLocation: string;
+  readonly isEslint: boolean;
+  readonly line: number;
+  readonly column: number;
+};
+
+type StagedFile = { readonly stage: string; readonly projectRoot: string };
+
+const ts = typescriptApi();
+
+const TOGGLE_KEYWORD = /(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?/u;
 const LINE_DIRECTIVE = directivePattern(TOGGLE_KEYWORD);
 const INVISIBLE_TO_OXLINT = '\uFEFF';
 const RULE_TOKEN = /[\w@/-]+/gu;
-const BLOCK_DIRECTIVE = directivePattern(`${TOGGLE_KEYWORD}|eslint|eslint-env|globals?|exported`);
+const BLOCK_DIRECTIVE = directivePattern(
+  new RegExp(`${TOGGLE_KEYWORD.source}|eslint|eslint-env|globals?|exported`, 'u'),
+);
 
 const DIRECTIVE_KEYWORD = /eslint|oxlint|global|exported/u;
 
-export function directiveComments(text, fileName) {
+export function directiveComments(text: string, fileName: string): Directive[] {
   if (!DIRECTIVE_KEYWORD.test(text)) {
     return [];
   }
@@ -20,10 +40,10 @@ export function directiveComments(text, fileName) {
     .filter((directive) => directive !== undefined);
 }
 
-function commentRanges(sourceFile) {
-  const ranges = new Map();
+function commentRanges(sourceFile: TypeScript.SourceFile): TypeScript.CommentRange[] {
+  const ranges = new Map<number, TypeScript.CommentRange>();
   const text = sourceFile.text;
-  const nodes = [sourceFile];
+  const nodes: TypeScript.Node[] = [sourceFile];
   for (const node of nodes) {
     if (node.kind !== ts.SyntaxKind.JsxText) {
       addRanges(ranges, ts.getLeadingCommentRanges(text, node.getFullStart()));
@@ -34,35 +54,43 @@ function commentRanges(sourceFile) {
   return [...ranges.values()].sort((left, right) => left.pos - right.pos);
 }
 
-function addRanges(ranges, found) {
+function addRanges(
+  ranges: Map<number, TypeScript.CommentRange>,
+  found: readonly TypeScript.CommentRange[] | undefined,
+): void {
   for (const range of found ?? []) ranges.set(range.pos, range);
 }
 
-function directiveAt(sourceFile, range) {
+function directiveAt(
+  sourceFile: TypeScript.SourceFile,
+  range: TypeScript.CommentRange,
+): Directive | undefined {
   const comment = sourceFile.text.slice(range.pos, range.end);
   const isLine = range.kind === ts.SyntaxKind.SingleLineCommentTrivia;
   const body = isLine ? comment.slice(2) : comment.slice(2, -2);
   const match = (isLine ? LINE_DIRECTIVE : BLOCK_DIRECTIVE).exec(body);
   if (match === null) return undefined;
+  const space = match.groups?.['space'] ?? '';
+  const keyword = match.groups?.['keyword'] ?? '';
   const { line, character } = sourceFile.getLineAndCharacterOfPosition(range.pos);
-  const keywordStart = range.pos + 2 + match.groups.space.length;
-  const hasSpace = match.groups.space.length > 0;
+  const keywordStart = range.pos + 2 + space.length;
+  const hasSpace = space.length > 0;
   const neutralizedAt = hasSpace ? keywordStart - 1 : keywordStart;
   const neutralized = sourceFile.getLineAndCharacterOfPosition(neutralizedAt);
   return {
     comment,
     start: range.pos,
-    keywordEnd: keywordStart + match.groups.keyword.length,
+    keywordEnd: keywordStart + keyword.length,
     neutralizedAt,
     neutralizer: hasSpace ? INVISIBLE_TO_OXLINT : '_',
     neutralizedLocation: `${String(neutralized.line + 1)}:${String(neutralized.character + 1)}`,
-    isEslint: !match.groups.keyword.startsWith('oxlint'),
+    isEslint: !keyword.startsWith('oxlint'),
     line: line + 1,
     column: character + 1,
   };
 }
 
-export function inlineConfigMessages(directives) {
+export function inlineConfigMessages(directives: readonly Directive[]): LintMessage[] {
   return directives
     .filter((directive) => directive.isEslint)
     .map((directive) => ({
@@ -74,7 +102,7 @@ export function inlineConfigMessages(directives) {
     }));
 }
 
-export function withoutDirectives(text, directives) {
+export function withoutDirectives(text: string, directives: readonly Directive[]): string {
   let result = text;
   for (const { neutralizedAt, neutralizer } of directives) {
     result = `${result.slice(0, neutralizedAt)}${neutralizer}${result.slice(neutralizedAt + 1)}`;
@@ -82,7 +110,11 @@ export function withoutDirectives(text, directives) {
   return result;
 }
 
-export function withRenamedRules(text, directives, renames) {
+export function withRenamedRules(
+  text: string,
+  directives: readonly Directive[],
+  renames: ReadonlyMap<string, string>,
+): string {
   let result = text;
   for (const directive of directives.filter(({ isEslint }) => isEslint).reverse()) {
     const keywordEnd = directive.keywordEnd - directive.start;
@@ -94,7 +126,12 @@ export function withRenamedRules(text, directives, renames) {
   return result;
 }
 
-export function overlayFile({ stage, projectRoot, relativePath, content }) {
+export function overlayFile({
+  stage,
+  projectRoot,
+  relativePath,
+  content,
+}: StagedFile & { readonly relativePath: string; readonly content: string }): void {
   const filePath = path.join(
     materializedDirectory({ stage, projectRoot, relativeDirectory: path.dirname(relativePath) }),
     path.basename(relativePath),
@@ -103,7 +140,11 @@ export function overlayFile({ stage, projectRoot, relativePath, content }) {
   writeFileSync(filePath, content);
 }
 
-export function materializedDirectory({ stage, projectRoot, relativeDirectory }) {
+export function materializedDirectory({
+  stage,
+  projectRoot,
+  relativeDirectory,
+}: StagedFile & { readonly relativeDirectory: string }): string {
   const segments = relativeDirectory.split('/').filter((segment) => segment !== '.');
   let stagePath = stage;
   let projectPath = projectRoot;
@@ -115,7 +156,7 @@ export function materializedDirectory({ stage, projectRoot, relativeDirectory })
   return stagePath;
 }
 
-function materializeDirectory(stagePath, projectPath) {
+function materializeDirectory(stagePath: string, projectPath: string): void {
   unlinkSync(stagePath);
   mkdirSync(stagePath);
   for (const entry of readdirSync(projectPath)) {
@@ -123,6 +164,6 @@ function materializeDirectory(stagePath, projectPath) {
   }
 }
 
-function directivePattern(keywords) {
-  return new RegExp(String.raw`^(?<space>\s*)(?<keyword>${keywords})(?:\s|$)`, 'u');
+function directivePattern(keywords: RegExp): RegExp {
+  return new RegExp(String.raw`^(?<space>\s*)(?<keyword>${keywords.source})(?:\s|$)`, 'u');
 }

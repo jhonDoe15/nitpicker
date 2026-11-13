@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { spawnCollected, withCompileCache, withEngineHint } from './oxlint-process.mjs';
+import { spawnCollected, withCompileCache, withEngineHint } from './oxlint-process.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe('the engine hint on an oxlint failure', () => {

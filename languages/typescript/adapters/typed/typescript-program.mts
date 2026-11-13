@@ -8,6 +8,7 @@ import {
   withoutProjectRoot as untypedWithoutProjectRoot,
 } from '../typecheck/typescript-program.mjs';
 import { ts as untypedTs } from '../../typescript-api/typescript-api.mjs';
+import { chainOf as untypedChainOf } from '../../../../shared/traversal.mjs';
 
 type ProjectTypeScript = { readonly ts: typeof TypeScript; readonly native?: string };
 
@@ -53,3 +54,9 @@ export function typescriptApi(): typeof TypeScript {
   }
   return api;
 }
+
+export function parentOf(node: TypeScript.Node): TypeScript.Node | undefined {
+  return node.parent;
+}
+
+export const chainOf: <T>(start: T, next: (current: T) => T | undefined) => T[] = untypedChainOf;

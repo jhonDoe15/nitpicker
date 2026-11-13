@@ -1,9 +1,17 @@
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { chainOf } from '../../../../../shared/traversal.mjs';
-import { accumulatingSpreadMessageId } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
-import { scriptKind } from '../../eslint/syntax.mjs';
+import type TypeScript from 'typescript';
+import { chainOf, parentOf, typescriptApi } from '../../typed/typescript-program.mts';
+import { accumulatingSpreadMessageId as untypedAccumulatingSpreadMessageId } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
+import { scriptKind } from '../../eslint/syntax.mts';
+import type { OxlintDiagnostic, SpreadCheck, SpreadReport } from '../plan/oxlint-shapes.mts';
 
-const REDUCE_METHODS = new Set(['reduce', 'reduceRight']);
+type Node = TypeScript.Node;
+
+const accumulatingSpreadMessageId: (kind: string, filePath: string) => string =
+  untypedAccumulatingSpreadMessageId;
+
+const ts = typescriptApi();
+
+const REDUCE_METHODS = new Set<string | undefined>(['reduce', 'reduceRight']);
 const SPREAD_LABEL = 'From this spread';
 const BYTE_ORDER_MARK = '﻿';
 const SPREAD_KINDS = new Set([ts.SyntaxKind.SpreadElement, ts.SyntaxKind.SpreadAssignment]);
@@ -17,7 +25,7 @@ const FUNCTION_KINDS = new Set([
   ts.SyntaxKind.SetAccessor,
 ]);
 
-function nativeKind({ message, help = '' }) {
+function nativeKind({ message, help = '' }: OxlintDiagnostic): string {
   if (message.includes('in loops')) {
     return help.includes('Object.assign') ? 'loopObject' : 'loopArray';
   }
@@ -27,11 +35,14 @@ function nativeKind({ message, help = '' }) {
   return help.includes('spreading an `Array`') ? 'reduceArray' : 'reduce';
 }
 
-export function accumulatingSpreadReport(diagnostic, filePath) {
+export function accumulatingSpreadReport(
+  diagnostic: OxlintDiagnostic,
+  filePath: string,
+): { readonly messageId: string; readonly check: SpreadReport } {
   const kind = nativeKind(diagnostic);
   const spread = diagnostic.labels?.find(({ label }) => label === SPREAD_LABEL);
   if (spread === undefined) {
-    throw new Error(`oxlint's ${diagnostic.code} report has no "${SPREAD_LABEL}" label`);
+    throw new Error(`oxlint's ${String(diagnostic.code)} report has no "${SPREAD_LABEL}" label`);
   }
   return {
     messageId: accumulatingSpreadMessageId(kind, filePath),
@@ -39,22 +50,27 @@ export function accumulatingSpreadReport(diagnostic, filePath) {
   };
 }
 
-function nodesAt(sourceFile, position) {
-  return chainOf(sourceFile, (node) =>
+function nodesAt(sourceFile: TypeScript.SourceFile, position: number): Node[] {
+  return chainOf<Node>(sourceFile, (node) =>
     ts.forEachChild(node, (child) =>
       child.getStart(sourceFile) <= position && position < child.end ? child : undefined,
     ),
   );
 }
 
-function outermostParenthesized(node) {
-  return chainOf(node, (current) =>
-    ts.isParenthesizedExpression(current.parent) ? current.parent : undefined,
-  ).at(-1);
+function outermostParenthesized(node: Node): Node {
+  return (
+    chainOf(node, (current) =>
+      ts.isParenthesizedExpression(current.parent) ? current.parent : undefined,
+    ).at(-1) ?? node
+  );
 }
 
-function calledMethodName(callee) {
-  const expression = ts.skipParentheses(callee);
+function calledMethodName(callee: TypeScript.Expression): string | undefined {
+  const expression =
+    chainOf(callee, (current) =>
+      ts.isParenthesizedExpression(current) ? current.expression : undefined,
+    ).at(-1) ?? callee;
   if (ts.isPropertyAccessExpression(expression)) {
     return ts.isIdentifier(expression.name) ? expression.name.text : undefined;
   }
@@ -64,7 +80,9 @@ function calledMethodName(callee) {
     : undefined;
 }
 
-function calledWith(receiver) {
+function calledWith(
+  receiver: Node,
+): { readonly method: string | undefined; readonly call: TypeScript.CallExpression } | undefined {
   const outer = outermostParenthesized(receiver);
   const call = outer.parent.parent;
   return ts.isPropertyAccessExpression(outer.parent) &&
@@ -75,7 +93,7 @@ function calledWith(receiver) {
     : undefined;
 }
 
-function isDirectReducer(fn) {
+function isDirectReducer(fn: Node): boolean {
   const argument = outermostParenthesized(fn);
   const call = argument.parent;
   return (
@@ -86,7 +104,7 @@ function isDirectReducer(fn) {
   );
 }
 
-function isNumber(node) {
+function isNumber(node: Node | undefined): boolean {
   const literal =
     node !== undefined &&
     ts.isPrefixUnaryExpression(node) &&
@@ -96,7 +114,7 @@ function isNumber(node) {
   return literal !== undefined && ts.isNumericLiteral(literal);
 }
 
-function isBoundingSlice(array) {
+function isBoundingSlice(array: Node): boolean {
   const called = calledWith(array);
   if (called?.method !== 'slice') {
     return false;
@@ -104,10 +122,13 @@ function isBoundingSlice(array) {
   const [start, end] = called.call.arguments;
   return called.call.arguments.length === 2
     ? isNumber(start) && isNumber(end)
-    : called.call.arguments.length === 1 && ts.isPrefixUnaryExpression(start) && isNumber(start);
+    : called.call.arguments.length === 1 &&
+        start !== undefined &&
+        ts.isPrefixUnaryExpression(start) &&
+        isNumber(start);
 }
 
-function isFixedShape(spread) {
+function isFixedShape(spread: Node): boolean {
   const container = spread.parent;
   if (ts.isObjectLiteralExpression(container)) {
     return container.properties.every(
@@ -119,7 +140,10 @@ function isFixedShape(spread) {
   return ts.isArrayLiteralExpression(container) && isBoundingSlice(container);
 }
 
-export function accumulatingSpreadCheck(filePath, text) {
+export function accumulatingSpreadCheck(
+  filePath: string,
+  text: string,
+): (check: SpreadCheck) => boolean {
   const sourceFile = ts.createSourceFile(
     filePath,
     text.startsWith(BYTE_ORDER_MARK) ? text.slice(1) : text,
@@ -135,9 +159,7 @@ export function accumulatingSpreadCheck(filePath, text) {
     if (node === undefined || isFixedShape(node)) {
       return false;
     }
-    const fn = chainOf(node.parent, (current) => current.parent).find((current) =>
-      FUNCTION_KINDS.has(current.kind),
-    );
+    const fn = chainOf(node.parent, parentOf).find((current) => FUNCTION_KINDS.has(current.kind));
     return !reducer || (fn !== undefined && isDirectReducer(fn));
   };
 }
