@@ -49,3 +49,9 @@ the older `mu` package), the Ktor client, and `Uuid.random()` from `kotlin.uuid`
 source like `UUID.randomUUID()`. A top-level function in a domain package is checked through its
 file facade, so the finding is on its file. An `inline` library function is copied into the
 domain class, so the edge is to what its body calls.
+
+**Feature cycles.** A cycle between features is reported as `feature-cycle` on each edge that
+closes it, also when an edge goes through a file facade (`RatesKt`) and so starts or ends at a
+`.kt` file. The `package-cycle` of the same packages is left out when the feature edges alone
+close it, so one cycle fails once. Packages of one feature split over `src/main/java` and
+`src/main/kotlin` are one feature, so a loop between them is no feature cycle.
