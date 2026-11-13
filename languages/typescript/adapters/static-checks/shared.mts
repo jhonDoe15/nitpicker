@@ -85,9 +85,9 @@ export function policyPath(
   relativePath: string,
   resolved = relativePath,
 ): string {
-  const filePath = path.resolve(policyRoot, resolved);
-  const relativeToPolicy = path.relative(policyRoot, filePath);
-  if (relativeToPolicy.startsWith(`..${path.sep}`) || path.isAbsolute(relativeToPolicy)) {
+  const root = path.resolve(policyRoot);
+  const filePath = path.resolve(root, resolved);
+  if (!filePath.startsWith(root + path.sep)) {
     throw new Error(`Policy path must stay within the policy root: ${relativePath}`);
   }
   if (!statSync(filePath).isFile()) {
