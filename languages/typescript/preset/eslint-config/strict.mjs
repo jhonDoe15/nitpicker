@@ -215,6 +215,13 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       plugins: { nitpicker: nitpickerRules },
       rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
     },
+    {
+      files: testAreaGlobsFor(layout),
+      ignores: layout.excludedGlobs,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-dropped-test-callback': 'error' },
+    },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,
       files: adapterGlobsFor(layout.sourceRoots),

@@ -115,4 +115,35 @@ let $values := ('String', 'Integer', 'Long', 'Double', 'Float', 'Short', 'Byte',
 //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]/ModifierList/Annotation[@SimpleName = 'Order']
 ]]></value></property></properties>
   </rule>
+  <rule name="DroppedCallbackInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="The callback this call returns never runs. Pass it on or call it: ctx.run(assertMax(123)) or assertMax(123).accept(ctx), not (ctx) -> assertMax(123) or a bare assertMax(123) statement.">
+    <description>A statement that builds a functional-interface value and drops it checks nothing.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $types := ('Runnable', 'Callable', 'Supplier', 'Consumer', 'BiConsumer', 'Function', 'BiFunction', 'Predicate', 'BiPredicate',
+      'UnaryOperator', 'BinaryOperator', 'Executable', 'ThrowingSupplier', 'ThrowingConsumer', 'ContextConsumer',
+      //(ClassDeclaration | AnnotationTypeDeclaration)[ModifierList/Annotation[@SimpleName = 'FunctionalInterface']]/@SimpleName),
+    $names := //MethodDeclaration[ClassType[@SimpleName = $types]]/@Name
+return
+(//ExpressionStatement/MethodCall
+|
+//LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('run', 'forEach', 'ifPresent', 'ifPresentOrElse', 'execute', 'assertAll', 'assertThrows')]]/MethodCall)
+[(@MethodName = $names and *[1][self::ArgumentList or self::ThisExpression])
+  or pmd-java:matchesSig('java.util.function.Function#andThen(_*)') or pmd-java:matchesSig('java.util.function.Function#compose(_*)')
+  or pmd-java:matchesSig('java.util.function.BiFunction#andThen(_*)') or pmd-java:matchesSig('java.util.function.Consumer#andThen(_*)')
+  or pmd-java:matchesSig('java.util.function.BiConsumer#andThen(_*)') or pmd-java:matchesSig('java.util.function.Predicate#negate()')
+  or pmd-java:matchesSig('java.util.function.Predicate#and(_*)') or pmd-java:matchesSig('java.util.function.Predicate#or(_*)')]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="MessageAfterAssertion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This AssertJ description or failure message comes after the assertion, so it never applies. Set it before the assertion: assertThat(x).as(&quot;...&quot;).isTrue() or assertThat(x).withFailMessage(&quot;...&quot;).isTrue().">
+    <description>as, describedAs, withFailMessage and overridingErrorMessage only apply to the assertions that follow them.</description>
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('as', 'describedAs', 'withFailMessage', 'overridingErrorMessage')][not(parent::MethodCall)]
+  [*[1][self::MethodCall][matches(@MethodName, '^(is[A-Z]|isNot|has[A-Z]|hasNot|contains|doesNot|matches|satisfies|startsWith|endsWith|allMatch|anyMatch|noneMatch|allSatisfy|anySatisfy|noneSatisfy|isEqualTo)')]
+    [descendant-or-self::MethodCall[starts-with(@MethodName, 'assertThat') or @MethodName = ('then', 'assertWith')]]]
+]]></value></property></properties>
+  </rule>
 </ruleset>

@@ -23,6 +23,7 @@ import { rule as ruleNoDecidedCondition } from './rules/decided/no-decided-condi
 import { rule as ruleNoDefaultExport } from './rules/syntax/no-default-export.mjs';
 import { rule as ruleNoDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as ruleNoDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
+import { rule as ruleNoDroppedTestCallback } from './test-assertions/dropped-callback/no-dropped-test-callback.mjs';
 import { rule as ruleNoEagerRelation } from './rules/persistence/no-eager-relation.mjs';
 import { rule as ruleNoExternalExecutablesInUnitTests } from './rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 import { rule as ruleNoFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
@@ -156,6 +157,7 @@ export const directoryRules = {
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
+  'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-eager-relation': ruleNoEagerRelation,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,

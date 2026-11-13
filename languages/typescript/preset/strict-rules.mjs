@@ -31,6 +31,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-copied-constant',
   'nitpicker/no-default-export',
   'nitpicker/no-disabled-tls-verification',
+  'nitpicker/no-dropped-test-callback',
   'nitpicker/no-eager-relation',
   'nitpicker/no-falsy-default',
   'nitpicker/no-first-test-charged-setup',

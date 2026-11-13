@@ -2253,6 +2253,8 @@
                             "pmd/CoroutineEscapesTest",
                             "pmd/FloatEqualityInTest",
                             "pmd/WeakAssertionInTest",
+                            "pmd/DroppedCallbackInTest",
+                            "pmd/MessageAfterAssertion",
                             "pmd/GlobalStateLeakInTest",
                             "pmd/SharedTestState",
                             "pmd/MockedSubjectInTest",
