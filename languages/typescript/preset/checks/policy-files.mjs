@@ -3,6 +3,7 @@ import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/coll
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
+import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
@@ -10,6 +11,7 @@ export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
+  ...LIFECYCLE_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
   'shared/head-policy.mjs',
@@ -107,12 +109,6 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/round-trips/exported-pairs.mjs',
   'languages/typescript/preset/eslint-plugin/rules/round-trips/tested-names.mjs',
   'shared/rules/round-trips/round-trips.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/cannot-reject.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/no-unhandled-void-promise.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/executors/error-callbacks.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/executors/executor-sources.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/executors/promise-wait-deadline.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/promises/executors/require-promise-reject.mjs',
   'languages/typescript/preset/eslint-plugin/rules/regex/regex-bindings.mjs',
   'languages/typescript/preset/eslint-plugin/rules/regex/no-shared-stateful-regex.mjs',
   'languages/typescript/preset/eslint-plugin/rules/regex/no-string-as-regex.mjs',

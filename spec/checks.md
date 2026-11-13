@@ -145,6 +145,21 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
+`Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
+`pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,
+`blockOptional()`, `blockFirst()` and `blockLast()` without a `Duration`, on Gradle and Maven alike.
+`kotlin-source/UnboundedWait` and `kotlin-source/ReactorBlockWithoutTimeout` run the same checks in the
+Kotlin preset, and `unbounded-wait` runs them in the Python preset for `concurrent.futures` futures,
+`concurrent.futures.wait` and `as_completed`, and `threading.Thread.join()`. The TypeScript and
+JavaScript presets have no counterpart, since a promise has no blocking wait.
+
+Blocking helpers in async code: `blocking-helper-in-async` (Python, main sources) reports a call from an `async def`
+to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system` or
+`subprocess.run` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread` or
+`run_in_executor`; a blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`.
+The other presets have no helper-aware counterpart.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
@@ -179,6 +194,97 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 `return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
+
+Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
+folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
+`manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic
+goes in a shared folder. The same list runs as `generic-name` in the Python and Go presets, as
+`kotlin-source/GenericTypeName`, `GenericFileName` and `GenericPackageName` in the Kotlin preset,
+and as `pmd/GenericTypeName` and `pmd/GenericPackageName` in the Java preset (a Java file is named
+after its type). A framework role (`CacheManager`, `SessionManager`) and a type that extends a type
+with the same last word pass; a domain-term manager takes the exception.
+
+Repeated string literals: `nitpicker/no-repeated-string-literal` (production source, in
+`eslint-lint`) reports each use from the third on of a string of five characters or more that
+appears three times in a file (a template literal without expressions counts), so the text is named
+once as a constant. Import sources, keys, `case` labels, string literal types, JSX attribute and
+`className` values, `const` initializers, `typeof` comparisons, decorator arguments, event names,
+module mocks, translation keys, discriminant values (the value under a `type`, `kind`, `tag` or
+`variant` key, or a text compared with a member of that name), the `error` severity in a lint config
+entry and idiomatic texts are not counted. The same
+definition runs as `repeated-string-literal` in the Python and Go presets, as
+`kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
+the Java preset.
+Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
+(production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
+field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
+anywhere, and a secret-named value passed to a log call or an error message. The same forms run as
+`hardcoded-secret`, `credential-shape` and `secret-in-log` in the Python and Go presets, as
+`pmd/HardcodedSecret`, `pmd/CredentialLiteral` and `pmd/SecretInLog` in the Java preset (main sources,
+Gradle and Maven) and as the `HardcodedSecret`, `CredentialLiteral` and `SecretInLog` source checks in the
+Kotlin preset. All presets share one definition of the names and the values
+(`shared/naming/secret-words.mjs`). Spring configuration files have their own `literal-secret` check.
+
+Task markers and commented-out code: `todo-without-issue` and `commented-out-code` report a `TODO` or
+`FIXME` comment with no issue reference, and a comment that reads as code. The Python preset runs them as
+`todo-without-issue` and ruff `ERA001`, the Kotlin preset as detekt `ForbiddenComment` and the `CommentedOutCode`
+source check, the Java preset as `pmd/TodoWithoutIssue` and `pmd/CommentedOutCode` (a scan of the source
+comments, on `.java` files of Kotlin projects too), and the Go preset as `go-rules/todo-without-issue` and
+go-critic `commentedOutCode`. The TypeScript and JavaScript presets ban comments outright.
+
+Boolean flag parameters: `nitpicker/no-boolean-flag-parameter` (strict preset, production source) reports a
+`boolean` parameter that an exported function or public member branches on. The same rule runs as
+`boolean-flag-parameter` in the Python preset, `pmd/BooleanFlagParameter` in the Java preset (main sources,
+Gradle and Maven), the `BooleanFlagParameter` source check in the Kotlin preset and revive `flag-parameter`
+in the Go preset. The allowed form is two functions, an options object or an enum.
+Cleanup that stops at the first failed release: `nitpicker/no-cleanup-skipped-on-failure` (strict preset,
+production source and tests) reports, in a close, dispose, stop or shutdown function, an `afterAll` or
+`afterEach` callback and a shutdown-signal callback, an awaited release (`close`, `disconnect`, `destroy`,
+`end`, `quit`, `stop`, `unsubscribe`) followed in the same block by another release or a state reset, and
+`Promise.all` over releases. The same form runs as `cleanup-skipped-on-failure` in the Python preset (also
+the part of a fixture after its `yield`, and `asyncio.gather` over releases without `return_exceptions=True`),
+`pmd/CleanupSkippedOnFailure` in the Java preset, `kotlin-source/CleanupSkippedOnFailure` in the Kotlin
+preset and `go-rules/cleanup-skipped` in the Go preset (an early `return` after a failed `Close`). A release
+inside `try`/`finally`, try-with-resources, `use`, `ExitStack` or `errors.Join` is left alone.
+
+Pending requests left hanging by a close: `nitpicker/settle-pending-on-close` (strict preset, production source)
+reports a `Map`, object or array of callbacks, resolve and reject pairs or deferreds in a class or factory with a
+close, dispose, stop or shutdown function that never settles it (rejecting or calling each entry, or passing
+the collection to a call), since a bare `.clear()` leaves every waiting caller hanging. The same form runs as
+`pending-unsettled-on-close` in the Python preset (a dict of futures), `pmd/PendingFuturesNotFailedOnClose` in
+the Java preset (a `Map` of `CompletableFuture`, `Future` and the like), `kotlin-source/PendingFuturesNotFailedOnClose`
+in the Kotlin preset (also `CompletableDeferred`) and `go-rules/pending-not-closed` in the Go preset (a map of
+channels). A close that fails or completes each entry, or hands the collection to a helper that does, is left alone.
+
+Listeners and timers a close never releases: `nitpicker/release-listeners-on-close` (strict preset, production
+source outside composition roots) reports, in a class or factory with a close, dispose, stop or shutdown function,
+`on`, `addListener` or `addEventListener` on a long-lived emitter (a field, a closure or module variable,
+`process`) and a `setInterval` or kept `setTimeout` handle that nothing in the scope removes or clears. `once`,
+an `AbortSignal` and a short-lived emitter are left alone. The same form runs as `handle-unreleased-on-close` in
+the Python preset (`call_later`, `call_at`, `threading.Timer` and signal handlers), `pmd/TimerNotStoppedOnClose`
+in the Java preset and `kotlin-source/TimerNotStoppedOnClose` in the Kotlin preset (a scheduled executor or
+`Timer` that close never shuts down) and `go-rules/ticker-not-stopped` in the Go preset (`time.NewTicker`
+without `Stop`).
+
+Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
+typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
+guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a
+clearing that does not check the binding still holds this attempt. Concurrent lazy loads that do not share one in-flight promise are not reported (that needs data flow across calls). A static field cached through the class name is not tracked. The Java and Go forms do not check the identity form. The same form runs as `cached-rejection` in the
+Python preset (a task or future on an attribute, and `functools.cache` on an `async def`),
+`pmd/CachedFutureKeepsFailure` in the Java preset (a `CompletableFuture` memo field),
+`kotlin-source/CachedDeferredKeepsFailure` in the Kotlin preset (a `Deferred` property or `by lazy` that starts an
+`async`; the stale-attempt form is not read there) and `go-rules/once-keeps-error` in the Go preset (`sync.Once` and
+`sync.OnceValues` around an initialiser that can fail).
+
+Long-lived collections that only grow: `nitpicker/no-add-only-collection` (strict preset, production source) reports a
+`Map`, `Set` or array in a class field or in a factory closure (a factory with a close function) that a method or returned function adds to per key and that
+nothing in the scope removes from, bounds by `size` or `length`, or hands to a call; startup registries (the
+constructor, `init*`, `register*`, literal keys) and `WeakMap` are skipped, and module-level state stays with
+`nitpicker/no-module-level-mutable-state` (module bindings are never checked, because a module has no close function; collections that `settle-pending-on-close` owns are skipped). The same form runs as `unbounded-collection` in the Python preset (an
+attribute `dict`, `set` or `list` of a class with a close method), `pmd/UnboundedCollectionField` in the Java preset and
+`kotlin-source/UnboundedCollectionProperty` in the Kotlin preset (both limited to a singleton bean: a Spring
+stereotype or `@Singleton`) and `go-rules/map-only-grows` in the Go preset (a map field of a struct that holds a
+mutex).
 
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same

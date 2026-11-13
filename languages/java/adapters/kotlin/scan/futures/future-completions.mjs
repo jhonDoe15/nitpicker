@@ -14,7 +14,7 @@ const MESSAGES = {
     'Resume or complete it on the failure path too: call `continuation.resumeWithException(error)` or `deferred.completeExceptionally(error)` from the error callback, or use an API that throws by itself, such as a suspending client call or `future.await()` from kotlinx-coroutines. This continuation or future is resumed only with a value from a callback, so when the work behind the callback fails it never resumes and the caller waits forever.',
 };
 
-function skipSpace(code, from) {
+export function skipSpace(code, from) {
   const offset = code.slice(from).search(/\S/);
   return offset === -1 ? code.length : from + offset;
 }

@@ -41,6 +41,14 @@ var (
 		`cls`,
 		`sep`,
 		`mask`,
+		`next`,
+		`page`,
+		`continuation`,
+		`cancellation`,
+	}
+	maskedNameWords = []string{
+		`masked`,
+		`redacted`,
 	}
 	passphraseNameWords = []string{
 		`password`,
@@ -77,6 +85,7 @@ var (
 		`[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+`,
 		`(?:~|\.{1,2})?(?:/[\w.-]+)+/?`,
 		`\^.*\$`,
+		`\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?`,
 	}
 	identifierPatterns = []string{
 		`[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+`,
@@ -92,7 +101,7 @@ var (
 		`\bdjango-insecure-\S{6,}`,
 	}
 	embeddedSecretPatterns = []string{
-		`^[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
+		`^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
 		`^(?:bearer|basic|token)\s+(\S+)$`,
 		`[?&;]password=([^&;\s]+)`,
 	}
