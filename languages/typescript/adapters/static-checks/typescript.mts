@@ -25,6 +25,23 @@ type TypeScriptDiagnostics = {
   readonly ts: typeof TypeScript;
 };
 
+type DiagnosticFilter = {
+  readonly layout: ReturnType<typeof readLayout>;
+  readonly contextOnly: ReadonlySet<string>;
+  readonly projectRoot: string;
+};
+
+function isReportedDiagnostic(
+  diagnostic: TypeScript.Diagnostic,
+  filter: DiagnosticFilter,
+): boolean {
+  if (diagnostic.file === undefined) {
+    return true;
+  }
+  const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
+  return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file));
+}
+
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
   const preparedDependencies = prepareSnapshotDependencies(options);
@@ -43,14 +60,17 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectNative: native,
     });
     const layout = readLayout();
+    const contextOnly = contextOnlyFiles(targetPath, options.projectRoot, layout);
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics
         .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter(
-          (diagnostic) =>
-            diagnostic.file === undefined ||
-            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+        .filter((diagnostic) =>
+          isReportedDiagnostic(diagnostic, {
+            layout,
+            contextOnly,
+            projectRoot: options.projectRoot,
+          }),
         ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
@@ -113,11 +133,29 @@ export function normalizeTypeScriptDiagnostics({
   });
 }
 
+export function contextOnlyFiles(
+  configPath: string,
+  projectRoot: string,
+  layout: ReturnType<typeof readLayout>,
+): ReadonlySet<string> {
+  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
+  const files: unknown =
+    typeof config === 'object' && config !== null && 'files' in config ? config.files : [];
+  const listed = Array.isArray(files)
+    ? files.filter((file): file is string => typeof file === 'string')
+    : [];
+  return new Set(
+    listed
+      .map((file) => projectFile(projectRoot, path.resolve(path.dirname(configPath), file)))
+      .filter((file) => !(layout.isSourceFile(file) || layout.isTestFile(file))),
+  );
+}
+
 function installTypeScriptConfig(options: StaticCheckOptions): LinkedPolicyFile {
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
-    layoutTransformFor(options.configRelativePath, readLayout()),
+    layoutTransformFor(options.configRelativePath, readLayout(), { projectRootFiles: true }),
   );
 }
 

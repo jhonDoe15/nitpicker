@@ -2363,7 +2363,11 @@ own tools do:
   (see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)). TypeScript projects also get
   `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`
   (JavaScript projects do not); their errors name the allowed form (`env['PORT']`,
-  `title?: string | undefined`). The files checked are the source and test roots. Because `noEmit`
+  `title?: string | undefined`). The files checked are the source and test roots, and the files the
+  project's own tsconfig lists as root files (`include` and `files`, or the referenced config of a solution
+  tsconfig), so the global types those files bring in (Node's `process` through an `import 'node:path'` in a
+  benchmark, say) apply to the source files as they do under the project's own `tsc`. Root files outside
+  the source and test roots are context only: their own diagnostics are not reported. Because `noEmit`
   is set, `.js` files that the project's tsconfig includes no longer fail with TS5055; they get the
   JavaScript lint rules, `no-var` and `prefer-const` among them, and the type-aware `no-unsafe-*`,
   `restrict-plus-operands` and `restrict-template-expressions` rules, so code a change adds to an
