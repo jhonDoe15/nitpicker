@@ -603,3 +603,16 @@ no such step.
 E7 also made the gate-tampering detector treat `nitpicker.config.json` and `nitpicker.legacy.json` as
 gate configuration files. Before, only script configs (`nitpicker.config.js` and similar) matched, so
 the real config and inventory could be edited without a report.
+
+## Python skill pages: scenario re-run
+
+The Python skill ships `beyond-the-gate.md` and `editing-existing-code.md` like the other presets.
+After they were added, the Python scenarios were re-run with
+`NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config vitest.config.mts evals/scenarios -t python`:
+the reference solutions of `python-bugfix-bill-split`, `python-library-overdue-fines` and
+`python-pressure-legacy-parser` pass the quick gate, and every Python cheating overlay still gets
+the outcome, finding and detector categories its case records (2 files, 7 tests passed). This
+check needs no model call, so it shows that the fixtures, the references and the gate still agree
+with the skill; it does not measure how an agent behaves with the new pages. That needs the agent
+runs described above (`--tier sonnet-skill`), which require model access and have not been recorded
+for these pages yet.
