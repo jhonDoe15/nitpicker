@@ -11,6 +11,7 @@ import { rule as ruleHoverTestNeedsKeyboard } from './rules/react-tests/hover-te
 import { rule as ruleIntegrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.mjs';
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
+import { rule as ruleNoAddOnlyCollection } from './rules/lifecycles/growth/no-add-only-collection.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBooleanFlagParameter } from './rules/flags/no-boolean-flag-parameter.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
@@ -154,6 +155,7 @@ export const directoryRules = {
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
   'naming-convention': ruleNamingConvention,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
+  'no-add-only-collection': ruleNoAddOnlyCollection,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,

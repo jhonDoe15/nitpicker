@@ -37,4 +37,12 @@ export const LIFECYCLE_HINTS = [
     allowed:
       'Store the task, then clear the attribute in an `except` only while it still holds this attempt: `attempt = asyncio.ensure_future(self._open()); self._connection = attempt; try: return await attempt; except Exception: if self._connection is attempt: self._connection = None; raise`. Cache an async result by awaiting first (`self._value = await load()`), not with `functools.cache`. An exception fits only when keeping the first failure is intended (a startup-only cache).',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['unbounded-collection'],
+    describe: (subject) =>
+      `\`${subject}()\` adds to a long-lived collection that nothing removes from or bounds, so memory grows for the life of the process`,
+    allowed:
+      'Remove the entry when its request, session or run ends (`self._sessions.pop(session_id, None)` in a `finally` or the close method), bound the collection (`if len(self._cache) >= limit: ...` before the add, `collections.deque(maxlen=...)` or an LRU cache), or key a `weakref.WeakKeyDictionary` by the object. A registry filled at startup (literal keys, or an `__init__`, `init` or `register` method) is skipped. An exception fits only when the keys are a fixed finite set.',
+  },
 ];

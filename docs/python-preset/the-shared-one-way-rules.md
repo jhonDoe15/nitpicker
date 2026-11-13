@@ -874,6 +874,15 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   awaits an already awaited coroutine. Allowed: `attempt = asyncio.ensure_future(...); self._connection = attempt`
   and `except Exception: if self._connection is attempt: self._connection = None; raise`. `lru_cache` on a
   method is left to ruff `B019`.
+- `unbounded-collection` reports a long-lived collection that is only added to. In a class with a `close`, `aclose`,
+  `__exit__`, `dispose`, `destroy`, `shutdown`, `stop` or `disconnect` method (a class with a lifecycle is the long-lived
+  one), an instance attribute (or a class attribute, or a dataclass field with `default_factory`) that is a `dict`, `set`, `list`, `defaultdict`,
+  `OrderedDict` or `Counter`, that a method other than `__init__`, `init*`, `register*`, `setup*`, `configure*` or `on*init*`
+  adds to (`[key] =`, `append`, `add`, `setdefault`, `update`, `extend`, `insert`) with a non-literal key, is reported
+  when no method of the class deletes, pops, discards, clears, reassigns (also in a tuple assignment such as
+  `out, self.d = self.d, {}`) or passes the attribute, or a local alias of it, to a call, and
+  none reads its `len`. Allowed: remove the entry when its request, session or run ends, bound it, or key a
+  `weakref.WeakKeyDictionary` by the object. `functools.lru_cache(maxsize=None)` on a method is left to ruff `B019`.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group

@@ -129,6 +129,7 @@ const REVIEW_RULES = new Set([
   'PendingFuturesNotFailedOnClose',
   'TimerNotStoppedOnClose',
   'CachedFutureKeepsFailure',
+  'UnboundedCollectionField',
   'GeneratedMemberCycle',
   'GeneratedEqualsSkipsSuperclass',
 ]);

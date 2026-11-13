@@ -41,6 +41,8 @@ the allowed form and ends with its exception entry.
   (`go-rules/ticker-not-stopped`).
 - An initialiser that can fail does not run inside `sync.Once` or `sync.OnceValues`, which keep the first error:
   guard it with a mutex and reset on failure, or use `singleflight` (`go-rules/once-keeps-error`).
+- A map field of a mutex-guarded struct that a method writes per request is `delete`d from when the request ends, or
+  bounded (`go-rules/map-only-grows`).
 
 ## Package state and design
 

@@ -1481,6 +1481,57 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="UnboundedCollectionField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field of a singleton bean only ever gains entries, so memory grows for the life of the process. Remove the entry when its request, session or run ends (in a finally block or the close or destroy method), keep a bounded cache (Caffeine or Guava with a maximum size or expiry), or use a WeakHashMap keyed by the object. An exception fits only for a registry filled at startup.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $adding := ('put', 'add', 'addAll', 'putAll', 'computeIfAbsent', 'putIfAbsent', 'merge', 'offer', 'push',
+                'addFirst', 'addLast', 'offerFirst', 'offerLast', 'compute'),
+    $removing := ('remove', 'clear', 'removeIf', 'removeAll', 'retainAll', 'poll', 'pop', 'pollFirst', 'pollLast',
+                  'removeFirst', 'removeLast', 'evict', 'invalidate', 'trimToSize', 'subList', 'take', 'drainTo',
+                  'pollFirstEntry', 'pollLastEntry'),
+    $springBean := ('org.springframework.stereotype.Component', 'org.springframework.stereotype.Service',
+                    'org.springframework.stereotype.Repository', 'org.springframework.stereotype.Controller',
+                    'org.springframework.web.bind.annotation.RestController'),
+    $plain := ('java.util.HashMap', 'java.util.LinkedHashMap', 'java.util.TreeMap', 'java.util.ArrayList',
+               'java.util.LinkedList', 'java.util.HashSet', 'java.util.LinkedHashSet', 'java.util.TreeSet',
+               'java.util.ArrayDeque'),
+    $startup := '^(init|register|setup|configure|load|populate|build)'
+return //ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.stereotype.Component')
+                  or pmd-java:typeIs('org.springframework.stereotype.Service')
+                  or pmd-java:typeIs('org.springframework.stereotype.Repository')
+                  or pmd-java:typeIs('org.springframework.stereotype.Controller')
+                  or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+                  or pmd-java:typeIs('jakarta.inject.Singleton')
+                  or pmd-java:typeIs('javax.inject.Singleton')]]
+  /ClassBody/FieldDeclaration[@Static = false()]
+  [ClassType[pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Collection')]]
+  [not(ClassType[pmd-java:typeIs('java.util.WeakHashMap')])]
+  [not(pmd-java:modifiers() = 'final'
+       and ancestor::ClassDeclaration[1]/ModifierList/Annotation[some $t in $springBean satisfies pmd-java:typeIs($t)]
+       and VariableDeclarator/ConstructorCall/ClassType[some $t in $plain satisfies pmd-java:typeIsExactly($t)])]
+  [VariableDeclarator[not(.//ConstructorCall[pmd-java:typeIs('java.util.WeakHashMap')])]
+                     [not(.//MethodDeclaration[@Name = 'removeEldestEntry'])]]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $uses := $body//MethodCall[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]],
+       $growing := $uses[@MethodName = $adding]
+         [not(ancestor::ConstructorDeclaration or ancestor::Initializer)]
+         [not(ancestor::MethodDeclaration[matches(@Name, $startup) or ModifierList/Annotation[pmd-java:typeIs('jakarta.annotation.PostConstruct') or pmd-java:typeIs('javax.annotation.PostConstruct')]])]
+         [not(ArgumentList/*[1][self::StringLiteral or self::NumericLiteral])]
+   return exists($growing)
+     and empty($body//MethodCall[@MethodName = $removing][*[1][descendant-or-self::*[(self::VariableAccess or self::FieldAccess) and @Name = $name]]])
+     and empty($body//VariableDeclarator[not(parent::FieldDeclaration)][.//*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])
+     and empty($body//MethodCall/ArgumentList/*[(self::VariableAccess or self::FieldAccess) and @Name = $name])
+     and empty($body//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+                                          [not(ancestor::ConstructorDeclaration)])
+     and empty($body//InfixExpression[@Operator = ('<', '<=', '>', '>=')]//MethodCall[@MethodName = 'size'][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="UnboundedFanOut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.">
     <priority>2</priority>
