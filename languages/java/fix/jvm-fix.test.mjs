@@ -82,6 +82,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${JAVA}/New.java`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         `google-java-format rewrote ${JAVA}/New.java`,
@@ -147,6 +148,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten',
@@ -250,6 +252,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${JAVA}/Ok.java`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         `google-java-format rewrote ${JAVA}/Ok.java`,
@@ -456,6 +459,7 @@ describe('--fix for Kotlin', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${KT}/Ok.kt`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [`ktfmt rewrote ${KT}/Ok.kt`, `ktfmt could not parse ${KT}/Broken.kt`],
     });
@@ -467,6 +471,7 @@ describe('--fix for Kotlin', () => {
 
     expect(result).toEqual({
       fixedFiles: [],
+      fixedFindings: [],
       toolErrors: [],
       notes: [`ktlint could not parse ${KT}/Broken.kt`],
     });

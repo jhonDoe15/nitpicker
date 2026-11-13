@@ -16,6 +16,7 @@ type FixCli = {
 type FixResult = {
   readonly fixedFiles: readonly string[];
   readonly toolErrors: readonly unknown[];
+  readonly fixedFindings?: readonly string[];
   readonly notes?: readonly string[];
 };
 
@@ -43,6 +44,10 @@ export function fixIfRequested(
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
   );
+  const fixedFindings = fixResult.fixedFindings ?? [];
+  if (fixedFindings.length > 0) {
+    cli.stdout.write(`Fixed findings:\n${fixedFindings.map((line) => `  ${line}\n`).join('')}`);
+  }
   const notes = fixResult.notes ?? [];
   if (notes.length > 0) {
     cli.stdout.write(`Fix notes:\n${notes.map((note) => `  ${note}\n`).join('')}`);

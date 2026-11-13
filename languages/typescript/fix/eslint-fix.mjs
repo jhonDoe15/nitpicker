@@ -13,7 +13,7 @@ import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.
 import { readBytes } from '../../../core/fix/common/fix-files.mjs';
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
-import { replaceIfUnchanged } from '../../../core/fix/common/rewrite/safe-write.mjs';
+import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -101,13 +101,11 @@ function writeOutputs(projectRoot, before, outputs) {
       text: withFixedLineEndingsOf(before.get(name).toString('utf8'), output),
     }))
     .filter(({ name, text }) => text !== before.get(name).toString('utf8'));
-  const written = planned.filter(({ name, text }) =>
-    replaceIfUnchanged(containedPath(projectRoot, name), before.get(name), text),
+  const { written, changedMeanwhile, unwritable } = writeTexts(
+    projectRoot,
+    planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
   );
-  return {
-    rewritten: written.map(({ name }) => name),
-    changedMeanwhile: planned.filter((entry) => !written.includes(entry)).map(({ name }) => name),
-  };
+  return { rewritten: written, changedMeanwhile, unwritable };
 }
 
 function attemptEslintFix(settings, files, before) {
@@ -130,7 +128,14 @@ function attemptEslintFix(settings, files, before) {
       ),
     };
   } catch (error) {
-    return { linked, failure: error, rewritten: [], changedMeanwhile: [], unformattable: [] };
+    return {
+      linked,
+      failure: error,
+      rewritten: [],
+      changedMeanwhile: [],
+      unformattable: [],
+      unwritable: [],
+    };
   }
 }
 
@@ -156,6 +161,7 @@ export function eslintFixStep(settings, files) {
       rewritten: attempt.rewritten,
       changedMeanwhile: attempt.changedMeanwhile,
       unformattable: attempt.unformattable,
+      unwritable: attempt.unwritable,
       keptAsIs: [],
     }),
   };

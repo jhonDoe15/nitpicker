@@ -4,7 +4,7 @@ import { readBaseFiles } from '../changes.mjs';
 import { containedPath } from './contained-path.mjs';
 import { keepingLineEndings } from './rewrite/line-endings.mjs';
 import { touchedLinesFormatted } from './rewrite/line-hunks.mjs';
-import { replaceIfUnchanged } from './rewrite/safe-write.mjs';
+import { writeTexts } from '../engine/write-texts.mjs';
 
 function namesOf(files) {
   return files.map(({ path: name }) => name);
@@ -78,15 +78,22 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     touchedLinesOnly: options.touchedLinesOnly === true,
   });
   const plannedNames = new Set(planned.map(({ name }) => name));
-  const written = planned.filter(({ name, text }) =>
-    replaceIfUnchanged(containedPath(projectRoot, name), bytes.get(name), text),
+  const { written: names, unwritable } = writeTexts(
+    projectRoot,
+    planned.map(({ name, text }) => ({ name, bytes: bytes.get(name), text })),
   );
+  const written = planned.filter(({ name }) => names.includes(name));
+  const writtenEntries = new Set(written);
+  const unwritableNames = new Set(unwritable.map((text) => text.slice(0, text.indexOf(': '))));
   return {
     rewritten: written.filter(({ partly }) => !partly).map(({ name }) => name),
     partlyRewritten: written.filter(({ partly }) => partly).map(({ name }) => name),
     keptAsIs: namesOf(differing).filter((name) => !plannedNames.has(name)),
-    changedMeanwhile: planned.filter((entry) => !written.includes(entry)).map(({ name }) => name),
+    changedMeanwhile: planned
+      .filter((entry) => !(writtenEntries.has(entry) || unwritableNames.has(entry.name)))
+      .map(({ name }) => name),
     unformattable: first.unformattable ?? [],
     undecodable,
+    ...(unwritable.length === 0 ? {} : { unwritable }),
   };
 }

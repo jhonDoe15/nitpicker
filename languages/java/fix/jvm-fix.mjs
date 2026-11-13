@@ -8,6 +8,7 @@ import {
 import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
+import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
@@ -17,6 +18,7 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
+import { JVM_RECIPES } from './recipes/jvm-recipes.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
 
 const JAVA_FILE = /\.java$/u;
@@ -150,26 +152,42 @@ export function fixJvm(settings) {
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
   const roots = declaredSourceRoots(projectRoot);
+  function accepts(name) {
+    return (
+      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+      !excluded(name) &&
+      inJvmSourceSets(name, roots) &&
+      !isGeneratedJvm(projectRoot, name)
+    );
+  }
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     scope,
-    accepts: (name) =>
-      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
-      !excluded(name) &&
-      inJvmSourceSets(name, roots) &&
-      !isGeneratedJvm(projectRoot, name),
+    accepts,
   });
   if (files.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const resolved = { ...settings, headPolicy, config };
-  const outcomes = runSteps(resolved, plannedSteps(resolved, files), comparison.mergeBaseSha);
+  const recipes = runRecipes({
+    projectRoot,
+    files,
+    recipes: JVM_RECIPES,
+    preset: config.preset ?? 'java',
+    accepts,
+  });
+  const outcomes = runSteps(
+    resolved,
+    plannedSteps(resolved, recipes.files),
+    comparison.mergeBaseSha,
+  );
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
-    toolErrors: outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
-    notes: [...outcomes.flatMap(({ notes = [] }) => notes), ...linkNote(links)],
+    fixedFindings: recipes.fixedFindings,
+    toolErrors: [...recipes.toolErrors, ...outcomes.flatMap(({ toolErrors = [] }) => toolErrors)],
+    notes: [...recipes.notes, ...outcomes.flatMap(({ notes = [] }) => notes), ...linkNote(links)],
   };
 }
