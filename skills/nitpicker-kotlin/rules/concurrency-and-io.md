@@ -29,6 +29,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).
+- A continuation or future that a callback resumes also gets the failure path: `continuation.resumeWithException(error)`
+  or `deferred.completeExceptionally(error)` from the error callback, or a suspending API that throws by itself
+  (`kotlin-source/FutureWithoutException`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
