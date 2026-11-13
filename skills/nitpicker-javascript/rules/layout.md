@@ -18,6 +18,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
   class field, not per call (`nitpicker/reusable-object-per-call`).
+- Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
+  `process.env.PORT || '3000'`, or a schema with `z.string().min(1)`. `API_URL=` gives `''`, which passes
+  `!== undefined`, `in` and `??` (`nitpicker/no-undefined-only-env-check`).
 - `domain/` is pure and takes parsed, typed values, never `unknown`. Decisions go here. No I/O or
   `process`; time, IDs and randomness are parameters. Code that drives injected async deps
   (retries, worker pools, abort) is `adapters/`; the decisions it needs are domain functions.
