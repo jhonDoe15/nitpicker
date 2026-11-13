@@ -55,7 +55,10 @@ if (
   import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
 ) {
   try {
-    const options = parseArguments(process.argv.slice(2));
+    const options = {
+      ...parseArguments(process.argv.slice(2)),
+      keepCoverageReport: process.env.NITPICKER_KEEP_COVERAGE_REPORT,
+    };
     const report = await runQualityAreaReport(options);
     process.stdout.write(`${JSON.stringify(report)}\n`);
   } catch (failure) {
