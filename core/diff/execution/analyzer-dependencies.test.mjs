@@ -171,7 +171,7 @@ describe('analyzer task graph', () => {
     });
 
     expect(result.errors).toEqual([
-      { name: 'crap', message: 'Analyzer dependency coverage is missing for crap' },
+      { name: 'crap', message: 'crap skipped: coverage failed (see above)' },
     ]);
   });
 });

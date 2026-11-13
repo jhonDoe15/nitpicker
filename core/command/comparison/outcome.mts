@@ -42,7 +42,12 @@ function consoleSummary({ cli, report, outputRoot }: Omit<Outcome, 'base'>): str
   const color = colorEnabled(cli.stdout, cli.environment);
   const diagnosticsPath: unknown = displayPath(absoluteTextReportPath(outputRoot));
   return textOf(
-    renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath }),
+    renderConsoleSummary(report, {
+      color,
+      details: cli.options.details,
+      diagnosticsPath,
+      projectRoot: cli.currentProjectRoot,
+    }),
   );
 }
 

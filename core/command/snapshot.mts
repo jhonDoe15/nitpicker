@@ -138,6 +138,7 @@ function writeSnapshotOutcome(
       renderSnapshotConsoleSummary(report, {
         diagnosticsPath: displayPath(path.join(outputRoot, 'report.txt')),
         color: colorEnabled(stdout, cli.environment),
+        projectRoot: cli.currentProjectRoot,
       }),
     );
   }

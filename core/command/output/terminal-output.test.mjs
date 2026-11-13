@@ -108,9 +108,8 @@ Quality gate summary
 ✖ 1 new enforceable violation
   fake-quality-analyzer/fixture-rule: Expected 1 to be 2
     src/main/flagged.ts:1:4
-✖ 2 tool errors
-  coloured-crash (base): coloured-crash crashed with exit 2: boom. ${linkSentence('analyzerCrashed')}
-  coloured-crash (head): coloured-crash crashed with exit 2: boom. ${linkSentence('analyzerCrashed')}
+✖ 2 tool errors (1 distinct)
+  coloured-crash (base and head): coloured-crash crashed with exit 2: boom. ${linkSentence('analyzerCrashed')}
 Full diagnostics: ${OUTPUT_ROOT}/report.txt
 `),
     );
