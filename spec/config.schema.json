@@ -2046,6 +2046,7 @@
                             "test-without-assertion",
                             "spring/open-in-view",
                             "spring/missing-enable",
+                            "spring/datasource-without-timeout",
                             "spring/unbound-property",
                             "spring/ddl-auto",
                             "spring/risky-startup-flags",

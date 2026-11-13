@@ -80,8 +80,8 @@ through the real tools.
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
   [runner parity](runner-parity.md)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
-  `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
-  `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
+  `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout`,
+  `client-without-timeout` and `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
   TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
   any `tests` or `test` folder) and `conftest.py`; a `testing`, `test_support`, `test-support`, `test_utils`,
   `test_helpers`, `testutils`, `test_fixtures`, `fixtures`, `__fixtures__`, `mocks`, `__mocks__`, `fakes` or

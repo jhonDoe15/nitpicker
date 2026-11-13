@@ -45,6 +45,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - A list bound into a query (`setParameter("ids", ids)`, `findAllById(ids)`) has an empty check first and goes in
   chunks (`ids.chunked(1000)`), or goes as one array parameter (`id = any(:ids)`): an empty list renders `in ()`
   and PostgreSQL takes at most 65,535 bound parameters (`kotlin-source/UnboundedQueryArray`).
+- Database queries have a deadline: with a database server in `spring.datasource.url`, set
+  `spring.jpa.properties.jakarta.persistence.query.timeout`, `spring.transaction.default-timeout`,
+  `spring.jdbc.template.query-timeout` or a driver `socketTimeout` (`spring/datasource-without-timeout`).
 - A stream, reader, JAR file or connection you open is closed with `.use { }`, also one used
   once: `resource.inputStream.use { it.readBytes() }`, not `resource.inputStream.readBytes()`
   (`kotlin-source/UnclosedInlineResource`; Java sources: `pmd/UnclosedInlineResource`).

@@ -22,6 +22,12 @@ const productionRestrictedProperties = [
 
 const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
+const SUPPORT_OFF_RULES = [
+  ...SECURITY_RULES,
+  'nitpicker/timeout-abandons-operation',
+  'nitpicker/require-client-timeout',
+];
+
 const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
 
 function withReactFormat(formats, react) {
@@ -107,6 +113,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-unindexed-foreign-key': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/require-client-timeout': 'error',
     'nitpicker/time-unit-mismatch': 'error',
     'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
@@ -144,9 +151,7 @@ function securitySupportOff() {
   return {
     files: securitySupportGlobs(),
     plugins: { nitpicker: nitpickerRules },
-    rules: Object.fromEntries(
-      [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
-    ),
+    rules: Object.fromEntries(SUPPORT_OFF_RULES.map((rule) => [rule, 'off'])),
   };
 }
 
