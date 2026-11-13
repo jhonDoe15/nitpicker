@@ -68,8 +68,8 @@ function findingFor({ file, message, test }, analyzerName) {
   };
 }
 
-export function testConsoleFindings(report, { analyzerName, allow = [], exceptions = [] }) {
-  return newMessages(report, { allow, exceptions })
+export function testConsoleFindings(report, { analyzerName, allow, exceptions }) {
+  return newMessages(report, { allow: allow ?? [], exceptions: exceptions ?? [] })
     .toSorted(
       (left, right) =>
         left.file.localeCompare(right.file) || left.message.localeCompare(right.message),

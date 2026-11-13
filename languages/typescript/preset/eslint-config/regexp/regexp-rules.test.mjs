@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eslintMessageWithHint } from '../../../adapters/hints/eslint-hints.mjs';
+import { eslintMessageWithHint } from '../../../adapters/hints/eslint-hints.mts';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule } from '../../strict-rules.mjs';
