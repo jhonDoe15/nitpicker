@@ -15,6 +15,7 @@ on:
       - 'scripts/test-shards/**'
       - '.github/python-e2e-constraints.txt'
       - 'evals/**/*.test.mjs'
+      - 'evals/**/*.test.mts'
       - 'scripts/ci/**'
       - '.github/workflows/python-e2e.yml'
   pull_request:

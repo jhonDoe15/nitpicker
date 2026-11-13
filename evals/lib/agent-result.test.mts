@@ -2,19 +2,19 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readAgentResult } from './agent-result.mjs';
+import { readAgentResult } from './agent-result.mts';
 
-let directory;
+let directory: string;
 beforeAll(() => {
   directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-agent-result-'));
 });
 afterAll(() => rmSync(directory, { recursive: true, force: true }));
 
-const written = (name, contents) => {
+function written(name: string, contents: unknown): string {
   const file = path.join(directory, name);
   writeFileSync(file, typeof contents === 'string' ? contents : JSON.stringify(contents));
   return file;
-};
+}
 
 describe('readAgentResult', () => {
   it('reads every figure the orchestrator wrote', () => {

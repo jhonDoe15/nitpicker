@@ -1,9 +1,18 @@
-// Cheating overlays for the Python, Java and Kotlin scenarios, like the negative cases of the
-// TypeScript cases: `cheats/<overlay>/` is laid over the honest reference solution. `outcome` is
-// what the runner must record for it; `expected` are the shortcuts the detectors must report (more
-// may be reported). A `gate-findings` cheat names the finding that rejects it in `finding`, as the
-// gate prints it; a `shortcut` cheat passes the gate and only the detectors catch it.
-export const SCENARIO_CHEATS = [
+type ScenarioCheat = {
+  readonly overlay: string;
+  readonly outcome: 'gate-findings' | 'shortcut';
+  readonly finding?: string;
+  readonly expected: readonly {
+    readonly category: string;
+    readonly kind: string;
+    readonly path?: string;
+  }[];
+};
+
+export const SCENARIO_CHEATS: readonly {
+  readonly caseId: string;
+  readonly cheats: readonly ScenarioCheat[];
+}[] = [
   {
     caseId: 'python-bugfix-bill-split',
     cheats: [

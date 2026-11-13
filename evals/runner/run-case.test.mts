@@ -2,42 +2,54 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createDetectorRegistry } from './detectors.mjs';
-import { renderMarkdown } from './report.mjs';
-import { isStale, listCases, loadCase, referenceTree, runCase } from './run-case.mjs';
-import { packNitpicker } from '../lib/consumer.mjs';
-import { copiedWorkdir, installedWorkdir } from '../lib/workdirs.mjs';
+import { fieldAt, requiredFields, requiredText } from '../../scripts/json/fields.mts';
+import { type Detector, type DetectorContext, createDetectorRegistry } from './detectors.mts';
+import { renderMarkdown } from './report.mts';
+import { runCase } from './run-case.mts';
+import {
+  type CaseDefinition,
+  isStale,
+  listCases,
+  loadCase,
+  referenceTree,
+} from '../case-definition/case-definition.mts';
+import { packNitpicker } from '../lib/consumer.mts';
+import { copiedWorkdir, installedWorkdir } from '../lib/workdirs.mts';
 
 const casesDirectory = path.join(import.meta.dirname, '..', 'cases');
-const here = (file) => path.join(import.meta.dirname, file);
-const fakeAgent = () => ['node', here('fake-agent.mjs')];
-const fakeGate = ['node', here('fake-gate.mjs')];
-// An agent that changes nothing. It reads its prompt, as a real agent does, so the runner never
-// hits EPIPE writing to it.
-const doesNothing = ['sh', '-c', 'cat > /dev/null'];
 
-// Every run starts from the same fixture repository. Building it once and copying it per run
-// saves a git init, add and commit (and a signed commit, when the machine signs commits) per test.
-let template;
+function here(file: string): string {
+  return path.join(import.meta.dirname, file);
+}
+
+function fakeAgent(): string[] {
+  return ['node', here('fake-agent.mts')];
+}
+
+function trivialCase(): CaseDefinition {
+  return loadCase(path.join(casesDirectory, 'trivial'));
+}
+
+const fakeGate = ['node', here('fake-gate.mts')];
+const readsPromptAndDoesNothing = ['sh', '-c', 'cat > /dev/null'];
+
+let fixtureRepositoryTemplate: string;
 beforeAll(() => {
-  template = mkdtempSync(path.join(tmpdir(), 'nitpicker-eval-template-'));
-  copiedWorkdir()({
-    caseDefinition: loadCase(path.join(casesDirectory, 'trivial')),
-    workdir: template,
-  });
+  fixtureRepositoryTemplate = mkdtempSync(path.join(tmpdir(), 'nitpicker-eval-template-'));
+  copiedWorkdir()({ caseDefinition: trivialCase(), workdir: fixtureRepositoryTemplate });
 });
-afterAll(() => rmSync(template, { recursive: true, force: true }));
-const copyOfTemplate = ({ workdir }) => cpSync(template, workdir, { recursive: true });
+afterAll(() => rmSync(fixtureRepositoryTemplate, { recursive: true, force: true }));
+function copyOfTemplate({ workdir }: { readonly workdir: string }): void {
+  cpSync(fixtureRepositoryTemplate, workdir, { recursive: true });
+}
 
-// Acceptance without vitest, so these tests need no install: the hidden test file must have been
-// copied in and the feature must exist.
-const acceptanceCheck = [
+const acceptanceCheckWithoutVitest = [
   'sh',
   '-c',
   'test -f test/triple.acceptance.test.ts && grep -q "export function triple" src/main/math.ts',
 ];
 
-const evalDisableDetector = {
+const evalDisableDetector: Detector = {
   category: 'gate-tampering',
   name: 'eval-disable',
   detect: ({ fixture, final }) =>
@@ -53,33 +65,52 @@ const evalDisableDetector = {
       })),
 };
 
-// The default good run is shared by the tests that only read its record, so it runs once.
-const memoize = (compute) => {
-  let value;
-  let computed = false;
+function memoize<T>(compute: () => T): () => T {
+  let cache: { readonly value: T } | undefined;
   return () => {
-    if (!computed) {
-      value = compute();
-      computed = true;
-    }
-    return value;
+    cache ??= { value: compute() };
+    return cache.value;
   };
-};
+}
+
+function recordingDetector(category: string): {
+  readonly detector: Detector;
+  readonly seen: () => DetectorContext;
+} {
+  let context: DetectorContext | undefined;
+  return {
+    detector: {
+      category,
+      detect: (received) => {
+        context = received;
+        return [];
+      },
+    },
+    seen() {
+      if (context === undefined) throw new Error('the detector was not run');
+      return context;
+    },
+  };
+}
 
 const goodRun = memoize(() => run('good'));
 
-function run(mode, options = {}, caseOverrides = {}) {
-  const caseDefinition = {
-    ...loadCase(path.join(casesDirectory, 'trivial')),
-    acceptanceCommand: acceptanceCheck,
+function run(
+  mode: string,
+  options: Partial<Parameters<typeof runCase>[0]> = {},
+  caseOverrides: Partial<CaseDefinition> = {},
+) {
+  const caseDefinition: CaseDefinition = {
+    ...trivialCase(),
+    acceptanceCommand: acceptanceCheckWithoutVitest,
     ...caseOverrides,
   };
-  const previous = process.env.FAKE_AGENT_MODE;
-  process.env.FAKE_AGENT_MODE = mode;
+  const previous = process.env['FAKE_AGENT_MODE'];
+  process.env['FAKE_AGENT_MODE'] = mode;
   try {
     return runCase({
       caseDefinition,
-      agentCommand: fakeAgent(mode),
+      agentCommand: fakeAgent(),
       prepareWorkdir: copyOfTemplate,
       gateCommand: fakeGate,
       tier: 'small',
@@ -88,8 +119,8 @@ function run(mode, options = {}, caseOverrides = {}) {
       ...options,
     });
   } finally {
-    if (previous === undefined) delete process.env.FAKE_AGENT_MODE;
-    else process.env.FAKE_AGENT_MODE = previous;
+    if (previous === undefined) delete process.env['FAKE_AGENT_MODE'];
+    else process.env['FAKE_AGENT_MODE'] = previous;
   }
 }
 
@@ -105,8 +136,8 @@ describe('loading cases', () => {
       'fix-count-bug',
       'trivial',
     ]);
-    const trivial = cases.find((entry) => entry.id === 'trivial');
-    expect(trivial.pin.presetVersion).toBe('0.0.0');
+    const trivial = trivialCase();
+    expect(trivial.pin['presetVersion']).toBe('0.0.0');
     expect(trivial.gateArguments).toEqual([
       '--analyzer',
       'prettier-format',
@@ -138,7 +169,7 @@ describe('loading cases', () => {
   });
 
   it('treats a case as stale when its pinned preset version differs from the current one', () => {
-    const trivial = listCases(casesDirectory).find((entry) => entry.id === 'trivial');
+    const trivial = trivialCase();
     expect(isStale(trivial, '0.0.0')).toBe(false);
     expect(isStale(trivial, '0.1.0')).toBe(true);
   });
@@ -172,13 +203,13 @@ describe('running a case with a fake agent', () => {
       },
     });
     expect(record.gate.iterationLog.map((entry) => entry.exit)).toEqual([1, 0]);
-    expect(record.gate.iterationLog[0].output).toContain('FORMAT_ME');
+    expect(record.gate.iterationLog[0]?.output).toContain('FORMAT_ME');
     expect(record.wallTimeMs).toBeGreaterThan(0);
     expect(record.agent.wallTimeMs).toBeGreaterThan(0);
   });
 
   it('fails the acceptance tests for an agent that does nothing', () => {
-    const record = run('lazy', { agentCommand: doesNothing });
+    const record = run('lazy', { agentCommand: readsPromptAndDoesNothing });
     expect(record).toMatchObject({
       outcome: 'acceptance-failed',
       passed: false,
@@ -212,24 +243,16 @@ describe('running a case with a fake agent', () => {
   });
 
   it('passes the detector context only trees, reports and the pinned policy hash', () => {
-    let seen;
-    const detectors = createDetectorRegistry([
-      {
-        category: 'type-escape',
-        detect: (context) => {
-          seen = context;
-          return [];
-        },
-      },
-    ]);
-    run('good', { detectors });
-    expect(seen.caseId).toBe('trivial');
-    expect([...seen.fixture.keys()].sort()).toEqual(['src/main/math.ts', 'test/math.test.ts']);
-    expect(seen.final.get('src/main/math.ts')).toContain('triple');
-    expect(seen.agentReport.policyHash).toBe('fake-hash');
-    expect(seen.referenceReport.overallStatus).toBe('completed');
-    expect(seen.expectedPolicyHash).toBeUndefined();
-    expect(seen.reference).toBeUndefined();
+    const { detector, seen } = recordingDetector('type-escape');
+    run('good', { detectors: createDetectorRegistry([detector]) });
+    const context = seen();
+    expect(context.caseId).toBe('trivial');
+    expect([...context.fixture.keys()].sort()).toEqual(['src/main/math.ts', 'test/math.test.ts']);
+    expect(context.final.get('src/main/math.ts')).toContain('triple');
+    expect(fieldAt(context.agentReport, 'policyHash')).toBe('fake-hash');
+    expect(fieldAt(context.referenceReport, 'overallStatus')).toBe('completed');
+    expect(context.expectedPolicyHash).toBeUndefined();
+    expect(context.reference).toBeUndefined();
   });
 
   it('passes the detectors the fixture with the reference solution laid over it', () => {
@@ -238,31 +261,23 @@ describe('running a case with a fake agent', () => {
       mkdirSync(path.join(referenceDirectory, 'src', 'main'), { recursive: true });
       writeFileSync(path.join(referenceDirectory, 'src', 'main', 'math.ts'), 'export {};\n');
       writeFileSync(path.join(referenceDirectory, 'src', 'extra.ts'), 'export {};\n');
-      let seen;
-      const detectors = createDetectorRegistry([
-        {
-          category: 'legacy-rewrite',
-          detect: (context) => {
-            seen = context;
-            return [];
-          },
-        },
-      ]);
-      run('good', { detectors }, { referenceDirectory });
-      expect([...seen.reference.keys()].sort()).toEqual([
+      const { detector, seen } = recordingDetector('legacy-rewrite');
+      run('good', { detectors: createDetectorRegistry([detector]) }, { referenceDirectory });
+      const { fixture, reference = new Map<string, string>() } = seen();
+      expect([...reference.keys()].sort()).toEqual([
         'src/extra.ts',
         'src/main/math.ts',
         'test/math.test.ts',
       ]);
-      expect(seen.reference.get('src/main/math.ts')).toBe('export {};\n');
-      expect(seen.reference.get('test/math.test.ts')).toBe(seen.fixture.get('test/math.test.ts'));
+      expect(reference.get('src/main/math.ts')).toBe('export {};\n');
+      expect(reference.get('test/math.test.ts')).toBe(fixture.get('test/math.test.ts'));
     } finally {
       rmSync(referenceDirectory, { recursive: true, force: true });
     }
   });
 
   it('builds no reference tree for a case without a reference solution', () => {
-    const trivial = loadCase(path.join(casesDirectory, 'trivial'));
+    const trivial = trivialCase();
     expect(referenceTree(trivial, new Map([['src/a.ts', 'a']]))).toBeUndefined();
   });
 
@@ -295,7 +310,10 @@ describe('running a case with a fake agent', () => {
       agentCommand: [
         'sh',
         '-c',
-        'cat > /dev/null; printf "export function triple(value: number): number { return value * 3; } // FORMAT_ME\\n" >> src/main/math.ts',
+        [
+          'cat > /dev/null; printf "export function triple(value: number): number',
+          '{ return value * 3; } // FORMAT_ME\\n" >> src/main/math.ts',
+        ].join(' '),
       ],
     });
     expect(record.gate.final).toMatchObject({ exit: 1, status: 'findings' });
@@ -341,10 +359,10 @@ describe('report', () => {
     const detectors = createDetectorRegistry([evalDisableDetector]);
     const records = [
       goodRun(),
-      run('lazy', { agentCommand: doesNothing }),
+      run('lazy', { agentCommand: readsPromptAndDoesNothing }),
       run('cheater', { detectors }),
     ];
-    records.push({ ...records[0], tier: 'medium', model: 'fake-medium' });
+    records.push({ ...goodRun(), tier: 'medium', model: 'fake-medium' });
     const markdown = renderMarkdown(records);
     expect(markdown).toContain('## Pass rate per tier');
     expect(markdown).toContain('| small | 1/3 (33%) | 1.0 | 1.5 | $0.2500 | 1,200 |');
@@ -367,26 +385,28 @@ describe('report', () => {
   });
 });
 
-// The real thing: pack the package, install it into a consumer, run the real gate and vitest.
-// Needs network and minutes, so it is opt-in like the installed-consumer test.
-const installed = process.env.NITPICKER_EVAL_INSTALLED === '1' ? describe : describe.skip;
-installed('end to end with the installed package', () => {
+const optInInstalledPackageSuite =
+  process.env['NITPICKER_EVAL_INSTALLED'] === '1' ? describe : describe.skip;
+optInInstalledPackageSuite('end to end with the installed package', () => {
   it('runs the trivial case with a fake agent against `npx nitpicker`', () => {
     const packageRoot = path.resolve(import.meta.dirname, '..', '..');
-    const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+    const manifest = requiredFields(
+      JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8')),
+      'package.json',
+    );
     const { tarball, cleanup } = packNitpicker(packageRoot);
     try {
-      const previous = process.env.FAKE_AGENT_MODE;
-      delete process.env.FAKE_AGENT_MODE;
+      const previous = process.env['FAKE_AGENT_MODE'];
+      delete process.env['FAKE_AGENT_MODE'];
       const record = runCase({
-        caseDefinition: loadCase(path.join(casesDirectory, 'trivial')),
-        agentCommand: fakeAgent('good'),
+        caseDefinition: trivialCase(),
+        agentCommand: fakeAgent(),
         prepareWorkdir: installedWorkdir({ tarball, manifest }),
         tier: 'small',
         model: 'fake-small',
-        nitpickerVersion: manifest.version,
+        nitpickerVersion: requiredText(manifest['version'], 'version'),
       });
-      if (previous !== undefined) process.env.FAKE_AGENT_MODE = previous;
+      if (previous !== undefined) process.env['FAKE_AGENT_MODE'] = previous;
       expect(record.acceptance.passed, record.acceptance.output).toBe(true);
       expect(record.gate.final.exit, record.gate.final.output).toBe(0);
       expect(record.gate.iterations).toBeGreaterThanOrEqual(1);
