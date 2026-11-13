@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { changelogSection, changelogVersions, runChangelogCommand } from './changelog.mjs';
+import { changelogSection, changelogVersions, runChangelogCommand } from './changelog.mts';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 const root = path.resolve(import.meta.dirname, '../../..');

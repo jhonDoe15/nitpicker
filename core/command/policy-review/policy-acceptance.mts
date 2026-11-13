@@ -4,13 +4,33 @@ const IGNORED_FLAG =
 const IGNORED_VARIABLE =
   'NITPICKER_ACCEPT_POLICY_CHANGE is honoured only in CI (CI set); at a terminal a person passes --accept-policy-change instead.';
 
-const IGNORED = { flag: IGNORED_FLAG, environment: IGNORED_VARIABLE };
+type Source = 'flag' | 'environment';
 
-function isSet(value) {
+type AcceptanceOptions = {
+  readonly acceptPolicyChange?: string | undefined;
+  readonly shardIndex?: number | undefined;
+};
+
+type Acceptance = {
+  readonly acceptPolicyChange: string | undefined;
+  readonly policyAcceptanceSource?: Source;
+  readonly ignoredAcceptance: string | undefined;
+  readonly reportsPolicy: boolean;
+};
+
+const IGNORED: Readonly<Record<Source, string>> = {
+  flag: IGNORED_FLAG,
+  environment: IGNORED_VARIABLE,
+};
+
+function isSet(value: string | undefined): value is string {
   return value !== undefined && value !== '';
 }
 
-function requestedAcceptance(options, environment) {
+function requestedAcceptance(
+  options: AcceptanceOptions,
+  environment: NodeJS.ProcessEnv,
+): { readonly source: Source; readonly digest: string } | undefined {
   if (options.acceptPolicyChange !== undefined) {
     return { source: 'flag', digest: options.acceptPolicyChange };
   }
@@ -18,11 +38,15 @@ function requestedAcceptance(options, environment) {
   return isSet(fromEnvironment) ? { source: 'environment', digest: fromEnvironment } : undefined;
 }
 
-function isHonoured(source, environment, interactive) {
-  return source === 'flag' ? interactive === true : isSet(environment.CI);
+function isHonoured(source: Source, environment: NodeJS.ProcessEnv, interactive: boolean): boolean {
+  return source === 'flag' ? interactive : isSet(environment['CI']);
 }
 
-export function policyAcceptance(options, environment, interactive = false) {
+export function policyAcceptance(
+  options: AcceptanceOptions,
+  environment: NodeJS.ProcessEnv,
+  interactive = false,
+): Acceptance {
   const requested = requestedAcceptance(options, environment);
   const honoured =
     requested !== undefined && isHonoured(requested.source, environment, interactive);

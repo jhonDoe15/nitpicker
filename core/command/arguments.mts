@@ -6,7 +6,35 @@ import {
 import { validateRunProfile } from '../quick/validate.mjs';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
-const FLAGS = new Map([
+type BooleanOption =
+  'all' | 'details' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
+type ValueOption = 'baseRef' | 'outputRoot';
+
+type DrillDown = {
+  readonly analyzerNames: readonly string[];
+  readonly ruleFilters: readonly string[];
+  readonly shardCount: number | undefined;
+  readonly shardIndex: number | undefined;
+  readonly deferExit: boolean;
+  readonly remainingArguments: readonly string[];
+};
+
+type CommandOptions = Record<BooleanOption, boolean> &
+  Partial<Record<ValueOption, string>> & {
+    acceptPolicyChange?: string;
+    readonly paths: string[];
+  };
+
+export type ParsedArguments = CommandOptions & Omit<DrillDown, 'remainingArguments'>;
+
+const drillDownOptions: (arguments_: readonly string[]) => DrillDown = parseDrillDownOptions;
+const closestSuggestion: (
+  argument: string,
+  candidates: readonly string[],
+  fallback: string,
+) => string = didYouMean;
+
+const FLAGS = new Map<string, { readonly property: BooleanOption; readonly value: boolean }>([
   ['--all', { property: 'all', value: true }],
   ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
@@ -18,7 +46,7 @@ const FLAGS = new Map([
   ['--staged', { property: 'staged', value: true }],
 ]);
 const ACCEPT_FLAG = '--accept-policy-change';
-const VALUES = new Map([
+const VALUES = new Map<string, ValueOption>([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
@@ -33,7 +61,7 @@ export const COMPARISON_OPTIONS = [
 
 const HELP_POINTER = 'Run nitpicker --help for the options.';
 
-function unknownArgument(argument) {
+function unknownArgument(argument: string): Error {
   if (SUBCOMMANDS.includes(argument)) {
     return new Error(
       `Unknown argument: ${argument}. A subcommand goes first, as in nitpicker ${argument}. ${HELP_POINTER}`,
@@ -45,7 +73,7 @@ function unknownArgument(argument) {
   return unknownArgumentError(argument, candidates, HELP_POINTER);
 }
 
-function acceptedDigest(argument) {
+function acceptedDigest(argument: string): string {
   const digest = argument.slice(ACCEPT_FLAG.length + 1);
   if (digest === '') {
     throw new Error(
@@ -55,11 +83,11 @@ function acceptedDigest(argument) {
   return digest;
 }
 
-function isAcceptFlag(argument) {
+function isAcceptFlag(argument: string): boolean {
   return argument === ACCEPT_FLAG || argument.startsWith(`${ACCEPT_FLAG}=`);
 }
 
-function readFlag(options, argument) {
+function readFlag(options: CommandOptions, argument: string): boolean {
   if (isAcceptFlag(argument)) {
     options.acceptPolicyChange = acceptedDigest(argument);
     return true;
@@ -71,12 +99,12 @@ function readFlag(options, argument) {
   return flag !== undefined;
 }
 
-export function missingPathHint(argument) {
-  const suggestion = didYouMean(argument, [...SUBCOMMANDS, ...COMPARISON_OPTIONS], '');
+export function missingPathHint(argument: string): string {
+  const suggestion = closestSuggestion(argument, [...SUBCOMMANDS, ...COMPARISON_OPTIONS], '');
   return suggestion === '' ? '' : `${suggestion} ${HELP_POINTER}`;
 }
 
-function readPath(options, argument) {
+function readPath(options: CommandOptions, argument: string): boolean {
   if (argument.startsWith('-')) {
     return false;
   }
@@ -90,8 +118,8 @@ function readPath(options, argument) {
   return true;
 }
 
-function remainingOptions(arguments_) {
-  const options = {
+function remainingOptions(commandArguments: readonly string[]): CommandOptions {
+  const options: CommandOptions = {
     all: false,
     details: false,
     fix: false,
@@ -103,7 +131,7 @@ function remainingOptions(arguments_) {
     staged: false,
     paths: [],
   };
-  const remaining = arguments_.values();
+  const remaining = commandArguments.values();
   for (const argument of remaining) {
     if (readFlag(options, argument) || readPath(options, argument)) {
       continue;
@@ -121,7 +149,7 @@ function remainingOptions(arguments_) {
   return options;
 }
 
-function validateModes(options) {
+function validateModes(options: ParsedArguments): void {
   if (options.paths.length > 0 && options.shardCount !== undefined) {
     throw new Error(
       'Paths cannot be combined with --shard-count; shards always cover the whole project',
@@ -129,7 +157,7 @@ function validateModes(options) {
   }
   if (!options.all) return;
   if (options.fix) throw new Error('--fix cannot be combined with --all');
-  const conflicts = [
+  const conflicts: readonly (readonly [boolean, string])[] = [
     [options.baseRef !== undefined, '--base'],
     [
       options.shardCount !== undefined || options.shardIndex !== undefined,
@@ -142,8 +170,8 @@ function validateModes(options) {
   }
 }
 
-export function parseArguments(arguments_) {
-  const { remainingArguments, ...drillDown } = parseDrillDownOptions(arguments_);
+export function parseArguments(commandArguments: readonly string[]): ParsedArguments {
+  const { remainingArguments, ...drillDown } = drillDownOptions(commandArguments);
   const options = { ...remainingOptions(remainingArguments), ...drillDown };
   validateModes(options);
   validateRunProfile(options);

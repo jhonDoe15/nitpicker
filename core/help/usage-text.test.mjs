@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mts';
-import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mjs';
+import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mts';
 import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
