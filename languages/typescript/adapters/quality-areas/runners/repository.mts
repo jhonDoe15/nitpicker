@@ -15,7 +15,7 @@ import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/
 import { existingRoots } from '../../typed/static-checks.mts';
 import { type Layout, readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
 import type { KnipConfig } from '../typed/policy.mts';
-import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../typed/reporting.mts';
+import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mts';
 import {
   baselinePathsOf,
   hash,

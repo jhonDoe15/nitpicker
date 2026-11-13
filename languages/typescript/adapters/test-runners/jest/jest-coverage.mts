@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { coverageGlobs, coverageOutputFile, coverageSourceFiles } from '../test-run.mts';
 import { parseReportJson } from '../../quality-areas/typed/tooling.mts';
-import { formatProcessOutput } from '../typed/runner-tools.mts';
+import { formatProcessOutput } from '../../quality-areas/reporting/test-report.mts';
 import type { TestOptions } from '../typed/runner-types.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
 import { troubleshootingError } from '../../lint-engine/typed/tools.mts';

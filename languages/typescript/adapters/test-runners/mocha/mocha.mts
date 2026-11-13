@@ -1,10 +1,6 @@
 import { textOf } from '../../../../../shared/values/readers.mts';
-import {
-  projectTestRetry,
-  readTestReportJson,
-  spawnNodeTool,
-  withoutOptions,
-} from '../typed/runner-tools.mts';
+import { projectTestRetry, spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
+import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import type { NodeToolResult } from '../../static-checks/shared.mts';
 import type { RunnerCommand, TestOptions, TestReport, TestRun } from '../typed/runner-types.mts';
 import {

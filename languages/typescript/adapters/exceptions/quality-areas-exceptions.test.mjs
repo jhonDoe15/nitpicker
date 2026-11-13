@@ -6,7 +6,7 @@ import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
 import { parseArguments } from '../quality-areas/arguments.mts';
-import { normalizeCoverage, normalizeCrap } from '../quality-areas/reporting/tests.mjs';
+import { normalizeCoverage, normalizeCrap } from '../quality-areas/reporting/tests.mts';
 import { normalizeStructure } from '../quality-areas/reporting/repository.mts';
 import { runQualityArea } from '../quality-areas-runner.mts';
 

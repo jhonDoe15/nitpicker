@@ -17,10 +17,7 @@ import {
   projectMocha as untypedProjectMocha,
 } from '../../../preset/test-runner/mocha-options.mjs';
 import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
-import {
-  formatProcessOutput as untypedFormatProcessOutput,
-  readTestReport as untypedReadTestReport,
-} from '../../quality-areas/reporting/test-report.mjs';
+import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import {
   consoleEntry as untypedConsoleEntry,
   writeReportFile as untypedWriteReportFile,
@@ -113,12 +110,6 @@ export const mochaMutationOptions: (request: {
 
 export const readHeadPolicyFile: () => TimeoutPolicy = untypedReadHeadPolicyFile;
 
-export const readTestReportJson: (
-  reportPath: string,
-  result: NodeToolResult,
-  context: { readonly runnerName: string; readonly snapshot: string },
-) => unknown = untypedReadTestReport;
-
 function isTestReport(value: unknown): value is TestReport {
   return typeof value === 'object' && value !== null;
 }
@@ -134,8 +125,6 @@ export function readTestReport(
   }
   return report;
 }
-
-export const formatProcessOutput: (result: NodeToolResult) => string = untypedFormatProcessOutput;
 
 export function consoleEntry(call: ConsoleCall): unknown {
   return called(untypedConsoleEntry, [call]);

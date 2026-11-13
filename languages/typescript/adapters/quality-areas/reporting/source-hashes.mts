@@ -1,11 +1,37 @@
+import { hash } from '../typed/repository.mts';
 import {
+  type FunctionIdentity,
   declarationLine,
-  hash,
+  functionIdentity,
   nameFreeHash,
   positiveInteger,
-} from '../../../../../shared/rules/finding-helpers.mjs';
-import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
-import { functionIdentity } from '../../exceptions/function-identity.mjs';
+} from '../typed/reporting.mts';
+import { escapeRegExp } from '../../typed/tooling.mts';
+import { fieldOf, fieldsOf, listOf, objectOf } from '../../../../../shared/values/readers.mts';
+import type { MutantLocation, MutationReport } from '../typed/mutation.mts';
+import type {
+  BranchMapEntry,
+  CoverageReport,
+  CrapEntry,
+  CrapReport,
+  FileCoverage,
+  Span,
+} from './tests.mts';
+
+type Point = NonNullable<Span['start']>;
+
+type KnipReport = {
+  readonly files?: readonly string[];
+  readonly issues?: readonly Readonly<Record<string, unknown>>[];
+};
+
+function reportOf(value: unknown, name: string): object {
+  const report = objectOf(value);
+  if (report === undefined) {
+    throw new TypeError(`The ${name} report is not an object`);
+  }
+  return report;
+}
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 
@@ -16,19 +42,20 @@ const UNION_DEFAULT_HINT =
   ' (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete)';
 const VALUE_DEFAULT_HINT = ' (pass a value that no case lists)';
 
-export function withFunctionSourceHashes(report, projectRoot) {
-  const sourceTexts = new Map();
-  const identities = new Map();
+export function withFunctionSourceHashes(parsed: unknown, projectRoot: string): CrapReport {
+  const report: CrapReport = reportOf(parsed, 'function');
+  const sourceTexts = new Map<string, string>();
+  const identities = new Map<string, FunctionIdentity>();
   return {
     ...report,
-    functions: (report.functions ?? []).map((entry) => {
+    functions: (report.functions ?? []).map((entry): CrapEntry => {
       let source = sourceTexts.get(entry.source);
       if (source === undefined) {
         source = readProjectSource(projectRoot, entry.source);
         sourceTexts.set(entry.source, source);
         identities.set(entry.source, functionIdentity(source, entry.source));
       }
-      const name = identities.get(entry.source).crapFunctionName(entry) ?? entry.function;
+      const name = identities.get(entry.source)?.crapFunctionName(entry) ?? entry.function;
       const text = sourceLineRange(
         source,
         entry.start ?? entry.lines?.start,
@@ -46,9 +73,12 @@ export function withFunctionSourceHashes(report, projectRoot) {
   };
 }
 
-export function withBranchSourceHashes(report, projectRoot) {
+export function withBranchSourceHashes(
+  report: CoverageReport,
+  projectRoot: string,
+): CoverageReport {
   return Object.fromEntries(
-    Object.entries(report).map(([absolutePath, coverage]) => {
+    Object.entries(report).map(([absolutePath, coverage]): [string, FileCoverage] => {
       const source = readProjectSource(projectRoot, absolutePath);
       const branchSourceHashes = Object.fromEntries(
         Object.entries(coverage.branchMap ?? {}).map(([branchId, branch]) => [
@@ -78,7 +108,11 @@ export function withBranchSourceHashes(report, projectRoot) {
   );
 }
 
-export function describeUncoveredArms(branch, hits, source) {
+export function describeUncoveredArms(
+  branch: BranchMapEntry,
+  hits: readonly number[] | undefined,
+  source: string,
+): string[] {
   const locations = branch.locations ?? [];
   return (hits ?? []).flatMap((count, index) => {
     if (count > 0) {
@@ -90,7 +124,7 @@ export function describeUncoveredArms(branch, hits, source) {
   });
 }
 
-function defaultHint(branch, location, source) {
+function defaultHint(branch: BranchMapEntry, location: Span | undefined, source: string): string {
   const end = location?.end ?? branch.loc?.end;
   if (location?.start === undefined || end === undefined) {
     return VALUE_DEFAULT_HINT;
@@ -99,12 +133,12 @@ function defaultHint(branch, location, source) {
   return NEVER_ANNOTATION.test(clause) ? UNION_DEFAULT_HINT : VALUE_DEFAULT_HINT;
 }
 
-function armPosition(location, branch) {
-  const start = Number.isInteger(location?.start?.line) ? location.start : branch.loc?.start;
+function armPosition(location: Span | undefined, branch: BranchMapEntry): string {
+  const start = Number.isInteger(location?.start?.line) ? location?.start : branch.loc?.start;
   return `${String(start?.line ?? '?')}:${String((start?.column ?? 0) + 1)}`;
 }
 
-function armName(branch, index, source) {
+function armName(branch: BranchMapEntry, index: number, source: string): string {
   switch (branch.type) {
     case 'if':
       return index === 0 ? 'the true arm of the if' : 'the false arm of the if (or its else)';
@@ -123,7 +157,7 @@ function armName(branch, index, source) {
   }
 }
 
-function logicalOperator(branch, source) {
+function logicalOperator(branch: BranchMapEntry, source: string): string {
   const [first, second] = branch.locations ?? [];
   if (first?.start === undefined || second?.start === undefined) {
     return 'the logical expression';
@@ -132,18 +166,19 @@ function logicalOperator(branch, source) {
   return /\?\?|&&|\|\|/u.exec(between)?.[0] ?? 'the logical expression';
 }
 
-function startsWith(source, location, pattern) {
+function startsWith(source: string, location: Span | undefined, pattern: RegExp): boolean {
   return (
     location?.start !== undefined && pattern.test(source.slice(offsetOf(source, location.start)))
   );
 }
 
-function offsetOf(source, { line, column }) {
+function offsetOf(source: string, { line = 0, column }: Point): number {
   const precedingLines = source.split('\n').slice(0, line - 1);
   return precedingLines.reduce((total, text) => total + text.length + 1, 0) + (column ?? 0);
 }
 
-export function withDeadCodeSourceHashes(report, projectRoot) {
+export function withDeadCodeSourceHashes(parsed: unknown, projectRoot: string): object {
+  const report: KnipReport = reportOf(parsed, 'dead-code');
   return {
     ...report,
     files: (report.files ?? []).map((file) => ({
@@ -151,12 +186,12 @@ export function withDeadCodeSourceHashes(report, projectRoot) {
       sourceHash: hash(readProjectSource(projectRoot, file)),
     })),
     issues: (report.issues ?? []).map((issue) => {
-      const lines = readProjectSource(projectRoot, issue.file).split('\n');
+      const lines = readProjectSource(projectRoot, String(issue['file'])).split('\n');
       return Object.fromEntries(
         Object.entries(issue).map(([category, entries]) => [
           category,
           Array.isArray(entries)
-            ? entries.map((entry) => withDeclarationSourceHash(entry, lines))
+            ? listOf(entries).map((entry) => withDeclarationSourceHash(entry, lines))
             : entries,
         ]),
       );
@@ -164,19 +199,23 @@ export function withDeadCodeSourceHashes(report, projectRoot) {
   };
 }
 
-function withDeclarationSourceHash(entry, lines) {
-  const line = positiveInteger(entry?.line);
+function withDeclarationSourceHash(entry: unknown, lines: readonly string[]): unknown {
+  const line = positiveInteger(fieldOf(entry, 'line'));
   if (typeof entry !== 'object' || line === undefined || line > lines.length) {
     return entry;
   }
   return {
-    ...entry,
-    sourceHash: hash(lines[line - 1].trim()),
-    usedInFile: isUsedBesidesDeclaration(entry.name, lines, line),
+    ...fieldsOf(entry),
+    sourceHash: hash(lines[line - 1]?.trim()),
+    usedInFile: isUsedBesidesDeclaration(fieldOf(entry, 'name'), lines, line),
   };
 }
 
-function isUsedBesidesDeclaration(name, lines, declarationLine) {
+function isUsedBesidesDeclaration(
+  name: unknown,
+  lines: readonly string[],
+  declarationLine: number,
+): boolean {
   if (typeof name !== 'string' || name.length === 0) {
     return false;
   }
@@ -184,7 +223,10 @@ function isUsedBesidesDeclaration(name, lines, declarationLine) {
   return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
 }
 
-export function withMutationSourceHashes(report, projectRoot) {
+export function withMutationSourceHashes(
+  report: MutationReport,
+  projectRoot: string,
+): MutationReport {
   return {
     ...report,
     files: Object.fromEntries(
@@ -208,14 +250,14 @@ export function withMutationSourceHashes(report, projectRoot) {
   };
 }
 
-function readProjectSource(projectRoot, relativePath) {
+function readProjectSource(projectRoot: string, relativePath: string): string {
   return readFileSync(
     path.join(projectRoot, relativeProjectFile(projectRoot, relativePath)),
     'utf8',
   );
 }
 
-function relativeProjectFile(projectRoot, filePath) {
+function relativeProjectFile(projectRoot: string, filePath: string): string {
   const absolutePath = path.resolve(projectRoot, filePath);
   const relativePath = path.relative(projectRoot, absolutePath);
   if (
@@ -230,33 +272,53 @@ function relativeProjectFile(projectRoot, filePath) {
   return relativePath;
 }
 
-function sourceLocation(source, location) {
+function sourceLocation(source: string, location: Span | undefined): string {
   return sourceLineRange(source, location?.start?.line, location?.end?.line);
 }
 
-export function sourceSnippet(source, location) {
+export function sourceSnippet(
+  source: string,
+  location: MutantLocation | undefined,
+): string | undefined {
   const start = location?.start;
   const end = location?.end;
-  if (!Number.isInteger(start?.line) || !Number.isInteger(end?.line)) {
+  if (
+    start?.line === undefined ||
+    end?.line === undefined ||
+    !Number.isInteger(start.line) ||
+    !Number.isInteger(end.line)
+  ) {
     return undefined;
   }
   const lines = source.split(/\r?\n/);
+  const startColumn = Number(start.column);
+  const endColumn = Number(end.column);
   const first = lines[start.line - 1];
   const last = lines[end.line - 1];
   if (first === undefined || last === undefined) {
     return undefined;
   }
   return start.line === end.line
-    ? first.slice(start.column - 1, end.column - 1)
+    ? first.slice(startColumn - 1, endColumn - 1)
     : [
-        first.slice(start.column - 1),
+        first.slice(startColumn - 1),
         ...lines.slice(start.line, end.line - 1),
-        last.slice(0, end.column - 1),
+        last.slice(0, endColumn - 1),
       ].join('\n');
 }
 
-function sourceLineRange(source, startLine, endLine) {
-  if (!Number.isInteger(startLine) || !Number.isInteger(endLine) || endLine < startLine) {
+function sourceLineRange(
+  source: string,
+  startLine: number | undefined,
+  endLine: number | undefined,
+): string {
+  if (
+    startLine === undefined ||
+    endLine === undefined ||
+    !Number.isInteger(startLine) ||
+    !Number.isInteger(endLine) ||
+    endLine < startLine
+  ) {
     return '';
   }
   return source

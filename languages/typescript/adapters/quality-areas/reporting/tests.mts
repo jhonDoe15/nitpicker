@@ -1,30 +1,112 @@
 import path from 'node:path';
+import type { Finding } from '../../static-checks/shared.mts';
+import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
+import { hash } from '../typed/repository.mts';
 import {
+  type NeutralMutant,
   addMetric,
-  hash,
-  summaryMetrics,
+  branchCoverageFindings,
+  crapFindings,
+  mutantFindings,
   nextOccurrence,
   positiveInteger,
-} from '../../../../../shared/rules/finding-helpers.mjs';
-import { branchCoverageFindings } from '../../../../../shared/rules/branch-coverage.mjs';
-import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
-import { crapFindings } from '../../../../../shared/rules/crap.mjs';
-import { mutantFindings } from '../../../../../shared/rules/mutation.mjs';
+  summaryMetrics,
+} from '../typed/reporting.mts';
+import type { Mutant, MutationReport } from '../typed/mutation.mts';
 
-export function normalizeCoverage(report, analyzerName, { projectRoot, testCount } = {}) {
-  const findings = [];
+type Position = { readonly line?: number; readonly column?: number };
+
+export type Span = { readonly start?: Position; readonly end?: Position };
+
+export type BranchMapEntry = {
+  readonly type?: string;
+  readonly loc?: Span;
+  readonly locations?: readonly Span[];
+};
+
+export type FileCoverage = {
+  readonly b?: Readonly<Record<string, readonly number[]>>;
+  readonly branchMap?: Readonly<Record<string, BranchMapEntry>>;
+  readonly branchSourceHashes?: Readonly<Record<string, string>>;
+  readonly uncoveredArms?: Readonly<Record<string, readonly string[]>>;
+  readonly branchFunctions?: Readonly<Record<string, string | undefined>>;
+};
+
+export type CoverageReport = Readonly<Record<string, FileCoverage>>;
+
+type Percent = { readonly percent?: number };
+
+export type CrapEntry = {
+  readonly source: string;
+  readonly function: string;
+  readonly crap?: number;
+  readonly complexity?: number;
+  readonly start?: number;
+  readonly end?: number;
+  readonly lines?: { readonly start?: number; readonly end?: number };
+  readonly sourceHash?: string;
+  readonly anchorHash?: string;
+  readonly declarationHash?: string;
+  readonly statementCoverage?: Percent;
+  readonly branchCoverage?: Percent;
+  readonly effectiveCoverage?: Percent;
+};
+
+export type CrapReport = {
+  readonly summary?: Readonly<Record<string, unknown>>;
+  readonly functions?: readonly CrapEntry[];
+};
+
+type CoverageOptions = { readonly projectRoot: string; readonly testCount: unknown };
+
+type FileCoverageTarget = { readonly analyzerName: string; readonly relativePath: string };
+
+type Efficiency = { readonly coveredBranchOutcomes: number; readonly testCount: number };
+
+type CrapSite = {
+  readonly analyzerName: string;
+  readonly scoreLimit: number;
+  readonly occurrence: number;
+  readonly violationOccurrence: number;
+};
+
+type MutantTally = {
+  readonly filePath: string;
+  readonly mutants: NeutralMutant[];
+  readonly statusCounts: Map<string, number>;
+  readonly occurrences: Map<string, number>;
+};
+
+type ReportedFile = { readonly mutants?: readonly Partial<Mutant>[] };
+
+type MutantSite = {
+  readonly filePath: string;
+  readonly status: string;
+  readonly occurrences: Map<string, number>;
+};
+
+export function normalizeCoverage(
+  report: CoverageReport,
+  analyzerName: string,
+  { projectRoot, testCount }: CoverageOptions,
+): Finding[] {
+  const findings: Finding[] = [];
   let coveredBranchOutcomes = 0;
   for (const [absolutePath, coverage] of Object.entries(report)) {
     const relativePath = path.relative(projectRoot, absolutePath).replaceAll('\\', '/');
     coveredBranchOutcomes += addFileCoverage(findings, coverage, { analyzerName, relativePath });
   }
-  if (Number.isInteger(testCount) && testCount > 0) {
+  if (typeof testCount === 'number' && Number.isInteger(testCount) && testCount > 0) {
     addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount });
   }
   return findings;
 }
 
-function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
+function addFileCoverage(
+  findings: Finding[],
+  coverage: FileCoverage,
+  { analyzerName, relativePath }: FileCoverageTarget,
+): number {
   const branchEntries = Object.entries(coverage.b ?? {});
   const branchOutcomes = branchEntries.flatMap(([, outcomes]) => outcomes);
   addMetric(findings, {
@@ -58,7 +140,11 @@ function addFileCoverage(findings, coverage, { analyzerName, relativePath }) {
   return branchOutcomes.filter((value) => value > 0).length;
 }
 
-function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, testCount }) {
+function addTestEfficiency(
+  findings: Finding[],
+  analyzerName: string,
+  { coveredBranchOutcomes, testCount }: Efficiency,
+): void {
   addMetric(findings, {
     analyzerName,
     rule: 'test-efficiency',
@@ -81,24 +167,28 @@ function addTestEfficiency(findings, analyzerName, { coveredBranchOutcomes, test
 
 const COMPOSITION_ROOT_FILE = /(?:^|\/)(?:main|server|composition-root)\.[cm]?[jt]sx?$/u;
 
-export function crapUnknownMessage(sourcePath) {
+export function crapUnknownMessage(sourcePath: string): string {
   return COMPOSITION_ROOT_FILE.test(sourcePath)
     ? MESSAGES.crapCoverageUnknown
     : MESSAGES.crapCoverageUnknownPlain;
 }
 
 export function normalizeCrap(
-  report,
-  analyzerName,
-  { scoreLimit = DEFAULT_CRAP_SCORE_LIMIT } = {},
-) {
+  report: CrapReport,
+  analyzerName: string,
+  { scoreLimit }: { readonly scoreLimit: number } = { scoreLimit: DEFAULT_CRAP_SCORE_LIMIT },
+): Finding[] {
   const findings = summaryMetrics(analyzerName, report.summary, 'crap');
-  const occurrences = new Map();
-  const violations = new Map();
+  const occurrences = new Map<string, number>();
+  const violations = new Map<string, number>();
   const functions = [...(report.functions ?? [])].sort(compareCrapSites);
   for (const entry of functions) {
     const occurrence = nextOccurrence(occurrences, `${entry.source}\0${entry.function}`);
-    const overLimit = !(Number.isFinite(entry.crap) && entry.crap < scoreLimit);
+    const overLimit = !(
+      typeof entry.crap === 'number' &&
+      Number.isFinite(entry.crap) &&
+      entry.crap < scoreLimit
+    );
     const violationOccurrence = overLimit
       ? nextOccurrence(violations, `${entry.source}\0${entry.function}\0${crapSourceHash(entry)}`)
       : occurrence;
@@ -107,14 +197,14 @@ export function normalizeCrap(
   return findings;
 }
 
-function crapSourceHash(entry) {
+function crapSourceHash(entry: CrapEntry): string {
   return (
     entry.sourceHash ??
     hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`)
   );
 }
 
-function compareCrapSites(left, right) {
+function compareCrapSites(left: CrapEntry, right: CrapEntry): number {
   return (
     left.source.localeCompare(right.source) ||
     (left.lines?.start ?? 0) - (right.lines?.start ?? 0) ||
@@ -124,10 +214,10 @@ function compareCrapSites(left, right) {
 }
 
 function addCrapFunction(
-  findings,
-  entry,
-  { analyzerName, scoreLimit, occurrence, violationOccurrence },
-) {
+  findings: Finding[],
+  entry: CrapEntry,
+  { analyzerName, scoreLimit, occurrence, violationOccurrence }: CrapSite,
+): void {
   const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
   findings.push(
     ...crapFindings(
@@ -141,7 +231,7 @@ function addCrapFunction(
             ? {}
             : {
                 anchor: `function:crap:text:${entry.anchorHash}`,
-                declarationKey: `function:${entry.function}:declaration:${entry.declarationHash}:crap`,
+                declarationKey: `function:${entry.function}:declaration:${String(entry.declarationHash)}:crap`,
               }),
           line: entry.lines?.start,
           endLine: entry.lines?.end,
@@ -173,10 +263,10 @@ function addCrapFunction(
   }
 }
 
-export function normalizeMutation(report, analyzerName) {
-  const mutants = [];
-  const statusCounts = new Map();
-  const occurrences = new Map();
+export function normalizeMutation(report: MutationReport, analyzerName: string): Finding[] {
+  const mutants: NeutralMutant[] = [];
+  const statusCounts = new Map<string, number>();
+  const occurrences = new Map<string, number>();
   for (const [filePath, file] of Object.entries(report.files ?? {})) {
     collectFileMutants(file, { filePath, mutants, statusCounts, occurrences });
   }
@@ -197,11 +287,22 @@ export function normalizeMutation(report, analyzerName) {
 
 const CAUGHT_MUTANT_STATUSES = new Set(['Killed', 'Timeout']);
 
-function uncoveredWhenUnreached(mutant) {
+function uncoveredWhenUnreached(mutant: Mutant): Mutant {
   return mutant.status === 'Survived' ? { ...mutant, status: 'NoCoverage', coveredBy: [] } : mutant;
 }
 
-export function withUnreachedMutantsUncovered(report, coverageAnalysis) {
+function isMutationReport(value: unknown): value is MutationReport {
+  return typeof value === 'object' && value !== null;
+}
+
+export function withUnreachedMutantsUncovered(
+  parsed: unknown,
+  coverageAnalysis: unknown,
+): MutationReport {
+  if (!isMutationReport(parsed)) {
+    throw new TypeError('The mutation report is not an object');
+  }
+  const report = parsed;
   const files = Object.entries(report.files ?? {});
   const mutants = files.flatMap(([, file]) => file.mutants ?? []);
   const coverageMissing = mutants.every((mutant) => mutant.coveredBy === undefined);
@@ -223,7 +324,10 @@ export function withUnreachedMutantsUncovered(report, coverageAnalysis) {
   };
 }
 
-function collectFileMutants(file, { filePath, mutants, statusCounts, occurrences }) {
+function collectFileMutants(
+  file: ReportedFile,
+  { filePath, mutants, statusCounts, occurrences }: MutantTally,
+): void {
   for (const mutant of file.mutants ?? []) {
     const status = mutant.status ?? 'Unknown';
     statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
@@ -233,7 +337,10 @@ function collectFileMutants(file, { filePath, mutants, statusCounts, occurrences
   }
 }
 
-function neutralMutant(mutant, { filePath, status, occurrences }) {
+function neutralMutant(
+  mutant: Partial<Mutant>,
+  { filePath, status, occurrences }: MutantSite,
+): NeutralMutant {
   const semanticIdentity = [
     mutant.mutatorName ?? 'unknown',
     hash(mutant.replacement ?? ''),
@@ -251,7 +358,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
     line: mutant.location?.start?.line,
     ...(positiveInteger(mutant.location?.start?.column) === undefined
       ? {}
-      : { column: mutant.location.start.column }),
+      : { column: mutant.location?.start?.column }),
     ...(typeof mutant.original === 'string' && mutant.original.length > 0
       ? { original: mutant.original }
       : {}),
@@ -259,7 +366,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
   };
 }
 
-function coveragePercent(values) {
+function coveragePercent(values: readonly number[]): number {
   if (values.length === 0) {
     return 100;
   }
