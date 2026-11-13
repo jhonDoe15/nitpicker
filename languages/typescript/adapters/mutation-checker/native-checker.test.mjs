@@ -3,12 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import {
   mutationCheckerConfig,
   mutationCheckerEngine,
   mutationTypecheck,
   nativeCheckerRuntime,
-} from './native-checker.mjs';
+} from './native-checker.mts';
 
 const roots = [];
 afterEach(() => {
@@ -135,7 +136,10 @@ describe('native mutation checker selection', () => {
       expect(mutationCheckerConfig(config, { baselineErrors: true, native })).toEqual({
         ...config,
         checkers: ['nitpicker-typescript'],
-        plugins: [...config.plugins, path.join(import.meta.dirname, 'plugin.mjs')],
+        plugins: [
+          ...config.plugins,
+          checkoutModulePath(path.join(import.meta.dirname, 'plugin.mjs')),
+        ],
       });
     },
   );

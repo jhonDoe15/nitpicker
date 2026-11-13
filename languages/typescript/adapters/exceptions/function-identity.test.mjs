@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { functionIdentity } from './function-identity.mjs';
+import { functionIdentity } from './function-identity.mts';
 
 const SOURCE = [
   'class Store {',

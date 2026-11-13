@@ -1936,6 +1936,8 @@ plus a `java/compile-failed-skipped` notice that the other checks did not run; a
 compile stays a `gradle-failure` or `maven-failure` tool error. The tool error keeps the cause (the
 compiler errors and the innermost lines of Gradle's "What went wrong") and ends with the path of the full
 build log, `logs/<preset>-<base|head>-gradle.log` in the report folder, which the next run clears.
+An error in nitpicker's own Java analyzer code, not in the build, is a `java/internal-error` tool error
+instead (see "An analyzer crashes" in the troubleshooting page).
 A project whose root has a `pom.xml` and no Gradle build file (or both, with `mvnw` and no `gradlew`)
 is built with Maven 3.6.3 or newer instead, with the same tools, versions and findings, one module
 at a time (findings carry the module path); a Maven failure is a `java/maven-failure` tool error

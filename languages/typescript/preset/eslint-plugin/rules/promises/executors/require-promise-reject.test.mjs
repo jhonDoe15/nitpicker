@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../../../../../adapters/eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../../../../adapters/eslint/normalize.mts';
 import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule as deadlineRule } from './promise-wait-deadline.mjs';
 import { rule } from './require-promise-reject.mjs';

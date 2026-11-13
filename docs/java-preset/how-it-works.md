@@ -94,10 +94,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2:
-  `gradle-failure` (exit 2). Failing tests are not a Gradle failure: when the test reports name
-  them, the build runs again without the tests of those projects, and each one gets a
-  `tests-failed` tool error (exit 1 on the head, a red-base note on the base) while the other
-  checks keep their findings.
+  `gradle-failure` (exit 2), or `internal-error` when nitpicker's own code fails (a `TypeError`,
+  `RangeError`, `ReferenceError` or `SyntaxError`, such as an unreadable report). Failing tests are
+  not a Gradle failure: when the test reports name them, the build runs again without the tests of
+  those projects, and each one gets a `tests-failed` tool error (exit 1 on the head, a red-base note
+  on the base) while the other checks keep their findings.
   A head that does not compile is not a tool failure: each compiler error (javac, Error Prone,
   kotlinc; on Maven the compiler plugin's `[ERROR] file:[line,column]` lines) becomes a
   `build/compile-error` finding at its file and line (exit 1), and one `compile-failed-skipped`

@@ -4,7 +4,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
-import { analyzeJavaSnapshot } from '../../../languages/java/adapters/java-runner.mjs';
+import {
+  INTERNAL_ERROR_RULE,
+  analyzeJavaSnapshot,
+} from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { fakeGradleRun, useGradleFixtures } from './test-support/java-cli-harness.mjs';
@@ -155,6 +158,47 @@ describe('Java analyzer', () => {
         path: '.',
         identity: 'gradle-failure',
         message: `Java preset failed on your change: tool crashed. ${linkSentence('gradleFails')}`,
+        classification: 'tool-error',
+      },
+    ]);
+  });
+});
+
+describe('Java analyzer errors that are not build failures', () => {
+  const sources = {
+    'build.gradle': "plugins { id 'java' }\n",
+    'src/main/java/demo/A.java': 'package demo;\n\npublic final class A {}\n',
+  };
+
+  it('keeps a test console line that the length limit cuts at a space', () => {
+    const root = temporaryRoot('nitpicker-java-console-');
+    const line = `2024-05-01T12:00:01.123Z  WARN 4242 --- [main] demo.A : late ${'bean '.repeat(80)}`;
+    writeFiles(root, {
+      ...sources,
+      'test-results/test/TEST-demo.ATest.xml': `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works"><system-err>${line}</system-err></testcase></testsuite>`,
+    });
+
+    const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
+
+    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`)).toEqual([
+      'test-runtime/test-console-output',
+    ]);
+    expect(findings[0].tokens.at(-1)).toBe('bean');
+  });
+
+  it('reports an error in its own code as an internal error, not a Gradle failure', () => {
+    const root = temporaryRoot('nitpicker-java-internal-');
+    writeFiles(root, { ...sources, 'checkstyle-report.xml': '<nope/>' });
+
+    const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
+
+    expect(findings).toEqual([
+      {
+        tool: 'java',
+        rule: INTERNAL_ERROR_RULE,
+        path: '.',
+        identity: INTERNAL_ERROR_RULE,
+        message: `Internal error in the java analyzer: Checkstyle report root element must be <checkstyle>. ${linkSentence('analyzerCrashed')}`,
         classification: 'tool-error',
       },
     ]);
