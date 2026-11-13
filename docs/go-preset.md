@@ -743,6 +743,14 @@ the capacity is left over, which the rule cannot see. A method of the same type 
 in another file of the package, so it may change the value. Return a copy (`slices.Clone`) or add
 the operation to the owner.
 
+**`context-threading`.** Report-only. A function whose parameter is a struct or interface of the
+project with 5 or more fields (or methods) and that passes it whole through 2 or more functions, one
+in another file, which together read at most a third of those fields. A use is `ctx.Field` or
+`ctx.Method()` (it reads `Field` or `Method`), or the value (`ctx`, `&ctx` or `*ctx`) as an argument
+of a function or method the program resolved. Any other use makes the evidence incomplete and the
+chain is not reported: returning or storing the value, a composite literal, a closure that captures
+it, an unresolved callee, a variadic or spread argument. A comparison with `nil` is not a use.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 

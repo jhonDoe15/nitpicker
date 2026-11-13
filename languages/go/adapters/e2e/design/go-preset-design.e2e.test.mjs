@@ -8,7 +8,8 @@ import {
   removeWorkspace,
   toolErrors,
 } from '../test-support/go-e2e-support.mjs';
-import { BASE_FILES, COPYING_FILES, ESCAPING_FILES } from './state-fixtures.mjs';
+import { BASE_FILES } from './base-fixtures.mjs';
+import { SCENARIOS } from './scenarios.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
 
@@ -26,24 +27,17 @@ describe.skipIf(!goE2eEnabled)('Go preset design rules end to end', () => {
   beforeAll(() => {
     workspace = createWorkspace();
     repository = goRepository(workspace, BASE_FILES);
-    commitBranch(repository, 'escaping', ESCAPING_FILES);
-    commitBranch(repository, 'copying', COPYING_FILES);
+    for (const { branch, files } of SCENARIOS) {
+      commitBranch(repository, branch, files);
+    }
   });
   afterAll(() => {
     removeWorkspace(workspace);
   });
 
-  it('fails a caller in another package that changes the slice a method returned', () => {
-    const result = gate(repository, 'escaping');
+  it.each(SCENARIOS)('$title', ({ branch, expected }) => {
+    const result = gate(repository, branch);
     expect(toolErrors(result)).toEqual([]);
-    expect(designFindings(result)).toEqual([
-      'mutable-state-escape internal/checkout/pay.go enforceable',
-    ]);
-  });
-
-  it('passes a caller that changes a copy and one that only appends', () => {
-    const result = gate(repository, 'copying');
-    expect(toolErrors(result)).toEqual([]);
-    expect(designFindings(result)).toEqual([]);
+    expect(designFindings(result)).toEqual(expected);
   });
 });

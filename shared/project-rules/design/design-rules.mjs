@@ -18,7 +18,10 @@ export const DESIGN_RULE_LISTS = Object.fromEntries(
   DESIGN_RULES.map((rule) => [rule, DESIGN_LISTS]),
 );
 
-const GO_DESIGN_RULES = new Set([DESIGN_RULE_IDS.mutableStateEscape]);
+const GO_DESIGN_RULES = new Set([
+  DESIGN_RULE_IDS.mutableStateEscape,
+  DESIGN_RULE_IDS.contextThreading,
+]);
 
 export const DESIGN_RULE_LANGUAGES = Object.fromEntries(
   DESIGN_RULES.map((rule) => [

@@ -7,6 +7,7 @@ import (
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
 
 var frameworkMethods = map[string]bool{
@@ -97,6 +98,7 @@ func functionFact(info *index.FuncInfo, known func(string) bool) Callable {
 		Params:       signatureParams(info.Decl.Type, info.File),
 		Returns:      signatureReturns(info.Decl.Type, info.File),
 		Calls:        calls.Collect(env, info.Decl.Body, known),
+		ParamUses:    uses.Params(env, info.Decl, hasMembers, known),
 		ReturnsField: returnedField(env, info),
 	}
 }
@@ -153,4 +155,9 @@ func ownField(env *scope.Env, owner *index.TypeInfo, expression ast.Expr) string
 		}
 		return ""
 	}
+}
+
+func hasMembers(info *index.TypeInfo) bool {
+	kind := typeKind(info)
+	return kind == "class" || kind == "data" || kind == "interface"
 }
