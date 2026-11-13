@@ -1390,6 +1390,13 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `except ... as error:` handler that reads `error` is left to ruff `PT017`, which reports it
   already (use `with pytest.raises(...) as info:`), so no site gets two findings.
 
+- Dropped callbacks and messages set after the assertion do not apply to Python. A call statement
+  whose result is a callable (`make_check(1)`) is legal and common (decorator factories, context
+  managers, `functools.partial`), the tests have no lambda whose target returns `None` that swallows a
+  built callable the way a Java `ContextConsumer` lambda does, and `assert x, "message"` and
+  `pytest.raises(..., match=...)` put the message before the check. The Java, Kotlin and TypeScript
+  forms are `DroppedCallbackInTest`, `MessageAfterAssertion` and `nitpicker/no-dropped-test-callback`.
+
 - Focused tests: pytest has no `only` marker, and the ways to narrow a run are already blocked.
   `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob`, `testpaths`, `norecursedirs` and
   `collect_ignore` in the configuration are reported per hidden test by `uncollected-tests`, and

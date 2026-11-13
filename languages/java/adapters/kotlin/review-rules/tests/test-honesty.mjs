@@ -6,6 +6,8 @@ import { ESCAPING_RULE } from './coroutines/escapes/escaping-launches.mjs';
 import { discoverSuites, scanTestFile } from './discovery/test-units.mjs';
 import { GLOBAL_STATE_RULE, globalStateReports } from './global-state/global-state.mjs';
 import { CONTROL_FLOW_RULE } from './honesty/flow/assertion-flow.mjs';
+import { DROPPED_RULE } from './honesty/dropped/dropped-callbacks.mjs';
+import { MESSAGE_RULE } from './honesty/dropped/message-after-assertion.mjs';
 import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
@@ -29,6 +31,8 @@ export const HONESTY_RULES = [
   ESCAPING_RULE,
   FLOAT_EQUALITY_RULE,
   WEAK_RULE,
+  DROPPED_RULE,
+  MESSAGE_RULE,
   GLOBAL_STATE_RULE,
   SHARED_STATE_RULE,
 ];

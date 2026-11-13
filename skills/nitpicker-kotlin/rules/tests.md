@@ -87,6 +87,10 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `do { } while`. Split the cases into separate tests or a parameterized test (`@ParameterizedTest` with
   `@MethodSource` or `@CsvSource`, Kotest `withData`), assert a whole collection at once, and narrow with
   `assertNotNull`, `assertIs` or `?: fail(...)` instead of an `if`.
+- Run the callback a helper returns (`pmd/DroppedCallbackInTest`): `ctx.run(assertMax(123))` or
+  `assertMax(123)(ctx)`, not a bare `assertMax(123)` statement or `ctx.run { assertMax(123) }` when `assertMax`
+  returns a function type or a `Runnable`, `Consumer`, `Executable` or `fun interface`. Set an AssertJ message
+  before the assertion (`assertThat(x).as("...").isTrue()`), not after it (`pmd/MessageAfterAssertion`).
 - Assert the value, not that something is there (`pmd/WeakAssertionInTest`): no `assertNotNull(x)`,
   `x.shouldNotBeNull()` or AssertJ `isNotNull()` as the whole check (a not-null check is fine when the
   test then uses `x`, since Kotlin smart-casts it), no `isNotEmpty()`, `size > 0` or `shouldNotBeEmpty()`, and
