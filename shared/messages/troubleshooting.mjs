@@ -16,6 +16,7 @@ export const TROUBLESHOOTING_ANCHORS = {
   unsupportedYarn: 'unsupported-yarn-setup',
   engineUnavailable: 'the-lint-or-type-check-engine-cannot-run',
   incompatibleEslintPackage: 'a-project-package-does-not-support-this-eslint',
+  emptySourceRoots: 'no-source-files-under-the-source-roots',
   typescriptConfigUnreadable: 'the-typescript-config-cannot-be-read',
   typescriptToolFails: 'a-typescript-or-javascript-tool-fails',
   testTimeoutsNeedVitest: 'test-timeouts-need-vitest',
