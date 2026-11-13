@@ -1,25 +1,41 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
-import { PRESET_TITLES, PRESETS } from '../../../shared/reference/entry.mjs';
-import {
-  entryFacts,
-  entryLinks,
-  linkUrl,
-  plainText,
-  repositoryUrl,
-} from '../../../shared/reference/facts.mjs';
-import {
-  closestIds,
-  indexEntries,
-  lookupEntries,
-  readReferenceEntries,
-  referenceUrl,
-} from '../../../shared/reference/store.mjs';
+import { PRESETS } from '../../../shared/reference/entry.mjs';
+import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { applyDisable, readConfigFile } from '../../configuration/config.mjs';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
-import { chainOf } from '../../../shared/traversal.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { docsRootUrl } from '../../../shared/messages/docs-url.mjs';
+import { analyzersOf } from '../../../shared/values/analyzers.mts';
+import type { TextOutput } from '../../cli-context.mts';
+import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import {
+  type Entry,
+  type EntryIndex,
+  type Fact,
+  closestNames,
+  directoriesUp,
+  entriesNamed,
+  entryUrl,
+  factsOf,
+  indexOf,
+  linkTarget,
+  linksOf,
+  presetTitles,
+  readEntries,
+  textFor,
+} from './reference-entries.mts';
+
+type Reference = { readonly index: EntryIndex; readonly root: string | undefined };
+
+type ReferenceCli = {
+  readonly commandArguments: readonly string[];
+  readonly stdout: TextOutput;
+  readonly stderr: TextOutput;
+  readonly currentProjectRoot?: string | undefined;
+};
+
+type RulesOptions = { preset?: string; tool?: string };
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>]\n`;
@@ -30,32 +46,32 @@ const CHECKS_PAGE = 'checks';
 const CHECKS_CATALOG = 'spec/checks.md';
 const CATEGORY_ANCHOR = 'quality-area-checks';
 
-function factLines({ label, text, items, code }, root) {
+function factLines({ label, text = '', items, code }: Fact, root: string | undefined): string[] {
   if (code !== undefined) {
     return [`${label}:`, ...code.split('\n').map((line) => `${INDENT}${line}`)];
   }
   return items === undefined
-    ? [`${label}: ${plainText(text, root)}`]
-    : [`${label}:`, ...items.map((item) => `${INDENT}- ${plainText(item, root)}`)];
+    ? [`${label}: ${textFor(text, root)}`]
+    : [`${label}:`, ...items.map((item) => `${INDENT}- ${textFor(item, root)}`)];
 }
 
-function urlLines(label, url) {
+function urlLines(label: string, url: string | undefined): string[] {
   return url === undefined ? [] : [`${label}: ${url}`];
 }
 
-function explainText(entry, root) {
+function explainText(entry: Entry, root: string | undefined): string {
   return [
     entry.id,
-    plainText(entry.summary, root),
+    textFor(entry.summary, root),
     '',
-    ...entryFacts(entry).flatMap((fact) => factLines(fact, root)),
-    ...entryLinks(entry).flatMap((link) => urlLines(link.label, linkUrl(link, root))),
-    ...urlLines('Reference', referenceUrl(entry, root)),
+    ...factsOf(entry).flatMap((fact) => factLines(fact, root)),
+    ...linksOf(entry).flatMap((link) => urlLines(link.label, linkTarget(link, root))),
+    ...urlLines('Reference', entryUrl(entry, root)),
     '',
   ].join('\n');
 }
 
-function categoryText(name, rules, root) {
+function categoryText(name: string, rules: readonly Entry[], root: string | undefined): string {
   return [
     name,
     'A check nitpicker runs itself. Its rules (nitpicker explain <rule> describes one):',
@@ -65,8 +81,8 @@ function categoryText(name, rules, root) {
   ].join('\n');
 }
 
-function explained({ index, root }, name) {
-  const found = lookupEntries(index, name);
+function explained({ index, root }: Reference, name: string): string[] {
+  const found = entriesNamed(index, name);
   if (found.length > 0) {
     return found.map((entry) => explainText(entry, root));
   }
@@ -74,8 +90,7 @@ function explained({ index, root }, name) {
   return rules.length === 0 ? [] : [categoryText(name, rules, root)];
 }
 
-/** Runs `nitpicker explain`: prints the entries of each rule named, or the closest names and fails. */
-export function runExplainCommand({ commandArguments, stdout, stderr }) {
+export function runExplainCommand({ commandArguments, stdout, stderr }: ReferenceCli): number {
   if (commandArguments.includes('--help')) {
     stdout.write(EXPLAIN_USAGE);
     return 0;
@@ -87,13 +102,13 @@ export function runExplainCommand({ commandArguments, stdout, stderr }) {
     stderr.write(EXPLAIN_USAGE);
     return 2;
   }
-  const reference = { index: indexEntries(readReferenceEntries()), root: docsRootUrl() };
+  const reference: Reference = { index: indexOf(readEntries()), root: docsRootUrl() };
   const index = reference.index;
   const texts = new Map(commandArguments.map((name) => [name, explained(reference, name)]));
-  const unknown = commandArguments.filter((name) => texts.get(name).length === 0);
+  const unknown = commandArguments.filter((name) => (texts.get(name) ?? []).length === 0);
   stdout.write([...texts.values()].flat().join('\n'));
   for (const name of unknown) {
-    const closest = closestIds(index, name);
+    const closest = closestNames(index, name);
     stderr.write(
       `nitpicker: unknown rule "${name}".${closest.length === 0 ? '' : ` Closest: ${closest.join(', ')}.`} ` +
         'Run nitpicker rules to list the rules.\n',
@@ -102,21 +117,26 @@ export function runExplainCommand({ commandArguments, stdout, stderr }) {
   return unknown.length === 0 ? 0 : 1;
 }
 
-const RULES_OPTIONS = { '--preset': 'preset', '--tool': 'tool' };
+const RULES_OPTIONS: ReadonlyMap<string, keyof RulesOptions> = new Map([
+  ['--preset', 'preset'],
+  ['--tool', 'tool'],
+]);
 
-function splitOption(argument) {
+function splitOption(argument: string): readonly [string, string | undefined] {
   const equals = argument.indexOf('=');
   return equals === -1
     ? [argument, undefined]
     : [argument.slice(0, equals), argument.slice(equals + 1)];
 }
 
-function readRulesOptions(commandArguments) {
-  const options = {};
+function readRulesOptions(
+  commandArguments: readonly string[],
+): { readonly options: RulesOptions; readonly error?: undefined } | { readonly error: string } {
+  const options: RulesOptions = {};
   const remaining = commandArguments.values();
   for (const argument of remaining) {
     const [flag, inline] = splitOption(argument);
-    const property = RULES_OPTIONS[flag];
+    const property = RULES_OPTIONS.get(flag);
     if (property === undefined) {
       return { error: RULES_USAGE };
     }
@@ -134,41 +154,48 @@ function readRulesOptions(commandArguments) {
   return { options };
 }
 
-function configRootFrom(start) {
-  const directories = chainOf(start, (directory) => {
+function configRootFrom(start: string): string | undefined {
+  const directories = directoriesUp(start, (directory) => {
     const parent = path.dirname(directory);
     return parent === directory ? undefined : parent;
   });
   return directories.find((directory) => existsSync(path.join(directory, CONFIG_FILE_NAME)));
 }
 
-function enabledAnalyzers(preset, config) {
+function enabledAnalyzers(preset: string, config: NitpickerConfig): ReadonlySet<string> {
   const analyzers = presetAnalyzers({ ...config, preset });
   const configured = config.preset === preset ? config : {};
-  return new Set(applyDisable(analyzers, configured).map(({ name }) => name));
+  return new Set(analyzersOf(applyDisable(analyzers, configured)).map(({ name }) => name));
 }
 
-function reportsFor(names, enabled) {
+function reportsFor(names: readonly string[] | undefined, enabled: ReadonlySet<string>): boolean {
   return names !== undefined && (names.length === 0 || names.some((name) => enabled.has(name)));
 }
 
-function summaryLine(entry, root) {
+function summaryLine(entry: Entry, root: string | undefined): string {
   const sentence = FIRST_SENTENCE.exec(entry.summary)?.[0] ?? entry.summary;
-  return `${entry.id}  ${plainText(sentence.replaceAll(/\s+/gu, ' '), root)}`;
+  return `${entry.id}  ${textFor(sentence.replaceAll(/\s+/gu, ' '), root)}`;
 }
 
-function listedEntries(preset, config, tool) {
+function listedEntries(
+  preset: string,
+  config: NitpickerConfig,
+  tool: string | undefined,
+): readonly Entry[] {
   const enabled = enabledAnalyzers(preset, config);
-  return readReferenceEntries()
+  return readEntries()
     .filter(({ analyzers }) => reportsFor(analyzers[preset], enabled))
     .filter(
       (entry) => tool === undefined || [entry.tool, ...(entry.findingTools ?? [])].includes(tool),
     );
 }
 
-function rulesPreset(options, currentProjectRoot) {
+function rulesPreset(
+  options: RulesOptions,
+  currentProjectRoot: string | undefined,
+): { readonly preset: string; readonly config: NitpickerConfig } {
   const configRoot = configRootFrom(realpathSync(currentProjectRoot ?? process.cwd()));
-  const config = configRoot === undefined ? {} : readConfigFile(configRoot);
+  const config: NitpickerConfig = configRoot === undefined ? {} : readConfigFile(configRoot);
   const preset = options.preset ?? config.preset ?? DEFAULT_PRESET;
   if (!PRESETS.includes(preset)) {
     throw configError(`unknown preset "${preset}". Presets: ${PRESETS.join(', ')}`);
@@ -176,28 +203,32 @@ function rulesPreset(options, currentProjectRoot) {
   return { preset, config };
 }
 
-function rulesText(preset, listed) {
+function rulesText(preset: string, listed: readonly Entry[]): string {
   const root = docsRootUrl();
   return (
-    `${PRESET_TITLES[preset]} preset: ${String(listed.length)} rules. ` +
+    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} rules. ` +
     'nitpicker explain <tool/rule> describes one.\n' +
     listed.map((entry) => `${summaryLine(entry, root)}\n`).join('')
   );
 }
 
-/** Runs `nitpicker rules`: lists the rules the preset of the project reports, minus disabled analyzers. */
-export function runRulesCommand({ commandArguments, stdout, stderr, currentProjectRoot }) {
+export function runRulesCommand({
+  commandArguments,
+  stdout,
+  stderr,
+  currentProjectRoot,
+}: ReferenceCli): number {
   if (commandArguments.includes('--help')) {
     stdout.write(RULES_USAGE);
     return 0;
   }
-  const { options, error } = readRulesOptions(commandArguments);
-  if (error !== undefined) {
-    stderr.write(error);
+  const read = readRulesOptions(commandArguments);
+  if (read.error !== undefined) {
+    stderr.write(read.error);
     return 2;
   }
-  const { preset, config } = rulesPreset(options, currentProjectRoot);
-  const listed = listedEntries(preset, config, options.tool);
+  const { preset, config } = rulesPreset(read.options, currentProjectRoot);
+  const listed = listedEntries(preset, config, read.options.tool);
   stdout.write(rulesText(preset, listed));
   return 0;
 }

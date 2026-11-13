@@ -6,8 +6,10 @@ import { parseArgs } from 'node:util';
 import { type Fields, fieldsOf, listOf } from '../json/fields.mts';
 import { createSampleRepository, REPOSITORY_ROOT } from './samples.mts';
 import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 
-const CLI = path.join(REPOSITORY_ROOT, 'core/cli.mjs');
+const sourcePath: (file: string) => string = checkoutModulePath;
+const CLI = sourcePath(path.join(REPOSITORY_ROOT, 'core/cli.mjs'));
 const RUN_TIMEOUT_MS = 60 * 60 * 1000;
 const RUNTIMES: Readonly<Record<string, () => readonly [string, ...string[]]>> = {
   node: () => [process.execPath],

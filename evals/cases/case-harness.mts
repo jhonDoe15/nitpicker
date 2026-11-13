@@ -5,6 +5,7 @@ import { type Preset, quickAnalyzersOf } from '../lib/presets.mts';
 import { linkedTree, linkedWorkdir } from '../lib/workdirs.mts';
 import { loadTree } from '../detectors/tree.mts';
 import { runCase } from '../runner/run-case.mts';
+import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
 import {
   type CaseDefinition,
   loadCase,
@@ -61,13 +62,15 @@ type GateSelection = {
   readonly rule?: string | undefined;
 };
 
+const sourcePath: (file: string) => string = checkoutModulePath;
+
 function gateCommand(
   preset: Preset,
   { withoutAnalyzers, onlyAnalyzers, rule }: GateSelection,
 ): string[] {
   return [
     'node',
-    path.join(packageRoot, 'core', 'cli.mjs'),
+    sourcePath(path.join(packageRoot, 'core', 'cli.mjs')),
     '--base',
     'main',
     ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers, preset),

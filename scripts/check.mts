@@ -8,7 +8,7 @@ const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 
 function failedSteps(testArguments: readonly string[]): string[] {
   const steps: readonly (readonly [string, readonly string[]])[] = [
-    ['self-gate', ['core/cli.mjs']],
+    ['self-gate', ['core/cli.mts']],
     [
       'tests',
       ['node_modules/vitest/vitest.mjs', 'run', '--config', 'vitest.config.mts', ...testArguments],
