@@ -12,6 +12,12 @@ tester.run('no-unsafe-path-join with directory listings', noUnsafePathJoin, {
   valid: [
     {
       code: inFunction(
+        'return fs.readdirSync("/srv").map(name => fs.readFileSync(path.join("/srv", name)));',
+      ),
+    },
+
+    {
+      code: inFunction(
         'try { return fs.readFileSync(dir); } catch (name) { return fs.readFileSync(path.join(dir, name)); }',
       ),
     },
@@ -72,6 +78,148 @@ tester.run('no-unsafe-path-join with directory listings', noUnsafePathJoin, {
     },
   ],
   invalid: [
+    {
+      code: 'import { readdirSync, readFileSync } from "node:fs"; import path from "node:path"; function f(dir) { return readdirSync(dir, "base64").map(name => readFileSync(path.join(dir, name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readdirSync, readFileSync } from "node:fs"; import path from "node:path"; function f(dir, options) { return readdirSync(dir, options).map(name => readFileSync(path.join(dir, name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+
+    {
+      code: inFunction(
+        'return fs.readdirSync("/srv").map(name => fs.readFileSync(path.join("/other", name)));',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => { a.name = extra; return 0; }).map(entry => fs.readFileSync(path.join(dir, entry.name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir.root).map(name => { dir.root = extra; return fs.readFileSync(path.join(dir.root, name)); });',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'fs.readdirSync = extra; return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'const alias = fs; alias.readdirSync = extra; return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { withFileTypes: true }).map(entry => { const state = { entry }; state.entry.name = extra; return fs.readFileSync(path.join(dir, entry.name)); });',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+
+    {
+      code: inFunction(
+        'const names = fs.readdirSync(dir); const alias = names; alias.push(extra); return names.map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { withFileTypes: true }).map(entry => { entry.name = extra; return fs.readFileSync(path.join(dir, entry.name)); });',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, "..", name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir).map(name => fs.readFileSync(`${dir}/../${name}`));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir).map(name => fs.readFileSync(dir + "/../" + name));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, "base64").map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { encoding: "ascii" }).map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir).map((name, i, names) => { names.push(extra); return fs.readFileSync(path.join(dir, name)); });',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'for (const name of fs.readdirSync(dir)) { fs.readFileSync(path.join(extra, name)); }',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { withFileTypes: true }).filter(entry => { entry.name = extra; return true; }).map(entry => fs.readFileSync(path.join(dir, entry.name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'const names = fs.readdirSync(dir); names["push"](extra); return names.map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir, { withFileTypes: true }).map(entry => { const alias = entry; alias.name = extra; return fs.readFileSync(path.join(dir, entry.name)); });',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import fs from "node:fs"; import path from "node:path"; function outer(fs, dir) { return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+
     {
       code: inFunction(
         'const names = fs.readdirSync(dir); names.push(extra); return names.map((name) => fs.readFileSync(path.join(dir, name)));',

@@ -1,5 +1,11 @@
 import { variableNamed } from '../ancestry.mjs';
 import { importedCalleeName } from '../subprocess-calls.mjs';
+import {
+  hasUnsafeObjectReferences,
+  isFsListing,
+  safeIterationCallback,
+  usesOrdinaryEncoding,
+} from './listed-entry-sources.mjs';
 
 const LISTING_FUNCTIONS = new Set(['readdir', 'readdirSync', 'opendir', 'opendirSync']);
 const KEEPING_METHODS = new Set(['filter', 'sort', 'toSorted', 'slice', 'reverse', 'toReversed']);
@@ -33,40 +39,18 @@ function inner(expression) {
   return chain.at(-1);
 }
 
-const MUTATING_METHODS = new Set([
-  'push',
-  'unshift',
-  'splice',
-  'fill',
-  'copyWithin',
-  'pop',
-  'shift',
-]);
-
-function isMutatedInPlace(variable) {
-  return variable.references.some(({ identifier }) => {
-    const member = identifier.parent;
-    if (member?.type !== 'MemberExpression' || member.object !== identifier) {
-      return false;
-    }
-    const owner = member.parent;
-    const calls = owner?.type === 'CallExpression' && owner.callee === member;
-    const assigns = owner?.type === 'AssignmentExpression' && owner.left === member;
-    return assigns || (calls && MUTATING_METHODS.has(member.property.name));
-  });
-}
-
 function singleBinding(sourceCode, identifier) {
   const variable = variableNamed(sourceCode, identifier);
   const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
   const writes = variable?.references.filter((reference) => reference.isWrite()) ?? [];
   const initialized =
-    definition?.type === 'Variable' && writes.length === 1 && !isMutatedInPlace(variable);
+    definition?.type === 'Variable' && writes.length === 1 && !hasUnsafeObjectReferences(variable);
   return initialized ? (definition.node.init ?? undefined) : undefined;
 }
 
 function thenSource(sourceCode, identifier) {
-  const definition = variableNamed(sourceCode, identifier)?.defs.at(0);
+  const variable = variableNamed(sourceCode, identifier);
+  const definition = variable?.defs.at(0);
   const callback = definition?.type === 'Parameter' ? definition.node : undefined;
   const call = callback?.parent;
   const isThen =
@@ -76,7 +60,7 @@ function thenSource(sourceCode, identifier) {
     call.callee.type === 'MemberExpression' &&
     !call.callee.computed &&
     call.callee.property.name === 'then';
-  return isThen ? call.callee.object : undefined;
+  return isThen && !hasUnsafeObjectReferences(variable) ? call.callee.object : undefined;
 }
 
 function isEmptyArray(node) {
@@ -96,14 +80,24 @@ function identifierStep(scope, node) {
 }
 
 function callStep(scope, node) {
-  if (LISTING_FUNCTIONS.has(importedCalleeName(node.callee, scope.fs))) {
+  if (
+    LISTING_FUNCTIONS.has(importedCalleeName(node.callee, scope.fs)) &&
+    isFsListing(scope, node) &&
+    usesOrdinaryEncoding(node)
+  ) {
     return { directory: node.arguments[0] };
   }
   const kept =
     node.callee.type === 'MemberExpression' &&
     !node.callee.computed &&
     KEEPING_METHODS.has(node.callee.property.name);
-  return { next: kept ? node.callee.object : undefined };
+  if (!kept) return {};
+  const callback = node.arguments[0];
+  const safeCallback =
+    callback === undefined ||
+    !['filter', 'sort', 'toSorted'].includes(node.callee.property.name) ||
+    safeIterationCallback(scope.sourceCode, callback);
+  return { next: safeCallback ? node.callee.object : undefined };
 }
 
 function listingStep(scope, expression) {
@@ -150,7 +144,8 @@ function iteratedCollection(definition) {
     call.arguments[0] === callback &&
     call.callee.type === 'MemberExpression' &&
     !call.callee.computed &&
-    ITERATING_METHODS.has(call.callee.property.name);
+    ITERATING_METHODS.has(call.callee.property.name) &&
+    callback.params.length < 3;
   return isFirstParameter && iterates ? call.callee.object : undefined;
 }
 
@@ -180,6 +175,8 @@ function entryBinding(scope, segment) {
   if (variable === undefined || definition === undefined || !isUnreassigned(variable)) {
     return undefined;
   }
+  if (inner(segment).type === 'MemberExpression' && hasUnsafeObjectReferences(variable))
+    return undefined;
   const collection = iteratedCollection(definition);
   return collection === undefined ? undefined : { variable, collection };
 }
@@ -189,9 +186,15 @@ function stableKey(scope, expression) {
   const chain = [expression];
   for (const current of chain) {
     const node = inner(current);
+    if (node.type === 'Literal' && typeof node.value === 'string' && names.length === 0) {
+      return [node.type, node.value];
+    }
     if (node.type === 'Identifier') {
       const variable = variableNamed(scope.sourceCode, node);
-      const stable = variable !== undefined && isUnreassigned(variable);
+      const stable =
+        variable !== undefined &&
+        isUnreassigned(variable) &&
+        (names.length === 0 || !hasUnsafeObjectReferences(variable));
       return stable ? [variable, ...names.toReversed()] : undefined;
     }
     if (node.type !== 'MemberExpression' || node.computed) {
