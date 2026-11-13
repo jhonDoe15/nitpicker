@@ -102,7 +102,8 @@ const presetConfig = defineConfig(
     },
   },
   ...untypedJavascriptConfig({
-    tsconfigFile: path.join(import.meta.dirname, 'tsconfig.quality.json'),
+    tsconfigFile: path.join(analyzedProjectRoot(), layout.typescriptProject ?? 'tsconfig.json'),
+    projectRoot: analyzedProjectRoot(),
     layout,
   }),
   ...logicConfigFor(selectedFiles, parserOptions),
