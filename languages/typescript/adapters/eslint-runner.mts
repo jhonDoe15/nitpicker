@@ -17,10 +17,10 @@ import {
 } from './eslint/policy.mts';
 import type { LinkedPolicyFile } from './typed/tooling.mts';
 import { validatedContainedFile } from './eslint/paths.mts';
+import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
 import {
   type EslintFinding,
-  runLintEngine,
   testEnvironmentNotices,
   testEnvironmentsFor,
 } from './eslint/typed/engine.mts';

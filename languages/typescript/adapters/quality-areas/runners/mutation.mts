@@ -12,9 +12,8 @@ import {
   strykerRunConfig,
   writeTemporaryFile,
 } from './stryker/stryker-config.mts';
-import { readLayout } from '../../typed/head-policy.mts';
-import { readHeadPolicy } from '../typed/policy.mts';
-import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { readHeadPolicy, readLayout } from '../../typed/head-policy.mts';
+import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
 import { importPolicyModule, relativeProjectPath, runNodeTool } from '../typed/tooling.mts';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
@@ -226,8 +225,4 @@ function readMutationReport(projectRoot: string, coverageAnalysis: unknown): Mut
     parseJson(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8')),
     coverageAnalysis,
   );
-}
-
-function parseJson(text: string): unknown {
-  return JSON.parse(text);
 }

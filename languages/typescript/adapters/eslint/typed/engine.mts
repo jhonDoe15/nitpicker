@@ -7,8 +7,6 @@ import {
   withoutFatalDirectives as untypedWithoutFatalDirectives,
 } from '../../hints/eslint-hints.mjs';
 import { growthAdviceFor as untypedGrowthAdviceFor } from '../../hints/growth-advice.mjs';
-import { withoutSupersededMessages as untypedWithoutSupersededMessages } from '../../lint-engine/overlapping-reports.mjs';
-import { runLintEngine as untypedRunLintEngine } from '../../lint-engine/lint-engine.mjs';
 import {
   testEnvironmentNotices as untypedTestEnvironmentNotices,
   testEnvironmentsFor as untypedTestEnvironmentsFor,
@@ -28,13 +26,12 @@ type MessageHint = {
   readonly sourceFile: TypeScript.SourceFile;
 };
 
-type TestEnvironments = { readonly notice?: { readonly path: string; readonly message: string } };
-
-type LintEngineRun = {
-  readonly options: EslintOptions;
-  readonly projectConfigPath: string | undefined;
-  readonly policyConfigPath: string;
-  readonly testEnvironments: TestEnvironments;
+export type TestEnvironments = {
+  readonly environment?: unknown;
+  readonly scopes?: unknown;
+  readonly aliases?: unknown;
+  readonly setupFiles?: unknown;
+  readonly notice?: { readonly path: string; readonly message: string };
 };
 
 export const metricGrowth: (
@@ -71,11 +68,6 @@ type EslintResult = { readonly filePath?: unknown; readonly messages?: unknown }
 export function isFieldRecord(value: unknown): value is EslintMessage & EslintResult {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-
-export const withoutSupersededMessages: (messages: readonly unknown[]) => unknown[] =
-  untypedWithoutSupersededMessages;
-
-export const runLintEngine: (run: LintEngineRun) => Promise<unknown> = untypedRunLintEngine;
 
 export const testEnvironmentsFor: (options: EslintOptions) => TestEnvironments =
   untypedTestEnvironmentsFor;

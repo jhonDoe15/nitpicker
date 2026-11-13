@@ -23,7 +23,7 @@ const RULE = 'nitpicker/no-accumulating-spread';
 const NATIVE = 'oxc/no-accumulating-spread';
 const PATTERNS = ['src/**/*.{ts,mjs}'];
 const OWNED_ENGINE_FILES = [
-  'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
+  'languages/typescript/adapters/lint-engine/overlapping-reports.mts',
   'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mjs',
   'languages/typescript/adapters/oxlint/native/owned-native-rules.mjs',
   'languages/typescript/adapters/oxlint/oxlint-diagnostics.mjs',
