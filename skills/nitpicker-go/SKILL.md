@@ -135,6 +135,8 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   where the first is used, or let a hop own something (a conversion, a default, a dependency).
 - A struct whose methods serve two groups of callers that never meet and share no field
   (`disjoint-consumer-groups`, report-only) is two types: split it by who calls what.
+- The same three parameters in exported functions of three files
+  (`data-clump`, report-only): give them one struct that owns their rules.
 
 ## Size and tests
 

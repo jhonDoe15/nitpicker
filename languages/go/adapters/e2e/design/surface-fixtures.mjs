@@ -104,3 +104,29 @@ func Load(l *ledger.Ledger) {
 }
 `,
 };
+
+function endpoint(path, name, params) {
+  const directory = path.split('/').at(-2);
+  return {
+    [`internal/${path}`]: `package ${directory}
+
+func ${name}(${params}) {}
+`,
+  };
+}
+
+const ENDPOINT_PARAMS = 'host string, port int, secure bool';
+
+export const CLUMP_FILES = {
+  ...endpoint('net/connect.go', 'Connect', ENDPOINT_PARAMS),
+  ...endpoint('web/serve.go', 'Serve', ENDPOINT_PARAMS),
+  ...endpoint('cli/dial.go', 'Dial', ENDPOINT_PARAMS),
+};
+
+export const NO_CLUMP_FILES = {
+  ...endpoint('net/connect.go', 'Connect', ENDPOINT_PARAMS),
+  ...endpoint('web/serve.go', 'Serve', ENDPOINT_PARAMS),
+  ...endpoint('geometry/move.go', 'Move', 'x, y, z float64'),
+  ...endpoint('geometry/scale.go', 'Scale', 'x, y, z float64'),
+  ...endpoint('physics/push.go', 'Push', 'x, y, z float64'),
+};

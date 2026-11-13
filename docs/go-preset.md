@@ -790,6 +790,13 @@ argument, stored, returned, a method value (`l.Add`), held in a package-level ta
 (`var routes = map[string]func(){"audit": ledger.Audit}`, one level deep), and what a file's
 package-level variable initializers and `init` functions call or use count for that file.
 
+**`data-clump`.** Report-only. The same 3 or more parameters (name and type) in 3 or more exported
+functions or methods of 2 or more files. A type is written without spaces (`func(int)bool`,
+`[]*Item`, `context.Context`), and a struct or interface of the project is its id, so two packages'
+`Item` types stay apart. Blank (`_`) and variadic parameters, a method's receiver, entries and
+functions of a package other modules can import are left out, and so are numeric parameters with
+coordinate names (`x, y, z float64`).
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 
