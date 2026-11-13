@@ -5,8 +5,10 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { byCodeUnits } from '../../../../core/scope/mutation-scope.mjs';
 import { affectedModules } from './affected/affected-modules.mjs';
 import { comparisonRoots, readChangedFiles } from './comparison-changes.mjs';
+import { changedTestsKey } from './tested-sources.mjs';
 import { comparisonMutationPlan } from './mutation-plan.mjs';
 
 const LIB = 'lib/src/main/java/demo/lib';
@@ -46,7 +48,7 @@ function comparison(change) {
     base: comparisonMutationPlan(base, { snapshot: 'base', policyRoot: root }),
     affected: [
       ...affectedModules({ modules: MODULES, changedFiles: readChangedFiles(roots) }),
-    ].sort(),
+    ].toSorted(byCodeUnits),
   };
 }
 
@@ -77,5 +79,16 @@ describe('a one-class change in a multi-module build', () => {
     expect(affected).toEqual(['app', 'lib']);
     expect(head.scope).toEqual([`${LIB}/Counter.java`]);
     expect(base.scope).toEqual([`${LIB}/Counter.java`]);
+  });
+
+  it('has no key to publish a base under, since the changed files are part of it', () => {
+    const { root } = createGitRepository({
+      ...BASE_FILES,
+      'settings.gradle': 'include "lib", "app"',
+    });
+    const key = (touchedPaths) => changedTestsKey({ touchedPaths, headRoot: root, quick: false });
+
+    expect(key([])).toBeUndefined();
+    expect(key([`${LIB}/Counter.java`])).toBe('{"tests":[],"reached":[],"scope":"unknown"}');
   });
 });

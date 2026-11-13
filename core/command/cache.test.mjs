@@ -107,6 +107,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     expect(snapshots).toEqual(['base', 'head', 'base', 'head']);
   });
 });
+const PUBLISHED_NAMES = 'fake-quality-analyzer, fake-quality-analyzer (without changed tests)';
+
 describe('remote findings cache', () => {
   async function setup() {
     const remote = await startTestHttpServer();
@@ -118,8 +120,11 @@ describe('remote findings cache', () => {
       'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
     });
     const snapshots = [];
-    const execute = (arguments_, url = remote.url, { subprocess = false } = {}) => {
-      const analyzer = fakeAnalyzer();
+    const execute = (
+      arguments_,
+      url = remote.url,
+      { subprocess = false, analyzer = fakeAnalyzer() } = {},
+    ) => {
       const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
         snapshots.push(context.snapshot);
@@ -172,6 +177,57 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
 `),
       );
       expect(snapshots).toEqual(['base', 'head']);
+    } finally {
+      await remote.close();
+    }
+  });
+  it('also publishes the unmutated base a comparison without changed tests reads', async () => {
+    const { remote, execute } = await setup();
+    try {
+      const scopes = [];
+      const keyed = fakeAnalyzer();
+      const createInvocation = keyed.createInvocation.bind(keyed);
+      keyed.comparisonKey = ({ touchedPaths, quick }) =>
+        `${String(touchedPaths.length)}:${String(quick)}`;
+      keyed.createInvocation = (context) => {
+        scopes.push(context.mutationScope);
+        return createInvocation(context);
+      };
+      const { exitCode, output } = execute(['cache', 'publish'], remote.url, { analyzer: keyed });
+
+      expect(exitCode).toBe(0);
+      expect(scopes).toEqual([undefined, []]);
+      expect(output.stdoutText).toEqual(
+        expect.stringMatching(
+          exactText`Published 1 of 1 base snapshots for ${/[a-f0-9]{40}/}: ${PUBLISHED_NAMES}
+`,
+        ),
+      );
+      expect(await remote.keys()).toHaveLength(2);
+    } finally {
+      await remote.close();
+    }
+  });
+  it('keeps the full entry and warns when the unmutated base cannot be written', async () => {
+    const { remote, execute } = await setup();
+    try {
+      const keyed = fakeAnalyzer();
+      const createInvocation = keyed.createInvocation.bind(keyed);
+      keyed.comparisonKey = () => 'tests';
+      keyed.createInvocation = (context) => {
+        if (context.mutationScope !== undefined) {
+          throw new Error('unmutated run failed');
+        }
+        return createInvocation(context);
+      };
+
+      const { exitCode, output } = execute(['cache', 'publish'], remote.url, { analyzer: keyed });
+
+      expect(exitCode).toBe(0);
+      expect(output.stderrText).toBe(
+        'nitpicker: the base without changed tests was not published: fake-quality-analyzer (analysis failed)\n',
+      );
+      expect(await remote.keys()).toHaveLength(1);
     } finally {
       await remote.close();
     }

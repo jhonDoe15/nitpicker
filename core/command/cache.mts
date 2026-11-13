@@ -7,7 +7,7 @@ import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-stores.mjs';
-import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
+import { publishBaseSnapshot, WITHOUT_CHANGED_TESTS } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
@@ -126,8 +126,11 @@ function writeOutcome({
   readonly result: PublishOutcome;
   readonly selected: readonly Analyzer[];
 }): number {
+  const analyzersPublished = result.published.filter(
+    (name) => !name.endsWith(WITHOUT_CHANGED_TESTS),
+  );
   stdout.write(
-    `Published ${String(result.published.length)} of ${String(selected.length)} base snapshots` +
+    `Published ${String(analyzersPublished.length)} of ${String(selected.length)} base snapshots` +
       ` for ${result.commitSha}${result.published.length === 0 ? '' : `: ${result.published.join(', ')}`}\n`,
   );
   for (const skipped of result.skipped) stdout.write(`Not published: ${skipped}\n`);
