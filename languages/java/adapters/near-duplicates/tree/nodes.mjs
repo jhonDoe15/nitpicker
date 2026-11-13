@@ -66,3 +66,19 @@ export function isStatementNode(node) {
 export function typeNode(source) {
   return source === undefined ? NONE : at({ kind: 'type', value: textOf(source) }, source);
 }
+
+export function literal(kind, value = (source) => source.text) {
+  return (source) => at({ kind: 'literal', literal: kind, value: value(source) }, source);
+}
+
+export function numberText(source) {
+  return source.text.replaceAll('_', '').toLowerCase();
+}
+
+export function inner(source, context) {
+  return context.get(codeChildren(source)[0]);
+}
+
+export function grouped(value, source, children) {
+  return at({ kind: 'statement', value }, source, children);
+}

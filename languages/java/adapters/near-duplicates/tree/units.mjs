@@ -1,14 +1,5 @@
-import { depthFirst } from '../../../../../shared/traversal.mjs';
-import { uniqueNames, withSnippet } from '../../../../../shared/near-duplicates/unit-parts.mjs';
 import { EXPRESSIONS, lambdaOf } from './expressions.mjs';
-import {
-  EMPTY_CLASS_SCOPE,
-  boundNames,
-  classScope,
-  fileScope,
-  methodNode,
-  nameNode,
-} from './names.mjs';
+import { EMPTY_CLASS_SCOPE, boundNames, classScope, fileScope } from './names.mjs';
 import {
   NONE,
   at,
@@ -20,10 +11,7 @@ import {
   typeNode,
 } from './nodes.mjs';
 import { STATEMENTS } from './statements.mjs';
-
-const CONVERTERS = { ...STATEMENTS, ...EXPRESSIONS };
-
-const TOKEN = /[\w$]+|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\S/gu;
+import { languageUnits } from './unit-driver.mjs';
 
 const TYPE_DECLARATIONS = new Set([
   'class_declaration',
@@ -115,39 +103,6 @@ function isUnit(source) {
   return source.type === 'lambda_expression' && source.parent?.type === 'variable_declarator';
 }
 
-function unitRoots(program, packageName) {
-  const prefix = packageName === '' ? '' : `${packageName}.`;
-  const pending = [{ node: program, qualifier: '', prefix, scope: EMPTY_CLASS_SCOPE }];
-  const roots = [];
-  for (const entry of pending) {
-    if (entry.node !== program && isUnit(entry.node)) {
-      roots.push({ ...entry, label: unitLabel(entry.node, entry.qualifier) });
-    } else {
-      const inner = scopeOf(entry.node, entry);
-      pending.push(...codeChildren(entry.node).map((node) => ({ ...inner, node })));
-    }
-  }
-  return roots.toSorted((left, right) => left.node.startIndex - right.node.startIndex);
-}
-
-function convertedTree(root, names) {
-  const converted = new Map();
-  const context = {
-    get: (source) =>
-      converted.get(source.id) ??
-      opaque(isStatementNode(source) ? 'statement' : 'expression', source),
-    name: (text, source) => ({ ...at('name', source), ...nameNode(text, names) }),
-    method: (text, source) => ({ ...at('name', source), ...methodNode(text, names) }),
-  };
-  for (const source of [...depthFirst(root, codeChildren)].toReversed()) {
-    const convert = CONVERTERS[source.type];
-    if (convert !== undefined) {
-      converted.set(source.id, withSnippet(convert(source, context), source.text));
-    }
-  }
-  return context;
-}
-
 function functionOf(source, context) {
   if (source.type === 'lambda_expression') {
     const lambda = lambdaOf(source, context);
@@ -172,20 +127,19 @@ function functionOf(source, context) {
   ]);
 }
 
-function unitOf(root, file) {
-  const names = { bound: boundNames(root.node), scope: root.scope, file };
-  const tree = functionOf(root.node, convertedTree(root.node, names));
-  const tokens = root.node.text.match(TOKEN)?.length ?? 0;
-  return { name: root.label, start: tree.start, end: tree.end, tokens, tree };
-}
+const JAVA = {
+  converters: { ...STATEMENTS, ...EXPRESSIONS },
+  context: {},
+  isStatementNode,
+  fileScope,
+  outerScope: () => EMPTY_CLASS_SCOPE,
+  boundNames,
+  isUnit,
+  unitLabel,
+  scopeOf,
+  functionOf,
+};
 
 export function javaUnits(program, file) {
-  const scope = fileScope(program);
-  return uniqueNames(unitRoots(program, scope.packageName).map((root) => unitOf(root, scope))).map(
-    (unit) => ({
-      id: `${file}#${unit.name}`,
-      file,
-      ...unit,
-    }),
-  );
+  return languageUnits(JAVA, program, file);
 }

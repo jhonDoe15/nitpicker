@@ -1,12 +1,14 @@
-import { NONE, at, codeChildren, field, opaque, typeNode } from './nodes.mjs';
-
-function literal(kind, value = (source) => source.text) {
-  return (source) => at({ kind: 'literal', literal: kind, value: value(source) }, source);
-}
-
-function numberText(source) {
-  return source.text.replaceAll('_', '').toLowerCase();
-}
+import {
+  NONE,
+  at,
+  codeChildren,
+  field,
+  inner,
+  literal,
+  numberText,
+  opaque,
+  typeNode,
+} from './nodes.mjs';
 
 function operatorOf(source) {
   return field(source, 'operator')?.type;
@@ -94,10 +96,6 @@ function instanceOf(source, context) {
     context.get(field(source, 'left')),
     tested,
   ]);
-}
-
-function inner(source, context) {
-  return context.get(codeChildren(source)[0]);
 }
 
 function grouped(value) {

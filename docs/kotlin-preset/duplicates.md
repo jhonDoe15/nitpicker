@@ -19,6 +19,14 @@ clones that only repeat one or two statements (DTO mappers, `when` tables, `if` 
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 
+`near-duplicate` (tool `structure`) runs on Kotlin and Java sources together: two functions,
+accessors, secondary constructors or property lambdas whose syntax trees are proved copies (the
+same apart from renamed locals, up to 4 changed values or types, or a shared run of 3 or more
+statements) fail, also across modules. A copy large enough for the renamed `duplicate-clone` pass
+and different only in names and literals is left to it; type-specialized families and the
+platform variants of one Kotlin Multiplatform declaration are not reported (see "Reuse rules" in
+`java-preset.md`). Lift a pair with an `exceptions` entry for either file.
+
 The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
 Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion

@@ -1,12 +1,18 @@
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { Language, Parser } from 'web-tree-sitter';
+import { Parser } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { loadGrammar } from './grammar/load-grammar.mjs';
+import { kotlinUnits } from './kotlin/units.mjs';
 import { javaUnits } from './tree/units.mjs';
 
 type TreesRequest = { readonly root: string; readonly files: readonly string[] };
+type UnitsOf = (program: unknown, file: string) => unknown;
+type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
 
-const GRAMMAR = fileURLToPath(new URL('grammar/tree-sitter-java.wasm', import.meta.url));
+const GRAMMARS = {
+  java: javaUnits,
+  kotlin: kotlinUnits,
+} as const;
 
 function isText(value: unknown): value is string {
   return typeof value === 'string';
@@ -19,17 +25,16 @@ function treesRequest(value: unknown): TreesRequest {
       return { root, files };
     }
   }
-  throw new TypeError('The Java trees request must be { root, files } with text values');
+  throw new TypeError('The JVM trees request must be { root, files } with text values');
 }
 
-async function javaParser(): Promise<Parser> {
-  await Parser.init();
+async function grammarOf(name: keyof typeof GRAMMARS): Promise<Grammar> {
   const parser = new Parser();
-  parser.setLanguage(await Language.load(GRAMMAR));
-  return parser;
+  parser.setLanguage(await loadGrammar(name));
+  return { parser, unitsOf: GRAMMARS[name] };
 }
 
-function unitsOf(parser: Parser, root: string, file: string): unknown[] {
+function unitsOf({ parser, unitsOf: convert }: Grammar, root: string, file: string): unknown[] {
   const full: unknown = pathInside(root, file);
   if (typeof full !== 'string') {
     throw new Error(`${file} is outside ${root}`);
@@ -39,7 +44,7 @@ function unitsOf(parser: Parser, root: string, file: string): unknown[] {
     return [];
   }
   try {
-    const units: unknown = javaUnits(tree.rootNode, file);
+    const units: unknown = convert(tree.rootNode, file);
     return Array.isArray(units) ? units.map((unit: unknown) => unit) : [];
   } finally {
     tree.delete();
@@ -47,7 +52,15 @@ function unitsOf(parser: Parser, root: string, file: string): unknown[] {
 }
 
 const request = treesRequest(JSON.parse(readFileSync(0, 'utf8')));
-const parser = await javaParser();
+await Parser.init();
+const java = await grammarOf('java');
+const kotlin = request.files.some((file) => file.endsWith('.kt'))
+  ? await grammarOf('kotlin')
+  : java;
 process.stdout.write(
-  JSON.stringify(request.files.flatMap((file) => unitsOf(parser, request.root, file))),
+  JSON.stringify(
+    request.files.flatMap((file) =>
+      unitsOf(file.endsWith('.kt') ? kotlin : java, request.root, file),
+    ),
+  ),
 );

@@ -3,6 +3,7 @@ import { compareText } from '../../near-duplicates/tree/keys.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { listNames } from '../../messages/messages.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
+import { isPlatformVariant } from './platform-variants.mjs';
 import { isTypeSpecialized } from './type-families.mjs';
 import { shortText } from '../../near-duplicates/unit-parts.mjs';
 
@@ -125,6 +126,7 @@ export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
     .map((finding) => ({ finding, pair: sides(finding, byId) }))
     .filter(({ finding, pair }) => !isLeftToCloneAnalyzer(finding, pair))
     .filter(({ finding, pair }) => !isTypeSpecialized(finding, pair))
+    .filter(({ pair }) => !isPlatformVariant(pair))
     .filter(({ pair }) => !pair.some(({ file }) => isExcepted(rule, file)))
     .map(({ finding, pair }) => nearDuplicateFinding(finding, { pair, analyzerName }));
 }

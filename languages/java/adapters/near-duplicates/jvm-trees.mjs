@@ -1,14 +1,14 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 
-const TREES_PROCESS = checkoutModulePath(
-  fileURLToPath(new URL('java-trees-process.mjs', import.meta.url)),
+const TREES_PROCESS = fileURLToPath(
+  checkoutModuleUrl(new URL('jvm-trees-process.mjs', import.meta.url)),
 );
 const TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 2 ** 30;
 
-export function readJavaUnits(projectRoot, files) {
+export function readJvmUnits(projectRoot, files) {
   if (files.length === 0) {
     return [];
   }
@@ -20,7 +20,9 @@ export function readJavaUnits(projectRoot, files) {
   });
   if (result.status !== 0) {
     const reason = result.error?.message ?? result.stderr.trim().split('\n').at(-1);
-    throw new Error(`Reading Java syntax trees for near-duplicate detection failed: ${reason}`);
+    throw new Error(
+      `Reading Java and Kotlin syntax trees for near-duplicate detection failed: ${reason}`,
+    );
   }
   return JSON.parse(result.stdout);
 }
