@@ -12,7 +12,8 @@ which the conformance suite in [`spec/conformance`](../spec/conformance/README.m
 side contributes only two things: producing reports, and converting them into findings.
 
 In a comparison, PIT mutates the lines the change wrote and the classes its changed tests use, and
-the base runs PIT only for the latter; see
+the base runs PIT only for the latter, in a multi-module Maven or Gradle build and a Kotlin build
+alike, so PIT's time tracks the change; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
 
 Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), [Error Prone](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.

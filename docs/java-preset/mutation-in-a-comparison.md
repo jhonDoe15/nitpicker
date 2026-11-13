@@ -37,6 +37,13 @@ Kotlin preset gets the same, on Gradle and Maven.
 - The `mutation-summary` counts are left out of a comparison, since the two sides mutate different
   classes.
 
+**Multi-module builds.** In a Maven reactor or a Gradle multi-project build the scope is per class, so
+a one-class change runs PIT in time that tracks the change, not the size of the build. Only the
+modules [affected](multi-module-scope.md) by the change run PIT at all, and within them head mutates
+just the changed classes (or the classes a changed test reaches, in the module that owns them): a
+change to a class in a library module does not mutate its dependents' classes, and base mutates
+nothing when no test changed. Kotlin builds follow the same rules on Gradle and Maven.
+
 **PIT history.** When both sides mutate the classes reached by changed tests, head also starts from
 the PIT results of the base run (PIT's own incremental analysis). On the base side, every PIT run
 also writes PIT's history file
