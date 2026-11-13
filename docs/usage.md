@@ -716,7 +716,7 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 ## Command line
 
 ```text
-nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]]
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]]
           [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
           [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
@@ -756,7 +756,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)); the
   ESLint step applies the fixes of nitpicker's own rules (see [ESLint rule fixes](#eslint-rule-fixes)); and
   lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
-  error; the other fixers and the comparison still run. Cannot be combined with `--all`. See
+  error; the other fixers and the comparison still run. Only `--all` with `--rule` can be combined
+  with it; see [Fix one rule everywhere](#fix-one-rule-everywhere). See
   [Preview and pick fixes](#preview-and-pick-fixes) for `--dry-run` and `--rule`.
 - `--verify <narrow|full>`: with `--fix`, how the fixes are checked; see
   [Verify the fixes](#verify-the-fixes). `narrow` is the default.
@@ -1992,6 +1993,26 @@ own, so it never rewrites findings you did not name:
   selected fixes changed, so a file nothing fixed is not reformatted.
 
 Combine both to preview one rule: `nitpicker --fix --dry-run --rule checkstyle/UpperEll`.
+
+### Fix one rule everywhere
+
+`nitpicker --fix --all --rule <tool/rule>` fixes one rule in every file of the project, not only in
+the files you changed. A bare `--fix --all` is refused, so a project-wide rewrite is always one
+named rule and one diff you can review. Then the normal run of `--all` reports what is left.
+
+- The fixers take every project file they cover. Recipes see all of them, and a recipe that works
+  on one file may edit any of them.
+- Formatters do not skip files that were unformatted on the base. They still run only on the files
+  the selected fixes changed.
+- Only the fixes of the named rules apply, as with `--fix --rule`.
+- Findings that the legacy inventory (`nitpicker.legacy.json`) allows are fixed too. After the fix
+  and the verification, the allowance of the fixed rule is lowered by the number of findings fixed
+  in that file, and an entry that reaches 0 is removed. It is never raised. Fix notes list each
+  change. If the fixer of a rule does not report how many findings it fixed (ESLint, ruff), the
+  allowance stays as it is and a note says so.
+- `--dry-run` includes the inventory change in `fix.patch`. `--verify` works as with `--fix`.
+
+Example: `nitpicker --fix --all --rule checkstyle/UpperEll`.
 
 ## Fix recipes
 

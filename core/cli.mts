@@ -29,7 +29,8 @@ import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
 import { runQualityDiff } from './diff/comparison/run-diff.mts';
-import { FIX_RECIPES, fixIfRequested } from './command/fix-request.mts';
+import { fixAllFilesIfRequested, fixIfRequested } from './command/fix-request.mts';
+import { runnerOptions } from './command/comparison/runner-options.mts';
 import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
@@ -139,6 +140,7 @@ function withCliDefaults(options: CliInput): Omit<Cli, 'indexFile'> {
     workingDirectory: options.workingDirectory,
     arguments_: (options.arguments_ ?? process.argv.slice(2)).map(helpFlag),
     environment: options.environment ?? process.env,
+    spawnEnvironment: { ...process.env, ...options.environment },
     interactive:
       typeof options.interactive === 'boolean'
         ? options.interactive
@@ -206,6 +208,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
 
 function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
   const { config, currentProjectRoot, headPolicy } = run;
+  const fixToolErrors = fixAllFilesIfRequested(cli, run);
   writeNotes(cli.stderr, historyAvailabilityNotes(config, headPolicy, currentProjectRoot));
   const snapshotHeadPolicy: unknown = snapshotPolicy({
     config,
@@ -224,6 +227,7 @@ function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
     environment: cli.environment,
     runTasks: cli.runTasks,
     scope: run.scope,
+    additionalToolErrors: fixToolErrors,
   });
 }
 
@@ -257,7 +261,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   clearDiffReports(outputRoot);
   const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult: unknown = fixIfRequested(
-    { ...cli, headPolicy, outputRoot, spawnEnvironment: { ...process.env, ...cli.environment } },
+    { ...cli, headPolicy, outputRoot },
     repositoryRoot,
     base,
   );
@@ -270,7 +274,6 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     requestedBaseRef,
     outputRoot,
     analyzers,
-    fixRecipes: FIX_RECIPES,
     partialRun: selection.partialRun,
     cacheStore,
     includeWorkingTree: true,
@@ -283,10 +286,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
-    scope: cli.scope,
-    progress: cli.progress,
-    runTasks: cli.runTasks,
-    warn: (message: string) => cli.stderr.write(`nitpicker: ${message}\n`),
+    ...runnerOptions(cli),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
 }

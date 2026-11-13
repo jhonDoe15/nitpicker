@@ -36,7 +36,7 @@ const TYPESCRIPT_REPLIES = {
   'prettier-fix': JSON.stringify({ results: [{ path: 'src/a.ts', ignored: true }] }),
 };
 
-function operationsFor(config) {
+function operationsFor(config, selectedRules = []) {
   const created = repository();
   const python = fakePythonTools();
   const jvm = fakeJvmTools();
@@ -46,6 +46,7 @@ function operationsFor(config) {
     repositoryRoot: created.root,
     projectRoot: created.root,
     baseRef: 'base',
+    selectedRules,
     headPolicy: { exclude: [], conventions: {}, kotlin: { formatter: 'ktlint' } },
     config,
     executeFixCommand: (invocation) => {
@@ -78,6 +79,18 @@ describe('fixWorkingTree', () => {
       expect(result).toEqual({ fixedFiles: [], toolErrors: [], notes: [] });
     },
   );
+  it('names a --rule that no fixer has, with the closest rule that one has', () => {
+    const { result } = operationsFor({ preset: 'typescript' }, ['dead-code/exportz']);
+
+    expect(result.notes).toEqual([
+      '--fix --rule dead-code/exportz: nitpicker has no fixer named dead-code/exportz in the typescript preset. Did you mean `dead-code/exports`?',
+    ]);
+  });
+  it('says when a --rule with a fixer found nothing to fix', () => {
+    const { result } = operationsFor({ preset: 'typescript' }, ['dead-code/exports']);
+
+    expect(result.notes).toEqual(['--fix --rule dead-code/exports: found nothing to fix']);
+  });
   it('runs only the Python fixers for the python preset', () => {
     const { operations, result } = operationsFor({ preset: 'python' });
 

@@ -137,6 +137,7 @@ function formatStep({ context, run, settings, files, mergeBaseSha }) {
     files,
     format: stdinFormatter(context, run, skipped),
     writer: settings.writer,
+    allFiles: settings.allFiles === true,
     tool: FORMATTERS[context.project.formatter].label,
   });
   return [
@@ -265,6 +266,7 @@ export function fixPython(settings) {
     projectRoot,
     baseRef,
     scope,
+    allFiles: settings.allFiles === true,
     accepts,
   });
   if (files.length === 0 && (settings.selectedRules ?? []).length === 0) {

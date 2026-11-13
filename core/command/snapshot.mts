@@ -46,6 +46,7 @@ type SnapshotCli = {
   readonly runTasks: unknown;
   readonly scope: unknown;
   readonly setupErrors: readonly object[];
+  readonly additionalToolErrors?: readonly unknown[];
 };
 
 type SnapshotReport = QualitySnapshot & { text?: unknown };
@@ -109,6 +110,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
       analyzerRunOptions({ outputRoot, runTasks }),
     ),
   );
+  addToolErrors(report, cli.additionalToolErrors ?? []);
   Object.assign(
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
@@ -119,6 +121,14 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     repositoryRoot,
   });
   return writeSnapshotOutcome(cli, report, outputRoot);
+}
+
+function addToolErrors(report: SnapshotReport, errors: readonly unknown[]): void {
+  if (errors.length === 0) {
+    return;
+  }
+  report.toolErrors.unshift(...errors.map((error) => ({ ...objectOf(error), path: '' })));
+  Object.assign(report.summary, { overallStatus: 'tool-error' });
 }
 
 function writeSnapshotOutcome(

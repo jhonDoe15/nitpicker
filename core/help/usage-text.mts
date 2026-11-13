@@ -23,7 +23,10 @@ export const COMMANDS: readonly Row[] = [
 export const FLAGS: readonly Row[] = [
   ['--all', 'Report every finding in the checkout, with no baseline.'],
   ['--base <ref>', 'Compare against this ref instead of the detected base.'],
-  ['--fix', 'Apply the fixers of the preset to the changed files, then compare.'],
+  [
+    '--fix',
+    'Apply the fixers of the preset to the changed files, then compare (--all --rule: every file).',
+  ],
   [
     '--dry-run',
     'With --fix: write fix.patch and fixes.json to the output folder and change no file.',
@@ -83,7 +86,7 @@ const AGGREGATE_USAGE =
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
-  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
+  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
