@@ -1,69 +1,88 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { toEntryPointDiffFindings } from './entry-points.mjs';
-import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
+import { importEntryPointAnalyzer, toEntryPointDiffFindings } from './typed/entry-points.mts';
+import {
+  type CruiseReport,
+  applyAreaExceptions,
+  existingRoots,
+  loadDependencyGraph,
+  isInvokedModule,
+  writeAdapterFindings,
+} from './typed/static-checks.mts';
+import type { Finding } from './static-checks/shared.mts';
 import { PACKAGE_ROOT, SNAPSHOT_DIRECTORY_NAMES } from '../../../core/tooling/tool-resolution.mjs';
-import { existingRoots } from '../preset/layout.mjs';
-import { readLayout } from '../preset/head-policy.mjs';
+import { type Layout, readLayout } from './typed/head-policy.mts';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
-import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
 import { realTemporaryDirectory } from '../../../core/tooling/temporary-files.mjs';
-import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
+
+type EntryPointOptions = {
+  readonly projectRoot: string;
+  readonly policyRoot: string;
+  readonly toolRoot: string;
+  readonly sourceRoots: readonly string[];
+};
 
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
 
-try {
-  const options = parseArguments(process.argv.slice(2));
-  const { analyzeEntryPoints } = await loadPolicyModules(options.policyRoot);
+if (isInvokedModule(import.meta.url)) {
+  process.exitCode = await writeAdapterFindings(
+    'Entry-point differential adapter failed',
+    () => entryPointFindings(parseArguments(process.argv.slice(2))),
+    process,
+  );
+}
+
+async function entryPointFindings(options: EntryPointOptions): Promise<Finding[]> {
+  const analyzeEntryPoints = await loadPolicyModules(options.policyRoot);
   const layout = readLayout();
   const graphFor = graphLoader(options, layout);
-  const findings = applyAreaExceptions(
+  return applyAreaExceptions(
     options.sourceRoots.flatMap((sourceRoot) =>
       toEntryPointDiffFindings(analyzeEntryPoints(graphFor(sourceRoot), sourceRoot, { layout })),
     ),
   );
-  process.stdout.write(`${JSON.stringify({ findings })}\n`);
-} catch (failure) {
-  const error = withTypeScriptHint(failure);
-  process.stderr.write(
-    `Entry-point differential adapter failed: ${
-      error instanceof Error ? error.message : String(error)
-    }\n`,
-  );
-  process.exitCode = 2;
 }
 
-async function loadPolicyModules(policyRoot) {
+async function loadPolicyModules(policyRoot: string) {
   const entryPointsModule = path.join(
     policyRoot,
     'languages/typescript/preset/entry-points/analyze.mjs',
   );
-  return import(pathToFileURL(entryPointsModule).href);
+  return importEntryPointAnalyzer(pathToFileURL(entryPointsModule).href);
 }
 
-function graphLoader(options, layout) {
-  const graphs = new Map();
+function graphLoader(
+  options: EntryPointOptions,
+  layout: Layout,
+): (sourceRoot: string) => CruiseReport {
+  const graphs = new Map<string, CruiseReport>();
   return (sourceRoot) => {
-    if (!existsSync(path.join(options.projectRoot, sourceRoot))) return { modules: [] };
+    if (!existsSync(path.join(options.projectRoot, sourceRoot))) {
+      return { modules: [] };
+    }
     const patterns = layout.graphRoots.includes(sourceRoot)
       ? existingRoots(options.projectRoot, layout.graphRoots)
       : [sourceRoot];
     const key = patterns.join('\0');
-    if (!graphs.has(key)) {
-      graphs.set(key, loadModules(options, patterns));
+    const cached = graphs.get(key);
+    if (cached !== undefined) {
+      return cached;
     }
-    return graphs.get(key);
+    const graph = loadModules(options, patterns);
+    graphs.set(key, graph);
+    return graph;
   };
 }
 
-function loadModules(options, patterns) {
+function loadModules(options: EntryPointOptions, patterns: readonly string[]): CruiseReport {
   const graph = loadDependencyGraph({
     projectRoot: options.projectRoot,
     policyRoot: options.policyRoot,
     patterns,
     exclude: EXCLUDED_PATH_PATTERN,
+    reportsConfigErrors: false,
   });
   if (!Array.isArray(graph.modules)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
@@ -71,9 +90,9 @@ function loadModules(options, patterns) {
   return graph;
 }
 
-function collectArguments(arguments_) {
-  const values = new Map();
-  const sourceRoots = [];
+function collectArguments(arguments_: readonly string[]) {
+  const values = new Map<string, string>();
+  const sourceRoots: string[] = [];
   const remaining = arguments_.values();
   for (const name of remaining) {
     const { value } = remaining.next();
@@ -89,7 +108,7 @@ function collectArguments(arguments_) {
   return { values, sourceRoots };
 }
 
-function parseArguments(arguments_) {
+function parseArguments(arguments_: readonly string[]): EntryPointOptions {
   const { values, sourceRoots } = collectArguments(arguments_);
   if (sourceRoots.length === 0) {
     throw new Error('--source-root is required');
@@ -108,7 +127,7 @@ function parseArguments(arguments_) {
   };
 }
 
-function validatedRoot(value, name) {
+function validatedRoot(value: string, name: string): string {
   const root = realpathSync(value);
   if (root === PACKAGE_ROOT) {
     return root;
@@ -116,8 +135,8 @@ function validatedRoot(value, name) {
   const segments = path.relative(realTemporaryDirectory(), root).split(path.sep);
   if (
     segments.length >= 2 &&
-    segments[0].startsWith('nitpicker-diff-') &&
-    SNAPSHOT_DIRECTORY_NAMES.includes(segments[1])
+    (segments[0] ?? '').startsWith('nitpicker-diff-') &&
+    SNAPSHOT_DIRECTORY_NAMES.includes(segments[1] ?? '')
   ) {
     return root;
   }
@@ -126,7 +145,7 @@ function validatedRoot(value, name) {
   );
 }
 
-function requiredValue(values, name) {
+function requiredValue(values: ReadonlyMap<string, string>, name: string): string {
   const value = values.get(name);
   if (value === undefined) {
     throw new Error(`${name} is required`);
@@ -134,7 +153,7 @@ function requiredValue(values, name) {
   return value;
 }
 
-function relativePath(value, name) {
+function relativePath(value: string, name: string): string {
   const normalized = value.replaceAll('\\', '/');
   if (
     normalized.length === 0 ||

@@ -14,7 +14,7 @@
       "scripts/test-shards/repository-timeouts.mts",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
-      "languages/typescript/adapters/entry-points-runner.mjs",
+      "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
