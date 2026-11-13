@@ -12,6 +12,7 @@ import { inspect, readInspect } from './structure/go-inspect.mjs';
 import { lint } from './lint/go-lint.mjs';
 import { goTest } from './tests/go-test.mjs';
 import { analyzerDeadlineMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { mutate } from './mutation/go-mutation.mjs';
 
 const FORMAT_REPORT = 'format.json';
 
@@ -36,6 +37,7 @@ export function createGoContext({
     baselineRoot: policy.baselineRoot,
     baselineMovesFile: policy.baselineMovesFile,
     testSeconds: policy.testSeconds,
+    exclude: policy.exclude ?? [],
     toolPrecedence: policy.toolPrecedence,
     policyRoot: policy.policyRoot ?? projectRoot,
     formatting: detectFormatters(policy.policyRoot ?? projectRoot, settings.formatters),
@@ -68,7 +70,10 @@ function toolchain(context) {
   context.projectGoFlags = flags.stdout.trim();
 }
 
-const STEPS = [toolchain, inspect, format, vet, lint, goTest, duplicates, tidy, deadcode];
+const STEPS = {
+  go: [toolchain, inspect, format, vet, lint, goTest, duplicates, tidy, deadcode],
+  mutation: [toolchain, mutate],
+};
 const PREREQUISITES = new Set([toolchain, inspect]);
 
 function attempt(step, context) {
@@ -83,9 +88,9 @@ function attempt(step, context) {
   }
 }
 
-export function runGoSteps(context) {
+export function runGoSteps(context, part = 'go') {
   const failures = [];
-  for (const step of STEPS) {
+  for (const step of STEPS[part]) {
     const failure = attempt(step, context);
     failures.push(...(failure === undefined ? [] : [failure]));
     if (failure !== undefined && PREREQUISITES.has(step)) {

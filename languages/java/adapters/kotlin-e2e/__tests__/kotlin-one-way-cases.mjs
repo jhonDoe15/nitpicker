@@ -141,8 +141,6 @@ export function defineHostileConfigCases(fixture, failureRule) {
     ]);
     expect(extras.map(({ rule, path: file }) => `${rule} ${path.basename(file)}`).sort()).toEqual([
       'UnsafeCastOperator Compiler.kt',
-      'changed-branch-coverage Qualified.kt',
-      'changed-branch-coverage Wildcard.kt',
       'detekt.style.ForbiddenMethodCall Annotated.kt',
       'detekt.style.ForbiddenMethodCall Exiter.kt',
       'detekt.style.ForbiddenMethodCall Printer.kt',

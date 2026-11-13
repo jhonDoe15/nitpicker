@@ -10,7 +10,7 @@ import {
   fixtures,
   copyOf,
   comparable,
-} from '../../__tests__/maven-preset-project.mjs';
+} from '../../__tests__/maven-preset-project.mts';
 
 const LABELS = `package demo.core;
 
