@@ -130,3 +130,56 @@ export const NO_CLUMP_FILES = {
   ...endpoint('geometry/scale.go', 'Scale', 'x, y, z float64'),
   ...endpoint('physics/push.go', 'Push', 'x, y, z float64'),
 };
+
+const METHOD = `package pay
+
+type Method int
+
+const (
+	Card Method = iota
+	Paypal
+	Invoice
+	Cash
+)
+`;
+
+const FEE = `package fees
+
+import "shop/internal/pay"
+
+func Fee(method pay.Method) int {
+	switch method {
+	case pay.Card, pay.Paypal:
+		return 3
+	case pay.Invoice:
+		return 1
+	}
+	return 0
+}
+`;
+
+function audit(condition) {
+  return `package audit
+
+import "shop/internal/pay"
+
+func Online(method pay.Method) bool {
+	if ${condition} {
+		return true
+	}
+	return false
+}
+`;
+}
+
+export const POLICY_FILES = {
+  'internal/pay/method.go': METHOD,
+  'internal/fees/fee.go': FEE,
+  'internal/audit/online.go': audit('method == pay.Paypal || method == pay.Card'),
+};
+
+export const DIFFERENT_POLICY_FILES = {
+  'internal/pay/method.go': METHOD,
+  'internal/fees/fee.go': FEE,
+  'internal/audit/online.go': audit('method == pay.Invoice || method == pay.Cash'),
+};

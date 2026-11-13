@@ -137,6 +137,9 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   (`disjoint-consumer-groups`, report-only) is two types: split it by who calls what.
 - The same three parameters in exported functions of three files
   (`data-clump`, report-only): give them one struct that owns their rules.
+- Two packages that group the constants of one enum or field the same way (`Card` and `Paypal` as
+  one case in a `switch` here and an `if` there) repeat a rule (`repeated-policy-decision`,
+  report-only): give the type one function or method that answers it and call it.
 
 ## Size and tests
 

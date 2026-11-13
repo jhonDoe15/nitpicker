@@ -6,10 +6,12 @@ import {
 } from './calls-fixtures.mjs';
 import {
   CLUMP_FILES,
+  DIFFERENT_POLICY_FILES,
   DISJOINT_FILES,
   FORWARDING_FILES,
   NO_CLUMP_FILES,
   OWNING_HOP_FILES,
+  POLICY_FILES,
   SHARED_CALLER_FILES,
 } from './surface-fixtures.mjs';
 import {
@@ -102,6 +104,18 @@ export const SCENARIOS = [
     branch: 'no-clump',
     title: 'passes two functions that share parameters and a numeric coordinate kernel',
     files: NO_CLUMP_FILES,
+    expected: [],
+  },
+  {
+    branch: 'repeated-policy',
+    title: 'reports two packages that group the constants of one enum the same way',
+    files: POLICY_FILES,
+    expected: ['repeated-policy-decision internal/pay/method.go descriptive'],
+  },
+  {
+    branch: 'different-policy',
+    title: 'passes two packages that group the constants differently',
+    files: DIFFERENT_POLICY_FILES,
     expected: [],
   },
 ];
