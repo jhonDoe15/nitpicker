@@ -625,7 +625,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment
   (`is_relative_to`, `relative_to`, `startswith`, `commonpath`) in an `if`, or in a `try` whose
   handler exits; for values converted with `int`, `uuid.UUID`, `secure_filename` or `basename`,
-  or reduced to `.name`; and for parameters annotated `Literal`.
+  or reduced to `.name`; for parameters annotated `Literal`; and for the entries of
+  `os.listdir`, `os.scandir` and `os.walk` (also inside `sorted(...)`) joined onto the directory
+  that was listed, which is the same rule the TypeScript preset applies to `readdir` entries.
 - `handwritten-boundary-guard` reports `isinstance` on a value that came from `json`, `yaml` or
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from

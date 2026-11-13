@@ -1,5 +1,6 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
+import { isEntryOfListedBase } from '../analysis/node/listed-entries.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { isContained, unwrapped } from './path-containment.mjs';
 
@@ -127,12 +128,18 @@ function pathParts(scope, node) {
   return isConcatenation(node) ? concatenated(node) : undefined;
 }
 
+function isTaintedSegment(scope, base, segment) {
+  return (
+    segment !== undefined && !isEntryOfListedBase(scope, base, segment) && isTainted(scope, segment)
+  );
+}
+
 function isUnsafeBuild(scope, expression) {
   const pending = [expression];
   for (const current of pending) {
     const node = unwrapped(current);
     const parts = node.type === 'Identifier' ? undefined : pathParts(scope, node);
-    if (parts?.slice(1).some((segment) => segment && isTainted(scope, segment))) {
+    if (parts?.slice(1).some((segment) => isTaintedSegment(scope, parts[0], segment))) {
       return true;
     }
     if (pending.length < MAX_TAINT_STEPS) {
@@ -181,6 +188,7 @@ export const rule = {
     const scope = {
       context,
       sourceCode,
+      fs,
       pathModule: { named: new Map(), namespaces: new Set() },
     };
 
@@ -191,6 +199,7 @@ export const rule = {
     return {
       Program(node) {
         fs = fsBindings(node);
+        scope.fs = fs;
         scope.pathModule = moduleBindings(node, PATH_MODULES);
       },
       CallExpression(node) {
