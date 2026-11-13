@@ -131,9 +131,11 @@ function withoutExemptCode(
   return JSON.stringify(
     listOf(diagnostics).filter(
       (diagnostic) =>
-        !isClassExempt(diagnostic, checks.classExemptions) &&
-        !isIntegrationTestName(diagnostic) &&
-        !isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file')))),
+        !(
+          isClassExempt(diagnostic, checks.classExemptions) ||
+          isIntegrationTestName(diagnostic) ||
+          isLombokGenerated(diagnostic, sourceOf(textOf(fieldOf(diagnostic, 'file'))))
+        ),
     ),
   );
 }
