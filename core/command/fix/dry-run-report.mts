@@ -1,21 +1,8 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import type { TextOutput } from '../../cli-context.mts';
-
-type PlannedFix = {
-  readonly recipe?: string;
-  readonly tool?: string;
-  readonly safety: string;
-  readonly finding?: {
-    readonly tool: string;
-    readonly rule: string;
-    readonly path: string;
-    readonly line: number;
-  };
-  readonly files: readonly string[];
-};
-
-export type DryRunPlan = { readonly patch: Buffer; readonly fixes: readonly PlannedFix[] };
+import type { DryRunPlan, PlannedFix } from '../../fix/typed/fix-types.mts';
+import { FIX_LOG_FILE, cappedLines } from './console-lines.mts';
 
 const PATCH_FILE = 'fix.patch';
 export const FIXES_FILE = 'fixes.json';
@@ -35,7 +22,9 @@ export function reportDryRun(stdout: TextOutput, outputRoot: string, plan: DryRu
   mkdirSync(outputRoot, { recursive: true });
   writeFileSync(patchFile, plan.patch);
   writeFileSync(fixesFile, `${JSON.stringify({ fixes: plan.fixes }, undefined, JSON_INDENT)}\n`);
-  const lines = plan.fixes.map((fix) => `  ${fixLine(fix)}\n`).join('');
+  const lines = cappedLines(plan.fixes.map(fixLine), fixesFile)
+    .map((line) => `  ${line}\n`)
+    .join('');
   stdout.write(
     `Fixes that --fix would apply (dry run, nothing was written to your files): ${String(plan.fixes.length)}\n${lines}`,
   );
@@ -43,7 +32,7 @@ export function reportDryRun(stdout: TextOutput, outputRoot: string, plan: DryRu
 }
 
 export function clearDryRunOutput(outputRoot: string): void {
-  for (const name of [PATCH_FILE, FIXES_FILE]) {
+  for (const name of [PATCH_FILE, FIXES_FILE, FIX_LOG_FILE]) {
     rmSync(path.join(outputRoot, name), { force: true });
   }
 }

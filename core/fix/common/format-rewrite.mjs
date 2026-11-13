@@ -68,7 +68,10 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
   const { bytes, decodable, undecodable, live } = liveSources(projectRoot, files);
   const first = decodable.length === 0 ? { formatted: new Map() } : format(live);
   const differing = differingFiles(decodable, live, first.formatted);
-  const baseSources = readBaseFiles({ repositoryRoot, mergeBaseSha, files: differing });
+  const baseSources =
+    options.allFiles === true
+      ? new Map()
+      : readBaseFiles({ repositoryRoot, mergeBaseSha, files: differing });
   const existing = differing.filter(({ path: name }) => baseSources.get(name) !== undefined);
   const planned = plannedTexts({
     names: namesOf(differing),

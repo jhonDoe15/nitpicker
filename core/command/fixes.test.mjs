@@ -434,12 +434,14 @@ Fix notes:
       },
     ]);
   });
-  it('rejects --fix combined with --all', () => {
+  it('rejects --fix --all without a rule', () => {
     const output = captureOutput();
     expect(
       runCli({ arguments_: ['--fix', '--all'], stdout: output.stdout, stderr: output.stderr }),
     ).toBe(2);
-    expect(output.stderrText).toEqual(`nitpicker failed: --fix cannot be combined with --all\n`);
+    expect(output.stderrText).toEqual(
+      'nitpicker failed: --fix --all rewrites the whole project, so it needs the rule to fix: use nitpicker --fix --all --rule <tool/rule>\n',
+    );
   });
   it('rejects --all combined with --base', () => {
     const output = captureOutput();

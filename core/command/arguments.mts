@@ -171,7 +171,11 @@ function validateModes(options: ParsedArguments): void {
   }
   validateFixOptions(options);
   if (!options.all) return;
-  if (options.fix) throw new Error('--fix cannot be combined with --all');
+  if (options.fix && options.ruleFilters.length === 0) {
+    throw new Error(
+      '--fix --all rewrites the whole project, so it needs the rule to fix: use nitpicker --fix --all --rule <tool/rule>',
+    );
+  }
   const conflicts: readonly (readonly [boolean, string])[] = [
     [options.baseRef !== undefined, '--base'],
     [

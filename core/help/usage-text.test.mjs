@@ -24,7 +24,7 @@ const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
-  'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
+  'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '                 [--accept-policy-change=<digest>] [--help] [--version]',
@@ -49,7 +49,7 @@ const EXPECTED_USAGE_HEAD = [
   'Options:',
   '  --all                            Report every finding in the checkout, with no baseline.',
   '  --base <ref>                     Compare against this ref instead of the detected base.',
-  '  --fix                            Apply the fixers of the preset to the changed files, then compare.',
+  '  --fix                            Apply the fixers of the preset to the changed files, then compare (--all --rule: every file).',
   '  --dry-run                        With --fix: write fix.patch and fixes.json to the output folder and change no file.',
   '  --verify <narrow|full>           With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',

@@ -123,8 +123,8 @@ function applyStep(step, classpaths, scope) {
   }));
 }
 
-function rewriteScope({ projectRoot, repositoryRoot, writer }, mergeBaseSha) {
-  return { projectRoot, repositoryRoot, mergeBaseSha, writer };
+function rewriteScope({ projectRoot, repositoryRoot, writer, allFiles }, mergeBaseSha) {
+  return { projectRoot, repositoryRoot, mergeBaseSha, writer, allFiles: allFiles === true };
 }
 
 function runSteps(settings, steps, mergeBaseSha) {
@@ -193,6 +193,7 @@ export function fixJvm(settings) {
     baseRef,
     scope,
     accepts,
+    allFiles: settings.allFiles === true,
   });
   if (files.length === 0 && selectedRules.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };

@@ -114,13 +114,15 @@ describe('nitpicker --fix for a Python project', () => {
     expect(plain.output.stdoutText).toBe(unchangedTranscript({ fixed: '', repository }));
     expect(tools.calls).toEqual([]);
   });
-  it('refuses --fix together with --all', () => {
+  it('refuses --fix --all without a rule', () => {
     const repository = pythonRepository();
 
     const { exitCode, output } = run(repository, ['--fix', '--all'], fakePythonTools());
 
     expect(exitCode).toBe(2);
-    expect(output.stderrText).toBe('nitpicker failed: --fix cannot be combined with --all\n');
+    expect(output.stderrText).toBe(
+      'nitpicker failed: --fix --all rewrites the whole project, so it needs the rule to fix: use nitpicker --fix --all --rule <tool/rule>\n',
+    );
   });
 });
 

@@ -26,6 +26,7 @@ type Layout = { readonly isExcluded: (name: string) => boolean };
 type FixSettings = KnipFixSettings & {
   readonly repositoryRoot: string;
   readonly baseRef: unknown;
+  readonly allFiles?: boolean;
   readonly scope: unknown;
   readonly layout: Layout;
   readonly eslintSettings: unknown;
@@ -104,7 +105,7 @@ function fixSteps(
     readonly formatted: readonly FixFile[];
     readonly before: Map<string, Buffer>;
     readonly isEslintFile: (name: string) => boolean;
-    readonly mergeBaseSha: string;
+    readonly mergeBaseSha: string | undefined;
   },
 ): Step[] {
   const eslintFiles = decodable.filter(({ path: name }: FixFile) => isEslintFile(name));
@@ -139,6 +140,7 @@ function fixWithPolicy(settings: FixSettings) {
     projectRoot,
     baseRef,
     scope,
+    allFiles: settings.allFiles === true,
     accepts,
   });
   const before = readBytes(projectRoot, files);

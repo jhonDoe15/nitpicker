@@ -1,56 +1,120 @@
 import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';
 import { fixTypeScript } from '../../languages/typescript/fix/typescript-fix.mts';
-import { dryRun } from './dry-run/dry-run.mjs';
-import { createJournal, journalWriter } from './dry-run/journal.mjs';
-import { directWriter } from './engine/writer.mjs';
-import { verifyFixes } from './verify/verify-fixes.mjs';
-import { languageFixers } from './language-fixers.mjs';
+import { dryRun as untypedDryRun } from './dry-run/dry-run.mjs';
+import {
+  createJournal as untypedCreateJournal,
+  journalWriter as untypedJournalWriter,
+} from './dry-run/journal.mjs';
+import { fixerError as untypedFixerError } from './common/fix-command.mjs';
+import { directWriter as untypedDirectWriter } from './engine/writer.mjs';
+import { lowerBaseline as untypedLowerBaseline } from './all-files/lower-baseline.mjs';
+import { verifyFixes as untypedVerifyFixes } from './verify/verify-fixes.mjs';
+import { languageFixers as untypedLanguageFixers } from './language-fixers.mjs';
+import { ALL_RECIPES } from './engine/all-recipes.mjs';
+import { emptyRuleNotes as untypedEmptyRuleNotes } from './status/rule-notes.mjs';
+import type {
+  DryRunPlan,
+  FixInvocation,
+  FixOutcome,
+  FixSettings,
+  FixWriter,
+} from './typed/fix-types.mts';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-type Invocation = {
-  readonly command: string;
-  readonly args: readonly string[];
-  readonly cwd: string;
-  readonly input?: string | undefined;
-  readonly environment?: NodeJS.ProcessEnv | undefined;
-  readonly shell?: boolean;
-  readonly timeout?: number;
-};
+type Executor = (invocation: FixInvocation) => unknown;
+type Journal = object;
+type RolledBack = { readonly files: readonly string[]; readonly recipe: string };
 
-type FixOptions = {
+type RunOptions = {
   readonly repositoryRoot: string;
   readonly projectRoot: string;
-  readonly dryRun?: boolean;
-  readonly config?: { readonly preset?: string } | undefined;
-  readonly selectedRules?: readonly string[];
-  readonly executeFixCommand?: ((invocation: Invocation) => unknown) | undefined;
-  readonly spawnEnvironment?: NodeJS.ProcessEnv | undefined;
-  readonly analyzeFixes?: unknown;
-  readonly verifyMode?: unknown;
-  readonly [key: string]: unknown;
+  readonly baseRef: unknown;
+  readonly executeFixCommand: Executor | undefined;
+  readonly headPolicy: unknown;
+  readonly config: unknown;
+  readonly scope: unknown;
+  readonly environment: NodeJS.ProcessEnv;
+  readonly spawnEnvironment: NodeJS.ProcessEnv | undefined;
+  readonly dryRun: boolean;
+  readonly selectedRules: readonly string[];
+  readonly allFiles: boolean;
+  readonly recipes: unknown;
+  readonly analyzeFixes: unknown;
+  readonly verifyMode: 'full' | 'narrow';
 };
+
+export type FixOptions = Omit<RunOptions, 'selectedRules'> & {
+  readonly selectedRules: readonly string[] | undefined;
+};
+
+const dryRun: (options: {
+  readonly repositoryRoot: string;
+  readonly journal: Journal;
+  readonly run: () => FixOutcome;
+}) => { readonly result: FixOutcome; readonly recovered: readonly string[] } & DryRunPlan =
+  untypedDryRun;
+const createJournal: (projectRoot: string) => Journal = untypedCreateJournal;
+const journalWriter: (journal: Journal) => FixWriter = untypedJournalWriter;
+const directWriter: (projectRoot: string) => FixWriter = untypedDirectWriter;
+const fixerError: (tool: string, error: unknown) => unknown = untypedFixerError;
+const verifyFixes: (options: {
+  readonly journal: Journal;
+  readonly analyze: unknown;
+  readonly mode: string;
+}) => { readonly rolledBack: readonly RolledBack[]; readonly notes: readonly string[] } =
+  untypedVerifyFixes;
+const lowerBaseline: (options: {
+  readonly projectRoot: string;
+  readonly writer: FixWriter;
+  readonly config: unknown;
+  readonly selectedRules: readonly string[];
+  readonly fixedFindings: readonly string[];
+}) => {
+  readonly notes: readonly string[];
+  readonly changed: readonly string[];
+  readonly errors: readonly string[];
+} = untypedLowerBaseline;
+const emptyRuleNotes: (options: {
+  readonly selectedRules: readonly string[];
+  readonly preset: string | undefined;
+  readonly recipes: unknown;
+  readonly result: FixOutcome;
+}) => readonly string[] = untypedEmptyRuleNotes;
+const languageFixers: Readonly<
+  Record<string, ((settings: FixSettings) => FixOutcome) | undefined>
+> = untypedLanguageFixers;
+const spawn: (command: string, args: readonly string[], options: object) => unknown =
+  spawnSyncWithOutputFile;
+
+function presetOf(config: unknown): string | undefined {
+  if (typeof config !== 'object' || config === null || !('preset' in config)) {
+    return undefined;
+  }
+  return typeof config.preset === 'string' ? config.preset : undefined;
+}
 
 function spawnEnvironment(
   baseEnvironment: NodeJS.ProcessEnv | undefined,
-  overrides: NodeJS.ProcessEnv = {},
+  overrides: NodeJS.ProcessEnv | undefined,
 ): NodeJS.ProcessEnv | undefined {
-  if (baseEnvironment === undefined && Object.keys(overrides).length === 0) {
+  const added = overrides ?? {};
+  if (baseEnvironment === undefined && Object.keys(added).length === 0) {
     return undefined;
   }
-  return { ...baseEnvironment, ...overrides };
+  return { ...baseEnvironment, ...added };
 }
 
 export function spawnInvocation(
-  { command, args, cwd, input, environment, shell = false, timeout = TOOL_TIMEOUT_MS }: Invocation,
-  baseEnvironment?: NodeJS.ProcessEnv,
-  spawn: typeof spawnSyncWithOutputFile = spawnSyncWithOutputFile,
-) {
-  return spawn(command, args, {
+  { command, args, cwd, input, environment, shell, timeout = TOOL_TIMEOUT_MS }: FixInvocation,
+  baseEnvironment: NodeJS.ProcessEnv | undefined,
+  spawnProcess: typeof spawn = spawn,
+): unknown {
+  return spawnProcess(command, args, {
     cwd,
     input,
-    shell,
+    shell: shell === true,
     timeout,
     env: spawnEnvironment(baseEnvironment, environment),
     encoding: 'utf8',
@@ -58,46 +122,31 @@ export function spawnInvocation(
   });
 }
 
-function fixOnce(options: FixOptions): FixOutcome {
-  const settings = {
+function fixOnce(options: RunOptions, writer: FixWriter): FixOutcome {
+  const settings: FixSettings = {
     ...options,
-    selectedRules: options.selectedRules ?? [],
-    executeFixCommand: (invocation: Invocation) =>
+    writer,
+    executeFixCommand: (invocation) =>
       options.executeFixCommand?.(invocation) ??
       spawnInvocation(invocation, options.spawnEnvironment),
   };
-  const fixer = languageFixers[settings.config?.preset as keyof typeof languageFixers];
-  return fixer === undefined
-    ? (fixTypeScript as (options: object) => FixOutcome)(settings)
-    : fixer(settings);
+  const fixer = languageFixers[presetOf(options.config) ?? ''];
+  return fixer === undefined ? fixTypeScript(settings) : fixer(settings);
 }
 
 function rewroteAny(note: string, names: ReadonlySet<string>): boolean {
   return [...names].some((name) => note.endsWith(` rewrote ${name}`));
 }
 
-type FixOutcome = {
-  readonly fixedFiles: readonly string[];
-  readonly fixedFindings?: readonly string[];
-  readonly notes?: readonly string[];
-  readonly [key: string]: unknown;
-};
-type RolledBack = { readonly files: readonly string[]; readonly recipe: string };
-
-const verifyFixesOf = verifyFixes as (options: object) => {
-  readonly rolledBack: readonly RolledBack[];
-  readonly notes: readonly string[];
-};
-
-function withVerification(
-  { analyzeFixes, verifyMode }: FixOptions,
-  journal: unknown,
-  result: FixOutcome,
-): FixOutcome {
-  if (analyzeFixes === undefined) {
+function withVerification(options: RunOptions, journal: Journal, result: FixOutcome): FixOutcome {
+  if (options.analyzeFixes === undefined) {
     return result;
   }
-  const { rolledBack, notes } = verifyFixesOf({ journal, analyze: analyzeFixes, mode: verifyMode });
+  const { rolledBack, notes } = verifyFixes({
+    journal,
+    analyze: options.analyzeFixes,
+    mode: options.verifyMode,
+  });
   const undone = new Set(rolledBack.flatMap(({ files }) => files));
   const undoneRecipes = new Set(rolledBack.map(({ recipe }) => `(${recipe})`));
   return {
@@ -114,22 +163,65 @@ function withVerification(
   };
 }
 
-export function fixWorkingTree(options: FixOptions) {
+function withLoweredBaseline(
+  options: RunOptions,
+  writer: FixWriter,
+  result: FixOutcome,
+): FixOutcome {
+  if (!options.allFiles) {
+    return result;
+  }
+  const { notes, changed, errors } = lowerBaseline({
+    projectRoot: options.projectRoot,
+    writer,
+    config: options.config,
+    selectedRules: options.selectedRules,
+    fixedFindings: result.fixedFindings ?? [],
+  });
+  return {
+    ...result,
+    fixedFiles: [...result.fixedFiles, ...changed],
+    toolErrors: [
+      ...result.toolErrors,
+      ...errors.map((message) => fixerError('fix-baseline', new Error(message))),
+    ],
+    notes: [...(result.notes ?? []), ...notes],
+  };
+}
+
+function withRuleNotes(options: RunOptions, result: FixOutcome): FixOutcome {
+  const notes = emptyRuleNotes({
+    selectedRules: options.selectedRules,
+    preset: presetOf(options.config),
+    recipes: options.recipes ?? ALL_RECIPES,
+    result,
+  });
+  return notes.length === 0 ? result : { ...result, notes: [...(result.notes ?? []), ...notes] };
+}
+
+function fixInTree(options: RunOptions): FixOutcome {
   const { repositoryRoot, projectRoot } = options;
-  if (options.dryRun !== true && options.analyzeFixes === undefined) {
-    return fixOnce({ ...options, writer: directWriter(projectRoot) });
+  if (!options.dryRun && options.analyzeFixes === undefined) {
+    const writer = directWriter(projectRoot);
+    return withLoweredBaseline(options, writer, fixOnce(options, writer));
   }
   const journal = createJournal(projectRoot);
-  function run() {
-    return withVerification(
+  function run(): FixOutcome {
+    const writer = journalWriter(journal);
+    return withLoweredBaseline(
       options,
-      journal,
-      fixOnce({ ...options, writer: journalWriter(journal) }),
+      writer,
+      withVerification(options, journal, fixOnce(options, writer)),
     );
   }
-  if (options.dryRun !== true) {
+  if (!options.dryRun) {
     return run();
   }
   const { result, recovered, ...plan } = dryRun({ repositoryRoot, journal, run });
   return { ...result, notes: [...recovered, ...(result.notes ?? [])], dryRun: plan };
+}
+
+export function fixWorkingTree(options: FixOptions): FixOutcome {
+  const resolved = { ...options, selectedRules: options.selectedRules ?? [] };
+  return withRuleNotes(resolved, fixInTree(resolved));
 }
