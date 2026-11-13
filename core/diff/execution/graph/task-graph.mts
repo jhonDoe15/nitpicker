@@ -137,7 +137,9 @@ function descriptorProgress(tasks: unknown): OnSettled {
     label: fieldOf(progress, 'label'),
     total: fieldOf(tasks, 'length'),
   });
-  return (event) => report({ because: undefined, ...event });
+  return (event) => {
+    report({ because: undefined, ...event });
+  };
 }
 
 async function reportWhenSettled(

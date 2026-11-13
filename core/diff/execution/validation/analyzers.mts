@@ -1,4 +1,5 @@
-import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { analyzerNameOf as nameOf } from '../../../../shared/values/analyzers.mts';
 
 export type Invocation = {
   readonly command: string;
@@ -25,10 +26,6 @@ export type ValidAnalyzer = {
 
 function isTextList(value: unknown, accepts: (text: string) => boolean): boolean {
   return Array.isArray(value) && value.every((item) => typeof item === 'string' && accepts(item));
-}
-
-function nameOf(analyzer: unknown): string {
-  return textOf(fieldOf(analyzer, 'name'));
 }
 
 export function validateInvocation(

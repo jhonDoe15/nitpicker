@@ -1,4 +1,4 @@
-import { appendPolicyChangeSummary } from './policy-changes.mts';
+import { policyChangeSummaryLines } from './policy-changes.mts';
 import { listOf, fieldOf } from '../../../../shared/values/readers.mts';
 
 type Emphasize = (text: string) => string;
@@ -11,14 +11,14 @@ export function noticeSection(notices: readonly unknown[] = []): string[] {
     : ['', HEADING, ...notices.map((notice) => `  ${String(notice)}`)];
 }
 
-function appendNoticeSummary(lines: string[], notices: unknown, emphasize: Emphasize): void {
+function noticeSummaryLines(notices: unknown, emphasize: Emphasize): string[] {
   const [, heading, ...entries] = noticeSection(listOf(notices));
-  if (heading !== undefined) {
-    lines.push(emphasize(heading), ...entries);
-  }
+  return heading === undefined ? [] : [emphasize(heading), ...entries];
 }
 
-export function appendReviewSummary(lines: string[], summary: unknown, emphasize: Emphasize): void {
-  appendPolicyChangeSummary(lines, summary, emphasize);
-  appendNoticeSummary(lines, fieldOf(summary, 'notices'), emphasize);
+export function reviewSummaryLines(summary: unknown, emphasize: Emphasize): string[] {
+  return [
+    ...policyChangeSummaryLines(summary, emphasize),
+    ...noticeSummaryLines(fieldOf(summary, 'notices'), emphasize),
+  ];
 }

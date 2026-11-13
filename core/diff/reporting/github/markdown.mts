@@ -82,11 +82,11 @@ function encodedPath(filePath: string): string {
 function findingLocation(finding: ReportEntry, { linkBase, projectPrefix }: LinkContext): string {
   const line = fieldOf(finding['location'], 'line');
   const path = textOf(finding.path);
-  const label = line === undefined ? finding.path : `${path}:${String(line)}`;
+  const label = line === undefined ? finding.path : `${path}:${textOf(line)}`;
   if (linkBase === undefined || finding.path === '') {
     return code(label);
   }
-  const anchor = line === undefined ? '' : `#L${String(line)}`;
+  const anchor = line === undefined ? '' : `#L${textOf(line)}`;
   return `[${code(label)}](${linkBase}/${encodedPath(`${projectPrefix}${path}`)}${anchor})`;
 }
 

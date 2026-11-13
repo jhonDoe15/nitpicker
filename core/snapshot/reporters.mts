@@ -2,7 +2,6 @@ import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
 import {
   type ReferenceLinks,
-  type RenderOptions,
   type ReportFile,
   clearLogs,
   clearReports,
@@ -22,6 +21,11 @@ import {
 } from '../diff/reporting/format/codequality.mts';
 
 import { textOf } from '../../shared/values/readers.mts';
+import {
+  findingSectionLines,
+  ruleFilterSection,
+  toolErrorSectionLines,
+} from '../diff/reporting/console/text-sections.mts';
 
 type ReportFinding = {
   readonly tool?: unknown;
@@ -140,14 +144,18 @@ function renderTextReport(
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  appendFindingSection(lines, 'Enforceable findings', enforceable);
+  lines.push(...findingSectionLines('Enforceable findings', enforceable));
   if (descriptiveLines === undefined) {
-    appendFindingSection(lines, 'Descriptive findings', descriptive);
+    lines.push(...findingSectionLines('Descriptive findings', descriptive));
   } else if (descriptiveLines.length > 0) {
     lines.push('', ...descriptiveLines);
   }
   lines.push(...referenceLinesOf(report.findings, reference));
-  appendToolErrorSection(lines, report.toolErrors);
+  lines.push(...toolErrorSectionLines(report.toolErrors));
+  const help = helpLineOf(report.toolErrors.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(help);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -155,17 +163,7 @@ export function renderRuleFilterSection(
   report: SnapshotReport,
   ruleFilters: readonly string[],
 ): string {
-  if (ruleFilters.length === 0) {
-    return '';
-  }
-  function matches(finding: ReportFinding): boolean {
-    return ruleFilters.some((filter) =>
-      `${textOf(finding.tool)}/${textOf(finding.rule)}`.includes(filter),
-    );
-  }
-  const lines = ['', `Findings matching --rule ${ruleFilters.join(', ')}:`];
-  appendFindingSection(lines, '  Matching', report.findings.filter(matches));
-  return `${lines.join('\n')}\n`;
+  return ruleFilterSection(ruleFilters, [['  Matching', report.findings]]);
 }
 
 function renderJunitReport(report: SnapshotReport): string {
@@ -210,36 +208,6 @@ function appendToolCountSection(lines: string[], tools: readonly ToolCount[]): v
       `${textOf(tool.name)}: total=${textOf(tool.total)} enforceable=${String(tool.enforceable)} ` +
         `descriptive=${textOf(tool.descriptive)}`,
     );
-  }
-}
-
-function appendFindingSection(
-  lines: string[],
-  heading: string,
-  findings: readonly ReportFinding[],
-): void {
-  if (findings.length === 0) {
-    return;
-  }
-  lines.push('', `${heading}:`);
-  for (const finding of findings) {
-    const location = finding.location === undefined ? '' : `:${textOf(finding.location.line)}`;
-    const rule = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
-    lines.push(`${rule} ${textOf(finding.path)}${location} ${textOf(finding.message)}`);
-  }
-}
-
-function appendToolErrorSection(lines: string[], toolErrors: readonly ReportFinding[]): void {
-  if (toolErrors.length === 0) {
-    return;
-  }
-  lines.push('', 'Tool errors:');
-  for (const error of toolErrors) {
-    lines.push(`${textOf(error.tool)} (${textOf(error.snapshot)}): ${textOf(error.message)}`);
-  }
-  const help = helpLineOf(toolErrors.map(({ message }) => message));
-  if (help !== undefined) {
-    lines.push(help);
   }
 }
 

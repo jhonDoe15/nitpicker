@@ -50,7 +50,7 @@ function shownEntries(listed: readonly string[]): string[] {
 
 function cappedEntries(lines: readonly string[], diagnosticsPath: string): string[] {
   const listed = lines.filter((line) => isListed(line));
-  const others = lines.filter((line) => !isListed(line) && !MORE_LINE.test(line));
+  const others = lines.filter((line) => !(isListed(line) || MORE_LINE.test(line)));
   const unlisted = lines.reduce((total, line) => total + Number(MORE_LINE.exec(line)?.[1] ?? 0), 0);
   const entries = listed.filter((line) => ENTRY_LINE.test(line)).length;
   const hidden = unlisted + Math.max(0, entries - maxShown);

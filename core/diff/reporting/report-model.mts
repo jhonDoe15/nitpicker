@@ -48,8 +48,8 @@ export function summaryFields(
   };
 }
 
-export function sortByToolAndPath<T extends SortableEntry>(entries: T[]): T[] {
-  return entries.sort(
+export function sortByToolAndPath<T extends SortableEntry>(entries: readonly T[]): T[] {
+  return entries.toSorted(
     (left, right) =>
       sortText(left.tool).localeCompare(sortText(right.tool)) ||
       sortText(left.path).localeCompare(sortText(right.path)) ||

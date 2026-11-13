@@ -70,7 +70,7 @@ function capSurvivors(mutants: ReportEntry[]): ReportEntry[] {
   }
   const noun = hidden.length === 1 ? 'mutant' : 'mutants';
   const line = lineOf(firstHidden);
-  const from = line === undefined ? '' : ` from line ${String(line)}`;
+  const from = line === undefined ? '' : ` from line ${textOf(line)}`;
   return [
     ...mutants.slice(0, SURVIVOR_LIMIT),
     {

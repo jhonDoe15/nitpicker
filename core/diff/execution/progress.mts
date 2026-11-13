@@ -7,7 +7,7 @@ export type ProgressStream = {
   readonly fd?: unknown;
 };
 
-export type TaskProgress = { readonly stream: ProgressStream; readonly label: string };
+type TaskProgress = { readonly stream: ProgressStream; readonly label: string };
 
 export type RunTaskOptions = {
   readonly snapshot: string;
@@ -31,14 +31,16 @@ const shownPath: (absolutePath: unknown) => unknown = displayPath;
 
 const PROGRESS_FD = 3;
 
+const SECONDS_PER_MINUTE = 60;
+
 export function formatDuration(elapsedMs: number): string {
   const seconds = Math.round(elapsedMs / 1000);
   if (seconds < 1) {
     return '<1s';
   }
-  return seconds < 60
+  return seconds < SECONDS_PER_MINUTE
     ? `${String(seconds)}s`
-    : `${String(Math.floor(seconds / 60))}m${String(seconds % 60).padStart(2, '0')}s`;
+    : `${String(Math.floor(seconds / SECONDS_PER_MINUTE))}m${String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}s`;
 }
 
 function countAnalyzers(count: unknown): string {

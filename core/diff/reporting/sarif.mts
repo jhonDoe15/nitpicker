@@ -16,7 +16,7 @@ import {
   toSarifResult,
 } from './sarif/sarif-results.mts';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { textOf } from '../../../shared/values/readers.mts';
 
 type RunProfile = {
   readonly notifications: readonly unknown[];
@@ -47,7 +47,7 @@ type SarifLog = {
   readonly notes?: readonly ReportEntry[] | undefined;
   readonly location: SarifLocation;
   readonly sources: string;
-  readonly newFirst?: boolean;
+  readonly newFirst: boolean;
   readonly limits: UploadLimits;
   readonly summary?: unknown;
 };
@@ -146,7 +146,7 @@ function renderSarifLog({
   notes = [],
   location,
   sources,
-  newFirst = true,
+  newFirst,
   limits,
   summary = {},
 }: SarifLog): string {
@@ -185,6 +185,7 @@ export function renderSarifReport(report: ReportData, options: SarifOptions = {}
     notes: report.notes,
     location: options,
     sources: 'new-findings.json',
+    newFirst: true,
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
     summary: report.summary,
   });
@@ -200,6 +201,7 @@ export function renderBaselineSarifReport(report: ReportData, options: SarifOpti
     notes: report.notes,
     location: options,
     sources: 'new-findings.json with held-findings.json',
+    newFirst: true,
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
     summary: report.summary,
   });

@@ -147,7 +147,7 @@ function place(path: unknown, positions: ReadonlyMap<string, number>, unplaced: 
 function position(location: unknown): string {
   const line = fieldOf(location, 'line');
   const column = fieldOf(location, 'column');
-  return column === undefined ? String(line) : `${String(line)}:${String(column)}`;
+  return column === undefined ? textOf(line) : `${textOf(line)}:${textOf(column)}`;
 }
 
 function entryTags(entry: Entry | undefined, differing: ReadonlySet<string>): string {

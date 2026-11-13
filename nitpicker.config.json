@@ -71,6 +71,11 @@
   "disable": ["coverage", "crap", "mutation"],
   "exceptions": [
     {
+      "rule": "nitpicker/no-parameter-mutation",
+      "paths": ["core/diff/execution/report/analyzer-metadata.mts"],
+      "reason": "resolveAnalyzerMetadata fills the version and configuration hash of the analyzer it is handed, lazily and only for analyzers that run: the reports, the findings cache keys and the shard metadata read them from that same analyzer object, and recoverAnalyzerVersion marks a version that failed to resolve as unknown on it."
+    },
+    {
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
       "paths": ["shared/logic/sync/decide-sync.mjs"],
       "reason": "Lint rules have no composition root: the solver worker is started once, lazily, when a rule first asks a question that needs it, and unref'd so it never keeps the process alive."

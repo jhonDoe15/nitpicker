@@ -36,15 +36,9 @@ export function policyChangeSection(summary: unknown = {}): string[] {
   return policyChanges.length === 0 ? [] : ['', heading, ...policyChanges.map(indentedLine)];
 }
 
-export function appendPolicyChangeSummary(
-  lines: string[],
-  summary: unknown,
-  emphasize: Emphasize,
-): void {
+export function policyChangeSummaryLines(summary: unknown, emphasize: Emphasize): string[] {
   const [, heading, ...changes] = policyChangeSection(summary);
-  if (heading !== undefined) {
-    lines.push(emphasize(heading), ...changes);
-  }
+  return heading === undefined ? [] : [emphasize(heading), ...changes];
 }
 
 function groupedByKind(findings: readonly ReportEntry[]): [unknown, unknown[]][] {

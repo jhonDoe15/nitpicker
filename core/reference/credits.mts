@@ -13,11 +13,11 @@ const ESLINT_CREDIT =
 
 export function pageCredits(): Readonly<Record<string, string>> {
   return {
-    'java-pmd': `The descriptions of PMD's own rules are from PMD ${pinnedToolTextVersion('pmd')}, under its BSD-style licence.`,
-    'java-errorprone': `The summaries are from Error Prone and NullAway ${pinnedToolTextVersion('errorprone')}: Error Prone is under the Apache License 2.0 and NullAway under the MIT License.`,
-    'java-spotbugs': lgplNote(`SpotBugs ${pinnedToolTextVersion('spotbugs')}`),
-    'java-checkstyle': lgplNote(`Checkstyle ${pinnedToolTextVersion('checkstyle')}`),
-    'kotlin-detekt': `The descriptions of detekt's rules are from detekt ${pinnedToolTextVersion('detekt')}, under the Apache License 2.0.`,
+    'java-pmd': `The descriptions of PMD's own rules are from PMD ${textOf(pinnedToolTextVersion('pmd'))}, under its BSD-style licence.`,
+    'java-errorprone': `The summaries are from Error Prone and NullAway ${textOf(pinnedToolTextVersion('errorprone'))}: Error Prone is under the Apache License 2.0 and NullAway under the MIT License.`,
+    'java-spotbugs': lgplNote(`SpotBugs ${textOf(pinnedToolTextVersion('spotbugs'))}`),
+    'java-checkstyle': lgplNote(`Checkstyle ${textOf(pinnedToolTextVersion('checkstyle'))}`),
+    'kotlin-detekt': `The descriptions of detekt's rules are from detekt ${textOf(pinnedToolTextVersion('detekt'))}, under the Apache License 2.0.`,
     'python-ruff': `The descriptions and examples are from the documentation of ruff ${textOf(ruffSnapshot().version)}, under the MIT License.`,
     'typescript-eslint': ESLINT_CREDIT,
     'typescript-plugins': ESLINT_CREDIT,

@@ -28,40 +28,32 @@ export function splitToolErrors(toolErrors: readonly ReportEntry[]): {
   };
 }
 
-export function appendToolErrorSummary(
-  lines: string[],
-  shown: readonly ReportEntry[],
-  color: boolean,
-): void {
+export function toolErrorSummaryLines(shown: readonly ReportEntry[], color: boolean): string[] {
   if (shown.length === 0) {
-    return;
+    return [];
   }
-  lines.push(
+  const help = helpLineOf(shown.map(({ message }) => message));
+  return [
     style(
       `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}`,
       [ANSI.bold, ANSI.red],
       color,
     ),
-  );
-  for (const error of shown) {
-    const label =
-      error.snapshot === undefined
-        ? textOf(error.tool)
-        : `${textOf(error.tool)} (${textOf(error.snapshot)})`;
-    if (error.rule === undefined) {
-      lines.push(`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`);
-      continue;
-    }
-    const [first, ...rest] = String(error.message).split('\n');
-    lines.push(
-      `  ${style(label, [ANSI.yellow], color)}: ${first}`,
-      ...rest.map((line) => `  ${line}`),
-    );
+    ...shown.flatMap((error) => toolErrorLines(error, color)),
+    ...(help === undefined ? [] : [style(help, [ANSI.dim], color)]),
+  ];
+}
+
+function toolErrorLines(error: ReportEntry, color: boolean): string[] {
+  const label =
+    error.snapshot === undefined
+      ? textOf(error.tool)
+      : `${textOf(error.tool)} (${textOf(error.snapshot)})`;
+  if (error.rule === undefined) {
+    return [`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`];
   }
-  const help = helpLineOf(shown.map(({ message }) => message));
-  if (help !== undefined) {
-    lines.push(style(help, [ANSI.dim], color));
-  }
+  const [first = '', ...rest] = String(error.message).split('\n');
+  return [`  ${style(label, [ANSI.yellow], color)}: ${first}`, ...rest.map((line) => `  ${line}`)];
 }
 
 export function withoutSkipNotices<T extends ReportEntry>(toolErrors: readonly T[]): T[] {

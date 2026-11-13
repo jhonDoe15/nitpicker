@@ -7,7 +7,7 @@ import { singleLine } from './format/text.mjs';
 import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mts';
-import { appendReviewSummary } from './review/notices.mts';
+import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
@@ -17,7 +17,7 @@ import {
   pluralize,
   splitToolErrors,
   style,
-  appendToolErrorSummary,
+  toolErrorSummaryLines,
 } from './console/tool-errors.mts';
 
 export { errorHeadline, pluralize, withoutSkipNotices } from './console/tool-errors.mts';
@@ -25,8 +25,8 @@ import type { ReportData, ReportEntry } from '../../../shared/values/findings.mt
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 type ConsoleOptions = {
-  readonly color?: boolean;
-  readonly details?: boolean;
+  readonly color: boolean;
+  readonly details: boolean;
   readonly diagnosticsPath?: unknown;
 };
 
@@ -50,7 +50,7 @@ const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 
 const SHORT_SHA_LENGTH = 12;
 
-export function renderConsoleSummary(report: ReportData, options: ConsoleOptions = {}): string {
+export function renderConsoleSummary(report: ReportData, options: ConsoleOptions): string {
   if (fieldOf(report.summary, 'noChanges') !== true) {
     return renderGateSummary(report, options);
   }
@@ -62,10 +62,10 @@ export function renderConsoleSummary(report: ReportData, options: ConsoleOptions
 function renderGateSummary(
   report: ReportData,
   {
-    color = true,
-    details = false,
+    color,
+    details,
     diagnosticsPath: givenPath = 'reports/quality/diff/combined/report.txt',
-  }: ConsoleOptions = {},
+  }: ConsoleOptions,
 ): string {
   const diagnosticsPath = textOf(givenPath);
   const violations = report.newFindings.filter(
@@ -97,18 +97,35 @@ function renderGateSummary(
     },
     { color, details },
   );
-  appendReviewSummary(lines, consolePolicySummary(report), (text) =>
-    style(text, [ANSI.bold, ANSI.yellow], color),
+  lines.push(
+    ...reviewSummaryLines(consolePolicySummary(report), (text) =>
+      style(text, [ANSI.bold, ANSI.yellow], color),
+    ),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
-  lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot: false }));
   appendNoteSummary(lines, report.notes, color);
-  appendToolErrorSummary(lines, otherErrors, color);
-  for (const line of [...partialRunLines(report.summary), ...quickLinesOf(report.summary)]) {
-    lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
-  }
-  lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
+  lines.push(...closingLines(report, { color, diagnosticsPath, otherErrors }));
   return `${lines.join('\n')}\n`;
+}
+
+type ClosingOptions = {
+  readonly color: boolean;
+  readonly diagnosticsPath: string;
+  readonly otherErrors: readonly ReportEntry[];
+};
+
+function closingLines(
+  report: ReportData,
+  { color, diagnosticsPath, otherErrors }: ClosingOptions,
+): string[] {
+  return [
+    ...toolErrorSummaryLines(otherErrors, color),
+    ...[...partialRunLines(report.summary), ...quickLinesOf(report.summary)].map((line) =>
+      style(line, [ANSI.bold, ANSI.yellow], color),
+    ),
+    style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color),
+  ];
 }
 
 const MAX_HELD_LINES = 10;
