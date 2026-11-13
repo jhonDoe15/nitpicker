@@ -19,7 +19,6 @@ import {
 } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 import { stripAnsi as untypedStripAnsi } from '../../../../../shared/rules/console/ansi.mjs';
 import { testsFailAnchor as untypedTestsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
-import { functionIdentity as untypedFunctionIdentity } from '../../exceptions/function-identity.mjs';
 
 export type Metric = {
   readonly analyzerName: string;
@@ -77,14 +76,6 @@ export type ShownValues = {
   readonly received?: string | undefined;
 };
 
-export type FunctionIdentity = {
-  readonly crapFunctionName: (entry: object) => string | undefined;
-  readonly branchFunctionNames: (
-    branchMap: unknown,
-  ) => Readonly<Record<string, string | undefined>>;
-  readonly functionNameAtLine: (line: number | undefined) => string | undefined;
-};
-
 export function addMetric(findings: Finding[], metric: Metric): void {
   Reflect.apply(untypedAddMetric, undefined, [findings, metric]);
 }
@@ -138,6 +129,3 @@ export const formattedValue: (value: unknown) => string = untypedFormattedValue;
 export const valuesInMessage: (text: string) => ShownValues = untypedValuesInMessage;
 
 export const stripAnsi: (text: string) => string = untypedStripAnsi;
-
-export const functionIdentity: (source: string, file: string) => FunctionIdentity =
-  untypedFunctionIdentity;
