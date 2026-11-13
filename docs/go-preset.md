@@ -832,3 +832,8 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   coverage and slow tests.
 - A race is keyed by its functions and reported on the file of its first access, so moving one of
   the racing functions to another file or package makes the race new.
+- No rule yet for an environment variable tested only for being set
+  (`v, ok := os.LookupEnv("X"); if ok {`), which counts an empty value as set; the other presets
+  report it (`nitpicker/no-undefined-only-env-check`, `env-none-only-check`,
+  `pmd/SpringNullOnlyConfigCheck`). It belongs to the one-way rules of GO3 (#416);
+  `os.Getenv("X") != ""` is the allowed form.
