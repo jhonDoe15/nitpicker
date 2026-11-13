@@ -7,7 +7,7 @@ import { finding, findingLine, policy } from '../../diff/execution/test-support/
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { expectValidSarif } from '../../diff/reporting/test-support/report-assertions.mjs';
 import { REPORT_FILE_NAMES } from '../../diff/reporting/reporters.mjs';
-import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mjs';
+import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
 

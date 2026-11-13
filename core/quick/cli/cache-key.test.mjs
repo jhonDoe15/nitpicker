@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cacheKey, createFindingsCache } from '../../diff/cache/findings-cache.mjs';
-import { applyRunProfile } from '../profile.mjs';
+import { applyRunProfile } from '../profile.mts';
 
 const temporaryRoots = [];
 
