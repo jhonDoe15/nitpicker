@@ -94,8 +94,16 @@ left for you:
    `environment.yml` or a requirements file) or has it installed (`node_modules`, `.venv`); one
    that only `.venv` holds is named, so you can declare it. `typescript` counts from 5.7 on,
    TypeScript 7 included (the installed version, else the declared range); an older one is asked
-   for again. A project on TypeScript 7 needs Node.js 22.19 or newer, so on an older Node.js init
-   stops with exit 2 and names the version, and asks for `typescript@^6` instead of `typescript`. Java and Kotlin projects need Java 21 and nothing else.
+   for again, and the heading says why (`typescript 5.4.5 is older than 5.7`) instead of calling it
+   missing. The printed `typescript` is pinned to the range that nitpicker's own tools accept: its
+   own minimum up to the upper bound that `typescript-eslint` declares for TypeScript
+   (`'typescript@>=5.7 <6.1.0'`). `vitest` and `@vitest/coverage-v8` follow the Vite the project
+   has (installed, else declared) and the Vite range each Vitest major declares (a declared range with nothing installed counts as the highest major it allows; `@types/node`, an optional peer, never blocks): the newest supported Vitest
+   that runs with them is named as is, and an older supported one is pinned (`vitest@^4.1.11`)
+   when the newest does not fit. When no supported Vitest runs on the installed Vite (Vitest 4
+   and 5 both need Vite 6 or newer), init leaves Vitest out of the command and says to upgrade
+   Vite first. A project on TypeScript 7 needs Node.js 22.19 or newer, so on an older Node.js init
+   stops with exit 2 and names the version, and asks for `typescript@^6 <6.1.0` (capped like the pin above) instead of `typescript`. Java and Kotlin projects need Java 21 and nothing else.
 3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
    Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
    detected at run time, so init never writes it.

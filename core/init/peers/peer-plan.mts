@@ -1,5 +1,7 @@
 import { textOf } from '../../../shared/values/readers.mts';
 import { assertTypeScriptNode, missingNodePeers } from './node-peers.mts';
+import type { PeerNeeds } from './node-peers.mts';
+import { minimumOf } from './peer-pins.mts';
 import { pythonPeerStatus } from './python-peers.mts';
 import type { InitProject, Peers } from '../init-types.mts';
 
@@ -44,10 +46,25 @@ function adviceOf(tool: string | undefined): { readonly advice?: string } {
   return advice === undefined ? {} : { advice };
 }
 
+function nameOfRequirement(requirement: string): string {
+  const separator = requirement.indexOf('@', 1);
+  return separator === -1 ? requirement : requirement.slice(0, separator);
+}
+
+function outdatedSentences(needs: PeerNeeds): string[] {
+  return needs.outdated.map(
+    ({ name, installed, range }) =>
+      `${name} ${textOf(installed)} is older than ${textOf(minimumOf(range))}`,
+  );
+}
+
 function nodePlan(projectRoot: string, project: InitProject, nodeVersion: string): Peers {
   assertTypeScriptNode(projectRoot, nodeVersion);
-  const { add, uninstalled } = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
-  return {
+  const needs = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
+  const { add, uninstalled, blockers } = needs;
+  const outdated = outdatedSentences(needs);
+  const older = new Set(needs.outdated.map(({ name }) => name));
+  const plan: Peers = {
     ...NOTHING,
     missing: add,
     uninstalled,
@@ -56,6 +73,14 @@ function nodePlan(projectRoot: string, project: InitProject, nodeVersion: string
         ? textOf(project.packageManager?.install)
         : installCommand(textOf(project.packageManager?.add), add),
   };
+  return outdated.length === 0 && blockers.length === 0
+    ? plan
+    : {
+        ...plan,
+        absent: add.filter((requirement) => !older.has(nameOfRequirement(requirement))),
+        outdated,
+        blockers,
+      };
 }
 
 function requirementsWhere(
@@ -90,7 +115,8 @@ export function planPeers(
     project.family === 'python'
       ? pythonPlan(projectRoot, project)
       : nodePlan(projectRoot, project, nodeVersion);
-  return plan.missing.length === 0 && plan.uninstalled.length === 0
+  const blocked = (plan.blockers ?? []).length > 0;
+  return plan.missing.length === 0 && plan.uninstalled.length === 0 && !blocked
     ? { ...NOTHING, undeclared: plan.undeclared, installedOnly: plan.installedOnly }
     : plan;
 }
