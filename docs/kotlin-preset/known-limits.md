@@ -50,7 +50,10 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   fails the build. The formatter that nitpicker follows is the one the effective POM names through
   the ktlint Maven plugin or the Spotless `kotlin` step.
 - On Maven the Kotlin metrics and `kotlin-psi` programs run on the JDK that runs Maven (`JAVA_HOME`), as on
-  Gradle they run on the JVM of Gradle; only detekt's `--jdk-home` follows the build's toolchain.
+  Gradle they run on the JVM of Gradle; detekt's `--jdk-home` follows the build's toolchain. detekt
+  itself runs on JDK 17 to 21, so on a build running on JDK 25 it uses the newest JDK from 17 to 21
+  that the build can find (a toolchain on Gradle, an installed JDK on Maven) and is skipped with a `tool-skipped` tool error when there is none (see
+  [JDK versions](../java-preset.md#jdk-versions)).
 - ArchUnit rule tests written in Kotlin run with the other tests, but the resolution of their
   findings to source files is only verified for Java.
 - The kotlinc lint compiles the sources a second time with the pinned compiler, so it adds a

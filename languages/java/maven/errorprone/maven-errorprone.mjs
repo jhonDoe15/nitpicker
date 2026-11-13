@@ -5,7 +5,8 @@ import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
-import { errorProneJava } from './maven-jdk.mjs';
+import { ERROR_PRONE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
+import { errorProneJava, skipWithoutJdk } from './maven-jdk.mjs';
 
 const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
 const COMPILER_PACKAGES = [
@@ -155,14 +156,27 @@ function analyze({ module, reportDir, tools, classpaths, configs, ...run }, modu
   });
 }
 
-export function runErrorProne(context) {
+function analyzeWithFallback(context) {
   const modular = isModular(context.module);
   try {
     analyze(context, modular);
   } catch (error) {
-    if (!modular) {
+    if (!modular || error?.noFittingJdk === true) {
       throw error;
     }
     analyze(context, 'all');
   }
+}
+
+export function runErrorProne(context) {
+  skipWithoutJdk(
+    {
+      reportDir: context.reportDir,
+      file: ERROR_PRONE_SKIPPED,
+      placeholders: { 'errorprone.json': '[]\n' },
+    },
+    () => {
+      analyzeWithFallback(context);
+    },
+  );
 }

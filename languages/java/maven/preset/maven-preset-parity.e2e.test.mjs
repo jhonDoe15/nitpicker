@@ -194,16 +194,19 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   it('reports a failing test as a tests-failed tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
-    const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
+    const finding = analyzeJavaSnapshot(project, { maven, policy: {} }).findings.find(
+      ({ rule }) => rule === 'tests-failed',
+    );
 
     expect(finding).toEqual({
-      tool: 'java',
+      tool: 'tests',
       rule: 'tests-failed',
       path: '.',
-      identity: 'tests-failed',
+      identity: 'tests-failed:core',
       classification: 'tool-error',
+      symbol: 'core',
       message: [
-        '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '1 test fails in core; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });

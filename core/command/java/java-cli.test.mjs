@@ -364,7 +364,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
-        '✖ 1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
       ]);
       expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
     });

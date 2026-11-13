@@ -46,8 +46,9 @@ Part of the [Java preset guide](../java-preset.md).
   (with `--enable-preview`, always that JDK); otherwise it takes the installed JDK closest to 21
   from the `JAVA_HOME_<N>_X64`/`_ARM64` variables of hosted CI, the `jdkHome` entries of
   `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm` and `/Library/Java/JavaVirtualMachines`, so a
-  project on JDK 17 keeps working wherever a JDK 21 is installed. With none it fails before
-  anything compiles, naming the JDK it needs and where it looked; a missing `java` is reported as
+  project on JDK 17 keeps working wherever a JDK 21 is installed. With none Error Prone is skipped
+  alone, with a `tool-skipped` tool error that names the JDK it needs and where it looked; a
+  missing `java` is reported as
   `java not found`.
 - **Language level and options.** The runner mirrors the project's own form: `--release <n>` when
   the build uses `release`, `-source <n> -target <n>` when it uses source and target compatibility

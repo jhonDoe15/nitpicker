@@ -22,6 +22,7 @@ import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
@@ -70,7 +71,7 @@ function runJavaPreset(
   withKotlin((kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
-      ...(policy.snapshot === 'base' ? ['--continue'] : []),
+      '--continue',
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -202,7 +203,8 @@ export function collectJavaReport(root, options = {}) {
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
+  const { snapshot } = options.policy ?? {};
+  return { findings: withTestsFailures(policed, testsFailures, { preset, snapshot }), imports };
 }
 
 function collectBothSnapshots({
@@ -231,11 +233,11 @@ function collectBothSnapshots({
           baselineRoot: path.join(baseWorktree, projectRelativePath),
         });
         const notes = testFailuresOf({ findings: collectedBase });
-        return {
+        return withoutSkippedTools({
           notes,
           baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
           headFindings,
-        };
+        });
       },
     );
   });

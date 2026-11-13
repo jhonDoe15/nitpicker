@@ -313,7 +313,8 @@ SARIF file) and the run is judged as follows.
   `maven-failure` for Java and Kotlin. A test that fails by timing out is an ordinary failing test
   when the runner names it, so a flaky base counts as red.
 - A red head still fails, with exit 1. Its tool error is `tests-failed` in every preset. When base
-  and head are both red, both are listed as tool errors.
+  and head are both red, both are listed as tool errors. On Java and Kotlin a red head, like a red
+  base, skips only coverage, CRAP and mutation; every other analyzer's findings are still reported.
 - A base that does not type-check (`typecheck-failed-skipped`) or whose build fails for any other
   reason is still a tool error.
 - Java and Kotlin Gradle builds run the base with `--continue`, so every module's tests run, and
