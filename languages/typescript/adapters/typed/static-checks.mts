@@ -1,3 +1,5 @@
+import { realpathSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
 import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
 import { applyAreaExceptions as applyUntypedAreaExceptions } from '../exceptions/area-exceptions.mjs';
@@ -31,11 +33,11 @@ export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?
 export type DependencyGraphRequest = {
   readonly projectRoot: string;
   readonly policyRoot: string;
-  readonly liveProjectRoot: string;
+  readonly liveProjectRoot?: string;
   readonly patterns: readonly string[];
   readonly exclude: string | undefined;
-  readonly includeOnly: string | undefined;
-  readonly configRelativePath: string;
+  readonly includeOnly?: string | undefined;
+  readonly configRelativePath?: string;
   readonly reportsConfigErrors: boolean;
 };
 
@@ -66,3 +68,29 @@ export const prepareSnapshotDependencies: (options: SnapshotDependencyRequest) =
 
 export const removeSnapshotDependencies: (dependencies: unknown) => void =
   removeUntypedSnapshotDependencies;
+
+export function isInvokedModule(moduleUrl: string): boolean {
+  const invokedPath = process.argv[1];
+  return invokedPath !== undefined && moduleUrl === pathToFileURL(realpathSync(invokedPath)).href;
+}
+
+export type AdapterOutput = {
+  readonly stdout: { write(text: string): unknown };
+  readonly stderr: { write(text: string): unknown };
+};
+
+export async function writeAdapterFindings(
+  failurePrefix: string,
+  findingsOf: () => Promise<readonly Finding[]>,
+  output: AdapterOutput,
+): Promise<number> {
+  try {
+    const findings = await findingsOf();
+    output.stdout.write(`${JSON.stringify({ findings })}\n`);
+    return 0;
+  } catch (failure) {
+    const error = withTypeScriptHint(failure);
+    output.stderr.write(`${failurePrefix}: ${error.message}\n`);
+    return 2;
+  }
+}
