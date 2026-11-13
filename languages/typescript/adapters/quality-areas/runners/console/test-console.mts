@@ -5,8 +5,7 @@ import type { QualityAreaOptions } from '../../typed/area-types.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../../shared/values/readers.mts';
 import { testConsoleFindings } from '../../typed/policy.mts';
 import { readHeadPolicy } from '../../../typed/head-policy.mts';
-import { TEST_CONSOLE_REPORT_PATH } from '../../reporting/test-report.mts';
-import { toolErrorFinding } from '../../reporting/test-report.mts';
+import { TEST_CONSOLE_REPORT_PATH, toolErrorFinding } from '../../reporting/test-report.mts';
 import { parseReportJson, relativeProjectPath } from '../../typed/tooling.mts';
 
 export function runTestConsole(options: QualityAreaOptions): Finding[] {

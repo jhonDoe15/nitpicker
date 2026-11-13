@@ -13,13 +13,18 @@ import type {
   TestReport,
 } from '../../test-runners/typed/runner-types.mts';
 import {
+  type CoverageReport,
+  type Failure,
+  type FailureContext,
+  type ProcessOutput,
+  type ProjectTestRun,
+  type ToolErrorDetails,
   failingTestEntries,
   testsFailAnchor,
   testsFailHeadline,
   testsFailOnBase,
 } from '../typed/reporting.mts';
 import { listOf, textOf } from '../../../../../shared/values/readers.mts';
-import type { CoverageReport } from './tests.mts';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
@@ -40,37 +45,6 @@ import {
   assertionDetails,
 } from './failure-lines.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-
-export type ToolErrorDetails = {
-  readonly rule: string;
-  readonly path?: string | undefined;
-  readonly message: string;
-  readonly anchor: string | undefined;
-};
-
-export type ProjectTestRun = {
-  readonly report: TestReport;
-  readonly result: NodeToolResult;
-  readonly runnerName: string;
-  readonly precedingCommands: unknown;
-};
-
-type Failure = {
-  readonly file: string;
-  readonly name: string;
-  readonly assertion: string;
-  readonly line?: number;
-  readonly expected?: unknown;
-  readonly received?: unknown;
-};
-
-type FailureContext = {
-  readonly runnerName?: string | undefined;
-  readonly precedingCommands?: unknown;
-  readonly snapshot?: string | undefined;
-};
-
-type ProcessOutput = { readonly stderr?: unknown; readonly stdout?: unknown };
 
 const COULD_NOT_RUN = 'could not run';
 

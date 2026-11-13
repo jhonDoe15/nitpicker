@@ -1,4 +1,7 @@
 import type { Finding } from '../../static-checks/shared.mts';
+import type { KnipReport } from '../typed/reporting.mts';
+import { escapeRegExp } from '../../typed/tooling.mts';
+import { readProjectSource, reportOf } from './source-hashes.mts';
 import { fieldOf, fieldsOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import {
   exceptionHint as untypedExceptionHint,
@@ -198,4 +201,50 @@ function packageMessage(rule: string, name: string, file: string): string {
     return `Package ${name} is imported but not listed in package.json. Add it to dependencies (devDependencies for tests and tooling).`;
   }
   return `Import ${name} resolves to no file or package. Fix the path, or install the package and list it in package.json.`;
+}
+
+export function withDeadCodeSourceHashes(parsed: unknown, projectRoot: string): object {
+  const report: KnipReport = reportOf(parsed, 'dead-code');
+  return {
+    ...report,
+    files: (report.files ?? []).map((file) => ({
+      path: file,
+      sourceHash: hash(readProjectSource(projectRoot, file)),
+    })),
+    issues: (report.issues ?? []).map((issue) => {
+      const lines = readProjectSource(projectRoot, String(issue['file'])).split('\n');
+      return Object.fromEntries(
+        Object.entries(issue).map(([category, entries]) => [
+          category,
+          Array.isArray(entries)
+            ? listOf(entries).map((entry) => withDeclarationSourceHash(entry, lines))
+            : entries,
+        ]),
+      );
+    }),
+  };
+}
+
+function withDeclarationSourceHash(entry: unknown, lines: readonly string[]): unknown {
+  const line = positiveInteger(fieldOf(entry, 'line'));
+  if (typeof entry !== 'object' || line === undefined || line > lines.length) {
+    return entry;
+  }
+  return {
+    ...fieldsOf(entry),
+    sourceHash: hash(lines[line - 1]?.trim()),
+    usedInFile: isUsedBesidesDeclaration(fieldOf(entry, 'name'), lines, line),
+  };
+}
+
+function isUsedBesidesDeclaration(
+  name: unknown,
+  lines: readonly string[],
+  declarationLine: number,
+): boolean {
+  if (typeof name !== 'string' || name.length === 0) {
+    return false;
+  }
+  const word = new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
+  return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
 }

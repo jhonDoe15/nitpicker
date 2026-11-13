@@ -2,8 +2,8 @@ import path from 'node:path';
 import type { Finding } from '../../static-checks/shared.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT, MESSAGES } from '../../../../../shared/policy.mjs';
 import { hash } from '../typed/repository.mts';
+import type * as Report from '../typed/reporting.mts';
 import {
-  type NeutralMutant,
   addMetric,
   branchCoverageFindings,
   crapFindings,
@@ -14,81 +14,10 @@ import {
 } from '../typed/reporting.mts';
 import type { Mutant, MutationReport } from '../typed/mutation.mts';
 
-type Position = { readonly line?: number; readonly column?: number };
-
-export type Span = { readonly start?: Position; readonly end?: Position };
-
-export type BranchMapEntry = {
-  readonly type?: string;
-  readonly loc?: Span;
-  readonly locations?: readonly Span[];
-};
-
-export type FileCoverage = {
-  readonly b?: Readonly<Record<string, readonly number[]>>;
-  readonly branchMap?: Readonly<Record<string, BranchMapEntry>>;
-  readonly branchSourceHashes?: Readonly<Record<string, string>>;
-  readonly uncoveredArms?: Readonly<Record<string, readonly string[]>>;
-  readonly branchFunctions?: Readonly<Record<string, string | undefined>>;
-};
-
-export type CoverageReport = Readonly<Record<string, FileCoverage>>;
-
-type Percent = { readonly percent?: number };
-
-export type CrapEntry = {
-  readonly source: string;
-  readonly function: string;
-  readonly crap?: number;
-  readonly complexity?: number;
-  readonly start?: number;
-  readonly end?: number;
-  readonly lines?: { readonly start?: number; readonly end?: number };
-  readonly sourceHash?: string;
-  readonly anchorHash?: string;
-  readonly declarationHash?: string;
-  readonly statementCoverage?: Percent;
-  readonly branchCoverage?: Percent;
-  readonly effectiveCoverage?: Percent;
-};
-
-export type CrapReport = {
-  readonly summary?: Readonly<Record<string, unknown>>;
-  readonly functions?: readonly CrapEntry[];
-};
-
-type CoverageOptions = { readonly projectRoot: string; readonly testCount: unknown };
-
-type FileCoverageTarget = { readonly analyzerName: string; readonly relativePath: string };
-
-type Efficiency = { readonly coveredBranchOutcomes: number; readonly testCount: number };
-
-type CrapSite = {
-  readonly analyzerName: string;
-  readonly scoreLimit: number;
-  readonly occurrence: number;
-  readonly violationOccurrence: number;
-};
-
-type MutantTally = {
-  readonly filePath: string;
-  readonly mutants: NeutralMutant[];
-  readonly statusCounts: Map<string, number>;
-  readonly occurrences: Map<string, number>;
-};
-
-type ReportedFile = { readonly mutants?: readonly Partial<Mutant>[] };
-
-type MutantSite = {
-  readonly filePath: string;
-  readonly status: string;
-  readonly occurrences: Map<string, number>;
-};
-
 export function normalizeCoverage(
-  report: CoverageReport,
+  report: Report.CoverageReport,
   analyzerName: string,
-  { projectRoot, testCount }: CoverageOptions,
+  { projectRoot, testCount }: Report.CoverageOptions,
 ): Finding[] {
   const findings: Finding[] = [];
   let coveredBranchOutcomes = 0;
@@ -104,8 +33,8 @@ export function normalizeCoverage(
 
 function addFileCoverage(
   findings: Finding[],
-  coverage: FileCoverage,
-  { analyzerName, relativePath }: FileCoverageTarget,
+  coverage: Report.FileCoverage,
+  { analyzerName, relativePath }: Report.FileCoverageTarget,
 ): number {
   const branchEntries = Object.entries(coverage.b ?? {});
   const branchOutcomes = branchEntries.flatMap(([, outcomes]) => outcomes);
@@ -143,7 +72,7 @@ function addFileCoverage(
 function addTestEfficiency(
   findings: Finding[],
   analyzerName: string,
-  { coveredBranchOutcomes, testCount }: Efficiency,
+  { coveredBranchOutcomes, testCount }: Report.Efficiency,
 ): void {
   addMetric(findings, {
     analyzerName,
@@ -174,7 +103,7 @@ export function crapUnknownMessage(sourcePath: string): string {
 }
 
 export function normalizeCrap(
-  report: CrapReport,
+  report: Report.CrapReport,
   analyzerName: string,
   { scoreLimit }: { readonly scoreLimit: number } = { scoreLimit: DEFAULT_CRAP_SCORE_LIMIT },
 ): Finding[] {
@@ -197,14 +126,14 @@ export function normalizeCrap(
   return findings;
 }
 
-function crapSourceHash(entry: CrapEntry): string {
+function crapSourceHash(entry: Report.CrapEntry): string {
   return (
     entry.sourceHash ??
     hash(`${entry.source}:${String(entry.lines?.start)}:${String(entry.lines?.end)}`)
   );
 }
 
-function compareCrapSites(left: CrapEntry, right: CrapEntry): number {
+function compareCrapSites(left: Report.CrapEntry, right: Report.CrapEntry): number {
   return (
     left.source.localeCompare(right.source) ||
     (left.lines?.start ?? 0) - (right.lines?.start ?? 0) ||
@@ -215,8 +144,8 @@ function compareCrapSites(left: CrapEntry, right: CrapEntry): number {
 
 function addCrapFunction(
   findings: Finding[],
-  entry: CrapEntry,
-  { analyzerName, scoreLimit, occurrence, violationOccurrence }: CrapSite,
+  entry: Report.CrapEntry,
+  { analyzerName, scoreLimit, occurrence, violationOccurrence }: Report.CrapSite,
 ): void {
   const violationIdentity = `function:${entry.function}:occurrence:${String(violationOccurrence)}:source:${crapSourceHash(entry)}`;
   findings.push(
@@ -264,7 +193,7 @@ function addCrapFunction(
 }
 
 export function normalizeMutation(report: MutationReport, analyzerName: string): Finding[] {
-  const mutants: NeutralMutant[] = [];
+  const mutants: Report.NeutralMutant[] = [];
   const statusCounts = new Map<string, number>();
   const occurrences = new Map<string, number>();
   for (const [filePath, file] of Object.entries(report.files ?? {})) {
@@ -291,18 +220,10 @@ function uncoveredWhenUnreached(mutant: Mutant): Mutant {
   return mutant.status === 'Survived' ? { ...mutant, status: 'NoCoverage', coveredBy: [] } : mutant;
 }
 
-function isMutationReport(value: unknown): value is MutationReport {
-  return typeof value === 'object' && value !== null;
-}
-
 export function withUnreachedMutantsUncovered(
-  parsed: unknown,
+  report: MutationReport,
   coverageAnalysis: unknown,
 ): MutationReport {
-  if (!isMutationReport(parsed)) {
-    throw new TypeError('The mutation report is not an object');
-  }
-  const report = parsed;
   const files = Object.entries(report.files ?? {});
   const mutants = files.flatMap(([, file]) => file.mutants ?? []);
   const coverageMissing = mutants.every((mutant) => mutant.coveredBy === undefined);
@@ -325,8 +246,8 @@ export function withUnreachedMutantsUncovered(
 }
 
 function collectFileMutants(
-  file: ReportedFile,
-  { filePath, mutants, statusCounts, occurrences }: MutantTally,
+  file: Report.ReportedFile,
+  { filePath, mutants, statusCounts, occurrences }: Report.MutantTally,
 ): void {
   for (const mutant of file.mutants ?? []) {
     const status = mutant.status ?? 'Unknown';
@@ -339,8 +260,8 @@ function collectFileMutants(
 
 function neutralMutant(
   mutant: Partial<Mutant>,
-  { filePath, status, occurrences }: MutantSite,
-): NeutralMutant {
+  { filePath, status, occurrences }: Report.MutantSite,
+): Report.NeutralMutant {
   const semanticIdentity = [
     mutant.mutatorName ?? 'unknown',
     hash(mutant.replacement ?? ''),
