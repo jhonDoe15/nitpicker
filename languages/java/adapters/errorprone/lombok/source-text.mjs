@@ -36,6 +36,10 @@ function sourceEncodings(reportRoot) {
   );
 }
 
+export function compiledSources(reportRoot) {
+  return [...sourceEncodings(reportRoot).keys()];
+}
+
 export function sourceReader(reportRoot) {
   const encodings = sourceEncodings(reportRoot);
   const decoders = new Map();
