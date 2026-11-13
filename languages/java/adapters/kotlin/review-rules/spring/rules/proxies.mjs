@@ -1,4 +1,5 @@
 import { annotationIn, argumentOf, typeName } from '../spring-names.mjs';
+import { joinsTransaction, runningTransactions } from './joining-transactions.mjs';
 import {
   acceptsArguments,
   entriesOf,
@@ -124,14 +125,6 @@ function proxyVisibility(view, { allOpen }) {
   return [...functions, ...classes];
 }
 
-function exempt(view, annotation, callerTransactional) {
-  return (
-    callerTransactional &&
-    annotation.arguments.length === 0 &&
-    view.is(annotation.type ?? annotation.name, SPRING_TRANSACTIONAL)
-  );
-}
-
 function selfCalls(view) {
   return view.file.invocations.flatMap((invocation) => {
     const reference = invocation.reference === true;
@@ -141,9 +134,7 @@ function selfCalls(view) {
       return [];
     }
     const caller = view.functionAt(invocation.scope);
-    const callerTransactional =
-      caller !== undefined &&
-      annotationIn(view.resolve, entriesOf(caller), SPRING_TRANSACTIONAL) !== undefined;
+    const running = runningTransactions(view, caller);
     const target = view
       .functionsOf(ownerOf(view, invocation))
       .filter(
@@ -155,7 +146,7 @@ function selfCalls(view) {
         (fn) =>
           entriesOf(fn).some(
             (annotation) =>
-              isProxied(view, annotation) && !exempt(view, annotation, callerTransactional),
+              isProxied(view, annotation) && !joinsTransaction(view, annotation, running),
           ) || validates(view, fn),
       );
     return target === undefined || target === caller
