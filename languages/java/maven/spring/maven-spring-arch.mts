@@ -88,7 +88,7 @@ function compileRules({ classes, sources, libraries, cwd, spawn, timeoutMs }: Ru
   try {
     callUntyped(runJava, {
       tool: TOOL,
-      java: javaCommand('javac'),
+      java: textOf(javaCommand('javac')),
       jvmArgs: ['-proc:none', '-nowarn', '-d', staging],
       classpath: libraries,
       args: sources,
@@ -136,6 +136,13 @@ function runRules({
   });
 }
 
+function cachedClasses(sources: readonly string[], pinned: unknown, spawn: unknown): string {
+  const root = textOf(cacheDirectory('spring-arch'));
+  mkdirSync(root, { recursive: true });
+  const versions = `${textOf(fieldOf(pinned, 'archunit'))}|${textOf(fieldOf(pinned, 'asm'))}`;
+  return path.join(root, cacheKey(sources, versions, spawn));
+}
+
 export function runSpringArch(options: ArchOptions): void {
   const { module, tools, classpaths, pinned, springRoles, timeoutMs } = options;
   if (options['archRules'] !== true) {
@@ -146,10 +153,7 @@ export function runSpringArch(options: ArchOptions): void {
   rmSync(output, { force: true });
   const rules = options['rules'];
   const sources = ruleSources(rules === undefined ? RULES_DIRECTORY : textOf(rules));
-  const root = textOf(cacheDirectory('spring-arch'));
-  mkdirSync(root, { recursive: true });
-  const versions = `${textOf(fieldOf(pinned, 'archunit'))}|${textOf(fieldOf(pinned, 'asm'))}`;
-  const classes = path.join(root, cacheKey(sources, versions, spawn));
+  const classes = cachedClasses(sources, pinned, spawn);
   const libraries = existing(textsOf(fieldOf(tools, 'archunit')));
   const cwd = fieldOf(module, 'basedir');
   compileRules({ classes, sources, libraries, cwd, spawn, timeoutMs });

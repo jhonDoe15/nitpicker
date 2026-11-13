@@ -25,6 +25,6 @@ export function readClassLimitFindings(reportRoot: string, limits: unknown): unk
     analyzerName: 'structure',
     thresholds: fieldOf(limits, 'thresholds'),
     exceptions: fieldOf(limits, 'exceptions'),
-    projectPath: (file: unknown) => inModule(fieldOf(limits, 'modulePath'), file),
+    projectPath: (file: unknown) => callUntyped(inModule, fieldOf(limits, 'modulePath'), file),
   });
 }

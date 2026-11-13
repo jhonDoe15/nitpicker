@@ -23,6 +23,10 @@ function inRanges(found: MainMethods, line: number): boolean {
   return found.ranges.some(([from = 0, to = 0]) => line >= from && line <= to);
 }
 
+function ruleKey(finding: unknown): string {
+  return `${textOf(fieldOf(finding, 'tool'))}/${textOf(fieldOf(finding, 'rule'))}`;
+}
+
 export function withoutMainMethodFindings(
   findings: readonly unknown[],
   readSource: ReadSource,
@@ -45,9 +49,6 @@ export function withoutMainMethodFindings(
     return !(fieldOf(finding, 'rule') === 'SystemOut' && printed);
   }
   return findings.filter(
-    (finding) =>
-      !ENTRY_POINT_RULES.has(
-        `${textOf(fieldOf(finding, 'tool'))}/${textOf(fieldOf(finding, 'rule'))}`,
-      ) || !inMain(finding),
+    (finding) => !(ENTRY_POINT_RULES.has(ruleKey(finding)) && inMain(finding)),
   );
 }

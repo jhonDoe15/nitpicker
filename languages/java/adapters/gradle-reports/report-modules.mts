@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { firstProjectFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type Manifest = Readonly<Record<string, unknown>>;
@@ -100,9 +101,9 @@ export function withoutExcludedFiles(
 
 function readModule(reportBase: string, preset: string, entry: unknown): ReportModule {
   const key = textOf(fieldOf(entry, 'key'));
-  const reportRoot = path.join(reportBase, key);
-  const manifestFile = path.join(reportRoot, MANIFEST_FILE);
-  if (!existsSync(manifestFile)) {
+  const reportRoot = resolveInside(reportBase, key);
+  const manifestFile = firstProjectFile(reportBase, [path.join(key, MANIFEST_FILE)]);
+  if (reportRoot === undefined || manifestFile === undefined) {
     throw new Error(
       `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
     );
@@ -113,7 +114,7 @@ function readModule(reportBase: string, preset: string, entry: unknown): ReportM
     path: textOf(fieldOf(entry, 'path')),
     dir: textOf(fieldOf(entry, 'dir')),
     reportRoot,
-    manifest: fieldsOf(readJson(manifestFile)),
+    manifest: fieldsOf(readJson(path.join(reportBase, manifestFile))),
   };
 }
 
@@ -163,8 +164,9 @@ function hasSourceFiles(
   extensions: readonly string[],
 ): boolean {
   return roots.some((root) => {
-    const directory = path.join(projectRoot, root);
+    const directory = root === '' || root === '.' ? projectRoot : resolveInside(projectRoot, root);
     return (
+      directory !== undefined &&
       existsSync(directory) &&
       readdirSync(directory, { recursive: true, encoding: 'utf8' }).some((name) =>
         extensions.some((extension) => name.endsWith(extension)),
@@ -175,8 +177,8 @@ function hasSourceFiles(
 
 export function isEmptyModule(projectRoot: string, module: unknown): boolean {
   const roots = ROOT_LISTS.flatMap((list) => listIn(module, list));
-  return (
-    !hasMainClasses(reportRootOf(module)) && !hasSourceFiles(projectRoot, roots, SOURCE_EXTENSIONS)
+  return !(
+    hasMainClasses(reportRootOf(module)) || hasSourceFiles(projectRoot, roots, SOURCE_EXTENSIONS)
   );
 }
 
