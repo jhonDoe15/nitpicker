@@ -4,6 +4,7 @@ import {
   policyDigest,
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
+import { attachFixes } from './fixes/attach-fixes.mjs';
 import {
   type AnalyzerOutcome,
   type AnalyzerRun,
@@ -43,6 +44,7 @@ export type ReportContext = {
 
 export type CombineRequest = ReportContext & {
   readonly baseRun: unknown;
+  readonly headRoot?: string;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
@@ -95,7 +97,8 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
   const notes = scopedNotes(compared.notes, context.scope);
-  return buildReport({ ...context, outcomes, notes, toolErrors });
+  const report = buildReport({ ...context, outcomes, notes, toolErrors });
+  return { ...report, newFindings: attachFixes(report.newFindings, context.headRoot) };
 }
 
 export function noChangesReport(

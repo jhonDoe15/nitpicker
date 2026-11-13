@@ -106,7 +106,8 @@
           "description": "Narrows a toolNotRun notice further, to the findings of `tool` whose `identity` starts with this prefix, such as `cpd:` when PMD CPD did not run while jscpd, which reports the same tool, did. On the head, a notice counts as covered only by base notices with the same prefix.",
           "$ref": "#/$defs/nonEmptyString"
         },
-        "cause": { "$ref": "#/$defs/cause" }
+        "cause": { "$ref": "#/$defs/cause" },
+        "fix": { "$ref": "#/$defs/fix" }
       },
       "allOf": [
         {
@@ -167,6 +168,56 @@
         "function": { "type": "string" },
         "name": { "type": "string" }
       }
+    },
+    "fix": {
+      "description": "How to fix the finding. Nitpicker fills it in new-findings.json for a finding whose rule has a fix recipe, and an analyzer that already knows the edit may set it. `edits` are present only for a fix inside one file. They never change a file by themselves: apply them only when the file still has the `sha256` given.",
+      "type": "object",
+      "required": ["recipe", "safety"],
+      "additionalProperties": false,
+      "properties": {
+        "recipe": {
+          "description": "The id of the recipe or analyzer fixer that makes the fix.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "safety": {
+          "description": "safe fixes keep the behavior of the code; review fixes need a person to read them first.",
+          "enum": ["safe", "review"]
+        },
+        "path": {
+          "description": "The one file the edits change, project-relative, as in `path` of the finding.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sha256": {
+          "description": "SHA-256 in hex of the text of `path` that the offsets of the edits refer to.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "textLength": {
+          "description": "Length in UTF-16 code units of the text of `path` that the offsets of the edits refer to.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "edits": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/fixEdit" }
+        }
+      }
+    },
+    "fixEdit": {
+      "description": "An edit of the fix engine. A `replace` swaps the text from `start` up to `end` (offsets in UTF-16 code units of the decoded file) for `text`. A `write` replaces the whole file with `text`.",
+      "type": "object",
+      "required": ["type", "path", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["replace", "write"] },
+        "path": { "$ref": "#/$defs/nonEmptyString" },
+        "start": { "type": "integer", "minimum": 0 },
+        "end": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" }
+      },
+      "if": { "properties": { "type": { "const": "replace" } } },
+      "then": { "required": ["start", "end"] }
     },
     "cause": {
       "description": "The units around a finding that measures more than one file. `folders` are the folders of the files the finding is about; `units` are the neighbouring features or packages whose dependencies move its numbers, each with its folders, at most three of its files and its file count. A new finding none of whose folders hold a changed file names the changed files of these units in its message.",
