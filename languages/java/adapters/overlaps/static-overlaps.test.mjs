@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
+import { INLINE_SUPPRESSION_RULE } from '../suppressions/java-suppressions.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
@@ -21,6 +22,7 @@ const SIGNATURES = path.resolve(import.meta.dirname, '../../gradle/rules/forbidd
 const SIGNATURE_TAG = /^@defaultMessage ([a-z-]+):/gmu;
 const KNOWN_RULES = [
   'errorprone/NullAway',
+  `pmd/${INLINE_SUPPRESSION_RULE}`,
   ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ...NITPICKER_RULESETS.flatMap((file) =>
     [

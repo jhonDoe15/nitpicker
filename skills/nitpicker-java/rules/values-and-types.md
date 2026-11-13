@@ -53,7 +53,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
   (`pmd/GeneratedEqualsSkipsSuperclass`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
-  exhaustive `switch` expression over it. A `switch` statement needs `default`.
+  exhaustive `switch` expression over it, with no `default` (`pmd/ExhaustiveSwitchHasDefault`, also for
+  a pattern switch). A classic `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
   `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with

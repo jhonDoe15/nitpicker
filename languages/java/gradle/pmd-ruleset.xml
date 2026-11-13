@@ -18,6 +18,9 @@
     <exclude name="AvoidFieldNameMatchingMethodName"/>
     <exclude name="AvoidLiteralsInIfCondition"/>
     <exclude name="AssignmentInOperand"/>
+    <!-- The forbiddenapis legacy-date-time signature bans the same classes in every declaration and call, with the
+         java.time replacement and the toInstant() conversion in its message; these two add a second finding on the
+         declaration line of a local, next to the one on its first use, and nothing else. -->
     <exclude name="ReplaceJavaUtilCalendar"/>
     <exclude name="ReplaceJavaUtilDate"/>
   </rule>
@@ -49,13 +52,20 @@
   </rule>
   <rule ref="category/java/bestpractices.xml">
     <exclude name="AbstractClassWithoutAbstractMethod"/>
-    <exclude name="ExhaustiveSwitchHasDefault"/>
     <exclude name="GuardLogStatement"/>
+    <!-- A single-method port or use-case interface that classes implement is a common, valid design, and
+         @FunctionalInterface on it would misstate that lambdas are intended. -->
     <exclude name="ImplicitFunctionalInterface"/>
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
-    <exclude name="UnnecessaryWarningSuppression"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/ExhaustiveSwitchHasDefault">
+    <properties>
+      <property name="violationSuppressXPath"
+                value="self::SwitchStatement[not(*/SwitchLabel/*[self::TypePattern or self::RecordPattern
+                       or self::NullLiteral])] | self::*[*/SwitchLabel[@Default = true()][NullLiteral]]"/>
+    </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/AbstractClassWithoutAbstractMethod">
     <properties>
