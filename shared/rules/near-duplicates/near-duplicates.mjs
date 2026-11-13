@@ -1,5 +1,5 @@
 import { findNearDuplicates } from '../../near-duplicates/engine.mjs';
-import { compareText } from '../../near-duplicates/tree/keys.mjs';
+import { KEY_MODES, compareText, keyOf } from '../../near-duplicates/tree/keys.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { listNames } from '../../messages/messages.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
@@ -7,7 +7,7 @@ import { isPlatformVariant } from './platform-variants.mjs';
 import { isTypeSpecialized } from './type-families.mjs';
 import { shortText } from '../../near-duplicates/unit-parts.mjs';
 
-const CLONE_ANALYZER_MINIMUM = { lines: 5, tokens: 100 };
+const CLONE_ANALYZER_MINIMUM = { lines: 5, tokens: 100, exactTokens: 50 };
 const SHOWN_TEXT = 40;
 const NORMALIZED_LITERALS = new Set(['string', 'number', 'char']);
 
@@ -96,13 +96,19 @@ function hasCloneTokens(finding) {
   );
 }
 
+function cloneTokensMinimum(pair) {
+  const [left, right] = pair.map(({ tree }) => keyOf(tree, KEY_MODES.own));
+  return left === right ? CLONE_ANALYZER_MINIMUM.exactTokens : CLONE_ANALYZER_MINIMUM.tokens;
+}
+
 function isLeftToCloneAnalyzer(finding, pair) {
+  const minimum = cloneTokensMinimum(pair);
   return (
     hasCloneTokens(finding) &&
     !finding.rewritten &&
     pair.every(
       ({ start, end, tokens }) =>
-        end - start + 1 >= CLONE_ANALYZER_MINIMUM.lines && tokens >= CLONE_ANALYZER_MINIMUM.tokens,
+        end - start + 1 >= CLONE_ANALYZER_MINIMUM.lines && tokens >= minimum,
     )
   );
 }
