@@ -109,6 +109,7 @@ const domainRules = {
 };
 
 const productionSourceRules = {
+  'nitpicker/no-boolean-flag-parameter': 'error',
   'nitpicker/no-self-recursion': 'error',
   'nitpicker/no-task-outliving-resource': 'error',
   'nitpicker/no-tri-state-boolean': 'error',

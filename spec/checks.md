@@ -217,6 +217,12 @@ source check, the Java preset as `pmd/TodoWithoutIssue` and `pmd/CommentedOutCod
 comments, on `.java` files of Kotlin projects too), and the Go preset as `go-rules/todo-without-issue` and
 go-critic `commentedOutCode`. The TypeScript and JavaScript presets ban comments outright.
 
+Boolean flag parameters: `nitpicker/no-boolean-flag-parameter` (strict preset, production source) reports a
+`boolean` parameter that an exported function or public member branches on. The same rule runs as
+`boolean-flag-parameter` in the Python preset, `pmd/BooleanFlagParameter` in the Java preset (main sources,
+Gradle and Maven), the `BooleanFlagParameter` source check in the Kotlin preset and revive `flag-parameter`
+in the Go preset. The allowed form is two functions, an options object or an enum.
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

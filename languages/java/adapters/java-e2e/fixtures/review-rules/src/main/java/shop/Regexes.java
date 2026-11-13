@@ -120,7 +120,7 @@ public final class Regexes {
     return line.split(separator);
   }
 
-  public String[] splitChoice(String line, boolean tabs) {
+  public String[] splitChoice(String line, boolean tabs) { // violation: BooleanFlagParameter
     return line.split(tabs ? "\\t" : ",");
   }
 

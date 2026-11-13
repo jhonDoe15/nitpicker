@@ -12,6 +12,7 @@ import { rule as ruleIntegrationTestUsesApprovedHarness } from './rules/testing/
 import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.mjs';
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
+import { rule as ruleNoBooleanFlagParameter } from './rules/flags/no-boolean-flag-parameter.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
 import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
@@ -150,6 +151,7 @@ export const directoryRules = {
   'naming-convention': ruleNamingConvention,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
+  'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,

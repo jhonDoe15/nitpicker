@@ -147,13 +147,13 @@ an exported (public) function that the body branches on. The definitions agree a
 differs is the language's own spelling, in particular the marker that says "this parameter is
 required by a signature".
 
-| Preset                 | Unused parameter                                                                 | Marker                  | Boolean flag parameter                                                                        |
-| ---------------------- | -------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------- |
-| Python                 | ruff `ARG001`-`ARG005`; `@override`, `@abstractmethod`, dunders skipped          | a `_` prefix            | script `boolean-flag-parameter`: a positional pure `bool` used as a condition                 |
-| TypeScript, JavaScript | `@typescript-eslint/no-unused-vars` with `args: 'all'`, held to the edited lines | a `_` prefix            | `nitpicker/no-boolean-flag-parameter` (the guards branch)                                     |
-| Kotlin                 | detekt `UnusedParameter`; overrides, `main` and annotated functions skipped      | `ignored*` or `unused*` | source check `BooleanFlagParameter`: a `Boolean` used as an `if`, `when` or `while` condition |
-| Java                   | PMD `UnusedFormalParameter`; overrides, `main` and annotated ones skipped        | `ignored*` or `unused*` | `BooleanFlagParameter` (the guards branch)                                                    |
-| Go                     | revive `unused-parameter`                                                        | a `_` name              | revive `flag-parameter`                                                                       |
+| Preset                 | Unused parameter                                                                 | Marker                  | Boolean flag parameter                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Python                 | ruff `ARG001`-`ARG005`; `@override`, `@abstractmethod`, dunders skipped          | a `_` prefix            | script `boolean-flag-parameter`: a positional pure `bool` used as a condition                   |
+| TypeScript, JavaScript | `@typescript-eslint/no-unused-vars` with `args: 'all'`, held to the edited lines | a `_` prefix            | `nitpicker/no-boolean-flag-parameter`                                                           |
+| Kotlin                 | detekt `UnusedParameter`; overrides, `main` and annotated functions skipped      | `ignored*` or `unused*` | source check `BooleanFlagParameter`: a `Boolean` used as an `if`, `when` or `while` condition   |
+| Java                   | PMD `UnusedFormalParameter`; overrides, `main` and annotated ones skipped        | `ignored*` or `unused*` | `pmd/BooleanFlagParameter`: a primitive `boolean` used as an `if`, `while` or ternary condition |
+| Go                     | revive `unused-parameter`                                                        | a `_` name              | revive `flag-parameter`                                                                         |
 
 Python, TypeScript, JavaScript and Go take the `_` prefix because the language and its linters treat it
 as the discard marker. Kotlin parameters cannot be named `_`, and PMD's convention is the `ignored`
