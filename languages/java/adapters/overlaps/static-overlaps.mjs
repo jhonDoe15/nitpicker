@@ -6,6 +6,7 @@ export const OVERLAP_PAIRS = JSON.parse(
   readFileSync(path.join(import.meta.dirname, 'overlap-pairs.json'), 'utf8'),
 );
 const SYMBOL_MEMBER = /[(#]/u;
+const QUOTED_NAME = /'([^']+)'/u;
 
 function ruleOf(finding) {
   return `${finding.tool}/${finding.rule}`;
@@ -47,6 +48,12 @@ function scopeKey(scope, finding, locate) {
   }
   if (scope === 'line') {
     return line === undefined ? undefined : JSON.stringify([finding.path, line]);
+  }
+  if (scope === 'variable') {
+    const name = QUOTED_NAME.exec(finding.message ?? '')?.[1];
+    return line === undefined || name === undefined
+      ? undefined
+      : JSON.stringify([finding.path, line, name]);
   }
   const located = { ...locate(finding), ...symbolField(finding) };
   const parts = {

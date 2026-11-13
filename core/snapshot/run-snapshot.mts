@@ -3,6 +3,7 @@ import { withHeadPolicyFile } from '../../languages/typescript/preset/head-polic
 import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf } from '../../shared/values/readers.mts';
+import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
 
 type Finding = {
   readonly tool?: string | undefined;
@@ -76,6 +77,7 @@ const withPolicyFile: (
   run: (headPolicyFile: unknown) => AnalyzerRun,
 ) => AnalyzerRun = withHeadPolicyFile;
 const runAll: (request: AnalyzerRequest) => AnalyzerRun = runAnalyzers;
+const withoutOverlaps: (run: AnalyzerRun) => AnalyzerRun = withoutCrossToolOverlaps;
 const metadataOf: (analyzer: unknown, property: string) => unknown = analyzerMetadata;
 const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
 const inScope: (findingPath: string | undefined, scope: Scope) => boolean = isInScope;
@@ -96,22 +98,24 @@ export function runQualitySnapshot({
   scope,
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
-    runAll({
-      analyzers,
-      projectRoot,
-      policyRoot,
-      toolRoot,
-      liveProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      mutationScope: fieldOf(scope, 'paths'),
-      baselineRoot: execution['baselineRoot'],
-      baselineMovesFile: execution['baselineMovesFile'],
-      logRoot: execution['logRoot'],
-      runTasks: execution['runTasks'],
-      ...execution,
-    }),
+  const { reports, toolErrors } = withoutOverlaps(
+    withPolicyFile(headPolicy, (headPolicyFile) =>
+      runAll({
+        analyzers,
+        projectRoot,
+        policyRoot,
+        toolRoot,
+        liveProjectRoot,
+        headPolicyFile,
+        snapshot: 'head',
+        mutationScope: fieldOf(scope, 'paths'),
+        baselineRoot: execution['baselineRoot'],
+        baselineMovesFile: execution['baselineMovesFile'],
+        logRoot: execution['logRoot'],
+        runTasks: execution['runTasks'],
+        ...execution,
+      }),
+    ),
   );
 
   const { findings, tools, outside } = collectSnapshotFindings({

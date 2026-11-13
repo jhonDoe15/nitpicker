@@ -22,6 +22,8 @@ import {
 } from '../hints/eslint-hints.mjs';
 import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
+import { collapseAnyChains } from './chains/any-chain.mjs';
+import { withCatchParameterWording } from './messages/catch-parameter.mjs';
 import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 import { withoutSupersededMessages } from '../lint-engine/overlapping-reports.mjs';
 
@@ -48,8 +50,8 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
   }
   const projectFile = validatedProjectFile(projectRoot, result.filePath);
-  const messages = withoutFatalDirectives(withoutSupersededMessages(result.messages));
-  if (messages.length === 0) {
+  const unsuperseded = withoutFatalDirectives(withoutSupersededMessages(result.messages));
+  if (unsuperseded.length === 0) {
     return [];
   }
   const relativePath = projectFile.relativePath;
@@ -61,6 +63,7 @@ function normalizeResult({ result, resultIndex, projectRoot, analyzerName }) {
     true,
     scriptKind(relativePath),
   );
+  const messages = collapseAnyChains(unsuperseded, sourceFile);
   return messages.map((message, messageIndex) =>
     normalizeMessage({
       message,
@@ -108,7 +111,10 @@ function withRatchets(findings, plans) {
   for (const [index, finding] of findings.entries()) {
     const plan = plans[index];
     if (plan?.kind === 'count') {
-      counts.set(countGroupOf(finding, plan), (counts.get(countGroupOf(finding, plan)) ?? 0) + 1);
+      counts.set(
+        countGroupOf(finding, plan),
+        (counts.get(countGroupOf(finding, plan)) ?? 0) + plan.uses,
+      );
     }
   }
   return findings.map((finding, index) => {
@@ -164,6 +170,7 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
       `node:${report.nodeType}`,
       `syntax:${report.syntax}`,
       ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+      ...(message.chainUses === undefined ? [] : [`uses:${String(message.chainUses)}`]),
     ].join('|'),
     ...hintedMessage({
       ruleId,
@@ -179,7 +186,13 @@ function normalizeMessage({ message, context, analyzerName, relativePath, source
   if (symbol !== undefined) {
     finding.symbol = symbol;
   }
-  const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
+  const plan = ratchetPlan({
+    metric,
+    symbol,
+    reportedNode: report.reportedNode,
+    messageIdentity,
+    uses: message.chainUses,
+  });
   const anchorHash = plan && enclosingFunctionHash(report.reportedNode, symbol);
   return { finding, plan: anchorHash === undefined ? plan : { ...plan, anchorHash } };
 }
@@ -208,14 +221,16 @@ function locateReport(sourceFile, { sourcePosition, endPosition }) {
   return { comment, locatedNode, reportedNode, nodeType, syntax };
 }
 
-function hintedMessage({ ruleId, messageText, relativePath, comment, locatedNode, sourceFile }) {
-  return routedEslintFields({
+function hintedMessage(input) {
+  const { ruleId, messageText, relativePath, comment, locatedNode, sourceFile } = input;
+  const fields = routedEslintFields({
     ruleId,
     text: messageText,
     relativePath,
     node: comment === undefined ? locatedNode : undefined,
     sourceFile,
   });
+  return withCatchParameterWording(fields, input);
 }
 
 function reportedPositions(message, context, sourceFile) {
@@ -238,12 +253,12 @@ function messageIdentityOf(message, messageText) {
     : normalizeMessageText(messageText);
 }
 
-function ratchetPlan({ metric, symbol, reportedNode, messageIdentity }) {
+function ratchetPlan({ metric, symbol, reportedNode, messageIdentity, uses = 1 }) {
   if (metric !== undefined) {
     return { kind: 'metric', ...metric };
   }
   return symbol !== undefined && isInsideFunction(reportedNode)
-    ? { kind: 'count', key: messageIdentity }
+    ? { kind: 'count', key: messageIdentity, uses }
     : undefined;
 }
 

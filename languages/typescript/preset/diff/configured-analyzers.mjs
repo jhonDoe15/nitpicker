@@ -7,11 +7,15 @@ import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
-import { resolveLayout, resolveLayoutFor } from '../layout.mjs';
+import {
+  codeExtensionNames,
+  resolveLayout,
+  resolveLayoutFor,
+  stylesheetExtensionNames,
+} from '../layout.mjs';
 import { createQualityChecks } from '../quality-checks.mjs';
 import { eslintVersion } from '../checks/constants.mjs';
 import { hashFiles } from '../checks/hash.mjs';
-import { codeExtensionNames, stylesheetExtensionNames } from '../layout.mjs';
 import { EXECUTION_INPUTS, sourceInputs } from '../../../../shared/input-sets/inputs.mjs';
 
 const TEST_RUNNER_ANALYZERS = new Set(['coverage', 'mutation', 'test-console']);
@@ -26,6 +30,7 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/preset/quality-checks.mjs',
   ...ANALYZER_RUNTIME_FILES,
   'languages/typescript/adapters/eslint/analyzer.mjs',
+  'languages/typescript/adapters/eslint/chains/any-chain.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-wrapper.config.mjs',
   'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
@@ -82,6 +87,7 @@ function buildAnalyzers(checks) {
           exclusions: check.exclusions,
           policyFiles: check.policyFiles,
           shardWeight: check.shardWeight,
+          colocatedWith: check.colocatedWith,
           policyFromPackage: true,
         }),
       ),

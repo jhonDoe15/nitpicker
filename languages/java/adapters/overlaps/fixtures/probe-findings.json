@@ -2560,19 +2560,22 @@
       "tool": "pmd",
       "rule": "UnusedAssignment",
       "path": "src/main/java/probe/V3Unused.java",
-      "line": 5
+      "line": 5,
+      "message": "The initializer for variable 'dead' is never used (overwritten on line 6)"
     },
     {
       "tool": "pmd",
       "rule": "UnusedLocalVariable",
       "path": "src/main/java/probe/V3Unused.java",
-      "line": 5
+      "line": 5,
+      "message": "Avoid unused local variables such as 'dead'."
     },
     {
       "tool": "pmd",
       "rule": "UnusedAssignment",
       "path": "src/main/java/probe/V3Unused.java",
-      "line": 6
+      "line": 6,
+      "message": "The value assigned to variable 'dead' is never used"
     },
     {
       "tool": "pmd",

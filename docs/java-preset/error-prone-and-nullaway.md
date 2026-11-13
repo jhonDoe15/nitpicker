@@ -424,6 +424,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
   line of the parameter or the brace of a clause laid out over several lines still meets one on
   the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
+- `variable`: the same file, line and variable, the variable being the first quoted name in the
+  messages (PMD's `UnusedLocalVariable` and `UnusedAssignment` both quote it), so two variables
+  declared on one line stay separate findings.
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -633,6 +636,7 @@ The pairs:
 - line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
 - line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
 - line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
+- variable: `pmd/UnusedLocalVariable` over `pmd/UnusedAssignment`
 
 ## Standard streams and the `main` method
 
