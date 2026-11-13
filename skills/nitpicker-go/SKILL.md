@@ -125,6 +125,11 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
 - Pass a function the values it reads. A struct of 5 or more fields handed whole through 2 or more
   functions that read a third of it is reported by `context-threading` (report-only); pass those
   values, or a small struct with just them.
+- A lifecycle the project lists in `protocols` (`Begin` with `Commit` or `Rollback`) is closed with
+  a `defer` in the function that opens it; a close after the work that is not deferred is skipped
+  by an early `return` (`protocol-contract` fails). Three functions repeating the same
+  three calls on one type are reported by `caller-protocol` (report-only): give the type one method
+  that does them all.
 
 ## Size and tests
 

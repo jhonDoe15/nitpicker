@@ -751,6 +751,27 @@ of a function or method the program resolved. Any other use makes the evidence i
 chain is not reported: returning or storing the value, a composite literal, a closure that captures
 it, an unresolved callee, a variadic or spread argument. A comparison with `nil` is not a use.
 
+**`caller-protocol`.** Report-only. The same 3 or more method calls, in the same order, on one value
+of a struct or interface of the project, repeated by 3 or more functions in 2 or more files. The
+value is a parameter or local (`s`), a field of the receiver (`this.session`, which is `r.session`)
+or the receiver itself (`this`); a call on the result of another call has no value to group by and
+is left out. Methods promoted from an embedded type are steps of the embedding value, and a call
+through an interface value is a step of the interface.
+
+**`protocol-contract`.** Fails a call that breaks a lifecycle listed in `protocols` (see
+[Design signals](usage.md#design-signals)): an `open` method of the type without a `close` method
+on every exit, or a listed step before `open`. A deferred close call counts as closing on every
+exit, and so does a `defer func() { ... }()` whose body makes the close call, also inside an `if`
+(`if c, err := Open(); err == nil { defer c.Close() }`), a loop or a function literal. A close call
+that is not deferred does not count (a `return` before it skips it). A `return` of the value (also
+as the first result of `(T, error)`), or a value held in or stored into a field of the receiver
+(`s.conn = c`), hands the lifecycle over and is not reported. Two calls in different
+arms of one `if`, `switch` or `select` never run in one execution, so a step on one arm is not
+before an `open` on the other. A contract on an interface also covers the structs of the project
+that implement it, and on a struct also the structs that embed it: a struct implements an interface
+when its method set (embedded types included) has every method name with the same number of
+parameters and results; the methods it implements are entries, like `String` and `Error`.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 
@@ -855,6 +876,7 @@ add a test.
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
 | `layout.featureRoots`, `layout.sharedRoots`              | the feature layout the feature rules read                    |
 | `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
+| `protocols`                                              | the lifecycles `protocol-contract` checks                    |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
 

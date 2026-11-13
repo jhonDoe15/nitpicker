@@ -54,6 +54,7 @@ function findings(facts, { rules, policy, baseline, analyzerName = ANALYZER_NAME
           exceptions: policy.exceptions ?? [],
           ...(policy.layout === undefined ? {} : { layout: policy.layout }),
           ...(policy.testConsole === undefined ? {} : { testConsole: policy.testConsole }),
+          ...(policy.protocols === undefined ? {} : { protocols: policy.protocols }),
         },
         publicFace: PUBLIC_FACES.go,
         duplicatesAcrossPackages: true,

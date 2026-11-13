@@ -27,7 +27,7 @@ func typeKind(info *index.TypeInfo) string {
 	return ""
 }
 
-func typeFact(info *index.TypeInfo) (Type, bool) {
+func typeFact(info *index.TypeInfo, h *hierarchy) (Type, bool) {
 	kind := typeKind(info)
 	if kind == "" {
 		return Type{}, false
@@ -42,7 +42,7 @@ func typeFact(info *index.TypeInfo) (Type, bool) {
 	for _, field := range info.Fields() {
 		fact.Fields = append(fact.Fields, fieldFact(field))
 	}
-	for _, parent := range info.Embedded() {
+	for _, parent := range h.supertypes[info] {
 		fact.Supertypes = append(fact.Supertypes, parent.ID())
 	}
 	return fact, true
