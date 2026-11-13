@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
-import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
+import { mavenErrorSummary, mavenTarget, runMaven, testRerunArguments } from './maven-command.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
@@ -173,5 +173,18 @@ describe('mavenErrorSummary', () => {
     expect(mavenErrorSummary('Unrecognized option: --no-transfer-progress\n')).toBe(
       'Unrecognized option: --no-transfer-progress\nnitpicker needs Maven 3.6.3 or newer',
     );
+  });
+});
+
+describe('testRerunArguments', () => {
+  it('turns reruns off unless the project sets a count', () => {
+    expect(testRerunArguments()).toEqual([
+      '-Dsurefire.rerunFailingTestsCount=0',
+      '-Dfailsafe.rerunFailingTestsCount=0',
+    ]);
+    expect(testRerunArguments({ 'surefire.rerunFailingTestsCount': 2 })).toEqual([
+      '-Dsurefire.rerunFailingTestsCount=2',
+      '-Dfailsafe.rerunFailingTestsCount=0',
+    ]);
   });
 });

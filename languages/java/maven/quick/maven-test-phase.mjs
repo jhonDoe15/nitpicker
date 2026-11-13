@@ -45,7 +45,8 @@ function moduleNameOf(module, projectRoot) {
 }
 
 export function readTestRuns(context) {
-  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
+  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures, retriesPass } =
+    context;
   if (context.quick) {
     collectArchunitResults({ module, reportDir, since, isArchunit });
     return { testsRan: false, failure: undefined };
@@ -56,6 +57,7 @@ export function readTestRuns(context) {
     since,
     isArchunit,
     tolerateFailures,
+    retriesPass,
     moduleName: moduleNameOf(module, context.projectRoot),
   });
   requireTestngRun({ module, since, isArchunit, testRuntime });
