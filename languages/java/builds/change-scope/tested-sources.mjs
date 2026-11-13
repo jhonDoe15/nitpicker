@@ -113,7 +113,7 @@ function contentDigest(root, file) {
 export function changedTestsKey({ touchedPaths, headRoot, mergeBaseSha, quick }) {
   const scope = isMultiModule(headRoot) ? repositoryChangeKey(headRoot, mergeBaseSha) : undefined;
   const tests = touchedPaths.filter(isJvmTestPath).toSorted(byCodeUnits);
-  if (quick) {
+  if (quick || (scope !== undefined && touchedPaths.length === 0)) {
     return undefined;
   }
   const digests = tests.map((file) => [file, contentDigest(headRoot, file)]);

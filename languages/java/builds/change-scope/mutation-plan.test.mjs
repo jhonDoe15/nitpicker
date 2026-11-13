@@ -244,4 +244,13 @@ describe('JVM test paths', () => {
       ),
     ).toEqual({ tests: [], reached: [] });
   });
+
+  it('gives a comparison without changed tests the key that publishing the base writes', () => {
+    const roots = snapshots();
+    const key = (touchedPaths) =>
+      changedTestsKey({ touchedPaths, headRoot: roots.head, quick: false });
+
+    expect(key([`${MAIN}/Price.java`, 'README.md'])).toBe(key([]));
+    expect(key([])).not.toBe(key([`${TEST}/PriceTest.java`]));
+  });
 });
