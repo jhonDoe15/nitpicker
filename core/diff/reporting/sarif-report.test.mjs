@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   renderBaselineSarifReport,
@@ -87,6 +88,29 @@ describe('renderSarifReport', () => {
     expect(fingerprint(finding({ location: { line: 99 }, message: 'reworded' }))).toBe(original);
     expect(fingerprint(finding({ identity: 'other' }))).not.toBe(original);
     expect(fingerprint(finding({ path: 'src/b.js' }))).not.toBe(original);
+  });
+  it('keeps the fingerprint of a finding that quotes a relative specifier as its identity says', () => {
+    const quoted = finding({
+      tool: 'typescript-typecheck',
+      rule: 'TS2307',
+      path: 'src/orders/a.ts',
+      identity: "message:Cannot find module '../lib/b' or its corresponding type declarations.",
+      classification: 'enforceable',
+    });
+    const log = JSON.parse(renderSarifReport(report({ newFindings: [quoted] }), { projectPath }));
+    const expectedKey = JSON.stringify([
+      'typescript-typecheck',
+      'TS2307',
+      'src/orders/a.ts',
+      quoted.symbol ?? '',
+      "message:Cannot find module '../lib/b' or its corresponding type declarations.",
+      'enforceable',
+      '',
+    ]);
+
+    expect(log.runs[0].results[0].partialFingerprints['nitpickerIdentity/v1']).toBe(
+      createHash('sha256').update(expectedKey).digest('hex'),
+    );
   });
   it('links each rule to its entry in the rule reference with a helpUri and a short description', () => {
     const log = JSON.parse(

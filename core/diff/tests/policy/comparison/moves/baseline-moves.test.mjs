@@ -3,12 +3,12 @@ import {
   comparisonOptions,
   fakeAnalyzer,
   useQualityDiffRepositories,
-} from '../test-support/quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
-import { policy } from '../../../execution/test-support/analyzer-findings.mjs';
-import { readMovesFile } from '../../../../../shared/rules/facts/baseline.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
-import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+} from '../../test-support/quality-diff-harness.mjs';
+import { runQualityDiff } from '../../../../comparison/run-diff.mjs';
+import { policy } from '../../../../execution/test-support/analyzer-findings.mjs';
+import { readMovesFile } from '../../../../../../shared/rules/facts/baseline.mjs';
+import { commit } from '../../../../git/test-support/git-repository.mjs';
+import { renameFile, writeFiles } from '../../../../git/test-support/fixture-files.mjs';
 
 const { createRepository } = useQualityDiffRepositories();
 

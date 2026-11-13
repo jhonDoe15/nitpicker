@@ -6,6 +6,7 @@ import {
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { escapeRegExp } from '../../../../../shared/paths/glob.mjs';
 import { functionIdentity } from '../../exceptions/function-identity.mjs';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 import { readFileSync, lstatSync } from 'node:fs';
 import path from 'node:path';
 
@@ -148,7 +149,7 @@ export function withDeadCodeSourceHashes(report, projectRoot) {
     ...report,
     files: (report.files ?? []).map((file) => ({
       path: file,
-      sourceHash: hash(readProjectSource(projectRoot, file)),
+      sourceHash: wholeFileHash(readProjectSource(projectRoot, file), file),
     })),
     issues: (report.issues ?? []).map((issue) => {
       const lines = readProjectSource(projectRoot, issue.file).split('\n');

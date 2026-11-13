@@ -13,6 +13,7 @@ import {
   readProjectMoves,
   readTouchedPaths,
 } from '../git/patches/project-moves.mjs';
+import { readMovedPackages } from './moved-names/packages/read-moved-packages.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
@@ -29,7 +30,13 @@ import {
   requiresPreparedDependencies,
   withPreparedAnalyzerDependencies,
 } from './dependencies/prepared-dependencies.mjs';
-import { carryBaseReports, endsEarly, skipPlanOf, runUnlessSkipped } from '../skipping/apply.mjs';
+import {
+  carryBaseReports,
+  endsEarly,
+  skipPlanOf,
+  runUnlessSkipped,
+  withoutSkipped,
+} from '../skipping/apply.mjs';
 
 export function runQualityDiff(options) {
   const settings = withDefaults(options);
@@ -79,45 +86,22 @@ function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree
 
 function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison) {
   const { mergeBaseSha, headSha } = comparison;
+  const snapshot = { repositoryRoot, mergeBaseSha, headSha, projectRelativePath };
   const changes = readRepositoryChanges({ repositoryRoot, mergeBaseSha, headSha });
-  const baseProjectRelativePath = resolveBaseProjectPath({
-    repositoryRoot,
-    mergeBaseSha,
-    headSha,
-    projectRelativePath,
-    changes,
-  });
-  const moves = readProjectMoves({
-    repositoryRoot,
-    mergeBaseSha,
-    headSha,
-    projectRelativePath,
-    baseProjectRelativePath,
-    changes,
-  });
-  const changedLines = readChangedLines({
-    repositoryRoot,
-    mergeBaseSha,
-    headSha,
-    projectRelativePath,
-    baseProjectRelativePath,
-    inferredMoves: moves.inferred,
-  });
+  const baseProjectRelativePath = resolveBaseProjectPath({ ...snapshot, changes });
+  const located = { ...snapshot, baseProjectRelativePath };
+  const moves = readProjectMoves({ ...located, changes });
+  const packages = readMovedPackages(moves, located);
+  const changedLines = readChangedLines({ ...located, inferredMoves: moves.inferred });
   return {
     baseProjectRelativePath,
-    moves,
+    moves: { ...moves, packages },
     touchedPaths: readTouchedPaths({ projectRelativePath, baseProjectRelativePath, changes }),
     touchedCode: {
       changedLines,
       isStrictRule,
       mustMeetOnEditedLines,
-      testsRemoved: readRemovesTests({
-        repositoryRoot,
-        mergeBaseSha,
-        headSha,
-        projectRelativePath,
-        baseProjectRelativePath,
-      }),
+      testsRemoved: readRemovesTests(located),
     },
   };
 }
@@ -163,9 +147,7 @@ function compareSnapshots(context) {
     });
   }
   const setupContext = { ...context, baseSetup, skipPlan };
-  return requiresPreparedDependencies(
-    settings.analyzers.filter(({ name }) => skipPlan.affected.includes(name)),
-  )
+  return requiresPreparedDependencies(withoutSkipped(settings.analyzers, skipPlan))
     ? withPreparedAnalyzerDependencies(
         {
           baseProjectRoot: roots.baseProjectRoot,
@@ -213,6 +195,7 @@ function runAndCombine(context) {
     headRun,
     baseToHeadRenames: layout.moves.files,
     baseToHeadDirectories: layout.moves.directories,
+    baseToHeadPackages: layout.moves.packages,
     touchedCode: layout.touchedCode,
     comparison,
     startedAt,
