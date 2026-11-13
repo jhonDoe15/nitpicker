@@ -4,14 +4,12 @@ import path from 'node:path';
 import { trackTemporaryPath } from '../typed/tooling.mts';
 import { type Layout, readLayout } from '../typed/head-policy.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mjs';
-import {
-  formatProcessOutput,
-  projectTestRunner,
-  readHeadPolicyFile,
-  readTestReport,
-} from './typed/runner-tools.mts';
+import { projectTestRunner, readHeadPolicyFile, readTestReport } from './typed/runner-tools.mts';
 import { resolveTestTimeouts } from './typed/timeouts.mts';
-import { COVERAGE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
+import {
+  COVERAGE_REPORT_PATH,
+  formatProcessOutput,
+} from '../quality-areas/reporting/test-report.mts';
 import { troubleshootingError } from '../lint-engine/typed/tools.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import type { NodeToolResult } from '../static-checks/shared.mts';

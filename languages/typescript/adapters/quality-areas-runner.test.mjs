@@ -17,7 +17,7 @@ import {
 } from './quality-areas/runners/stryker/stryker-config.mts';
 import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mts';
 import { normalizeStructure } from './quality-areas/reporting/repository.mts';
-import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
+import { normalizeCrap } from './quality-areas/reporting/tests.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
 import { runQualityArea } from './quality-areas-runner.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';

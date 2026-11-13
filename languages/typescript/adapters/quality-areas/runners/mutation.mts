@@ -20,7 +20,7 @@ import { readFileSync } from 'node:fs';
 import { rm } from 'node:fs/promises';
 import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
-import { toolErrorFinding } from '../typed/reporting.mts';
+import { toolErrorFinding } from '../reporting/test-report.mts';
 import { mutationSkipFor } from './skips/mutation-skips.mts';
 import {
   CRACO_JEST_CONFIG,
@@ -40,11 +40,10 @@ import {
   type MutationReport,
   type StrykerConfig,
   layeredStrykerConfig,
-  normalizeMutation,
-  withMutationSourceHashes,
   withoutProjectIgnoredMutants,
-  withUnreachedMutantsUncovered,
 } from '../typed/mutation.mts';
+import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mts';
+import { withMutationSourceHashes } from '../reporting/source-hashes.mts';
 
 type StrykerRun = {
   readonly options: QualityAreaOptions;

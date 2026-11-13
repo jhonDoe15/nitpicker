@@ -1,26 +1,36 @@
 import {
   TESTS_FAILED_RULE,
   TESTS_NOT_RUN_RULE,
-  testsFailHeadline,
-  testsFailOnBase,
 } from '../../../../../shared/rules/finding-helpers.mjs';
-import {
-  testsFailAnchor,
-  troubleshootingError,
-  withTroubleshooting,
-} from '../../../../../shared/messages/troubleshooting.mjs';
+import { troubleshootingError, withTroubleshooting } from '../../lint-engine/typed/tools.mts';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import type { Finding, NodeToolResult } from '../../static-checks/shared.mts';
+import type { QualityAreaOptions } from '../typed/area-types.mts';
+import type {
+  AssertionResult,
+  TestFileResult,
+  TestReport,
+} from '../../test-runners/typed/runner-types.mts';
+import {
+  failingTestEntries,
+  testsFailAnchor,
+  testsFailHeadline,
+  testsFailOnBase,
+} from '../typed/reporting.mts';
+import { listOf, textOf } from '../../../../../shared/values/readers.mts';
+import type { CoverageReport } from './tests.mts';
 
 export const COVERAGE_REPORT_PATH = 'reports/quality/coverage/coverage-final.json';
 
 export const TEST_CONSOLE_REPORT_PATH = 'reports/quality/test-console/report.json';
 
-import { normalizeCoverage } from './tests.mjs';
+import { normalizeCoverage } from './tests.mts';
 
-import { withBranchSourceHashes } from './source-hashes.mjs';
+import { withBranchSourceHashes } from './source-hashes.mts';
 
 import {
+  type ReportedAssertion,
   firstLine,
   missingSetupHints,
   timeoutText,
@@ -28,20 +38,58 @@ import {
   unhandledErrorText,
   withSnapshotAdvice,
   assertionDetails,
-} from './failure-lines.mjs';
-import { failingTestEntries } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
+} from './failure-lines.mts';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
+
+export type ToolErrorDetails = {
+  readonly rule: string;
+  readonly path?: string | undefined;
+  readonly message: string;
+  readonly anchor: string | undefined;
+};
+
+export type ProjectTestRun = {
+  readonly report: TestReport;
+  readonly result: NodeToolResult;
+  readonly runnerName: string;
+  readonly precedingCommands: unknown;
+};
+
+type Failure = {
+  readonly file: string;
+  readonly name: string;
+  readonly assertion: string;
+  readonly line?: number;
+  readonly expected?: unknown;
+  readonly received?: unknown;
+};
+
+type FailureContext = {
+  readonly runnerName?: string | undefined;
+  readonly precedingCommands?: unknown;
+  readonly snapshot?: string | undefined;
+};
+
+type ProcessOutput = { readonly stderr?: unknown; readonly stdout?: unknown };
 
 const COULD_NOT_RUN = 'could not run';
 
+function hasEntries<T>(list: readonly T[]): list is readonly [T, ...T[]] {
+  return list.length > 0;
+}
+
+function isCoverageReport(value: unknown): value is CoverageReport {
+  return typeof value === 'object' && value !== null;
+}
+
 export function coverageFailureFindings(
-  options,
-  { report, result, runnerName, precedingCommands },
-) {
+  options: QualityAreaOptions,
+  { report, result, runnerName, precedingCommands }: ProjectTestRun,
+): Finding[] {
   const failures = testFailures(report, options.projectRoot);
   const [firstFailure] = failures;
   const unhandled = unhandledErrors(result.stderr);
-  if (firstFailure === undefined && unhandled.length > 0) {
+  if (firstFailure === undefined && hasEntries(unhandled)) {
     return [
       toolErrorFinding(options, {
         rule: TESTS_NOT_RUN_RULE,
@@ -72,10 +120,16 @@ export function coverageFailureFindings(
   ];
 }
 
-export function readCoverageFindings(options, testReport) {
-  const report = JSON.parse(
+export function readCoverageFindings(
+  options: QualityAreaOptions,
+  testReport: TestReport,
+): Finding[] {
+  const report: unknown = JSON.parse(
     readFileSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), 'utf8'),
   );
+  if (!isCoverageReport(report)) {
+    throw new TypeError('The coverage report is not an object');
+  }
   return normalizeCoverage(
     withBranchSourceHashes(report, options.projectRoot),
     options.analyzerName,
@@ -83,9 +137,14 @@ export function readCoverageFindings(options, testReport) {
   );
 }
 
-export function readTestReport(reportPath, result, { runnerName, snapshot }) {
+export function readTestReport(
+  reportPath: string,
+  result: NodeToolResult,
+  { runnerName, snapshot }: { readonly runnerName: string; readonly snapshot: string | undefined },
+): unknown {
   try {
-    return JSON.parse(readFileSync(reportPath, 'utf8'));
+    const report: unknown = JSON.parse(readFileSync(reportPath, 'utf8'));
+    return report;
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw troubleshootingError(
@@ -96,7 +155,10 @@ export function readTestReport(reportPath, result, { runnerName, snapshot }) {
   }
 }
 
-export function toolErrorFinding(options, { rule, path: findingPath = '.', message, anchor }) {
+export function toolErrorFinding(
+  options: Pick<QualityAreaOptions, 'analyzerName'>,
+  { rule, path: findingPath = '.', message, anchor }: ToolErrorDetails,
+): Finding {
   return {
     tool: options.analyzerName,
     rule,
@@ -107,24 +169,33 @@ export function toolErrorFinding(options, { rule, path: findingPath = '.', messa
   };
 }
 
-function testFailures(report, projectRoot) {
-  const failures = [];
-  const testResults = Array.isArray(report?.testResults) ? report.testResults : [];
+function isFailedAssertion(assertion: AssertionResult | undefined): assertion is AssertionResult {
+  return assertion?.status === 'failed';
+}
+
+function testFailures(report: TestReport | undefined, projectRoot: string): Failure[] {
+  const failures: Failure[] = [];
+  const testResults: readonly (TestFileResult | undefined)[] = Array.isArray(report?.testResults)
+    ? report.testResults
+    : [];
   for (const testResult of testResults) {
     const file = projectFile(projectRoot, testResult?.name);
-    const failedAssertions = Array.isArray(testResult?.assertionResults)
-      ? testResult.assertionResults.filter((assertion) => assertion?.status === 'failed')
+    const assertions: readonly (AssertionResult | undefined)[] = Array.isArray(
+      testResult?.assertionResults,
+    )
+      ? testResult.assertionResults
       : [];
+    const failedAssertions = assertions.filter(isFailedAssertion);
     for (const assertion of failedAssertions) {
       failures.push({
         file,
-        ...assertionDetails(assertion, {
+        ...assertionDetails(reportedAssertion(assertion), {
           testFile: absoluteFile(projectRoot, testResult?.name),
           projectRoot,
         }),
         name: assertionName(assertion),
         assertion:
-          timeoutText(assertion) ??
+          timeoutText(reportedAssertion(assertion)) ??
           withSnapshotAdvice(
             firstLine(assertion.failureMessages?.find((message) => typeof message === 'string')),
           ),
@@ -137,11 +208,15 @@ function testFailures(report, projectRoot) {
   return failures;
 }
 
-function absoluteFile(projectRoot, name) {
+function reportedAssertion(assertion: AssertionResult): ReportedAssertion {
+  return assertion;
+}
+
+function absoluteFile(projectRoot: string, name: unknown): string | undefined {
   return typeof name === 'string' ? path.resolve(projectRoot, name) : undefined;
 }
 
-function projectFile(projectRoot, name) {
+function projectFile(projectRoot: string, name: unknown): string {
   if (typeof name !== 'string') {
     return '<unknown test file>';
   }
@@ -149,31 +224,32 @@ function projectFile(projectRoot, name) {
   return relativePath.startsWith('..') || path.isAbsolute(relativePath) ? name : relativePath;
 }
 
-function findingPath(file) {
+function findingPath(file: string): string {
   return file.startsWith('<') || file.startsWith('..') || path.isAbsolute(file) ? '.' : file;
 }
 
-function precedingNote(precedingCommands) {
-  if (!Array.isArray(precedingCommands) || precedingCommands.length === 0) {
+function precedingNote(precedingCommands: unknown): string[] {
+  const commands = listOf(precedingCommands);
+  if (commands.length === 0) {
     return [];
   }
-  const steps = precedingCommands.map((command) => `"${command}"`).join(', ');
-  const which = precedingCommands.length === 1 ? 'that step' : 'those steps';
+  const steps = commands.map((command) => `"${textOf(command)}"`).join(', ');
+  const which = commands.length === 1 ? 'that step' : 'those steps';
   return [
     `The test script runs ${steps} before the tests; nitpicker runs only the test command, ` +
       `so run ${which} first if the tests need it.`,
   ];
 }
 
-function failureEntry({ file, name, assertion }) {
+function failureEntry({ file, name, assertion }: Failure): string {
   return `${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`;
 }
 
 export function formatTestFailures(
-  report,
-  projectRoot,
-  { runnerName, precedingCommands, snapshot } = {},
-) {
+  report: TestReport | undefined,
+  projectRoot: string,
+  { runnerName, precedingCommands, snapshot }: FailureContext = {},
+): string {
   if (snapshot === 'base') {
     return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
   }
@@ -182,11 +258,16 @@ export function formatTestFailures(
   );
 }
 
-function failureText(report, projectRoot, runnerName) {
+function failureText(
+  report: TestReport | undefined,
+  projectRoot: string,
+  runnerName: string | undefined,
+): string {
   const failures = testFailures(report, projectRoot);
-  const failedCount = Number.isInteger(report?.numFailedTests)
-    ? Math.max(report.numFailedTests, failures.length)
-    : failures.length;
+  const failedCount =
+    typeof report?.numFailedTests === 'number' && Number.isInteger(report.numFailedTests)
+      ? Math.max(report.numFailedTests, failures.length)
+      : failures.length;
   const headline = testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
     return `${headline.slice(0, -1)}; the report named no test.`;
@@ -200,7 +281,7 @@ function failureText(report, projectRoot, runnerName) {
   ].join('\n');
 }
 
-function assertionName(assertion) {
+function assertionName(assertion: AssertionResult): string {
   if (typeof assertion.fullName === 'string') {
     return assertion.fullName;
   }
@@ -210,9 +291,13 @@ function assertionName(assertion) {
   return '<unknown test>';
 }
 
-export function formatProcessOutput(result) {
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+export function formatProcessOutput(result: ProcessOutput): string {
   const output = [result.stderr, result.stdout]
-    .filter((value) => typeof value === 'string' && value.trim().length > 0)
+    .filter(hasText)
     .map((value) => value.trim())
     .join('\n');
   return output.length > 0 ? `\nProcess output:\n${output}` : '';

@@ -15,7 +15,7 @@ import {
   ROOT_VARIABLE,
   RUNNER_VARIABLE,
 } from '../../preset/test-console/console-report.mjs';
-import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
+import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mts';
 import { consoleProducerPath, startTestConsole } from './test-console-run.mts';
 
 describe('the console capture of a test run', () => {

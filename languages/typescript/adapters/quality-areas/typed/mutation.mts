@@ -15,21 +15,21 @@ import {
   layeredStrykerConfig as untypedLayeredStrykerConfig,
   withoutProjectIgnoredMutants as untypedWithoutProjectIgnoredMutants,
 } from '../../../preset/project-configs/stryker-project-config.mjs';
-import {
-  normalizeMutation as untypedNormalizeMutation,
-  withUnreachedMutantsUncovered as untypedWithUnreachedMutantsUncovered,
-} from '../reporting/tests.mjs';
-import { withMutationSourceHashes as untypedWithMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../../../preset/tool-configs.mjs';
 
 type Position = { readonly line?: number; readonly column?: number };
 
+export type MutantLocation = { readonly start?: Position; readonly end?: Position };
+
 export type Mutant = {
   readonly mutatorName: string;
   readonly replacement?: string;
-  readonly original?: string;
+  readonly original?: string | undefined;
   readonly status: string;
-  readonly location?: { readonly start?: Position; readonly end?: Position };
+  readonly location?: MutantLocation;
+  readonly coveredBy?: unknown;
+  readonly sourceHash?: string;
+  readonly functionName?: string | undefined;
 };
 
 export type MutationFile = { readonly mutants?: readonly Mutant[] };
@@ -99,19 +99,6 @@ export const withoutProjectIgnoredMutants: (
   report: MutationReport,
   appliedConfig: StrykerConfig,
 ) => MutationReport = untypedWithoutProjectIgnoredMutants;
-
-export const normalizeMutation: (report: MutationReport, analyzerName: string) => Finding[] =
-  untypedNormalizeMutation;
-
-export const withUnreachedMutantsUncovered: (
-  report: unknown,
-  coverageAnalysis: unknown,
-) => MutationReport = untypedWithUnreachedMutantsUncovered;
-
-export const withMutationSourceHashes: (
-  report: MutationReport,
-  projectRoot: string,
-) => MutationReport = untypedWithMutationSourceHashes;
 
 export const layoutTransformFor: (
   policyFileName: string,

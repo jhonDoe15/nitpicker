@@ -3,14 +3,14 @@ import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { runNodeTool, parseReportJson } from '../typed/tooling.mts';
 import path from 'node:path';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { COVERAGE_REPORT_PATH } from '../reporting/test-report.mjs';
 import {
+  COVERAGE_REPORT_PATH,
   coverageFailureFindings,
-  normalizeCrap,
   readCoverageFindings,
   toolErrorFinding,
-  withFunctionSourceHashes,
-} from '../typed/reporting.mts';
+} from '../reporting/test-report.mts';
+import { normalizeCrap } from '../reporting/tests.mts';
+import { withFunctionSourceHashes } from '../reporting/source-hashes.mts';
 import { readLayout } from '../../typed/head-policy.mts';
 import { readSlowTestFindings } from '../../slow-tests/slow-tests.mts';
 import { runProjectTests } from '../../test-runners/run-project-tests.mts';
