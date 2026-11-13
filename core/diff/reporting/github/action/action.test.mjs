@@ -5,7 +5,7 @@ import { parse } from 'yaml';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { executeStep } from './test-support/action-steps.mjs';
-import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mjs';
+import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mts';
 import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mjs';
 import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mjs';
 import {
