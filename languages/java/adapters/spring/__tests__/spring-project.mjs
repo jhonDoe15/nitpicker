@@ -104,6 +104,8 @@ const REVIEW_RULES = new Set([
   'TaskOutlivesTryResource',
   'ReactorBlockingInOperator',
   'ReactorBlockInReactiveMethod',
+  'ReactorBlockWithoutTimeout',
+  'UnboundedWait',
   'SpringProxySelfCall',
   'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',

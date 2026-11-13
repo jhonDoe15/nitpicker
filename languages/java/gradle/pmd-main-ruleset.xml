@@ -1935,6 +1935,39 @@ return (
     [ArgumentList/*[2][self::FieldAccess[@Name = 'MAX_VALUE'][TypeExpression[pmd-java:typeIs('java.lang.Integer')]]]]
 ]]></value></property></properties>
   </rule>
+  <rule name="UnboundedWait" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Wait with a deadline: future.get(30, TimeUnit.SECONDS), future.orTimeout(30, TimeUnit.SECONDS).join(), latch.await(30, TimeUnit.SECONDS) or thread.join(30_000), and handle the timeout by cancelling the work or failing. This call waits with no limit, so a task that never finishes hangs this thread for good. An exception fits only code whose purpose is to wait for the work to finish, such as the main method of a command or a shutdown that joins a thread it just stopped.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[ArgumentList[@Size = 0]
+    or (@MethodName = 'join' and ArgumentList[@Size = 1]/NumericLiteral[@Image = ('0', '0L')])]
+  [(@MethodName = ('get', 'join')
+      and *[1][pmd-java:typeIs('java.util.concurrent.Future') or pmd-java:typeIs('java.util.concurrent.CompletableFuture')
+        or pmd-java:typeIs('java.util.concurrent.FutureTask') or pmd-java:typeIs('java.util.concurrent.ScheduledFuture')
+        or pmd-java:typeIs('java.util.concurrent.ForkJoinTask')])
+   or (@MethodName = 'join' and *[1][pmd-java:typeIs('java.lang.Thread')])
+   or (@MethodName = 'await' and *[1][pmd-java:typeIs('java.util.concurrent.CountDownLatch')])]
+  [not(*[1]/descendant-or-self::MethodCall[@MethodName = ('orTimeout', 'completeOnTimeout')])]
+  [let $name := *[1][self::VariableAccess]/@Name
+   return not(exists($name) and exists(ancestor::MethodDeclaration[1]//VariableDeclarator[VariableId/@Name = $name]
+     /*[last()]/descendant-or-self::MethodCall[@MethodName = ('orTimeout', 'completeOnTimeout')]))]
+  [not(ancestor::LambdaExpression[1][parent::ArgumentList/parent::MethodCall
+        [@MethodName = ('thenApply', 'thenAccept', 'thenCompose', 'thenRun', 'thenCombine', 'handle', 'whenComplete',
+                        'thenApplyAsync', 'thenAcceptAsync', 'thenComposeAsync')]
+        /*[1]/descendant-or-self::MethodCall[@MethodName = ('allOf', 'anyOf')]])]
+  [not(*[1][self::MethodCall][@MethodName = 'onExit'][*[1][pmd-java:typeIs('java.lang.Process')]])]
+  [not(ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ClassBody][1][self::LambdaExpression]
+        [parent::ArgumentList/parent::MethodCall/*[1][not(self::TypeExpression)]
+          [pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]])]
+  [let $name := *[1][self::VariableAccess]/@Name
+   return not(exists($name) and exists(ancestor::ForeachStatement[LocalVariableDeclaration//VariableId/@Name = $name]
+     [*[2]/descendant-or-self::MethodCall[@MethodName = 'invokeAll']]))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="UnclosedInlineResource" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This closeable (a stream, reader, writer, channel, JAR or ZIP file, class loader or JDBC connection) is opened and used in the same expression, as the receiver of a call, an argument or a loop source, so nothing closes it: each call leaks a file handle or a connection, and on Windows the file stays locked. Open it in a try-with-resources header and use the variable (try (InputStream in = resource.getInputStream()) ... in.readAllBytes()). Returning it, storing it in a field of a closeable class, or passing it to a closeable wrapper (new BufferedReader(new InputStreamReader(in))) that is itself owned also matches. In-memory types (ByteArrayInputStream, StringReader, StringWriter) and streams owned elsewhere (System.in, a Socket, a Process, a servlet response) are not reported.">
     <priority>3</priority>

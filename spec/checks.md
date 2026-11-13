@@ -145,6 +145,15 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Unbounded waits: `pmd/UnboundedWait` (Java, main sources) reports `get()` or `join()` without a timeout on a
+`Future` or `CompletableFuture`, `Thread.join()` and `CountDownLatch.await()`, and
+`pmd/ReactorBlockWithoutTimeout` (with `reactor-core` on the compile classpath) reports `block()`,
+`blockOptional()`, `blockFirst()` and `blockLast()` without a `Duration`, on Gradle and Maven alike.
+`kotlin-source/UnboundedWait` and `kotlin-source/ReactorBlockWithoutTimeout` run the same checks in the
+Kotlin preset, and `unbounded-wait` runs them in the Python preset for `concurrent.futures` futures,
+`concurrent.futures.wait` and `as_completed`, and `threading.Thread.join()`. The TypeScript and
+JavaScript presets have no counterpart, since a promise has no blocking wait.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another

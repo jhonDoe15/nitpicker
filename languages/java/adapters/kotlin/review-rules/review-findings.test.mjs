@@ -385,6 +385,18 @@ describe('withoutCoveredFindings', () => {
     ]);
   });
 
+  it('keeps the blocking-call finding when an unbounded wait is reported on the same line', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'UnboundedWait', 3),
+      at(SOURCE_TOOL, 'BlockingCallInCoroutine', 3),
+      at(SOURCE_TOOL, 'ReactorBlockWithoutTimeout', 5),
+      at(SOURCE_TOOL, 'BlockingCallInCoroutine', 5),
+      at(SOURCE_TOOL, 'UnboundedWait', 9),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([findings[1], findings[3], findings[4]]);
+  });
+
   it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
     const findings = [
       at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),

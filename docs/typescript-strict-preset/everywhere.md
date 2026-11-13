@@ -824,6 +824,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
+  Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
+  that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
+  `nitpicker/require-process-timeout` cover where the call is made.
 - Time values in one unit meet only values in the same unit (`nitpicker/time-unit-mismatch`, production
   files). Units come from the API (`Date.now()`, `getTime()`, `Date.parse`, `Date.UTC` and `performance.now()`
   in milliseconds, `process.uptime()` in seconds, `process.hrtime.bigint()` in nanoseconds, the JWT claims

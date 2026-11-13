@@ -65,6 +65,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Waits for a worker have a deadline: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`,
+  `thread.join(timeout=30)` and then `thread.is_alive()`; never the no-argument form
+  (`unbounded-wait`; a shutdown that joins the worker it just stopped takes an exception).
 - Pages of rows: a query that takes a page (`limit`, `offset`, a queryset slice, SQL `LIMIT`) or builds an
   `array_agg`/`json_agg` list orders on a unique key: `select(User).order_by(User.created.desc(), User.id).limit(20)`,
   `Order.objects.order_by("-created", "id")[:20]`, `func.array_agg(aggregate_order_by(...))` (`unordered-query`).

@@ -46,6 +46,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,
+  `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
+  (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
+  (`kotlin-source/UnboundedWait`, `kotlin-source/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work
+  takes an exception).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`, `readTimeout` on an
   `HttpURLConnection`, Ktor's `HttpTimeout`, OkHttp; not `URL(url).readText()` or `HttpClients.createDefault()`
   (`kotlin-source/HttpWithoutTimeout`).

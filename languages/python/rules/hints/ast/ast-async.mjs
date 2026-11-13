@@ -79,6 +79,14 @@ export const ASYNC_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['unbounded-wait'],
+    describe: (subject) =>
+      `\`${subject}\` waits without a timeout, so a task that never finishes hangs this thread for good`,
+    allowed:
+      'Pass a timeout in seconds: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`, `thread.join(timeout=30)` (then check `is_alive()`). A program whose purpose is to wait for the work to finish, such as a shutdown that joins the worker it just told to stop, takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['timeout-scope-path-without-checkpoint'],
     describe: (subject) => {
       const { scope, call } = parts(subject);

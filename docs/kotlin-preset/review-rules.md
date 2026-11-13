@@ -952,6 +952,12 @@ Kotlin-specific choices:
   `.waitFor()` call without arguments on any receiver counts, since `Process` is the class that declares it; a
   project's own `fun waitFor()` called without a receiver does not. A program whose purpose is to run a child to
   completion (a build wrapper) takes an exception.
+- `UnboundedWait` and `ReactorBlockWithoutTimeout` are text scans (the Java preset's `pmd/UnboundedWait` and
+  `pmd/ReactorBlockWithoutTimeout` match by type): the receiver of `get()`, `join()` or `await()` must be a name the file
+  declares as a `Future`-like type, `Thread` or `CountDownLatch` (or makes from `CompletableFuture`, `submit`, `Thread(...)`,
+  `thread { }`, `CountDownLatch(n)`), so a coroutine `Job` or `Deferred` is never reported, and `block()` counts only in a
+  file that imports Reactor or the Spring reactive web package. Where `BlockingCallInCoroutine` reports the same line, only
+  that finding stays. A name the file declares with two different types (or in a lambda parameter) is skipped, `block()` counts only on a receiver the file shows to be a `Mono` or `Flux` (declared, made by `Mono.`/`Flux.`, or a `WebClient` `retrieve()`/`bodyToMono` chain), and the Java rules' exemptions for methods that return a publisher and operator lambdas are not mirrored, since the scan cannot tell them apart. Not followed: a future returned by a project factory function, `futures.map { it.get() }`, and a `Mono` held in a property of another object. A program whose purpose is to wait for the work to finish takes an exception.
 - `FutureWithoutException` is a text scan (the Java preset's `pmd/FutureWithoutException` matches `CompletableFuture`
   by type): it reads the block of `suspendCancellableCoroutine`/`suspendCoroutine` and the block that declares a
   `CompletableDeferred()` or `CompletableFuture()` local, so a resume or completion in a function called from there is
