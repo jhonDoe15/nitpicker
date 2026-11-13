@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { pythonPeerStatus, requiredPythonPeers } from './python-peers.mjs';
+import { pythonPeerStatus, requiredPythonPeers } from './python-peers.mts';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';

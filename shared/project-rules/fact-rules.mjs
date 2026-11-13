@@ -48,6 +48,7 @@ export const FACT_RULE_LANGUAGES = {
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
+  'public-alternative-bypass': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true, kotlin: true },
   'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
@@ -80,6 +81,7 @@ export const FACT_RULE_LISTS = {
   'feature-internal-import': ['modules', 'imports'],
   'shared-imports-feature': ['modules', 'imports'],
   'feature-cycle': ['modules', 'imports'],
+  'public-alternative-bypass': ['modules', 'imports'],
   'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
   'doc-comment-content': ['docComments'],
   'test-console-output': ['console'],

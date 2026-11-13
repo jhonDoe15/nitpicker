@@ -71,7 +71,7 @@ describe.skipIf(!enabled)('tls-verification-off', () => {
         'a flag imported from the settings module',
         {
           files: {
-            'app/settings.py': 'import os\n\nVERIFY = os.environ.get("VERIFY", "1") == "1"\n',
+            'app/settings.py': 'import os\n\nVERIFY = (os.environ.get("VERIFY") or "1") == "1"\n',
             'app/client.py':
               'import requests\n\nfrom app.settings import VERIFY\n\n\ndef f(url):\n    return requests.get(url, verify=VERIFY, timeout=10)\n',
           },
@@ -88,7 +88,7 @@ describe.skipIf(!enabled)('tls-verification-off', () => {
         'a CA bundle from a parameter, a setting or the environment',
         {
           file: 'settings.py',
-          code: 'import os\n\nimport requests\n\nCA = os.environ.get("CA_BUNDLE", "/etc/ssl/ca.pem")\n\n\ndef f(url, ca_path, settings):\n    requests.get(url, verify=ca_path, timeout=10)\n    requests.get(url, verify=CA, timeout=10)\n    return requests.get(url, verify=settings.CA_BUNDLE, timeout=10)\n',
+          code: 'import os\n\nimport requests\n\nCA = os.environ.get("CA_BUNDLE") or "/etc/ssl/ca.pem"\n\n\ndef f(url, ca_path, settings):\n    requests.get(url, verify=ca_path, timeout=10)\n    requests.get(url, verify=CA, timeout=10)\n    return requests.get(url, verify=settings.CA_BUNDLE, timeout=10)\n',
         },
         [],
       ],

@@ -1,13 +1,13 @@
 def pinned = [
-    pmd             : '7.7.0',
+    pmd             : '7.16.0',
     forbiddenapis   : '3.10',
-    spotbugs        : '4.9.3',
-    googleJavaFormat: '1.25.2',
-    palantirJavaFormat: '2.50.0',
-    jacoco          : '0.8.12',
-    checkstyle      : '10.21.1',
+    spotbugs        : '4.9.8',
+    googleJavaFormat: '1.35.0',
+    palantirJavaFormat: '2.90.0',
+    jacoco          : '0.8.16',
+    checkstyle      : '13.5.0',
     lizard          : '1.24.1',
-    pitest          : '1.17.4',
+    pitest          : '1.22.1',
     pitestJunit5    : '1.2.1',
     pitestTestng    : '1.0.0',
     archunit        : '1.5.1',
@@ -362,7 +362,9 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
-def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
+def rulesWriter = ['write-rules.mts', 'write-rules.mjs']
+    .collect { new File(initScriptDir, "../builds/rulesets/${it}").canonicalFile }
+    .find { it.exists() }
 def runNode = { File script, List<String> arguments, String failure ->
     def process
     try {
@@ -493,10 +495,6 @@ allprojects {
             nitpickerPitTestng "org.pitest:pitest-testng-plugin:${pinned.pitestTestng}"
         }
         jacoco { toolVersion = pinned.jacoco }
-        def inlineCheckstyleFilters = ['SuppressWarningsFilter', 'SuppressWarningsHolder',
-            'SuppressionCommentFilter', 'SuppressWithNearbyCommentFilter', 'SuppressWithNearbyTextFilter',
-            'SuppressWithPlainTextCommentFilter',
-            'SuppressionXpathFilter']
         def nitpickerCheckstyleConfig = layout.buildDirectory.file('nitpicker-checkstyle/checkstyle.xml')
         def projectCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.projectConfig')
         def mergedCheckstyleConfig = nitpickerArgument('nitpicker.checkstyle.mergedConfig')
@@ -514,44 +512,19 @@ allprojects {
                 outputs.upToDateWhen { false }
             }
             doLast {
-                def text = bundledCheckstyleConfig.asString()
-                inlineCheckstyleFilters.each { name ->
-                    text = text.replaceAll("(?s)<module name=\"${name}\"\\s*(?:/>|>.*?</module>)", '')
-                }
-                def left = inlineCheckstyleFilters.findAll { text.contains("\"${it}\"") }
-                if (!left.isEmpty()) {
-                    throw new GradleException("nitpicker could not remove ${left} from google_checks.xml")
-                }
-                ['MemberName', 'MethodName'].each { name ->
-                    def pattern = ~/(?s)(<module name="${name}">\s*<property name="format" value=")[^"]*(")/
-                    if (!(text =~ pattern).find()) {
-                        throw new GradleException("nitpicker could not find ${name} in google_checks.xml")
-                    }
-                    text = text.replaceAll(pattern, '$1^[a-z]([a-z0-9][a-zA-Z0-9]*)?\\$$2')
-                }
-                if (javaStyle == 'none') {
-                    if (!text.contains('<module name="TreeWalker">')) {
-                        throw new GradleException('nitpicker could not find TreeWalker in google_checks.xml')
-                    }
-                    text = text.replace('<module name="TreeWalker">',
-                        '<module name="TreeWalker">\n    <module name="UnusedImports"/>')
-                    if (javaIndentation == 'tab') {
-                        ['Indentation', 'FileTabCharacter'].each { name ->
-                            text = text.replaceAll("(?s)<module name=\"${name}\"\\s*(?:/>|>.*?</module>)", '')
-                        }
-                    } else if (javaIndentation == '4') {
-                        ['basicOffset', 'caseIndent', 'arrayInitIndent'].each { property ->
-                            def pattern = ~/(?s)(<module name="Indentation">(?:(?!<\/module>).)*?<property name="${property}" value=")\d+(")/
-                            if (!(text =~ pattern).find()) {
-                                throw new GradleException("nitpicker could not find Indentation ${property} in google_checks.xml")
-                            }
-                            text = text.replaceAll(pattern) { whole, head, tail -> "${head}4${tail}".toString() }
-                        }
-                    }
-                }
                 def target = nitpickerCheckstyleConfig.get().asFile
                 target.parentFile.mkdirs()
-                target.text = text
+                def bundled = new File(target.parentFile, 'google_checks.xml')
+                bundled.text = bundledCheckstyleConfig.asString()
+                def plan = new File(target.parentFile, 'plan.json')
+                plan.text = groovy.json.JsonOutput.toJson([
+                    source: bundled.absolutePath,
+                    output: target.absolutePath,
+                    javaStyle: javaStyle,
+                    indentation: javaIndentation,
+                ])
+                writeRules('checkstyle-config', plan)
+                def text = target.text
                 if (exportedCheckstyleConfig) {
                     // Node lays the project's modules over this file (languages/java/adapters/tool-config/checkstyle)
                     // before the second run and passes the result as nitpicker.checkstyle.mergedConfig.
@@ -764,10 +737,20 @@ allprojects {
             jvmArgs(['api', 'file', 'parser', 'tree', 'util', 'code'].collect {
                 "--add-exports=jdk.compiler/com.sun.tools.javac.${it}=ALL-UNNAMED".toString()
             })
+            def formatErrors = new ByteArrayOutputStream()
+            errorOutput = formatErrors
             doFirst {
                 reportDir.get().asFile.mkdirs()
                 standardOutput = new FileOutputStream(reportDir.get().file('format.txt').asFile)
                 args(['--dry-run'] + ([aosp: ['--aosp'], palantir: ['--palantir']][javaStyle] ?: []) + javaFiles()*.absolutePath)
+            }
+            doLast {
+                def exit = executionResult.get().exitValue
+                if (exit != 0) {
+                    def detail = formatErrors.toString('UTF-8').readLines().findAll { it.trim() && !it.startsWith('Picked up ') }.take(20).join('\n')
+                    throw new GradleException("${mainClass.get().contains('palantir') ? 'palantir-java-format' : 'google-java-format'} " +
+                        "failed with exit code ${exit}: ${detail}")
+                }
             }
         }
 
@@ -980,6 +963,19 @@ allprojects {
                 mustRunAfter source
                 classpath = configurations.nitpickerPit
                 mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+                def pitOutput = new ByteArrayOutputStream()
+                ignoreExitValue = true
+                standardOutput = pitOutput
+                errorOutput = pitOutput
+                doLast {
+                    def exitValue = executionResult.get().exitValue
+                    if (exitValue != 0) {
+                        def lines = pitOutput.toString('UTF-8').readLines().findAll { it.trim() }
+                        def testTask = checkedTestTasks().size() > 1 ? " running the ${source.name} tests" : ''
+                        new File(pitReportDirectory(source).asFile, 'failure.txt').text =
+                            "PIT failed with exit code ${exitValue}${testTask}: ${lines.takeRight(40).join('\n')}"
+                    }
+                }
                 doFirst {
                     def pitDir = pitReportDirectory(source)
                     def classDirs = mutatedClassDirs().findAll { it.exists() }
@@ -1202,7 +1198,7 @@ allprojects {
         // Per-method lines, statements, control nesting, parameters and cyclomatic complexity for the
         // shared structure rule and the CRAP check. languages/java/gradle/StructureMetrics.java parses
         // the main sources with the JDK's own compiler tree API in single-file source mode, run by the
-        // JVM that runs Gradle: no extra dependency and no version to pin beyond the JDK.
+        // newest JDK that runs Gradle or compiles the sources: no extra dependency and no version to pin.
         tasks.register('nitpickerStructure') {
             group = 'nitpicker'
             def metricsSource = new File(initScriptDir, 'StructureMetrics.java')
@@ -1211,7 +1207,7 @@ allprojects {
                 def roots = mainSources.files.findAll { it.exists() }.collect { relativeToRoot(it) }
                 def output = reportDir.get().file('structure.json').asFile
                 def classesOutput = reportDir.get().file('classes.json').asFile
-                def java = new File(System.getProperty('java.home'), 'bin/java').absolutePath
+                def java = project.ext.nitpickerSourceJava().java
                 def process = new ProcessBuilder([java, metricsSource.absolutePath,
                         output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
                     .directory(projectDir).redirectErrorStream(true).start()
@@ -1297,6 +1293,7 @@ allprojects {
                     testAwaitility : hasAwaitility(),
                     published      : publishesLibrary(),
                     unrunTestSourceSets: unrunTestSourceSets,
+                    sourceJava     : project.ext.nitpickerSourceJava(),
                 ])
             }
         }
@@ -1379,7 +1376,7 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
-        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle', 'tool-jdk.gradle'].each {
             project.apply from: new File(initScriptDir, 'tasks/' + it)
         }
         // --- end coupling ---

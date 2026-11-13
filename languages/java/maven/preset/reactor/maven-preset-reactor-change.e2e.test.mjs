@@ -9,7 +9,7 @@ import {
   fixtures,
   EMPTY_CATCH,
   copyOf,
-} from '../../__tests__/maven-preset-project.mjs';
+} from '../../__tests__/maven-preset-project.mts';
 
 describe.skipIf(!enabled)('Java preset on a Maven reactor change', () => {
   useMavenPresetProject();

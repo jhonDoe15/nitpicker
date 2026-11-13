@@ -1,8 +1,8 @@
 # Linters
 
 Part of the [nitpicker-go](../SKILL.md) skill. The gate runs staticcheck (every SA, S, ST and QF
-check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes, revive and
-catalog linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
+check, and U1000), errcheck, the modernize suite, more `golang.org/x/tools` passes, revive,
+gosec and the catalog linters (bodyclose, sqlclosecheck, rowserrcheck, noctx, errorlint, nilerr, nilnil, errname,
 contextcheck, containedctx, fatcontext, exhaustive, recvcheck, durationcheck, makezero,
 reassign, unconvert, wastedassign, thelper, tparallel, usetesting, testifylint) on every package, test files included. Write these forms from the start; each finding's message names the
 allowed form and ends with its exception entry.
@@ -132,9 +132,29 @@ allowed form and ends with its exception entry.
 - A comment has a space after `//`, except directives such as `//go:build`, and a block has no
   empty line at its start or end.
 
+## Security (gosec)
+
+- Random values an attacker must not guess come from crypto/rand (`rand.Text()`, `rand.Read`);
+  math/rand needs an exception that says why (simulations, jitter).
+- SQL takes values as query parameters, never through `fmt.Sprintf` or `+`.
+- Files are written with 0o600 (or fewer bits) and folders created with 0o750 (or fewer bits); open a new file with
+  `os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)` instead of `os.Create`. Temporary
+  files come from `os.CreateTemp`.
+- Paths, commands, URLs, redirects and templates from request input go through a fixed root
+  (`os.Root`), a fixed map (`commands[key]`) or a `url.URL` built on a fixed host; log request
+  values as structured `slog` fields. Archives are extracted through an `os.Root`, and
+  decompression copies through `io.LimitReader`. These checks apply to test files too.
+- Servers set `ReadHeaderTimeout` (`http.Server{...}.ListenAndServe()`, never
+  `http.ListenAndServe`), cookies set `Secure`, `HttpOnly` and `SameSite`, TLS keeps certificate
+  checks on with `MinVersion: tls.VersionTLS12`, and RSA keys have at least 2048 bits.
+- Hashes and ciphers: SHA-256 or better, AES-GCM or ChaCha20-Poly1305, a fresh nonce per message;
+  never MD5, SHA-1, DES, RC4, MD4 or RIPEMD-160.
+- Every `context.With...` cancel function is called; integer conversions that can overflow are
+  range-checked first.
+
 ## What does not work
 
-`//lint:ignore`, `//nolint` and `//revive:disable` comments are ignored. A project's `staticcheck.conf` is read only
+`//lint:ignore`, `//nolint`, `//revive:disable` and `#nosec` comments are ignored. A project's `staticcheck.conf` is read only
 when `nitpicker.config.json` opts in with
 `"tools": { "staticcheck": { "precedence": ["project"] } }`, and editing one then is a policy
 change. If a finding seems wrong, stop and ask.

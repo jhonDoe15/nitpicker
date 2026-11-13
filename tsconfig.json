@@ -3,7 +3,7 @@
     "target": "ES2024",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2024"],
+    "lib": ["ES2024", "ESNext.Array"],
     "types": ["node"],
     "allowJs": true,
     "checkJs": false,
@@ -29,7 +29,6 @@
   "exclude": [
     "node_modules/**",
     "**/fixtures/**",
-    "evals/cases/**",
     "evals/results/**",
     "reports/**",
     "coverage/**",

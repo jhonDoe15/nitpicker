@@ -103,6 +103,28 @@ describe('the Maven build in a quick run', () => {
     ]);
   });
 
+  it('runs the JaCoCo agent at the version every module binds, and stops when modules disagree', () => {
+    const own = (jacocoAgentVersion, artifact) => ({
+      coordinates: `demo:${artifact}`,
+      jacocoAgentVersion,
+    });
+
+    expect(
+      buildGoals({
+        quick: false,
+        pinned,
+        modules: [{}, own('0.8.12', 'a'), own('0.8.12', 'b')],
+      })[0],
+    ).toBe('org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent');
+    expect(() =>
+      buildGoals({ quick: false, pinned, modules: [own('0.8.12', 'a'), own('0.8.11', 'b')] }),
+    ).toThrow(
+      'The Maven modules bind different JaCoCo agent versions (demo:a 0.8.12, demo:b 0.8.11). A ' +
+        "test JVM can hold one JaCoCo agent version, and nitpicker runs the project's own: set one " +
+        'jacoco-maven-plugin version for every module',
+    );
+  });
+
   it('resolves no coverage, mutation or JUnit launcher tools', () => {
     const all = toolDependencies(pinned, ['1.11.4'], []);
 

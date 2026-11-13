@@ -47,6 +47,12 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-sync-node-api-in-async`, entry points included). Module top level, a worker thread
   and a CLI `main` that is only called from startup code stay synchronous.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
+- A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
+  failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
+  node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
+  that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
+  `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
+  socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
 - Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce` or `groupBy` over the rows
@@ -74,6 +80,10 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
   `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
   with `| 0` (`nitpicker/time-unit-mismatch`).
+- A database or AWS SDK client gets a timeout once, where it is built:
+  `new Pool({ statement_timeout: 30_000 })`, `extra: { statement_timeout: 30_000 }` on a TypeORM data source,
+  `requestHandler: { requestTimeout: 30_000, throwOnRequestTimeout: true }` on an AWS SDK client
+  (`nitpicker/require-client-timeout`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,

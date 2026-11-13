@@ -23,6 +23,7 @@ import { combineAnalyzerReports, noChangesReport } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
 import { quickScoped, runHeadAnalyzers } from './quick/head-run.mjs';
+import { withComparisonKeys } from '../cache/keys/comparison-keys.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -241,7 +242,11 @@ function runBaseSide(context) {
       configOverrides: baseSetup.configOverrides,
       headPolicy: baseSetup.headPolicy,
     }),
-    analyzers: quickScoped(settings, layout, baseSetup.analyzers),
+    analyzers: withComparisonKeys(quickScoped(settings, layout, baseSetup.analyzers), {
+      touchedPaths: [...layout.touchedPaths],
+      headRoot: roots.headSnapshotRoot,
+      quick: settings.quick !== undefined,
+    }),
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
     onCached: (count) =>
       settings.progress?.write(

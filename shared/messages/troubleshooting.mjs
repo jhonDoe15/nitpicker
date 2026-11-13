@@ -34,6 +34,7 @@ export const TROUBLESHOOTING_ANCHORS = {
   mutmutFails: 'mutmut-fails',
   gradleFails: 'the-gradle-build-fails',
   mavenFails: 'the-maven-build-fails',
+  pitFails: 'pit-fails-or-times-out',
 };
 
 const LINK_SENTENCE = new RegExp(

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderReport } from './init-report.mjs';
+import { renderReport } from './init-report.mts';
 
 const NOTE = 'pyproject.toml allows Python 3.8 (">=3.8"), so the CI job runs Python 3.10.';
 
