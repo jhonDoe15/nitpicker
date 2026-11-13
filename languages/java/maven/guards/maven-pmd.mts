@@ -32,14 +32,18 @@ function launchCpd(options: CpdOptions, command: unknown): unknown {
   }
 }
 
+function removeStale(files: readonly string[]): void {
+  for (const stale of files) {
+    rmSync(stale, { force: true });
+  }
+}
+
 export function runCpd(options: CpdOptions): void {
   const { reportDir } = options;
   const module = mavenModuleOf(options['module']);
   const report = path.join(reportDir, CPD_REPORT);
   const failure = path.join(reportDir, CPD_FAILURE);
-  for (const stale of [report, failure, path.join(reportDir, CPD_SKIPPED)]) {
-    rmSync(stale, { force: true });
-  }
+  removeStale([report, failure, path.join(reportDir, CPD_SKIPPED)]);
   const directories = [
     ...textsOf(module['sourceRoots']),
     ...textsOf(module['testSourceRoots']),

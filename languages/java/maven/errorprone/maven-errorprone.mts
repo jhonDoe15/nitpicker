@@ -7,7 +7,7 @@ import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
 import { errorProneJava } from './maven-jdk.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
 
 type Compiler = Readonly<Record<string, unknown>> & {
@@ -15,6 +15,11 @@ type Compiler = Readonly<Record<string, unknown>> & {
   readonly processorPaths?: readonly string[] | undefined;
 };
 type Modular = boolean | 'all';
+type SetOutputs = {
+  readonly classes: string;
+  readonly generated: string;
+  readonly argumentFile: string;
+};
 type CompileSet = {
   readonly name: string;
   readonly roots: readonly string[];
@@ -23,6 +28,7 @@ type CompileSet = {
   readonly own: readonly string[];
   readonly test: boolean;
   readonly modular: Modular;
+  readonly outputs: SetOutputs;
 };
 type ArgumentSet = CompileSet & {
   readonly compiler: Compiler;
@@ -46,6 +52,7 @@ const JVM_FLAGS = [
 ];
 const OWN_JARS = /^(?:error_prone_|nullaway-)/u;
 const MODULE_INFO = 'module-info.java';
+const PROCESSOR_KEY_LENGTH = 16;
 
 function compilerOf(value: unknown): Compiler {
   const paths = fieldOf(value, 'processorPaths');
@@ -64,7 +71,7 @@ export function processorTool(
     return undefined;
   }
   const key = createHash('sha256').update(processorPaths.join('\n')).digest('hex');
-  return { name: `processors-${key.slice(0, 16)}`, coordinates: processorPaths };
+  return { name: `processors-${key.slice(0, PROCESSOR_KEY_LENGTH)}`, coordinates: processorPaths };
 }
 
 export function processorPath(
@@ -99,9 +106,7 @@ function lookupLines({ classpath: sourcePath, compiled = [], own, modular }: Com
   const classpath = [...sourcePath, ...compiled];
   const libraries = classpath.filter((entry) => !own.includes(entry) && existsSync(entry));
   const modules =
-    modular === false
-      ? []
-      : libraries.filter((entry) => modular === 'all' || isJavaModule(entry) === true);
+    modular === false ? [] : libraries.filter((entry) => modular === 'all' || isJavaModule(entry));
   const plain = classpath.filter((entry) => !modules.includes(entry));
   return [
     ...(modules.length === 0 ? [] : ['--module-path', modules.join(path.delimiter)]),
@@ -126,21 +131,19 @@ function setLines(set: ArgumentSet, classes: string, generated: string): string[
   ];
 }
 
-function writeArguments(work: string, set: ArgumentSet): string[] {
+function writeArguments(set: ArgumentSet): string[] {
   const sources = textsOf(javaFiles(set.roots)).filter(
     (file) => set.modular !== false || path.basename(file) !== MODULE_INFO,
   );
   if (sources.length === 0) {
     return [];
   }
-  const classes = path.join(work, 'classes', set.name);
-  const generated = path.join(work, 'generated', set.name);
+  const { classes, generated, argumentFile } = set.outputs;
   mkdirSync(classes, { recursive: true });
   mkdirSync(generated, { recursive: true });
   const lines = [...setLines(set, classes, generated), '--sources', ...sources];
-  const file = path.join(work, `${set.name}.args`);
-  writeFileSync(file, lines.map((line) => `${line}\n`).join(''), 'utf8');
-  return [file];
+  writeFileSync(argumentFile, lines.map((line) => `${line}\n`).join(''), 'utf8');
+  return [argumentFile];
 }
 
 function isModular(module: MavenModule): boolean {
@@ -149,7 +152,11 @@ function isModular(module: MavenModule): boolean {
   );
 }
 
-function compileSets(module: MavenModule, classpaths: unknown, modular: Modular): CompileSet[] {
+function compileSets(
+  module: MavenModule,
+  classpaths: unknown,
+  { modular, work }: { readonly modular: Modular; readonly work: string },
+): CompileSet[] {
   const output = textOf(module['outputDirectory']);
   const testOutput = textOf(module['testOutputDirectory']);
   return [
@@ -160,6 +167,11 @@ function compileSets(module: MavenModule, classpaths: unknown, modular: Modular)
       own: [output],
       test: false,
       modular,
+      outputs: {
+        classes: path.join(work, 'classes', 'main'),
+        generated: path.join(work, 'generated', 'main'),
+        argumentFile: path.join(work, 'main.args'),
+      },
     },
     {
       name: 'test',
@@ -169,6 +181,11 @@ function compileSets(module: MavenModule, classpaths: unknown, modular: Modular)
       own: [output, testOutput],
       test: true,
       modular: false,
+      outputs: {
+        classes: path.join(work, 'classes', 'test'),
+        generated: path.join(work, 'generated', 'test'),
+        argumentFile: path.join(work, 'test.args'),
+      },
     },
   ];
 }
@@ -178,8 +195,8 @@ function argumentFiles(context: ErrorProneContext, work: string, modular: Modula
   const compiler = compilerOf(module['compiler']);
   const tools = context['tools'];
   const flags = textsOf(fieldOf(fieldOf(context['configs'], 'errorprone'), 'arguments'));
-  return compileSets(module, context['classpaths'], modular).flatMap((set) =>
-    writeArguments(work, {
+  return compileSets(module, context['classpaths'], { modular, work }).flatMap((set) =>
+    writeArguments({
       ...set,
       compiler: set.test ? compilerOf({ ...compiler, ...fieldsOf(compiler['test']) }) : compiler,
       processors: [

@@ -102,8 +102,8 @@ export function withoutExcludedFiles(
 function readModule(reportBase: string, preset: string, entry: unknown): ReportModule {
   const key = textOf(fieldOf(entry, 'key'));
   const reportRoot = resolveInside(reportBase, key);
-  const manifestFile = firstProjectFile(reportBase, [path.join(key, MANIFEST_FILE)]);
-  if (reportRoot === undefined || manifestFile === undefined) {
+  const manifestFile: unknown = firstProjectFile(reportBase, [path.join(key, MANIFEST_FILE)]);
+  if (reportRoot === undefined || typeof manifestFile !== 'string') {
     throw new Error(
       `The ${preset} preset found no Gradle reports for ${moduleLabel(entry)}: its nitpickerJava task did not run`,
     );

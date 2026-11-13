@@ -122,10 +122,10 @@ function fileFindings(sourcefile: XmlElement, file: SourceLines, run: FileRun): 
   const branches = childrenNamed(sourcefile, 'line')
     .map((line) => lineBranch(line, file))
     .filter((branch) => branch !== undefined)
-    .map((branch) => ({
-      ...branch,
-      symbol: enclosingFunctionName(run.functions, branch.path, branch.line),
-    }));
+    .map((branch) => {
+      const symbol: unknown = enclosingFunctionName(run.functions, branch.path, branch.line);
+      return { ...branch, symbol };
+    });
   return listOf(
     branchCoverageFindings(branches, {
       tool: run.tool,
