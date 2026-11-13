@@ -10,6 +10,7 @@ import { kotlinSourceRules as rulesAddOnlyProperties } from '../lifecycles/growt
 import { kotlinSourceRules as rulesCachedDeferred } from '../lifecycles/memo/cached-deferred.mjs';
 import { kotlinSourceRules as rulesPendingFutures } from '../lifecycles/pending/pending-futures.mjs';
 import { kotlinSourceRules as rulesTimerFields } from '../lifecycles/timers/timer-fields.mjs';
+import { kotlinSourceRules as rulesUnboundedWaits } from '../futures/unbounded-waits.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesSimplerLogic } from '../logic/simpler-logic.mjs';
@@ -50,6 +51,7 @@ export const directoryRules = [
   rulesCachedDeferred,
   rulesPendingFutures,
   rulesTimerFields,
+  rulesUnboundedWaits,
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesSimplerLogic,

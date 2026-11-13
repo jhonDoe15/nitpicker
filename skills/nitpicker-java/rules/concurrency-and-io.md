@@ -33,6 +33,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,
+  `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
+  (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
+  (`pmd/UnboundedWait`, `pmd/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work takes an exception).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
