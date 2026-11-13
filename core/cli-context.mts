@@ -10,6 +10,7 @@ export type CliOptions = {
   readonly analyzerNames: readonly string[];
   readonly ruleFilters: readonly string[];
   readonly fix: boolean;
+  readonly dryRun: boolean;
   readonly details: boolean;
   readonly quick: boolean;
   readonly deferExit: boolean;

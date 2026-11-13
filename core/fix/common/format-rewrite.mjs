@@ -5,6 +5,7 @@ import { containedPath } from './contained-path.mjs';
 import { keepingLineEndings } from './rewrite/line-endings.mjs';
 import { touchedLinesFormatted } from './rewrite/line-hunks.mjs';
 import { writeTexts } from '../engine/write-texts.mjs';
+import { directWriter } from '../engine/writer.mjs';
 
 function namesOf(files) {
   return files.map(({ path: name }) => name);
@@ -79,8 +80,9 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
   });
   const plannedNames = new Set(planned.map(({ name }) => name));
   const { written: names, unwritable } = writeTexts(
-    projectRoot,
+    options.writer ?? directWriter(projectRoot),
     planned.map(({ name, text }) => ({ name, bytes: bytes.get(name), text })),
+    options.tool,
   );
   const written = planned.filter(({ name }) => names.includes(name));
   const writtenEntries = new Set(written);

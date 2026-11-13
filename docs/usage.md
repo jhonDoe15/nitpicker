@@ -716,7 +716,7 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 ## Command line
 
 ```text
-nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run]]
           [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
           [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
@@ -754,7 +754,10 @@ nitpicker rules [--preset <name>] [--tool <name>]
   the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
   `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)) and
   lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
-  error; the other fixers and the comparison still run. Cannot be combined with `--all`.
+  error; the other fixers and the comparison still run. Cannot be combined with `--all`. See
+  [Preview and pick fixes](#preview-and-pick-fixes) for `--dry-run` and `--rule`.
+- `--dry-run`: with `--fix`, write `fix.patch` and `fixes.json` to the output folder and change no
+  file (see [Preview and pick fixes](#preview-and-pick-fixes)).
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
@@ -798,7 +801,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
-- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). With `--fix`, it takes full `tool/rule` names and picks the fixes to apply (see [Preview and pick fixes](#preview-and-pick-fixes)).
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -1950,16 +1953,49 @@ A timeout is not policy: changing it is not listed as a policy change, and a pul
 raises it runs both snapshots with the head's timeouts. A lowered timeout that makes an analyzer
 time out is still a tool error (exit 2).
 
+## Preview and pick fixes
+
+`nitpicker --fix --dry-run` runs the fixers as `--fix` does, then puts every file back as it was.
+It writes two files to the output folder (`--output`, the folder of the reports) and changes
+nothing else:
+
+- `fix.patch`: a unified diff of all the fixes. Paths are relative to the repository root, so
+  `git apply <output>/fix.patch` run there gives the tree a real `--fix` gives.
+- `fixes.json`: `{ "fixes": [...] }`, one entry per fix with its `finding` (`tool`, `rule`, `path`,
+  `line`) and `recipe` for a recipe, or its `tool` for a fixer that rewrites whole files, plus its
+  `safety` (`safe` or `review`) and the `files` it touches.
+
+It prints one line per fix. The comparison that follows runs on the unfixed tree, so the exit
+code is the one of a run without `--fix`. `--dry-run` only works with `--fix`. A plain `--fix` run
+removes an older `fix.patch` and `fixes.json` from the output folder.
+
+`nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the rules you name.
+Give the full name, as in the findings (`checkstyle/UpperEll`, `eslint/no-var`, `ruff/F401`).
+Naming a rule also allows its `review` recipes, which `--fix` alone never runs. Without `--rule`,
+`--fix` is unchanged. With `--rule`, a step that cannot be narrowed to a rule does not run on its
+own, so it never rewrites findings you did not name:
+
+- Recipes run for the named rules only.
+- ESLint applies the fixes of the named `eslint/<rule>` rules in one pass; with no ESLint rule
+  named, it does not run.
+- `ruff check --fix` is limited to the named `ruff/<code>` rules (`--fixable`); with no ruff rule
+  named, it does not run.
+- Prettier, the Python formatter and the Java and Kotlin formatters run only on the files the
+  selected fixes changed, so a file nothing fixed is not reformatted.
+
+Combine both to preview one rule: `nitpicker --fix --dry-run --rule checkstyle/UpperEll`.
+
 ## Fix recipes
 
 A fix recipe rewrites the code a single rule flags, where one rewrite is correct in every case the
 rule reports. Recipes run with `--fix` on the changed files, before the formatter, so they never
-format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`.
+format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`. A recipe marked `review`
+runs only when `--fix --rule` names one of its rules.
 
-| Preset | Rule | Recipe | What it does |
-| --- | --- | --- | --- |
-| java | `checkstyle/UpperEll` | `java-upper-ell` | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
-| kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF |
+| Preset | Rule                                     | Recipe                 | What it does                                                                                 |
+| ------ | ---------------------------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| java   | `checkstyle/UpperEll`                    | `java-upper-ell`       | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
+| kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF                                  |
 
 A recipe edits a file only when it still holds the bytes the recipe read. A file that changed in the
 meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is

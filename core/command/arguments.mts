@@ -8,7 +8,7 @@ import { validateRunProfile } from '../quick/validate.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 type BooleanOption =
-  'all' | 'details' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
+  'all' | 'details' | 'dryRun' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
 type ValueOption = 'baseRef' | 'outputRoot';
 
 type CommandOptions = Record<BooleanOption, boolean> &
@@ -28,6 +28,7 @@ const closestSuggestion: (
 const FLAGS = new Map<string, { readonly property: BooleanOption; readonly value: boolean }>([
   ['--all', { property: 'all', value: true }],
   ['--details', { property: 'details', value: true }],
+  ['--dry-run', { property: 'dryRun', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
   ['--json', { property: 'json', value: true }],
@@ -50,6 +51,7 @@ export const COMPARISON_OPTIONS = [
   ...DRILL_DOWN_OPTIONS,
 ];
 
+const EXACT_RULE = /^[^/\s]+\/\S+$/u;
 const HELP_POINTER = 'Run nitpicker --help for the options.';
 
 function unknownArgument(argument: string): Error {
@@ -113,6 +115,7 @@ function remainingOptions(commandArguments: readonly string[]): CommandOptions {
   const options: CommandOptions = {
     all: false,
     details: false,
+    dryRun: false,
     fix: false,
     help: false,
     json: false,
@@ -140,12 +143,25 @@ function remainingOptions(commandArguments: readonly string[]): CommandOptions {
   return options;
 }
 
+function validateFixOptions(options: ParsedArguments): void {
+  if (options.dryRun && !options.fix) {
+    throw new Error('--dry-run only works with --fix: use nitpicker --fix --dry-run');
+  }
+  const unnamed = options.fix ? options.ruleFilters.filter((rule) => !EXACT_RULE.test(rule)) : [];
+  if (unnamed.length > 0) {
+    throw new Error(
+      `--fix --rule takes the full tool/rule name of a rule (for example eslint/no-var), not ${unnamed.join(', ')}`,
+    );
+  }
+}
+
 function validateModes(options: ParsedArguments): void {
   if (options.paths.length > 0 && options.shardCount !== undefined) {
     throw new Error(
       'Paths cannot be combined with --shard-count; shards always cover the whole project',
     );
   }
+  validateFixOptions(options);
   if (!options.all) return;
   if (options.fix) throw new Error('--fix cannot be combined with --all');
   const conflicts: readonly (readonly [boolean, string])[] = [

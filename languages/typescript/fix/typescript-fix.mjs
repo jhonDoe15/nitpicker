@@ -5,6 +5,7 @@ import {
 } from '../preset/head-policy.mjs';
 import { resolveLayoutFor } from '../preset/layout.mjs';
 import {
+  changedFiles,
   collectFixFiles,
   readBytes,
   rewrittenPaths,
@@ -27,14 +28,18 @@ function fixWithPolicy(settings) {
   });
   const before = readBytes(projectRoot, files);
   const { files: decodable, undecodable } = splitByEncoding(projectRoot, files);
+  const eslint = eslintFixStep(
+    settings,
+    decodable.filter(({ path: name }) => isEslintFile(name)),
+  );
+  const formatted = decodable.filter(({ path: name }) => isPrettierFile(name));
   const steps = [
-    eslintFixStep(
-      settings,
-      decodable.filter(({ path: name }) => isEslintFile(name)),
-    ),
+    eslint,
     prettierFixStep(
       settings,
-      decodable.filter(({ path: name }) => isPrettierFile(name)),
+      settings.selectedRules.length === 0
+        ? formatted
+        : changedFiles(projectRoot, formatted, before),
       comparison.mergeBaseSha,
     ),
   ];
@@ -53,6 +58,7 @@ export function fixTypeScript({ headPolicy = resolveHeadPolicy(), ...options }) 
   return withHeadPolicyFile(headPolicy, (policyFile) =>
     fixWithPolicy({
       ...options,
+      selectedRules: options.selectedRules ?? [],
       layout: resolveLayoutFor(headPolicy),
       eslintSettings: headPolicy.tools?.eslint,
       policyEnvironment: headPolicyEnvironment(policyFile),

@@ -1,8 +1,14 @@
 import { fixWorkingTree } from '../fix/run-fix.mjs';
 import type { TextOutput } from '../cli-context.mts';
+import { clearDryRunOutput, reportDryRun } from './fix/dry-run-report.mts';
+import type { DryRunPlan } from './fix/dry-run-report.mts';
 
 type FixCli = {
-  readonly options: { readonly fix: boolean };
+  readonly options: {
+    readonly fix: boolean;
+    readonly dryRun: boolean;
+    readonly ruleFilters: readonly string[];
+  };
   readonly currentProjectRoot: string;
   readonly executeFixCommand?: unknown;
   readonly headPolicy: unknown;
@@ -11,9 +17,12 @@ type FixCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly spawnEnvironment: NodeJS.ProcessEnv;
   readonly stdout: TextOutput;
+  readonly outputRoot: string;
+  readonly fixRecipes?: unknown;
 };
 
 type FixResult = {
+  readonly dryRun?: DryRunPlan;
   readonly fixedFiles: readonly string[];
   readonly toolErrors: readonly unknown[];
   readonly fixedFindings?: readonly string[];
@@ -22,6 +31,12 @@ type FixResult = {
 
 const fixTree: (options: object) => FixResult = fixWorkingTree;
 
+function writeNotes(cli: FixCli, notes: readonly string[], heading = 'Fix notes'): void {
+  if (notes.length > 0) {
+    cli.stdout.write(`${heading}:\n${notes.map((note) => `  ${note}\n`).join('')}`);
+  }
+}
+
 export function fixIfRequested(
   cli: FixCli,
   repositoryRoot: string,
@@ -29,6 +44,9 @@ export function fixIfRequested(
 ): FixResult {
   if (!cli.options.fix) {
     return { fixedFiles: [], toolErrors: [] };
+  }
+  if (!cli.options.dryRun) {
+    clearDryRunOutput(cli.outputRoot);
   }
   const fixResult = fixTree({
     repositoryRoot,
@@ -40,7 +58,15 @@ export function fixIfRequested(
     scope: cli.scope,
     environment: cli.environment,
     spawnEnvironment: cli.spawnEnvironment,
+    dryRun: cli.options.dryRun,
+    selectedRules: cli.options.ruleFilters,
+    recipes: cli.fixRecipes,
   });
+  if (fixResult.dryRun !== undefined) {
+    reportDryRun(cli.stdout, cli.outputRoot, fixResult.dryRun);
+    writeNotes(cli, fixResult.notes ?? [], 'Fix notes (from the dry run)');
+    return fixResult;
+  }
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
   );
@@ -48,9 +74,6 @@ export function fixIfRequested(
   if (fixedFindings.length > 0) {
     cli.stdout.write(`Fixed findings:\n${fixedFindings.map((line) => `  ${line}\n`).join('')}`);
   }
-  const notes = fixResult.notes ?? [];
-  if (notes.length > 0) {
-    cli.stdout.write(`Fix notes:\n${notes.map((note) => `  ${note}\n`).join('')}`);
-  }
+  writeNotes(cli, fixResult.notes ?? []);
   return fixResult;
 }

@@ -74,10 +74,22 @@ function stdinFormatter(context, run, skipped) {
   };
 }
 
-function lintStep({ context, run, projectRoot, files }) {
+const RUFF_PREFIX = 'ruff/';
+
+function selectedRuffCodes(selectedRules) {
+  return selectedRules
+    .filter((name) => name.startsWith(RUFF_PREFIX))
+    .map((name) => name.slice(RUFF_PREFIX.length));
+}
+
+function lintStep({ context, run, projectRoot, files, selectedRules, writer }) {
   const decodable = splitByEncoding(projectRoot, files).files;
   const before = readBytes(projectRoot, decodable);
-  const commandFor = decodable.length === 0 ? undefined : lintFixCommands(context);
+  const codes = selectedRuffCodes(selectedRules);
+  if (selectedRules.length > 0 && codes.length === 0) {
+    return { written: [], notes: [] };
+  }
+  const commandFor = decodable.length === 0 ? undefined : lintFixCommands(context, codes);
   const planned = decodable.flatMap(({ path: name }) => {
     const source = before.get(name).toString('utf8');
     const result = run({
@@ -89,14 +101,17 @@ function lintStep({ context, run, projectRoot, files }) {
     const text = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
     return text === source ? [] : [{ name, bytes: before.get(name), text }];
   });
-  const { written, changedMeanwhile, unwritable } = writeTexts(projectRoot, planned);
-  return formatNotes('ruff check --fix', {
-    rewritten: written,
-    changedMeanwhile,
-    unwritable,
-    keptAsIs: [],
-    unformattable: [],
-  });
+  const { written, changedMeanwhile, unwritable } = writeTexts(writer, planned, 'ruff check --fix');
+  return {
+    written,
+    notes: formatNotes('ruff check --fix', {
+      rewritten: written,
+      changedMeanwhile,
+      unwritable,
+      keptAsIs: [],
+      unformattable: [],
+    }),
+  };
 }
 
 function formatStep({ context, run, settings, files, mergeBaseSha }) {
@@ -108,11 +123,19 @@ function formatStep({ context, run, settings, files, mergeBaseSha }) {
     mergeBaseSha,
     files,
     format: stdinFormatter(context, run, skipped),
+    writer: settings.writer,
+    tool: FORMATTERS[context.project.formatter].label,
   });
   return [
     ...formatNotes(FORMATTERS[context.project.formatter].label, outcome),
     ...notebookNote(skipped),
   ];
+}
+
+function formattedFiles({ files, settings }, written) {
+  return settings.selectedRules.length === 0
+    ? files
+    : files.filter(({ path: name }) => written.includes(name));
 }
 
 function runFixers(settings, files, mergeBaseSha) {
@@ -126,10 +149,19 @@ function runFixers(settings, files, mergeBaseSha) {
         projectRoot: settings.projectRoot,
         files,
         mergeBaseSha,
+        selectedRules: settings.selectedRules,
+        writer: settings.writer,
       };
+      const lint = { written: [] };
       const outcomes = [
-        attempt('ruff-fix', () => lintStep(step)),
-        attempt(FORMATTERS[context.project.formatter].operation, () => formatStep(step)),
+        attempt('ruff-fix', () => {
+          const outcome = lintStep(step);
+          lint.written = outcome.written;
+          return outcome.notes;
+        }),
+        attempt(FORMATTERS[context.project.formatter].operation, () =>
+          formatStep({ ...step, files: formattedFiles(step, lint.written) }),
+        ),
       ];
       return {
         toolErrors: outcomes.flatMap(({ toolErrors }) => toolErrors),
@@ -156,7 +188,7 @@ export function fixPython(settings) {
   }
   const before = readBytes(projectRoot, files);
   const { toolErrors, notes } = runFixers(
-    { ...settings, headPolicy },
+    { ...settings, headPolicy, selectedRules: settings.selectedRules ?? [] },
     files,
     comparison.mergeBaseSha,
   );

@@ -257,7 +257,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   clearDiffReports(outputRoot);
   const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult: unknown = fixIfRequested(
-    { ...cli, headPolicy, spawnEnvironment: { ...process.env, ...cli.environment } },
+    { ...cli, headPolicy, outputRoot, spawnEnvironment: { ...process.env, ...cli.environment } },
     repositoryRoot,
     base,
   );
