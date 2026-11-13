@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendReviewSummary, noticeSection } from './notices.mjs';
+import { appendReviewSummary, noticeSection } from './notices.mts';
 
 describe('notice rendering', () => {
   it('renders nothing without notices or policy changes', () => {

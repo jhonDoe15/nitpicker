@@ -1,5 +1,8 @@
 import { compareFindings } from '../compare.mjs';
-import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
+import {
+  analyzerMetadata as metadataOf,
+  analyzerName as nameOf,
+} from '../../reporting/report-model.mts';
 import {
   COMPILE_FAILED_SKIPPED_RULE,
   TESTS_FAILED_RULE,
@@ -65,8 +68,6 @@ const findingsCompared: (request: {
   readonly touchedCode: unknown;
   readonly unknownOnBase: unknown;
 }) => Readonly<Record<string, readonly Finding[]>> = compareFindings;
-const metadataOf: (analyzer: unknown, property: string) => string = analyzerMetadata;
-const nameOf: (analyzer: unknown, index: number) => string = analyzerName;
 const plainText: (text: string) => string = withoutAnsi;
 const redBaseOf: (request: {
   readonly names: readonly string[];

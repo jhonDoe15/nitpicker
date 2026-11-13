@@ -40,12 +40,12 @@ import { loadConfig, describeConfigOverrides } from '../../configuration/config.
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mts';
 import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';
-import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
+import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';

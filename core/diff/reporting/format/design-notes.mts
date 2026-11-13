@@ -1,10 +1,18 @@
 import { printable } from './text.mjs';
+import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+
+const printed: (value: unknown) => string = printable;
 
 const MAX_CONSOLE_NOTES = 10;
 const SENTENCE_END = /[.!?](?=\s|$)/gu;
 const ABBREVIATION = /\b(?:e\.g|i\.e)\.$/iu;
 
-export function designNoteLines(findings, diagnosticsPath, { snapshot = false } = {}) {
+export function designNoteLines(
+  findings: readonly ReportEntry[],
+  diagnosticsPath: string,
+  { snapshot = false }: { readonly snapshot?: boolean } = {},
+): string[] {
   const descriptive = findings.filter(({ classification }) => classification === 'descriptive');
   if (descriptive.length === 0) {
     return [];
@@ -25,15 +33,19 @@ export function designNoteLines(findings, diagnosticsPath, { snapshot = false } 
   return lines;
 }
 
-function designNoteLine(finding) {
-  const location = finding.location === undefined ? '' : `:${String(finding.location.line)}`;
-  const metric =
-    finding.metric === undefined ? '' : ` (${finding.metric.name} ${String(finding.metric.value)})`;
-  const sentence = firstSentence(printable(finding.message));
-  return `  ${finding.tool}/${finding.rule} ${finding.path}${location} ${sentence}${metric}`;
+function designNoteLine(finding: ReportEntry): string {
+  const location =
+    finding['location'] === undefined ? '' : `:${String(fieldOf(finding['location'], 'line'))}`;
+  const { metric } = finding;
+  const metricText =
+    metric === undefined
+      ? ''
+      : ` (${textOf(fieldOf(metric, 'name'))} ${String(fieldOf(metric, 'value'))})`;
+  const sentence = firstSentence(printed(finding.message));
+  return `  ${textOf(finding.tool)}/${textOf(finding.rule)} ${textOf(finding.path)}${location} ${sentence}${metricText}`;
 }
 
-function firstSentence(text) {
+function firstSentence(text: string): string {
   for (const match of text.matchAll(SENTENCE_END)) {
     const sentence = text.slice(0, match.index + 1);
     if (!ABBREVIATION.test(sentence)) {

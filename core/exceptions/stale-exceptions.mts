@@ -1,9 +1,10 @@
 import { fieldOf, textOf, textsOf } from '../../shared/values/readers.mts';
 import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
-import { renderRuleFilterSection } from '../diff/reporting/text.mjs';
+import { renderRuleFilterSection as ruleFilterSection } from '../diff/reporting/text.mts';
 import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { RULE_IDS } from '../../shared/policy.mjs';
+import type { ReportData } from '../../shared/values/findings.mts';
 
 type Listed = { readonly entry: unknown; readonly label: string };
 
@@ -15,8 +16,6 @@ type ClosingRun = {
 
 const filePathsOf: (root: string, options: { readonly includeLinks: boolean }) => string[] =
   projectFilePaths;
-const ruleFilterSection: (report: unknown, ruleFilters: readonly string[]) => string =
-  renderRuleFilterSection;
 const matchingNoPath: (
   entries: readonly unknown[],
   files: readonly string[],
@@ -80,7 +79,7 @@ function staleNote(lines: readonly string[]): string {
 
 export function renderClosingSections(
   { options, config, currentProjectRoot }: ClosingRun,
-  report: unknown,
+  report: ReportData,
 ): string {
   const note = staleNote(staleExceptionLines(config, currentProjectRoot));
   return `${ruleFilterSection(report, options.ruleFilters)}${note}`;

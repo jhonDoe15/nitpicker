@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { renderJunitReport } from '../diff/reporting/junit.mts';
 import { renderSarifReport } from '../diff/reporting/sarif.mts';
-import { renderTextReport } from '../diff/reporting/text.mjs';
+import { renderTextReport } from '../diff/reporting/text.mts';
 import { report } from '../diff/reporting/test-support/report-builders.mjs';
 import { writeSnapshotReports } from '../snapshot/reporters.mts';
 import { quickSummary, runProfileSummary } from './summary.mjs';

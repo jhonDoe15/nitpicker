@@ -20,8 +20,8 @@ import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mts';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
-import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
-import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
+import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mts';
+import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-tests/failing-tests.mts';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
@@ -64,7 +64,6 @@ const inWorktree: (
   snapshot: { readonly commitSha: unknown; readonly warn: (message: string) => unknown },
   operation: (worktreeRoot: string) => SnapshotReport,
 ) => SnapshotReport = withTemporaryWorktree;
-const failingTestsOf: (toolErrors: unknown) => readonly unknown[] = failingHeadTests;
 const capturedTree: Capture = captureWorkingTree;
 const prepareDependencies: (options: {
   readonly projectRoot: string;

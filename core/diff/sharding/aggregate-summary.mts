@@ -8,10 +8,10 @@ import {
 } from './read-shards.mts';
 import { parseArguments as readArguments } from './arguments.mts';
 import {
-  policyHash as untypedPolicyHash,
-  sortByToolAndPath as untypedSort,
-  summaryFields as untypedSummaryFields,
-} from '../reporting/report-model.mjs';
+  policyHash,
+  sortByToolAndPath as sortEntries,
+  summaryFields,
+} from '../reporting/report-model.mts';
 import { resolveProjectRoot as untypedProjectRoot } from '../../configuration/project-checks/project-root.mjs';
 import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { withTroubleshooting as untypedWithTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
@@ -128,15 +128,13 @@ export function parseArguments(
 ): AggregateOptions | { readonly kind: 'help' } {
   return readArguments(commandArguments);
 }
-export const sortByToolAndPath: (entries: readonly Entry[]) => Entry[] = untypedSort;
+export function sortByToolAndPath(entries: readonly Entry[]): Entry[] {
+  return sortEntries([...entries]);
+}
 export const resolveProjectRoot: () => string = untypedProjectRoot;
 export const describeError: (error: unknown) => string = untypedDescribeError;
 export const displayPath: (absolutePath: string) => unknown = untypedDisplayPath;
 export const withoutAnsi: (text: string) => string = untypedWithoutAnsi;
-const policyHash: (analyzers: readonly Analyzer[], configOverrides: unknown[]) => string =
-  untypedPolicyHash;
-const summaryFields: (configOverrides: unknown[], summary: ShardSummary) => Entry =
-  untypedSummaryFields;
 
 export function withTroubleshooting(message: string, anchor: unknown): string {
   return textOf(untypedWithTroubleshooting(message, anchor));

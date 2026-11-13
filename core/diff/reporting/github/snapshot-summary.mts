@@ -9,7 +9,7 @@ import {
   toolErrorList,
 } from './markdown.mts';
 import { scopeLine } from '../../../scope/scope-findings.mjs';
-import { partialRunLines } from '../partial-run/partial-run.mjs';
+import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 
 export type SnapshotSummaryReport = {
@@ -19,7 +19,6 @@ export type SnapshotSummaryReport = {
 };
 
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
-const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
 
 function headline(enforceable: readonly ReportEntry[], toolErrors: readonly ReportEntry[]): string {
   if (enforceable.length > 0) {

@@ -1,9 +1,9 @@
 import path from 'node:path';
-import { areaCounts } from '../format/rule-groups/finding-areas.mjs';
-import { foldMutants } from '../format/mutants.mjs';
+import { areaCounts } from '../format/rule-groups/finding-areas.mts';
+import { foldMutants as folded } from '../format/mutants.mts';
 import { printable } from '../format/text.mjs';
-import { heldFindingsOf } from '../report-model.mjs';
-import { errorHeadline, withoutSkipNotices } from '../summary.mjs';
+import { heldFindingsOf as heldFindings } from '../report-model.mts';
+import { errorHeadline as headlineOf, withoutSkipNotices as withoutSkips } from '../summary.mts';
 import { withHelpUris } from '../../../../shared/reference/store.mjs';
 import { withoutExceptionRoute } from '../../../../shared/messages/exception-sentence.mjs';
 import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
@@ -38,11 +38,7 @@ type JsonRequest = {
 
 const countsByArea: (findings: readonly ReportEntry[]) => ReadonlyMap<unknown, unknown> =
   areaCounts;
-const folded: (findings: readonly ReportEntry[]) => ReportEntry[] = foldMutants;
 const printed: (value: unknown) => string = printable;
-const heldFindings: (report: ReportData) => readonly ReportEntry[] = heldFindingsOf;
-const headlineOf: (message: unknown) => string = errorHeadline;
-const withoutSkips: (toolErrors: readonly ReportEntry[]) => ReportEntry[] = withoutSkipNotices;
 const helpUris: (findings: readonly ReportEntry[]) => ReportEntry[] = withHelpUris;
 const withoutRoute: (message: string) => string = withoutExceptionRoute;
 

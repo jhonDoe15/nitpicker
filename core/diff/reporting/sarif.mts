@@ -1,8 +1,8 @@
 import { pathToFileURL } from 'node:url';
 import { sarifRunProfile } from '../../quick/report-formats.mjs';
 import { referenceLinks } from '../../../shared/reference/store.mjs';
-import { noteText } from './format/notes.mjs';
-import { heldFindingsOf } from './report-model.mjs';
+import { noteText as textOfNote } from './format/notes.mts';
+import { heldFindingsOf as heldFindings } from './report-model.mts';
 import {
   type UploadLimits,
   droppedResultsText,
@@ -15,8 +15,7 @@ import {
   collectSarifRules,
   toSarifResult,
 } from './sarif/sarif-results.mts';
-import type { ReferenceLinks } from './reporters.mts';
-import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 type RunProfile = {
@@ -61,8 +60,6 @@ type SnapshotData = {
 
 const runProfileOf: (summary: unknown) => RunProfile = sarifRunProfile;
 const links: () => ReferenceLinks = referenceLinks;
-const textOfNote: (note: ReportEntry) => string = noteText;
-const heldFindings: (report: ReportData) => readonly ReportEntry[] = heldFindingsOf;
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 

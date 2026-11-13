@@ -1,14 +1,17 @@
+import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
+
 const CONTINUATION_INDENT = '  ';
 
-export function noteText(note) {
-  const [first, ...rest] = note.message.split('\n');
+export function noteText(note: ReportEntry): string {
+  const [first = '', ...rest] = textOf(note.message).split('\n');
   return [
-    `${note.tool} (${note.snapshot}): ${first}`,
+    `${textOf(note.tool)} (${textOf(note.snapshot)}): ${first}`,
     ...rest.map((line) => `${CONTINUATION_INDENT}${line}`),
   ].join('\n');
 }
 
-export function noteSectionLines(notes = []) {
+export function noteSectionLines(notes: readonly ReportEntry[] = []): string[] {
   if (notes.length === 0) {
     return [];
   }
@@ -25,7 +28,7 @@ const COUNTS_AS_NEW = [
   'of the head counts as new.',
 ].join(' ');
 
-export function noteSummaryLines(notes = []) {
+export function noteSummaryLines(notes: readonly ReportEntry[] = []): string[] {
   const failed = notes.filter(({ rule }) => rule !== 'tests-removed');
   if (failed.length === 0) {
     return [];

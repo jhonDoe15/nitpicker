@@ -1,6 +1,9 @@
 import { GO_LINTER_TOOLS } from '../../../../../languages/go/adapters/configuration/go-config.mjs';
+import { textOf } from '../../../../../shared/values/readers.mts';
 
-const AREA_TOOLS = [
+const goLinterTools: readonly string[] = GO_LINTER_TOOLS;
+
+const AREA_TOOLS: readonly (readonly [string, readonly string[]])[] = [
   [
     'format',
     [
@@ -32,7 +35,7 @@ const AREA_TOOLS = [
       'detekt',
       'ktlint',
       'kotlin-source',
-      ...GO_LINTER_TOOLS,
+      ...goLinterTools,
       'coding-standards',
       'entry-points',
       'dependency-architecture',
@@ -54,27 +57,35 @@ const AREA_OF_TOOL = new Map(
   AREA_TOOLS.flatMap(([area, tools]) => tools.map((tool) => [tool, area])),
 );
 
-export function areaOf(tool) {
-  if (tool.startsWith('eslint')) {
+export function areaOf(tool: unknown): string {
+  const name = textOf(tool);
+  if (name.startsWith('eslint')) {
     return 'lint';
   }
-  return AREA_OF_TOOL.get(tool) ?? 'other';
+  return AREA_OF_TOOL.get(name) ?? 'other';
 }
 
-export function areaRank(tool) {
+export function areaRank(tool: unknown): number {
   return AREAS.indexOf(areaOf(tool));
 }
 
-export function areaCounts(findings) {
-  const counts = new Map();
+export function areaCounts(findings: readonly { readonly tool?: unknown }[]): Map<string, number> {
+  const counts = new Map<string, number>();
   for (const { tool } of findings) {
     const area = areaOf(tool);
     counts.set(area, (counts.get(area) ?? 0) + 1);
   }
-  return new Map(AREAS.filter((area) => counts.has(area)).map((area) => [area, counts.get(area)]));
+  return new Map(
+    AREAS.flatMap((area): [string, number][] => {
+      const count = counts.get(area);
+      return count === undefined ? [] : [[area, count]];
+    }),
+  );
 }
 
-export function areaCountLine(findings) {
+export function areaCountLine(
+  findings: readonly { readonly tool?: unknown }[],
+): string | undefined {
   const counts = areaCounts(findings);
   if (counts.size < 2) {
     return undefined;

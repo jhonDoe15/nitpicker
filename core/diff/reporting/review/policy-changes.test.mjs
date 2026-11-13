@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendPolicyChangeSummary, policyChangeSection } from './policy-changes.mjs';
+import { appendPolicyChangeSummary, policyChangeSection } from './policy-changes.mts';
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 

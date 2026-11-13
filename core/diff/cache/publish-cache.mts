@@ -8,7 +8,7 @@ import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-po
 import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
 import type { CacheStore } from './cache-stores.mts';
 import { runGit } from '../git/repository/command.mjs';
-import { analyzerName } from '../reporting/report-model.mjs';
+import { analyzerName } from '../reporting/report-model.mts';
 import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';

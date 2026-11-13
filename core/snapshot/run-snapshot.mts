@@ -1,4 +1,7 @@
-import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
+import {
+  analyzerMetadata as metadataOf,
+  analyzerName as nameOf,
+} from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
@@ -51,8 +54,6 @@ const withPolicyFile: (
   headPolicy: object,
   run: (headPolicyFile: unknown) => SnapshotRun,
 ) => SnapshotRun = withHeadPolicyFile;
-const metadataOf: (analyzer: unknown, property: string) => unknown = analyzerMetadata;
-const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
 const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 

@@ -1,5 +1,5 @@
 import { writeDiffReports } from '../reporting/reporters.mts';
-import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
+import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
@@ -94,7 +94,6 @@ const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Compa
   resolveComparison;
 const sameTree: (repositoryRoot: string, left: string, right: string) => boolean = hasSameTree;
 const captureTree: CaptureHead = captureWorkingTree;
-const partialRunOf: (partialRun: unknown) => object = partialRunField;
 const writeReports: (
   outputRoot: string,
   report: DiffReport,

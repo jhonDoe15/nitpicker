@@ -1,4 +1,4 @@
-import { policyHash, sortByToolAndPath } from '../reporting/report-model.mjs';
+import { policyHash as hashOf, sortByToolAndPath as sorted } from '../reporting/report-model.mts';
 import {
   isPolicyChangeAccepted,
   policyDigest,
@@ -66,8 +66,6 @@ type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly toolErrors: ReportEntry[];
 };
 
-const hashOf: (analyzers: readonly unknown[], configOverrides: unknown[]) => string = policyHash;
-const sorted: <T>(entries: T[]) => T[] = sortByToolAndPath;
 const accepted: (
   loosenings: readonly unknown[],
   digest: unknown,

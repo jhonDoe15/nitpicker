@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { runTasksInProcess } from '../../../execution/test-support/in-process-analyzers.mjs';
 import { fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
-import { renderConsoleSummary } from '../../../reporting/summary.mjs';
+import { renderConsoleSummary } from '../../../reporting/summary.mts';
 
 const specAnalyzerPath = path.join(import.meta.dirname, '../../../fixtures/spec-analyzer.mjs');
 const outputs = [];

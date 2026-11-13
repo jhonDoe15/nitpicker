@@ -1,5 +1,5 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
-import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mts';
+import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
 import {
   type ReferenceLinks,
   type RenderOptions,
@@ -12,14 +12,14 @@ import {
 import { quickLines, stagedLines } from '../quick/summary.mjs';
 import { junitRunProfile } from '../quick/report-formats.mjs';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
-import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
-import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
-import { ruleReferenceLines } from '../diff/reporting/text.mjs';
+import { designNoteLines as designNotesOf } from '../diff/reporting/format/design-notes.mts';
+import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
+import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
 import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
 import {
-  CODE_QUALITY_REPORT_FILE_NAME,
-  renderCodeQualityReport,
-} from '../diff/reporting/format/codequality.mjs';
+  CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
+  renderCodeQualityReport as codeQualityOf,
+} from '../diff/reporting/format/codequality.mts';
 
 import { textOf } from '../../shared/values/readers.mts';
 
@@ -63,27 +63,14 @@ type JunitProfile = {
 const linesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
-const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
-const referenceLinesOf: (findings: unknown, reference: ReferenceLinks) => readonly string[] =
-  ruleReferenceLines;
-const designNotesOf: (
-  findings: unknown,
-  diagnosticsPath: string,
-  options: { readonly snapshot: boolean },
-) => readonly string[] = designNoteLines;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const profileOf: (
   summary: unknown,
   suite: string,
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
-const sarifOf: (report: SnapshotReport, options: RenderOptions) => string =
-  renderSnapshotSarifReport;
-const codeQualityOf: (findings: unknown, options: RenderOptions) => string =
-  renderCodeQualityReport;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
 const linksOf: () => ReferenceLinks = referenceLinks;
-const codeQualityFile: string = CODE_QUALITY_REPORT_FILE_NAME;
 
 const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },

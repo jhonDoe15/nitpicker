@@ -1,5 +1,5 @@
 import { singleLine } from '../format/text.mjs';
-import { pluralize as pluralNoun } from '../summary.mjs';
+import { pluralize as nounFor } from '../summary.mts';
 import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
@@ -18,7 +18,6 @@ type ExceptionRoute = {
 };
 
 const oneLine: (value: unknown) => string = singleLine;
-const nounFor: (noun: string, count: number) => string = pluralNoun;
 const routeSentence: RegExp = ROUTE_SENTENCE;
 
 export const LISTED_FINDINGS = 25;
