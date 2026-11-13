@@ -8,7 +8,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   CRAP score of a function must stay below 9.
 - Each `if`, loop, `match` and `except` handler adds a nesting level; an `elif` adds none. Return
   early, look the value up in a dict, or move a branch into a helper.
-- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A function proved to copy another (`near-duplicate`: the same tree apart from renamed locals, up to 4 changed values, a shared run of 3 or more statements, or the same logic written another way, such as a loop and the call that replaces it) fails too: extract one function with the changed values as parameters. A
+- A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A function proved to copy another (`near-duplicate`: the same tree apart from renamed locals, up to 4 changed values, a shared run of 3 or more statements, or the same logic written another way, such as a loop and the call that replaces it) fails too: extract one function with the changed values as parameters. A condition that the guards before it already decide (`decided-condition`: `if count > 20:` after `if count > 10: return`) fails: remove it, or fix the condition you meant. A
   package must not depend on a less stable one (`stability-direction`).
 - A class has at most 20 methods and 10 fields, and at most 3 project base classes above it
   (`Exception` or `models.Model` add none). A package sits at most 4 levels below the root package. Modules and packages must not import

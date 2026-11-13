@@ -71,6 +71,12 @@ members is not reported.
   changed values, or a shared run of 3 or more statements) fail, at the copy whose `file#name`
   sorts last, also across distributions; test modules are not compared. A copy large enough for
   the renamed `duplicate-clone` pass and different only in names and literals is left to it.
+- `decided-condition` (tool `facts`) reads the same trees: an `if`, `elif`, `while`, conditional
+  expression or `and`/`or` operand that the guards before it in the same function decide fails,
+  when a solver proves it always true (a redundant check) or always false (dead code). The guards
+  are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
+  `continue`, and the left side of `and` and `or`; an assignment to a name, or a call when the name
+  is a module name, forgets what was known, and arithmetic is an opaque value.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.

@@ -20,6 +20,7 @@ const REUSE_RULES = [
   'exported-name-collision',
   'sibling-copy-edit',
   'near-duplicate',
+  'decided-condition',
 ];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
