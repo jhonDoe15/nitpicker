@@ -1,8 +1,21 @@
+import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { affectedModules } from '../../builds/change-scope/affected/affected-modules.mjs';
 
 function posix(from, to) {
   return path.relative(from, to).replaceAll('\\', '/') || '.';
+}
+
+function real(directory) {
+  return existsSync(directory) ? realpathSync.native(directory) : directory;
+}
+
+export function isInside(root, directory) {
+  const relative = path.relative(real(root), real(directory));
+  return (
+    relative === '' ||
+    (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+  );
 }
 
 function graphOf(modules, projectRoot) {
@@ -16,22 +29,22 @@ function graphOf(modules, projectRoot) {
   }));
 }
 
-export function mavenScope({ modules, projectRoot, changedFiles }) {
+export function mavenScope({ modules, projectRoot, mavenRoot, changedFiles }) {
+  const own = modules.filter((module) => isInside(projectRoot, module.basedir));
   const affected = affectedModules({ modules: graphOf(modules, projectRoot), changedFiles });
   const picked =
     affected === undefined
-      ? modules
-      : modules.filter((module) => affected.has(posix(projectRoot, module.basedir)));
-  const reported = picked.some((module) => module.packaging !== 'pom') ? picked : modules;
-  const names = (list) => list.map((module) => posix(projectRoot, module.basedir));
+      ? own
+      : own.filter((module) => affected.has(posix(projectRoot, module.basedir)));
+  const reported = picked.some((module) => module.packaging !== 'pom') ? picked : own;
   return {
     reported,
-    notAffected: names(
-      modules.filter((module) => !reported.includes(module) && module.packaging !== 'pom'),
-    ),
+    notAffected: own
+      .filter((module) => !reported.includes(module) && module.packaging !== 'pom')
+      .map((module) => posix(projectRoot, module.basedir)),
     selection:
       reported.length === modules.length
         ? []
-        : ['-pl', reported.map((module) => posix(projectRoot, module.basedir)).join(','), '-am'],
+        : ['-pl', reported.map((module) => posix(mavenRoot, module.basedir)).join(','), '-am'],
   };
 }

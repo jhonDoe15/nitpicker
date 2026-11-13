@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runMavenPreset } from '../maven-build.mjs';
 import { readReactor } from '../maven-project.mjs';
-import { mavenScope } from './maven-scope.mjs';
+import { isInside, mavenScope } from './maven-scope.mjs';
 
 const roots = [];
 
@@ -49,11 +49,11 @@ function reactorOn(disk) {
   return { root, effective: `<projects>${effective.join('')}</projects>` };
 }
 
-function scopeOf(changedFiles) {
+function scopeOf(changedFiles, projectDirectory = '.') {
   const { root, effective } = reactorOn(MODULES);
-  const projectRoot = root;
+  const projectRoot = path.join(root, projectDirectory);
   const modules = readReactor(root, effective);
-  return mavenScope({ modules, projectRoot, changedFiles });
+  return mavenScope({ modules, projectRoot, mavenRoot: root, changedFiles });
 }
 
 describe('the modules a Maven run reports', () => {
@@ -85,9 +85,17 @@ describe('the modules a Maven run reports', () => {
     expect(scope.selection).toEqual([]);
     expect(scope.notAffected).toEqual([]);
   });
+
+  it('are only the module of the project folder, run from the reactor with -pl and -am', () => {
+    const scope = scopeOf(undefined, 'app');
+
+    expect(scope.reported.map((module) => path.basename(module.basedir))).toEqual(['app']);
+    expect(scope.selection).toEqual(['-pl', 'app', '-am']);
+    expect(scope.notAffected).toEqual([]);
+  });
 });
 
-describe('the Maven build of the affected modules', () => {
+describe('the Maven build of a project folder that is a module of a reactor', () => {
   function buildCall(projectDirectory, policy) {
     const { root, effective } = reactorOn(MODULES);
     const calls = [];
@@ -107,11 +115,21 @@ describe('the Maven build of the affected modules', () => {
     return { call: calls[0], root };
   }
 
+  it('runs Maven from the top aggregator for the module and the modules it needs', () => {
+    const { call, root } = buildCall('app', {});
+
+    expect(call.cwd).toBe(root);
+    expect(call.args.slice(call.args.indexOf('-pl'), call.args.indexOf('-pl') + 3)).toEqual([
+      '-pl',
+      'app',
+      '-am',
+    ]);
+  });
+
   it('builds only the affected modules of a whole-reactor project', () => {
     const { call, root } = buildCall('.', { changedFiles: ['web/src/main/java/demo/Web.java'] });
 
     expect(call.cwd).toBe(root);
-    expect(call.args).toContain('web');
     expect(call.args[call.args.indexOf('-pl') + 1]).toBe('web');
   });
 
@@ -119,5 +137,15 @@ describe('the Maven build of the affected modules', () => {
     const { call } = buildCall('.', { changedFiles: ['README.md'] });
 
     expect(call.args).not.toContain('-pl');
+  });
+});
+
+describe('isInside', () => {
+  it('treats a folder whose name starts with two dots as inside, and a sibling as outside', () => {
+    const root = reactorOn({ '.': {}, '..odd': {}, other: {} }).root;
+
+    expect(isInside(root, path.join(root, '..odd'))).toBe(true);
+    expect(isInside(path.join(root, 'other'), path.join(root, '..odd'))).toBe(false);
+    expect(isInside(root, root)).toBe(true);
   });
 });
