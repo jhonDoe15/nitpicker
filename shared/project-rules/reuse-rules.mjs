@@ -1,3 +1,5 @@
+const STRUCTURE_TOOL = 'structure';
+
 const COUPLING = 'coupling';
 const QUALIFIED_NAMES =
   "Go code names another package's export through the package (`billing.Total`, `report.Total`), so two exports with one name never meet unqualified, and two dot imports that both define a name do not compile";
@@ -55,38 +57,38 @@ export function reuseRules(ids, reactEnforcedBy) {
     ...featureFolderRules(ids),
     {
       id: ids.duplicateDefinition,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit:
         'a used literal `const`, function or `type` with one name and text in two modules of a package (Java and Kotlin: a source file is a module, a static, `object` or top-level function a function; Go: top-level functions outside build-constrained files, a `.go` file is a module and the packages of a Go module are one package)',
     },
     {
       id: ids.siblingCopyEdit,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit:
         'a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions; Go: top-level functions outside build-constrained files, across the packages of a Go module)',
     },
     {
       id: ids.nearDuplicate,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit:
         'two production functions whose syntax trees are proved copies: the same apart from renamed locals, or apart from at most 4 values, literals or types, or sharing a run of at least 3 statements (30 tree nodes) that leaves at most one value for the code after it; or the same logic written another way: a loop and the `any`/`all`/stream call that replaces it, a call to a same-file helper that cannot be overridden and the body of that helper, or guards and local values that a solver (Z3, fixed resource limit) proves equal for every input (arithmetic is an opaque value: integers overflow and floats round); both need at least 30 shared tree nodes, 80% of each function. Each pair is one finding, at the copy that sorts last. Copies that differ only in names and string or number literals, both large enough for `duplicate-clone` (5 lines, 100 tokens), are left to it. Java and Kotlin copies that differ only in primitive, boxed or generic types (`int`/`long`, `Integer`, `Object`, `T`), the helpers named after those types and sizes, in one file or in sibling files named after the types (`Ints`, `Longs`), are a type-specialized family and are left out, and so are the platform variants of one Kotlin Multiplatform declaration in different `src/<platform>Main/` source sets',
     },
     {
       id: ids.exportedNameCollision,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit:
         'two different exports with one name that a module imports both of, keeping the name for one (Java: one imported, the other written fully qualified; Java and Kotlin functions overload, so they are left out)',
       notApplicable: { go: QUALIFIED_NAMES },
     },
     {
       id: ids.redefinedLibraryComponent,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit: 'React only: a component named like one the project renders from a dependency',
       enforcedBy: { ...reactEnforcedBy, javascript: 'partial' },
     },
     {
       id: ids.newIconAsset,
-      check: 'structure',
+      check: STRUCTURE_TOOL,
       limit: 'React only: a new icon-sized `.svg` file while an icon package is a dependency',
       enforcedBy: reactEnforcedBy,
     },

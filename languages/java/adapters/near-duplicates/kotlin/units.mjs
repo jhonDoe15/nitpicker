@@ -6,8 +6,10 @@ import { EXPRESSIONS } from './expressions.mjs';
 import { boundNames, classMembers, fileScope, memberScope, topLevelScope } from './names.mjs';
 import { STATEMENTS, assignedValue } from './statements.mjs';
 
+const BLOCK_KIND = 'block';
+
 const STATEMENT_PARENTS = new Set([
-  'block',
+  BLOCK_KIND,
   'statements',
   'for_statement',
   'while_statement',
@@ -24,7 +26,7 @@ const STATEMENT_ONLY = new Set([
 ]);
 const TYPE_DECLARATIONS = new Set(['class_declaration', 'object_declaration', 'companion_object']);
 const UNIT_TYPES = new Set(['function_declaration', 'secondary_constructor', 'getter', 'setter']);
-const BODIES = new Set(['function_body', 'block']);
+const BODIES = new Set(['function_body', BLOCK_KIND]);
 
 function isConditionOf(node, parent) {
   return parent.childrenForFieldName('condition').some((condition) => condition?.id === node.id);
@@ -166,18 +168,18 @@ function parametersOf(source, context) {
 
 function functionBody(source, context) {
   const body = codeChildren(source).find((child) => BODIES.has(child.type));
-  const [first] = body.type === 'block' ? [body] : codeChildren(body);
-  if (first.type === 'block') {
+  const [first] = body.type === BLOCK_KIND ? [body] : codeChildren(body);
+  if (first.type === BLOCK_KIND) {
     return context.get(first);
   }
-  return at('block', body, [at('return', body, [context.get(first)])]);
+  return at(BLOCK_KIND, body, [at('return', body, [context.get(first)])]);
 }
 
 function functionOf(source, context) {
   if (source.type === 'lambda_literal') {
     const [parameters, body] = context.get(source).children;
     const block =
-      body.kind === 'block' ? body : at('block', source, [at('return', source, [body])]);
+      body.kind === BLOCK_KIND ? body : at(BLOCK_KIND, source, [at('return', source, [body])]);
     return at('function', source, [NONE, parameters, block]);
   }
   const name = field(source, 'name');

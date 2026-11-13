@@ -1,6 +1,8 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { NONE, at, optional, textOf } from './tree-nodes.mjs';
 
+const STRING_KIND = 'string';
+
 const KIND = ts.SyntaxKind;
 
 function grouped(value, source, children) {
@@ -26,13 +28,13 @@ function member(prefix) {
 
 function templateOf(source, context) {
   const head = at(
-    { kind: 'literal', literal: 'string', value: JSON.stringify(source.head.text) },
+    { kind: 'literal', literal: STRING_KIND, value: JSON.stringify(source.head.text) },
     source.head,
   );
   const spans = source.templateSpans.flatMap((span) => [
     context.get(span.expression),
     at(
-      { kind: 'literal', literal: 'string', value: JSON.stringify(span.literal.text) },
+      { kind: 'literal', literal: STRING_KIND, value: JSON.stringify(span.literal.text) },
       span.literal,
     ),
   ]);
@@ -63,7 +65,7 @@ function jsxText(source) {
   const text = source.text.replaceAll(/\s+/gu, ' ').trim();
   return text === ''
     ? []
-    : [at({ kind: 'literal', literal: 'string', value: JSON.stringify(text) }, source)];
+    : [at({ kind: 'literal', literal: STRING_KIND, value: JSON.stringify(text) }, source)];
 }
 
 function childrenOf(children, context) {

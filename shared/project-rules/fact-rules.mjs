@@ -5,6 +5,8 @@ import {
   DESIGN_RULES,
 } from './design/design-rules.mjs';
 
+const NEAR_DUPLICATE_UNITS = 'nearDuplicateUnits';
+
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,
   javascript: true,
@@ -101,9 +103,9 @@ export const FACT_RULE_LISTS = {
   'duplicate-definition': ['modules', 'packages', 'definitions', 'imports'],
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
-  'near-duplicate': ['nearDuplicateUnits'],
-  'decided-condition': ['nearDuplicateUnits'],
-  'duplicate-branch': ['nearDuplicateUnits'],
+  'near-duplicate': [NEAR_DUPLICATE_UNITS],
+  'decided-condition': [NEAR_DUPLICATE_UNITS],
+  'duplicate-branch': [NEAR_DUPLICATE_UNITS],
   'shared-used-by-one-feature': ['modules', 'imports'],
   'feature-internal-import': ['modules', 'imports'],
   'shared-imports-feature': ['modules', 'imports'],
