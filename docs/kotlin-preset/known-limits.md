@@ -18,16 +18,30 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   generated sources under the build directory are not read.
 - `inline` functions are not measured by CRAP (see [CRAP](crap.md)); their structure limits still apply.
 - Kotlin Multiplatform and Android modules (a Gradle project with a `kotlin` extension and without the
-  `java` plugin: `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.android`) get the steps that read
-  sources only, among them the review rules, the source checks, the test honesty rules, structure and class
-  limits and duplicates, on every Kotlin source set of the project (`commonMain`, `jvmMain`, `androidMain`,
-  `main`, a variant's `debug`, ...; a source set whose name starts with `test` or has `Test` holds tests, such
-  as `commonTest`, `jvmTest`, `test`, `testDebug` and `androidTest`). A descriptive `kotlin/build-note`
-  finding names each such project and what did not run on it. detekt, the format check, the kotlinc lint, coverage, CRAP, mutation and the
-  tests of such a project do not run (they need the compiled classes and the classpath of a target or
-  variant), and its `.java` files are not checked. A Multiplatform project that applies the `java` plugin
-  (`withJava()`) is a Java project with its Kotlin sources not read. The end-to-end tests build a
-  Multiplatform project with a JVM target and an Android library with Android Gradle Plugin 8.
+  `java` plugin: `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.android`). A descriptive
+  `kotlin/build-note` finding names each such project and what did not run on it.
+  - What runs on every such project: the steps that read sources only, among them the review rules, the source
+    checks, the test honesty rules, structure and class limits and duplicates, on every Kotlin source set
+    (`commonMain`, `jvmMain`, `androidMain`, `main`, a variant's `debug`, ...; a source set whose name starts
+    with `test` or has `Test` holds tests, such as `commonTest`, `jvmTest`, `test`, `testDebug` and
+    `androidTest`), and the format check (ktlint or ktfmt, when `kotlin.formatter` names one).
+  - What also runs on a Multiplatform project with a JVM target (`jvm()`): detekt with type resolution, on every
+    Kotlin source set, with the compile classpath of the `main` and `test` compilations of the JVM targets;
+    the kotlinc lint, compiling the common and JVM sources together as a Multiplatform build does; the tests of
+    the target (`jvmTest`), their JaCoCo coverage of the JVM compilation's classes and CRAP, where a failing
+    `jvmTest` is handled as on a JVM module. With several JVM targets, the lint, tests, coverage and CRAP cover
+    the first one only; detekt uses the classpath of all of them. A quick run skips the tests, coverage and CRAP.
+  - What does not run: mutation testing (PIT) on a Multiplatform project (its task is written for the Java
+    source sets of a JVM module and is not shared yet); the tests, coverage and CRAP of any non-JVM target;
+    detekt, the lint, the tests, coverage and CRAP of an Android project, an Android target or a project with no
+    JVM target (their variants need the Android SDK, which the end-to-end tests here cannot install); the
+    `.java` files of an Android module and of a Multiplatform JVM target that uses `withJava()`. Sources of
+    other targets (`iosMain`, `jsMain`, `androidMain`) are read with the JVM classpath, so a call that resolves
+    only on their platform stays unresolved and detekt's rules report less there.
+  - A Multiplatform build cannot apply the `java` plugin (the Kotlin Gradle plugin rejects it), so a
+    `withJava()` project is read as a Multiplatform one, Kotlin sources included. The end-to-end tests build a
+    Multiplatform project with a JVM target and one with `withJava()`; the Android end-to-end test needs an
+    Android SDK.
 - Source-set excludes: a `.kt` file under a Kotlin source directory that the build leaves out of its
   source set (`kotlin.exclude("**/Legacy*.kt")`) and that no other source set keeps is not read by the review
   rules, duplicates and the reuse checks, and no finding of any tool is reported on it. A Kotlin JVM module reads

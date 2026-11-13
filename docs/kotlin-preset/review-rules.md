@@ -451,7 +451,7 @@ Thread.currentThread(); t.interrupt()`) or hands the exception off through a lam
   functions only in the modules they can call. Each such place, read from the Gradle build, reaches the
   projects on its main compile and runtime classpaths (directly or through other projects; test
   dependencies do not count): an Android project (any `com.android.*` plugin) or a Multiplatform project
-  that the facts step does not read (one that applies the `java` plugin, one without the Kotlin plugin, or
+  that the facts step does not read (one without the Kotlin plugin, or
   one outside the analysis root); a Kotlin or Java project outside the analysis root; a source set other than `main` and `test` that holds
   `.kt`, `.java`, `.groovy` or `.scala` files and is not generated (Spring Boot's `aot` and `aotTest`, see
   the Java preset's Spring AOT), and Groovy or Scala files in `main` or `test` (it also reaches its own
