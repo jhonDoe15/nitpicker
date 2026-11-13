@@ -6,11 +6,17 @@
   <description>Nitpicker's PMD rules for test sources.</description>
 
   <rule name="DisabledTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Fix or delete this test instead of disabling it.">
+        message="Fix or delete this test instead of disabling it (@Disabled, @Ignore, @Test(enabled = false), assumeTrue(false)). Limit it to an environment with @EnabledOnOs or an assumption on a real condition.">
     <description>A disabled test checks nothing.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[@SimpleName = ('Disabled', 'Ignore')]
+|
+//Annotation[@SimpleName = 'Test']/AnnotationMemberList/MemberValuePair[@Name = 'enabled'][BooleanLiteral[@True = false()]]
+|
+//MethodCall[@MethodName = 'assumeTrue'][ArgumentList/*[self::BooleanLiteral[@True = false()] or self::UnaryExpression[@Operator = '!'][BooleanLiteral[@True = true()]]]]
+|
+//MethodCall[@MethodName = 'assumeFalse'][ArgumentList/*[self::BooleanLiteral[@True = true()] or self::UnaryExpression[@Operator = '!'][BooleanLiteral[@True = false()]]]]
 ]]></value></property></properties>
   </rule>
 
