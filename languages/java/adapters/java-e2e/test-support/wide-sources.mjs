@@ -58,3 +58,21 @@ export const WIDE_REFORMATTED = WIDE.replace(
   '  public int sum',
   '  // Still too wide.\n  public int sum',
 );
+
+export function pricingClass(name, label) {
+  return `package demo;
+
+public final class ${name} {
+  public long total(long[] prices, long discount, StringBuilder log) {
+    long sum = 0;
+    for (long price : prices) {
+      if (price > discount) {
+        sum += price - discount;
+      }
+    }
+    log.append("${label}").append(':').append(sum);
+    return sum > 1000 ? sum - discount : sum;
+  }
+}
+`;
+}

@@ -44,6 +44,11 @@ export const STRUCTURE_NOTES = {
     'Editing one of two near-identical copies leaves the other with the old bug.',
     'Edit the copy as well, or merge the copies into one.',
   ],
+  'near-duplicate': [
+    'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, or sharing a run of statements.',
+    'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
+    'Extract one function, with the differing values as parameters, and call it from both places.',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

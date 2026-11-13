@@ -367,6 +367,63 @@ describe('sibling-copy-edit on Java and Kotlin', () => {
   });
 });
 
+const RETRY = `  public Response send(Request request, int attempts) {
+    for (int attempt = 0; attempt < attempts; attempt++) {
+      Response response = client.execute(request.withHeader("X-Attempt", String.valueOf(attempt)));
+      if (response.status() < 500) {
+        return response;
+      }
+      metrics.increment("retry.%s", request.path());
+    }
+    throw new IllegalStateException("gave up after " + attempts + " attempts");
+  }
+`;
+
+describe('near-duplicate on Java', () => {
+  const orders = `${JAVA_ROOT}/shop/orders/OrderClient.java`;
+  const invoices = `${JAVA_ROOT}/shop/invoices/InvoiceClient.java`;
+
+  it('reports a method copied into another class with one changed literal, once per pair', () => {
+    const found = findings({
+      [orders]: javaClass('shop.orders', 'OrderClient', RETRY),
+      [invoices]: javaClass(
+        'shop.invoices',
+        'InvoiceClient',
+        RETRY.replace('retry.%s', 'again.%s'),
+      ),
+    }).filter(({ rule }) => rule === 'near-duplicate');
+
+    expect(rows(found)).toEqual([
+      [
+        'near-duplicate',
+        orders,
+        `near-duplicate:${invoices}#InvoiceClient.send(Request,int)|${orders}#OrderClient.send(Request,int)`,
+      ],
+    ]);
+    expect(found[0].message).toBe(
+      [
+        `OrderClient.send(Request,int) is a copy of InvoiceClient.send(Request,int) (${invoices}:4)`,
+        'apart from 1 value ("retry.%s" / "again.%s"). Extract one function that takes the differing',
+        `values as parameters, and call it from both places. ${exceptionHint('near-duplicate', orders)}`,
+      ].join(' '),
+    );
+  });
+
+  it('is not run on Kotlin, which has no near-duplicate trees yet', () => {
+    const kotlin = `${KOTLIN_ROOT}/shop/Retry.kt`;
+    const twice = 'fun a(x: Int): Int {\n  val y = x * 2 + 1\n  return y * y - x\n}\n';
+
+    expect(
+      findings(
+        { [kotlin]: `package shop\n\n${twice}${twice.replace('fun a', 'fun b')}` },
+        {
+          kotlin: true,
+        },
+      ).filter(({ rule }) => rule === 'near-duplicate'),
+    ).toEqual([]);
+  });
+});
+
 describe('jvmReuseFacts', () => {
   it('lists the production sources of every module once, skipping build output and excluded files', () => {
     const root = project({

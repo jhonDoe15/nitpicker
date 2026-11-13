@@ -13,7 +13,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   a method; in tests, a helper or one `@ParameterizedTest`.
 - Smaller copies fail too: a static helper or a constant with the same code in two classes of one
   module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
-  other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
+  other (`sibling-copy-edit`). Keep one and call it. A method or constructor proved to copy
+  another (`near-duplicate`: the same tree apart from renamed locals, up to 4 changed values or
+  types, or a shared run of 3 or more statements) fails too: extract one method with the changed
+  values as parameters. Don't give two classes one name and use both in
   one file, one fully qualified (`exported-name-collision`): rename one.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
 - Read environment variables and system properties (`System.getenv`, `System.getProperty`, `Integer.getInteger`,

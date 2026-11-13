@@ -209,7 +209,7 @@ describe('the shared fact rules', () => {
       'test-console-output',
     ]);
     withLanguageRegistered('feature-cycle', 'kotlin', () => {
-      expect(sharedFactExceptionRules()).toEqual(python);
+      expect(sharedFactExceptionRules()).toEqual(python.toSpliced(3, 0, 'near-duplicate'));
       expect(registeredFactRules('kotlin').includes('feature-cycle')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });
