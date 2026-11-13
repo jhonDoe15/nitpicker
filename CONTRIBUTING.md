@@ -194,4 +194,11 @@ first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
 network; see [docs/python-preset.md](docs/python-preset.md).
 
+## Changelog
+
+Pull requests do not edit [CHANGELOG.md](CHANGELOG.md). Its entry for a release is written when the
+release is cut, from the pull requests merged since the last tag
+([docs/releasing.md](docs/releasing.md), step 2), so give a pull request a title that says what
+changes for people who use nitpicker: the release draft starts from it.
+
 To cut a release, see [docs/releasing.md](docs/releasing.md).
