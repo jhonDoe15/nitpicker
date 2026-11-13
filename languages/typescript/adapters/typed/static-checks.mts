@@ -74,17 +74,23 @@ export function isInvokedModule(moduleUrl: string): boolean {
   return invokedPath !== undefined && moduleUrl === pathToFileURL(path.resolve(invokedPath)).href;
 }
 
+export type AdapterOutput = {
+  readonly stdout: { write(text: string): unknown };
+  readonly stderr: { write(text: string): unknown };
+};
+
 export async function writeAdapterFindings(
   adapterName: string,
   findingsOf: () => Promise<readonly Finding[]>,
+  output: AdapterOutput,
 ): Promise<number> {
   try {
     const findings = await findingsOf();
-    process.stdout.write(`${JSON.stringify({ findings })}\n`);
+    output.stdout.write(`${JSON.stringify({ findings })}\n`);
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);
-    process.stderr.write(`${adapterName} failed: ${error.message}\n`);
+    output.stderr.write(`${adapterName} failed: ${error.message}\n`);
     return 2;
   }
 }
