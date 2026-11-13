@@ -3,7 +3,7 @@ import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
 import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
-import { usageText } from '../help/usage-text.mjs';
+import { usageText } from '../help/usage-text.mts';
 import { projectAnalyzers } from '../command/information/project-analyzers.mts';
 
 /** The links of an installed copy of the package with `manifest`: they point at its release tag. */

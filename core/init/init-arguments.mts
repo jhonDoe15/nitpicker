@@ -1,19 +1,21 @@
-const CI_PROVIDERS = ['github'];
+type InitOptions = { help: boolean; agentsMd: boolean; readonly ci: string[] };
+
+const CI_PROVIDERS: readonly string[] = ['github'];
 const HELP = '--help';
 const AGENTS_MD = '--agents-md';
 const CI = '--ci';
 
 export const INIT_OPTIONS = [AGENTS_MD, CI, HELP];
 
-function ciProvider(value) {
-  if (!CI_PROVIDERS.includes(value)) {
+function ciProvider(value: string | undefined): string {
+  if (value === undefined || !CI_PROVIDERS.includes(value)) {
     throw new Error(`--ci takes one of: ${CI_PROVIDERS.join(', ')}`);
   }
   return value;
 }
 
-export function parseInitArguments(initArguments) {
-  const options = { help: false, agentsMd: false, ci: [] };
+export function parseInitArguments(initArguments: readonly string[]): InitOptions {
+  const options: InitOptions = { help: false, agentsMd: false, ci: [] };
   const remaining = initArguments.values();
   for (const argument of remaining) {
     if (argument === HELP) {
