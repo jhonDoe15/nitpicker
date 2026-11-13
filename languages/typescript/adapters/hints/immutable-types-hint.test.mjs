@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../eslint/normalize.mts';
 
 const temporaryRoots = [];
 

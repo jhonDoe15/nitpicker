@@ -123,6 +123,11 @@ describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
     expect(output.replaceAll(/\t\S+$/gmu, '')).toBe(
       [
         'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect',
+        'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect/design',
+        ...['calls', 'chain', 'decide', 'index', 'reads', 'scope', 'uses'].map(
+          (name) =>
+            `?   \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect/design/${name}\t[no test files]`,
+        ),
         'ok  \tgithub.com/jhonDoe15/nitpicker/languages/go/inspect/mutants',
         '',
       ].join('\n'),

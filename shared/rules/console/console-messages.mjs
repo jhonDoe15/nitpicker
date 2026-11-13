@@ -109,7 +109,8 @@ export function normalizeConsoleMessage(line) {
     .replaceAll(NUMBER_PATTERN, '<n>')
     .replaceAll(/\s+/gu, ' ')
     .trim()
-    .slice(0, MAX_MESSAGE_LENGTH);
+    .slice(0, MAX_MESSAGE_LENGTH)
+    .trimEnd();
 }
 
 export function hasSpecificText(text) {

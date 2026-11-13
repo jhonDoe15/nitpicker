@@ -214,6 +214,6 @@ function lineText(code, offset) {
   return code.slice(start, end === -1 ? undefined : end).trim();
 }
 
-function lineOf(source, offset) {
+export function lineOf(source, offset) {
   return source.slice(0, offset).split('\n').length;
 }

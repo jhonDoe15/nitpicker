@@ -6,7 +6,7 @@ import {
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mjs';
 import { compareFindings } from '../../../comparison/compare.mjs';
-import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 
 const packageAnalyzers = configuredAnalyzers();
 describe('CRAP reporting in the quality-area analyzers', () => {

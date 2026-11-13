@@ -80,7 +80,7 @@ describe.skipIf(!enabled)('conditional-assertion-in-test', () => {
       [
         'a subTest loop',
         inTests(
-          `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        for n in (1, 2):\n            with self.subTest(n=n):\n                self.assertTrue(n)\n`,
+          `${prelude}class A(unittest.TestCase):\n    def test_a(self):\n        for n in f():\n            with self.subTest(n=n):\n                self.assertTrue(n)\n`,
         ),
         ['conditional-assertion-in-test:9 A.test_a: subTest (unittest)'],
       ],
@@ -199,10 +199,8 @@ describe.skipIf(!enabled)('conditional-assertion-in-test', () => {
         [],
       ],
       [
-        'a helper outside the tests that loops over cases',
-        inTests(
-          'def check_all(cases):\n    for case in cases:\n        assert f(case)\n\n\ndef test_a():\n    check_all([1, 2])\n',
-        ),
+        'a helper that no test calls',
+        inTests('def check_all(cases):\n    for case in cases:\n        assert f(case)\n'),
         [],
       ],
       [

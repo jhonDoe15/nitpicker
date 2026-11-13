@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design"
 )
 
 type parsedFile struct {
@@ -62,6 +64,7 @@ func emptyReport() Report {
 	return Report{
 		Files: []File{}, Functions: []Function{}, Types: []Type{}, Tests: []Test{}, Branches: []Branch{}, Errors: []string{},
 		Definitions: []Definition{}, Usages: []Usage{}, DocComments: []DocComment{}, Skipped: []string{},
+		Design: design.Facts{Types: []design.Type{}, Callables: []design.Callable{}},
 	}
 }
 
@@ -84,6 +87,7 @@ func inspectModule(root string) (Report, error) {
 	}
 	fileSet := token.NewFileSet()
 	var parsed []parsedFile
+	var sources []design.Source
 	for _, path := range paths {
 		file, err := parseFile(fileSet, root, path)
 		if file.syntax == nil {
@@ -102,6 +106,9 @@ func inspectModule(root string) (Report, error) {
 			continue
 		}
 		parsed = append(parsed, file)
+		if err == nil && !file.test && !isConstrained(file) {
+			sources = append(sources, design.Source{Path: file.path, Syntax: file.syntax, Set: fileSet})
+		}
 		if err == nil {
 			report.Definitions = append(report.Definitions, fileDefinitions(fileSet, file)...)
 		}
@@ -114,5 +121,20 @@ func inspectModule(root string) (Report, error) {
 		report.Branches = append(report.Branches, function.Branches...)
 	}
 	report.Types = typeEntries(fileSet, parsed)
+	report.Design = design.Build(moduleName(root), sources)
 	return report, nil
+}
+
+func moduleName(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == "module" {
+			return strings.Trim(fields[1], "\"`")
+		}
+	}
+	return ""
 }

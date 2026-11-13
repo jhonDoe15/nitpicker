@@ -15,6 +15,7 @@ import { DESIGN_SHAPES, designItemProblem } from '../design/schema/design-shapes
 import { designReferenceProblem } from '../design/schema/design-references.mjs';
 
 const ROLES = ['production', 'test'];
+const PERSISTENCE_KINDS = ['entity', 'data-access'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
 const SCHEMA_DOCS = 'see "Facts schema" in docs/internals.md';
 const PATH_RULE =
@@ -44,6 +45,7 @@ const SHAPES = {
     publicNames: optional(isStrings),
     entryName: optional(isNonEmpty),
     compositionRoot: optional(isBoolean),
+    persistence: optional(oneOf(PERSISTENCE_KINDS)),
     generated: optional(isBoolean),
     initializer: optional(isBoolean),
   },

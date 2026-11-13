@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { normalizeEslintResults } from '../normalize.mjs';
+import { normalizeEslintResults } from '../normalize.mts';
 import { makeTemporaryRoot } from '../test-support/finding-for.mjs';
 
 function sourceWithReads(count) {

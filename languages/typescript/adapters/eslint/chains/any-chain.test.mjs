@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { collapseAnyChains } from './any-chain.mjs';
+import { collapseAnyChains } from './any-chain.mts';
 
 const SOURCE = [
   'export function price(items: any[]) {',
