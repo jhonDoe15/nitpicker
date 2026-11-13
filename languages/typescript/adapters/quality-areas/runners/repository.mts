@@ -27,7 +27,7 @@ import {
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
-import { withPackageEntries } from '../knip/package-entries.mjs';
+import { withPackageEntries as untypedWithPackageEntries } from '../knip/package-entries.mjs';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
 
 const CODING_STANDARDS = 'languages/typescript/preset/coding-standards/check.mjs';
@@ -175,6 +175,9 @@ function withSpawnedEntries(config: KnipConfig, projectRoot: string): KnipConfig
     entry: [...listOf(fieldOf(config, 'entry')), ...spawnedEntryFiles(projectRoot)],
   };
 }
+
+const withPackageEntries: (config: KnipConfig, projectRoot: string, layout: Layout) => KnipConfig =
+  untypedWithPackageEntries;
 
 export function runDeadCode(options: QualityAreaOptions): Finding[] {
   const layout = readLayout();

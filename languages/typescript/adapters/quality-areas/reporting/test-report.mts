@@ -56,10 +56,12 @@ function isCoverageReport(value: unknown): value is CoverageReport {
   return typeof value === 'object' && value !== null;
 }
 
+type MockPin = { readonly mockPin: boolean };
+
 export function coverageFailureFindings(
   options: QualityAreaOptions,
   { report, result, runnerName, precedingCommands }: ProjectTestRun,
-  { mockPin = false }: { readonly mockPin?: boolean } = {},
+  { mockPin }: MockPin = { mockPin: false },
 ): Finding[] {
   const failures = testFailures(report, options.projectRoot);
   const [firstFailure] = failures;
@@ -224,7 +226,9 @@ function failureEntry({ file, name, assertion }: Failure): string {
 export function formatTestFailures(
   report: TestReport | undefined,
   projectRoot: string,
-  { runnerName, precedingCommands, snapshot, mockPin = false }: FailureContext = {},
+  { runnerName, precedingCommands, snapshot, mockPin }: FailureContext & MockPin = {
+    mockPin: false,
+  },
 ): string {
   if (snapshot === 'base') {
     return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
@@ -238,17 +242,16 @@ export function formatTestFailures(
 function failureText(
   report: TestReport | undefined,
   projectRoot: string,
-  { runnerName, mockPin }: FailureContext,
+  { runnerName, mockPin }: FailureContext & MockPin,
 ): string {
   const failures = testFailures(report, projectRoot);
   const failedCount =
     typeof report?.numFailedTests === 'number' && Number.isInteger(report.numFailedTests)
       ? Math.max(report.numFailedTests, failures.length)
       : failures.length;
-  const headline =
-    mockPin === true
-      ? mockPinHeadline(failedCount, runnerName)
-      : testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
+  const headline = mockPin
+    ? mockPinHeadline(failedCount, runnerName)
+    : testsFailHeadline(failedCount, 'coverage, CRAP and mutation were skipped');
   if (failures.length === 0) {
     return `${headline.slice(0, -1)}; the report named no test.`;
   }

@@ -9,6 +9,8 @@ import {
 import { TRANSACTIONAL, prefixOf } from './inherited-transactions.mjs';
 import { indexCalls } from './call-sites.mjs';
 
+const BLOCK_BODY = 'block';
+const LAMBDA_BODY = 'lambda';
 const RULE = 'SpringMultiWriteWithoutTransaction';
 const TEST_SOURCES = /(?:^|[/\\])src[/\\]test[/\\]/u;
 const ANNOTATIONS = /^\s*(?:@[\w.]+(?:\s*\((?:[^()]|\([^()]*\))*\))?\s*)*/u;
@@ -102,7 +104,7 @@ function delimiterStacks(text, offsets) {
 function kindOf(header, kotlin) {
   const trimmed = header.trim();
   if (/\bnew\s/u.test(trimmed) || (/->/u.test(trimmed) && !/^(?:case|default)\b/u.test(trimmed))) {
-    return 'lambda';
+    return LAMBDA_BODY;
   }
   if (TYPE_KEYWORD.test(trimmed) && !/\bfun\b/u.test(trimmed)) {
     return 'class';
@@ -112,9 +114,9 @@ function kindOf(header, kotlin) {
     return 'method';
   }
   if (CONTROL_HEADER.test(trimmed) || (call !== null && CONTROL.has(call[1]))) {
-    return 'block';
+    return BLOCK_BODY;
   }
-  return kotlin ? 'lambda' : 'block';
+  return kotlin ? LAMBDA_BODY : BLOCK_BODY;
 }
 
 function runsIn(header, text) {
@@ -173,13 +175,13 @@ function braceStep(state, entry, wrapped) {
   if (kind === 'method' && state.method === undefined) {
     state.method = header;
   }
-  if (kind !== 'lambda' && kind !== 'block') {
+  if (kind !== LAMBDA_BODY && kind !== BLOCK_BODY) {
     return undefined;
   }
-  if (kind === 'lambda' && isCallback(state, header, wrapped)) {
+  if (kind === LAMBDA_BODY && isCallback(state, header, wrapped)) {
     return !state.crossed;
   }
-  state.crossed ||= kind === 'lambda';
+  state.crossed ||= kind === LAMBDA_BODY;
   return undefined;
 }
 

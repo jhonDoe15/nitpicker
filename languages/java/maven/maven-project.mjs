@@ -7,6 +7,8 @@ import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
+const DIRECTORY = 'directory';
+
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
@@ -78,7 +80,7 @@ function groovyTestRoots(plugin, basedir) {
     plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
   )
     .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
-    .map((source) => textAt(source, 'directory'))
+    .map((source) => textAt(source, DIRECTORY))
     .filter((directory) => directory !== undefined);
   const pluginDefault = plugin !== undefined && configured.length === 0;
   const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
@@ -134,7 +136,7 @@ function resourceRootsOf(build, basedir) {
   return [
     ...new Set(
       childrenAt(build, 'resources', 'resource')
-        .map((resource) => textAt(resource, 'directory'))
+        .map((resource) => textAt(resource, DIRECTORY))
         .filter((directory) => directory !== undefined)
         .map((directory) => path.resolve(basedir, directory)),
     ),
@@ -164,7 +166,7 @@ function layoutOf({ build, plugins, basedir, buildDirectory }) {
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
-  const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
+  const buildDirectory = resolvedText(build, basedir, DIRECTORY) ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
   const failsafe = plugins.get(FAILSAFE);
   const reports = setting(surefire, 'test', 'reportsDirectory');
@@ -224,7 +226,7 @@ function matchProject(pomFile, candidates) {
   }
   const basedir = path.dirname(pomFile);
   const [nearest] = candidates
-    .map((project) => ({ project, build: textAt(project, 'build', 'directory') }))
+    .map((project) => ({ project, build: textAt(project, 'build', DIRECTORY) }))
     .filter(({ build }) => build !== undefined && insideOf(basedir, build))
     .sort(
       (left, right) =>

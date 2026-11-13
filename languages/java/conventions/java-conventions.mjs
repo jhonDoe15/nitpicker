@@ -10,6 +10,8 @@ import { FORMATTER_VERSION } from './build-style/java-formatter-options.mjs';
 import { formatterProfile, javaIndentation, javaLineLength } from './measures/java-layout.mjs';
 import { TEST_SOURCE_GLOB, testStaticImports, wildcardImports } from './measures/java-imports.mjs';
 
+const JAVA_FILE_GLOB = '**/*.java';
+
 export const JAVA_INDENTATION_ID = 'java.indentation';
 export const JAVA_FORMATTER = 'java.formatter';
 export const JAVA_LINE_LENGTH_ID = 'java.lineLength';
@@ -22,7 +24,7 @@ const JAVA_INDENTATION = {
   options: ['2', '4', 'tab'],
   optionLabels: { 2: '2 spaces', 4: '4 spaces', tab: 'tabs' },
   fallback: '2',
-  files: ['**/*.java'],
+  files: [JAVA_FILE_GLOB],
   measure: javaIndentation,
 };
 
@@ -38,7 +40,7 @@ const JAVA_FORMATTERS = {
   fallback: 'google',
   minVotes: 3,
   strictMajority: true,
-  files: ['**/*.java'],
+  files: [JAVA_FILE_GLOB],
   measure: formatterProfile,
 };
 
@@ -52,7 +54,7 @@ const JAVA_FORMATTER_VERSIONS = {
   fallback: 'pinned',
   hidden: true,
   nameOnly: true,
-  files: ['**/*.java'],
+  files: [JAVA_FILE_GLOB],
   measure: () => undefined,
 };
 
@@ -63,7 +65,7 @@ const JAVA_FORMATTER_FLAGS = {
   fallback: [],
   hidden: true,
   nameOnly: true,
-  files: ['**/*.java'],
+  files: [JAVA_FILE_GLOB],
   measure: () => [],
 };
 
@@ -74,7 +76,7 @@ const JAVA_LINE_WIDTH = {
   optionLabels: { 100: '100 columns', 120: '120 columns', 140: '140 columns' },
   fallback: '100',
   ...COLUMNS,
-  files: ['**/*.java'],
+  files: [JAVA_FILE_GLOB],
   measure: javaLineLength,
 };
 
@@ -82,7 +84,7 @@ export const JAVA_WILDCARD_IMPORTS = 'java.wildcardImports';
 export const JAVA_TEST_STATIC_IMPORTS = 'java.testStaticImports';
 export const JAVA_ASSERTION_HELPERS = 'java.assertionHelpers';
 
-const JAVA_FILES = ['**/*.java'];
+const JAVA_FILES = [JAVA_FILE_GLOB];
 
 const JAVA_IMPORTS = {
   id: JAVA_WILDCARD_IMPORTS,

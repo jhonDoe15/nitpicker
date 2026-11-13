@@ -2,6 +2,8 @@ import { annotationIn, argumentOf } from '../spring-names.mjs';
 import { entriesOf } from '../spring-scopes.mjs';
 import { SPRING_TRANSACTIONAL } from '../spring-types.mjs';
 
+const DEFAULT_ATTRIBUTE = 'value';
+
 const QUALIFIED_NAME = /^[\w.]*$/u;
 const NAME = /^\w+$/u;
 const FREE_ATTRIBUTES = new Set(['readOnly', 'label']);
@@ -15,7 +17,7 @@ const MATCHED_ATTRIBUTES = new Set([
   'timeout',
   'timeoutString',
   'isolation',
-  'value',
+  DEFAULT_ATTRIBUTE,
   'transactionManager',
 ]);
 
@@ -35,7 +37,9 @@ function runs(annotation) {
 }
 
 function attributeText(annotation, name) {
-  return annotation.arguments.find((argument) => (argument.name ?? 'value') === name)?.text.trim();
+  return annotation.arguments
+    .find((argument) => (argument.name ?? DEFAULT_ATTRIBUTE) === name)
+    ?.text.trim();
 }
 
 export function runningTransactions(view, caller) {
@@ -56,7 +60,7 @@ export function joinsTransaction(view, annotation, running) {
     running.length > 0 &&
     annotationIn(view.resolve, [annotation], SPRING_TRANSACTIONAL) !== undefined &&
     annotation.arguments.every((argument) => {
-      const name = argument.name ?? 'value';
+      const name = argument.name ?? DEFAULT_ATTRIBUTE;
       if (FREE_ATTRIBUTES.has(name)) {
         return true;
       }

@@ -176,7 +176,6 @@ export type FailureContext = {
   readonly runnerName?: string | undefined;
   readonly precedingCommands?: unknown;
   readonly snapshot?: string | undefined;
-  readonly mockPin?: boolean | undefined;
 };
 
 export type ProcessOutput = { readonly stderr?: unknown; readonly stdout?: unknown };
