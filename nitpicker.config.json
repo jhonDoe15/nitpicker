@@ -121,41 +121,6 @@
       "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types."
     },
     {
-      "rule": "@typescript-eslint/no-unsafe-member-access",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/no-unsafe-assignment",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/no-unsafe-call",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/no-unsafe-argument",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/no-unsafe-return",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/restrict-template-expressions",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/restrict-plus-operands",
-      "paths": ["**/*.mjs"],
-      "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
       "rule": "@typescript-eslint/no-deprecated",
       "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
       "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."

@@ -149,11 +149,11 @@ describe('rules configured from the followed conventions', () => {
 });
 
 describe('@typescript-eslint/no-unsafe-assignment', () => {
-  it('stays on for JavaScript files that the project tsconfig does not check', () => {
+  it('is turned off only for JavaScript files, never for TypeScript files', () => {
     expect(
-      presetConfig.filter(
-        (entry) => entry.rules?.['@typescript-eslint/no-unsafe-assignment'] === 'off',
-      ),
-    ).toEqual([]);
+      presetConfig
+        .filter((entry) => entry.rules?.['@typescript-eslint/no-unsafe-assignment'] === 'off')
+        .map((entry) => entry.files),
+    ).toEqual([['**/*.{js,mjs,cjs,jsx}']]);
   });
 });
