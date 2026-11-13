@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 import { checked, command, createConsumer, write } from './consumer.mts';
 import { type Preset, gitignoreOf, usesNpmPackages } from './presets.mts';
 import { type PrepareWorkdir } from '../runner/run-case.mts';
