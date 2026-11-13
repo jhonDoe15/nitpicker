@@ -61,13 +61,19 @@ describe('emptySourcesMessage', () => {
   it('stays quiet for presets of other languages', () => {
     expect(emptySourcesMessage({ preset: 'python' }, project(WORKSPACE), {})).toBeUndefined();
   });
+
+  it('stays quiet without a preset in a project of another language', () => {
+    const files = { 'pom.xml': '<project/>', 'src/main/java/A.java': 'class A {}\n', 'app.py': '' };
+
+    expect(emptySourcesMessage({}, project(files), {})).toBeUndefined();
+  });
 });
 
 describe('emptySourcesErrors', () => {
   it('reports one head tool error with the message', () => {
     const root = project(WORKSPACE);
 
-    expect(emptySourcesErrors({ preset: 'typescript' }, root, {})).toEqual([
+    expect(emptySourcesErrors({ preset: 'typescript' }, root, { headPolicy: {} })).toEqual([
       {
         tool: EMPTY_SOURCES_TOOL,
         snapshot: 'head',
@@ -80,7 +86,16 @@ describe('emptySourcesErrors', () => {
     ]);
   });
 
+  it('reports nothing when the run is narrowed to some analyzers', () => {
+    const errors = emptySourcesErrors({}, project(WORKSPACE), {
+      headPolicy: {},
+      analyzerNames: ['repository-hygiene'],
+    });
+
+    expect(errors).toEqual([]);
+  });
+
   it('reports nothing when sources are analyzed', () => {
-    expect(emptySourcesErrors({}, project({ 'src/a.ts': CODE }), {})).toEqual([]);
+    expect(emptySourcesErrors({}, project({ 'src/a.ts': CODE }), { headPolicy: {} })).toEqual([]);
   });
 });

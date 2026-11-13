@@ -1,3 +1,4 @@
+import { detectedPreset } from '../../../../core/configuration/project-checks/preset-detection.mjs';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -57,7 +58,10 @@ export function sourcesElsewhere(projectRoot, layout) {
 }
 
 export function emptySourcesMessage(config, projectRoot, headPolicy) {
-  if (!SCRIPT_PRESETS.has(config.preset)) {
+  if (
+    !SCRIPT_PRESETS.has(config.preset) ||
+    (config.preset === undefined && detectedPreset(projectRoot) !== undefined)
+  ) {
     return undefined;
   }
   const layout = resolveLayoutFor(headPolicy);
@@ -73,8 +77,11 @@ export function emptySourcesMessage(config, projectRoot, headPolicy) {
   );
 }
 
-export function emptySourcesErrors(config, projectRoot, headPolicy) {
-  const message = emptySourcesMessage(config, projectRoot, headPolicy);
+export function emptySourcesErrors(config, projectRoot, { headPolicy, analyzerNames }) {
+  const message =
+    (analyzerNames ?? []).length === 0
+      ? emptySourcesMessage(config, projectRoot, headPolicy)
+      : undefined;
   return message === undefined
     ? []
     : [
