@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
-import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { reportingProgress } from './diff/execution/progress.mts';
+import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mts';
 import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
@@ -62,8 +62,6 @@ import type {
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 
-const selectFrom: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
     const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
@@ -190,7 +188,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     captureHead: stagedCapture(cli, currentProjectRoot),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
-  const selected = selectFrom(setup.analyzers, options.analyzerNames);
+  const selected = selectAnalyzers(setup.analyzers, options.analyzerNames);
   assertProjectPeers({
     projectRoot: currentProjectRoot,
     analyzers: selected,

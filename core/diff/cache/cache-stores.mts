@@ -16,6 +16,29 @@ import {
 } from '../../../shared/messages/troubleshooting.mjs';
 import { runGit } from '../git/repository/command.mjs';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import { textOf } from '../../../shared/values/readers.mts';
+
+export type CacheStore = {
+  readonly get: (key: string) => string | undefined;
+  readonly put: (key: string, text: string) => boolean;
+  readonly keep?: (key: string, text: string) => void;
+  readonly directory?: string | undefined;
+};
+
+type Located =
+  | { readonly kind: 'writable'; readonly directory: string }
+  | { readonly kind: 'unavailable'; readonly error: unknown };
+
+type StoredFile =
+  | { readonly kind: 'read'; readonly text: string }
+  | { readonly kind: 'unreadable'; readonly error: unknown };
+
+type CacheLocation = {
+  readonly projectRoot: string;
+  readonly environment?: NodeJS.ProcessEnv | undefined;
+};
+
+const gitOutput: (repositoryRoot: string, args: readonly string[]) => string = runGit;
 
 const WORKER = fileURLToPath(
   checkoutModuleUrl(new URL('./http-cache-worker.mjs', import.meta.url)),
@@ -26,8 +49,11 @@ const NO_CACHE_WARNING =
   'no writable findings cache, so the base side runs on every comparison; ' +
   'set NITPICKER_CACHE_DIR to a writable folder to reuse it.';
 
-export function resolveCacheDirectory({ projectRoot, environment = process.env }) {
-  const configured = environment.NITPICKER_CACHE_DIR;
+export function resolveCacheDirectory({
+  projectRoot,
+  environment = process.env,
+}: CacheLocation): string | undefined {
+  const configured = environment['NITPICKER_CACHE_DIR'];
   if (typeof configured === 'string' && configured.length > 0) {
     return path.resolve(projectRoot, configured);
   }
@@ -36,15 +62,15 @@ export function resolveCacheDirectory({ projectRoot, environment = process.env }
     : gitCacheDirectory(projectRoot);
 }
 
-function gitCacheDirectory(projectRoot) {
+function gitCacheDirectory(projectRoot: string): string | undefined {
   const located = locateGitCommonDirectory(projectRoot);
   return located.kind === 'writable' ? path.join(located.directory, 'nitpicker/cache') : undefined;
 }
 
-function locateGitCommonDirectory(projectRoot) {
+function locateGitCommonDirectory(projectRoot: string): Located {
   try {
     const query = ['rev-parse', '--path-format=absolute', '--git-common-dir'];
-    const directory = runGit(projectRoot, query).trim();
+    const directory = gitOutput(projectRoot, query).trim();
     accessSync(directory, constants.W_OK);
     return { kind: 'writable', directory };
   } catch (error) {
@@ -52,7 +78,7 @@ function locateGitCommonDirectory(projectRoot) {
   }
 }
 
-function readStoredFile(file) {
+function readStoredFile(file: string): StoredFile {
   try {
     return { kind: 'read', text: readFileSync(file, 'utf8') };
   } catch (error) {
@@ -60,7 +86,15 @@ function readStoredFile(file) {
   }
 }
 
-function writeStoredFile({ directory, target, text }) {
+function writeStoredFile({
+  directory,
+  target,
+  text,
+}: {
+  readonly directory: string;
+  readonly target: string;
+  readonly text: string;
+}): { readonly kind: 'written' } | { readonly kind: 'unwritable'; readonly error: unknown } {
   try {
     mkdirSync(directory, { recursive: true });
     const temporary = `${target}.${String(process.pid)}.tmp`;
@@ -72,25 +106,37 @@ function writeStoredFile({ directory, target, text }) {
   }
 }
 
-export function createDirectoryStore(directory) {
-  function fileFor(key) {
+export function createDirectoryStore(directory: string): CacheStore {
+  function fileFor(key: string): string {
     return path.join(directory, `${key}.json`);
   }
   return {
-    get(key) {
+    get(key: string): string | undefined {
       const result = readStoredFile(fileFor(key));
       return result.kind === 'read' ? result.text : undefined;
     },
-    put(key, text) {
+    put(key: string, text: string): boolean {
       return writeStoredFile({ directory, target: fileFor(key), text }).kind === 'written';
     },
   };
 }
 
-export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export function createHttpStore({
+  baseUrl,
+  authHeader,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+}: {
+  readonly baseUrl: string;
+  readonly authHeader?: string | undefined;
+  readonly timeoutMs?: number;
+}): CacheStore {
   const root = baseUrl.replace(/\/+$/u, '');
   let broken = false;
-  function request(method, key, input) {
+  function request(
+    method: string,
+    key: string,
+    input?: string,
+  ): { readonly status: number; readonly stdout?: Buffer } {
     if (broken) {
       return { status: 1 };
     }
@@ -111,31 +157,39 @@ export function createHttpStore({ baseUrl, authHeader, timeoutMs = DEFAULT_TIMEO
     return { status, stdout: result.stdout };
   }
   return {
-    get(key) {
+    get(key: string): string | undefined {
       const { status, stdout } = request('GET', key);
-      return status === 0 ? stdout.toString('utf8') : undefined;
+      return status === 0 ? stdout?.toString('utf8') : undefined;
     },
-    put(key, text) {
+    put(key: string, text: string): boolean {
       return request('PUT', key, text).status === 0;
     },
   };
 }
 
-export function createLayeredStore({ local, remote, writeRemote = false }) {
+export function createLayeredStore({
+  local,
+  remote,
+  writeRemote = false,
+}: {
+  readonly local: CacheStore | undefined;
+  readonly remote: CacheStore | undefined;
+  readonly writeRemote?: boolean;
+}): CacheStore {
   return {
-    get(key) {
+    get(key: string): string | undefined {
       const localText = local?.get(key);
       if (localText !== undefined) {
         return localText;
       }
       return remote?.get(key);
     },
-    keep(key, text) {
+    keep(key: string, text: string): void {
       if (local?.get(key) === undefined) {
         local?.put(key, text);
       }
     },
-    put(key, text) {
+    put(key: string, text: string): boolean {
       const stored = local?.put(key, text) ?? false;
       const published = writeRemote && remote !== undefined ? remote.put(key, text) : false;
       return stored || published;
@@ -143,8 +197,16 @@ export function createLayeredStore({ local, remote, writeRemote = false }) {
   };
 }
 
-export function resolveCacheStore({ projectRoot, environment = process.env, writeRemote = false }) {
-  const warnings = [];
+export function resolveCacheStore({
+  projectRoot,
+  environment = process.env,
+  writeRemote = false,
+}: CacheLocation & { readonly writeRemote?: boolean }): {
+  readonly store: CacheStore | undefined;
+  readonly remote: CacheStore | undefined;
+  readonly warnings: string[];
+} {
+  const warnings: string[] = [];
   const directory = resolveCacheDirectory({ projectRoot, environment });
   const local = directory === undefined ? undefined : createDirectoryStore(directory);
   const remote = resolveRemoteStore(environment, warnings);
@@ -156,26 +218,33 @@ export function resolveCacheStore({ projectRoot, environment = process.env, writ
   return { store, remote, warnings };
 }
 
-function resolveRemoteStore(environment, warnings) {
-  const url = environment.NITPICKER_CACHE_URL;
+function resolveRemoteStore(
+  environment: NodeJS.ProcessEnv,
+  warnings: string[],
+): CacheStore | undefined {
+  const url = environment['NITPICKER_CACHE_URL'];
   if (typeof url !== 'string' || url.length === 0) return undefined;
   if (!/^https?:\/\/[^\s/]/u.test(url)) {
     warnings.push(
-      withTroubleshooting(
-        'NITPICKER_CACHE_URL ignored: it must be an http(s) URL.',
-        TROUBLESHOOTING_ANCHORS.staleCache,
+      textOf(
+        withTroubleshooting(
+          'NITPICKER_CACHE_URL ignored: it must be an http(s) URL.',
+          TROUBLESHOOTING_ANCHORS.staleCache,
+        ),
       ),
     );
     return undefined;
   }
-  const timeout = Number(environment.NITPICKER_CACHE_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
-  const header = environment.NITPICKER_CACHE_AUTH_HEADER;
+  const timeout = Number(environment['NITPICKER_CACHE_TIMEOUT_MS'] ?? DEFAULT_TIMEOUT_MS);
+  const header = environment['NITPICKER_CACHE_AUTH_HEADER'];
   const validHeader = typeof header === 'string' && header.includes(':');
-  if (header && !validHeader) {
+  if (header !== undefined && header !== '' && !validHeader) {
     warnings.push(
-      withTroubleshooting(
-        'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
-        TROUBLESHOOTING_ANCHORS.staleCache,
+      textOf(
+        withTroubleshooting(
+          'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
+          TROUBLESHOOTING_ANCHORS.staleCache,
+        ),
       ),
     );
   }

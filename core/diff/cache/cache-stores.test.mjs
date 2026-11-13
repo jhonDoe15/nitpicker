@@ -8,8 +8,8 @@ import {
   createHttpStore,
   createLayeredStore,
   resolveCacheStore,
-} from './cache-stores.mjs';
-import { cacheKey, createFindingsCache } from './findings-cache.mjs';
+} from './cache-stores.mts';
+import { cacheKey, createFindingsCache } from './findings-cache.mts';
 import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 

@@ -3,16 +3,14 @@ import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { withMovesFile } from '../git/patches/moves-file.mjs';
+import { withMovesFile } from '../git/patches/moves-file.mts';
 import { type DiffReport, combineAnalyzerReports, noChangesReport } from './results.mts';
 import {
   type RunSettings,
   type SnapshotRoots,
-  analyze,
   quickScoped,
   runCached,
   runHeadAnalyzers,
-  runOptions,
   toolRoot,
 } from './quick/head-run.mts';
 import {
@@ -22,6 +20,7 @@ import {
   withSnapshotRoots,
 } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
+import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
 import { fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../../shared/values/findings.mts';
 
@@ -103,7 +102,6 @@ const writeReports: (
 ) => unknown = writeDiffReports;
 const withPolicyFile: <T>(policy: unknown, operation: (file: unknown) => T) => T =
   withHeadPolicyFile;
-const withMoves: <T>(moves: unknown, operation: (file: unknown) => T) => T = withMovesFile;
 
 export function runQualityDiff(options: DiffOptions): DiffReport {
   const settings = withDefaults(options);
@@ -219,7 +217,7 @@ function withBasePolicyFile<T>(
 function runAndCombine(context: RunContext): DiffReport {
   const { settings, comparison, layout, startedAt, baseSetup } = context;
   const baseRun = runBaseSide(context);
-  const headRun = withMoves(layout.moves.files, (baselineMovesFile) =>
+  const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
     runHeadAnalyzers(context, baselineMovesFile),
   );
   return combineAnalyzerReports({
@@ -253,9 +251,9 @@ function runAndCombine(context: RunContext): DiffReport {
   });
 }
 
-function runBaseAnalyzers(context: RunContext, baseAnalyzers: unknown): unknown {
+function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]): AnalyzerRun {
   const { settings, roots, basePolicyFile } = context;
-  return analyze({
+  return runAnalyzers({
     analyzers: baseAnalyzers,
     projectRoot: roots.baseProjectRoot,
     policyRoot: roots.headSnapshotRoot,
@@ -266,13 +264,13 @@ function runBaseAnalyzers(context: RunContext, baseAnalyzers: unknown): unknown 
     baselineRoot: undefined,
     baselineMovesFile: undefined,
     mutationScope: undefined,
-    ...runOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
+    ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
   });
 }
 
 function runBaseSide(context: RunContext): unknown {
   const { settings, comparison, layout, roots, baseSetup } = context;
-  const analyzers = quickScoped(settings, layout, baseSetup.analyzers);
+  const analyzers = quickScoped(settings, layout, listOf(baseSetup.analyzers));
   if (settings.cacheStore === undefined) {
     return runBaseAnalyzers(context, analyzers);
   }

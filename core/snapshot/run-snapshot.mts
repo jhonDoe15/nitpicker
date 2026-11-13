@@ -1,40 +1,16 @@
 import { analyzerMetadata, analyzerName } from '../diff/reporting/report-model.mjs';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
-import { runAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
-import { fieldOf } from '../../shared/values/readers.mts';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import type { ReportEntry } from '../../shared/values/findings.mts';
 
-type Finding = {
-  readonly tool?: string | undefined;
-  readonly path?: string | undefined;
-  readonly rule?: string | undefined;
-  readonly identity?: string | undefined;
-  readonly classification?: string | undefined;
-  readonly message?: unknown;
-};
-
-type AnalyzerRequest = Readonly<
-  Record<
-    | 'analyzers'
-    | 'projectRoot'
-    | 'policyRoot'
-    | 'toolRoot'
-    | 'snapshot'
-    | 'baselineRoot'
-    | 'baselineMovesFile'
-    | 'liveProjectRoot'
-    | 'headPolicyFile'
-    | 'mutationScope'
-    | 'logRoot'
-    | 'runTasks',
-    unknown
-  >
->;
+type Finding = ReportEntry;
 
 type Scope = unknown;
 
-type AnalyzerRun = {
-  readonly reports: ReadonlyMap<unknown, { readonly findings?: readonly Finding[] }>;
+type SnapshotRun = {
+  readonly reports: ReadonlyMap<string, { readonly findings: readonly Finding[] }>;
   readonly toolErrors: Finding[];
 };
 
@@ -73,13 +49,16 @@ export type QualitySnapshot = {
 
 const withPolicyFile: (
   headPolicy: object,
-  run: (headPolicyFile: unknown) => AnalyzerRun,
-) => AnalyzerRun = withHeadPolicyFile;
-const runAll: (request: AnalyzerRequest) => AnalyzerRun = runAnalyzers;
+  run: (headPolicyFile: unknown) => SnapshotRun,
+) => SnapshotRun = withHeadPolicyFile;
 const metadataOf: (analyzer: unknown, property: string) => unknown = analyzerMetadata;
 const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
-const inScope: (findingPath: string | undefined, scope: Scope) => boolean = isInScope;
+const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
+
+function sortKey(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
 
 function isEnforceable(finding: Finding): boolean {
   return finding.classification === 'enforceable';
@@ -97,7 +76,7 @@ export function runQualitySnapshot({
   ...execution
 }: SnapshotRequest): QualitySnapshot {
   const { reports, toolErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
-    runAll({
+    runAnalyzers({
       analyzers,
       projectRoot,
       policyRoot,
@@ -176,10 +155,10 @@ function overallStatusFor({
 function sortFindings(entries: Finding[]): Finding[] {
   return entries.sort(
     (left, right) =>
-      (left.tool ?? '').localeCompare(right.tool ?? '') ||
-      (left.path ?? '').localeCompare(right.path ?? '') ||
-      (left.rule ?? '').localeCompare(right.rule ?? '') ||
-      (left.identity ?? '').localeCompare(right.identity ?? ''),
+      sortKey(left.tool).localeCompare(sortKey(right.tool)) ||
+      sortKey(left.path).localeCompare(sortKey(right.path)) ||
+      sortKey(left.rule).localeCompare(sortKey(right.rule)) ||
+      sortKey(left['identity']).localeCompare(sortKey(right['identity'])),
   );
 }
 
@@ -215,7 +194,7 @@ function collectSnapshotFindings({
   reports,
   toolErrors,
   scope,
-}: AnalyzerRun & { readonly analyzers: readonly unknown[]; readonly scope: Scope }): {
+}: SnapshotRun & { readonly analyzers: readonly unknown[]; readonly scope: Scope }): {
   readonly findings: Finding[];
   readonly tools: ToolSummary[];
   readonly outside: number;
@@ -225,7 +204,7 @@ function collectSnapshotFindings({
   let outside = 0;
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
-    const reported = reports.get(fieldOf(analyzer, 'name'))?.findings ?? [];
+    const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
     toolErrors.push(
       ...reported
         .filter((finding) => finding.classification === 'tool-error')

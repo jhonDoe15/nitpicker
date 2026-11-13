@@ -5,10 +5,10 @@ import type { Edit } from '../fixtures/source.mts';
 import type { Contracts, Expectation, Inputs } from '../model/contract-types.mts';
 import { sha256 } from '../report/canonical.mts';
 
-export const LOOKUP_FILE = 'core/diff/cache/findings-cache.mjs';
+export const LOOKUP_FILE = 'core/diff/cache/findings-cache.mts';
 export const LOOKUP_ENTRY = 'lookUpCachedReport';
 const RESOLVER_NAME = 'resolveAnalyzerMetadata';
-const RESOLVER = `../execution/run-analyzers.mjs#${RESOLVER_NAME}`;
+const RESOLVER = `../execution/run-analyzers.mts#${RESOLVER_NAME}`;
 const VARIANT_DIRECTORY = 'reports/flow-model/real/variants';
 
 export const LOOKUP_CONTRACTS = Object.freeze({
@@ -111,7 +111,7 @@ type VariantSpec = {
 const EDIT_HINT = `${LOOKUP_FILE} changed, so update the seeded edits in evals/flow-model/real/lookup.mts`;
 
 function variant(text: string, { name, kind, edits, expect }: VariantSpec): Variant {
-  const file = kind === 'unchanged' ? LOOKUP_FILE : `${VARIANT_DIRECTORY}/${name}.mjs`;
+  const file = kind === 'unchanged' ? LOOKUP_FILE : `${VARIANT_DIRECTORY}/${name}.mts`;
   const edited = applyEdits(text, edits, EDIT_HINT);
   return { name, kind, file, entry: LOOKUP_ENTRY, text: edited, expect };
 }

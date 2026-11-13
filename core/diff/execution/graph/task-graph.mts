@@ -7,7 +7,7 @@ import {
   indexTasks,
 } from '../tasks.mts';
 import { type Release, type Semaphore, createWeightedSemaphore } from '../capacity.mts';
-import { createProgressReporter, writeToDescriptor } from '../progress.mjs';
+import { createProgressReporter, writeToDescriptor } from '../progress.mts';
 import { describeError } from '../../../../shared/messages/error-chain.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
@@ -42,13 +42,6 @@ type TaskRun = {
 
 type TimedRun = { readonly execute: Executor; readonly signal: AbortSignal | undefined };
 
-const progressReporter: (options: {
-  readonly write: unknown;
-  readonly label: unknown;
-  readonly total: unknown;
-}) => (
-  event: Omit<ProgressEvent, 'because'> & { readonly because: string | undefined },
-) => unknown = createProgressReporter;
 const errorText: (error: unknown) => string = describeError;
 
 function isAborted(signal: AbortSignal | undefined): boolean {
@@ -139,7 +132,7 @@ function descriptorProgress(tasks: unknown): OnSettled {
   if (progress === undefined) {
     return undefined;
   }
-  const report = progressReporter({
+  const report = createProgressReporter({
     write: writeToDescriptor,
     label: fieldOf(progress, 'label'),
     total: fieldOf(tasks, 'length'),
