@@ -22,7 +22,11 @@ import { renderSnapshotConsole as untypedConsole } from '../diff/reporting/summa
 
 import { textOf } from '../../shared/values/readers.mts';
 
-type ConsoleOptions = { readonly diagnosticsPath: string; readonly color: boolean };
+type ConsoleOptions = {
+  readonly diagnosticsPath: string;
+  readonly color: boolean;
+  readonly projectRoot: string;
+};
 
 const consoleOf: (report: SnapshotReport, options: ConsoleOptions) => unknown = untypedConsole;
 const appendSection: (

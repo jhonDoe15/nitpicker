@@ -78,6 +78,7 @@ function renderGateSummary(
     color = true,
     details = false,
     diagnosticsPath = 'reports/quality/diff/combined/report.txt',
+    projectRoot,
     snapshot = false,
   } = {},
 ) {
@@ -107,7 +108,7 @@ function renderGateSummary(
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
   lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
   appendNoteSummary(lines, report.notes, color);
-  appendToolErrorSummary(lines, otherErrors, { color });
+  appendToolErrorSummary(lines, otherErrors, { color, projectRoot });
   return gateTail(lines, report, { color, diagnosticsPath, snapshot });
 }
 

@@ -579,6 +579,14 @@ per function (with their count and lines), and a function prints at most three s
 then how many more there are. The headline still counts every mutant, and the reports above list
 each one.
 
+Tool errors that read the same once the project root is made relative print as one entry that names
+the analyzers and snapshots it covers, for example
+`coding-standards, coupling and 10 more (base and head): Cannot find package 'typescript' ...`. Paths
+under the project root print relative to it (`./node_modules/nitpicker/package.json`);
+`tool-errors.json` keeps the full messages. An analyzer skipped because another one failed shows as
+`crap skipped: coverage failed (see above)`, and folds into the failed analyzer's line when both are
+listed.
+
 The summary is colored only when standard output is a terminal, so a pipe, a file or an agent's
 shell tool gets plain text. `FORCE_COLOR` turns color on anywhere, for CI logs that render it
 (`FORCE_COLOR=0` or `false` turns it off), and `NO_COLOR` (any value) always turns it off, even with

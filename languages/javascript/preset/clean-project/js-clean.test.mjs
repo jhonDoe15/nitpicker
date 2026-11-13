@@ -18,8 +18,6 @@ const UNKNOWN_FOLDER_ADVICE =
   'Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), ' +
   'in shared/ when several features need it, or in the composition root. ' +
   'An exception fits only when this folder is deliberate.';
-const routed = (rule, file) =>
-  `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 const UNKNOWN_FOLDER_FILES = [
   ['billing/adapters/charge.js', 5],
   ['billing/index.js', 1],
@@ -70,9 +68,9 @@ const PLANTED_OUTPUT = [
   '  eslint-lint/nitpicker/no-comments: JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
   '    src/main/lint/banned.js:1:1',
   routeTo('nitpicker/no-comments', 'src/main/lint/banned.js'),
-  '  eslint-lint/@typescript-eslint/no-unsafe-return: Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
-  '    src/main/lint/banned.js:7:3',
-  routeTo('@typescript-eslint/no-unsafe-return', 'src/main/lint/banned.js'),
+  '  eslint-lint/@typescript-eslint/no-unsafe-member-access: Unsafe use of the `any` value `value` in keep: it affects 1 place. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
+  '    src/main/lint/banned.js:6:22',
+  routeTo('@typescript-eslint/no-unsafe-member-access', 'src/main/lint/banned.js'),
   '  eslint-lint/no-var: Unexpected var, use let or const instead.',
   '    src/main/lint/banned.js:10:1',
   routeTo('no-var', 'src/main/lint/banned.js'),

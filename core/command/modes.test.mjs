@@ -391,9 +391,8 @@ Quality gate summary
 ✖ 1 new enforceable violation
   fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-✖ 2 tool errors
-  crashing-analyzer (base): ${CRASH}
-  crashing-analyzer (head): ${CRASH}
+✖ 2 tool errors (1 distinct)
+  crashing-analyzer (base and head): ${CRASH}
 Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
