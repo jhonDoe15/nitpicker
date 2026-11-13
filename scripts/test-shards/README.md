@@ -212,3 +212,42 @@ Fewer runners also repeat the per-job setup (checkout, `npm ci`, toolchains) few
 change the sequencer estimated about 1,334 seconds per unit shard (run with one worker per vCPU,
 so roughly six to nine minutes of wall time) and 70 seconds for Go; the measured end-to-end loads
 are at the top of this file.
+
+## Validation of the shard counts
+
+The numbers below come from the eight most recent successful runs of each language workflow on
+`main`, taken on 2026-11-13 through the REST API: a shard job's time is its `completed_at` minus
+`started_at`, its setup overhead is that time minus its longest step (the test step), which
+includes checkout, Node, toolchain and cache restore, `npm ci`, the artifact upload and the post
+steps, and the queue delay is `started_at` minus `created_at`. Runner minutes add up every shard
+job of a run; the shard-plan, change-detection and aggregate jobs are not included. Each cell is
+the median of the eight runs with the range after it. Every run in the sample restored its npm,
+Maven, Gradle or pip caches, so no cold-cache timing exists in it; a cold run is expected to add
+the dependency download time to the setup overhead and to the first cases that resolve tools.
+The weights in `java-e2e.json`, `kotlin-e2e.json`, `python-e2e.json` and `go-e2e.json` were
+refreshed from the same logs (the median of the eight per-file times, rounded up to whole seconds).
+
+### Java: 4 shards, 72 files, 233 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 1,365 s | 1,119 to 1,679 s |
+| Median shard job | 1,149 s | 1,081 to 1,425 s |
+| Runner minutes per run | 77.5 | 71.2 to 98.1 |
+| Setup overhead per shard job | 42.5 s | 34 to 50 s |
+| Queue delay per shard job | 971 s | 4.5 to 4,305 s |
+
+The sequencer plans 1,102 seconds of test time for each of the four shards, so the plan is even and
+the measured spread between the shards comes from runner speed and from the Gradle and Maven
+builds inside the files. Nine of the 72 weights had drifted by more than a quarter and ten seconds
+(for example the Maven reactor modules file, 45 to 153 seconds, and the guards file, 160 to 56) and
+are refreshed.
+
+Outcome against the target of two to three minutes per runner: not met. The shards run about 19
+minutes of tests and the suite has grown from 124 to 233 cases since the 16-shard measurement of
+3,043 runner-seconds (50.7 runner minutes, median shard about 165 seconds). Going from 16 shards to
+four was a deliberate maintainer decision to fit more pull request runs into the account's
+concurrent job limit; it costs wall time per run and, with the larger suite, about 27 more runner
+minutes. Setup is about 4 percent of a shard job, so the setup repeated by additional shards is
+not what limits the shard count. Reaching the target again means returning to roughly 16 to 20
+shards, which only the queue delay (a median of 16 minutes in this sample) argues against.
