@@ -23,7 +23,7 @@ func runGoroutine(pass *analysis.Pass) (any, error) {
 	declarations := functionBodies(pass)
 	for cursor := range support.Root(pass).Preorder((*ast.GoStmt)(nil)) {
 		statement := cursor.Node().(*ast.GoStmt)
-		if support.InTestFile(pass, statement) || owned(pass.TypesInfo, statement.Call, declarations) {
+		if owned(pass.TypesInfo, statement.Call, declarations) {
 			continue
 		}
 		pass.Reportf(statement.Pos(), "%s", goroutineMessage)

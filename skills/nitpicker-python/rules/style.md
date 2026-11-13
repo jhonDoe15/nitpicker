@@ -18,6 +18,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`def send(message, *, urgent=False)`), two functions or an enum.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
+- Boolean logic in its simplest exact form: `return a < b`, not an `if` that returns `True` and
+  `False`; one `if a and b:`, not an `if` that only holds another `if`; `a != b`, not `not a == b`;
+  `if ready:` first rather than `if not ready:` with an `else` (and `b if ready else a`); `not (a or b)`,
+  not `not a and not b` (`simpler-boolean-logic`, ruff `SIM`).
 - No method that only passes its parameters on to another method of the same class
   (`def total(self, items): return self._sum(items)`): call that method directly (or, when it is less visible, rename it to the alias's name and delete the alias).
 - Imports: name what you use. No `from module import *`.

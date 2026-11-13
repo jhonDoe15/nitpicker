@@ -89,6 +89,7 @@ const REVIEW_RULES = new Set([
   'RegexPartDefect',
   'BacktrackingRegex',
   'ProcessWaitWithoutTimeout',
+  'FutureWithoutException',
   'LogFormatArguments',
   'LogExceptionFirst',
   'RecursiveMapUpdate',

@@ -55,7 +55,8 @@ Before you change code other packages use, or fix a bug, read
 The linters' allowed forms (errors, names and doc comments, simplifications, modern forms): read
 [rules/linters.md](rules/linters.md) before you write Go. nitpicker's own rules (panics, logged
 and swallowed errors, goroutine owners, root contexts, sleeps, package state, interfaces, `any`,
-names, HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets): read
+names, HTTP timeouts, I/O in loops, repeated strings, task markers, method aliases, secrets, test
+honesty): read
 [rules/own-rules.md](rules/own-rules.md).
 
 ## Write it this way
@@ -79,8 +80,10 @@ names, HTTP timeouts, I/O in loops, repeated strings, task markers, method alias
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
-- A migration that adds a foreign key also creates an index that starts with its columns
-  (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one (`foreign-key-index`).
+- A migration or sqlc schema file that adds a foreign key also creates an index that starts with
+  its columns (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one
+  (`foreign-key-index`). Without migrations, a GORM foreign-key field gets `gorm:"index"` and an
+  ent edge that holds the key gets `index.Edges("owner")` (`go-rules/unindexed-foreign-key`).
 
 ## Reuse, packages and dead code
 
@@ -120,6 +123,18 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   as one). A package folder holds at most 6 files and 6 test files directly (`doc.go` does not
   count): split it into packages by what they do. A package sits at most 4 levels below the module
   root; `internal` does not count as a level.
+- Test every outcome of each branch you write: both sides of an `if` (the body and the condition
+  false), every `case` and, without a `default`, a value no case matches, and every loop body
+  (`changed-branch-coverage`). A function's CRAP score (complexity and coverage) stays below 9:
+  test it, or split a branchy part into its own function.
+- Assert on the values your code computes, so a test fails when a line you changed is mutated: a
+  boundary (`>` to `>=`), an operator, a removed call or an emptied `case` that no test notices is a
+  `mutant-survived` finding, and code no test runs is `mutant-nocoverage`. Test the boundary value
+  itself (`Fee(100)` next to `Fee(200)`). Editing a test must not drop an assertion the base tests
+  had: a mutant the old tests caught and the new ones miss fails too.
+- The tests run under the race detector. A `race/data-race` finding names both accesses to the
+  same memory: guard it with a `sync.Mutex`, make it a `sync/atomic` value, or hand it over through
+  a channel. Run `go test -race ./...` yourself to reproduce it.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.

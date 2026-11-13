@@ -7,7 +7,7 @@ import {
   createPythonAnalyzers,
 } from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
-import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
+import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
@@ -180,12 +180,18 @@ describe('analyzer timeouts', () => {
       [
         ['java', createJavaAnalyzer()],
         ['kotlin', createJavaAnalyzer({ kotlin: true })],
-        ['go', createGoAnalyzer()],
+        ['go', createGoAnalyzers()[0]],
       ].map(
         ([preset, analyzer]) =>
           timeoutsOf({ preset, analyzerTimeoutMinutes: { [preset]: 120 } }, [analyzer])[preset],
       ),
     ).toEqual([120 * MINUTE_MS, 120 * MINUTE_MS, 120 * MINUTE_MS]);
+    expect(
+      timeoutsOf(
+        { preset: 'go', analyzerTimeoutMinutes: { [MUTATION_ANALYZER_NAME]: 90 } },
+        createGoAnalyzers(),
+      )[MUTATION_ANALYZER_NAME],
+    ).toBe(90 * MINUTE_MS);
   });
 
   it('accepts a disabled analyzer and rejects an unknown one', () => {
