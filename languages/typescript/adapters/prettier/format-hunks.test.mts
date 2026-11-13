@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formattingHunks } from './format-hunks.mjs';
+import { formattingHunks } from './format-hunks.mts';
 
 describe('formattingHunks', () => {
   it('returns nothing for identical text', () => {

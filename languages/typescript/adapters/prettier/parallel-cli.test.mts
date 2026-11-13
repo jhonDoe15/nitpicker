@@ -10,11 +10,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { exclusionIgnoreLines, listUnformattedInParallel } from './parallel-cli.mjs';
+import { toolBinaryPath } from '../typed/tooling.mts';
+import { exclusionIgnoreLines, listUnformattedInParallel } from './parallel-cli.mts';
 
-const toolPath = resolveTool('prettier', { bin: 'bin/prettier.cjs' }).binPath;
-const temporaryRoots = [];
+const toolPath = toolBinaryPath('prettier', { bin: 'bin/prettier.cjs' });
+const temporaryRoots: string[] = [];
 const UNFORMATTED = 'export const value = {a:1}\n';
 const patterns = ['src/**/*.{ts,mjs,json}', 'tests/**/*.ts', '*.{ts,json}'];
 
@@ -24,7 +24,7 @@ afterAll(() => {
   }
 });
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-prettier-parallel-'));
   temporaryRoots.push(root);
   for (const [relativePath, content] of Object.entries(files)) {
@@ -34,7 +34,7 @@ function project(files) {
   return root;
 }
 
-function policyProject(files) {
+function policyProject(files: Readonly<Record<string, string>>): string {
   return project({
     '.nitpicker-diff-prettier.json': '{"singleQuote": true}\n',
     '.nitpicker-diff-prettierignore': '.nitpicker-*\n/src/ignored/\n',
@@ -42,7 +42,7 @@ function policyProject(files) {
   });
 }
 
-function listInParallel(projectRoot, exclusions) {
+function listInParallel(projectRoot: string, exclusions: readonly string[]): string[] | undefined {
   return listUnformattedInParallel({
     toolPath,
     projectRoot,
@@ -141,7 +141,7 @@ describe('Prettier parallel CLI listing', () => {
 });
 
 describe('exclusionIgnoreLines', () => {
-  function linesFor(exclusions) {
+  function linesFor(exclusions: readonly string[]): string[] | undefined {
     return exclusionIgnoreLines(exclusions, { projectRoot: policyProject(projectFiles), patterns });
   }
 

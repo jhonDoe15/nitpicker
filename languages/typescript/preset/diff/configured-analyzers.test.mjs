@@ -22,7 +22,8 @@ function invocationEntries(analyzer) {
   });
   return args
     .map((argument) => packageFile(path.resolve(packageRoot, argument)))
-    .filter((file) => file?.endsWith('.mjs'));
+    .filter((file) => file !== undefined && /\.m[jt]s$/u.test(file))
+    .map((file) => file.replace(/\.mts$/u, '.mjs'));
 }
 
 const analyzers = [
