@@ -224,14 +224,17 @@ test suite that waits on the network, or a project larger than the budget allows
 **Symptom.** `<analyzer> crashed with exit 1: ...`, `crashed with signal SIGKILL`, `<analyzer> did not
 produce valid JSON`, `<analyzer> exceeded the analyzer output limit`, `<analyzer> emitted a finding for
 unexpected tool <tool>`, `Analyzer scheduler crashed with exit 1: ...`, `Analyzer scheduler returned
-invalid JSON`, `Hygiene check failed: ...` or `History check failed: ...`, or `<analyzer> reported a finding
-that nitpicker cannot check, left out of the result; its other findings are kept`.
+invalid JSON`, `Hygiene check failed: ...` or `History check failed: ...`, `<analyzer> reported a finding
+that nitpicker cannot check, left out of the result; its other findings are kept`, or an `internal-error`
+tool error of the `java` (or `kotlin`) analyzer: `Internal error in the java analyzer: ...`.
 
 **Cause.** Analyzers run as child processes that report findings as JSON. This message means the
 process died, was killed (an out-of-memory kill shows as `SIGKILL`), printed something that is not a
 findings report, or printed too much. For a custom analyzer from the `analyzers` key, the cause is
 usually the command itself: a non-zero exit, text on stdout besides the JSON, or findings that do not
-match the finding schema (`tool` must equal the entry's `name`).
+match the finding schema (`tool` must equal the entry's `name`). An `internal-error` of the Java or
+Kotlin analyzer means the build ran but nitpicker's own code failed on it, often while reading a tool
+report the build left empty or cut off.
 
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
 job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. For a custom analyzer, run
