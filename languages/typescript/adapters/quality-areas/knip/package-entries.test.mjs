@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { compareText } from '../../../../../shared/paths/path-order.mjs';
-import { runDeadCode } from '../runners/repository.mjs';
+import { runDeadCode } from '../runners/repository.mts';
 import { nestedPackageFolders, publishedSourceEntries } from './package-entries.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');

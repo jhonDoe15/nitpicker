@@ -2,7 +2,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parse } from 'acorn';
 import { expect, it } from 'vitest';
-import { applyVitestTimeouts, timeoutSetupSource } from './test-timeouts-setup.mjs';
+import { applyVitestTimeouts, timeoutSetupSource } from './test-timeouts-setup.mts';
 
 it('writes valid setup imports when the install directory contains an apostrophe', () => {
   const root = path.resolve("owner's nitpicker");

@@ -6,7 +6,7 @@ import {
   unknownOnBaseFor,
 } from '../../../core/diff/comparison/base-red/unknown-base.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReportKeepingValid } from '../../../core/diff/comparison/schema/invalid-findings.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mjs';
@@ -188,7 +188,7 @@ export function collectJavaReport(root, options = {}) {
   const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
-  const parsed = parseAnalyzerReport(
+  const parsed = parseAnalyzerReportKeepingValid(
     {
       findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
     },

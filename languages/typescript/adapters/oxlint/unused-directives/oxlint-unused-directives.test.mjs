@@ -1,7 +1,7 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { withSharedUnusedDirectives } from '../../eslint/merge/unused-directives.mjs';
 import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
 

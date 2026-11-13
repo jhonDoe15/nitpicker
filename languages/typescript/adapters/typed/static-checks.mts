@@ -1,9 +1,8 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
-import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
-import { applyAreaExceptions as applyUntypedAreaExceptions } from '../exceptions/area-exceptions.mjs';
-import { withTypeScriptHint as withUntypedTypeScriptHint } from '../hints/tool-failure-hint.mjs';
+import type { CruiseViolation } from '../dependency-graph/project-dependency-graph.mts';
+import { withTypeScriptHint } from '../hints/tool-failure-hint.mts';
 import {
   prepareSnapshotDependencies as prepareUntypedSnapshotDependencies,
   removeSnapshotDependencies as removeUntypedSnapshotDependencies,
@@ -11,49 +10,18 @@ import {
 import { sharedReachPath as untypedSharedReachPath } from '../../preset/architecture/strict-boundary-rules.mjs';
 import { existingRoots as untypedExistingRoots } from '../../preset/layout.mjs';
 
-export type CruiseViolation = {
-  readonly rule?: unknown;
-  readonly from?: unknown;
-  readonly to?: unknown;
-  readonly type?: unknown;
-  readonly cycle?: unknown;
-  readonly via?: unknown;
-};
-
-export type CruiseSummary = {
-  readonly violations?: unknown;
-  readonly ruleSetUsed?: {
-    readonly forbidden?: readonly unknown[];
-    readonly required?: readonly unknown[];
-  };
-};
-
-export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?: unknown };
-
-export type DependencyGraphRequest = {
-  readonly projectRoot: string;
-  readonly policyRoot: string;
-  readonly liveProjectRoot?: string;
-  readonly patterns: readonly string[];
-  readonly exclude: string | undefined;
-  readonly includeOnly?: string | undefined;
-  readonly configRelativePath?: string;
-  readonly reportsConfigErrors: boolean;
-};
-
 export type SnapshotDependencyRequest = {
   readonly projectRoot: string;
   readonly policyRoot: string;
   readonly liveProjectRoot: string;
 };
 
-export const loadDependencyGraph: (request: DependencyGraphRequest) => CruiseReport =
-  loadUntypedDependencyGraph;
-
-export const applyAreaExceptions: (findings: readonly Finding[]) => Finding[] =
-  applyUntypedAreaExceptions;
-
-export const withTypeScriptHint: (failure: unknown) => Error = withUntypedTypeScriptHint;
+export {
+  type CruiseReport,
+  type CruiseSummary,
+  type CruiseViolation,
+  loadDependencyGraph,
+} from '../dependency-graph/project-dependency-graph.mts';
 
 export const sharedReachPath: (
   violation: CruiseViolation,
@@ -84,9 +52,17 @@ export async function writeAdapterFindings(
   findingsOf: () => Promise<readonly Finding[]>,
   output: AdapterOutput,
 ): Promise<number> {
+  return writeAdapterReport(failurePrefix, async () => ({ findings: await findingsOf() }), output);
+}
+
+export async function writeAdapterReport(
+  failurePrefix: string,
+  reportOf: () => Promise<{ readonly findings: readonly Finding[] }>,
+  output: AdapterOutput,
+): Promise<number> {
   try {
-    const findings = await findingsOf();
-    output.stdout.write(`${JSON.stringify({ findings })}\n`);
+    const report = await reportOf();
+    output.stdout.write(`${JSON.stringify(report)}\n`);
     return 0;
   } catch (failure) {
     const error = withTypeScriptHint(failure);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { testCallsOf } from './test-calls.mjs';
+import { testCallsOf } from './test-calls.mts';
 
 const SOURCE = `describe('checkout', () => {
   it('pays', () => {});

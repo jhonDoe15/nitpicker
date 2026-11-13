@@ -13,5 +13,6 @@ public class Banned {
   public InputStream open(String file) throws IOException { return new FileInputStream(file); }
   public IvParameterSpec iv() { return new IvParameterSpec("constant iv here".getBytes(StandardCharsets.UTF_8)); }
   public void copy(int[] from, int[] to) { for (int i = 0; i < from.length; i++) { to[i] = from[i]; } }
+  public String label(String name, int width) { return name; }
   public void all(String[] names, List<String> into) { for (String name : names) { into.add(name); } }
 }
