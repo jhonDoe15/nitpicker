@@ -3,8 +3,7 @@ import { comparisonKey } from '../../comparison/fingerprint.mjs';
 import { plainText } from '../../../../shared/reference/facts.mjs';
 import { entryForFinding, referenceUrl } from '../../../../shared/reference/store.mjs';
 import { repositoryFindingPath } from '../../git/paths.mjs';
-import type { ReferenceLinks } from '../reporters.mts';
-import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import type { ReferenceLinks, ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
 export type SarifEntry = { readonly finding: ReportEntry; readonly baselineState?: string };

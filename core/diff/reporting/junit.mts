@@ -1,4 +1,4 @@
-import { noteSectionLines } from './format/notes.mjs';
+import { noteSectionLines as noteLines } from './format/notes.mts';
 import { singleLine } from './format/text.mjs';
 import { junitRunProfile } from '../../quick/report-formats.mjs';
 import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
@@ -11,7 +11,6 @@ type JunitProfile = {
 };
 
 const oneLine: (value: unknown) => string = singleLine;
-const noteLines: (notes: ReportEntry[]) => string[] = noteSectionLines;
 const profileOf: (
   summary: unknown,
   classname: string,

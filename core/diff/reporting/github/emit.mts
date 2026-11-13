@@ -3,7 +3,7 @@ import { GitCommandError, runGit } from '../../git/repository/command.mjs';
 import { renderDiffSummary } from './diff-summary.mts';
 import { renderSnapshotSummary } from './snapshot-summary.mts';
 import { annotationLines } from './workflow-commands.mts';
-import { withoutSkipNotices } from '../summary.mjs';
+import { withoutSkipNotices as withoutSkips } from '../summary.mts';
 import type { LinkContext } from './markdown.mts';
 import type { SnapshotSummaryReport } from './snapshot-summary.mts';
 import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
@@ -25,7 +25,6 @@ type GithubOutput = GithubReport & {
 
 export type OutputPlan = { readonly summaryPath: string | undefined; readonly annotate: boolean };
 
-const withoutSkips: (toolErrors: readonly ReportEntry[]) => ReportEntry[] = withoutSkipNotices;
 const gitOutput: (root: string, args: readonly string[]) => string = runGit;
 
 function setting(environment: Environment, name: string): string | undefined {

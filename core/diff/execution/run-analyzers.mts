@@ -1,10 +1,10 @@
-import { analyzerName } from '../reporting/report-model.mjs';
+import { analyzerName as nameOf } from '../reporting/report-model.mts';
 import { type Invocation, validateAnalyzer, validateInvocation } from './validation/analyzers.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
-import { LOG_DIRECTORY } from '../reporting/reporters.mts';
+import { LOG_DIRECTORY as logDirectory } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';
@@ -57,7 +57,6 @@ export type MetadataContext = { readonly liveProjectRoot: unknown; readonly poli
 
 type Resolver = (root: unknown) => unknown;
 
-const nameOf: (analyzer: unknown, index: number) => string = analyzerName;
 const reportsNamed: (
   reports: Map<string, unknown>,
   snapshotRoot: object | undefined,
@@ -67,7 +66,6 @@ const errorsNamed: (
   snapshotRoot: object | undefined,
 ) => ReportEntry[] = namedToolErrors;
 const errorText: (error: unknown) => string = describeError;
-const logDirectory: string = LOG_DIRECTORY;
 
 const DEFAULT_ANALYZER_TIMEOUT_MS = 5 * 60 * 1000;
 

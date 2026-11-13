@@ -5,7 +5,7 @@ import { ingestPit } from '../../../../languages/java/ingest/pit.mjs';
 import { ingestMutmut } from '../../../../languages/python/ingest/mutmut.mjs';
 import { normalizeMutation } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
 import { json } from '../reporters.mts';
-import { renderConsoleSummary } from '../summary.mjs';
+import { renderConsoleSummary } from '../summary.mts';
 
 const recordedMutmutRun = JSON.parse(
   readFileSync(

@@ -1,14 +1,17 @@
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { renderTextReport } from './text.mjs';
+import { renderTextReport as textReport } from './text.mts';
 import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
-import { heldFindingsOf } from './report-model.mjs';
+import { heldFindingsOf as heldFindings } from './report-model.mts';
 import { referenceLinks, withHelpUris } from '../../../shared/reference/store.mjs';
-import { CODE_QUALITY_REPORT_FILE_NAME, renderCodeQualityReport } from './format/codequality.mjs';
-import type { ReportData } from '../../../shared/values/findings.mts';
+import {
+  CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
+  renderCodeQualityReport as codeQualityReport,
+} from './format/codequality.mts';
+import type { ReferenceLinks, ReportData } from '../../../shared/values/findings.mts';
 
-export type ReferenceLinks = { index(): unknown; root(): unknown };
+export type { ReferenceLinks };
 
 export type RenderOptions = {
   readonly reference: ReferenceLinks;
@@ -26,14 +29,8 @@ type ReportLocation = {
   readonly repositoryRoot?: string | undefined;
 };
 
-const textReport: (report: ReportData, options: RenderOptions) => string = renderTextReport;
-const helpUris: (findings: readonly unknown[], reference: ReferenceLinks) => unknown =
-  withHelpUris;
-const heldFindings: (report: ReportData) => readonly unknown[] = heldFindingsOf;
-const codeQualityReport: (findings: readonly unknown[], options: RenderOptions) => string =
-  renderCodeQualityReport;
+const helpUris: (findings: readonly unknown[], reference: ReferenceLinks) => unknown = withHelpUris;
 const links: () => ReferenceLinks = referenceLinks;
-const CODE_QUALITY_FILE: string = CODE_QUALITY_REPORT_FILE_NAME;
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 

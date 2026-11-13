@@ -12,17 +12,14 @@ import {
   toolErrorList,
 } from './markdown.mts';
 import { scopeLine } from '../../../scope/scope-findings.mjs';
-import { partialRunLines } from '../partial-run/partial-run.mjs';
-import { failingHeadTests } from '../failing-tests/failing-tests.mjs';
+import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mts';
+import { failingHeadTests as failingTests } from '../failing-tests/failing-tests.mts';
 import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
 
 type Summary = ReportData['summary'];
 
-const failingTests: (toolErrors: readonly ReportEntry[]) => readonly ReportEntry[] =
-  failingHeadTests;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
-const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
 
 function failingTestsHeadline(report: ReportData): string | undefined {
   const [firstFailing, ...otherFailing] = failingTests(report.toolErrors);
