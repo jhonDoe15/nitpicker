@@ -1,10 +1,24 @@
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings as untypedCollectJavaFindings } from '../../java-diff.mjs';
+
+type Build = 'gradle' | 'maven';
+type UnboundFinding = {
+  readonly rule: string;
+  readonly path: string;
+  readonly identity: string;
+  readonly location?: { readonly line?: number };
+};
+
+const collectJavaFindings: (root: string, options?: object) => UnboundFinding[] =
+  untypedCollectJavaFindings;
 
 const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/spring-unbound-project');
-const BUILD_FILES = { gradle: ['build.gradle.kts', 'settings.gradle.kts'], maven: ['pom.xml'] };
+const BUILD_FILES: Readonly<Record<Build, readonly string[]>> = {
+  gradle: ['build.gradle.kts', 'settings.gradle.kts'],
+  maven: ['pom.xml'],
+};
 
 export const UNBOUND_FINDINGS = [
   'src/main/resources/application.yml:16 shop.mail.retry.maxatempts',
@@ -20,7 +34,7 @@ export const UNBOUND_FINDINGS = [
   'src/test/resources/application-test.properties:2 server.prot',
 ];
 
-function copyFixture(roots, build) {
+function copyFixture(roots: string[], build: Build): string {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-unbound-${build}-`));
   roots.push(root);
   cpSync(FIXTURE, root, { recursive: true });
@@ -31,8 +45,11 @@ function copyFixture(roots, build) {
   return root;
 }
 
-export function unboundProjects() {
-  const roots = [];
+export function unboundProjects(): {
+  readonly findings: (build: Build, options?: object) => string[];
+  readonly remove: () => void;
+} {
+  const roots: string[] = [];
   return {
     findings: (build, options) =>
       collectJavaFindings(copyFixture(roots, build), options)
