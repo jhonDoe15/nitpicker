@@ -219,6 +219,16 @@ The project is the nearest directory, up to the repository root, that holds a `p
 Java `service/`, runs nitpicker once in each directory, and each reads its own
 `nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
 
+### The fix loop
+
+The loop is: run `npx nitpicker --fix` in the background and wait for its exit code, read the
+findings, fix them, and rerun until it exits 0. While you iterate, `--quick` or `--analyzer <name>`
+is faster, and the run you finish with is always a full one. If the console output is cut off, read
+`reports/quality/diff/report.txt`. The note about existing findings in edited code never fails a
+run. The steps for each language are in the `nitpicker-<preset>` skill (`npx nitpicker init` installs
+it), and the same loop for an `AGENTS.md` is in the [agent snippet](agents-snippet.md). Both are
+generated from one source, so they do not repeat or contradict this guide.
+
 ### One file or folder
 
 Pass files or folders to look at only part of the project:
