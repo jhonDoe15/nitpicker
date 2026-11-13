@@ -137,8 +137,8 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
     ...run,
     kotlin: preset === 'kotlin' && fieldOf(moduleManifest, 'kotlin') === true,
     quick: options['quick'] === true,
-    mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, preset),
     ...reportingOf(options, module, preset),
+    mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, preset),
   };
   const findings = readModuleFindings(context, options['crapLimit']);
   return listOf(withoutMainMethodFindings(findings, sourceTextReader(projectRoot)));

@@ -1,5 +1,8 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { readModuleJacoco, withoutExcludedFiles } from './report-modules.mts';
+import { isEmptyModule, readModuleJacoco, withoutExcludedFiles } from './report-modules.mts';
 
 const finding = (file) => ({ tool: 'detekt', rule: 'MagicNumber', path: file });
 
@@ -37,5 +40,21 @@ describe('the coverage of an Android or Multiplatform project', () => {
     const module = { reportRoot: '/missing', manifest: { kotlinSourceModule: true } };
 
     expect(readModuleJacoco(module, 'kotlin')).toBeUndefined();
+  });
+});
+
+describe('a project whose sources sit outside its analysis root', () => {
+  it('is not empty when a source root next to the project holds Java files', () => {
+    const base = mkdtempSync(path.join(tmpdir(), 'outside-roots-'));
+    try {
+      mkdirSync(path.join(base, 'common/src/shop'), { recursive: true });
+      writeFileSync(path.join(base, 'common/src/shop/Cart.java'), 'class Cart {}');
+      mkdirSync(path.join(base, 'app'));
+      const module = { reportRoot: '/missing', manifest: { sourceRoots: ['../common/src'] } };
+
+      expect(isEmptyModule(path.join(base, 'app'), module)).toBe(false);
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });
