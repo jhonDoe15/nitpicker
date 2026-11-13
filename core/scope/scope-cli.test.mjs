@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { maskedDiagnostics } from '../diff/reporting/test-support/output-expectations.mjs';
 import {
   crashingAnalyzer,
   fakeAnalyzer,
@@ -192,20 +193,17 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toBe(
+    expect(maskedDiagnostics(output.stdoutText)).toBe(
       [
-        'Nitpicker quality snapshot',
-        'Status: violations',
+        '',
+        'Quality snapshot summary',
         'Scope: src/billing (1 finding outside it not shown)',
-        'Enforceable findings: 1',
-        'Descriptive findings: 0',
-        'Tool errors: 0',
-        '',
-        'Per-tool counts:',
-        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
-        '',
-        'Enforceable findings:',
-        'fake-quality-analyzer/fixture-rule src/billing/bill.ts:1 Fixture finding',
+        '✖ 1 enforceable finding',
+        '  fake-quality-analyzer/fixture-rule: Fixture finding',
+        '    src/billing/bill.ts:1:4',
+        'By analyzer:',
+        '  fake-quality-analyzer: 1 enforceable, 0 descriptive',
+        'Full diagnostics: <path>',
         '',
       ].join('\n'),
     );

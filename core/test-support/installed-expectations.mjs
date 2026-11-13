@@ -72,25 +72,19 @@ export function expectedDirtyFindings(links) {
   ];
 }
 /** What a snapshot run of the installed package prints. */
-export function expectedSnapshotOutput(links) {
+export function expectedSnapshotOutput() {
   return [
     "Following this project's conventions:",
     '  Trailing commas: none (used by 1 of 1 measured files)',
-    'Nitpicker quality snapshot',
-    'Status: violations',
-    'Enforceable findings: 2',
-    'Descriptive findings: 0',
-    'Tool errors: 0',
+    '',
+    'Quality snapshot summary',
+    '✖ 2 enforceable findings',
+    `  prettier-format/prettier/prettier: ${PRETTIER_MESSAGE}`,
+    '    src/main/example.ts:1, 3',
+    'By analyzer:',
+    '  prettier-format: 2 enforceable, 0 descriptive',
     'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
-    '',
-    'Per-tool counts:',
-    'prettier-format: total=2 enforceable=2 descriptive=0',
-    '',
-    'Enforceable findings:',
-    `prettier-format/prettier/prettier src/main/example.ts:1 ${PRETTIER_MESSAGE}`,
-    `prettier-format/prettier/prettier src/main/example.ts:3 ${PRETTIER_MESSAGE}`,
-    '',
-    `Rule reference: ${links.tagRoot}/docs/rules/README.md (nitpicker explain <tool/rule> prints one rule)`,
+    'Full diagnostics: reports/snapshot/report.txt',
     'nitpicker: head: running 1 analyzer',
     '',
   ].join('\n');

@@ -10,3 +10,7 @@ export function exactText(parts, ...values) {
   }, '');
   return new RegExp(`^(?:${pattern})(?![^])`);
 }
+
+export function maskedDiagnostics(text) {
+  return text.replace(/^Full diagnostics: .*$/mu, 'Full diagnostics: <path>');
+}
