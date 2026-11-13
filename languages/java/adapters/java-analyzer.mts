@@ -4,7 +4,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mjs';
+import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mts';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mts';

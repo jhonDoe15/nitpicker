@@ -16,10 +16,10 @@ import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
-import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mjs';
+import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mts';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
-import { testRunFindings } from '../test-runs/test-run-findings.mjs';
-import { readClassLimitFindings } from '../size/class-limits.mjs';
+import { testRunFindings } from '../test-runs/test-run-findings.mts';
+import { readClassLimitFindings } from '../size/class-limits.mts';
 import {
   declarationUnits,
   functionLocator,
@@ -28,8 +28,8 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
-import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
-import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
+import { withoutMainMethodFindings } from './entry-point/main-method.mts';
+import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
