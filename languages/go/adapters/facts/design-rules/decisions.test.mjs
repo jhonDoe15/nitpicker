@@ -92,3 +92,62 @@ describe('repeated-policy-decision on Go facts', () => {
     expect(run([method], decisions)).toEqual([]);
   });
 });
+
+describe('foreign-state-decision on Go facts', () => {
+  const account = owner('ledger/account.go', 'Account', {
+    kind: 'class',
+    fields: [{ name: 'Status' }, { name: 'Tier' }, { name: 'Name' }],
+  });
+
+  function reader(file, name, decided) {
+    return fn(owner(file), name, {
+      reads: [{ type: account.id, fields: ['Name', ...decided], decided, line: 5 }],
+    });
+  }
+
+  function rows(sites) {
+    const callables = sites.map(([file, name, decided]) => reader(file, name, decided));
+    const files = [...new Set(callables.map(({ file }) => file))];
+    return designRows(
+      { types: [account, ...files.map((file) => owner(file))], callables },
+      'foreign-state-decision',
+      { module: 'shop' },
+    ).map(({ identity }) => identity);
+  }
+
+  it('reports two files that branch on the same two fields of a struct', () => {
+    expect(
+      rows([
+        ['app/limit.go', 'Limit', ['Status', 'Tier']],
+        ['app/quota.go', 'Quota', ['Tier', 'Status']],
+      ]),
+    ).toEqual(['ledger/account.go#Account|Status,Tier']);
+  });
+
+  it.each([
+    ['one decided field', [['Status'], ['Status']]],
+    [
+      'different fields',
+      [
+        ['Status', 'Tier'],
+        ['Name', 'Tier'],
+      ],
+    ],
+  ])('passes %s', (_, decided) => {
+    expect(
+      rows([
+        ['app/limit.go', 'Limit', decided[0]],
+        ['app/quota.go', 'Quota', decided[1]],
+      ]),
+    ).toEqual([]);
+  });
+
+  it('passes decisions made inside the struct file', () => {
+    expect(
+      rows([
+        ['ledger/account.go', 'Active', ['Status', 'Tier']],
+        ['ledger/account.go', 'Frozen', ['Status', 'Tier']],
+      ]),
+    ).toEqual([]);
+  });
+});

@@ -89,7 +89,8 @@ func (e *Env) packageCallee(alias, name string) Callee {
 		return Callee{Kind: Function, Func: function}
 	}
 	if project := target.Types[name]; project != nil {
-		return Callee{Kind: Conversion, Type: index.Ty{Expr: &ast.SelectorExpr{X: ast.NewIdent(alias), Sel: ast.NewIdent(name)}, File: e.File}}
+		qualified := &ast.SelectorExpr{X: ast.NewIdent(alias), Sel: ast.NewIdent(name)}
+		return Callee{Kind: Conversion, Type: index.Ty{Expr: qualified, File: e.File}}
 	}
 	return Callee{}
 }

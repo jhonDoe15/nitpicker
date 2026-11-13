@@ -57,7 +57,9 @@ func TestListsTypesFieldsAndEnumCases(t *testing.T) {
 	if status.Kind != "enum" || !reflect.DeepEqual(status.Cases, []string{"Open", "Paid", "Closed"}) {
 		t.Fatalf("status %s", dump(status))
 	}
-	if typeNamed(t, facts, "orders/cart.go#Settings").Kind != "data" || typeNamed(t, facts, "orders/cart.go#Reader").Kind != "interface" {
+	settings := typeNamed(t, facts, "orders/cart.go#Settings")
+	reader := typeNamed(t, facts, "orders/cart.go#Reader")
+	if settings.Kind != "data" || reader.Kind != "interface" {
 		t.Fatalf("kinds %s", dump(facts.Types))
 	}
 }

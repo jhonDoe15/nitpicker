@@ -21,6 +21,8 @@ import {
   WIDE_THREADING_FILES,
 } from './state-fixtures.mjs';
 
+import { FOREIGN_DECISION_FILES, SINGLE_FIELD_FILES } from './reads-fixtures.mjs';
+
 export const SCENARIOS = [
   {
     branch: 'escaping',
@@ -116,6 +118,18 @@ export const SCENARIOS = [
     branch: 'different-policy',
     title: 'passes two packages that group the constants differently',
     files: DIFFERENT_POLICY_FILES,
+    expected: [],
+  },
+  {
+    branch: 'foreign-decision',
+    title: 'reports two packages that branch on the same two fields of a struct they do not own',
+    files: FOREIGN_DECISION_FILES,
+    expected: ['foreign-state-decision internal/ledger/account.go descriptive'],
+  },
+  {
+    branch: 'single-field',
+    title: 'passes two packages that each branch on one field of the struct',
+    files: SINGLE_FIELD_FILES,
     expected: [],
   },
 ];

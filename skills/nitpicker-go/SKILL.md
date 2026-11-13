@@ -140,6 +140,9 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
 - Two packages that group the constants of one enum or field the same way (`Card` and `Paypal` as
   one case in a `switch` here and an `if` there) repeat a rule (`repeated-policy-decision`,
   report-only): give the type one function or method that answers it and call it.
+- Functions in other files that branch on the same two fields of a struct that has methods
+  (`o.Status` and `o.Tier` in an `if` here and a `switch` there) decide for it
+  (`foreign-state-decision`, report-only): move the decision into a method of the struct.
 
 ## Size and tests
 

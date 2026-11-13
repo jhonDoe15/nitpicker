@@ -27,6 +27,7 @@ const GO_DESIGN_RULES = new Set([
   DESIGN_RULE_IDS.disjointConsumerGroups,
   DESIGN_RULE_IDS.dataClump,
   DESIGN_RULE_IDS.repeatedPolicyDecision,
+  DESIGN_RULE_IDS.foreignStateDecision,
 ]);
 
 export const DESIGN_RULE_LANGUAGES = Object.fromEntries(
