@@ -16,6 +16,9 @@ import {
   projectTypeScript,
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
+import { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+
+export { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -131,24 +134,6 @@ export function normalizeTypeScriptDiagnostics({
     }
     return finding;
   });
-}
-
-export function contextOnlyFiles(
-  configPath: string,
-  projectRoot: string,
-  layout: ReturnType<typeof readLayout>,
-): ReadonlySet<string> {
-  const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
-  const files: unknown =
-    typeof config === 'object' && config !== null && 'files' in config ? config.files : [];
-  const listed = Array.isArray(files)
-    ? files.filter((file): file is string => typeof file === 'string')
-    : [];
-  return new Set(
-    listed
-      .map((file) => projectFile(projectRoot, path.resolve(path.dirname(configPath), file)))
-      .filter((file) => !(layout.isSourceFile(file) || layout.isTestFile(file))),
-  );
 }
 
 function installTypeScriptConfig(options: StaticCheckOptions): LinkedPolicyFile {
