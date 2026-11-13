@@ -1,16 +1,21 @@
+import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
 import { useProjects } from '../test-support/projects.mjs';
+import { typescriptPin } from '../test-support/typescript-pin.mjs';
 import {
   assertTypeScriptNode,
   missingNodePeers,
   nodePeerNeeds,
   requiredNodePeers,
+  vitestPeers,
 } from './node-peers.mts';
+import { javascriptApiPin } from '../test-support/typescript-pin.mjs';
 
 const project = useProjects();
 const NITPICKER = `nitpicker@${packageVersion()}`;
-const ALL_VITEST_PEERS = [NITPICKER, 'typescript', '@types/node', 'vitest', '@vitest/coverage-v8'];
+const TYPESCRIPT = typescriptPin();
+const ALL_VITEST_PEERS = [NITPICKER, TYPESCRIPT, '@types/node', 'vitest', '@vitest/coverage-v8'];
 
 function addedPeers(...arguments_) {
   return missingNodePeers(...arguments_).add;
@@ -46,7 +51,7 @@ describe('missing Node peers', () => {
       const root = project({ 'package.json': JSON.stringify({ [field]: { typescript: '^6' } }) });
 
       expect(addedPeers(root, 'vitest')).toEqual(
-        ALL_VITEST_PEERS.filter((name) => name !== 'typescript'),
+        ALL_VITEST_PEERS.filter((name) => name !== TYPESCRIPT),
       );
     },
   );
@@ -54,7 +59,7 @@ describe('missing Node peers', () => {
   it('does not count a peer dependency as installed', () => {
     const root = project({ 'package.json': '{"peerDependencies":{"typescript":"^6"}}' });
 
-    expect(addedPeers(root, 'node')).toEqual([NITPICKER, 'typescript', '@types/node']);
+    expect(addedPeers(root, 'node')).toEqual([NITPICKER, TYPESCRIPT, '@types/node']);
   });
 
   it('skips what node_modules already holds, also in a parent folder', () => {
@@ -109,7 +114,7 @@ describe('missing Node peers', () => {
       { 'package.json': '{"devDependencies":{"typescript":"~5.6.2"}}' },
     ],
   ])('asks for TypeScript again over %s, older than nitpicker reads', (_name, files) => {
-    expect(addedPeers(project(files), 'node')).toEqual([NITPICKER, 'typescript', '@types/node']);
+    expect(addedPeers(project(files), 'node')).toEqual([NITPICKER, TYPESCRIPT, '@types/node']);
   });
 
   it.each([
@@ -135,7 +140,7 @@ describe('missing Node peers', () => {
       ...installed('typescript', '5.6.3'),
     });
 
-    expect(addedPeers(root, 'node')).toEqual([NITPICKER, 'typescript', '@types/node']);
+    expect(addedPeers(root, 'node')).toEqual([NITPICKER, TYPESCRIPT, '@types/node']);
   });
 });
 
@@ -152,6 +157,7 @@ describe('Node peer needs', () => {
       uninstalled: ['typescript', 'vitest'],
       absent: NAMES,
       outdated: [],
+      blockers: [],
     });
   });
 
@@ -167,6 +173,7 @@ describe('Node peer needs', () => {
       uninstalled: [],
       absent: [],
       outdated: [],
+      blockers: [],
     });
   });
 
@@ -186,6 +193,7 @@ describe('Node peer needs', () => {
         { name: 'vitest', installed: '3.2.4', range: '^4.1.11 || ^5.0.0' },
         { name: '@vitest/coverage-v8', installed: '3.2.4', range: '^4.1.11 || ^5.0.0' },
       ],
+      blockers: [],
     });
   });
 
@@ -215,7 +223,7 @@ describe('TypeScript 7 on an older Node.js', () => {
     expect(() => {
       assertTypeScriptNode(project(files), '22.18.1');
     }).toThrow(
-      `This project uses TypeScript 7 (${found}). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (typescript@^6), and run nitpicker init again.`,
+      `This project uses TypeScript 7 (${found}). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (${javascriptApiPin()}), and run nitpicker init again.`,
     );
   });
 
@@ -248,8 +256,21 @@ describe('TypeScript 7 on an older Node.js', () => {
   it('asks for TypeScript 6 when Node.js is too old for the TypeScript 7 that plain typescript installs', () => {
     expect(addedPeers(project({ 'package.json': '{}' }), 'node', '22.18.1')).toEqual([
       NITPICKER,
-      'typescript@^6',
+      javascriptApiPin(),
       '@types/node',
     ]);
+  });
+});
+
+describe('the Vite ranges of the Vitest majors', () => {
+  it('come from the installed Vitest for its own major', () => {
+    const own = createRequire(import.meta.url)('vitest/package.json');
+    const major = Number(own.version.split('.')[0]);
+
+    expect(vitestPeers()[major]).toEqual({ vite: own.peerDependencies.vite });
+  });
+
+  it('keep a constant row for the other majors', () => {
+    expect(Object.keys(vitestPeers()).map(Number)).toEqual([4, 5]);
   });
 });

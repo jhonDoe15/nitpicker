@@ -3,6 +3,7 @@ import { runCli } from '../../cli.mts';
 import { useCliFixtures } from '../../command/test-support/cli-harness.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { useProjects, withPeers } from '../test-support/projects.mjs';
+import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
 import { assertProjectPeers } from './project-peers.mts';
 
 const project = useProjects();
@@ -76,7 +77,7 @@ describe('the project peers a run needs', () => {
     const root = project(withPeers({ typescript: '5.6.3', ...VITEST }));
 
     expect(check(root)).toThrow(
-      'typescript 5.6.3 is installed and nitpicker needs >=5.7. Run npm install --save-dev typescript.',
+      `typescript 5.6.3 is installed and nitpicker needs >=5.7. Run npm install --save-dev ${quotedTypescriptPin()}.`,
     );
   });
 
@@ -94,7 +95,7 @@ describe('the project peers a run needs', () => {
     const analyzers = PRESET.filter(({ name }) => name !== 'coverage');
 
     expect(check(root, analyzers)).toThrow(
-      `typescript is not installed in ${root}. Run npm install --save-dev typescript.`,
+      `typescript is not installed in ${root}. Run npm install --save-dev ${quotedTypescriptPin()}.`,
     );
   });
 
@@ -124,6 +125,23 @@ describe('the project peers a run needs', () => {
     expect([exitCode, output.stdoutText, started]).toEqual([2, '', []]);
     expect(output.stderrText).toBe(
       `nitpicker failed: vitest and @vitest/coverage-v8 are not installed in ${repository.root}. Run npm install --save-dev vitest @vitest/coverage-v8.\n`,
+    );
+  });
+});
+
+describe('the project peers when no supported Vitest runs on the installed Vite', () => {
+  it('stops with the advice to upgrade Vite first, even when nothing else is missing', () => {
+    const root = project(
+      withPeers({
+        typescript: '6.0.3',
+        vitest: '2.1.4',
+        '@vitest/coverage-v8': '2.1.4',
+        vite: '5.4.11',
+      }),
+    );
+
+    expect(check(root)).toThrow(
+      /vitest 2\.1\.4 is installed and nitpicker needs \^4\.1\.11 \|\| \^5\.0\.0.*Upgrade vite first/u,
     );
   });
 });
