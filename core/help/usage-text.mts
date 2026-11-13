@@ -28,6 +28,10 @@ export const FLAGS: readonly Row[] = [
     '--dry-run',
     'With --fix: write fix.patch and fixes.json to the output folder and change no file.',
   ],
+  [
+    '--verify <narrow|full>',
+    'With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
+  ],
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
   [
     '--rule <substring>',
@@ -79,7 +83,7 @@ const AGGREGATE_USAGE =
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
-  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run]] [--analyzer <name>]...',
+  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',

@@ -26,6 +26,7 @@ export type CliOptions = {
   readonly staged: boolean;
   readonly baseRef?: string;
   readonly outputRoot?: string;
+  readonly verify?: string;
 };
 
 export type CliInput = {
@@ -45,6 +46,7 @@ export type CliInput = {
 export type Cli = CliInput & {
   readonly arguments_: readonly string[];
   readonly environment: NodeJS.ProcessEnv;
+  readonly spawnEnvironment: NodeJS.ProcessEnv;
   readonly interactive: boolean;
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;

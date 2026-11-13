@@ -1,4 +1,13 @@
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
@@ -9,6 +18,7 @@ import { runRecipes } from '../engine/run-recipes.mjs';
 import { writeTexts } from '../engine/write-texts.mjs';
 import { dryRun } from './dry-run.mjs';
 import { createJournal, journalWriter } from './journal.mjs';
+import { journalPath } from './journal-file.mjs';
 import { applyPatch, treeOf } from './test-support/tree.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
@@ -213,5 +223,63 @@ describe('dryRun', () => {
 
     expect(outcome.patch.length).toBe(0);
     expect(outcome.fixes).toEqual([]);
+  });
+  it('restores a read-only file and keeps its mode', () => {
+    const root = sample();
+    chmodSync(path.join(root, 'sub/a.txt'), 0o444);
+    const before = treeOf(root);
+
+    dry(root, (writer) => fixTree(root, writer));
+
+    expect(treeOf(root)).toEqual(before);
+    expect(statSync(path.join(root, 'sub/a.txt')).mode & 0o777).toBe(0o444);
+  });
+  it('leaves a file the user edited during the run as the user wrote it', () => {
+    const root = sample();
+    const edited = path.join(root, 'sub/a.txt');
+
+    expect(() =>
+      dry(root, (writer) => {
+        fixTree(root, writer);
+        writeFileSync(edited, 'LOUD one\nmy own line\n');
+      }),
+    ).toThrow(/sub\/a\.txt.*changed while the dry run ran/u);
+
+    expect(readFileSync(edited, 'utf8')).toBe('LOUD one\nmy own line\n');
+    expect(readFileSync(path.join(root, 'sub/b.txt'), 'utf8')).toBe('quiet two\n');
+  });
+  it('puts the files back that an interrupted dry run left changed, on the next run', () => {
+    const root = sample();
+    const record = path.join(temporaryRoot('nitpicker-dry-run-record-'), 'journal.json');
+    const fixed = {};
+    dry(root, (writer) => {
+      fixTree(root, writer);
+      copyFileSync(journalPath(root), record);
+      for (const name of ['sub/a.txt', 'sub/b.txt']) {
+        fixed[name] = readFileSync(path.join(root, name));
+      }
+    });
+    copyFileSync(record, journalPath(root));
+    for (const [name, bytes] of Object.entries(fixed)) {
+      writeFileSync(path.join(root, name), bytes);
+    }
+    writeFileSync(path.join(root, 'sub/b.txt'), 'LOUD two\nand more\n');
+
+    const outcome = dry(root, () => 'nothing');
+
+    expect(outcome.recovered).toHaveLength(2);
+    expect(outcome.recovered[1]).toBe(
+      `--fix --dry-run could not restore ${path.join(root, 'sub/b.txt')}: changed while the dry run ran, left as is`,
+    );
+    expect(readFileSync(path.join(root, 'sub/a.txt'), 'utf8')).toBe('quiet one\n');
+    expect(readFileSync(path.join(root, 'sub/b.txt'), 'utf8')).toBe('LOUD two\nand more\n');
+    expect(existsSync(journalPath(root))).toBe(false);
+  });
+  it('removes its record when the run ends', () => {
+    const root = sample();
+
+    dry(root, (writer) => fixTree(root, writer));
+
+    expect(existsSync(journalPath(root))).toBe(false);
   });
 });

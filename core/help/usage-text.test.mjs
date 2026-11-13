@@ -24,7 +24,7 @@ const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
-  'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run]] [--analyzer <name>]...',
+  'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '                 [--accept-policy-change=<digest>] [--help] [--version]',
@@ -51,6 +51,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --base <ref>                     Compare against this ref instead of the detected base.',
   '  --fix                            Apply the fixers of the preset to the changed files, then compare.',
   '  --dry-run                        With --fix: write fix.patch and fixes.json to the output folder and change no file.',
+  '  --verify <narrow|full>           With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
@@ -197,6 +198,9 @@ function sampleArguments(flag) {
   const [name, placeholder] = flag.split(/[ =]/u);
   if (placeholder === undefined) {
     return name === '--dry-run' ? ['--fix', name] : [name];
+  }
+  if (name === '--verify') {
+    return ['--fix', name, 'full'];
   }
   const sample = flag.includes('=') ? [`${name}=abc`] : [name, '1'];
   return [...sample, ...(PAIRED[name] ?? [])];

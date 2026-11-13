@@ -3,11 +3,17 @@ import { applyFixes } from '../engine/edits/apply-edits.mjs';
 import { sourceOf } from '../engine/edits/check-fixes.mjs';
 import { checkRealPath } from '../engine/edits/real-paths.mjs';
 import { indexListing } from '../engine/edits/untrack.mjs';
-
-export const MODE_MASK = 0o7777;
+import { MODE_MASK, currentOf } from './restore.mjs';
 
 export function createJournal(projectRoot) {
-  return { projectRoot, originals: new Map(), indexListings: new Map(), events: [] };
+  return {
+    projectRoot,
+    originals: new Map(),
+    fixed: new Map(),
+    indexListings: new Map(),
+    events: [],
+    save: () => undefined,
+  };
 }
 
 function missingTop(projectRoot, file) {
@@ -17,7 +23,7 @@ function missingTop(projectRoot, file) {
     .find((directory) => !existsSync(directory));
 }
 
-function locate(projectRoot, name) {
+export function locate(projectRoot, name) {
   try {
     return { file: checkRealPath(projectRoot, name) };
   } catch (error) {
@@ -65,6 +71,16 @@ function noteOriginals(journal, entries) {
   }
 }
 
+function noteFixed(journal, entries) {
+  const names = entries.flatMap(({ fix }) => fix.edits.flatMap(namesOf));
+  for (const name of new Set(names)) {
+    const { file, error } = locate(journal.projectRoot, name);
+    if (error === undefined && journal.originals.has(file)) {
+      journal.fixed.set(file, currentOf(file) ?? { gone: true });
+    }
+  }
+}
+
 function eventOf(entry, tool) {
   const files = [...new Set(entry.fix.edits.flatMap(namesOf))];
   return entry.recipe === undefined
@@ -77,7 +93,10 @@ export function journalWriter(journal) {
     projectRoot: journal.projectRoot,
     apply(snapshot, entries, tool) {
       noteOriginals(journal, entries);
+      journal.save();
       const result = applyFixes(journal.projectRoot, snapshot, entries);
+      noteFixed(journal, entries);
+      journal.save();
       journal.events.push(...result.applied.map((entry) => eventOf(entry, tool)));
       return result;
     },

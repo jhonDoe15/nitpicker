@@ -52,7 +52,7 @@ function stillReported() {
   return { findings: [FINDING] };
 }
 
-function reportsWhenMissing(request, root) {
+function reportsWhenMissing(_request, root) {
   const text = readFileSync(path.join(root, 'app/load.py'), 'utf8');
   return { findings: text.includes('exc_info=True') ? [] : [FINDING] };
 }

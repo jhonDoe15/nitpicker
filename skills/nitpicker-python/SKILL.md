@@ -41,7 +41,9 @@ full run below.
    you edit them again. It takes minutes and prints a progress line for each slow analyzer.
    To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes
    `fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the
-   fixes of the rules you name, including their `review` recipes.
+   fixes of the rules you name, including their `review` recipes. A recipe that makes things worse
+   (its finding stays, it adds a finding or a compile error) is rolled back and named under "Fix notes";
+   `--fix --verify full` checks with the whole gate.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.

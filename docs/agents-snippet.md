@@ -29,6 +29,9 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   from the repository root) and `fixes.json` to the output folder and prints one line per fix.
   `npx nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the named rules,
   including their `review` recipes, and formats only the files those fixes touched.
+  `--fix` checks every recipe it applied and rolls back one that leaves its finding, adds a finding
+  or breaks the compile; the rollback is named under "Fix notes". `--fix --verify full` checks with
+  the whole gate.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
