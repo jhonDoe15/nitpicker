@@ -5,6 +5,22 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - `async`/`await`, never `.then()`. No floating promises.
   Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
   timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
+- A close, dispose, stop or `afterAll` function releases every resource even when one release fails:
+  `Promise.allSettled` over the releases, then rethrow the first failure, or `try { ... } finally { reset }`;
+  never `await a.close(); await b.close();` or `Promise.all` of releases
+  (`nitpicker/no-cleanup-skipped-on-failure`).
+- A close function that clears a map of pending callbacks or resolve/reject pairs rejects every entry first
+  (`for (const entry of pending.values()) entry.reject(new Error('closed'));`), so no caller waits forever
+  (`nitpicker/settle-pending-on-close`).
+- A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
+  register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
+  handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
+  still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
+  (`nitpicker/no-cached-rejection`).
+- A Map, Set or array in a class field or factory closure that a method adds per request, session or run to is
+  removed from when that ends (`finally`, close), bounded by a `size` check, or a `WeakMap`
+  (`nitpicker/no-add-only-collection`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
@@ -93,6 +109,14 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
   a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
   rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
+- Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
+  `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
+  shared folder under such a name (`nitpicker/no-generic-name`).
+- A string of five characters or more used three times in a file is named once as a constant
+  (`nitpicker/no-repeated-string-literal`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
+  `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
+  set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

@@ -14,7 +14,7 @@ public final class Waits {
   static void latch(ExecutorService executor, CountDownLatch done) throws InterruptedException {
     try (StringReader in = new StringReader("a")) {
       executor.execute(() -> in.hashCode());
-      done.await();
+      done.await(); // violation: UnboundedWait
     }
   }
 
