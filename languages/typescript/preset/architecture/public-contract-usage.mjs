@@ -172,7 +172,9 @@ export function analyzePublicContractUsage(configPath, { displayRoot } = {}) {
   const program = ts.createProgram(parsed.fileNames, parsed.options);
   const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
   const findings = findUnusedPublicContractMethods(program, { sourceRoot });
-  if (displayRoot === undefined) return findings;
+  if (displayRoot === undefined) {
+    return findings;
+  }
   return findings.map((item) => ({
     ...item,
     file: path.relative(displayRoot, path.resolve(sourceRoot, item.file)).replaceAll('\\', '/'),
