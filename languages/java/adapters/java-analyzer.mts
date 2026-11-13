@@ -13,7 +13,7 @@ import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
-import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
+import { changedTestsKey } from '../builds/change-scope/tested-sources.mts';
 import { fieldsOf, textOf } from '../../../shared/values/readers.mts';
 import type { JavaSpawn } from './typed/java-values.mts';
 
