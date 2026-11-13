@@ -47,6 +47,9 @@ describe('repeatedStringLiterals', () => {
     ['pair keys', repeat('val a = "order-admin" to 1')],
     ['subscript keys', repeat('val a = values["order-admin"]')],
     ['discriminant values', repeat('val a = mapOf("type" to "order-placed")')],
+    ['discriminant comparisons', repeat('val a = node.type == "order-placed"')],
+    ['negated discriminant comparisons', repeat('val a = node?.kind !== "order-placed"')],
+    ['discriminant comparisons on the left', repeat('val a = "order-placed" == order.event.tag')],
     ['translation keys', repeat('val a = messages.getMessage("order.title", args)')],
     ['bundle keys', repeat('val a = getString("order.title")')],
     ['named translation keys', repeat('val a = t(key = "order.title")')],
@@ -74,6 +77,11 @@ describe('repeatedStringLiterals', () => {
     ].join('\n');
 
     expect(lines(source)).toEqual([]);
+  });
+
+  it('counts a comparison with a name that is not a discriminant', () => {
+    expect(lines(repeat('val a = node.state == "order-placed"'))).toEqual([3]);
+    expect(lines(repeat('val a = "order-placed" == node.typeName'))).toEqual([3]);
   });
 
   it('counts a branch result, a subjectless when condition and a comparison', () => {

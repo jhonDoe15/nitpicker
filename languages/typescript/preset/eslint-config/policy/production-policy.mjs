@@ -24,6 +24,8 @@ const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSibl
 
 const SUPPORT_OFF_RULES = [
   ...SECURITY_RULES,
+  'nitpicker/no-hardcoded-secret',
+  'nitpicker/no-secret-in-log',
   'nitpicker/timeout-abandons-operation',
   'nitpicker/require-client-timeout',
 ];
@@ -85,6 +87,9 @@ function productionRules({ react, routeHandlers }) {
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
     'nitpicker/no-wasted-collection-step': 'error',
+    'nitpicker/no-repeated-string-literal': 'error',
+    'nitpicker/no-hardcoded-secret': 'error',
+    'nitpicker/no-secret-in-log': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -139,6 +144,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
+        'nitpicker/no-generic-name': 'error',
         'nitpicker/no-unknown-main-folder': [
           'error',
           { sourceRoots: layout.sourceRoots, react: options.react === true },

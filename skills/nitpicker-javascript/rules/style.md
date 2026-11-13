@@ -33,6 +33,22 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - `async`/`await`, never `.then()`. No floating promises.
   Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
   timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
+- A close, dispose, stop or `afterAll` function releases every resource even when one release fails:
+  `Promise.allSettled` over the releases, then rethrow the first failure, or `try { ... } finally { reset }`;
+  never `await a.close(); await b.close();` or `Promise.all` of releases
+  (`nitpicker/no-cleanup-skipped-on-failure`).
+- A close function that clears a map of pending callbacks or resolve/reject pairs rejects every entry first
+  (`for (const entry of pending.values()) entry.reject(new Error('closed'));`), so no caller waits forever
+  (`nitpicker/settle-pending-on-close`).
+- A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
+  register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
+  handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
+  still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
+  (`nitpicker/no-cached-rejection`).
+- A Map, Set or array in a class field or factory closure that a method adds per request, session or run to is
+  removed from when that ends (`finally`, close), bounded by a `size` check, or a `WeakMap`
+  (`nitpicker/no-add-only-collection`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
@@ -78,6 +94,14 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
   before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
   `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
+- Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
+  `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
+  shared folder under such a name (`nitpicker/no-generic-name`).
+- A string of five characters or more used three times in a file is named once as a constant
+  (`nitpicker/no-repeated-string-literal`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
+  `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
+  set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
@@ -91,7 +115,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/require-client-timeout`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
-- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+- Signatures: an exported function or public method does not branch on a `{boolean}` parameter
+  (`nitpicker/no-boolean-flag-parameter`): write two functions or take an options object. A value
+  with three states is a union of string literals, not `{boolean|undefined}`,
   `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
   JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
   `false`; return a

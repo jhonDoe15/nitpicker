@@ -62,6 +62,7 @@ are listed at the end.
 | Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows            | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                   | `unbounded-fan-out` (script)                                                                                                                                                                                                                                                                                                                                                        |
+| Cleanup order            | `ExitStack` / `AsyncExitStack`, or `try`/`finally`; `gather(..., return_exceptions=True)`                                                                                              |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                               | `task-outlives-resource` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                        | `unshielded-cleanup-await` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Files and connections    | `with open(path) as handle:`, `Path(path).read_text()`, `contextlib.closing(...)`                                                                                                      | `unclosed-inline-resource` (script), `SIM115`                                                                                                                                                                                                                                                                                                                                       |
@@ -74,6 +75,8 @@ are listed at the end.
 | Database deadlines       | a statement timeout where the PostgreSQL connection, pool or engine is made (`options="-c statement_timeout=30000"`, `command_timeout=30`)                                             | `client-without-timeout` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                               | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                      |
+| Unbounded waits          | `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`, `thread.join(timeout=30)`                                                                                 | `unbounded-wait` (script)                                                                                                                                                                                                                                                                                                                                                           |
+| Blocking helpers         | `await asyncio.to_thread(fetch_profile, url)`, `loop.run_in_executor(None, fetch_profile, url)`, an async client                                                                       | `blocking-helper-in-async` (script; direct calls are ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222`, `ASYNC251`)                                                                                                                                                                                                                                                               |
 | Test honesty             | a skip only on a real condition, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                  | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `copied-constant-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
 | Float checks in tests    | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                                                              | `float-equality-in-test` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Test assertions          | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                                                              | `weak-assertion` (script)                                                                                                                                                                                                                                                                                                                                                           |
@@ -296,6 +299,31 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   `**kwargs` whose keys are unknown is not reported. Not in tests or test support, where the test run
   has its own limits. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception.
+- `unbounded-wait` reports a wait for a worker without a timeout: `result()` and `exception()` without `timeout=`
+  (or with `timeout=None`) on a `concurrent.futures.Future`, a future from `submit` on a `ThreadPoolExecutor` or
+  `ProcessPoolExecutor`, or an `asyncio.run_coroutine_threadsafe(...)` result; `concurrent.futures.wait` and
+  `as_completed` without `timeout`; and `join()` without a timeout on a `threading.Thread`, `Timer` or `multiprocessing.Process` (also a
+  subclass). The receiver is followed through imports and aliases, locals, `with` targets, `self.` attributes set in the
+  class, a loop over a list of submitted futures and a parameter annotated `concurrent.futures.Future` (also `Optional[...]`, `X | None` and string annotations). An
+  `asyncio.Future`, a receiver of unknown type and a call with `**kwargs` or `*args` are not reported. Not in tests or
+  test support. TypeScript and JavaScript have no counterpart, since a promise has no blocking wait. A program whose
+  purpose is to wait for the work to finish, such as a shutdown that joins the worker it just stopped, takes an
+  exception.
+- `blocking-helper-in-async` reports a call from an `async def` to a plain function of the project that blocks
+  the event loop: the helper (a module function, an imported one or a `self.` method, up to three calls deep) calls
+  `requests` or `httpx` module-level `get`, `post`, `put`, `patch`, `delete`, `head`, `options` or `request`,
+  `urllib.request.urlopen`, `time.sleep`, `os.system` or `subprocess.run`, `call`, `check_call` or `check_output`.
+  A call that the async function makes itself is left to ruff `ASYNC210`, `ASYNC220`, `ASYNC221`, `ASYNC222` and
+  `ASYNC251`. A helper passed to `asyncio.to_thread`, `run_in_executor` or a lambda is not called there and is not
+  reported; neither is an async helper, a decorated helper, a method of another object, a session or client
+  instance, file I/O (`open`) and CPU work. Not in tests or test support. Work done at startup, before the loop
+  serves requests, takes an exception. The helper is found by its last definition in the module, as a `self.` or
+  `cls.` method (also of a same-module base class) or as `ClassName.method`; a name that the async function or
+  helper rebinds (a parameter, a local assignment, a nested `def`) is not followed, and a rebound `requests` or
+  `time` is not the library. A generator helper that is only called, `time.sleep(0)`, `__init__` through `A()`,
+  properties, `from helper import *` and a helper whose module is outside the project are not followed. Two
+  calls to the same helper on one line are one finding. The TypeScript, Java and Kotlin presets have no counterpart for helpers:
+  detekt `SleepInsteadOfDelay` covers a direct `Thread.sleep` in a suspend function.
 - `time-unit-mismatch` reports time values in two different units that meet without a conversion. Units
   come from the API (`time.time()`, `time.monotonic()`, `time.perf_counter()`, `datetime.timestamp()` and
   `timedelta.total_seconds()` in seconds, the `_ns` variants in nanoseconds, the JWT claims `exp`, `iat`,
@@ -648,8 +676,10 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
   three times or more in a file (not tests, not generated migrations) and reports each use from the
   third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
-  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
-  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  arguments the same way; TypeScript and JavaScript exempt JSX attribute values, Java has none),
+  dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, a comparison with an attribute or subscript of that name
+  (`node.type == "order-placed"`), subscript keys, `match` patterns, docstrings and bare strings,
   `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
   message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
   formats). The minimum length, the number of allowed uses and those lists are defined once in
@@ -838,6 +868,52 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   library outside the list are not recognized, a limiter is recognized from an unannotated
   parameter or import by its name only, and a collection that is small in practice but not by
   construction is reported; lift such a path with a `python.exceptions` entry.
+- `cleanup-skipped-on-failure` reports cleanup that stops at the first failed release. In a function named
+  `close`, `aclose`, `__exit__`, `__aexit__`, `dispose`, `destroy`, `shutdown`, `stop`, `teardown` or `disconnect`,
+  a unittest or pytest teardown (`tearDown`, `teardown_method`, `pytest_sessionfinish`, ...) and the part of a
+  `@pytest.fixture` generator after its `yield`, a statement that calls `close`, `aclose`, `disconnect`, `destroy`,
+  `shutdown`, `stop`, `terminate`, `unsubscribe`, `dispose`, `quit` (awaited or not) and is followed
+  in the same block by a release of a different resource or a reset of other state (`self.x = None`, an empty collection, `.clear()`, `del`). It
+  also reports `asyncio.gather(...)` over two or more releases, or over a generator of releases, without
+  `return_exceptions=True`. A release inside `try`, `with` or `ExitStack` is not a statement of that block.
+  Allowed: `contextlib.ExitStack` or `AsyncExitStack` with one `callback` per release, `try`/`finally`,
+  `gather(..., return_exceptions=True)` followed by a raise of the first failure. Steps on the same object do not
+  count (`writer.close()` then `await writer.wait_closed()`, `sock.shutdown()` then `sock.close()`,
+  `pool.shutdown()` then `self.pool = None`).
+- `pending-unsettled-on-close` reports a close that clears pending futures without failing them. In a class
+  with a `close`, `aclose`, `__exit__`, `__aexit__`, `dispose`, `destroy`, `shutdown`, `stop` or `disconnect`
+  method, an attribute that is a dict, list or set of futures (a `create_future()`, `Future()` or `Deferred()`
+  value stored in it, or a `Future` or `Deferred` annotation) must be failed or cancelled by a close method or
+  a method it reaches: `set_exception`, `cancel`, `set_result`, `reject` or `resolve` on each entry, or the
+  attribute passed to a call, or the attribute (or a local alias of it) iterated or looped on with `while self._pending:` around a settle call. A `.clear()` alone leaves every awaiting caller waiting forever. Allowed: fail
+  each future, then clear.
+- `handle-unreleased-on-close` reports a timer or signal handler that a class never releases in its close. In a
+  class with a `close`, `aclose`, `__exit__`, `__aexit__`, `dispose`, `destroy`, `shutdown`, `stop` or
+  `disconnect` method, a method outside the close path that calls `loop.call_later`, `call_at` or `call_repeatedly`
+  (`call_soon` fires once and returns no handle that needs cancelling), creates a `threading.Timer`, or calls `add_signal_handler` is reported unless a close method (or
+  a method it reaches) calls `cancel` or `stop` on the `self.` attribute that holds the handle, or
+  `remove_signal_handler`, or when a collection that holds the handles is iterated and cancelled in close, the
+  attribute (or a local alias of it) is handed to a helper such as `cancel_all(self._t)`, or the handle is a
+  local that the same method cancels or joins. A handle that is stored nowhere is reported. Allowed:
+  `self._handle = loop.call_later(...)` with `self._handle.cancel()` in close. `functools.lru_cache` on methods is
+  left to ruff `B019`.
+- `cached-rejection` reports a task or future cached on an attribute that keeps its failure. An attribute of a
+  class that gets `asyncio.create_task`, `ensure_future`, `create_future` or `Future(...)` and is returned (or
+  awaited) is reported when no `except` handler or `add_done_callback` callback sets it back to `None` (a `setattr(self, name, None)` inside a callback is not read, so it is reported until written as an assignment), and
+  the clearing is reported when it does not compare the attribute with the attempt (`is attempt`). It also reports
+  `functools.cache` or `lru_cache` on an `async def`, which caches the coroutine object, so the second call
+  awaits an already awaited coroutine. Allowed: `attempt = asyncio.ensure_future(...); self._connection = attempt`
+  and `except Exception: if self._connection is attempt: self._connection = None; raise`. `lru_cache` on a
+  method is left to ruff `B019`.
+- `unbounded-collection` reports a long-lived collection that is only added to. In a class with a `close`, `aclose`,
+  `__exit__`, `dispose`, `destroy`, `shutdown`, `stop` or `disconnect` method (a class with a lifecycle is the long-lived
+  one), an instance attribute (or a class attribute, or a dataclass field with `default_factory`) that is a `dict`, `set`, `list`, `defaultdict`,
+  `OrderedDict` or `Counter`, that a method other than `__init__`, `init*`, `register*`, `setup*`, `configure*` or `on*init*`
+  adds to (`[key] =`, `append`, `add`, `setdefault`, `update`, `extend`, `insert`) with a non-literal key, is reported
+  when no method of the class deletes, pops, discards, clears, reassigns (also in a tuple assignment such as
+  `out, self.d = self.d, {}`) or passes the attribute, or a local alias of it, to a call, and
+  none reads its `len`. Allowed: remove the entry when its request, session or run ends, bound it, or key a
+  `weakref.WeakKeyDictionary` by the object. `functools.lru_cache(maxsize=None)` on a method is left to ruff `B019`.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
@@ -952,8 +1028,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not
   followed.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` (in comments and docstrings) when the
-  marker is in capitals, at the start of the comment or followed by `:` or `(`, and is not directly
-  followed by an issue reference: `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
+  marker is in capitals, at the start of the comment or followed by `:` or `(`, and has no
+  issue reference after it on its line (up to the next marker): `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
   similar standards) or an `http(s)` link. Each marker is judged on its own, so a second marker in the
   same comment needs its own issue. Prose that mentions the word (`todo lists`, `Todo list items`,
   `Hack to ...`, `the list of TODO items`) is not a marker. The Kotlin preset's `ForbiddenComment`
@@ -1360,7 +1436,19 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
     skip stay quiet; and an `if`/`match` whose other branches all fail, raise or skip
     (`if feature(): assert x else: pytest.skip("no feature")`, a `case _: pytest.fail()`),
     whose assertion always runs;
-  - loops inside an assertion helper that is not a test function.
+  - a loop that cannot run zero times: `range(3)`, `range(1, 10, 3)` or a comprehension over one
+    (a literal, positive count; `range(0)` and `range(n)` are reported), and a `subTest` loop over a
+    literal non-empty table (a list, tuple, set or dict literal without `*` or `**` elements, or a
+    module-level name bound once, plain or annotated, to one and never rebound, shadowed, mutated or
+    declared `global` anywhere in the module), where `unittest` has no table API. A plain `for` over a literal table is still reported:
+    use `parametrize`. A `break` or `return` inside a fixed-count loop can still skip an assertion;
+    that is a known limit.
+
+  A loop in a same-file helper that a test calls is reported like one in the test, whether the
+  helper sits at module level or is a method of the test class called through `self` (and helpers
+  that those call): an empty collection passes silently wherever the loop is. The finding names
+  the calling test and sits on the assertion in the helper. A helper that no test calls and a
+  helper with branches only are not reported (a branch is judged at the call).
 
   Also reported, as the construct they use: an assertion statement that is a ternary or an
   implication (`assert f() if g() else True`, `assert not g() or f()`, also as the argument of
@@ -1376,10 +1464,18 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   class called through `self`) is an assertion helper for that file, with the same position rules;
   the project-wide helpers still need three test files to vote them in. An `unittest` `subTest`
   loop is a loop: it is reported as `subTest`, because an empty iterable runs no case and passes
-  without asserting anything, where an empty `parametrize` list reports a skipped test; a suite
-  without `pytest` accepts it with a `python.exceptions` entry. An `assert` in an
+  without asserting anything (unless the table is literal and non-empty), where an empty
+  `parametrize` list reports a skipped test; a suite without `pytest` accepts it with a
+  `python.exceptions` entry. An `assert` in an
   `except ... as error:` handler that reads `error` is left to ruff `PT017`, which reports it
   already (use `with pytest.raises(...) as info:`), so no site gets two findings.
+
+- Dropped callbacks and messages set after the assertion do not apply to Python. A call statement
+  whose result is a callable (`make_check(1)`) is legal and common (decorator factories, context
+  managers, `functools.partial`), the tests have no lambda whose target returns `None` that swallows a
+  built callable the way a Java `ContextConsumer` lambda does, and `assert x, "message"` and
+  `pytest.raises(..., match=...)` put the message before the check. The Java, Kotlin and TypeScript
+  forms are `DroppedCallbackInTest`, `MessageAfterAssertion` and `nitpicker/no-dropped-test-callback`.
 
 - Focused tests: pytest has no `only` marker, and the ways to narrow a run are already blocked.
   `-k`, `-m`, `--deselect`, `--ignore`, `--ignore-glob`, `testpaths`, `norecursedirs` and
