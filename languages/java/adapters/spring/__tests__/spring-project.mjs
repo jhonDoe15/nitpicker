@@ -116,6 +116,7 @@ const REVIEW_RULES = new Set([
   'UnorderedQuery',
   'UnboundedQueryArray',
   'ConfigurationReadOutsideCompositionRoot',
+  'SpringNullOnlyConfigCheck',
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',

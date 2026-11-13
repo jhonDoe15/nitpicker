@@ -226,7 +226,7 @@ Part of the [Java preset guide](../java-preset.md).
   `java-spans.test.mjs` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
   (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mjs`
   (which positions and checks count as generated),
-  `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the pinned ones on
+  `adapters/errorprone/checks/checks-policy.test.mts` (reviewed versions equal the pinned ones on
   Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
   the exceptions route or spared in annotated classes is documented below),
   `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,

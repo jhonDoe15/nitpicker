@@ -69,6 +69,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-throw',
   'nitpicker/no-tri-state-boolean',
   'nitpicker/no-unbounded-query-array',
+  'nitpicker/no-undefined-only-env-check',
   'nitpicker/no-unhandled-url-parse',
   'nitpicker/no-unindexed-foreign-key',
   'nitpicker/no-uninjectable-delay',

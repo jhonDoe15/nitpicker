@@ -922,6 +922,27 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   `nitpicker/no-shared-stateful-regex` wants a `g` or `y` regex created where it is used. The Java,
   Kotlin and Python presets report the same mistake as `pmd/ReusableObjectPerCall` and
   `reusable-object-per-call`.
+- `nitpicker/no-undefined-only-env-check` (production code): an environment variable tested only
+  for being missing counts an empty value as set. `API_URL=` gives `''`, which passes
+  `process.env.API_URL !== undefined`, so the feature turns on with nothing to use. Reported: an
+  `===`, `!==`, `==` or `!=` against `undefined`, `null` or `void 0`, `typeof ... === 'undefined'`,
+  `'API_URL' in process.env`, `Object.hasOwn(process.env, 'API_URL')` and
+  `process.env.hasOwnProperty('API_URL')`, on `process.env.X` (also `process.env['X']` and
+  `globalThis.process.env.X`), `import.meta.env.X`, `Bun.env.X`, `Deno.env.get('X')`, or a `const`
+  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`, or `env.X`
+  after `const env = process.env`); a local named `process`, `Bun` or `Deno` is not the global.
+  Also reported: `process.env.X ?? fallback`, `process.env.X ??= fallback` and a destructuring
+  default (`const { PORT = '3000' } = process.env`), which keep the empty value and skip the
+  fallback; a fallback of `''`, `undefined`, `null` or `void 0` gives the same result and passes,
+  and so do these fallbacks in a composition root, which `nitpicker/no-branch-in-composition-root`
+  already reports. The allowed forms test for a value: `if (!process.env.API_URL)`,
+  `process.env.API_URL || fallback`, or a test of the value next to the missing-value test in the
+  same `&&`/`||` condition (`url !== undefined && url !== ''`, `.length`, `Boolean(url)`, `url`
+  itself, `.trim()` first, or any method call on it, such as `url.startsWith('https')`), or a
+  schema that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
+  a real setting, add an exception for the rule. The Java and Kotlin presets report the same mistake
+  on Spring configuration (`pmd/SpringNullOnlyConfigCheck`) and the Python preset on `os.environ`
+  (`env-none-only-check`).
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an

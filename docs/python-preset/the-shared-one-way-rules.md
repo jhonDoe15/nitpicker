@@ -14,6 +14,7 @@ are listed at the end.
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                                 | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                                                                                                                                                                                                                              |
 | Environment              | read once in a composition root, pass values in                                                                                                                                        | `process-env-access` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Environment values       | a truth test: `if not os.environ.get("X"):`, `os.environ.get("X") or default`                                                                                                          | `env-none-only-check` (script)                                                                                                                                                                                                                                                                                                                                                      |
 | Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                  | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                                                                                                                                                                                                                                               |
 | Service lookups          | a parameter, resolved once in a composition root                                                                                                                                       | `service-locator-lookup` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                                                                                                                                                                                                                       |
@@ -195,6 +196,24 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `env-none-only-check` reports an environment variable tested only for being missing, which
+  counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
+  on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
+  `!= None` on `os.environ.get("X")` or `os.getenv("X")` (also `key="X"`, through
+  `from os import ...` and aliases, through a walrus, and on a name assigned once from one, such as
+  a module constant `API_URL = os.getenv("API_URL")`; a parameter, `except` name, function, class
+  or import of the same name is another name); `"X" in os.environ` and `not in`; and a string
+  default (`os.getenv("PORT", "8000")`, `os.environ.get("HOST", default="localhost")`, or a name
+  holding one), which an empty value skips. A default of `""` or `None` gives the same result and
+  passes, and a default that is not a string is left to ruff `PLW1508`. Not reported either: a
+  `None` test joined by `and`/`or` with a test of the value itself (`url is not None and
+url.strip() != ""`, `len(...)`, `bool(...)`, the value, or any method call on it), and a line
+  where `process-env-access` (outside the composition root) or `hardcoded-secret` already
+  reports, whose fix removes the read or the default. The allowed form tests the value for truth:
+  `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"`, `.strip()` first when
+  blanks count as empty. When an empty value is a real setting, add an exception for the rule. The TypeScript preset reports the same mistake as
+  `nitpicker/no-undefined-only-env-check`, and the Java and Kotlin presets on Spring configuration
+  as `pmd/SpringNullOnlyConfigCheck`.
 - `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
   also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
   `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
