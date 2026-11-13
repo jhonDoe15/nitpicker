@@ -34,6 +34,10 @@ Part of the [Java preset guide](../java-preset.md).
   checks' findings are kept. Each crashed check is one more report entry,
   `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
   check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  A crash nitpicker knows as an Error Prone bug is a descriptive notice instead, so it does not
+  change the exit code of a clean project: `UnnecessarilyFullyQualified` throwing a
+  `ClassCastException` (`JCIdent` cannot be cast to `MemberSelectTree`), seen on classes with fully
+  qualified Lombok annotations. Any other crash of that check stays a tool error.
   The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
   off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
