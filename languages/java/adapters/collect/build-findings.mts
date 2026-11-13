@@ -4,7 +4,7 @@ import path from 'node:path';
 import { runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 import { readOptions } from '../options/java-read-options.mts';
-import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
+import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mjs';
 import { readReportModules } from '../gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../../maven/maven-build.mjs';
@@ -12,14 +12,14 @@ import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mjs';
 import { resolveKotlinRun } from '../kotlin/kotlin-run.mjs';
-import { runGradleStage } from '../red-base/gradle-stage.mjs';
+import { runGradleStage } from '../red-base/gradle-stage.mts';
 import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mjs';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
-import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
+import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
 import { type JavaPolicy, callUntyped, findingsOf } from '../typed/java-values.mts';
-import type { JavaReport, JavaRunOptions } from '../typed/java-run-options.mts';
-import { fieldOf, listOf, textsOf } from '../../../../shared/values/readers.mts';
+import { type JavaReport, type JavaRunOptions, budgetOf } from '../typed/java-run-options.mts';
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type KotlinArgumentsRun = (kotlinArguments: readonly string[]) => void;
 type PresetRun = JavaRunOptions & {
@@ -55,7 +55,7 @@ function runJavaPreset(
     policy = {},
     reportBase,
     kotlinRun,
-    budget = gradleBudget(),
+    budget = budgetOf(gradleBudget()),
     testsFailedModules = [],
   }: PresetRun,
 ): void {
@@ -69,7 +69,7 @@ function runJavaPreset(
       ...lintBaselineProperties(policy),
       ...kotlinArguments,
     ];
-    const stages = callUntyped(gradleStages, common, {
+    const stages = gradleStages(common, {
       projectRoot,
       initScript,
       policy,
@@ -78,11 +78,8 @@ function runJavaPreset(
     });
     const checkTests = testsFailedModules.length === 0;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
-    for (const stage of listOf(stages)) {
-      runGradleStage({
-        args: typeof stage === 'function' ? callUntyped(stage) : undefined,
-        ...options,
-      });
+    for (const stage of stages) {
+      runGradleStage({ args: stage(), ...options });
     }
   });
 }

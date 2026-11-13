@@ -24,6 +24,8 @@ export type JavaPolicy = {
   readonly preset?: string | undefined;
   readonly baselineRoot?: string | undefined;
   readonly policyRoot?: string | undefined;
+  readonly logRoot?: string | undefined;
+  readonly logLabel?: string | undefined;
   readonly conventions?: unknown;
   readonly history?: unknown;
   readonly kotlinFormatter?: unknown;
@@ -75,7 +77,7 @@ export function findingsOf(value: unknown): JavaFinding[] {
   return Array.isArray(value) ? value.filter(isJavaFinding) : [];
 }
 
-function optionalText(value: unknown): string | undefined {
+export function optionalText(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
@@ -87,5 +89,7 @@ export function javaPolicyOf(value: unknown): JavaPolicy {
     preset: optionalText(fields['preset']),
     baselineRoot: optionalText(fields['baselineRoot']),
     policyRoot: optionalText(fields['policyRoot']),
+    logRoot: optionalText(fields['logRoot']),
+    logLabel: optionalText(fields['logLabel']),
   };
 }

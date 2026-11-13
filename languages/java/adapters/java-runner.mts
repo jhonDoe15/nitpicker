@@ -17,19 +17,13 @@ import {
   troubleshootingLinkOf,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
-import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mjs';
+import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mts';
 import {
   compileErrorFindings,
   compileErrorsOf,
 } from '../builds/compile-errors/compile-findings.mjs';
-import {
-  fieldOf,
-  fieldsOf,
-  listOf,
-  numberOr,
-  objectOf,
-  textOf,
-} from '../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, objectOf, textOf } from '../../../shared/values/readers.mts';
+import { type TimeBudget, budgetOf } from './typed/java-run-options.mts';
 import {
   type JavaEnvironment,
   type JavaFinding,
@@ -39,7 +33,7 @@ import {
   javaPolicyOf,
 } from './typed/java-values.mts';
 
-type Budget = { readonly commandTimeoutMs: number; readonly analyzerTimeoutMs: number };
+type Budget = TimeBudget;
 type JavaSnapshotOptions = {
   readonly environment?: JavaEnvironment;
   readonly gradle?: string | undefined;
@@ -69,13 +63,6 @@ function truncated(message: string, rule: string): string {
   const [body, log] = logAt < 0 ? [kept, ''] : [kept.slice(0, logAt), kept.slice(logAt)];
   const cut = body.length > limit ? `${body.slice(0, limit)}...` : body;
   return `${cut}${log}${link === undefined ? '' : `\n${link}`}`;
-}
-
-function budgetOf(value: unknown): Budget {
-  return {
-    commandTimeoutMs: numberOr(fieldOf(value, 'commandTimeoutMs'), 0),
-    analyzerTimeoutMs: numberOr(fieldOf(value, 'analyzerTimeoutMs'), 0),
-  };
 }
 
 export function javaExecutionBudget(environment: JavaEnvironment = process.env): Budget & {

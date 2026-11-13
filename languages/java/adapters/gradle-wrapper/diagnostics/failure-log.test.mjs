@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import { gradleLog, withGradleLog } from './failure-log.mjs';
+import { gradleLog, withGradleLog } from './failure-log.mts';
 
 vi.mock('node:fs', () => ({ mkdirSync: vi.fn(), writeFileSync: vi.fn() }));
 

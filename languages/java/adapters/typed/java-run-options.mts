@@ -1,6 +1,9 @@
 import type { JavaEnvironment, JavaFinding, JavaPolicy, JavaSpawn } from './java-values.mts';
+import { fieldOf, numberOr } from '../../../../shared/values/readers.mts';
 
-type JavaBudget = {
+export type TimeBudget = { readonly commandTimeoutMs: number; readonly analyzerTimeoutMs: number };
+
+export type JavaBudget = {
   readonly commandTimeoutMs?: number;
   readonly analyzerTimeoutMs?: number;
   readonly mavenCommandTimeoutMs?: number;
@@ -23,3 +26,10 @@ export type JavaReport = {
   readonly imports: unknown;
   readonly testsFailures?: unknown;
 };
+
+export function budgetOf(value: unknown): TimeBudget {
+  return {
+    commandTimeoutMs: numberOr(fieldOf(value, 'commandTimeoutMs'), 0),
+    analyzerTimeoutMs: numberOr(fieldOf(value, 'analyzerTimeoutMs'), 0),
+  };
+}
