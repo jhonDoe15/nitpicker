@@ -2753,8 +2753,7 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "spring": false,
-          "protocols": false
+          "spring": false
         }
       }
     }

@@ -21,6 +21,8 @@ export const DESIGN_RULE_LISTS = Object.fromEntries(
 const GO_DESIGN_RULES = new Set([
   DESIGN_RULE_IDS.mutableStateEscape,
   DESIGN_RULE_IDS.contextThreading,
+  DESIGN_RULE_IDS.callerProtocol,
+  DESIGN_RULE_IDS.protocolContract,
 ]);
 
 export const DESIGN_RULE_LANGUAGES = Object.fromEntries(

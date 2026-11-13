@@ -28,9 +28,9 @@ func hasExportDirective(declaration *ast.FuncDecl) bool {
 	return false
 }
 
-func isEntry(info *index.FuncInfo) bool {
+func isEntry(info *index.FuncInfo, h *hierarchy) bool {
 	if info.Recv != nil {
-		return frameworkMethods[info.Name]
+		return frameworkMethods[info.Name] || h.implements[info.Recv][info.Name]
 	}
 	return (info.Name == "main" && info.File.Pkg.Name == "main") || hasExportDirective(info.Decl)
 }
@@ -73,7 +73,7 @@ func signatureReturns(signature *ast.FuncType, file *index.FileCtx) string {
 			texts = append(texts, index.Ty{Expr: field.Type, File: file}.Text())
 		}
 	}
-	if len(texts) == 1 {
+	if len(texts) == 1 || (len(texts) == 2 && texts[1] == "error") {
 		return texts[0]
 	}
 	return "(" + strings.Join(texts, ",") + ")"
@@ -86,7 +86,7 @@ func ownerID(info *index.FuncInfo) string {
 	return info.File.Path
 }
 
-func functionFact(info *index.FuncInfo, known func(string) bool) Callable {
+func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) Callable {
 	kind, exported := "function", ast.IsExported(info.Name)
 	if info.Recv != nil {
 		kind, exported = "method", exported && ast.IsExported(info.Recv.Name)
@@ -94,7 +94,7 @@ func functionFact(info *index.FuncInfo, known func(string) bool) Callable {
 	env := scope.New(info.File, info)
 	return Callable{
 		ID: info.ID(), File: info.File.Path, Name: info.Name, Line: info.File.Line(info.Decl.Name.Pos()),
-		Kind: kind, Exported: exported, Owner: ownerID(info), Entry: isEntry(info),
+		Kind: kind, Exported: exported, Owner: ownerID(info), Entry: isEntry(info, h),
 		Params:       signatureParams(info.Decl.Type, info.File),
 		Returns:      signatureReturns(info.Decl.Type, info.File),
 		Calls:        calls.Collect(env, info.Decl.Body, known),

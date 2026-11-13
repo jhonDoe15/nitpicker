@@ -10,6 +10,7 @@ type Source = index.Source
 
 func Build(module string, sources []Source) Facts {
 	x := index.New(module, sources)
+	h := newHierarchy(x)
 	functions, members := declared(x)
 	known := map[string]bool{}
 	for _, function := range functions {
@@ -32,13 +33,13 @@ func Build(module string, sources []Source) Facts {
 			if info.File != file {
 				continue
 			}
-			if fact, ok := typeFact(info); ok {
+			if fact, ok := typeFact(info, h); ok {
 				facts.Types = append(facts.Types, fact)
 			}
 		}
 	}
 	for _, function := range functions {
-		facts.Callables = append(facts.Callables, functionFact(function, isKnown))
+		facts.Callables = append(facts.Callables, functionFact(function, h, isKnown))
 	}
 	for _, member := range members {
 		facts.Callables = append(facts.Callables, memberFact(member))
