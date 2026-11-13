@@ -2,7 +2,7 @@ import { analyzerName } from '../reporting/report-model.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../git/repository/command.mjs';
 import path from 'node:path';
-import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
+import { withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { readJson } from './read-shards.mts';
 import { fieldOf } from '../../../shared/values/readers.mts';
 
@@ -45,9 +45,13 @@ const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
 const git: (root: string, args: readonly string[]) => string = runGit;
 const inWorktree: (
   repositoryRoot: string,
-  snapshot: { readonly commitSha: string; readonly warn: (message: string) => unknown },
+  snapshot: {
+    readonly commitSha: string;
+    readonly directoryName: string;
+    readonly warn: (message: string) => unknown;
+  },
   operation: (worktreeRoot: string) => unknown,
-) => unknown = withTemporaryWorktree;
+) => unknown = withNamedTemporaryWorktree;
 
 function resolveEachAnalyzer(
   analyzers: readonly ResolvableAnalyzer[],
@@ -122,9 +126,13 @@ function withHeadProjectRoot(
   ) {
     throw new Error('Live project root is outside its Git repository');
   }
-  inWorktree(repositoryRoot, { commitSha: headSha, warn }, (headWorktreeRoot) => {
-    operation(path.join(headWorktreeRoot, projectRelativePath));
-  });
+  inWorktree(
+    repositoryRoot,
+    { commitSha: headSha, directoryName: 'head', warn },
+    (headWorktreeRoot) => {
+      operation(path.join(headWorktreeRoot, projectRelativePath));
+    },
+  );
 }
 
 function recordConfigurationErrors(

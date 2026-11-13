@@ -1,19 +1,23 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
+import {
+  JAVA_FORMATTERS,
+  KOTLIN_FORMATTERS,
+  formatterOptionFlags,
+  javaFormatterCommand,
+} from './jvm-formatters.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
-const INIT_SCRIPT = readFileSync(
-  path.resolve(import.meta.dirname, '../../gradle/nitpicker.init.gradle'),
-  'utf8',
-);
+const INIT_SCRIPT = ['nitpicker.init.gradle', 'kotlin/kotlin-format.gradle']
+  .map((file) => readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8'))
+  .join('\n');
 const GROOVY_PINNED = new Proxy({}, { get: (target, name) => `\${pinned.${String(name)}}` });
 const FORMATTERS = [...Object.values(JAVA_FORMATTERS), ...Object.values(KOTLIN_FORMATTERS)];
 
 function initScriptCoordinates() {
   return [...INIT_SCRIPT.matchAll(/nitpicker(?:Format|Ktlint|Ktfmt)\(?\s*"([^"]+)"/gu)].map(
-    (match) => match[1],
+    (match) => match[1].replace(/\$\{javaFormatterVersion \?: ([^}]+)\}/u, `\${$1}`),
   );
 }
 
@@ -57,5 +61,41 @@ describe('the formatter table', () => {
       'google-java-format --aosp --replace <Java files>',
       'palantir-java-format --palantir --replace <Java files>',
     ]);
+  });
+});
+
+describe('formatterOptionFlags', () => {
+  const both = ['skipJavadocFormatting', 'skipReflowingLongStrings'];
+
+  it('turns the skipped options into the flags of google-java-format', () => {
+    expect(formatterOptionFlags('google', { options: both })).toEqual([
+      '--skip-javadoc-formatting',
+      '--skip-reflowing-long-strings',
+    ]);
+    expect(formatterOptionFlags('aosp', { version: '1.17.0', options: both })).toHaveLength(2);
+    expect(formatterOptionFlags('google', { options: [] })).toEqual([]);
+    expect(formatterOptionFlags('google', {})).toEqual([]);
+  });
+
+  it('passes no flag to a google-java-format release that does not have them', () => {
+    expect(formatterOptionFlags('google', { version: '1.7', options: both })).toEqual([]);
+    expect(formatterOptionFlags('google', { version: '1.8', options: both })).toHaveLength(2);
+  });
+
+  it('gives palantir-java-format only the reflow flag, since its command line cannot skip Javadoc', () => {
+    expect(formatterOptionFlags('palantir', { options: both })).toEqual([
+      '--skip-reflowing-long-strings',
+    ]);
+  });
+
+  it('builds coordinates from a declared version, and from the pin without one', () => {
+    const pinned = { googleJavaFormat: '1.35.0', palantirJavaFormat: '2.90.0' };
+
+    expect(JAVA_FORMATTERS.google.coordinates(pinned)).toBe(
+      'com.google.googlejavaformat:google-java-format:1.35.0',
+    );
+    expect(JAVA_FORMATTERS.palantir.coordinates(pinned, '2.50.0')).toBe(
+      'com.palantir.javaformat:palantir-java-format:2.50.0',
+    );
   });
 });

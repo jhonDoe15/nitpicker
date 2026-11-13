@@ -44,6 +44,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/layout/path-patterns.mjs',
+  'languages/typescript/preset/layout/end-to-end-tests.mjs',
   'languages/typescript/preset/head-policy.mjs',
   'languages/typescript/preset/project-configs',
   'languages/typescript/preset/project-tools',

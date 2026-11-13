@@ -227,6 +227,26 @@ describe('failedCases with reruns', () => {
     expect(failuresOf(body)).toEqual([expected]);
   });
 
+  it('lets a rerun pass when the project opted in to its own retries, and still fails a hard failure', () => {
+    const root = directory();
+    const file = path.join(root, 'TEST-shop.CartTest.xml');
+    writeFileSync(
+      file,
+      `<testsuite name="shop.CartTest">
+        <testcase classname="shop.CartTest" name="adds"><flakyFailure message="x"/></testcase>
+        <testcase classname="shop.CartTest" name="empties"><failure message="no"/></testcase>
+      </testsuite>`,
+    );
+
+    expect(failedCaseEntries(file).map(({ detail }) => detail.name)).toEqual([
+      'shop.CartTest.adds',
+      'shop.CartTest.empties',
+    ]);
+    expect(failedCaseEntries(file, { retriesPass: true }).map(({ detail }) => detail.name)).toEqual(
+      ['shop.CartTest.empties'],
+    );
+  });
+
   it('lists a test whose every rerun failed once, as a plain failure', () => {
     expect(
       failuresOf(`<testcase classname="shop.CartTest" name="adds">

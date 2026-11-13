@@ -4,8 +4,11 @@ import path from 'node:path';
 export const MESSY = 'src/main/java/demo/Messy.java';
 export const ROOMY = 'src/main/java/demo/Roomy.java';
 export const LOOSE = 'src/main/java/demo/Loose.java';
+export const TABBED = 'src/main/java/demo/Tabbed.java';
 
 export const MESSY_SOURCE = 'package demo;\n\nclass Messy {\n  int a;\n}\n';
+
+export const TABBED_SOURCE = 'package demo;\n\nclass Tabbed {\n\tint a;\n}\n';
 
 export const ROOMY_SOURCE = `package demo;
 

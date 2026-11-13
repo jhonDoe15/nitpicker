@@ -7,6 +7,16 @@ import {
   TESTS_TOOL,
   appliedRunnerRetry,
 } from '../../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
+import { readPytestRetries } from '../../../../languages/python/adapters/test-runs/retries/pytest-retries.mjs';
+import {
+  directorySource,
+  readDeclaredBuild,
+} from '../../../../languages/java/adapters/tool-config/declared/declared-build.mjs';
+import {
+  testRetryDeclarations,
+  testRetryValues,
+} from '../../../../languages/java/adapters/tool-config/declared/test-retries-declared.mjs';
+import { GRADLE_PRESETS } from '../../../../languages/java/adapters/gradle-presets.mjs';
 import { resolveLayoutFor } from '../../../../languages/typescript/preset/layout.mjs';
 
 function jscpdSide(side, optedIn) {
@@ -35,9 +45,46 @@ function typescriptSide(side, optedIn) {
   }
 }
 
+function pytestSide(side) {
+  try {
+    const { values, file } = readPytestRetries(side.root);
+    return { kind: 'applied', config: values, file, files: file === undefined ? [] : [file] };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+function declaredRetriesSide(side) {
+  try {
+    const declarations = testRetryDeclarations(
+      readDeclaredBuild({
+        paths: () => side.files,
+        readMany: directorySource(side.root).readMany,
+      }),
+    );
+    const files = [...new Set(declarations.map(({ file }) => file))];
+    const config = testRetryValues(declarations);
+    const fileByKey = Object.fromEntries(
+      Object.entries(config).map(([key, value]) => [
+        key,
+        declarations.find((found) => found.setting === key && found.value === value)?.file,
+      ]),
+    );
+    return { kind: 'applied', config, file: files[0], files, fileByKey };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
 function testsSide(side, optedIn) {
   if (!optedIn) {
     return { kind: 'rejected' };
+  }
+  if (side.config.preset === 'python') {
+    return pytestSide(side);
+  }
+  if (GRADLE_PRESETS.includes(side.config.preset)) {
+    return declaredRetriesSide(side);
   }
   try {
     const { values, file, files } = appliedRunnerRetry(side);
@@ -69,6 +116,7 @@ export function appliedConfigs(tool, { base, head, baseOptedIn }) {
       head: sides[1].config,
       file: sides[1].file,
       files: [...new Set(sides.flatMap(({ files = [] }) => files))],
+      fileByKey: { ...sides[0].fileByKey, ...sides[1].fileByKey },
     },
   };
 }

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
 import vitest from '@vitest/eslint-plugin';
@@ -12,6 +13,7 @@ import {
 } from '../eslint-config/policy/production-policy.mjs';
 import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
 import { logicConfigFor } from '../eslint-config/logic/logic-rules.mjs';
+import { untypedJavascriptConfig } from '../eslint-config/policy/untyped-javascript.mjs';
 import {
   applyJavascriptDialect,
   scriptRuleEntries,
@@ -99,6 +101,10 @@ const presetConfig = defineConfig(
       ],
     },
   },
+  ...untypedJavascriptConfig({
+    tsconfigFile: path.join(import.meta.dirname, 'tsconfig.quality.json'),
+    layout,
+  }),
   ...logicConfigFor(selectedFiles, parserOptions),
   {
     files: productionFiles,

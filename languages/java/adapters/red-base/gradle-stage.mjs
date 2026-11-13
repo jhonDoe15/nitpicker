@@ -4,6 +4,7 @@ import { runGradle } from '../gradle-wrapper/gradle-process.mjs';
 import { gradleLog, withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mjs';
 import { condenseFailure } from '../gradle-wrapper/diagnostics/failure-text.mjs';
 import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mjs';
+import { usesConfigRetries } from '../../../../shared/conventions/tool-precedence.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mjs';
@@ -26,7 +27,7 @@ export function assertGradleSucceeded(
   const succeeded = result.error === undefined && result.status === 0;
   const failures =
     result.error === undefined && (!succeeded || checkTests)
-      ? failingTestsOf({ reportBase, since })
+      ? failingTestsOf({ reportBase, since, retriesPass: usesConfigRetries(policy.toolPrecedence) })
       : [];
   const log = gradleLog(policy);
   if (failures.length > 0) {

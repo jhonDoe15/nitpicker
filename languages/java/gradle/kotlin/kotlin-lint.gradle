@@ -1,11 +1,6 @@
 def reportDir = project.ext.nitpickerReportDir
 def analysisRoot = gradle.startParameter.currentDir
-def kotlinFiles = project.ext.nitpickerKotlinFiles
-def compiledKotlinFiles = { String sourceSet ->
-    def kotlinSourceSet = project.kotlin.sourceSets.findByName(sourceSet)
-    (kotlinSourceSet == null ? [] : kotlinSourceSet.kotlin.srcDirs).findAll { it.exists() }.sort()
-        .collectMany { dir -> fileTree(dir) { include '**/*.kt' }.files.sort() }.unique()
-}
+def lintSpecs = project.ext.nitpickerKotlinLintSpecs
 def jdkHome = project.ext.nitpickerKotlinJdkHome
 def relative = { File file -> analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/') }
 def silencing = ~/^-(?:nowarn|Werror|Xsuppress-warning|Xwarning-level|Xreport-all-warnings|Xrender-internal-diagnostic-names)\b.*/
@@ -92,39 +87,12 @@ def registerLint = { Map lint ->
     }
 }
 
-registerLint(
-    task: 'nitpickerKotlinLint',
-    report: 'kotlinc.json',
-    compileTask: 'compileKotlin',
-    dependencies: ['compileJava'],
-    present: { kotlinFiles() },
-    files: { compiledKotlinFiles('main') },
-    extraArguments: { [] },
-    libraries: {
-        def javaClasses = tasks.named('compileJava').get().destinationDirectory.get().asFile
-        sourceSets.main.compileClasspath.files + [javaClasses]
-    })
-
-registerLint(
-    task: 'nitpickerKotlinTestLint',
-    report: 'kotlinc-test.json',
-    compileTask: 'compileTestKotlin',
-    dependencies: ['compileKotlin', 'compileTestJava'],
-    present: { compiledKotlinFiles('test') },
-    files: { compiledKotlinFiles('test') },
-    extraArguments: {
-        def friends = sourceSets.main.output.classesDirs.files.findAll { it.exists() }
-        friends.isEmpty() ? [] : ["-Xfriend-paths=${friends.collect { it.absolutePath }.join(',')}".toString()]
-    },
-    libraries: {
-        def javaClasses = tasks.named('compileTestJava').get().destinationDirectory.get().asFile
-        sourceSets.test.compileClasspath.files + [javaClasses]
-    })
+lintSpecs.each { registerLint(it) }
 
 tasks.named('nitpickerJava') {
-    dependsOn 'nitpickerKotlinLint', 'nitpickerKotlinTestLint'
+    dependsOn lintSpecs*.task
     doLast {
-        ['kotlinc.json', 'kotlinc-test.json'].each { name ->
+        lintSpecs*.report.each { name ->
             def report = reportDir.get().file(name).asFile
             if (!report.exists()) {
                 report.text = '{"exitCode":0,"output":""}'

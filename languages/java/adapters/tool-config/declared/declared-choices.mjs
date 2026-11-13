@@ -9,8 +9,9 @@ import { directorySource, readDeclaredBuild } from './declared-build.mjs';
 import { ERRORPRONE } from './errorprone-declared.mjs';
 import { PIT } from './pit-declared.mjs';
 import { SPOTBUGS } from './spotbugs-declared.mjs';
+import { TESTS } from './test-retries-declared.mjs';
 
-const TOOLS = { spotbugs: SPOTBUGS, errorprone: ERRORPRONE, pit: PIT };
+const TOOLS = { spotbugs: SPOTBUGS, errorprone: ERRORPRONE, pit: PIT, tests: TESTS };
 
 function requireReadablePoms(build) {
   const broken = build.poms.find((pom) => pom.failure !== undefined);
@@ -49,7 +50,9 @@ export function declaredToolDigest(toolPrecedence, policyRoot) {
     return JSON.stringify(
       Object.entries(choices).map(([tool, choice]) => [
         tool,
-        choice.arguments.map((argument) => portable(argument, policyRoot)),
+        Array.isArray(choice.arguments)
+          ? choice.arguments.map((argument) => portable(argument, policyRoot))
+          : choice.arguments,
         fileContents(choice.files),
       ]),
     );
@@ -66,18 +69,14 @@ export function declaredToolNotices(config, source) {
   const build = readDeclaredBuild(source);
   return BUILD_DECLARED_TOOLS.flatMap((tool) => {
     const declarations = TOOLS[tool].declarations(build);
-    if (declarations.length === 0) {
+    const relevant = TOOLS[tool].noticeable?.(declarations) ?? declarations;
+    if (relevant.length === 0) {
       return [];
     }
     const layers = precedenceLayers(config.tools?.[tool]?.precedence);
     return layers.usesProject
       ? TOOLS[tool].notice(declarations, layers)
-      : [
-          ignoredConfigNotice(
-            `the ${TOOLS[tool].label} settings in ${filesOf(declarations)}`,
-            tool,
-          ),
-        ];
+      : [ignoredConfigNotice(`the ${TOOLS[tool].label} settings in ${filesOf(relevant)}`, tool)];
   });
 }
 

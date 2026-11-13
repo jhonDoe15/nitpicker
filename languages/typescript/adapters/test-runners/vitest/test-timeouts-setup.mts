@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
-import { resolveTestTimeouts } from '../typed/timeouts.mts';
+import { isIntegrationTestFor, resolveTestTimeouts } from '../typed/timeouts.mts';
 import type { TimeoutLimits } from '../typed/runner-types.mts';
 
 export function applyVitestTimeouts(
@@ -9,9 +9,11 @@ export function applyVitestTimeouts(
   { file, root = process.cwd() }: { readonly file: string; readonly root?: string },
   configure: (settings: Readonly<Record<string, unknown>>) => void,
 ): TimeoutLimits {
+  const relative = path.relative(root, file).replaceAll('\\', '/');
   const limits = resolveTestTimeouts(policy, {
-    file: path.relative(root, file).replaceAll('\\', '/'),
+    file: relative,
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+    integration: isIntegrationTestFor(relative, policy),
   });
   const settings = Object.fromEntries(
     Object.entries(limits)

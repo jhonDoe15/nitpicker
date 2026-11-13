@@ -296,4 +296,26 @@ describe('the differential lint', () => {
       'src/main/java/shop/BoxUser.java:8: warning: [deprecation] label() in Box has been deprecated',
     ]);
   });
+
+  it.each([
+    ['unchecked', '  Box<String> typed(Object value) {\n    return (Box<String>) value;\n  }', 5],
+    ['rawtypes', '  Box raw;', 4],
+    ['cast', '  int same(int value) {\n    return (int) value;\n  }', 5],
+  ])(
+    'keeps a [%s] warning when the change only adds @SuppressWarnings for it',
+    (rule, member, line) => {
+      const base = temporaries.directory();
+      const head = temporaries.directory();
+      const source = (annotation) =>
+        ['package demo;', 'class Box<T> {', annotation, member, '}', ''].join('\n');
+      writeFiles(base, { 'src/main/java/demo/Box.java': source('') });
+      writeFiles(head, { 'src/main/java/demo/Box.java': source(`  @SuppressWarnings("${rule}")`) });
+      lint(javaPlan(base), undefined);
+      const [header] = warningHeaders(lint(javaPlan(head), base).report);
+
+      expect(header).toMatch(
+        new RegExp(`^src/main/java/demo/Box\\.java:${String(line)}: warning: \\[${rule}\\] `, 'u'),
+      );
+    },
+  );
 });

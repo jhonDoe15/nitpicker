@@ -5,7 +5,7 @@ import { trackTemporaryPath } from '../typed/tooling.mts';
 import { type Layout, readLayout } from '../typed/head-policy.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mjs';
 import { projectTestRunner, readHeadPolicyFile, readTestReport } from './typed/runner-tools.mts';
-import { resolveTestTimeouts } from './typed/timeouts.mts';
+import { isIntegrationTestFor, resolveTestTimeouts } from './typed/timeouts.mts';
 import {
   COVERAGE_REPORT_PATH,
   formatProcessOutput,
@@ -25,10 +25,15 @@ import type {
 export const TEST_TIMEOUT_MS: number = TEST_TIMEOUT_CEILING_MS;
 const MAX_WORKERS = 4;
 
-export function testTimeouts(file?: string, policy = readHeadPolicyFile()): TimeoutLimits {
+export function testTimeouts(
+  file?: string,
+  policy = readHeadPolicyFile(),
+  { floors }: { readonly floors: boolean } = { floors: true },
+): TimeoutLimits {
   return resolveTestTimeouts(policy, {
     file,
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+    integration: floors && isIntegrationTestFor(file, policy),
   });
 }
 
@@ -41,10 +46,12 @@ export function testTimeoutMs(
     return testTimeouts().testTimeoutMs;
   }
   const selected = files ?? options.rerun?.files ?? runnableTestFiles(options);
-  const limits = selected.map((file) =>
-    testTimeouts(path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file),
+  const relative = selected.map((file) =>
+    path.isAbsolute(file) ? path.relative(options.projectRoot, file) : file,
   );
-  const [first = testTimeouts()] = limits;
+  const policy = readHeadPolicyFile();
+  const limits = relative.map((file) => testTimeouts(file, policy, { floors: false }));
+  const [first = testTimeouts(undefined, policy)] = limits;
   if (limits.length === 0) {
     limits.push(first);
   }
@@ -67,7 +74,13 @@ export function testTimeoutMs(
       TROUBLESHOOTING_ANCHORS.testTimeoutsNeedVitest,
     );
   }
-  return timeout;
+  return Math.max(
+    ...relative.map((file) => {
+      const { testTimeoutMs: test, hookTimeoutMs: hook } = testTimeouts(file, policy);
+      return Math.max(test, hook ?? 0);
+    }),
+    timeout,
+  );
 }
 
 export function workerCount(options: TestOptions): number {

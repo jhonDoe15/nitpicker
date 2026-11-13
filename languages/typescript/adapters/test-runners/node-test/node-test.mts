@@ -144,7 +144,9 @@ function testArguments(options: TestOptions, command: RunnerCommand, reportPath:
     `--test-reporter-destination=${reportPath}`,
     `--test-timeout=${String(testTimeoutMs(options, testFiles, { hooks: false }))}`,
     `--test-concurrency=${String(workerCount(options))}`,
-    ...(options.rerun === undefined ? [] : [`--test-name-pattern=${options.rerun.namePattern}`]),
+    ...(options.rerun?.namePattern === undefined
+      ? []
+      : [`--test-name-pattern=${options.rerun.namePattern}`]),
     ...scriptOptions,
     ...(options.rerun?.files ?? testFiles),
   ];

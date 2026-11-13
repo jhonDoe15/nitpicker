@@ -46,6 +46,12 @@ import {
   sourceLocator,
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
+import {
+  CHECKSTYLE_SKIPPED,
+  STRUCTURE_SKIPPED,
+  skippedFiles,
+  skippedToolFindings,
+} from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
 
@@ -149,23 +155,39 @@ function ifTested(jacoco, build) {
   return jacoco === undefined ? [] : build(jacoco);
 }
 
+function unlessSkipped(skipped, file, read) {
+  return skipped.has(file) ? [] : read();
+}
+
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
   const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
   const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
+  const skipped = skippedFiles(reportRoot);
   return [
+    ...skippedToolFindings({
+      reportRoot,
+      javaStyle: context.javaStyle,
+      moduleDir: context.module.moduleDir,
+    }),
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
     ...formatFindings(context),
-    ...checkstyleFindings(context),
+    ...unlessSkipped(skipped, CHECKSTYLE_SKIPPED, () => checkstyleFindings(context)),
     ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
     ...archunitFindings(context),
     ...springArchFindings(context),
-    ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
+    ...unlessSkipped(skipped, STRUCTURE_SKIPPED, () =>
+      ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
+    ),
     ...(context.quick ? [] : pitFindings(context)),
-    ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
+    ...unlessSkipped(skipped, STRUCTURE_SKIPPED, () =>
+      readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
+    ),
     ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
-    ...readClassLimitFindings(reportRoot, context.classLimits),
+    ...unlessSkipped(skipped, STRUCTURE_SKIPPED, () =>
+      readClassLimitFindings(reportRoot, context.classLimits),
+    ),
     ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readGuardFindings({

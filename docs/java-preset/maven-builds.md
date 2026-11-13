@@ -79,7 +79,8 @@ by field. Per snapshot:
   Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
   50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
-  as well (the Test retries bullet above has the message). On the base snapshot the failing tests
+  as well (the Test retries bullet above has the message); with `tools.tests.precedence` listing
+  `"project"` the POM's count is passed on as the `-D` value and those cases pass. The highest count declared in any POM is passed for every module. On the base snapshot the failing tests
   are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
   `tests-failed` tool error for that module that the core reads as a red base, the same as a Gradle
   base whose tests fail. The other modules keep their

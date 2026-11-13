@@ -187,7 +187,7 @@ export function childrenNamed(element, name) {
   return element.children.filter((child) => child.name === name);
 }
 
-export function testCaseProblem(testCase) {
+export function testCaseProblem(testCase, { flakyPasses = false } = {}) {
   const failed = [...childrenNamed(testCase, 'failure'), ...childrenNamed(testCase, 'error')];
   if (failed.length > 0) {
     return { problem: failed[0], flaky: false };
@@ -196,7 +196,7 @@ export function testCaseProblem(testCase) {
     ...childrenNamed(testCase, 'flakyFailure'),
     ...childrenNamed(testCase, 'flakyError'),
   ];
-  return flaky.length > 0 ? { problem: flaky[0], flaky: true } : undefined;
+  return flaky.length > 0 && !flakyPasses ? { problem: flaky[0], flaky: true } : undefined;
 }
 
 export function childAt(element, ...names) {

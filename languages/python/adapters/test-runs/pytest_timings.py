@@ -71,8 +71,13 @@ class FunctionSetupTimes:
             outcome.get_result().duration = self.seconds(item.nodeid)
 
 
+CONFIG_RETRIES = "NITPICKER_CONFIG_RETRIES"
+RETRY_MARK = "flaky"
+
+
 class SingleAttempt:
     def __init__(self):
+        self.config_retries = os.environ.get(CONFIG_RETRIES) == "1"
         self.phases = {}
         self.retried = set()
         self.first_failure = {}
@@ -88,6 +93,9 @@ class SingleAttempt:
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_logreport(self, report):
         if type(report) is not pytest.TestReport:
+            yield
+            return
+        if self.config_retries and RETRY_MARK not in report.keywords:
             yield
             return
         self.note(report)

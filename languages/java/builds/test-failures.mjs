@@ -55,12 +55,12 @@ function caseEntry(suite, testCase, { problem, flaky }) {
   };
 }
 
-export function failedCaseEntries(file) {
+export function failedCaseEntries(file, { retriesPass = false } = {}) {
   const root = parseXml(readFileSync(file, 'utf8'));
   const suites = root.name === 'testsuites' ? childrenNamed(root, 'testsuite') : [root];
   return suites.flatMap((suite) =>
     childrenNamed(suite, 'testcase').flatMap((testCase) => {
-      const found = testCaseProblem(testCase);
+      const found = testCaseProblem(testCase, { flakyPasses: retriesPass });
       return found === undefined ? [] : [caseEntry(suite, testCase, found)];
     }),
   );
@@ -100,13 +100,14 @@ function modulesOf(failures) {
   return modules.length === 0 ? '' : ` in ${modules.join(', ')}`;
 }
 
-export function failingTestsError(failures) {
+export function failingTestsText(failures, consequence, where = modulesOf(failures)) {
   const count = failures.reduce((total, { tests }) => total + tests.length, 0);
+  return [testsFailHeadline(count, consequence, where), ...listedFailures(failures)].join('\n');
+}
+
+export function failingTestsError(failures) {
   const error = explainedError(
-    [
-      testsFailHeadline(count, 'the build stopped, so no other check ran', modulesOf(failures)),
-      ...listedFailures(failures),
-    ].join('\n'),
+    failingTestsText(failures, 'the build stopped, so no other check ran'),
   );
   return Object.defineProperty(error, 'failures', { value: failures });
 }

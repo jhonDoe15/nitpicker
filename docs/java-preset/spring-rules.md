@@ -60,7 +60,10 @@ arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.
-Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
+Compiler-only warnings such as `"unchecked"`, `"rawtypes"` and `"cast"` are not reported by this
+scan, and they hide nothing either: the javac lint blanks every `@SuppressWarnings(...)` out of the
+copy it compiles, in main and in test sources, so a bare `@SuppressWarnings("unchecked")` over an
+unchecked operation leaves its `javac/unchecked` finding in place.
 
 SpotBugs has no switch to ignore its annotations, so the same scan reports every annotation
 SpotBugs honors as `spotbugs/InlineSuppression`: any name ending in `SuppressFBWarnings`, any
@@ -301,7 +304,19 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   different branches of one `if`, `?:`, `switch` or `try`/`catch` count once, as do a write in an
   `if` branch that ends in `return` or `throw` and a write after that `if`; a `finally` block always
   runs, so its write counts. One `saveAll` is one
-  write. `SpringCacheWriteInTransaction` reports, in a writing transaction (`@Transactional` without
+  write. Nitpicker drops a `SpringMultiWriteWithoutTransaction` finding when the project's main sources
+  (Java and Kotlin, tests aside) call the method and every call runs in a transaction. Calls are matched
+  by method name on any receiver, in any file, so a same-named call elsewhere is a caller too and keeps
+  the finding; the filter errs toward reporting. A call runs in a transaction when its method is
+  `@Transactional` (Spring's, or `jakarta`/`javax` with `REQUIRED`, `REQUIRES_NEW` or `MANDATORY`), or the
+  method has no annotation of its own and its class is; `NOT_SUPPORTED`, `NEVER` and `SUPPORTS` do not
+  count, and a method-level annotation decides alone. A call inside a lambda, method reference or
+  anonymous class does not count, unless the lambda is the callback of a `TransactionTemplate`,
+  `TransactionOperations` or `TransactionalOperator` call on a variable declared with that type. A method
+  with no caller in the project, or with one caller outside a transaction, stays reported, so a `@Service`
+  entry point and a repository called from a controller are still found; a repository method that only
+  transactional services call is not, because the service is the transaction boundary.
+  `SpringCacheWriteInTransaction` reports, in a writing transaction (`@Transactional` without
   `readOnly = true` or a `NOT_SUPPORTED`, `NEVER` or `SUPPORTS` propagation, on the method or, for a
   public non-static method, on the class; a `TransactionTemplate` callback; a non-public helper that such a
   method calls), `put`, `putIfAbsent`, `evict`, `evictIfPresent`, `clear` and `invalidate` on a
@@ -420,14 +435,20 @@ name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Co
 Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
 `SpringProxySelfCall` matches by name and argument count (a varargs method takes its fixed
-arguments or more), and skips a call from one `@Transactional`
-method to another with a plain `@Transactional` (same transaction) and matches a `this::name` reference by name.
+arguments or more), and skips a call from a method that already runs in a
+transaction (`@Transactional` on the method, or on the class for a method that is not private; not one with
+`SUPPORTS`, `NOT_SUPPORTED` or `NEVER` propagation) to a `@Transactional` method that would only join it:
+`REQUIRED`, `SUPPORTS` or `MANDATORY` propagation, `readOnly` and `label` in any value, and any
+`rollbackFor`, `noRollbackFor`, `timeout`, `isolation` or transaction manager only when the caller declares the
+same one. It keeps reporting `REQUIRES_NEW`, `NESTED`, `NOT_SUPPORTED` and `NEVER`, a differing attribute, a
+callee that also carries `@Async`, a cache annotation or another proxy annotation, and every call from a method
+outside a transaction. It matches a `this::name` reference by name.
 
 The two proxy rules share one list of annotations, the same in the Kotlin preset:
 
 | Rule (prints as)                  | Flags                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Allowed form                                                            |
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `pmd/SpringProxySelfCall`         | A call from a class to its own method (`name(...)`, `this.name(...)` or `this::name`) that carries an annotation only a Spring proxy applies: Spring's `@Transactional` (except from one `@Transactional` method to a plain `@Transactional` one), `@Async`, the cache annotations, `@Retryable` (Spring Retry and Spring Framework 7), Spring Retry's `@CircuitBreaker`, `@ConcurrencyLimit`, `@PreAuthorize`, `@PostAuthorize`, `@PreFilter`, `@PostFilter` and `@Secured`; JSR-250 `@RolesAllowed` and `@DenyAll`; Resilience4j `@Retry`, `@CircuitBreaker`, `@RateLimiter`, `@Bulkhead` and `@TimeLimiter`; Micrometer `@Timed`, `@Counted` and `@Observed`; in a `@Validated` class, a Bean Validation or Hibernate Validator constraint or `@Valid` on a parameter, a type argument of one, or the method, of a method that is neither private nor static (a getter's own constraints count as a property's, not the method's); an annotation of the project meta-annotated with one of the Spring or JSR-250 ones, or with `@Constraint`; an annotation an `@Aspect` of the project names in `@annotation(...)`. | Move the annotated method to another bean and call it there.            |
+| `pmd/SpringProxySelfCall`         | A call from a class to its own method (`name(...)`, `this.name(...)` or `this::name`) that carries an annotation only a Spring proxy applies: Spring's `@Transactional` (except a call from a transactional method to one that would only join its transaction), `@Async`, the cache annotations, `@Retryable` (Spring Retry and Spring Framework 7), Spring Retry's `@CircuitBreaker`, `@ConcurrencyLimit`, `@PreAuthorize`, `@PostAuthorize`, `@PreFilter`, `@PostFilter` and `@Secured`; JSR-250 `@RolesAllowed` and `@DenyAll`; Resilience4j `@Retry`, `@CircuitBreaker`, `@RateLimiter`, `@Bulkhead` and `@TimeLimiter`; Micrometer `@Timed`, `@Counted` and `@Observed`; in a `@Validated` class, a Bean Validation or Hibernate Validator constraint or `@Valid` on a parameter, a type argument of one, or the method, of a method that is neither private nor static (a getter's own constraints count as a property's, not the method's); an annotation of the project meta-annotated with one of the Spring or JSR-250 ones, or with `@Constraint`; an annotation an `@Aspect` of the project names in `@annotation(...)`. | Move the annotated method to another bean and call it there.            |
 | `pmd/SpringProxyMethodVisibility` | A method with one of the annotations of `SpringProxySelfCall` that is not public, or is `final` or `static`, and one of them on a `final` class. Interface methods are left out.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Make the method public, non-final and non-static, in a non-final class. |
 
 `@PermitAll` is left out: it checks nothing, so a call that skips it behaves the same. Micrometer's

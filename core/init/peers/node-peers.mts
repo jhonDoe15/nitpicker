@@ -8,7 +8,13 @@ import {
 } from '../../../languages/typescript/typescript-api/api-redirect.mjs';
 import { packageVersion } from '../../help/package-version.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { describePackageManager } from '../detection/package-manager.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { cappedRange, chooseVitest, minimumOf, typescriptRequirement } from './peer-pins.mts';
+import type { FoundVersion, VitestPeerTable } from './peer-pins.mts';
+import { satisfiesRange } from './version-range.mts';
+
+const PEER_DEPENDENCIES = 'peerDependencies';
 
 type PeerVersions = { readonly installed?: unknown; readonly declared?: unknown };
 
@@ -35,6 +41,7 @@ export type PeerNeeds = {
     readonly installed: unknown;
     readonly range: unknown;
   }[];
+  readonly blockers: string[];
 };
 
 const COVERAGE_PACKAGE = '@vitest/coverage-v8';
@@ -48,9 +55,32 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependenc
 const TYPESCRIPT = 'typescript';
 const NITPICKER = 'nitpicker';
 const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?(?:\.(?<patch>\d+))?/u;
-const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), 'peerDependencies');
+const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), PEER_DEPENDENCIES);
 const NATIVE_TYPESCRIPT_MAJOR = 7;
-const JAVASCRIPT_API_TYPESCRIPT = `${TYPESCRIPT}@^6`;
+const VITEST = 'vitest';
+const OTHER_VITEST_PEERS: VitestPeerTable = {
+  4: { vite: '^6.0.0 || ^7.0.0 || ^8.0.0' },
+  5: { vite: '^6.4.0 || ^7.0.0 || ^8.0.0' },
+};
+function typescriptToolRange(): unknown {
+  return fieldOf(
+    fieldOf(installedManifest(PACKAGE_ROOT, 'typescript-eslint'), PEER_DEPENDENCIES),
+    TYPESCRIPT,
+  );
+}
+
+function javascriptApiTypeScript(): string {
+  return `${TYPESCRIPT}@${cappedRange('^6', typescriptToolRange())}`;
+}
+
+export function vitestPeers(): VitestPeerTable {
+  const own = installedManifest(PACKAGE_ROOT, VITEST);
+  const major = Number(/\d+/u.exec(textOf(fieldOf(own, 'version')))?.[0]);
+  const vite = fieldOf(fieldOf(own, PEER_DEPENDENCIES), 'vite');
+  return typeof vite === 'string' && Number.isFinite(major)
+    ? { ...OTHER_VITEST_PEERS, [major]: { vite } }
+    : OTHER_VITEST_PEERS;
+}
 
 export function runnerPeers(testRunner: string | undefined): readonly string[] {
   return RUNNER_PEERS[textOf(testRunner)] ?? [];
@@ -98,6 +128,11 @@ function isSupported(name: string, { installed, declared }: PeerVersions): boole
   const minimum = versionParts(supportedRange(name));
   const version =
     installed === undefined ? declaredVersionParts(declared) : versionParts(installed);
+  const floor = minimumOf(supportedRange(name));
+  const prerelease = installed !== undefined && /^\d+\.\d+\.\d+-/u.test(textOf(installed));
+  if (prerelease && floor !== undefined) {
+    return satisfiesRange(textOf(installed), `>=${floor}`);
+  }
   return version.length === 0 || minimum.length === 0 || isAtLeast(version, minimum);
 }
 
@@ -118,6 +153,26 @@ function needsAdding({ installed, declared, supported }: PeerStatus): boolean {
   return !supported || (installed === undefined && declared === undefined);
 }
 
+function foundVersion(projectRoot: string, name: string): FoundVersion | undefined {
+  const installed = fieldOf(installedManifest(projectRoot, name), 'version');
+  if (installed !== undefined) {
+    return { exact: textOf(installed) };
+  }
+  const declared = declaredSpecifier(manifestOf(projectRoot), name);
+  return typeof declared === 'string' && minimumOf(declared) !== undefined
+    ? { declared }
+    : undefined;
+}
+
+function vitestChoice(projectRoot: string) {
+  return chooseVitest({
+    supported: textOf(supportedRange(VITEST)),
+    peers: vitestPeers(),
+    versionOf: (name) => foundVersion(projectRoot, name),
+    addCommand: textOf(describePackageManager(projectRoot).add),
+  });
+}
+
 export function nodePeerNeeds(
   projectRoot: string,
   names: readonly string[],
@@ -129,22 +184,41 @@ export function nodePeerNeeds(
     .map((name) => peerStatus(projectRoot, manifest, { name, loadedFrom: loadedFrom[name] }))
     .filter(({ installed, supported }) => installed === undefined || !supported);
   const added = statuses.filter(needsAdding);
+  const choice = added.some(({ name }) => name === VITEST) ? vitestChoice(projectRoot) : undefined;
+  const blocked = choice?.kind === 'blocked';
+  const kept = added.filter(
+    ({ name }) => !(blocked && (name === VITEST || name === COVERAGE_PACKAGE)),
+  );
   return {
-    add: added.map(({ name }) => requirementOf(projectRoot, name, nodeVersion)),
+    add: kept.map(({ name }) => requirementOf(projectRoot, name, { nodeVersion, choice })),
     uninstalled: statuses.filter((status) => !needsAdding(status)).map(({ name }) => name),
     absent: statuses.filter(({ installed }) => installed === undefined).map(({ name }) => name),
     outdated: statuses
       .filter(({ installed }) => installed !== undefined)
       .map(({ name, installed }) => ({ name, installed, range: supportedRange(name) })),
+    blockers: choice?.kind === 'blocked' ? [choice.advice] : [],
   };
 }
 
-function requirementOf(projectRoot: string, name: string, nodeVersion: string): string {
+type RequirementContext = {
+  readonly nodeVersion: string;
+  readonly choice: ReturnType<typeof vitestChoice> | undefined;
+};
+
+function requirementOf(projectRoot: string, name: string, context: RequirementContext): string {
   if (name === NITPICKER) {
     return `${NITPICKER}@${textOf(packageVersion())}`;
   }
-  if (name === TYPESCRIPT && !redirects({ ...process.versions, node: nodeVersion })) {
-    return JAVASCRIPT_API_TYPESCRIPT;
+  if (name === TYPESCRIPT) {
+    return redirects({ ...process.versions, node: context.nodeVersion })
+      ? typescriptRequirement(textOf(supportedRange(TYPESCRIPT)), typescriptToolRange())
+      : javascriptApiTypeScript();
+  }
+  if (context.choice?.kind === 'fits' && name === VITEST) {
+    return context.choice.vitest;
+  }
+  if (context.choice?.kind === 'fits' && name === COVERAGE_PACKAGE) {
+    return context.choice.coverage;
   }
   return pinnedToVitest(projectRoot, name);
 }
@@ -181,7 +255,7 @@ export function assertTypeScriptNode(
       `This project uses TypeScript ${String(major)} (${used}). ` +
         'nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, ' +
         `which needs Node.js ${minimum} or newer, and this is Node.js ${nodeVersion}. ` +
-        `Install Node.js ${minimum} or newer, or use TypeScript 6 (${JAVASCRIPT_API_TYPESCRIPT}), ` +
+        `Install Node.js ${minimum} or newer, or use TypeScript 6 (${javascriptApiTypeScript()}), ` +
         'and run nitpicker init again.',
     );
   }

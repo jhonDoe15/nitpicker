@@ -308,7 +308,7 @@
     "mayBeIntended": false
   },
   "ExhaustiveSwitchHasDefault": {
-    "fix": "Remove the default branch: the switch already names every constant, and without default the compiler flags the switch when a constant is added.",
+    "fix": "Drop the default branch: the switch covers every enum constant or sealed subtype, so without it the compiler flags one added later.",
     "mayBeIntended": true
   },
   "FinalizeDoesNotCallSuperFinalize": {
@@ -684,7 +684,7 @@
     "mayBeIntended": false
   },
   "UnnecessaryWarningSuppression": {
-    "fix": "Remove the @SuppressWarnings value or NOPMD comment that suppresses nothing.",
+    "fix": "Remove the @SuppressWarnings value that suppresses nothing.",
     "mayBeIntended": true
   },
   "UnsynchronizedStaticFormatter": {

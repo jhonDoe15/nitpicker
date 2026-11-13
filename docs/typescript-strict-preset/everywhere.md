@@ -627,7 +627,11 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `if (path.relative(base, full).startsWith('..')) throw ...`). The prefix must end in a
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
-  (`path.join(dir, 'package.json')`).
+  (`path.join(dir, 'package.json')`). An entry of a directory listing is a single name, so it is
+  fine when it is joined onto the directory that was listed
+  (`readdirSync(dir).map((name) => path.join(dir, name))`, also `for (const name of
+await readdir(dir))`, `opendir` and `Dirent.name`); joined onto another base, or with another
+  parameter after it, it is still reported.
 - Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
   synchronous Node call inside an `async` function or a request handler blocks the event loop, so
   every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and

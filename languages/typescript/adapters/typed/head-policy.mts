@@ -44,5 +44,8 @@ export const prettierPrecedence: () => readonly string[] = untypedPrettierPreced
 
 export const usesLayeredPrettier: () => boolean = untypedUsesLayeredPrettier;
 
-export const layoutTransformFor: (policyFileName: string, layout: Layout) => unknown =
-  untypedLayoutTransformFor;
+export const layoutTransformFor: (
+  policyFileName: string,
+  layout: Layout,
+  options?: { readonly projectRootFiles: boolean },
+) => unknown = untypedLayoutTransformFor;

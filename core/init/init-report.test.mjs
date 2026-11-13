@@ -81,3 +81,38 @@ describe('the install lines of the init report', () => {
     );
   });
 });
+
+describe('the install lines for peers that are installed but too old', () => {
+  const peers = {
+    missing: ['nitpicker@1.0.0', 'typescript@>=5.7 <6.1.0', 'vitest'],
+    absent: ['nitpicker@1.0.0'],
+    outdated: ['typescript 5.4.5 is older than 5.7', 'vitest 2.1.4 is older than 4.1.11'],
+    uninstalled: [],
+    command: "yarn add --dev nitpicker@1.0.0 'typescript@>=5.7 <6.1.0' vitest",
+  };
+
+  it('says why a peer is asked for again instead of calling it missing', () => {
+    expect(peerSection(peers)).toBe(
+      [
+        'Install what nitpicker needs from your project (missing: nitpicker@1.0.0; typescript 5.4.5 is older than 5.7; vitest 2.1.4 is older than 4.1.11):',
+        "  yarn add --dev nitpicker@1.0.0 'typescript@>=5.7 <6.1.0' vitest",
+      ].join('\n'),
+    );
+  });
+
+  it('prints the advice to upgrade a package first below the command', () => {
+    const advice = 'No Vitest that nitpicker supports runs with vite 5.4.11. Upgrade vite first.';
+
+    expect(
+      peerSection({ ...peers, blockers: [advice] })
+        .split('\n')
+        .at(-1),
+    ).toBe(advice);
+  });
+
+  it('prints only the advice when nothing else can be installed', () => {
+    const advice = 'Upgrade vite first.';
+
+    expect(peerSection({ blockers: [advice] })).toBe(advice);
+  });
+});

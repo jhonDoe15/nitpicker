@@ -237,7 +237,7 @@ describe('maven tools', () => {
 });
 
 describe('runFormat', () => {
-  function formatTokens(javaStyle, keep) {
+  function formatTokens(javaStyle, keep, formatterFlags) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-format-'));
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
@@ -255,7 +255,7 @@ describe('runFormat', () => {
     mkdirSync(reportDir);
     const module = { basedir: root, sourceRoots: [path.dirname(source)], testSourceRoots: [] };
     const tools = { format: ['google.jar'], 'format-palantir': ['palantir.jar'] };
-    runFormat({ module, reportDir, tools, javaStyle });
+    runFormat({ module, reportDir, tools, javaStyle, formatterFlags });
     return readFileSync(path.join(reportDir, 'format.txt'), 'utf8').split('\n').filter(keep);
   }
 
@@ -270,6 +270,16 @@ describe('runFormat', () => {
     expect(formatArguments('aosp')).toEqual(['"--aosp"', '"--dry-run"']);
     expect(formatArguments('google')).toEqual(['"--dry-run"']);
     expect(formatArguments(undefined)).toEqual(['"--dry-run"']);
+  });
+
+  it('passes the formatter options the build file declares, before the files', () => {
+    expect(
+      formatTokens(
+        'google',
+        (token) => token.startsWith('"--') && !token.startsWith('"--add-exports'),
+        ['--skip-javadoc-formatting', '--skip-reflowing-long-strings'],
+      ),
+    ).toEqual(['"--skip-javadoc-formatting"', '"--skip-reflowing-long-strings"', '"--dry-run"']);
   });
 
   it('runs palantir-java-format from its own jar, and nothing when no formatter runs', () => {

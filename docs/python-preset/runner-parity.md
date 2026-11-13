@@ -91,7 +91,9 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   plugins that collect or report results (also the `flaky` plugin's `--force-flaky`, `--max-runs`
   and `--min-passes`); with pytest-rerunfailures installed `-o reruns=0` is added. A test that
   passes only on a later attempt anyway (a `flaky` mark, `retries` set in the config of
-  pytest-retry) counts as failed; see `retry-in-test`. A run that collects no test is
+  pytest-retry) counts as failed; see `retry-in-test`. With `tools.tests.precedence` listing
+  `"project"`, the `reruns` or `retries` of the pytest config is applied instead and only a `flaky`
+  mark still counts as failed. A run that collects no test is
   `python/no-tests-ran`, as before.
 - **Size.** `folder-depth-limit` (a package more than 4 levels below the root package, as for Java:
   the common package prefix of the production modules, on the base when there is one, after

@@ -100,7 +100,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit, tests${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
       );
       const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
       expect(validateConfig(layered)).toEqual(layered);
@@ -138,7 +138,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, tests, jscpd',
       ),
     );
   });

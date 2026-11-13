@@ -140,6 +140,10 @@ export const toolsByPreset = Object.fromEntries(
   SUPPORTED_PRESETS.map((preset) => [preset, [...toolSettingKeysOf(preset).keys()]]),
 );
 
+export const toolKeysByPreset = Object.fromEntries(
+  SUPPORTED_PRESETS.map((preset) => [preset, toolSettingKeysOf(preset)]),
+);
+
 export const tools = {
   description: 'Which config each tool uses, and its engine or runner.',
   type: 'object',

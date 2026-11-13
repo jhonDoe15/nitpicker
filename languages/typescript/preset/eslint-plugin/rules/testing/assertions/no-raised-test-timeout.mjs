@@ -8,6 +8,7 @@ import {
   isTestFactoryMember,
   isTestFunctionName,
 } from '../../analysis/test-code-analysis.mjs';
+import { isIntegrationTestFor } from '../../../../layout/end-to-end-tests.mjs';
 import { isFunctionNode } from '../../analysis/constant-resolution.mjs';
 
 export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
@@ -97,9 +98,11 @@ export const rule = {
   },
   create(context) {
     const policy = context.settings.nitpickerTestTimeoutPolicy ?? readHeadPolicyFile();
+    const file = path.relative(context.cwd, context.filename).replaceAll('\\', '/');
     const limits = resolveTestTimeouts(policy, {
-      file: path.relative(context.cwd, context.filename).replaceAll('\\', '/'),
+      file,
       language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+      integration: isIntegrationTestFor(file, policy),
     });
     return {
       CallExpression(node) {

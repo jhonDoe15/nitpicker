@@ -32,7 +32,7 @@ import {
   stringArray,
   without,
 } from './schema-parts.mjs';
-import { tools, toolsByPreset } from './tools-schema.mjs';
+import { toolKeysByPreset, tools, toolsByPreset } from './tools-schema.mjs';
 import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const SCHEMA_URL =
@@ -143,11 +143,20 @@ function forbidding(key, forbidden) {
   return forbidden.length === 0 ? {} : { [key]: { properties: forbid(forbidden) } };
 }
 
+function toolRestrictions(preset) {
+  const forbidden = forbid(without(toolsByPreset[preset], Object.keys(tools.properties)));
+  const narrowed = [...toolKeysByPreset[preset]].flatMap(([tool, keys]) => {
+    const extra = without(keys, Object.keys(tools.properties[tool].properties));
+    return extra.length === 0 ? [] : [[tool, { properties: forbid(extra) }]];
+  });
+  return { ...forbidden, ...Object.fromEntries(narrowed) };
+}
+
 function presetProperties(preset) {
   return {
     ...forbidding('thresholds', unavailableThresholds(preset)),
     ...forbidding('layout', without(layoutKeysFor(preset, CO_CHANGE_ON), LAYOUT_KEYS)),
-    ...forbidding('tools', without(toolsByPreset[preset], Object.keys(tools.properties))),
+    tools: { properties: toolRestrictions(preset) },
     conventions: conventionProperties(conventionDefinitions(preset)),
     exceptions: exceptionsFor(preset),
     ...forbid(unavailableKeys(preset)),
