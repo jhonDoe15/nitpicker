@@ -15,7 +15,6 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
-  pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
@@ -23,6 +22,7 @@ import {
 import { javaArgumentFile, runPit } from './pit/maven-pit.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
+import { pitTargets } from './module/pit-scope.mjs';
 
 const roots = [];
 

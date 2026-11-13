@@ -1,6 +1,7 @@
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { withGuardChecks } from './checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig, withGuardChecks } from './checkstyle-config.mjs';
+import { unformattedCheckstyle } from '../../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { writeGuardRulesets } from './pmd-rulesets.mjs';
 
 export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
@@ -8,6 +9,14 @@ export const PMD_RULESETS_LIST = 'pmd-rulesets.txt';
 export function writeRules(kind, plan) {
   if (kind === 'pmd-guards') {
     writeFileSync(path.join(plan.reportDir, PMD_RULESETS_LIST), writeGuardRulesets(plan).join(','));
+    return;
+  }
+  if (kind === 'checkstyle-config') {
+    const config = nitpickerCheckstyleConfig(readFileSync(plan.source, 'utf8'));
+    writeFileSync(
+      plan.output,
+      plan.javaStyle === 'none' ? unformattedCheckstyle(config, plan.indentation) : config,
+    );
     return;
   }
   if (kind === 'checkstyle-guards') {

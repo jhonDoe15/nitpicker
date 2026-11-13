@@ -296,7 +296,7 @@ The cache is restored after `npm ci`, which empties `node_modules`, and saved wi
 and a failing gate has measured the base too. To upload the SARIF, add
 `github/codeql-action/upload-sarif@v4.39.1` with `sarif_file: reports/nitpicker/report.sarif`
 after the run, with `if: ${{ !cancelled() }}` and the `security-events: write` permission. The
-[container image](usage.md#container-image) runs the gate without a Node.js setup, for TypeScript
+[container images](usage.md#container-images) runs the gate without a Node.js setup, for TypeScript
 and JavaScript projects.
 
 ### Job summary and annotations

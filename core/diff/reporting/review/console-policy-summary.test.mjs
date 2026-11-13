@@ -11,10 +11,7 @@ const HEADING = 'Policy changed in this change (nitpicker.config.json, head agai
 const ACCEPTED_HEADING =
   'Policy changed in this change (nitpicker.config.json, head against base; ' +
   'loosening accepted):';
-const ENTRY_CHANGES = [
-  'layout.entryPoints added: scripts/first.mjs',
-  'layout.entryPoints added: scripts/second.mjs',
-];
+const EXCLUDE_CHANGES = ['exclude added: scripts/first.mjs', 'exclude added: scripts/second.mjs'];
 const TIGHTENED = 'threshold crapLimit lowered from 9 to 8';
 const ACCEPT =
   '  Only a person may accept exactly these changes, after reviewing them: ' +
@@ -32,7 +29,7 @@ const ACCEPT_ROUTE = [
   'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
 ].join(' ');
 
-function kindsOf(changes, kind = 'entry-point') {
+function kindsOf(changes, kind = 'exclusion') {
   return Object.fromEntries(changes.map((change) => [change, kind]));
 }
 
@@ -43,15 +40,15 @@ function unapproved(count) {
   );
 }
 
-function entryBlock(changes) {
-  return [...changes.map((change) => `  ${change}`), `    ${POLICY_GUIDANCE['entry-point']}`];
+function exclusionBlock(changes) {
+  return [...changes.map((change) => `  ${change}`), `    ${POLICY_GUIDANCE.exclusion}`];
 }
 
 function policyReport({
   accepted = false,
   defects = [],
   toolErrors = [],
-  changes = ENTRY_CHANGES,
+  changes = EXCLUDE_CHANGES,
   kinds = kindsOf(changes),
 } = {}) {
   const result = report({
@@ -75,7 +72,7 @@ function consoleLines(result, color = false) {
 }
 
 describe('console policy review', () => {
-  it('lists two entry points once each with one shared guidance, review and digest block', () => {
+  it('lists two exclusions once each with one shared guidance, review and digest block', () => {
     const result = policyReport();
 
     expect(consoleLines(result)).toEqual([
@@ -83,7 +80,7 @@ describe('console policy review', () => {
       'Quality gate summary',
       '✖ No new code violations, but 2 unapproved policy changes fail the gate',
       HEADING,
-      ...entryBlock(ENTRY_CHANGES),
+      ...exclusionBlock(EXCLUDE_CHANGES),
       `  ${TIGHTENED}`,
       unapproved(2),
       ACCEPT,
@@ -91,13 +88,13 @@ describe('console policy review', () => {
       '',
     ]);
     expect(result.summary.newEnforceableFindings).toBe(2);
-    expect(result.newFindings.map(({ identity }) => identity)).toEqual(ENTRY_CHANGES);
+    expect(result.newFindings.map(({ identity }) => identity)).toEqual(EXCLUDE_CHANGES);
   });
 
-  it('prints the entry point guidance once for ten entry points', () => {
+  it('prints the exclusion guidance once for ten exclusions', () => {
     const changes = Array.from(
       { length: 10 },
-      (_, index) => `layout.entryPoints added: scripts/job-${String(index)}.mjs`,
+      (_, index) => `exclude added: scripts/job-${String(index)}.mjs`,
     );
 
     expect(consoleLines(policyReport({ changes }))).toEqual([
@@ -105,7 +102,7 @@ describe('console policy review', () => {
       'Quality gate summary',
       '✖ No new code violations, but 10 unapproved policy changes fail the gate',
       HEADING,
-      ...entryBlock(changes),
+      ...exclusionBlock(changes),
       `  ${TIGHTENED}`,
       unapproved(10),
       ACCEPT,
@@ -156,7 +153,7 @@ describe('console policy review', () => {
       '✖ 3 new enforceable violations: 1 code violation and 2 unapproved policy changes',
       ...CODE_DEFECT,
       HEADING,
-      ...entryBlock(ENTRY_CHANGES),
+      ...exclusionBlock(EXCLUDE_CHANGES),
       `  ${TIGHTENED}`,
       unapproved(2),
       ACCEPT,
@@ -179,7 +176,7 @@ describe('console policy review', () => {
       'Quality gate summary',
       '✖ No new code violations, but 2 unapproved policy changes fail the gate and the run is incomplete:',
       HEADING,
-      ...entryBlock(ENTRY_CHANGES),
+      ...exclusionBlock(EXCLUDE_CHANGES),
       `  ${TIGHTENED}`,
       unapproved(2),
       ACCEPT,
@@ -201,7 +198,7 @@ describe('console policy review', () => {
       `${red}Quality gate summary${reset}`,
       `${red}✖ No new code violations, but 2 unapproved policy changes fail the gate${reset}`,
       `${yellow}${HEADING}${reset}`,
-      ...entryBlock(ENTRY_CHANGES),
+      ...exclusionBlock(EXCLUDE_CHANGES),
       `  ${TIGHTENED}`,
       unapproved(2),
       ACCEPT,
@@ -217,7 +214,7 @@ describe('console policy review', () => {
       '✖ 1 new enforceable violation',
       ...CODE_DEFECT,
       ACCEPTED_HEADING,
-      ...ENTRY_CHANGES.map((change) => `  ${change}`),
+      ...EXCLUDE_CHANGES.map((change) => `  ${change}`),
       `  ${TIGHTENED}`,
       DIAGNOSTICS,
       '',
@@ -229,15 +226,15 @@ describe('console policy review', () => {
     const start = lines.indexOf('New findings:');
 
     expect(lines.slice(start + 1, start + 3)).toEqual(
-      ENTRY_CHANGES.map(
+      EXCLUDE_CHANGES.map(
         (change) =>
           `nitpicker-config/policy-loosened nitpicker.config.json ${change}. ` +
-          `${POLICY_GUIDANCE['entry-point']} ${ACCEPT_ROUTE}`,
+          `${POLICY_GUIDANCE.exclusion} ${ACCEPT_ROUTE}`,
       ),
     );
     expect(lines.slice(lines.indexOf(HEADING), lines.indexOf(HEADING) + 4)).toEqual([
       HEADING,
-      ...ENTRY_CHANGES.map((change) => `  ${change}`),
+      ...EXCLUDE_CHANGES.map((change) => `  ${change}`),
       `  ${TIGHTENED}`,
     ]);
   });

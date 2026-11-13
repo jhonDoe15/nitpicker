@@ -11,6 +11,27 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
+### Changed
+
+- Java: Error Prone's `ForEachIterable` and `FieldCanBeStatic` are off. Every Error Prone release
+  from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
+  fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
+  fields (SpotBugs only when the initializer is a compile-time constant).
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
+
+### Fixed
+
+- Java: Spring architecture findings no longer print their exception sentence twice, which made
+  the Java analyzer fail on most Spring projects and report no Java findings (#1050).
+- A finding that fails nitpicker's finding schema is left out with one tool error that names it,
+  and the analyzer's other findings are kept (#1050).
+- Java: an Error Prone check that crashes is turned off for the run and reported as one
+  `errorprone/check-crashed` tool error; the other checks' findings are kept (#1069).
+
 ## [0.1.0-rc.2] - 2026-11-12
 
 ### Added
@@ -213,6 +234,18 @@ Other changes:
 
 ### Fixed
 
+- Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
+  aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
+  (#1052).
+- Java 25 class files: JaCoCo moves to 0.8.16, PIT to 1.22.1 and SpotBugs to 4.9.8. Before, a
+  Java 25 build lost coverage and mutation results to a tool error, and SpotBugs reported nothing
+  without saying so (#1068).
+- Java 25 sources: Checkstyle moves to 13.5.0, PMD to 7.16.0, google-java-format to 1.35.0 and
+  palantir-java-format to 2.90.0, so module imports and statements before `super(...)` parse; the
+  formatter check no longer comes back empty when the formatter fails. Checkstyle and the
+  formatters run on JDK 21 or newer, and the source parsers and `--fix` run on a JDK that reads the
+  project's language level (#1068). PMD findings of every priority still fail the gate, though
+  PMD 7.16 marks its lower priorities as notes.
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
@@ -256,6 +289,13 @@ Other changes:
 
 ### Upgrade notes
 
+- Checkstyle 13.5 renames some rules: `checkstyle/MemberName` is now
+  `checkstyle/GoogleNonConstantFieldName`, `checkstyle/OperatorWrap` is `OperatorWrapNL` or
+  `OperatorWrapEOL`, and `checkstyle/AnnotationLocationMostCases` is
+  `AnnotationLocationMethodsAndCtors` or `AnnotationLocationTypeAndPackage`. A check with an `id`
+  reports as that id. Rename `exceptions` entries that use the old names.
+- Checkstyle and the Java formatters need JDK 21 or newer to run. The project can still compile
+  for an older release; nitpicker finds an installed JDK 21 (or a Gradle toolchain) for them.
 - `vitest` and `@vitest/coverage-v8` are needed only when Vitest is your test runner. Install the
   peers of the runner you use.
 - A `react` key with `"preset": "javascript"` is a configuration error. Use the TypeScript preset for

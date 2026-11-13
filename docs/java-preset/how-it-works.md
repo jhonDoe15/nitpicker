@@ -17,8 +17,8 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
-  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8, google-java-format 1.35.0,
+  JaCoCo 0.8.16, PIT 1.22.1, Checkstyle 13.5.0, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](../internals.md#java-report-directory)). A build script

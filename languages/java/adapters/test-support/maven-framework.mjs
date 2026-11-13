@@ -46,7 +46,7 @@ function buildFixture(projectRoot, { maven, reportDir, pinned }) {
     maven,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
+      `${jacocoPlugin(pinned, modules)}:prepare-agent`,
       `-Djacoco.destFile=${path.join(reportDir, 'jacoco.exec')}`,
       ...lifecycleArgs(modules),
       '-Dmaven.test.failure.ignore=true',

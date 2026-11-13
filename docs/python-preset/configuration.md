@@ -27,7 +27,7 @@ top-level `exceptions` is accepted only for the rules shared with the other lang
 `unused-option`, whose messages name it, the
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), the
 [fact rules](../../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
-`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan, and
+`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`, `public-alternative-bypass`), which the Python preset runs over its facts scan, and
 `co-change` of the [change history](../usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
@@ -78,9 +78,10 @@ Where each kind of finding is lifted for some paths:
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`,
-so the policy-change list reports it as a loosening and a removal as a change, like
-`layout.entryPoints`; the base snapshot is measured with the entry points both sides declare.
+`process-env-access`, `process-stream-access`, `import-time-effect` and `service-locator-lookup`
+skip a file listed there. Like `layout.entryPoints`, an added or removed entry is listed among the
+policy changes and does not fail the gate, unless another production module imports a file it newly
+covers; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
