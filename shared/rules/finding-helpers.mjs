@@ -10,6 +10,8 @@ export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
 export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
 /** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
 export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
+/** A mutation run that failed for one module; its `symbol` is that module's directory. */
+export const MUTATION_FAILED_PART_RULE = 'pit-failure';
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
 export const COMPILE_ERROR_TOOL = 'build';
 export const COMPILE_ERROR_RULE = 'compile-error';
