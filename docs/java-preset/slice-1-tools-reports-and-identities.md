@@ -73,6 +73,37 @@ no longer pins its carrier inside `synchronized` (JEP 491). Security rules find 
 cryptographic keys and IVs in main code; a constant IV that decrypts an existing format takes a path
 exception. Each rule's message names the one allowed form and ends with the exception route.
 
+**Rules added by PMD 7.16.0.** The `errorprone` and `bestpractices` categories gained five rules. Two
+are on, with Gradle and Maven and for the Java sources of the Kotlin preset alike (one ruleset serves
+all of them), and three stay off:
+
+- `ExhaustiveSwitchHasDefault` runs on switch expressions and on switch statements that use a type
+  pattern, a record pattern or `case null`. A classic or arrow switch statement keeps its `default`:
+  Error Prone's `MissingDefault` and Checkstyle's `MissingSwitchDefault` ask for one there, so the
+  rule skips statements with `violationSuppressXPath` and the three never contradict each other. A
+  switch expression needs no `default` to compile, so dropping it makes the compiler flag a constant
+  or permitted subtype added later. Error Prone's `UnnecessaryDefaultInEnumSwitch` is off, so no
+  other tool reports the same switch. A combined `case null, default` label is skipped too: the
+  `default` is what handles `null` there.
+- `UnnecessaryWarningSuppression` reports a `@SuppressWarnings` value that silences nothing. The one
+  accepted marker is `@SuppressWarnings("PMD.SpringDataNativeQuery")`, and this rule finds it left on
+  a method that no longer needs native SQL. Any other PMD value is already `pmd/InlineSuppression`,
+  which stands for this rule on the same line (an overlap pair). PMD does not see `// NOPMD`,
+  because the run uses a suppress marker no code contains. The rule is only right when every rule
+  that could fire runs together, which holds because nitpicker passes all its PMD rulesets to one
+  run.
+- `ImplicitFunctionalInterface` stays off. A port or use-case interface with one method that classes
+  implement is a common, valid design, and `@FunctionalInterface` on it would say that lambdas are
+  intended; the rule cannot tell the two apart, so it would flag real projects, among them the
+  Spring fixtures of this repository.
+- `ReplaceJavaUtilDate` and `ReplaceJavaUtilCalendar` stay off. The forbiddenapis `legacy-date-time`
+  signature bans `Date`, `Calendar`, `GregorianCalendar`, `TimeZone` and `SimpleDateFormat` in every
+  declaration and call, with the `java.time` replacement and the `toInstant()` conversion in its
+  message. The PMD rules match only the declared type of a field, parameter or local and `new`: a
+  second finding on the declaration line of a local, next to the one forbiddenapis puts on its first
+  use (the line overlap rule does not join two lines), and one more on a local that is never used. A
+  `Date` kept in a generic argument is missed by both.
+
 Four rules of these categories are narrowed where their default flags code that has no other form
 (see "PMD rules tuned by nitpicker" below).
 

@@ -76,6 +76,8 @@ const GUARD_RULES = new Set([
   'ConstantName',
   'MagicNumber',
   'VisibilityModifier',
+  'ExhaustiveSwitchHasDefault',
+  'UnnecessaryWarningSuppression',
 ]);
 
 function markedFiles(root) {

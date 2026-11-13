@@ -630,6 +630,7 @@ The pairs:
 - line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
 - line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
 - line: `checkstyle/FileTabCharacter` over `checkstyle/Indentation`
+- line: `pmd/InlineSuppression` over `pmd/UnnecessaryWarningSuppression`
 
 ## Standard streams and the `main` method
 
