@@ -92,7 +92,7 @@ function compileForLint({ plan, work, args, files }: Compile): Compiled {
   );
   const error = fieldOf(result, 'error');
   if (error !== undefined) {
-    throw error;
+    throw error instanceof Error ? error : new Error(textOf(error));
   }
   const output = `${textOf(fieldOf(result, 'stdout'))}${textOf(fieldOf(result, 'stderr'))}`;
   return { code: fieldOf(result, 'status'), log: output };
@@ -135,9 +135,9 @@ function lintSources(plan: LintPlan, request: LintSources): Compiled {
     const context = {
       staged: result.staged,
       from: path.relative(plan.root, plan.basedir),
-      to: posix(path.relative(plan.reportRoot, plan.basedir)),
+      to: textOf(posix(path.relative(plan.reportRoot, plan.basedir))),
     };
-    const log =
+    const log: unknown =
       result.code === 0 ? lintedWarnings(result.log, context) : relocated(result.log, context);
     return { code: result.code, log: textOf(log) };
   } finally {
