@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
-import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot } from './java-runner.mjs';
+import { MAVEN_FAILURE_RULE, analyzeJavaSnapshot, withPitDeadline } from './java-runner.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 vi.mock('node:child_process', async (importOriginal) => ({
@@ -148,5 +148,17 @@ describe('a configured analyzer deadline inside the Java runner', () => {
     vi.stubEnv('NITPICKER_MAVEN_TIMEOUT_MINUTES', '20');
     vi.mocked(spawnSync).mockClear();
     expect(runMavenBuild()).toBe(20 * MINUTE_MS);
+  });
+});
+
+describe('the deadline of Maven mutation testing', () => {
+  it('ends two minutes before the analyzer is stopped', () => {
+    const budget = { analyzerTimeoutMs: 31 * MINUTE_MS };
+
+    expect(withPitDeadline(budget, {}, 0).pitDeadlineMs).toBe(29 * MINUTE_MS);
+    expect(
+      withPitDeadline(budget, { NITPICKER_ANALYZER_TIMEOUT_MS: String(10 * MINUTE_MS) }, 0)
+        .pitDeadlineMs,
+    ).toBe(8 * MINUTE_MS);
   });
 });

@@ -50,13 +50,13 @@ type Option interface {
 
 type optionFunc func(*Repository)
 
-func (option optionFunc) apply(target *Repository) { option(target) }
+func (option optionFunc) apply(target *Repository) { option(target) } // want ptrToRefParam
 
 func WithNothing() Option {
 	return optionFunc(func(*Repository) {})
 }
 
-func Apply(target *Repository, options ...Option) {
+func Apply(target *Repository, options ...Option) { // want ptrToRefParam
 	for _, option := range options {
 		option.apply(target)
 	}

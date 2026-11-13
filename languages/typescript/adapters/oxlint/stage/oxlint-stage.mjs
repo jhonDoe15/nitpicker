@@ -11,7 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
@@ -102,7 +102,7 @@ function rebasedExtend(value, directory) {
 }
 
 export function writeStageConfigs({ stage, projectRoot, sampleFile, translation }) {
-  const bridge = pathToFileURL(path.join(import.meta.dirname, '..', 'oxlint-bridge.mjs')).href;
+  const bridge = checkoutModuleUrl(new URL('../oxlint-bridge.mjs', import.meta.url)).href;
   const jsPlugins = translation.plugins.map((plugin) => {
     const request = { ...plugin, projectRoot, sampleFile };
     writeFileSync(

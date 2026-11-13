@@ -1,0 +1,25 @@
+  <rule name="CleanupSkippedOnFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This release can throw, so the release or reset after it in the same block never runs and a connection stays open or the state is not reset. Release each resource in try-with-resources or try/finally (or catch each release and rethrow the first failure after the rest ran), or hold them in one AutoCloseable list closed with addSuppressed. An exception fits only when a failed release should abort the remaining ones.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $releases := ('close', 'disconnect', 'destroy', 'shutdown', 'shutdownNow', 'stop', 'terminate', 'unsubscribe', 'dispose', 'quit'),
+    $throwing := ('close', 'disconnect', 'destroy', 'stop', 'terminate', 'unsubscribe', 'dispose', 'quit'),
+    $cleanup := ('close', 'dispose', 'destroy', 'shutdown', 'stop', 'teardown', 'tearDown', 'disconnect', 'end', 'cleanup'),
+    $hooks := ('org.junit.jupiter.api.AfterEach', 'org.junit.jupiter.api.AfterAll', 'org.junit.After',
+               'org.junit.AfterClass', 'org.testng.annotations.AfterMethod', 'org.testng.annotations.AfterClass',
+               'org.testng.annotations.AfterSuite', 'org.testng.annotations.AfterTest',
+               'javax.annotation.PreDestroy', 'jakarta.annotation.PreDestroy'),
+    $releasing := function($statement) { exists($statement/MethodCall[@MethodName = $releases]) }
+return //MethodDeclaration[@Name = $cleanup or ModifierList/Annotation[some $hook in $hooks satisfies pmd-java:typeIs($hook)]]
+  /Block/ExpressionStatement[MethodCall[@MethodName = $throwing]]
+  [not(MethodCall[*[1][pmd-java:typeIs('java.util.concurrent.ExecutorService')]])]
+  [empty(preceding-sibling::ExpressionStatement[$releasing(.)])]
+  [exists(following-sibling::ExpressionStatement[$releasing(.)
+      or AssignmentExpression[*[2][self::NullLiteral]]
+      or MethodCall[@MethodName = 'clear']])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

@@ -8,6 +8,10 @@ import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs'
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
 import {
+  MINUTE_MS,
+  analyzerDeadlineMs,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import {
   TROUBLESHOOTING_ANCHORS,
   failureText,
   troubleshootingLinkOf,
@@ -23,6 +27,7 @@ export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_TESTS_FAILED_LENGTH = 40_000;
+const PIT_RESERVE_MS = 2 * MINUTE_MS;
 
 function truncated(message, rule) {
   const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
@@ -52,6 +57,11 @@ export function javaExecutionBudget(environment = process.env) {
   };
 }
 
+export function withPitDeadline(budget, environment, now = Date.now()) {
+  const analyzerMs = analyzerDeadlineMs(environment) ?? budget.analyzerTimeoutMs;
+  return { ...budget, pitDeadlineMs: now + analyzerMs - PIT_RESERVE_MS };
+}
+
 export function analyzeJavaSnapshot(
   projectRoot,
   {
@@ -69,7 +79,7 @@ export function analyzeJavaSnapshot(
       environment,
       policy,
       spawn,
-      budget: javaExecutionBudget(),
+      budget: withPitDeadline(javaExecutionBudget(), environment),
     });
     return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {

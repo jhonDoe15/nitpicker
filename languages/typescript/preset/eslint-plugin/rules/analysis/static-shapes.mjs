@@ -1,4 +1,4 @@
-export function staticKeyName(key, computed = false) {
+export function staticKeyName(key, computed) {
   if (computed) {
     return undefined;
   }

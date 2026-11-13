@@ -2,8 +2,7 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
-import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
-import { presetAnalyzers } from '../configuration/preset-analyzers.mts';
+import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
 import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
@@ -11,9 +10,13 @@ import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-store
 import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
-import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
 import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mts';
-import { type Analyzer, analyzersOf } from '../../shared/values/analyzers.mts';
+import {
+  type Analyzer,
+  type ProfiledAnalyzer,
+  analyzersOf,
+} from '../../shared/values/analyzers.mts';
 import { textOf, textsOf } from '../../shared/values/readers.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { NitpickerConfig } from '../configuration/config-types.mts';
@@ -39,8 +42,8 @@ type CacheCli = {
 
 type ShardOptions = {
   readonly analyzerNames: unknown;
-  readonly shardCount: unknown;
-  readonly shardIndex: unknown;
+  readonly shardCount: number | undefined;
+  readonly shardIndex: number | undefined;
 };
 
 type PublishOutcome = {
@@ -49,9 +52,12 @@ type PublishOutcome = {
   readonly skipped: readonly string[];
 };
 
-function selectedAnalyzers(configured: unknown, options: ShardOptions): Analyzer[] {
+function selectedAnalyzers(
+  configured: readonly ProfiledAnalyzer[],
+  options: ShardOptions,
+): Analyzer[] {
   const selected = analyzersOf(
-    options.shardCount === undefined
+    options.shardCount === undefined || options.shardIndex === undefined
       ? selectAnalyzers(configured, options.analyzerNames)
       : selectAnalyzerShard(configured, options.shardCount, options.shardIndex),
   );
@@ -151,7 +157,7 @@ export function runCacheCommand(cli: CacheCli): number {
     maven: cli.environment?.['NITPICKER_MAVEN'],
   });
   const selected = selectedAnalyzers(
-    configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy),
+    configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
     options,
   );
   const store = writableStore(projectRoot, cli);

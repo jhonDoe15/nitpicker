@@ -11,6 +11,7 @@ import (
 	"github.com/gostaticanalysis/comment"
 	"github.com/gostaticanalysis/comment/passes/commentmap"
 	"github.com/gostaticanalysis/nilerr"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/catalog/gocritic"
 	"github.com/jingyugao/rowserrcheck/passes/rowserr"
 	"github.com/kkHAIKE/contextcheck"
 	sqlclosecheck "github.com/ryanrolds/sqlclosecheck/pkg/analyzer"
@@ -52,7 +53,8 @@ var (
 
 // Linters returns every catalog linter.
 func Linters() []Linter {
-	return slices.Concat(linters, valueLinters, testLinters, otherLinters)
+	critic := Linter{Tool: "gocritic", Analyzers: []*analysis.Analyzer{gocritic.Analyzer}, Checks: gocritic.Enabled}
+	return slices.Concat(linters, valueLinters, testLinters, otherLinters, []Linter{critic})
 }
 
 // Configure sets the options that differ from each linter's defaults, and turns off the
@@ -68,5 +70,8 @@ func Configure() error {
 	if err := configureTests(); err != nil {
 		return err
 	}
-	return configureOthers()
+	if err := configureOthers(); err != nil {
+		return err
+	}
+	return gocritic.Configure()
 }
