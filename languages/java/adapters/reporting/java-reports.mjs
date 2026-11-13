@@ -48,6 +48,7 @@ import {
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
+import { pitSkippedFindings } from '../../builds/pit-failure/pit-skipped.mjs';
 
 const ROOT_MODULE = 'root';
 
@@ -231,12 +232,13 @@ function pitFindings(context) {
     return failures;
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  return ingestPit(readFileSync(pitReport, 'utf8'), {
+  const mutations = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
     sourceText: sourceTextReader(projectRoot),
     ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
   }).findings;
+  return [...mutations, ...pitSkippedFindings(reportRoot, context.module?.moduleDir)];
 }
 
 function branchFindings(context, jacoco) {

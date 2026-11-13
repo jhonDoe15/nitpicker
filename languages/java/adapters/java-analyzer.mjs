@@ -52,6 +52,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/pit/pit-scope.gradle',
+  'languages/java/gradle/pit/pit-retry.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/kotlin/kotlin-source-modules.gradle',
   'languages/java/gradle/errorprone/checks.json',
