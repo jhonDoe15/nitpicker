@@ -606,6 +606,27 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
     reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
     Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
     `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/require-client-timeout`: a database or AWS SDK client built without a timeout, whose
+    default wait has no limit. An AWS SDK v3 client (any client class from `@aws-sdk/client-*`, such as
+    `S3Client` or the aggregate `S3`)
+    needs a `requestHandler` (an options object, `new NodeHttpHandler(...)`, `NodeHttp2Handler`,
+    `FetchHttpHandler` or `NodeHttpHandler.create(...)`) with a non-zero `requestTimeout` or
+    `socketTimeout`. A PostgreSQL client needs a statement timeout: node-postgres `Pool` and `Client`
+    (`pg`, `pg-pool`) take `statement_timeout`, `query_timeout`, an `options` string with
+    `statement_timeout` or a connection string that carries one; postgres.js takes
+    `connection.statement_timeout`; a TypeORM `postgres` or `cockroachdb` data source (`new DataSource`,
+    `TypeOrmModule.forRoot`, a `forRootAsync` factory, an exported options object) takes them under
+    `extra`, Sequelize with the `postgres` dialect (option or URL) under `dialectOptions`, and Knex with a
+    PostgreSQL client in `connection` or through a `pool.afterCreate` hook. A zero value sets no limit. A
+    connection string read from the environment does not count, since the code cannot show that it carries
+    a timeout; when the timeout comes from `PGOPTIONS` or the database role
+    (`ALTER ROLE ... SET statement_timeout`), add an exception. Not reported: options the rule cannot read
+    (a parameter, an imported object, a helper call, a spread of either, a driver `type` from
+    configuration) and a `pg` pool or client with a `connect` listener, which can set the timeout itself. Kysely and Drizzle take a `pg` pool, which is checked where it is
+    built. Left out on purpose: boto3, the AWS SDK for Java, nodemailer and ImapFlow (their defaults
+    already bound each wait) and mysql2 (no pool-wide query timeout exists). Allowed:
+    `new Pool({ statement_timeout: 30_000 })`,
+    `new S3Client({ requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true } })`.
   - `nitpicker/timeout-abandons-operation`: `Promise.race([operation(...), timeout])` where one
     entry is a timeout and a losing entry is a call that gets no abort signal. `Promise.race` settles
     with the first entry and never cancels the others, so when the timeout wins the operation keeps

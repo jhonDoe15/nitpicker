@@ -71,6 +71,7 @@ are listed at the end.
 | TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                                                          | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                                                                                                                                                                                                                                                |
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                          | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                                                                                                                                                                                                                                                           |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                       | ruff `S113`, `http-without-timeout` (script)                                                                                                                                                                                                                                                                                                                                        |
+| Database deadlines       | a statement timeout where the PostgreSQL connection, pool or engine is made (`options="-c statement_timeout=30000"`, `command_timeout=30`)                                             | `client-without-timeout` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                               | `timeout-abandons-operation` (script)                                                                                                                                                                                                                                                                                                                                               |
 | Child processes          | `subprocess.run(args, timeout=30, check=True)`, `communicate(timeout=30)`, asyncio waits in `asyncio.timeout(30)`                                                                      |
 | Test honesty             | a skip only on a real condition, no sleeping, no tautologies, fixed time and seeded random values, no network, no leaked global state                                                  | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `retry-in-test`, `mocked-subject-in-test`, `mock-without-spec`, `patch-misses-lookup`, `untested-round-trip`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test`, `copied-constant-in-test`, `server-or-container-per-test`, `global-state-leak-in-test` (script) |
@@ -404,6 +405,22 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   overrides `request` or `send` to set one, or binds `request` with `functools.partial(..., timeout=...)`.
   A call with `**kwargs` whose keys are unknown is not reported; `urlopen` is not reported when production
   code calls `socket.setdefaulttimeout` with a number.
+- `client-without-timeout` reports a PostgreSQL connection made without a statement timeout, whose
+  default wait has no limit: `psycopg.connect` (also `Connection.connect` and `AsyncConnection.connect`),
+  `psycopg2.connect`, the `psycopg2.pool` pools and `psycopg_pool` pools (their `kwargs`) without an
+  `options` string that sets `statement_timeout`; `asyncpg.connect` and `create_pool` without
+  `command_timeout` (or `command_timeout=None`) or `server_settings={"statement_timeout": ...}`;
+  `create_engine` and `create_async_engine` (also SQLModel's) on a `postgresql` URL (a string or
+  `URL.create("postgresql+...")`) whose `connect_args` set none of them; and a Django `DATABASES` entry with
+  a PostgreSQL or PostGIS `ENGINE` whose `OPTIONS` set no `options` string with `statement_timeout`. A DSN
+  or URL text that carries a non-zero `statement_timeout`, `query_timeout` or `command_timeout` counts; a
+  zero value or `None` sets no limit, and a DSN read from the environment does not count, since the code
+  cannot show that it carries a timeout. Not reported: a call with `**kwargs` whose keys are unknown, an
+  engine whose URL is not known to be PostgreSQL, a connection with a setup hook (asyncpg `setup` or
+  `init`, a `psycopg_pool` `configure`, a SQLAlchemy `event.listen` or `listens_for` in the same file), and
+  a `DATABASES` that the module changes after the literal. When the timeout comes from `PGOPTIONS` or the
+  database role (`ALTER ROLE ... SET statement_timeout`), add an exception. boto3 clients are left out:
+  botocore bounds each attempt with a 60 second connect and read timeout.
 - `timeout-abandons-operation` reports a timeout that returns control while the work it bounded keeps
   running. Two asyncio forms are modeled, in any function, through `import` aliases and `from asyncio
 import`: `done, pending = await asyncio.wait(tasks, timeout=...)` (or a `return_when` other than

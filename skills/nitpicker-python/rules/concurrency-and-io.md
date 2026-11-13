@@ -62,6 +62,10 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   unit: convert once where it enters (`ttl_seconds * 1000`, `time.time()` for JWT `exp`), pass seconds to
   `time.sleep` and `datetime.fromtimestamp`, and keep epoch times in an `int` or a `datetime`, never a
   32-bit `numpy.int32` (`time-unit-mismatch`).
+- PostgreSQL connections get a statement timeout once, where they are made:
+  `psycopg.connect(dsn, options="-c statement_timeout=30000")`, `asyncpg.create_pool(dsn, command_timeout=30)`,
+  `create_engine(url, connect_args={"options": "-c statement_timeout=30000"})`, Django
+  `"OPTIONS": {"options": "-c statement_timeout=30000"}` (`client-without-timeout`).
 - Test an environment variable for a value, not for `None`: `if not os.environ.get("API_URL"):` and
   `os.environ.get("PORT") or "8000"`, never `is not None`, `in os.environ` or a `getenv` default; `API_URL=`
   gives `""`, which those count as set (`env-none-only-check`).

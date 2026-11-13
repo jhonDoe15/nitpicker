@@ -11,6 +11,8 @@ import { readSpringConfigFindings } from '../java-spring.mjs';
 
 afterEach(removeProjects);
 
+const QUERY_TIMEOUT = 'spring.transaction.default-timeout=30s';
+
 function relaxed(key) {
   return key.toLowerCase().replaceAll(/[-_]/g, '');
 }
@@ -243,9 +245,9 @@ describe('credentials in URLs', () => {
     'redis://:Sup3rS3cret@cache:6379',
     '${DB_URL:jdbc:postgresql://db/shop?password=Sup3rS3cret}',
   ])('flags %s', (url) => {
-    expect(only('application.properties', `spring.datasource.url=${url}`)).toEqual([
-      urlFinding('spring.datasource.url', 'spring.datasource.url'),
-    ]);
+    expect(
+      only('application.properties', `spring.datasource.url=${url}\n${QUERY_TIMEOUT}`),
+    ).toEqual([urlFinding('spring.datasource.url', 'spring.datasource.url')]);
   });
 
   it.each([
@@ -255,7 +257,9 @@ describe('credentials in URLs', () => {
     'https://example.com/path?token=${TOKEN}',
     'jdbc:postgresql://user@host/db',
   ])('accepts %s', (url) => {
-    expect(only('application.properties', `spring.datasource.url=${url}`)).toEqual([]);
+    expect(
+      only('application.properties', `spring.datasource.url=${url}\n${QUERY_TIMEOUT}`),
+    ).toEqual([]);
   });
 
   it('is exempt in local profiles', () => {
