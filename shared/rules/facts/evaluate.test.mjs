@@ -193,6 +193,7 @@ describe('the shared fact rules', () => {
       'sibling-copy-edit',
       'near-duplicate',
       'decided-condition',
+      'duplicate-branch',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       'public-alternative-bypass',

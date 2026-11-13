@@ -28,7 +28,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   extract a function, also when the copy has other names and literals. A smaller production
   function proved to copy another (`near-duplicate`: the same tree apart from renamed locals, up to
   4 changed values, a shared run of 3 or more statements, or the same logic written another way, such as a loop and the call that replaces it) fails too: extract one function that
-  takes the changed values as parameters.
+  takes the changed values as parameters. Two arms of an `if` chain, a ternary or a `switch` with
+  the same body (`duplicate-branch`, renamed locals count as equal) fail: merge them, or change the
+  arm that was meant to differ.
 - The gate fails unlisted, unused and unresolved dependencies, production imports of a
   `devDependency`, and committed secrets, binaries, build output and files over 1 MB; each message
   names the fix. Don't add an `exceptions` entry to get past one: stop and ask.

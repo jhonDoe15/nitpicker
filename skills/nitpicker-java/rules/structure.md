@@ -17,7 +17,7 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   another (`near-duplicate`: the same tree apart from renamed locals, up to 4 changed values or
   types, a shared run of 3 or more statements, or the same logic written another way, such as a loop and the call that replaces it) fails too: extract one method with the changed
   values as parameters. A condition that the guards before it already decide (`decided-condition`:
-  `if (n > 20)` after `if (n > 10) return`) fails: remove it, or fix the condition you meant. Don't give two classes one name and use both in
+  `if (n > 20)` after `if (n > 10) return`) fails: remove it, or fix the condition you meant. Two arms of an `else if` chain or two `switch` cases with the same body (`duplicate-branch`) fail: merge them. Don't give two classes one name and use both in
   one file, one fully qualified (`exported-name-collision`): rename one.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
 - Read environment variables and system properties (`System.getenv`, `System.getProperty`, `Integer.getInteger`,
