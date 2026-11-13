@@ -73,6 +73,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
+  `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
+  shared folder under such a name (`nitpicker/no-generic-name`).
 - A string of five characters or more used three times in a file is named once as a constant
   (`nitpicker/no-repeated-string-literal`).
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a

@@ -12,11 +12,16 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
   overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
+- Name types and packages for what they do (`PriceRounder`, `order.pricing`), never `Utils`,
+  `Helper`, `Manager`, `Common` or `Misc`; pure logic shared between features goes in the shared
+  package under such a name (`pmd/GenericTypeName`, `pmd/GenericPackageName`). `CacheManager`-style
+  framework roles are fine.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused fields, locals, parameters, private methods, assignments; a
-  parameter a signature fixes without an annotation or `@Override` is named `unusedX` or `ignoredX`.
+  for-each where the index is unused. Remove unused fields, locals, parameters, private methods,
+  assignments; a parameter that a signature fixes, with no annotation or `@Override`, is named
+  `unusedX` or `ignoredX`.
   Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
   (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
   resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.

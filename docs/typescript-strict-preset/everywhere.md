@@ -484,6 +484,24 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
   `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
+- No generic names (`nitpicker/no-generic-name`, production code of both presets, both lint engines;
+  tests are exempt). A file, a folder, or a class, interface, type alias, enum or namespace whose
+  last name word is `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`,
+  `managers`, `common`, `commons`, `misc` or `miscellaneous` is reported (`string-utils.ts`,
+  `user.helper.ts`, `common/`, `OrderHelper`, `Utils`). Words are split at case changes, hyphens,
+  dots and underscores; trailing digits and version words such as `v2` are ignored; a closing
+  `functions`, `methods`, `module`, `mixin`, `base`, `classes` or `Impl` is dropped first
+  (`helper-functions.ts`, `UserManagerImpl`); and role suffixes of a file name (`.config`,
+  `.service`, `.module`, `.controller`, `.types`, `.d` and the like) are dropped, so
+  `utils.config.ts` and `common.module.ts` are reported. `AuthenticationManager`,
+  `TransactionManager`, `CacheManager`, `EntityManager`, `SessionManager`, `ConnectionManager`,
+  `LockManager` and `ResourceManager` pass, and so does a type that extends or implements a type
+  whose last word is the same (`class ModelManager extends EntityManager`). A manager that is a
+  domain term of the project (`PackageManager`) takes the exception. Allowed form: a name that says
+  what the code does (`price-rounding.ts`, `PriceRounder`); pure logic shared between features goes
+  in the shared folder under such a name. The word list is shared with Python, Kotlin and Go
+  (`shared/naming/smell-words.mjs`); Java reports the same as `pmd/GenericTypeName` and
+  `pmd/GenericPackageName`. An exception fits only for a name a tool or framework requires.
 - No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
   presets, both lint engines; tests are exempt). A string of five characters or more with a letter
   or digit that appears three times or more in a file (a template literal without expressions counts

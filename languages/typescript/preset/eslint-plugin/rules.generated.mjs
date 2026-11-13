@@ -32,6 +32,7 @@ import { rule as ruleNoFixedSleepSynchronization } from './rules/testing/lifecyc
 import { rule as ruleNoFloatEqualityInTests } from './test-assertions/no-float-equality-in-tests.mjs';
 import { rule as ruleNoForwardingMethodAlias } from './rules/api-shape/no-forwarding-method-alias.mjs';
 import { rule as ruleNoForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as ruleNoGenericName } from './rules/naming/no-generic-name.mjs';
 import { rule as ruleNoGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as ruleNoHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as ruleNoInMemoryQuery } from './rules/queries/no-in-memory-query.mjs';
@@ -167,6 +168,7 @@ export const directoryRules = {
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
   'no-forwarding-method-alias': ruleNoForwardingMethodAlias,
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
+  'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
   'no-in-memory-query': ruleNoInMemoryQuery,
