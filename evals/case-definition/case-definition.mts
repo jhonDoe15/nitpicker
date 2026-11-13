@@ -3,7 +3,7 @@ import path from 'node:path';
 import { type Fields, fieldAt, requiredFields, requiredText } from '../../scripts/json/fields.mts';
 import { type Preset, defaultAcceptance, presetOf } from '../lib/presets.mts';
 import { detectJavaBuild } from '../../languages/java/builds/java-build.mjs';
-import { loadTree } from '../detectors/tree.mjs';
+import { loadTree } from '../detectors/tree.mts';
 
 type Trees = ReadonlyMap<string, string>;
 
