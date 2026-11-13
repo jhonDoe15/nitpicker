@@ -1,4 +1,4 @@
-import path from 'node:path';
+import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
 import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
@@ -71,7 +71,7 @@ export const removeSnapshotDependencies: (dependencies: unknown) => void =
 
 export function isInvokedModule(moduleUrl: string): boolean {
   const invokedPath = process.argv[1];
-  return invokedPath !== undefined && moduleUrl === pathToFileURL(path.resolve(invokedPath)).href;
+  return invokedPath !== undefined && moduleUrl === pathToFileURL(realpathSync(invokedPath)).href;
 }
 
 export type AdapterOutput = {
