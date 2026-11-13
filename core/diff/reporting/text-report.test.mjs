@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { absoluteTextReportPath, writeDiffReports } from './reporters.mjs';
+import { absoluteTextReportPath, writeDiffReports } from './reporters.mts';
 import { renderTextReport } from './text.mjs';
 import { expectValidSarif, expectWellFormedXml } from './test-support/report-assertions.mjs';
 import { finding, report } from './test-support/report-builders.mjs';

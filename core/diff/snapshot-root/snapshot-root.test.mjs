@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mts';
-import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mjs';
+import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mts';
 import { withoutSnapshotRoot } from './snapshot-root.mjs';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');

@@ -6,7 +6,7 @@ import { runCli as nitpickerCli } from '../../cli.mts';
 import { finding, findingLine, policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { expectValidSarif } from '../../diff/reporting/test-support/report-assertions.mjs';
-import { REPORT_FILE_NAMES } from '../../diff/reporting/reporters.mjs';
+import { REPORT_FILE_NAMES } from '../../diff/reporting/reporters.mts';
 import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mts';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';

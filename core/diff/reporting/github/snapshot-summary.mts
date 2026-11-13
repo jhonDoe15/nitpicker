@@ -1,4 +1,5 @@
 import {
+  type LinkContext,
   exceptionExample,
   exceptionRoute,
   code,
@@ -6,11 +7,21 @@ import {
   pluralize,
   ruleTable,
   toolErrorList,
-} from './markdown.mjs';
+} from './markdown.mts';
 import { scopeLine } from '../../../scope/scope-findings.mjs';
 import { partialRunLines } from '../partial-run/partial-run.mjs';
+import type { ReportEntry } from '../../../../shared/values/findings.mts';
 
-function headline(enforceable, toolErrors) {
+export type SnapshotSummaryReport = {
+  readonly summary: unknown;
+  readonly findings: readonly ReportEntry[];
+  readonly toolErrors: readonly ReportEntry[];
+};
+
+const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
+
+function headline(enforceable: readonly ReportEntry[], toolErrors: readonly ReportEntry[]): string {
   if (enforceable.length > 0) {
     return `✖ ${pluralize(enforceable.length, 'enforceable finding')} in the checkout`;
   }
@@ -19,7 +30,7 @@ function headline(enforceable, toolErrors) {
     : '✓ No enforceable findings';
 }
 
-export function renderSnapshotSummary(report, context) {
+export function renderSnapshotSummary(report: SnapshotSummaryReport, context: LinkContext): string {
   const enforceable = report.findings.filter(
     ({ classification }) => classification === 'enforceable',
   );
@@ -28,8 +39,8 @@ export function renderSnapshotSummary(report, context) {
     '',
     `**${headline(enforceable, report.toolErrors)}**`,
     '',
-    ...scopeLine(report.summary).flatMap((line) => [line, '']),
-    ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
+    ...scopeLinesOf(report.summary).flatMap((line) => [line, '']),
+    ...partialLinesOf(report.summary).flatMap((line) => [`> ${line}`, '']),
     `${pluralize(report.findings.length, 'finding')} in all, ` +
       `${String(report.findings.length - enforceable.length)} descriptive.`,
     '',

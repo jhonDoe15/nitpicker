@@ -7,7 +7,6 @@ import {
   readUnchangedShards as readShardsUnchanged,
 } from './read-shards.mts';
 import { parseArguments as readArguments } from './arguments.mts';
-import { writeDiffReports as untypedWriteReports } from '../reporting/reporters.mjs';
 import {
   policyHash as untypedPolicyHash,
   sortByToolAndPath as untypedSort,
@@ -23,11 +22,13 @@ import {
 } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import type { TextOutput } from '../../cli-context.mts';
+import type { ReportData } from '../../../shared/values/findings.mts';
 import { textOf, textsOf } from '../../../shared/values/readers.mts';
 
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
 export { noChangesReport } from '../comparison/results.mts';
+export { writeDiffReports } from '../reporting/reporters.mts';
 export { resolveMetadata } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
@@ -44,7 +45,7 @@ export type AggregateRequest = {
   readonly warn: Warn;
 };
 
-export type AggregateReport = {
+export type AggregateReport = ReportData & {
   readonly summary: Entry;
   text?: unknown;
 };
@@ -122,11 +123,6 @@ export function readUnchangedShards(
   const [first, ...rest] = readShardsUnchanged(inputRoot, shardCount) ?? [];
   return first === undefined ? undefined : [first, ...rest];
 }
-export const writeDiffReports: (
-  outputRoot: string,
-  report: AggregateReport,
-  location: RepositoryLocation,
-) => unknown = untypedWriteReports;
 export function parseArguments(
   commandArguments: readonly string[],
 ): AggregateOptions | { readonly kind: 'help' } {

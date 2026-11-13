@@ -1,6 +1,14 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
-import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
-import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mts';
+import {
+  type ReferenceLinks,
+  type RenderOptions,
+  type ReportFile,
+  clearLogs,
+  clearReports,
+  json,
+  writeReports,
+} from '../diff/reporting/reporters.mts';
 import { quickLines, stagedLines } from '../quick/summary.mjs';
 import { junitRunProfile } from '../quick/report-formats.mjs';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
@@ -44,18 +52,7 @@ export type SnapshotReport = {
   readonly toolErrors: readonly ReportFinding[];
 };
 
-type ReferenceLinks = { index(): unknown; root(): unknown };
-
-type RenderOptions = {
-  readonly reference: ReferenceLinks;
-  readonly projectPath?: string | undefined;
-  readonly repositoryRoot?: string | undefined;
-};
-
-type ReportFile = {
-  readonly name: string;
-  readonly render: (report: SnapshotReport, options: RenderOptions) => unknown;
-};
+type SnapshotFile = ReportFile<SnapshotReport>;
 
 type JunitProfile = {
   readonly skippedCases: readonly string[];
@@ -80,29 +77,21 @@ const profileOf: (
   suite: string,
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
-const reportsWriter: (
-  outputRoot: string,
-  reports: readonly ReportFile[],
-  request: { readonly report: unknown; readonly options: object },
-) => ReadonlyMap<string, unknown> = writeReports;
-const clearReportFiles: (outputRoot: string, names: readonly string[]) => void = clearReports;
-const clearLogFiles: (outputRoot: string) => void = clearLogs;
-const jsonOf: (value: unknown) => unknown = json;
-const sarifOf: (report: SnapshotReport, options: RenderOptions) => unknown =
+const sarifOf: (report: SnapshotReport, options: RenderOptions) => string =
   renderSnapshotSarifReport;
-const codeQualityOf: (findings: unknown, options: RenderOptions) => unknown =
+const codeQualityOf: (findings: unknown, options: RenderOptions) => string =
   renderCodeQualityReport;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
 const linksOf: () => ReferenceLinks = referenceLinks;
 const codeQualityFile: string = CODE_QUALITY_REPORT_FILE_NAME;
 
-const SNAPSHOT_REPORTS: readonly ReportFile[] = [
-  { name: 'summary.json', render: (report) => jsonOf(report.summary) },
+const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
+  { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'findings.json',
-    render: (report, { reference }) => jsonOf(helpUrisOf(report.findings, reference)),
+    render: (report, { reference }) => json(helpUrisOf(report.findings, reference)),
   },
-  { name: 'tool-errors.json', render: (report) => jsonOf(report.toolErrors) },
+  { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: sarifOf },
@@ -115,8 +104,8 @@ const SNAPSHOT_REPORTS: readonly ReportFile[] = [
 export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);
 
 export function clearSnapshotReports(outputRoot: string): void {
-  clearReportFiles(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
-  clearLogFiles(outputRoot);
+  clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
+  clearLogs(outputRoot);
 }
 
 export function writeSnapshotReports(
@@ -127,7 +116,7 @@ export function writeSnapshotReports(
     repositoryRoot,
   }: { readonly projectPath?: string; readonly repositoryRoot?: string } = {},
 ): unknown {
-  return reportsWriter(outputRoot, SNAPSHOT_REPORTS, {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
     report,
     options: { projectPath, repositoryRoot },
   }).get('report.txt');

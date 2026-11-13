@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mjs';
+import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mts';
 import {
   commitFiles,
   comparisonOptions,

@@ -31,6 +31,16 @@ export type AnalyzerReport = {
   readonly moduleImports?: readonly { readonly from: string; readonly to: string }[];
 };
 
+export type ReportData = {
+  readonly summary: Readonly<Record<string, unknown>>;
+  readonly newFindings: readonly ReportEntry[];
+  readonly resolvedFindings: readonly ReportEntry[];
+  readonly unchangedFindings: readonly ReportEntry[];
+  readonly changedMetrics: readonly ReportEntry[];
+  readonly toolErrors: readonly ReportEntry[];
+  readonly notes?: readonly ReportEntry[] | undefined;
+};
+
 function isEntry(value: unknown): value is ReportEntry {
   return typeof value === 'object' && value !== null;
 }

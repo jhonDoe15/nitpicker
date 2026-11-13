@@ -1,6 +1,25 @@
 import { singleLine } from '../format/text.mjs';
 import { pluralize as pluralNoun } from '../summary.mjs';
 import { ROUTE_SENTENCE } from '../../../../shared/messages/exception-sentence.mjs';
+import type { ReportEntry } from '../../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+
+export type LinkContext = {
+  readonly linkBase: string | undefined;
+  readonly projectPrefix: string;
+};
+
+type RuleCount = { tool: string; rule: string; enforceable: number; descriptive: number };
+
+type ExceptionRoute = {
+  readonly hasFindings: boolean;
+  readonly loosening?: unknown;
+  readonly example: string | undefined;
+};
+
+const oneLine: (value: unknown) => string = singleLine;
+const nounFor: (noun: string, count: number) => string = pluralNoun;
+const routeSentence: RegExp = ROUTE_SENTENCE;
 
 export const LISTED_FINDINGS = 25;
 
@@ -12,44 +31,44 @@ const LISTED_RULES = 40;
 
 const TEXT_LIMIT = 400;
 
-function withoutExceptionRoute(message) {
+function withoutExceptionRoute(message: unknown): string {
   const text = String(message).trimEnd();
-  const route = ROUTE_SENTENCE.exec(text);
+  const route = routeSentence.exec(text);
   return route === null ? text : text.slice(0, route.index).trimEnd();
 }
 
-export function exceptionExample(findings) {
+export function exceptionExample(findings: readonly ReportEntry[]): string | undefined {
   for (const finding of findings) {
-    const route = ROUTE_SENTENCE.exec(String(finding.message).trimEnd());
+    const route = routeSentence.exec(String(finding.message).trimEnd());
     if (route !== null) {
-      return route.groups.entry;
+      return route.groups?.['entry'];
     }
   }
   return undefined;
 }
 
-function escapeMarkdown(value) {
+function escapeMarkdown(value: unknown): string {
   return String(value).replaceAll(/[\\`*_{}[\]<>()#+!|~&]/gu, String.raw`\$&`);
 }
 
-export function code(value) {
+export function code(value: unknown): string {
   return `\`${String(value).replaceAll('`', "'")}\``;
 }
 
-function cellCode(value) {
+function cellCode(value: unknown): string {
   return code(value).replaceAll('|', String.raw`\|`);
 }
 
-export function inlineText(value, limit = TEXT_LIMIT) {
-  const text = singleLine(value);
+export function inlineText(value: unknown, limit = TEXT_LIMIT): string {
+  const text = oneLine(value);
   return escapeMarkdown(text.length > limit ? `${text.slice(0, limit)}...` : text);
 }
 
-export function pluralize(count, noun) {
-  return `${String(count)} ${pluralNoun(noun, count)}`;
+export function pluralize(count: number, noun: string): string {
+  return `${String(count)} ${nounFor(noun, count)}`;
 }
 
-function encodedPath(filePath) {
+function encodedPath(filePath: string): string {
   return filePath
     .split('/')
     .map((segment) =>
@@ -61,23 +80,26 @@ function encodedPath(filePath) {
     .join('/');
 }
 
-function findingLocation(finding, { linkBase, projectPrefix }) {
-  const line = finding.location?.line;
-  const label = line === undefined ? finding.path : `${finding.path}:${String(line)}`;
+function findingLocation(finding: ReportEntry, { linkBase, projectPrefix }: LinkContext): string {
+  const line = fieldOf(finding['location'], 'line');
+  const path = textOf(finding.path);
+  const label = line === undefined ? finding.path : `${path}:${String(line)}`;
   if (linkBase === undefined || finding.path === '') {
     return code(label);
   }
   const anchor = line === undefined ? '' : `#L${String(line)}`;
-  return `[${code(label)}](${linkBase}/${encodedPath(`${projectPrefix}${finding.path}`)}${anchor})`;
+  return `[${code(label)}](${linkBase}/${encodedPath(`${projectPrefix}${path}`)}${anchor})`;
 }
 
-function countsByRule(findings) {
-  const counts = new Map();
+function countsByRule(findings: readonly ReportEntry[]): RuleCount[] {
+  const counts = new Map<string, RuleCount>();
   for (const finding of findings) {
-    const key = `${finding.tool}\0${finding.rule}`;
+    const tool = textOf(finding.tool);
+    const rule = textOf(finding.rule);
+    const key = `${tool}\0${rule}`;
     const entry = counts.get(key) ?? {
-      tool: finding.tool,
-      rule: finding.rule,
+      tool,
+      rule,
       enforceable: 0,
       descriptive: 0,
     };
@@ -93,7 +115,7 @@ function countsByRule(findings) {
   );
 }
 
-export function ruleTable(findings) {
+export function ruleTable(findings: readonly ReportEntry[]): string[] {
   if (findings.length === 0) {
     return [];
   }
@@ -114,7 +136,11 @@ export function ruleTable(findings) {
   ];
 }
 
-export function cappedList(items, renderItem, limit) {
+export function cappedList<T>(
+  items: readonly T[],
+  renderItem: (item: T) => string,
+  limit: number,
+): string[] {
   const lines = items.slice(0, limit).map((item) => `- ${renderItem(item)}`);
   if (items.length > limit) {
     lines.push('', `${String(items.length - limit)} more in \`report.txt\`.`);
@@ -122,24 +148,31 @@ export function cappedList(items, renderItem, limit) {
   return [...lines, ''];
 }
 
-export function findingList(findings, context, heading) {
+export function findingList(
+  findings: readonly ReportEntry[],
+  context: LinkContext,
+  heading: string,
+): string[] {
   if (findings.length === 0) {
     return [];
   }
-  function renderFinding(finding) {
-    const rule = code(`${finding.tool}/${finding.rule}`);
+  function renderFinding(finding: ReportEntry): string {
+    const rule = code(`${textOf(finding.tool)}/${textOf(finding.rule)}`);
     const message = inlineText(withoutExceptionRoute(finding.message));
     return `${findingLocation(finding, context)} ${rule}: ${message}`;
   }
   return [`### ${heading}`, '', ...cappedList(findings, renderFinding, LISTED_FINDINGS)];
 }
 
-export function toolErrorList(toolErrors) {
+export function toolErrorList(toolErrors: readonly ReportEntry[]): string[] {
   if (toolErrors.length === 0) {
     return [];
   }
-  function renderError(error) {
-    const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
+  function renderError(error: ReportEntry): string {
+    const label =
+      error.snapshot === undefined
+        ? error.tool
+        : `${textOf(error.tool)} (${textOf(error.snapshot)})`;
     return `${code(label)}: ${inlineText(error.message)}`;
   }
   return [
@@ -151,8 +184,8 @@ export function toolErrorList(toolErrors) {
   ];
 }
 
-export function exceptionRoute({ hasFindings, loosening, example }) {
-  const lines = [];
+export function exceptionRoute({ hasFindings, loosening, example }: ExceptionRoute): string[] {
+  const lines: string[] = [];
   if (hasFindings) {
     const entry =
       example === undefined

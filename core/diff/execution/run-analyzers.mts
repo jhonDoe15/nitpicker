@@ -4,7 +4,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import path from 'node:path';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
-import { LOG_DIRECTORY } from '../reporting/reporters.mjs';
+import { LOG_DIRECTORY } from '../reporting/reporters.mts';
 import type { RunTasks } from './progress.mts';
 import { runScheduler } from './scheduler/run-scheduler.mts';
 import type { AnalyzerReport, ReportEntry } from '../../../shared/values/findings.mts';

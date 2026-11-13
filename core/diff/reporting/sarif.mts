@@ -1,83 +1,76 @@
-import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
-import { comparisonKey } from '../comparison/fingerprint.mjs';
 import { sarifRunProfile } from '../../quick/report-formats.mjs';
-import { plainText } from '../../../shared/reference/facts.mjs';
-import { entryForFinding, referenceLinks, referenceUrl } from '../../../shared/reference/store.mjs';
+import { referenceLinks } from '../../../shared/reference/store.mjs';
 import { noteText } from './format/notes.mjs';
 import { heldFindingsOf } from './report-model.mjs';
-import { repositoryFindingPath } from '../git/paths.mjs';
 import {
+  type UploadLimits,
   droppedResultsText,
   renderWithinUploadLimits,
   SARIF_UPLOAD_LIMITS,
-} from './sarif/sarif-limits.mjs';
+} from './sarif/sarif-limits.mts';
+import {
+  type SarifEntry,
+  SOURCE_ROOT_ID,
+  collectSarifRules,
+  toSarifResult,
+} from './sarif/sarif-results.mts';
+import type { ReferenceLinks } from './reporters.mts';
+import type { ReportData, ReportEntry } from '../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+
+type RunProfile = {
+  readonly notifications: readonly unknown[];
+  readonly properties: Readonly<Record<string, unknown>>;
+};
+
+type SarifLocation = {
+  readonly projectPath?: string | undefined;
+  readonly repositoryRoot?: string | undefined;
+  readonly reference?: ReferenceLinks | undefined;
+};
+
+export type SarifOptions = SarifLocation & { readonly limits?: UploadLimits | undefined };
+
+type SarifRun = {
+  readonly entries: readonly SarifEntry[];
+  readonly toolErrors: readonly ReportEntry[];
+  readonly notes: readonly ReportEntry[];
+  readonly location: SarifLocation;
+  readonly dropped: string | undefined;
+  readonly reference: ReferenceLinks;
+  readonly profile: RunProfile;
+};
+
+type SarifLog = {
+  readonly entries: readonly SarifEntry[];
+  readonly toolErrors: readonly ReportEntry[];
+  readonly notes?: readonly ReportEntry[] | undefined;
+  readonly location: SarifLocation;
+  readonly sources: string;
+  readonly newFirst?: boolean;
+  readonly limits: UploadLimits;
+  readonly summary?: unknown;
+};
+
+type SnapshotData = {
+  readonly findings: readonly ReportEntry[];
+  readonly toolErrors: readonly ReportEntry[];
+  readonly summary: unknown;
+};
+
+const runProfileOf: (summary: unknown) => RunProfile = sarifRunProfile;
+const links: () => ReferenceLinks = referenceLinks;
+const textOfNote: (note: ReportEntry) => string = noteText;
+const heldFindings: (report: ReportData) => readonly ReportEntry[] = heldFindingsOf;
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
-const SARIF_FINGERPRINT_KEY = 'nitpickerIdentity/v1';
-
-const SOURCE_ROOT_ID = '%SRCROOT%';
 const SOURCE_ROOT_DESCRIPTION = 'The root of the git repository the findings are in.';
 
 const COLUMN_KIND = 'utf16CodeUnits';
 
-function encodePath(findingPath) {
-  return findingPath.split('/').map(encodeURIComponent).join('/');
-}
-
-function toSarifResult({ finding, baselineState }, projectPath) {
-  const artifactLocation =
-    projectPath === undefined
-      ? { uri: encodePath(repositoryFindingPath('.', finding.path)) }
-      : {
-          uri: encodePath(repositoryFindingPath(projectPath, finding.path)),
-          uriBaseId: SOURCE_ROOT_ID,
-        };
-  const physicalLocation = { artifactLocation };
-  if (finding.location !== undefined) {
-    physicalLocation.region = {
-      startLine: finding.location.line,
-      ...(finding.location.column === undefined ? {} : { startColumn: finding.location.column }),
-    };
-  }
-  return {
-    ruleId: `${finding.tool}/${finding.rule}`,
-    level: finding.classification === 'enforceable' ? 'error' : 'note',
-    ...(baselineState === undefined ? {} : { baselineState }),
-    message: { text: finding.message },
-    locations: [{ physicalLocation }],
-    partialFingerprints: {
-      [SARIF_FINGERPRINT_KEY]: createHash('sha256').update(comparisonKey(finding)).digest('hex'),
-    },
-  };
-}
-
-function sarifRule(finding, reference) {
-  const entry = entryForFinding(reference.index(), finding);
-  const helpUri = entry === undefined ? undefined : referenceUrl(entry, reference.root());
-  return {
-    id: `${finding.tool}/${finding.rule}`,
-    name: finding.rule,
-    ...(entry === undefined
-      ? {}
-      : { shortDescription: { text: plainText(entry.summary, reference.root()) } }),
-    ...(helpUri === undefined ? {} : { helpUri }),
-  };
-}
-
-function collectSarifRules(findings, reference) {
-  const rules = new Map();
-  for (const finding of findings) {
-    const ruleId = `${finding.tool}/${finding.rule}`;
-    if (!rules.has(ruleId)) {
-      rules.set(ruleId, sarifRule(finding, reference));
-    }
-  }
-  return [...rules.values()];
-}
-
-function originalUriBaseIds({ projectPath, repositoryRoot }) {
+function originalUriBaseIds({ projectPath, repositoryRoot }: SarifLocation): object {
   if (projectPath === undefined || repositoryRoot === undefined) {
     return {};
   }
@@ -89,19 +82,34 @@ function originalUriBaseIds({ projectPath, repositoryRoot }) {
   };
 }
 
-function notifications({ toolErrors, notes, dropped, profile }) {
+function notifications({
+  toolErrors,
+  notes,
+  dropped,
+  profile,
+}: Pick<SarifRun, 'toolErrors' | 'notes' | 'dropped' | 'profile'>): unknown[] {
   return [
     ...toolErrors.map((error) => ({
       level: 'error',
-      message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+      message: {
+        text: `${textOf(error.tool)} (${textOf(error.snapshot)}): ${textOf(error.message)}`,
+      },
     })),
-    ...notes.map((note) => ({ level: 'note', message: { text: noteText(note) } })),
+    ...notes.map((note) => ({ level: 'note', message: { text: textOfNote(note) } })),
     ...(dropped === undefined ? [] : [{ level: 'warning', message: { text: dropped } }]),
     ...profile.notifications,
   ];
 }
 
-function renderSarifRun({ entries, toolErrors, notes, location, dropped, reference, profile }) {
+function renderSarifRun({
+  entries,
+  toolErrors,
+  notes,
+  location,
+  dropped,
+  reference,
+  profile,
+}: SarifRun): string {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -144,9 +152,9 @@ function renderSarifLog({
   newFirst = true,
   limits,
   summary = {},
-}) {
-  const reference = location.reference ?? referenceLinks();
-  const profile = sarifRunProfile(summary);
+}: SarifLog): string {
+  const reference = location.reference ?? links();
+  const profile = runProfileOf(summary);
   return renderWithinUploadLimits(
     entries,
     (kept) =>
@@ -169,11 +177,11 @@ function renderSarifLog({
   );
 }
 
-function newEntries(report) {
+function newEntries(report: ReportData): SarifEntry[] {
   return report.newFindings.map((finding) => ({ finding, baselineState: 'new' }));
 }
 
-export function renderSarifReport(report, options = {}) {
+export function renderSarifReport(report: ReportData, options: SarifOptions = {}): string {
   return renderSarifLog({
     entries: newEntries(report),
     toolErrors: report.toolErrors,
@@ -185,11 +193,11 @@ export function renderSarifReport(report, options = {}) {
   });
 }
 
-export function renderBaselineSarifReport(report, options = {}) {
+export function renderBaselineSarifReport(report: ReportData, options: SarifOptions = {}): string {
   return renderSarifLog({
     entries: [
       ...newEntries(report),
-      ...heldFindingsOf(report).map((finding) => ({ finding, baselineState: 'unchanged' })),
+      ...heldFindings(report).map((finding) => ({ finding, baselineState: 'unchanged' })),
     ],
     toolErrors: report.toolErrors,
     notes: report.notes,
@@ -200,7 +208,10 @@ export function renderBaselineSarifReport(report, options = {}) {
   });
 }
 
-export function renderSnapshotSarifReport(report, options = {}) {
+export function renderSnapshotSarifReport(
+  report: SnapshotData,
+  options: SarifOptions = {},
+): string {
   return renderSarifLog({
     entries: report.findings.map((finding) => ({ finding })),
     toolErrors: report.toolErrors,

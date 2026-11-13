@@ -33,7 +33,7 @@ import {
   displayPath,
   withoutAnsi,
 } from './aggregate-summary.mts';
-import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mjs';
+import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
@@ -43,7 +43,7 @@ import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-pol
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
-import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mts';
 import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
