@@ -17,6 +17,7 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const PROJECT_CHECKS_OFF = [
@@ -107,6 +108,19 @@ function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
   return { modules, effectivePom };
 }
 
+function buildOrSkipTests(run, { work, modules, policy }) {
+  try {
+    buildAndTest({ ...run, work, modules });
+    return [];
+  } catch (error) {
+    if (!isTestsTimeout(error, policy)) {
+      throw error;
+    }
+    buildAndTest({ ...run, quick: true, work, modules });
+    return [timedOutTests(error.timedOut)];
+  }
+}
+
 function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
   const style = {
     javaStyle: policy.javaStyle,
@@ -158,7 +172,7 @@ export function runMavenPreset(
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
     const since = Date.now() - 2000;
-    buildAndTest({ ...run, work, modules });
+    const timedOut = buildOrSkipTests(run, { work, modules, policy });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -170,6 +184,7 @@ export function runMavenPreset(
     });
     const testsFailures = analyzeAll({
       ...run,
+      testsSkipped: timedOut.length > 0,
       pitDeadline,
       analyzed,
       tools,
@@ -182,7 +197,7 @@ export function runMavenPreset(
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),
-      testsFailures,
+      testsFailures: [...testsFailures, ...timedOut],
       formatAdvice: kotlin.options?.advice,
     };
   } finally {

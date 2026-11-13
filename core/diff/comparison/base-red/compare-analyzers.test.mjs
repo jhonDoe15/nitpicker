@@ -212,6 +212,30 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
     });
   });
 
+  it('reads a build that timed out on either side like failing tests of the whole analyzer', () => {
+    const timedOut = { ...headFailure, rule: 'tests-timed-out', symbol: '.' };
+
+    expect([
+      comparedSides([MUTANT, PMD], [{ ...timedOut }, PMD, NEW_PMD]),
+      comparedSides([{ ...timedOut, tool: 'java' }, PMD], [PMD, NEW_PMD, OTHER_MUTANT]),
+    ]).toEqual([
+      {
+        new: [NEW_PMD.identity],
+        unchanged: [PMD.identity],
+        resolved: [],
+        toolErrors: ['tests head tests-timed-out'],
+        notes: [],
+      },
+      {
+        new: [NEW_PMD.identity],
+        unchanged: [OTHER_MUTANT.identity, PMD.identity],
+        resolved: [],
+        toolErrors: [],
+        notes: ['base tests-timed-out'],
+      },
+    ]);
+  });
+
   it('blocks the comparison as before when the failing tests are the analyzer own tool error', () => {
     expect(comparedSides([PMD], [{ ...headFailure, tool: 'java' }, PMD, NEW_PMD]).new).toEqual([]);
   });

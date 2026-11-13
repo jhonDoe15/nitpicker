@@ -1,9 +1,9 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import {
   MUTATION_FAILED_PART_RULE,
-  TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
   TESTS_FAILED_SCOPE_SEPARATOR,
+  TESTS_UNMEASURED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 
 const TEST_RESULT_RULES = [
@@ -83,7 +83,7 @@ export function testFailuresOf(report) {
 function isScopedHeadTestFailure(finding, name) {
   return (
     isToolError(finding) &&
-    finding.rule === TESTS_FAILED_RULE &&
+    TESTS_UNMEASURED_RULES.includes(finding.rule) &&
     finding.tool !== name &&
     finding.symbol !== undefined
   );
@@ -115,7 +115,7 @@ export function redBaseAnalyzers({ names, baseRun, headRun }) {
     }
   }
   const anyTestFailed = [...red.values()].some((failures) =>
-    failures.some(({ rule }) => rule === TESTS_FAILED_RULE),
+    failures.some(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule)),
   );
   return anyTestFailed ? red : new Map();
 }

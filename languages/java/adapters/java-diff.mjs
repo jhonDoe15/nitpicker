@@ -63,6 +63,7 @@ function runJavaPreset(
     kotlinRun,
     budget = gradleBudget(),
     testsFailedModules = [],
+    testsSkipped = false,
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
@@ -81,8 +82,9 @@ function runJavaPreset(
       policy,
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
+      testsSkipped,
     });
-    const checkTests = testsFailedModules.length === 0;
+    const checkTests = testsFailedModules.length === 0 && !testsSkipped;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
       runGradleStage({ args: stage(), ...options });
