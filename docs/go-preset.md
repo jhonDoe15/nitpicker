@@ -460,6 +460,26 @@ message does not already name it, and by its exception entry:
     function takes a context or request, typed attributes such as
     `slog.String("name", name)` instead of key-value pairs, `slog.DiscardHandler`), spancheck
     (`span.End()` on every path after `tracer.Start`).
+- **go-critic**, run as one analyzer under the tool name `gocritic` and printed under each
+  checker's name, such as `gocritic/appendAssign`. 80 of its 108 checkers run (the 67 Go
+  checkers and the 41 rules it embeds through ruleguard); each of the others is in the table of
+  checkers left out below. Bugs: appendAssign, argOrder, badCall, badCond, badLock, badRegexp,
+  badSyncOnceFunc, codegenComment, deprecatedComment, dupArg, dupCase, dupOption, emptyDecl,
+  evalOrder, exitAfterDefer, filepathJoin (`filepath.Join("/", path)`, which roots a path,
+  passes), flagDeref, flagName, mapKey, nilValReturn, offBy1, rangeAppendAll, regexpPattern,
+  returnAfterHttpError, sloppyLen, sortSlice, sqlQuery, syncMapLoadAndDelete, truncateCmp,
+  uncheckedInlineErr, unnecessaryDefer, weakCond. Forms: appendCombine, assignOp,
+  boolExprSimplify, captLocal (parameters), commentedOutCode, commentedOutImport, deferUnlambda,
+  docStub, elseif, emptyFallthrough, emptyStringTest, equalFold, exposedSyncMutex, hexLiteral,
+  httpNoBody, ifElseChain, indexAlloc, initClause, methodExprCall, newDeref, octalLiteral,
+  preferDecodeRune, preferFilepathJoin, preferFprint, preferStringWriter, preferWriteByte,
+  ptrToRefParam, redundantSprint, regexpMust, regexpSimplify, sloppyReassign,
+  stringConcatSimplify, stringXbytes, stringsCompare, switchTrue,
+  typeAssertChain, typeDefFirst, typeUnparen, underef, unlabelStmt, unlambda, unnecessaryBlock,
+  unslice, valSwap, wrapperFunc, zeroByteRepeat. Each checker's Go version checks use the version
+  of the file's module, so a module on an older Go is not asked for a newer form. The lint program
+  fails with a `go/go-lint-failed` tool error when a go-critic upgrade adds a checker the preset
+  has not decided on.
 
 - **gosec**: every rule, the AST rules (G1xx to G6xx) and the SSA and taint analyzers (G113, G115,
   G118 to G124, G407, G408, G602, G701 to G710), except the six in the table below, on test
@@ -538,6 +558,72 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | usestdlibvars `time-month`, `time-weekday`, `crypto-hash`, `sql-isolation-level`, `tls-signature-scheme`, `constant-kind` | they flag a bare word such as `"May"`, `"MD5"`, `"Ed25519"` or `"Int"` in any string, a type-name table or a JWT algorithm label included, where the constant is not meant         |
 | sloglint `static-msg`                                                                                                     | flags a constant from another package (`msgs.Started`) and a logging wrapper that passes its message on, with no other form to write                                               |
 
+**go-critic checkers left out**, with the reason:
+
+| go-critic checker                            | Reason                                                                                                                                                                                     |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `builtinShadow`, `builtinShadowDecl`         | revive's `redefines-builtin-id` reports the same names                                                                                                                                     |
+| `commentFormatting`                          | revive's `comment-spacings` reports the same comments, and it would count `//nolint` as a directive                                                                                        |
+| `defaultCaseOrder`                           | revive's `enforce-switch-style` asks for the stricter form, `default` last                                                                                                                 |
+| `deferInLoop`                                | revive's `defer` reports the same loops                                                                                                                                                    |
+| `singleCaseSwitch`                           | revive's `unnecessary-stmt` reports every one-case `switch`, type switches included                                                                                                        |
+| `todoCommentWithoutDetail`                   | `go-rules/todo-without-issue` reports every `TODO` without an issue reference, a bare `// TODO` included                                                                                   |
+| `dupBranchBody`                              | revive's `identical-branches` reports the same if and else                                                                                                                                 |
+| `importShadow`                               | revive's `import-shadowing` reports the same names                                                                                                                                         |
+| `paramTypeCombine`                           | revive's `enforce-repeated-arg-type-style` (short) asks for the same `a, b int`                                                                                                            |
+| `unnamedResult`                              | it asks for names on any two results, `(int, string)` included, which is a preference, not one form; revive's `confusing-results` reports the results of one type that a reader can mix up |
+| `badSorting`                                 | SA4029 reports the same `x = sort.StringSlice(x)`                                                                                                                                          |
+| `caseOrder`                                  | SA4020 reports the same unreachable case                                                                                                                                                   |
+| `dupImport`                                  | ST1019 reports the same import                                                                                                                                                             |
+| `dupSubExpr`                                 | SA4000 reports the same expression                                                                                                                                                         |
+| `sloppyTypeAssert`                           | S1040 reports the same assertion                                                                                                                                                           |
+| `typeSwitchVar`                              | S1034 reports the same type switch                                                                                                                                                         |
+| `yodaStyleExpr`                              | ST1017 reports the same comparison                                                                                                                                                         |
+| `dynamicFmtString`                           | `go vet` printf (modules on Go 1.24 and later) and SA1006 (earlier modules) report the same non-constant format string                                                                     |
+| `externalErrorReassign`                      | reassign reports the same assignment to another package's error                                                                                                                            |
+| `sprintfQuotedString`                        | `%q` writes Go escapes such as `\x00`, which are wrong in an HTTP header, SQL or a shell line, so `"%s"` has no single replacement                                                         |
+| `sliceClear`                                 | its suggested form is a loop; `clear(s)` is Go's form, and modernize `rangeint` reports the loop                                                                                           |
+| `timeExprSimplify`                           | its rewrites are wrong: `t.Unix() / 1000` is not `t.UnixMilli()`                                                                                                                           |
+| `hugeParam`, `rangeValCopy`, `rangeExprCopy` | a byte threshold for copies, with no single form: whether a value or a pointer is right depends on the type, not on its size                                                               |
+| `nestingReduce`                              | a body-length threshold, not one form; revive's `early-return` covers the if and else form                                                                                                 |
+| `tooManyResultsChecker`                      | a result-count threshold, not one form                                                                                                                                                     |
+| `ruleguard`                                  | runs a project's own ruleguard rule files, which the preset does not read                                                                                                                  |
+| `whyNoLint`                                  | `//nolint` comments do nothing in this preset, so an explanation for one changes nothing                                                                                                   |
+
+**go-critic checkers tagged experimental, opinionated or performance that run**, each with the
+one form it asks for. The tagged bug finders (badLock, badRegexp, badSyncOnceFunc, dupOption,
+evalOrder, filepathJoin, nilValReturn, rangeAppendAll, regexpPattern, returnAfterHttpError,
+sortSlice, sqlQuery, syncMapLoadAndDelete, truncateCmp, uncheckedInlineErr, weakCond) run because
+each reports a likely bug and names the fix.
+
+| go-critic checker                                                        | One form                                                                                                           |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `appendCombine`, `zeroByteRepeat`                                        | one `append` call for consecutive appends; `make([]byte, n)` for zeroed bytes                                      |
+| `indexAlloc`, `stringXbytes`, `preferDecodeRune`                         | no conversion the call does not need: `bytes.Index(data, ...)`, `copy(b, s)`, `utf8.DecodeRuneInString(s)`         |
+| `preferFprint`, `preferStringWriter`, `preferWriteByte`                  | write to the writer directly: `fmt.Fprintf(w, ...)`, `w.WriteString(s)`, `w.WriteByte('\n')`                       |
+| `equalFold`, `emptyStringTest`, `stringsCompare`, `stringConcatSimplify` | `strings.EqualFold(a, b)`, `s == ""`, `a < b`, `a + "/" + b`                                                       |
+| `redundantSprint`, `preferFilepathJoin`                                  | `name.String()` or the string itself over `fmt.Sprint`; `filepath.Join(dir, file)` over `string(os.PathSeparator)` |
+| `boolExprSimplify`                                                       | the simplest comparison: `a >= b` for `a > b \|\| a == b`                                                          |
+| `commentedOutCode`, `commentedOutImport`                                 | dead code is deleted; version control keeps it (the Kotlin and Python presets ask the same)                        |
+| `docStub`                                                                | a doc comment describes; a stub such as `// Name ...` only silences doc-comment checks                             |
+| `deferUnlambda`                                                          | `defer f(0)` for a deferred literal that only calls `f` with constants                                             |
+| `emptyDecl`                                                              | no empty `var ()` block                                                                                            |
+| `emptyFallthrough`                                                       | `case a, b:` instead of a case that only falls through; in an untagged switch too, where revive does not look      |
+| `exposedSyncMutex`                                                       | a mutex in an unexported field, so callers cannot lock the type                                                    |
+| `httpNoBody`                                                             | `http.NoBody` for a request without a body                                                                         |
+| `hexLiteral`, `octalLiteral`                                             | hex digits in one case, `0o644` for octal                                                                          |
+| `initClause`                                                             | an if or switch init clause declares variables; other calls go before it                                           |
+| `methodExprCall`                                                         | `value.Method()` rather than `Type.Method(value)`                                                                  |
+| `ptrToRefParam`                                                          | a map, channel or interface is passed as is, not through a pointer                                                 |
+| `regexpSimplify`                                                         | the shortest pattern: `\d` for `[0-9]`                                                                             |
+| `sloppyReassign`                                                         | `if err := f(); err != nil { return err }` when the branch only returns the error                                  |
+| `sortSlice`                                                              | the less function compares the slice it sorts, with `i` on the left: `xs[i] > xs[j]` for a descending sort         |
+| `typeAssertChain`                                                        | a type switch for repeated type assertions                                                                         |
+| `typeDefFirst`                                                           | a type's definition comes before its methods                                                                       |
+| `typeUnparen`                                                            | no parentheses around a type                                                                                       |
+| `unlabelStmt`, `unnecessaryBlock`                                        | no label or braces that change nothing                                                                             |
+| `unnecessaryDefer`                                                       | a call right before a return is made directly                                                                      |
+
 **Overlaps on one line.** When two checks report the same line, the more specific one stays:
 
 | Kept                                                             | Dropped                                                                                   |
@@ -580,6 +666,22 @@ themselves, exhaustive's `//exhaustive:ignore` and makezero's `// nozero`, and a
 | ST1018 (format characters in text)                               | bidichk                                                                                   |
 | contextcheck                                                     | `go-rules/context-outside-entry`                                                          |
 | `go-rules/http-without-timeout`                                  | noctx                                                                                     |
+| QF1004, S1003                                                    | gocritic `wrapperFunc`                                                                    |
+| SA1018 (`strings.Replace` with n 0)                              | gocritic `badCall`                                                                        |
+| SA2001, SA2003 (lock and unlock)                                 | gocritic `badLock`                                                                        |
+| SA4013 (double negation)                                         | gocritic `boolExprSimplify`                                                               |
+| SA4024 (`len` below 0)                                           | gocritic `sloppyLen`                                                                      |
+| SA6005 (`strings.ToLower` compare)                               | gocritic `equalFold`                                                                      |
+| SA9010 (deferred call not called)                                | gocritic `unnecessaryDefer`                                                               |
+| S1025, S1039, perfsprint `string-format`                         | gocritic `redundantSprint`                                                                |
+| QF1003 (tagged switch)                                           | gocritic `ifElseChain`                                                                    |
+| QF1012 (`fmt.Fprintf` to a writer)                               | gocritic `preferFprint`                                                                   |
+| revive `useless-fallthrough`                                     | gocritic `emptyFallthrough`                                                               |
+| revive `identical-switch-conditions`                             | gocritic `dupCase`                                                                        |
+| nilerr                                                           | gocritic `nilValReturn`                                                                   |
+| gocritic `badRegexp`                                             | gocritic `regexpSimplify`                                                                 |
+| gocritic `sqlQuery` (`Exec` for no rows)                         | sqlclosecheck, rowserrcheck                                                               |
+| gocritic `regexpMust`                                            | errcheck on `regexp.Compile`                                                              |
 
 Those two compare the column too, because one line can hold a second, different problem (`found ==
 true || ready && false`). revive keeps the rules staticcheck lacks in the same areas:
