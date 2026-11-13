@@ -950,8 +950,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not
   followed.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` (in comments and docstrings) when the
-  marker is in capitals, at the start of the comment or followed by `:` or `(`, and is not directly
-  followed by an issue reference: `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
+  marker is in capitals, at the start of the comment or followed by `:` or `(`, and has no
+  issue reference after it on its line (up to the next marker): `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`, `RFC-7231` and
   similar standards) or an `http(s)` link. Each marker is judged on its own, so a second marker in the
   same comment needs its own issue. Prose that mentions the word (`todo lists`, `Todo list items`,
   `Hack to ...`, `the list of TODO items`) is not a marker. The Kotlin preset's `ForbiddenComment`

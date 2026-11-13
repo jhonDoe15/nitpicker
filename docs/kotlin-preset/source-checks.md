@@ -80,7 +80,7 @@ judged by the word before it (`OrderHelperMixin`, `UtilsModule.kt` are reported,
 `ModelBase` pass), and the framework roles are
 `Authentication`, `Transaction`, `Cache`, `Entity`, `Session`, `Connection`, `Lock` and `Resource` before
 `Manager` or `Managers`. A ticket reference is `#123`, a key such as `PROJ-123` (not `SHA-1`, `UTF-8`,
-`RFC-7231` and similar standards) or an `http(s)` link, right after the marker. A `TODO` without an issue is
+`RFC-7231` and similar standards) or an `http(s)` link, anywhere after the marker on its line (up to the next marker). A `TODO` without an issue is
 detekt's `ForbiddenComment` (a one-way rule). Its pattern checks the reference after each marker, so a second
 marker in the same comment needs its own issue. `shared/naming/test-support/task-marker-cases.json` lists accepted and
 rejected comments; the Python preset reads the same table. A repeated literal is
