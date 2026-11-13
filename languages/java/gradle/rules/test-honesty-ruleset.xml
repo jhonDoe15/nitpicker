@@ -15,15 +15,32 @@
   </rule>
 
   <rule name="AssertionInControlFlow" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Assert unconditionally: an assertion in a branch, loop or iterating callback (forEach, map, filter) does not run when the branch is not taken or the collection is empty. Assert the whole collection at once, use a parameterized test (@ParameterizedTest) for a table of cases, or assertAll(() -> ..., () -> ...).">
+        message="Assert unconditionally: an assertion in a branch, loop or iterating callback (forEach, map, filter), also in a helper the test calls, does not run when the branch is not taken or the collection is empty. Assert the whole collection at once, use a parameterized test (@ParameterizedTest) for a table of cases, or assertAll(() -> ..., () -> ...). A loop with a literal count (for (int i = 0; i &lt; 3; i++), IntStream.range(0, 3)) and a do-while always run and are fine.">
     <description>An assertion that may not run proves nothing.</description>
     <priority>3</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $controls := //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]]
-  //(IfStatement | SwitchStatement | SwitchExpression | ForStatement | ForeachStatement | WhileStatement | DoStatement | ConditionalExpression
-    | LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'takeWhile', 'dropWhile', 'reduce')]])
+let $tests := //MethodDeclaration[ModifierList/Annotation[@SimpleName = ('Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate')]],
+    $others := //MethodDeclaration except $tests,
+    $first := $others[@Name = $tests//MethodCall/@MethodName],
+    $second := $others[@Name = $first//MethodCall/@MethodName],
+    $third := $others[@Name = $second//MethodCall/@MethodName],
+    $helpers := $first | $second | $third,
+    $ranges := //MethodCall[(@MethodName = 'range' and (ArgumentList/*[1]/@ValueAsInt) < (ArgumentList/*[2]/@ValueAsInt))
+      or (@MethodName = 'rangeClosed' and (ArgumentList/*[1]/@ValueAsInt) <= (ArgumentList/*[2]/@ValueAsInt))],
+    $pass := ('map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'boxed', 'asLongStream', 'asDoubleStream', 'parallel', 'sequential'),
+    $loops := ($tests | $helpers)
+      //(ForStatement[not(
+          (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) < (InfixExpression[@Operator = '<'][VariableAccess]/NumericLiteral/@ValueAsInt)
+          or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) <= (InfixExpression[@Operator = '<='][VariableAccess]/NumericLiteral/@ValueAsInt)
+          or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) > (InfixExpression[@Operator = '>'][VariableAccess]/NumericLiteral/@ValueAsInt)
+          or (ForInit/LocalVariableDeclaration/VariableDeclarator/NumericLiteral/@ValueAsInt) >= (InfixExpression[@Operator = '>='][VariableAccess]/NumericLiteral/@ValueAsInt))]
+        | ForeachStatement | WhileStatement
+        | LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'mapToObj', 'mapToInt', 'mapToLong', 'mapToDouble', 'flatMap', 'filter', 'peek', 'anyMatch', 'allMatch', 'noneMatch', 'takeWhile', 'dropWhile', 'reduce')]]
+          [not((../../*[1] | ../../*[1][@MethodName = $pass]/*[1] | ../../*[1][@MethodName = $pass]/*[1][@MethodName = $pass]/*[1]) intersect $ranges)]),
+    $branches := ($tests | $helpers)//(IfStatement | SwitchStatement | SwitchExpression | ConditionalExpression),
+    $controls := $loops | $branches
 return $controls[not(ancestor::* intersect $controls)]
-  [.//MethodCall[starts-with(@MethodName, 'assert') or @MethodName = 'verify']]
+  [.//MethodCall[matches(@MethodName, '^(assert.*|andExpect(All)?|verifyNo.*|verifyZero.*|verify(Complete|Error|Timeout)?|should(HaveNo.*)?|expect(Status|Body|Header|Next.*|Complete|Error.*))$')]]
 ]]></value></property></properties>
   </rule>
 

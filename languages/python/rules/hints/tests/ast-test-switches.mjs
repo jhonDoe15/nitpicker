@@ -22,7 +22,8 @@ const SUPPRESS_ALLOWED =
   'Keep the assertion outside the block so a failed assertion fails the test: suppress only the error you expect (`contextlib.suppress(KeyError)`) and assert after the block.';
 const BOOLEAN_ALLOWED =
   'Give each outcome its own test and assert unconditionally: write `assert f()` in the test where `g()` holds, not `assert not g() or f()` or `g() and self.assertTrue(f())`.';
-const SUBTEST_ALLOWED = ' A suite that keeps `subTest` takes the exception.';
+const SUBTEST_ALLOWED =
+  ' A `subTest` loop over a literal, non-empty table is allowed; a suite that keeps `subTest` over other collections takes the exception.';
 const SUBJECT = /^(.*): (\w+)( \(unittest\))?$/u;
 
 function parts(subject = '') {

@@ -766,8 +766,8 @@ guessed at.
   `assertAll`, `@Property` and `@Example` tests, and generated cases (`@TestFactory`, registrations in a
   loop, `withData`). Allowed form: separate tests or `@ParameterizedTest` with `@MethodSource` or
   `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
-  `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
-  results of the code under test is reported too: an empty result checks nothing. A loop that cannot
+  `?: fail(...)` to narrow a type instead of an `if` or a safe call. A loop over the
+  results of the code under test is reported too, as in the Java guard: an empty result checks nothing. A loop that cannot
   run zero times is allowed, as in the TypeScript preset: `repeat(n)` with a positive integer literal,
   `for` over a non-empty range of integer literals (`1..3`, `0 until 3`, `0..<3`, `3 downTo 1`, with
   or without `step`), the same range with `.forEach { }` or another iteration call, and
