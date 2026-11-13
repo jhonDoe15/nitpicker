@@ -5,12 +5,13 @@ import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs
 import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
+import { kotlinSourceRules as rulesRootScopeLaunches } from '../futures/root-scope-launches.mjs';
+import { kotlinSourceRules as rulesUnboundedWaits } from '../futures/unbounded-waits.mjs';
 import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
 import { kotlinSourceRules as rulesAddOnlyProperties } from '../lifecycles/growth/add-only-properties.mjs';
 import { kotlinSourceRules as rulesCachedDeferred } from '../lifecycles/memo/cached-deferred.mjs';
 import { kotlinSourceRules as rulesPendingFutures } from '../lifecycles/pending/pending-futures.mjs';
 import { kotlinSourceRules as rulesTimerFields } from '../lifecycles/timers/timer-fields.mjs';
-import { kotlinSourceRules as rulesUnboundedWaits } from '../futures/unbounded-waits.mjs';
 import { kotlinSourceRules as rulesRepeatedStrings } from '../literals/repeated-strings.mjs';
 import { kotlinSourceRules as rulesLogFormatRules } from '../logging/log-format-rules.mjs';
 import { kotlinSourceRules as rulesSimplerLogic } from '../logic/simpler-logic.mjs';
@@ -46,12 +47,13 @@ export const directoryRules = [
   rulesCostlyCollections,
   rulesConfigurationReads,
   rulesFutureCompletions,
+  rulesRootScopeLaunches,
+  rulesUnboundedWaits,
   rulesCleanupOrder,
   rulesAddOnlyProperties,
   rulesCachedDeferred,
   rulesPendingFutures,
   rulesTimerFields,
-  rulesUnboundedWaits,
   rulesRepeatedStrings,
   rulesLogFormatRules,
   rulesSimplerLogic,

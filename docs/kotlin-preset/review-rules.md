@@ -952,6 +952,12 @@ Kotlin-specific choices:
   `.waitFor()` call without arguments on any receiver counts, since `Process` is the class that declares it; a
   project's own `fun waitFor()` called without a receiver does not. A program whose purpose is to run a child to
   completion (a build wrapper) takes an exception.
+- `UnhandledRootCoroutine` is a text scan: it reads `launch` and `async` calls whose receiver is a root scope built in
+  the file, so a scope handed in as a parameter, built by a helper or provided by the framework is not judged, and a
+  scope built from the caller's context or a parent job is skipped. A project runner that handles the failure is named
+  in `conventions` `kotlin.detachedWorkRunners` (never measured, adding a name is reported as a loosening). The
+  Java preset has Error Prone's `FutureReturnValueIgnored`, the TypeScript presets `nitpicker/no-unhandled-void-promise`
+  and Python ruff `RUF006` for the same failure. It runs on Gradle and Maven alike, since the scan is shared.
 - `UnboundedWait` and `ReactorBlockWithoutTimeout` are text scans (the Java preset's `pmd/UnboundedWait` and
   `pmd/ReactorBlockWithoutTimeout` match by type): the receiver of `get()`, `join()` or `await()` must be a name the file
   declares as a `Future`-like type, `Thread` or `CountDownLatch` (or makes from `CompletableFuture`, `submit`, `Thread(...)`,
