@@ -37,7 +37,7 @@ export function files(directory, accepts) {
 
 export function productionSources() {
   return SOURCE_FOLDERS.flatMap((folder) =>
-    files(folder, (name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs')),
+    files(folder, (name) => /\.m[jt]s$/u.test(name) && !/\.test\.m[jt]s$/u.test(name)),
   );
 }
 

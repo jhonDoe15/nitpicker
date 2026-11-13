@@ -1,20 +1,45 @@
-import { toolNameForPath, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import type { SpawnSyncReturns } from 'node:child_process';
+import { spawnSyncWithOutputFile, toolBinaryPath, toolNameForPath } from '../typed/tooling.mts';
 import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { normalizedRelativePath } from './arguments.mjs';
+import { type StaticCheckOptions, normalizedRelativePath } from './arguments.mts';
 import { createHash } from 'node:crypto';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-export function runNodeTool({ options, relativeToolPath, arguments_, acceptedStatuses }) {
+export type Finding = {
+  tool: string;
+  rule: string;
+  path: string;
+  identity: string;
+  message: string;
+  classification: 'enforceable' | 'descriptive';
+  symbol?: string;
+  location?: { line: number; column?: number; endLine?: number };
+};
+
+type NodeToolRun = {
+  readonly options: StaticCheckOptions;
+  readonly relativeToolPath: string;
+  readonly toolArguments: readonly string[];
+  readonly acceptedStatuses: readonly NodeToolResult['status'][];
+};
+
+export type NodeToolResult = Pick<SpawnSyncReturns<string>, 'status' | 'stdout' | 'stderr'>;
+
+export function runNodeTool({
+  options,
+  relativeToolPath,
+  toolArguments,
+  acceptedStatuses,
+}: NodeToolRun): NodeToolResult {
   const name = toolNameForPath(relativeToolPath);
-  const toolPath = resolveTool(name, {
+  const toolPath = toolBinaryPath(name, {
     projectRoot: options.liveProjectRoot,
     bin: relativeToolPath.slice(name.length + 1),
-  }).binPath;
-  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...arguments_], {
+  });
+  const result = spawnSyncWithOutputFile(process.execPath, [toolPath, ...toolArguments], {
     cwd: options.projectRoot,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
@@ -30,7 +55,7 @@ export function runNodeTool({ options, relativeToolPath, arguments_, acceptedSta
   return result;
 }
 
-export function projectFile(projectRoot, filePath) {
+export function projectFile(projectRoot: string, filePath: string): string {
   const resolvedPath = realpathSync(path.resolve(projectRoot, filePath));
   const relativePath = path.relative(projectRoot, resolvedPath);
   if (
@@ -50,7 +75,7 @@ export function projectFile(projectRoot, filePath) {
   return relativePath.replaceAll('\\', '/');
 }
 
-export function policyFile(options, relativePath) {
+export function policyFile(options: StaticCheckOptions, relativePath: string): string {
   const normalizedPath = normalizedRelativePath(relativePath, relativePath);
   const filePath = path.resolve(options.policyRoot, normalizedPath);
   const relativeToPolicy = path.relative(options.policyRoot, filePath);
@@ -63,6 +88,6 @@ export function policyFile(options, relativePath) {
   return filePath;
 }
 
-export function hash(value) {
+export function hash(value: string): string {
   return createHash('sha256').update(value).digest('hex').slice(0, 24);
 }
