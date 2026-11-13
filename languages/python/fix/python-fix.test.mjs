@@ -90,6 +90,7 @@ describe('--fix for Python', () => {
     expect(tools.operations()).toEqual([
       'python-probe',
       'ruff-fix',
+      'ruff-fix',
       'ruff-format-fix',
       'ruff-format-fix',
       'ruff-format-fix',
@@ -101,18 +102,33 @@ describe('--fix for Python', () => {
 
     fix(repository, tools);
 
-    const [lint] = tools.callsOf('ruff-fix');
-    expect({
-      command: lint.command,
-      args: lint.args,
-      cwd: lint.cwd,
-      acceptedStatuses: lint.acceptedStatuses,
-    }).toEqual({
-      command: 'ruff',
-      args: [...LINT_OPTIONS, '--force-exclude', '--fix', '--', 'a.py', 'pkg/b.py'],
-      cwd: repository.root,
-      acceptedStatuses: [0, 1],
-    });
+    expect(
+      tools.callsOf('ruff-fix').map(({ command, args, cwd, acceptedStatuses, input }) => ({
+        command,
+        args,
+        cwd,
+        acceptedStatuses,
+        input,
+      })),
+    ).toEqual(
+      [
+        ['a.py', 'a  =  2\n'],
+        ['pkg/b.py', 'b = 1\n'],
+      ].map(([file, input]) => ({
+        command: 'ruff',
+        args: [
+          ...LINT_OPTIONS,
+          '--force-exclude',
+          '--fix-only',
+          '--exit-non-zero-on-fix',
+          `--stdin-filename=${file}`,
+          '-',
+        ],
+        cwd: repository.root,
+        acceptedStatuses: [0, 1],
+        input,
+      })),
+    );
   });
   it('lists a file ruff check rewrote and does not format a file that was unformatted before the change', () => {
     const repository = topic(
@@ -196,16 +212,18 @@ describe('--fix for Python', () => {
 
     expect(result.fixedFiles).toEqual(['src/a.py', 'stubs/s.pyi']);
     expect(read(repository, 'gen/api.py')).toBe('g  =  1\n');
-    expect(tools.callsOf('ruff-fix')[0].args).toEqual([
-      ...LINT_OPTIONS,
-      '--extend-exclude',
-      'gen/**',
-      '--force-exclude',
-      '--fix',
-      '--',
-      'src/a.py',
-      'stubs/s.pyi',
-    ]);
+    expect(tools.callsOf('ruff-fix').map(({ args }) => args)).toEqual(
+      ['src/a.py', 'stubs/s.pyi'].map((file) => [
+        ...LINT_OPTIONS,
+        '--extend-exclude',
+        'gen/**',
+        '--force-exclude',
+        '--fix-only',
+        '--exit-non-zero-on-fix',
+        `--stdin-filename=${file}`,
+        '-',
+      ]),
+    );
   });
   it('does nothing when no Python file changed', () => {
     const repository = topic({ 'a.py': 'a  =  1\n' }, { 'x.txt': 'x\n' });
@@ -314,9 +332,9 @@ describe('--fix for Python', () => {
 
     expect(result.notes).toEqual(['ruff format rewrote nb.ipynb']);
     expect([
-      tools.callsOf('ruff-fix')[0].args.at(-1),
+      tools.callsOf('ruff-fix')[0].args.at(-2),
       tools.callsOf('ruff-format-fix')[0].args.at(-2),
-    ]).toEqual(['nb.ipynb', '--stdin-filename=nb.ipynb']);
+    ]).toEqual(['--stdin-filename=nb.ipynb', '--stdin-filename=nb.ipynb']);
   });
   it('hands notebooks to Black too, which formats them only when its jupyter extra is installed', () => {
     const repository = topic(
@@ -388,7 +406,9 @@ describe('--fix for Python', () => {
       toolErrors: [],
       notes: ['ruff format rewrote a.py', '--fix left latin.py as is: not UTF-8 text'],
     });
-    expect(tools.callsOf('ruff-fix')[0].args.at(-1)).toBe('a.py');
+    expect(tools.callsOf('ruff-fix').map(({ args }) => args.at(-2))).toEqual([
+      '--stdin-filename=a.py',
+    ]);
     expect(readFileSync(path.join(repository.root, 'latin.py'))).toEqual(latin1);
   });
   it('runs the tools through uv run in a uv project', () => {
