@@ -158,21 +158,23 @@ export function readModuleJacoco(module: unknown, preset: string): string | unde
   throw new Error(`The ${preset} preset found no JaCoCo report for ${moduleLabel(module)}`);
 }
 
+function holdsSourceFiles(directory: string, extensions: readonly string[]): boolean {
+  return (
+    existsSync(directory) &&
+    readdirSync(directory, { recursive: true, encoding: 'utf8' }).some((name) =>
+      extensions.some((extension) => name.endsWith(extension)),
+    )
+  );
+}
+
 function hasSourceFiles(
   projectRoot: string,
   roots: readonly string[],
   extensions: readonly string[],
 ): boolean {
-  return roots.some((root) => {
-    const directory = root === '' || root === '.' ? projectRoot : resolveInside(projectRoot, root);
-    return (
-      directory !== undefined &&
-      existsSync(directory) &&
-      readdirSync(directory, { recursive: true, encoding: 'utf8' }).some((name) =>
-        extensions.some((extension) => name.endsWith(extension)),
-      )
-    );
-  });
+  return roots
+    .map((root) => path.resolve(projectRoot, root))
+    .some((directory) => holdsSourceFiles(directory, extensions));
 }
 
 export function isEmptyModule(projectRoot: string, module: unknown): boolean {
