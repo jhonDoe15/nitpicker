@@ -34,6 +34,7 @@ import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mj
 import { readKotlinNotes } from './kotlin-notes.mjs';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
 import { springRoots } from '../spring/transactions/transaction-filters.mjs';
+import { withoutTransactionalCallers } from '../spring/transactions/transactional-callers.mjs';
 import { withoutSpringCoveredReads } from '../spring/configuration/covered-reads.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -176,7 +177,14 @@ export function readKotlinFindings(context, crapLimit) {
     ]),
     context.classLimits,
   );
-  return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });
+  return withoutTransactionFindings(findings, { projectRoot, roots: springRoots(context) });
+}
+
+function withoutTransactionFindings(findings, options) {
+  return withoutTransactionalCallers(
+    withoutTransactionAwareCacheWrites(findings, options),
+    options,
+  );
 }
 
 function subjectOf(text) {
