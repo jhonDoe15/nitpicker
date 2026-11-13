@@ -26,7 +26,7 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mts';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
-import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
 import { runQualityDiff } from './diff/comparison/run-diff.mts';
 import { fixIfRequested } from './command/fix-request.mts';
@@ -261,7 +261,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   );
   const cacheStore = resolveRunCacheStore(cli);
   const requestedBaseRef: unknown = base.baseRef;
-  const report: unknown = runQualityDiff({
+  const report = runQualityDiff({
     repositoryRoot,
     projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
     headProjectRoot: currentProjectRoot,

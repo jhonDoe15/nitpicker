@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { comparisonExitCode, failingHeadTests } from './failing-tests.mjs';
 import { renderConsoleSummary } from '../summary.mjs';
-import { renderDiffSummary } from '../github/diff-summary.mjs';
+import { renderDiffSummary } from '../github/diff-summary.mts';
 import { finding, report } from '../test-support/report-builders.mjs';
 import { formatTestFailures } from '../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mjs';
 import { failingTestsError } from '../../../../languages/java/builds/test-failures.mjs';

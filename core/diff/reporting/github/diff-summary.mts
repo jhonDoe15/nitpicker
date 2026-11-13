@@ -1,4 +1,5 @@
 import {
+  type LinkContext,
   LISTED_NOTES,
   cappedList,
   code,
@@ -9,22 +10,33 @@ import {
   pluralize,
   ruleTable,
   toolErrorList,
-} from './markdown.mjs';
+} from './markdown.mts';
 import { scopeLine } from '../../../scope/scope-findings.mjs';
 import { partialRunLines } from '../partial-run/partial-run.mjs';
 import { failingHeadTests } from '../failing-tests/failing-tests.mjs';
+import type { ReportData, ReportEntry } from '../../../../shared/values/findings.mts';
+import { listOf } from '../../../../shared/values/readers.mts';
 
-function failingTestsHeadline(report) {
-  const failing = failingHeadTests(report.toolErrors);
-  if (failing.length === 0) {
+type Summary = ReportData['summary'];
+
+const failingTests: (toolErrors: readonly ReportEntry[]) => readonly ReportEntry[] =
+  failingHeadTests;
+const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
+
+function failingTestsHeadline(report: ReportData): string | undefined {
+  const [firstFailing, ...otherFailing] = failingTests(report.toolErrors);
+  if (firstFailing === undefined) {
     return undefined;
   }
-  const [first] = String(failing[0].message).split('\n');
-  return failing.length === 1 ? first.replace(/:$/u, '') : 'Tests fail in more than one test run';
+  const [first = ''] = String(firstFailing.message).split('\n');
+  return otherFailing.length === 0
+    ? first.replace(/:$/u, '')
+    : 'Tests fail in more than one test run';
 }
 
-function headline(report) {
-  if (report.summary.noChanges === true && report.toolErrors.length === 0) {
+function headline(report: ReportData): string {
+  if (report.summary['noChanges'] === true && report.toolErrors.length === 0) {
     return '✓ No changes since the merge base; nothing to check';
   }
   const enforceable = report.newFindings.filter(
@@ -45,28 +57,28 @@ function headline(report) {
 
 const SHORT_SHA_LENGTH = 12;
 
-function shortSha(sha) {
+function shortSha(sha: unknown): string {
   return String(sha).slice(0, SHORT_SHA_LENGTH);
 }
 
-function comparisonLine(report) {
+function comparisonLine(report: ReportData): string[] {
   const { summary } = report;
-  const base = `Base ${code(summary.requestedBaseRef)} (merge base ${code(shortSha(summary.mergeBaseSha))})`;
+  const base = `Base ${code(summary['requestedBaseRef'])} (merge base ${code(shortSha(summary['mergeBaseSha']))})`;
   const metrics = pluralize(report.changedMetrics.length, 'changed metric');
   const counts = [
     pluralize(report.newFindings.length, 'new finding'),
     `${String(report.resolvedFindings.length)} resolved`,
     metrics,
   ];
-  return [`${base}, head ${code(shortSha(summary.headSha))}.`, `${counts.join(', ')}.`];
+  return [`${base}, head ${code(shortSha(summary['headSha']))}.`, `${counts.join(', ')}.`];
 }
 
-function policySection(summary) {
-  const changes = summary.policyChanges ?? [];
+function policySection(summary: Summary): string[] {
+  const changes = listOf(summary['policyChanges']);
   if (changes.length === 0) {
     return [];
   }
-  const accepted = summary.policyChangeAccepted === true;
+  const accepted = summary['policyChangeAccepted'] === true;
   return [
     `### Policy changed in this change${accepted ? ' (loosening accepted)' : ''}`,
     '',
@@ -74,16 +86,16 @@ function policySection(summary) {
   ];
 }
 
-function noticeSection(summary) {
-  const notices = summary.notices ?? [];
+function noticeSection(summary: Summary): string[] {
+  const notices = listOf(summary['notices']);
   if (notices.length === 0) {
     return [];
   }
   return ['### Notices (not failing)', '', ...cappedList(notices, inlineText, LISTED_NOTES)];
 }
 
-function heldLine(report) {
-  const held = report.unchangedFindings.filter((finding) => finding.heldAtBase !== undefined);
+function heldLine(report: ReportData): string[] {
+  const held = report.unchangedFindings.filter((finding) => finding['heldAtBase'] !== undefined);
   if (held.length === 0) {
     return [];
   }
@@ -95,12 +107,12 @@ function heldLine(report) {
   ];
 }
 
-function pendingLoosening(summary) {
-  const loosened = (summary.policyLoosenings ?? []).length > 0;
-  return loosened && summary.policyChangeAccepted !== true ? summary.policyDigest : undefined;
+function pendingLoosening(summary: Summary): unknown {
+  const loosened = listOf(summary['policyLoosenings']).length > 0;
+  return loosened && summary['policyChangeAccepted'] !== true ? summary['policyDigest'] : undefined;
 }
 
-export function renderDiffSummary(report, context) {
+export function renderDiffSummary(report: ReportData, context: LinkContext): string {
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
@@ -109,8 +121,8 @@ export function renderDiffSummary(report, context) {
     '',
     `**${headline(report)}**`,
     '',
-    ...scopeLine(report.summary).flatMap((line) => [line, '']),
-    ...partialRunLines(report.summary).flatMap((line) => [`> ${line}`, '']),
+    ...scopeLinesOf(report.summary).flatMap((line) => [line, '']),
+    ...partialLinesOf(report.summary).flatMap((line) => [`> ${line}`, '']),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),

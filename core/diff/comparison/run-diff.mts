@@ -1,4 +1,4 @@
-import { writeDiffReports } from '../reporting/reporters.mjs';
+import { writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
