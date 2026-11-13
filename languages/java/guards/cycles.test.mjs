@@ -138,3 +138,41 @@ describe('cycleFindings', () => {
     );
   });
 });
+
+describe('package cycles next to feature cycles', () => {
+  const folderOf = (file) => file.slice(0, file.lastIndexOf('/'));
+  const modules = ['app.a.Alpha', 'app.b.Beta', 'app.b.Gamma'];
+  const loop = [edge('app.a.Alpha', 'app.b.Beta'), edge('app.b.Beta', 'app.a.Alpha')];
+  const featureCycle = {
+    features: ['src/main/java/app/a', 'src/main/java/app/b'],
+    edges: loop.map(({ source, target }) => ({ from: fileOf(source), to: fileOf(target) })),
+  };
+  const withFeatures = (edges, features) =>
+    cycleFindings({ modules, edges, packageOf, fileOf }, 'coupling', {
+      explainedCycles: [],
+      featureOf: folderOf,
+      generatedFiles: new Set(),
+      ...features,
+    });
+
+  it('leaves a cycle of two features to feature-cycle', () => {
+    expect(withFeatures(loop, { explainedCycles: [featureCycle] })).toEqual([]);
+  });
+
+  it('still reports the cycle when other edges close it as well', () => {
+    const result = withFeatures([...loop, edge('app.b.Gamma', 'app.a.Alpha')], {
+      explainedCycles: [{ ...featureCycle, edges: featureCycle.edges.slice(1) }],
+    });
+
+    expect(identities(result)).toEqual(['cycle:app.a', 'cycle:app.b']);
+  });
+
+  it('leaves out classes a generator wrote', () => {
+    const result = withFeatures(loop, {
+      featureOf: () => undefined,
+      generatedFiles: new Set([fileOf('app.b.Beta')]),
+    });
+
+    expect(result).toEqual([]);
+  });
+});

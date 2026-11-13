@@ -1,5 +1,7 @@
 package main
 
+import "github.com/jhonDoe15/nitpicker/languages/go/inspect/design"
+
 type Report struct {
 	Files     []File     `json:"files"`
 	Functions []Function `json:"functions"`
@@ -12,6 +14,7 @@ type Report struct {
 	Usages      []Usage      `json:"usages"`
 	DocComments []DocComment `json:"docComments"`
 	Skipped     []string     `json:"skipped"`
+	Design      design.Facts `json:"design"`
 }
 
 type Position struct {

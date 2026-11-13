@@ -1,3 +1,4 @@
+import { isExplainedCycle } from '../../../shared/graph/explained-cycles.mjs';
 import { listed } from '../../../shared/rules/features/feature-boundaries.mjs';
 import { RULE_IDS } from '../../../shared/policy.mjs';
 
@@ -115,19 +116,45 @@ function packageEdges(edges, packageOf) {
   return [...seen.values()].filter((edge) => edge.source !== edge.target);
 }
 
-export function cycleFindings({ modules, edges, packageOf, fileOf }, tool) {
-  const known = new Set(modules);
+const NO_FEATURES = { explainedCycles: [], featureOf: () => undefined, generatedFiles: new Set() };
+
+function fileEdges(edges, { packageOf, fileOf }) {
+  return edges
+    .map((edge) => ({
+      source: packageOf(edge.source),
+      target: packageOf(edge.target),
+      files: `${fileOf(edge.source)}\0${fileOf(edge.target)}`,
+    }))
+    .filter((edge) => edge.source !== edge.target);
+}
+
+export function cycleFindings({ modules, edges, packageOf, fileOf }, tool, features = NO_FEATURES) {
+  const generated = features.generatedFiles;
+  const known = new Set(modules.filter((name) => !generated.has(fileOf(name))));
   const internal = edges.filter((edge) => known.has(edge.source) && known.has(edge.target));
-  const sorted = [...modules].sort((left, right) => left.localeCompare(right));
-  const components = cyclicComponents(modules.map(packageOf), packageEdges(internal, packageOf));
-  return components.flatMap((members) =>
-    members.map((member) =>
-      memberFinding({
-        tool,
-        member,
-        others: members.filter((other) => other !== member),
-        path: fileOf(sorted.find((name) => packageOf(name) === member)),
-      }),
-    ),
-  );
+  const sorted = [...known].sort((left, right) => left.localeCompare(right));
+  function anchorOf(member) {
+    return fileOf(sorted.find((name) => packageOf(name) === member));
+  }
+  const packaged = fileEdges(internal, { packageOf, fileOf });
+  const components = cyclicComponents([...known].map(packageOf), packageEdges(internal, packageOf));
+  return components
+    .filter(
+      (members) =>
+        !isExplainedCycle(members, {
+          packaged,
+          anchor: new Map(members.map((member) => [member, anchorOf(member)])),
+          features,
+        }),
+    )
+    .flatMap((members) =>
+      members.map((member) =>
+        memberFinding({
+          tool,
+          member,
+          others: members.filter((other) => other !== member),
+          path: anchorOf(member),
+        }),
+      ),
+    );
 }

@@ -103,7 +103,7 @@ describe('the import facts of the Python scan', () => {
         modules: MODULES,
         imports: { [`${FEATURES}/orders/cart.py`]: [absolute('app.features.billing', '_rates')] },
       },
-      (file) => file.endsWith('cart.py'),
+      { isGenerated: (file) => file.endsWith('cart.py') },
     );
 
     expect(facts.modules.filter(({ generated }) => generated).map(({ file }) => file)).toEqual([
@@ -181,6 +181,33 @@ describe('package cycles next to feature cycles', () => {
     expect(packageCycles(cycleReport(false), policy)).toEqual([
       'cycle:app.features.billing',
       'cycle:app.features.shipping',
+    ]);
+  });
+});
+
+describe('foreign-feature-persistence over the Python facts', () => {
+  it('follows a name the feature __init__ re-exports from its repository module', () => {
+    const modules = [
+      module('app.features.billing', true),
+      module('app.features.billing.repository'),
+      module('app.features.orders.cart'),
+    ];
+    const imports = {
+      [`${FEATURES}/billing/__init__.py`]: [
+        { level: 1, module: 'repository', names: ['InvoiceRepository'] },
+      ],
+      [`${FEATURES}/orders/cart.py`]: [absolute('app.features.billing', 'InvoiceRepository')],
+    };
+    const persistence = new Map([[`${FEATURES}/billing/repository.py`, 'data-access']]);
+
+    const { findings } = pythonFeatureAnalysis({ modules, imports }, { persistence });
+
+    expect(findings.map(({ rule, path: file, identity }) => [rule, file, identity])).toEqual([
+      [
+        'foreign-feature-persistence',
+        `${FEATURES}/orders/cart.py`,
+        `foreign-persistence:${FEATURES}/billing/repository.py`,
+      ],
     ]);
   });
 });

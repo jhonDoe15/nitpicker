@@ -1,6 +1,5 @@
-import { spawn } from 'node:child_process';
+import { ChildProcess, spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
-import { parseAnalyzerReportKeepingValid } from '../comparison/schema/invalid-findings.mjs';
 import {
   ANALYZER_TIMEOUT_KEY,
   ANALYZER_TIMEOUT_VARIABLE,
@@ -9,35 +8,84 @@ import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-  withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import type { AnalyzerTask } from './tasks.mts';
+import { type AnalyzerReport, reportFromAnalyzerOutput } from './report/analyzer-report.mts';
+
+type OutputFile = {
+  readonly descriptor: number;
+  readonly size: () => number;
+  readonly read: (encoding: 'utf8') => unknown;
+  readonly remove: () => void;
+};
+
+type OutputCollector = {
+  readonly stderr: Buffer[];
+  readonly collectStderr: (chunk: Buffer) => void;
+  readonly exceeded: () => boolean;
+  readonly stop: () => void;
+};
+
+type TaskController = {
+  readonly terminate: (error: Error) => void;
+  readonly finish: (operation: () => void) => void;
+  readonly error: () => unknown;
+  readonly recordError: (error: unknown) => void;
+};
+
+type ChildClose = {
+  readonly failure: unknown;
+  readonly status: unknown;
+  readonly signal: unknown;
+  readonly stdoutFile: OutputFile;
+  readonly output: OutputCollector;
+};
+
+type Settle = {
+  readonly resolve: (report: AnalyzerReport) => void;
+  readonly reject: (error: unknown) => void;
+};
+
+const openOutput: () => OutputFile = openOutputFile;
+const hostEnvironment: (environment: NodeJS.ProcessEnv) => NodeJS.ProcessEnv = withoutHostCiOutputs;
+const timeoutKey: string = ANALYZER_TIMEOUT_KEY;
+const timeoutVariable: string = ANALYZER_TIMEOUT_VARIABLE;
+const configFile: string = CONFIG_FILE_NAME;
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
-const FORCE_KILL_DELAY_MS = 1_000;
+export const FORCE_KILL_DELAY_MS = 1_000;
 
 const OUTPUT_POLL_INTERVAL_MS = 100;
 
+const SHUTDOWN_SIGNALS: readonly NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
+
 const activeChildren = new Set();
 
-function analyzerEnvironment(environment, task) {
+function analyzerEnvironment(
+  environment: NodeJS.ProcessEnv,
+  task: AnalyzerTask,
+): NodeJS.ProcessEnv {
   return {
-    ...withoutHostCiOutputs(environment),
-    ...(task.configuredTimeout === true
-      ? { [ANALYZER_TIMEOUT_VARIABLE]: String(task.timeoutMs) }
-      : {}),
+    ...hostEnvironment(environment),
+    ...(task.configuredTimeout === true ? { [timeoutVariable]: String(task.timeoutMs) } : {}),
   };
 }
 
-function outputLimitError(task) {
+function outputLimitError(task: AnalyzerTask): Error {
   return troubleshootingError(
     `${task.name} exceeded the analyzer output limit`,
     TROUBLESHOOTING_ANCHORS.analyzerCrashed,
   );
 }
 
-function settleClose(task, { failure, status, signal, stdoutFile, output }, { resolve, reject }) {
+function settleClose(
+  task: AnalyzerTask,
+  { failure, status, signal, stdoutFile, output }: ChildClose,
+  { resolve, reject }: Settle,
+): void {
   const error = failure ?? (output.exceeded() ? outputLimitError(task) : undefined);
   if (error !== undefined) {
     reject(error);
@@ -48,7 +96,7 @@ function settleClose(task, { failure, status, signal, stdoutFile, output }, { re
       reportFromAnalyzerOutput(task, {
         status,
         signal,
-        stdoutText: stdoutFile.read('utf8'),
+        stdoutText: textOf(stdoutFile.read('utf8')),
         stderrText: Buffer.concat(output.stderr).toString('utf8'),
       }),
     );
@@ -57,7 +105,7 @@ function settleClose(task, { failure, status, signal, stdoutFile, output }, { re
   }
 }
 
-function spawnAnalyzer(task, stdoutDescriptor) {
+function spawnAnalyzer(task: AnalyzerTask, stdoutDescriptor: number): ChildProcess {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
     env: analyzerEnvironment(task.invocation.env ?? process.env, task),
@@ -68,18 +116,18 @@ function spawnAnalyzer(task, stdoutDescriptor) {
   return child;
 }
 
-function createOutputCollector(stdoutFile, onOverflow) {
-  const stderr = [];
+function createOutputCollector(stdoutFile: OutputFile, onOverflow: () => void): OutputCollector {
+  const stderr: Buffer[] = [];
   const state = { stderrBytes: 0 };
-  function exceeded() {
+  function exceeded(): boolean {
     return stdoutFile.size() + state.stderrBytes > MAX_ANALYZER_OUTPUT_BYTES;
   }
-  function check() {
+  function check(): void {
     if (exceeded()) {
       onOverflow();
     }
   }
-  function collectStderr(chunk) {
+  function collectStderr(chunk: Buffer): void {
     state.stderrBytes += chunk.length;
     if (exceeded()) {
       onOverflow();
@@ -93,13 +141,13 @@ function createOutputCollector(stdoutFile, onOverflow) {
     stderr,
     collectStderr,
     exceeded,
-    stop() {
+    stop(): void {
       clearInterval(poll);
     },
   };
 }
 
-function scheduleForceKill(child) {
+function scheduleForceKill(child: ChildProcess): NodeJS.Timeout {
   const timer = setTimeout(() => {
     signalChildProcess(child, 'SIGKILL');
   }, FORCE_KILL_DELAY_MS);
@@ -107,30 +155,30 @@ function scheduleForceKill(child) {
   return timer;
 }
 
-function timeoutMessage(task) {
+function timeoutMessage(task: AnalyzerTask): string {
   return (
     `${task.name} timed out after ${String(task.timeoutMs)} ms. To give it more time, set ` +
-    `"${ANALYZER_TIMEOUT_KEY}": { "${task.name}": <minutes> } in ${CONFIG_FILE_NAME}`
+    `"${timeoutKey}": { "${task.name}": <minutes> } in ${configFile}`
   );
 }
 
-function createTaskController(child, task) {
-  const errors = new Map();
-  const state = {
+function createTaskController(child: ChildProcess, task: AnalyzerTask): TaskController {
+  const errors = new Map<string, unknown>();
+  const state: { settled: boolean; forceKillTimeout: NodeJS.Timeout | undefined } = {
     settled: false,
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
     terminate(troubleshootingError(timeoutMessage(task), TROUBLESHOOTING_ANCHORS.analyzerTimeout));
   }, task.timeoutMs);
-  function terminate(error) {
+  function terminate(error: Error): void {
     if (errors.has('termination')) return;
     errors.set('termination', error);
     clearTimeout(timeout);
     signalChildProcess(child, 'SIGTERM');
     state.forceKillTimeout = scheduleForceKill(child);
   }
-  function finish(operation) {
+  function finish(operation: () => void): void {
     if (state.settled) return;
     state.settled = true;
     clearTimeout(timeout);
@@ -143,14 +191,14 @@ function createTaskController(child, task) {
     terminate,
     finish,
     error: () => errors.get('termination') ?? errors.get('child'),
-    recordError(error) {
+    recordError(error: unknown): void {
       errors.set('child', error);
     },
   };
 }
 
-export async function executeAnalyzerTask(task) {
-  const stdoutFile = openOutputFile();
+export async function executeAnalyzerTask(task: AnalyzerTask): Promise<AnalyzerReport> {
+  const stdoutFile = openOutput();
   try {
     return await runAnalyzerChild(task, stdoutFile);
   } finally {
@@ -158,15 +206,15 @@ export async function executeAnalyzerTask(task) {
   }
 }
 
-function runAnalyzerChild(task, stdoutFile) {
+function runAnalyzerChild(task: AnalyzerTask, stdoutFile: OutputFile): Promise<AnalyzerReport> {
   return new Promise((resolve, reject) => {
     const child = spawnAnalyzer(task, stdoutFile.descriptor);
     const controller = createTaskController(child, task);
     const output = createOutputCollector(stdoutFile, () => {
       controller.terminate(outputLimitError(task));
     });
-    child.stderr.on('data', output.collectStderr);
-    child.on('error', (error) => {
+    child.stderr?.on('data', output.collectStderr);
+    child.on('error', (error: Error) => {
       controller.recordError(error);
     });
     child.on('close', (status, signal) => {
@@ -182,36 +230,36 @@ function runAnalyzerChild(task, stdoutFile) {
   });
 }
 
-export function reportFromAnalyzerOutput(task, { status, signal, stdoutText, stderrText }) {
-  if (!task.acceptedExitCodes.includes(status)) {
-    const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
-    const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
-    throw troubleshootingError(
-      `${task.name} crashed with ${exit}: ${detail}`,
-      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
-    );
-  }
-  return parseReport(stdoutText, task.name, task.reportedTools);
-}
-
-function signalChildProcess(child, signal) {
+function signalChildProcess(
+  child: ChildProcess,
+  signal: NodeJS.Signals,
+): { readonly kind: string; readonly error: unknown } | undefined {
   if (child.pid === undefined) {
-    return;
+    return undefined;
   }
-  if (process.platform !== 'win32' && signalProcessGroup(child.pid, signal)) return;
+  if (process.platform !== 'win32' && signalProcessGroup(child.pid, signal)) return undefined;
   try {
     child.kill(signal);
   } catch (error) {
     return { kind: 'signal-failed', error };
   }
+  return undefined;
+}
+
+function signalActiveChildren(signal: NodeJS.Signals): void {
+  for (const child of activeChildren) {
+    if (child instanceof ChildProcess) {
+      signalChildProcess(child, signal);
+    }
+  }
 }
 
 export function installShutdownHandlers(
-  shutdownController,
-  { forceKillDelayMs = FORCE_KILL_DELAY_MS } = {},
-) {
+  shutdownController: AbortController,
+  { forceKillDelayMs = FORCE_KILL_DELAY_MS }: { readonly forceKillDelayMs?: number } = {},
+): void {
   let isShuttingDown = false;
-  for (const signal of ['SIGINT', 'SIGTERM']) {
+  for (const signal of SHUTDOWN_SIGNALS) {
     process.on(signal, () => {
       if (isShuttingDown) {
         return;
@@ -219,59 +267,20 @@ export function installShutdownHandlers(
       isShuttingDown = true;
       process.exitCode = 2;
       shutdownController.abort();
-      for (const child of activeChildren) {
-        signalChildProcess(child, 'SIGTERM');
-      }
+      signalActiveChildren('SIGTERM');
       const forceKillTimeout = setTimeout(() => {
-        for (const child of activeChildren) {
-          signalChildProcess(child, 'SIGKILL');
-        }
+        signalActiveChildren('SIGKILL');
       }, forceKillDelayMs);
       forceKillTimeout.unref();
     });
   }
 }
 
-function parsedReport(rawReport, analyzerName) {
-  try {
-    return parseAnalyzerReportKeepingValid(rawReport, analyzerName);
-  } catch (error) {
-    if (error instanceof Error) {
-      error.message = withTroubleshooting(error.message, TROUBLESHOOTING_ANCHORS.analyzerCrashed);
-    }
-    throw error;
-  }
-}
-
-function parseReport(stdout, analyzerName, reportedTools = []) {
-  let rawReport;
-  try {
-    rawReport = JSON.parse(stdout);
-  } catch (error) {
-    throw troubleshootingError(
-      `${analyzerName} did not produce valid JSON`,
-      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
-      { cause: error },
-    );
-  }
-  const report = parsedReport(rawReport, analyzerName);
-  const mismatchedFinding = report.findings.find(
-    (finding) => finding.tool !== analyzerName && !reportedTools.includes(finding.tool),
-  );
-  if (mismatchedFinding !== undefined) {
-    throw troubleshootingError(
-      `${analyzerName} emitted a finding for unexpected tool ${mismatchedFinding.tool}`,
-      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
-    );
-  }
-  return report;
-}
-
-function signalProcessGroup(pid, signal) {
+function signalProcessGroup(pid: number, signal: NodeJS.Signals): boolean {
   try {
     process.kill(-pid, signal);
     return true;
   } catch (error) {
-    return error?.code === 'ESRCH';
+    return fieldOf(error, 'code') === 'ESRCH';
   }
 }
