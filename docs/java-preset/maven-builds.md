@@ -130,7 +130,7 @@ by field. Per snapshot:
   derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
   module exactly as on one without a descriptor, with no module path: over a temporary copy of the
   class files of the modular class directories, without `module-info.class`, made in a
-  temporary directory and removed afterwards (`languages/java/builds/classes/jdeps-reports.mjs` on
+  temporary directory and removed afterwards (`languages/java/builds/classes/jdeps-reports.mts` on
   Maven, the `nitpickerJdeps` task in `languages/java/gradle/nitpicker.init.gradle` on Gradle). The copy and
   `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
   to a file or a folder, is left out of both (a class directory that is itself a link is read

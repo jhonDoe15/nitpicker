@@ -4,7 +4,7 @@ import { javaCommand, runJava } from '../maven-command.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { relativeTo } from '../module/module-paths.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mjs';
+import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { mavenModuleOf } from '../typed/maven-values.mts';
