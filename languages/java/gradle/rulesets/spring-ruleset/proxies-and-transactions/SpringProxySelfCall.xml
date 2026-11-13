@@ -62,31 +62,54 @@ let $proxyNames := (
                   | $method/FormalParameters//Annotation)[
         some $name in $constraintNames satisfies pmd-java:typeIs($name)])
     },
-    $proxied := function($method, $callerTransactional) {
-      exists($method/ModifierList/Annotation[$proxyAnnotation(.)]
-        [not($callerTransactional and not(AnnotationMemberList)
-             and pmd-java:typeIs('org.springframework.transaction.annotation.Transactional'))])
+    $transactionType := 'org.springframework.transaction.annotation.Transactional',
+    $joiningPropagation := ('REQUIRED', 'SUPPORTS', 'MANDATORY'),
+    $matchedAttributes := ('rollbackFor', 'rollbackForClassName', 'noRollbackFor', 'noRollbackForClassName',
+      'timeout', 'timeoutString', 'isolation', 'value', 'transactionManager'),
+    $running := function($annotation) {
+      empty($annotation/AnnotationMemberList/MemberValuePair[@Name = 'propagation']
+        [not(*[1][@Name = ('REQUIRED', 'REQUIRES_NEW', 'MANDATORY', 'NESTED')])])
+    },
+    $signature := function($pair) {
+      string-join(for $node in $pair/descendant-or-self::*
+        return string-join((name($node), $node/@Name, $node/@SimpleName, $node/@Image), ':'), '|')
+    },
+    $joins := function($annotation, $callerAnnotations) {
+      exists($callerAnnotations)
+      and exists($annotation[pmd-java:typeIs($transactionType)])
+      and (every $pair in $annotation/AnnotationMemberList/MemberValuePair satisfies
+        ($pair/@Name = 'readOnly' or $pair/@Name = 'label'
+         or ($pair/@Name = 'propagation' and exists($pair/*[1][@Name = $joiningPropagation]))
+         or ($pair/@Name = $matchedAttributes
+             and (some $same in $callerAnnotations/AnnotationMemberList/MemberValuePair[@Name = $pair/@Name]
+                  satisfies $signature($same) = $signature($pair)))))
+    },
+    $proxied := function($method, $callerAnnotations) {
+      exists($method/ModifierList/Annotation[$proxyAnnotation(.)][not($joins(., $callerAnnotations))])
       or $validated($method)
     },
     $transactional := function($node) {
-      exists($node/ancestor::MethodDeclaration[1]/ModifierList/Annotation[
-        pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')])
+      let $caller := $node/ancestor::MethodDeclaration[1],
+          $own := $caller/ModifierList/Annotation[pmd-java:typeIs($transactionType)]
+      return ($own[$running(.)],
+        $caller[empty($own)][not(@Visibility = 'private' or pmd-java:modifiers() = 'static')]
+          /ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs($transactionType)][$running(.)])
     }
 return (
   //MethodCall[*[1][self::ArgumentList or self::TypeArguments or self::ThisExpression[not(*)]]][
     let $name := @MethodName,
         $arity := count(ArgumentList/*),
-        $callerTransactional := $transactional(.)
+        $callerAnnotations := $transactional(.)
     return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
       [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]
-      [$proxied(., $callerTransactional)])
+      [$proxied(., $callerAnnotations)])
   ]
   |
   //MethodReference[*[1][self::ThisExpression[not(*)]]][
     let $name := @MethodName,
-        $callerTransactional := $transactional(.)
+        $callerAnnotations := $transactional(.)
     return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
-      [$proxied(., $callerTransactional)])
+      [$proxied(., $callerAnnotations)])
   ]
 )
 ]]></value></property>
