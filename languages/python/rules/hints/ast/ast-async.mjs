@@ -87,4 +87,12 @@ export const ASYNC_HINTS = [
     allowed:
       'Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['future-without-exception'],
+    describe: (subject) =>
+      `\`${subject}\` is completed only by \`set_result\` from a callback, so when the work behind the callback fails the future never completes and whoever awaits it waits forever`,
+    allowed:
+      'Give the callback a failure path that calls `set_exception` (`register(reply.set_result, reply.set_exception)`, or `except Exception as error: reply.set_exception(error)` around the work), or await a coroutine API that raises by itself, such as `loop.run_in_executor(...)` or `asyncio.to_thread(...)`.',
+  },
 ];

@@ -115,6 +115,7 @@ function mergedStatements(entries, statement, { file, role }) {
     line: statement.line,
     typeOnly: statement.typeOnly,
     ...(statement.conditional ? { conditional: true } : {}),
+    ...(statement.local ? { local: true } : {}),
   }));
 }
 
@@ -124,7 +125,8 @@ function withoutWildcards(record) {
 
 function importFacts(file, context) {
   const role = context.roleOf(file);
-  const statements = context.scanned[file].imports.flatMap((statement) => {
+  const written = context.scanned[file].imports.filter(({ exported }) => exported !== true);
+  const statements = written.flatMap((statement) => {
     const entries =
       statement.module === null && statement.level === 0
         ? moduleImports(statement, context.resolver)

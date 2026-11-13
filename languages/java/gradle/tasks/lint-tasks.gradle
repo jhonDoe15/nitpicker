@@ -52,8 +52,9 @@ def analysisRoot = project.ext.nitpickerAnalysisRoot
 def compilerOf = project.ext.nitpickerCompilerOf
 def pathsOf = { Collection<File> files -> files.collect { it.absolutePath } }
 def runNode = project.ext.nitpickerRunNode
-def guardsRunner = new File(buildscript.sourceFile.parentFile, '../../adapters/gradle-reports/gradle-guards.mjs')
-    .canonicalFile
+def guardsRunner = ['gradle-guards.mts', 'gradle-guards.mjs']
+    .collect { new File(buildscript.sourceFile.parentFile, "../../adapters/gradle-reports/${it}").canonicalFile }
+    .find { it.exists() }
 def lintBaseline = gradle.startParameter.projectProperties['nitpicker.lintBaseline']
 
 tasks.register('nitpickerLint') {

@@ -13,6 +13,7 @@ on:
       - 'vitest.config.mts'
       - 'scripts/test-shards/**'
       - 'evals/**/*.test.mjs'
+      - 'evals/**/*.test.mts'
       - 'scripts/ci/**'
       - '.github/workflows/go-e2e.yml'
   pull_request:

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { loadCase, runCase } from '../runner/run-case.mjs';
+import { runCase } from '../runner/run-case.mts';
+import { loadCase } from '../case-definition/case-definition.mts';
 import {
   CASE_TIMEOUT_MS,
   casesDirectory,

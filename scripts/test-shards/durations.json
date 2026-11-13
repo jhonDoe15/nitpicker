@@ -63,7 +63,7 @@
   "evals/cases/fix-count-bug/honest-run.test.mjs": 51,
   "evals/detectors/gate-agreement.test.mjs": 3,
   "evals/detectors/weakened-tests.test.mjs": 2,
-  "evals/runner/run-case.test.mjs": 5,
+  "evals/runner/run-case.test.mts": 5,
   "languages/java/adapters/duplicates/java-duplicates.test.mjs": 6,
   "languages/java/adapters/gradle-reports/multi-module.test.mjs": 5,
   "languages/java/adapters/structure-metrics/structure-metrics.test.mjs": 2,
