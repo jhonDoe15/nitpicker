@@ -17,7 +17,7 @@ import { runJavaDuplicates, readDuplicateFindings } from '../adapters/metrics/ja
 import {
   readReportModules,
   readMainCheckstyle,
-} from '../adapters/gradle-reports/report-modules.mjs';
+} from '../adapters/gradle-reports/report-modules.mts';
 import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';

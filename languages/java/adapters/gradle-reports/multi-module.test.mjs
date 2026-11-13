@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
-import { readReportModules } from './report-modules.mjs';
+import { readReportModules } from './report-modules.mts';
 
 const roots = [];
 

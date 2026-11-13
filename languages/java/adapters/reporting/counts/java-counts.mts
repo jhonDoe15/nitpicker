@@ -6,9 +6,14 @@ import {
   withCountRatchets,
 } from '../../../../../shared/rules/counts/count-ratchet.mjs';
 
+import { fieldOf, fieldsOf, textOf } from '../../../../../shared/values/readers.mts';
+
+type CountedRule = { readonly pattern: RegExp; readonly unit: string; readonly remedy: string };
+type Locate = (file: unknown, line: unknown) => unknown;
+
 const LITERAL = 'Use one constant for the literal.';
 
-const CHECKSTYLE_COUNTS = new Map([
+const CHECKSTYLE_COUNTS = new Map<string, CountedRule>([
   ['ExecutableStatementCount', countPattern('statement count is {count}', 'executable statements')],
   ['AnonInnerLength', countPattern('class length is {count} lines', 'lines', REMEDIES.class)],
   ['FileLength', countPattern('File length is {count} lines', 'lines', REMEDIES.file)],
@@ -55,7 +60,7 @@ const CHECKSTYLE_COUNTS = new Map([
   ],
 ]);
 
-const PMD_COUNTS = new Map([
+const PMD_COUNTS = new Map<string, CountedRule>([
   ['AvoidDuplicateLiterals', countPattern('appears {count} times', 'uses of the literal', LITERAL)],
   ['CognitiveComplexity', countPattern('cognitive complexity of {count}', 'cognitive complexity')],
   [
@@ -72,31 +77,38 @@ const PMD_COUNTS = new Map([
 
 const COUPLED_CLASSES = / classes \[.*\]/u;
 
-function countedRule(finding) {
-  const name = finding.rule
-    .split('.')
-    .at(-1)
-    .replace(/Check$/u, '');
-  if (finding.tool === 'checkstyle') {
+function countedRule(finding: unknown): CountedRule | undefined {
+  const name = (textOf(fieldOf(finding, 'rule')).split('.').at(-1) ?? '').replace(/Check$/u, '');
+  const tool = fieldOf(finding, 'tool');
+  if (tool === 'checkstyle') {
     return CHECKSTYLE_COUNTS.get(name);
   }
-  return finding.tool === 'pmd' ? PMD_COUNTS.get(name) : undefined;
+  return tool === 'pmd' ? PMD_COUNTS.get(name) : undefined;
 }
 
-function countOf(finding) {
+function countOf(finding: unknown): unknown {
   const counted = countedRule(finding);
-  const count =
-    counted === undefined ? undefined : countInMessage(finding.message, counted.pattern);
-  return count === undefined
+  const count: unknown =
+    counted === undefined
+      ? undefined
+      : countInMessage(fieldOf(finding, 'message'), counted.pattern);
+  return count === undefined || counted === undefined
     ? undefined
     : {
-        ...count,
-        subject: count.subject.replace(COUPLED_CLASSES, ' classes'),
+        ...fieldsOf(count),
+        subject: textOf(fieldOf(count, 'subject')).replace(COUPLED_CLASSES, ' classes'),
         unit: counted.unit,
         remedy: counted.remedy,
       };
 }
 
-export function withJavaCountRatchets(findings, locate = () => undefined) {
-  return withCountRatchets(findings, countOf, (finding) => unitAt(finding, locate));
+function noUnit(): undefined {
+  return undefined;
+}
+
+export function withJavaCountRatchets(
+  findings: readonly unknown[],
+  locate: Locate = noUnit,
+): unknown {
+  return withCountRatchets(findings, countOf, (finding: unknown) => unitAt(finding, locate));
 }
