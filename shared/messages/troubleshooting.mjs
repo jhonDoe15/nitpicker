@@ -15,6 +15,7 @@ export const TROUBLESHOOTING_ANCHORS = {
   baseInstallFails: 'installing-the-base-dependencies-fails',
   unsupportedYarn: 'unsupported-yarn-setup',
   engineUnavailable: 'the-lint-or-type-check-engine-cannot-run',
+  incompatibleEslintPackage: 'a-project-package-does-not-support-this-eslint',
   typescriptConfigUnreadable: 'the-typescript-config-cannot-be-read',
   typescriptToolFails: 'a-typescript-or-javascript-tool-fails',
   testTimeoutsNeedVitest: 'test-timeouts-need-vitest',
