@@ -27,8 +27,10 @@ const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
 
 if (isInvokedModule(import.meta.url)) {
-  process.exitCode = await writeAdapterFindings('Entry-point differential adapter', () =>
-    entryPointFindings(parseArguments(process.argv.slice(2))),
+  process.exitCode = await writeAdapterFindings(
+    'Entry-point differential adapter',
+    () => entryPointFindings(parseArguments(process.argv.slice(2))),
+    process,
   );
 }
 
