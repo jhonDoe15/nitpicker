@@ -7,9 +7,9 @@ import {
 } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { defaultResolvedLayout as layout } from '../../../preset/layout.mjs';
 import { normalizeMutation } from '../reporting/tests.mjs';
-import { strykerRunConfig } from '../runners/mutation.mjs';
-import { runScopedMutation } from './scoped-mutation.mjs';
-import { testedSourceModules } from './tested-modules.mjs';
+import { strykerRunConfig } from '../runners/stryker/stryker-config.mts';
+import { runScopedMutation } from './scoped-mutation.mts';
+import { testedSourceModules } from './tested-modules.mts';
 
 const CLASSIFY_TEST = [
   "import { expect, it } from 'vitest';",

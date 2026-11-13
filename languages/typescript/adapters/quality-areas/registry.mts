@@ -8,7 +8,7 @@ import {
   runDeadCode,
 } from './runners/repository.mts';
 import { runDuplicates } from './runners/duplicates/duplicates.mts';
-import { runMutation } from './runners/mutation.mjs';
+import { runMutation } from './runners/mutation.mts';
 import { runTestConsole } from './runners/console/test-console.mts';
 
 type AreaRunner = (options: QualityAreaOptions) => AreaResult | Promise<AreaResult>;

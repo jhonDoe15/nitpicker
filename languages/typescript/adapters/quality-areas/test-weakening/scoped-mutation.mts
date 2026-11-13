@@ -1,24 +1,57 @@
-import { hash, TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { mutationTargets } from '../runners/mutation-scope.mjs';
-import { sourceLineShifts } from './line-shifts.mjs';
-import { MAX_TESTED_MODULES, testedSourceModules } from './tested-modules.mjs';
+import { TESTS_FAILED_SKIPPED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
+import type { Finding } from '../../static-checks/shared.mts';
+import type { Layout } from '../../typed/head-policy.mts';
+import type { QualityAreaOptions } from '../typed/area-types.mts';
+import type { MutationOutcome, MutationReport } from '../typed/mutation.mts';
+import { exceptionMatcher } from '../typed/policy.mts';
+import { hash } from '../typed/repository.mts';
+import { mutationTargets } from '../runners/mutation-scope.mts';
+import { sourceLineShifts } from './line-shifts.mts';
+import { MAX_TESTED_MODULES, testedSourceModules } from './tested-modules.mts';
 import {
   baseMutationTargets,
   changedCodeMutants,
   hasWeakeningCandidates,
   mutationTargetsWithTestedModules,
+  type MutationScope,
   weakenedTestFindings,
-} from './weakened-mutants.mjs';
+} from './weakened-mutants.mts';
 
 const NAMED_SKIPS = 5;
 
-async function weakenedTestsFindings(options, { headReport, mutationScope, mutationReport }) {
+type MutationReportOf = (
+  options: QualityAreaOptions,
+  targets: readonly string[] | undefined,
+) => Promise<MutationOutcome>;
+
+type ScopedMutation = {
+  readonly layout: Layout;
+  readonly exceptions: unknown[];
+  readonly mutationReport: MutationReportOf;
+  readonly normalize: (report: MutationReport, analyzerName: string) => Finding[];
+};
+
+async function weakenedTestsFindings(
+  options: QualityAreaOptions,
+  {
+    headReport,
+    mutationScope,
+    mutationReport,
+  }: {
+    readonly headReport: MutationReport;
+    readonly mutationScope: MutationScope;
+    readonly mutationReport: MutationReportOf;
+  },
+): Promise<Finding[]> {
   if (!hasWeakeningCandidates(headReport, mutationScope)) {
     return [];
   }
   const scope = { ...mutationScope, lineShifts: sourceLineShifts(options) };
-  const baseOptions = { ...options, projectRoot: options.baselineRoot, snapshot: 'base' };
+  const baseOptions: QualityAreaOptions = {
+    ...options,
+    projectRoot: options.baselineRoot ?? options.projectRoot,
+    snapshot: 'base',
+  };
   const base = await mutationReport(baseOptions, baseMutationTargets(headReport, scope));
   if (base.skipped !== undefined) {
     return base.skipped.filter(({ rule }) => rule !== TESTS_FAILED_SKIPPED_RULE);
@@ -31,8 +64,9 @@ async function weakenedTestsFindings(options, { headReport, mutationScope, mutat
   });
 }
 
-function skippedModulesNotice(analyzerName, skipped) {
-  if (skipped.length === 0) {
+function skippedModulesNotice(analyzerName: string, skipped: readonly string[]): Finding[] {
+  const [first] = skipped;
+  if (first === undefined) {
     return [];
   }
   const named = skipped.slice(0, NAMED_SKIPS).join(', ');
@@ -44,7 +78,7 @@ function skippedModulesNotice(analyzerName, skipped) {
     {
       tool: analyzerName,
       rule: 'tested-modules-capped',
-      path: skipped[0],
+      path: first,
       identity: `tested-modules-capped|${digest}`,
       message: `${reach}, so weaker tests were not checked in ${named}${more}. Run \`nitpicker --all\` to mutate every module.`,
       classification: 'descriptive',
@@ -53,9 +87,9 @@ function skippedModulesNotice(analyzerName, skipped) {
 }
 
 export async function runScopedMutation(
-  options,
-  { layout, exceptions, mutationReport, normalize },
-) {
+  options: QualityAreaOptions,
+  { layout, exceptions, mutationReport, normalize }: ScopedMutation,
+): Promise<Finding[]> {
   const targets = mutationTargets(options, layout);
   const tested = testedSourceModules(options, layout);
   if (targets?.length === 0 && tested.modules.length === 0) {
@@ -64,7 +98,7 @@ export async function runScopedMutation(
   const mutationScope = { targets: targets ?? [], testedModules: tested.modules };
   const head = await mutationReport(
     options,
-    targets && mutationTargetsWithTestedModules(targets, tested.modules),
+    targets === undefined ? undefined : mutationTargetsWithTestedModules(targets, tested.modules),
   );
   if (head.skipped !== undefined) {
     return head.skipped;
