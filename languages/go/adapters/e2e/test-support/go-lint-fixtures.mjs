@@ -47,6 +47,15 @@ export const PROJECT_STATICCHECK = JSON.stringify({
   tools: { staticcheck: { precedence: ['project'] } },
 });
 
+export const TOKEN = `package shop
+
+import "math/rand/v2"
+
+func Token() uint64 {
+	return rand.Uint64() // #nosec G404
+}
+`;
+
 export const OWN_RULES = `package shop
 
 import (
