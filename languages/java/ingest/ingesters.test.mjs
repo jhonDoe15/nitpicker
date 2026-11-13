@@ -7,9 +7,9 @@ import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerpr
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
-import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
+import { ingestGoCoverprofile } from './coverage-reports/gocover.mts';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
-import { ingestLcov } from './coverage-reports/lcov.mjs';
+import { ingestLcov } from './coverage-reports/lcov.mts';
 import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
