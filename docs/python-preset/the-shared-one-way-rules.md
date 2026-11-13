@@ -866,6 +866,14 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   local that the same method cancels or joins. A handle that is stored nowhere is reported. Allowed:
   `self._handle = loop.call_later(...)` with `self._handle.cancel()` in close. `functools.lru_cache` on methods is
   left to ruff `B019`.
+- `cached-rejection` reports a task or future cached on an attribute that keeps its failure. An attribute of a
+  class that gets `asyncio.create_task`, `ensure_future`, `create_future` or `Future(...)` and is returned (or
+  awaited) is reported when no `except` handler or `add_done_callback` callback sets it back to `None` (a `setattr(self, name, None)` inside a callback is not read, so it is reported until written as an assignment), and
+  the clearing is reported when it does not compare the attribute with the attempt (`is attempt`). It also reports
+  `functools.cache` or `lru_cache` on an `async def`, which caches the coroutine object, so the second call
+  awaits an already awaited coroutine. Allowed: `attempt = asyncio.ensure_future(...); self._connection = attempt`
+  and `except Exception: if self._connection is attempt: self._connection = None; raise`. `lru_cache` on a
+  method is left to ruff `B019`.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group

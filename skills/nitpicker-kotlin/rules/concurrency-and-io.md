@@ -39,6 +39,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   (`kotlin-source/PendingFuturesNotFailedOnClose`).
 - A class that creates a scheduled executor or `Timer` shuts it down in `close()`
   (`kotlin-source/TimerNotStoppedOnClose`).
+- A `Deferred` or future kept in a property is reset on failure (`invokeOnCompletion { if (conn === attempt) conn = null }`),
+  and never wrapped in `by lazy` (`kotlin-source/CachedDeferredKeepsFailure`).
 - Child processes: wait with a deadline, `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`,
   and read the output on another thread first; never `waitFor()` or `inputStream.readBytes()` alone
   (`kotlin-source/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).

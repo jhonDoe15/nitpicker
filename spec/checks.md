@@ -251,6 +251,16 @@ in the Java preset and `kotlin-source/TimerNotStoppedOnClose` in the Kotlin pres
 `Timer` that close never shuts down) and `go-rules/ticker-not-stopped` in the Go preset (`time.NewTicker`
 without `Stop`).
 
+Cached promises that keep a rejection or let a stale attempt win: `nitpicker/no-cached-rejection` (strict preset,
+typed production source) reports a promise assigned to a class field or an outliving variable and reused through a
+guard (`if (p) return p`, `p ??= start()`, `p ||= start()`) when no catch or rejection callback clears it, and a
+clearing that does not check the binding still holds this attempt. Concurrent lazy loads that do not share one in-flight promise are not reported (that needs data flow across calls). A static field cached through the class name is not tracked. The Java and Go forms do not check the identity form. The same form runs as `cached-rejection` in the
+Python preset (a task or future on an attribute, and `functools.cache` on an `async def`),
+`pmd/CachedFutureKeepsFailure` in the Java preset (a `CompletableFuture` memo field),
+`kotlin-source/CachedDeferredKeepsFailure` in the Kotlin preset (a `Deferred` property or `by lazy` that starts an
+`async`; the stale-attempt form is not read there) and `go-rules/once-keeps-error` in the Go preset (`sync.Once` and
+`sync.OnceValues` around an initialiser that can fail).
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

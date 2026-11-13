@@ -43,6 +43,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
   register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
   handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
+  still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
+  (`nitpicker/no-cached-rejection`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

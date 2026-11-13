@@ -64,6 +64,16 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
   emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
   Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
+- `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
+  a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
+  assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,
+  `conn ||= start()`, `return conn ?? (conn = start())`, `if (!conn) conn = start(); return conn`), it reports
+  the assignment when no rejection path clears it (an assignment of `undefined`, `null` or `void 0` inside a
+  `catch` or a `.catch`, `.then` or `.finally` callback of the same function), and reports the clearing when it
+  never compares the binding with the attempt (`conn === attempt`). Unknown types are never findings, and
+  an assignment that always replaces the value without a guard is a fresh attempt and is left alone. Concurrent lazy loads that do not share one in-flight promise are not reported: that needs data flow across calls, and the rule reads one function at a time. A static field cached through the class name (`A.c ??= connect()`) is not tracked. A clear inside a `finally` block or a same-class helper that the rejection path calls counts. Allowed:
+  `const attempt = start(); conn = attempt; try { return await attempt; } catch (error) { if (conn === attempt)
+{ conn = undefined; } throw error; }`.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),

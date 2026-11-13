@@ -10,6 +10,30 @@
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
   <description>Nitpicker's PMD rules for main sources.</description>
   <rule ref="category/java/security.xml"/>
+  <rule name="CachedFutureKeepsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field caches a CompletableFuture and later calls return it, but nothing ever resets it after a failure, so a first attempt that fails is replayed to every later caller instead of being retried. Reset the field when the attempt fails, and only if it still holds this attempt: future.whenComplete((value, error) -&gt; reset(future, error)), or keep the future in an AtomicReference and call compareAndSet(future, null). An exception fits only when keeping the first failure is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
+  [ClassType[pmd-java:typeIs('java.util.concurrent.CompletableFuture')]]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $handlers := $body//MethodCall[@MethodName = ('whenComplete', 'exceptionally', 'handle', 'whenCompleteAsync', 'handleAsync')],
+       $resetters := ($handlers//MethodCall/@MethodName | $handlers//MethodReference/@MethodName),
+       $assigned := $body//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+   return exists($assigned[*[2][not(self::NullLiteral)]])
+     and empty($assigned[*[2][self::NullLiteral]][ancestor::LambdaExpression or ancestor::CatchClause or ancestor::FinallyClause
+                                           or ancestor::MethodDeclaration[@Name = $resetters]])
+     and exists($body//InfixExpression[@Operator = ('==', '!=')][*[(self::VariableAccess or self::FieldAccess) and @Name = $name]][NullLiteral])
+     and exists($body//ReturnStatement[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]
+                                       or *[1][self::ConditionalExpression]/*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])
+     and empty($body//MethodCall[@MethodName = 'compareAndSet'][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ClassLoadEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in, or create it on first use in a lazy holder class: this call runs while its class loads (in a static field or block, an enum constant, the constructor or initializer of an instance created at load, or a method one of them calls), so it connects, starts threads, sleeps or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.">
     <priority>3</priority>

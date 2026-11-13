@@ -179,6 +179,7 @@ function typedProductionRules(layout, options) {
       'error',
       { runners: options.detachedWorkRunners ?? [] },
     ],
+    'nitpicker/no-cached-rejection': 'error',
     'nitpicker/exhaustive-union-predicate': 'error',
     'nitpicker/no-forwarding-method-alias': 'error',
     'nitpicker/no-forwarding-wrapper': 'error',

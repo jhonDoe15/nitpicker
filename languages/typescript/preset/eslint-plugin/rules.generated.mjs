@@ -14,6 +14,7 @@ import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumul
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBooleanFlagParameter } from './rules/flags/no-boolean-flag-parameter.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as ruleNoCachedRejection } from './rules/lifecycles/memo/no-cached-rejection.mjs';
 import { rule as ruleNoCleanupSkippedOnFailure } from './rules/lifecycles/release/no-cleanup-skipped-on-failure.mjs';
 import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
@@ -156,6 +157,7 @@ export const directoryRules = {
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-cached-rejection': ruleNoCachedRejection,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,

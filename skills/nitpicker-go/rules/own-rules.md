@@ -39,6 +39,8 @@ the allowed form and ends with its exception entry.
   clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
 - A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
   (`go-rules/ticker-not-stopped`).
+- An initialiser that can fail does not run inside `sync.Once` or `sync.OnceValues`, which keep the first error:
+  guard it with a mutex and reset on failure, or use `singleflight` (`go-rules/once-keeps-error`).
 
 ## Package state and design
 
