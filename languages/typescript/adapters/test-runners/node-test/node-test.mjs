@@ -73,7 +73,8 @@ function splitArguments(tokens) {
 function typeStrippingArguments(nodeArguments, files) {
   const hasTypeScript = files.some((file) => TYPESCRIPT_FILE.test(file));
   const usesLoader = nodeArguments.some((token) => LOADER_OPTIONS.has(token.split('=')[0]));
-  return hasTypeScript && !usesLoader && process.features.typescript === false
+  const needsStripping = (hasTypeScript && !usesLoader) || TYPESCRIPT_FILE.test(REPORTER);
+  return needsStripping && process.features.typescript === false
     ? ['--experimental-strip-types']
     : [];
 }
