@@ -2512,6 +2512,18 @@ enough to wrap. Everything else keeps nitpicker's settings when `"nitpicker"` is
 project's config alone (plus those two options) under `["project"]`. A `.editorconfig` counts as
 the project's Prettier config, so it is read only when `precedence` lists `"project"`.
 
+The `dead-code` check adds two kinds of entries to knip's. A path in `package.json` `main`, `module`,
+`types`, `bin` or `exports` that points into build output (`dist/utils.js`, `build/esm/index.d.ts`) is an
+entry point published to users: the source it is built from is never reported as unused. The source comes
+from the `outDir` (or `declarationDir`) and `rootDir` of `tsconfig.json` or `tsconfig.build.json` when they
+name them; otherwise it is found by name only, by dropping the output folder (`dist`, `build`, `lib`, `esm`
+and the like) and trying each source root (`src/utils.ts`). A folder under the project, outside the
+source and test roots, with its own `package.json` (a documentation site, an example app) is a package of
+its own with its own tooling, so its files are left out of the root project's dead-code check. A package
+folder that contains a source or test root, or is one (every folder when a root is `.`), is never left out,
+whether or not the workspace list names it. Neither is a package that has a source or test root folder of its
+own (`packages/lib/src`) or that your knip config lists under `workspaces`.
+
 With the `typescript` and `javascript` presets, `knip` (the dead-code check) takes the project's knip
 config: the first of `knip.json`, `knip.jsonc`, `.knip.json`, `.knip.jsonc`, `knip.ts`, `knip.js`,
 `knip.config.ts` and `knip.config.js`, laid over the `knip` key in `package.json` the way knip itself
