@@ -39,7 +39,7 @@ function sourcePath(root: string, file: string): string | undefined {
 function readText(root: string, file: string): string | undefined {
   const full = sourcePath(root, file);
   try {
-    return full === undefined ? undefined : readFileSync(full, 'utf8').replace(/^﻿/u, '');
+    return full === undefined ? undefined : readFileSync(full, 'utf8').replace(/^\uFEFF/u, '');
   } catch (error) {
     if (fieldOf(error, 'code') === 'ENOENT') {
       return undefined;
