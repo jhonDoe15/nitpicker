@@ -8,7 +8,7 @@ import {
   TOUCHED_BASE,
   TOUCHED_HEAD,
   touchedLineCases,
-} from '../../../adapters/java-e2e/preset/comparison/signals/touched-lines-cases.mjs';
+} from '../../../adapters/java-e2e/preset/comparison/signals/touched-lines-cases.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const maven = process.env.NITPICKER_MAVEN;

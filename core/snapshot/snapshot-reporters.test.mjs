@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
-import { writeSnapshotReports } from './reporters.mjs';
+import { writeSnapshotReports } from './reporters.mts';
 
 const roots = [];
 const KNOWN = {

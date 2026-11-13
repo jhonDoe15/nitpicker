@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import vitestQualityConfig from '../../../../../languages/typescript/preset/defaults/vitest.quality.config.ts';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mjs';
-import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mjs';
+import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mjs';
 import { planAnalyzerShards } from '../../../sharding/sharding.mjs';

@@ -26,7 +26,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - The shared rules of the other presets (size limits, slow tests, repository hygiene), applied to
   Go where they fit.
 - [staticcheck](https://staticcheck.dev/docs/checks/) (MIT),
-  [errcheck](https://github.com/kisielk/errcheck) (MIT) and the
+  [errcheck](https://github.com/kisielk/errcheck) (MIT), [gosec](https://github.com/securego/gosec)
+  (Apache-2.0) and the
   [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
   including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
   (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
@@ -213,6 +214,20 @@ than the others, and this skill teaches its rules before an agent writes Go.
   and its typed rules then report nothing for the whole package. The lint program hands revive the
   types from its own package load instead, so those rules work in real modules; a fixture that
   imports a sibling package keeps it that way.
+- **gosec with every rule, its file-mode limits aligned.** Each rule names the safe form (crypto/rand,
+  query parameters, `os.Root`, a server with `ReadHeaderTimeout`, 0o600 files). G307 is held to the
+  same 0o600 as G302 and G306, because gosec's default limit for `os.Create` (0o666) is the mode
+  `os.Create` always uses, so the rule never reported. G104, G107, G116, G204, G304 and G504 are off:
+  errcheck covers unchecked errors; bidichk reports bidirectional characters where they are, not on
+  the file's first line; G107, G204 and G304 flag every non-constant URL, command or
+  path, while the taint rules G704, G702 and G703 report the ones from request data, program
+  arguments, the environment or stdin; G504 names a `net/http/cgi` weakness fixed in Go 1.6.3. G601
+  runs only for files before Go 1.22, read per file, because gosec itself reads one Go version per
+  process.
+- **Every hint was checked against the rule.** Two reviews tried each suggested form against gosec:
+  forms the rule still flags (`http.MaxBytesReader` before `ParseMultipartForm`, a validated
+  command name, an escaped URL string, 0o640 files) were replaced by forms it accepts, and rules
+  that accept no validation say that a checked value takes an exception.
 - **Catalog linters for resources, errors and contexts.** A response body or rows left open, an
   error compared with `==` or dropped by `return nil`, and a context made anew or kept in a
   struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard

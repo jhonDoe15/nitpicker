@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../../../cli.mjs';
+import { runCli } from '../../../cli.mts';
 import { captureOutput } from '../test-support/output-capture.mjs';
 import { finding, findingLine, policy } from '../../execution/test-support/analyzer-findings.mjs';
 import { readJson } from '../../git/test-support/fixture-files.mjs';

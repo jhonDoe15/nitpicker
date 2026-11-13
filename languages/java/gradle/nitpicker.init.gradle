@@ -362,7 +362,9 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
-def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
+def rulesWriter = ['write-rules.mts', 'write-rules.mjs']
+    .collect { new File(initScriptDir, "../builds/rulesets/${it}").canonicalFile }
+    .find { it.exists() }
 def runNode = { File script, List<String> arguments, String failure ->
     def process
     try {
