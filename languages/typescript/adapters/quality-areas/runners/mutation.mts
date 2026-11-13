@@ -24,6 +24,10 @@ import { toolErrorFinding } from '../typed/reporting.mts';
 import { mutationSkipFor } from './skips/mutation-skips.mts';
 import { CRACO_JEST_CONFIG } from '../../test-runners/mutation-runner-config.mjs';
 import {
+  mutationCheckerConfig,
+  mutationCheckerEngine,
+} from '../../mutation-checker/native-checker.mts';
+import {
   type MutationOutcome,
   type MutationReport,
   type RunnerCommand,
@@ -31,8 +35,6 @@ import {
   type TestRunner,
   cracoJestConfigText,
   layeredStrykerConfig,
-  mutationCheckerConfig,
-  mutationCheckerEngine,
   mutationRunnerConfig,
   normalizeMutation,
   projectTestRunner,

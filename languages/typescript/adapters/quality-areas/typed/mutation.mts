@@ -24,11 +24,6 @@ import {
   withoutProjectIgnoredMutants as untypedWithoutProjectIgnoredMutants,
 } from '../../../preset/project-configs/stryker-project-config.mjs';
 import {
-  mutationCheckerConfig as untypedMutationCheckerConfig,
-  mutationCheckerEngine as untypedMutationCheckerEngine,
-  mutationTypecheck as untypedMutationTypecheck,
-} from '../../mutation-checker/native-checker.mjs';
-import {
   normalizeMutation as untypedNormalizeMutation,
   withUnreachedMutantsUncovered as untypedWithUnreachedMutantsUncovered,
 } from '../reporting/tests.mjs';
@@ -140,20 +135,6 @@ export const withoutProjectIgnoredMutants: (
   report: MutationReport,
   appliedConfig: StrykerConfig,
 ) => MutationReport = untypedWithoutProjectIgnoredMutants;
-
-export const mutationCheckerConfig: (
-  config: StrykerConfig,
-  checker: { readonly baselineErrors: boolean; readonly native: boolean },
-) => StrykerConfig = untypedMutationCheckerConfig;
-
-export const mutationCheckerEngine: (targets: readonly string[] | undefined) => string =
-  untypedMutationCheckerEngine;
-
-export const mutationTypecheck: (request: {
-  readonly options: QualityAreaOptions;
-  readonly tsconfigPath: string;
-  readonly engine: string;
-}) => Promise<{ readonly clean: boolean; readonly native: boolean }> = untypedMutationTypecheck;
 
 export const normalizeMutation: (report: MutationReport, analyzerName: string) => Finding[] =
   untypedNormalizeMutation;

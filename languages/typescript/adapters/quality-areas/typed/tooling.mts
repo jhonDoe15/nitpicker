@@ -9,6 +9,7 @@ import {
   relativeProjectPath as untypedRelativeProjectPath,
   runDependencyCruiser as runUntypedDependencyCruiser,
   runNodeTool as runUntypedNodeTool,
+  spawnNodeTool as spawnUntypedNodeTool,
 } from '../runners/tooling.mjs';
 
 export type NodeToolInvocation = {
@@ -26,6 +27,14 @@ export type NodeToolInvocation = {
 export type PolicyFunction = (...values: readonly unknown[]) => unknown;
 
 export const runNodeTool: (invocation: NodeToolInvocation) => NodeToolResult = runUntypedNodeTool;
+
+export function spawnNodeTool(
+  invocation: Pick<NodeToolInvocation, 'options' | 'arguments_'> & {
+    readonly relativeToolPath: string;
+  },
+): NodeToolResult {
+  return spawnUntypedNodeTool({ absoluteToolPath: undefined, ...invocation });
+}
 
 export const parseReportJson: (text: string) => unknown = parseUntypedReportJson;
 

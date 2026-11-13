@@ -28,7 +28,7 @@ export const projectLayerValue: (
 
 export const troubleshootingError: (
   message: string,
-  anchor: string,
+  anchor: string | undefined,
   options?: ErrorOptions,
 ) => Error = untypedTroubleshootingError;
 

@@ -6,11 +6,8 @@ import type { QualityAreaOptions } from '../../typed/area-types.mts';
 import { readLayout } from '../../../typed/head-policy.mts';
 import { trackTemporaryPath } from '../../../typed/tooling.mts';
 import { policyFile } from '../../typed/tooling.mts';
-import {
-  type StrykerConfig,
-  layoutTransformFor,
-  mutationTypecheck,
-} from '../../typed/mutation.mts';
+import { type StrykerConfig, layoutTransformFor } from '../../typed/mutation.mts';
+import { mutationTypecheck } from '../../../mutation-checker/native-checker.mts';
 import { configuredTargets, MUTATION_REPORT_PATH } from '../mutation-scope.mts';
 
 export type CompanionTarget = readonly [string | undefined, string];
