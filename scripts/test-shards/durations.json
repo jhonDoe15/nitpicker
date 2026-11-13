@@ -119,7 +119,7 @@
   "languages/typescript/adapters/quality-areas/knip/manifest-guard.test.mjs": 1,
   "languages/typescript/adapters/quality-areas/mutation-scope.test.mjs": 2,
   "languages/typescript/adapters/quality-areas/runners/jscpd-config.test.mjs": 5,
-  "languages/typescript/adapters/typecheck/compiler-hints.test.mjs": 3,
+  "languages/typescript/adapters/typecheck/compiler-hints.test.mts": 3,
   "languages/typescript/adapters/typecheck/typescript-program.test.mjs": 3,
   "languages/typescript/conventions/prettier-conventions.test.mjs": 2,
   "languages/typescript/preset/architecture/architecture-rules.test.mjs": 2,
