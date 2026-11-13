@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
-import { readJavaFindings as readFindings } from './java-reports.mjs';
+import { readJavaFindings as readFindings } from './java-reports.mts';
 import {
   readingFrom,
   reportBaseOf,

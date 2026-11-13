@@ -5,7 +5,7 @@ import { runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 import { readOptions } from '../options/java-read-options.mts';
 import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
-import { readJavaFindings } from '../reporting/java-reports.mjs';
+import { readJavaFindings } from '../reporting/java-reports.mts';
 import { readReportModules } from '../gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../../maven/maven-build.mts';
 import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
