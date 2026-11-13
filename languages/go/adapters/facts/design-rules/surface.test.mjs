@@ -75,3 +75,42 @@ describe('disjoint-consumer-groups on Go facts', () => {
     ).toEqual([]);
   });
 });
+
+const endpoint = [
+  { name: 'host', type: 'string' },
+  { name: 'port', type: 'int' },
+  { name: 'secure', type: 'bool' },
+];
+
+function endpoints(files, params = endpoint) {
+  const modules = files.map((file) => owner(file));
+  const sites = modules.map((module, line) => fn(module, `F${String(line)}`, { params }));
+  return { types: modules, callables: sites };
+}
+
+describe('data-clump on Go facts', () => {
+  const files = ['net/connect.go', 'web/serve.go', 'cli/dial.go'];
+
+  it('reports the same typed parameters in three exported functions of three files', () => {
+    expect(designRows(endpoints(files), 'data-clump', { module: 'shop' })).toEqual([
+      {
+        path: 'cli/dial.go',
+        identity: 'host: string, port: int, secure: bool',
+        classification: 'descriptive',
+        line: 2,
+      },
+    ]);
+  });
+
+  it.each([
+    ['two functions', files.slice(0, 2), endpoint],
+    ['float64 coordinates', files, ['x', 'y', 'z'].map((name) => ({ name, type: 'float64' }))],
+    ['blank parameters', files, endpoint.map((param) => ({ ...param, name: '_' }))],
+  ])('passes %s', (_, sites, params) => {
+    expect(designRows(endpoints(sites, params), 'data-clump', { module: 'shop' })).toEqual([]);
+  });
+
+  it('passes functions of a package other modules can import', () => {
+    expect(designRows(endpoints(files), 'data-clump')).toEqual([]);
+  });
+});

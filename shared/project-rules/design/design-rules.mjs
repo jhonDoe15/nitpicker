@@ -25,6 +25,7 @@ const GO_DESIGN_RULES = new Set([
   DESIGN_RULE_IDS.protocolContract,
   DESIGN_RULE_IDS.forwardingChain,
   DESIGN_RULE_IDS.disjointConsumerGroups,
+  DESIGN_RULE_IDS.dataClump,
 ]);
 
 export const DESIGN_RULE_LANGUAGES = Object.fromEntries(

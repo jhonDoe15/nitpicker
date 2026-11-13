@@ -5,8 +5,10 @@ import {
   UNCLOSED_FILES,
 } from './calls-fixtures.mjs';
 import {
+  CLUMP_FILES,
   DISJOINT_FILES,
   FORWARDING_FILES,
+  NO_CLUMP_FILES,
   OWNING_HOP_FILES,
   SHARED_CALLER_FILES,
 } from './surface-fixtures.mjs';
@@ -88,6 +90,18 @@ export const SCENARIOS = [
     branch: 'shared-caller',
     title: 'passes a struct that one caller uses across both groups',
     files: SHARED_CALLER_FILES,
+    expected: [],
+  },
+  {
+    branch: 'data-clump',
+    title: 'reports the same three typed parameters in three exported functions of three packages',
+    files: CLUMP_FILES,
+    expected: ['data-clump internal/cli/dial.go descriptive'],
+  },
+  {
+    branch: 'no-clump',
+    title: 'passes two functions that share parameters and a numeric coordinate kernel',
+    files: NO_CLUMP_FILES,
     expected: [],
   },
 ];
