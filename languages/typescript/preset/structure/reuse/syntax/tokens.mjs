@@ -1,4 +1,5 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { untypedChildren } from './type-syntax.mjs';
 
 const TEXT_KINDS = new Set([
   ts.SyntaxKind.StringLiteral,
@@ -17,13 +18,13 @@ function tokenText(node, sourceFile) {
   return node.kind === ts.SyntaxKind.JsxText ? text.trim().replaceAll(/\s+/gu, ' ') : text;
 }
 
-export function leafTexts(nodes, sourceFile) {
+export function leafTexts(nodes, sourceFile, { untyped = false } = {}) {
   const leaves = [];
   const pending = [...nodes];
   for (const node of pending) {
-    const children = node.getChildren(sourceFile).filter((child) => !ts.isJSDoc(child));
-    if (children.length === 0) leaves.push(node);
-    pending.push(...children);
+    const all = node.getChildren(sourceFile).filter((child) => !ts.isJSDoc(child));
+    if (all.length === 0) leaves.push(node);
+    pending.push(...(untyped ? untypedChildren(node, all) : all));
   }
   return leaves
     .toSorted((left, right) => left.pos - right.pos)

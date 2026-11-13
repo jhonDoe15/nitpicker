@@ -28,10 +28,22 @@ func Counts(names []string) map[string]int {
 }
 `;
 
+export const LOOKUP_TEST = `package shop
+
+import "testing"
+
+func TestCounts(t *testing.T) {
+	if Counts([]string{"a"})["a"] != 1 {
+		t.Fatal("a counted once")
+	}
+}
+`;
+
 export const SKIP_S1003 = 'checks = ["all", "-S1003"]\n';
 
 export const PROJECT_STATICCHECK = JSON.stringify({
   preset: 'go',
+  disable: ['mutation'],
   tools: { staticcheck: { precedence: ['project'] } },
 });
 
@@ -58,6 +70,37 @@ func Read(name string) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+`;
+
+export const OWN_RULES_TEST = `package shop
+
+import (
+	"io"
+	"log"
+	"testing"
+)
+
+func TestQuantity(t *testing.T) {
+	if Quantity("2") != 2 {
+		t.Fatal("two")
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("no panic")
+		}
+	}()
+	Quantity("x")
+}
+
+func TestRead(t *testing.T) {
+	log.SetOutput(io.Discard)
+	if _, err := Read("missing.txt"); err == nil {
+		t.Fatal("missing.txt read")
+	}
+	if data, err := Read("rules.go"); err != nil || len(data) == 0 {
+		t.Fatalf("rules.go: %v", err)
+	}
 }
 `;
 
@@ -88,6 +131,34 @@ func Sync(ctx context.Context) error {
 		return err
 	}
 	return stock.Refresh()
+}
+`;
+
+export const STOCK_TEST = `package shop
+
+import (
+	"context"
+	"testing"
+)
+
+func TestSize(t *testing.T) {
+	if size, err := Size("missing.txt"); size != 0 || err != nil {
+		t.Fatalf("missing file: %d, %v", size, err)
+	}
+	if size, err := Size("stock.go"); size == 0 || err != nil {
+		t.Fatalf("stock.go: %d, %v", size, err)
+	}
+}
+
+func TestSync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if Sync(ctx) == nil {
+		t.Fatal("a cancelled context syncs")
+	}
 }
 `;
 
@@ -123,6 +194,18 @@ func Label(status Status) string {
 		return "shipped"
 	}
 	return ""
+}
+`;
+
+export const STATUS_TEST = `package shop
+
+import "testing"
+
+func TestStatusLabel(t *testing.T) {
+	labels := []string{Label(Open), Label(Shipped), Label(Returned)}
+	if labels[0] != "open" || labels[1] != "shipped" || labels[2] != "" {
+		t.Fatalf("labels %q", labels)
+	}
 }
 `;
 

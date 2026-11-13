@@ -54,6 +54,6 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
     globalSetup: ['./scripts/reference/global-setup.mts'],
-    setupFiles: jvmEndToEnd ? ['./scripts/test-shards/repository-timeouts.mjs'] : [],
+    setupFiles: jvmEndToEnd ? ['./scripts/test-shards/repository-timeouts.mts'] : [],
   },
 });

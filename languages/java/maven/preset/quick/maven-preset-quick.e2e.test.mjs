@@ -8,7 +8,7 @@ import {
   maven,
   twinProjects,
   useMavenPresetProject,
-} from '../../__tests__/maven-preset-project.mjs';
+} from '../../__tests__/maven-preset-project.mts';
 
 describe.skipIf(!enabled)('Java preset quick run on a Maven build', () => {
   useMavenPresetProject();
