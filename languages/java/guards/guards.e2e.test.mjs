@@ -22,7 +22,7 @@ import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { checkstyleFindings } from '../adapters/reporting/format-findings.mjs';
 import { sourceLocator } from '../adapters/reporting/kotlin-reports.mjs';
 import { applyRuleMessages } from '../messages/rule-messages.mjs';
-import { readGuardFindings } from './index.mjs';
+import { readGuardFindings } from './index.mts';
 import { coveredByCpd } from './cpd-duplicates.mjs';
 import { readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
 import { readErrorProneFindings } from '../adapters/errorprone/java-errorprone.mjs';

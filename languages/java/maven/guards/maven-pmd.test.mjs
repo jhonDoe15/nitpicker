@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { runCpd, runPmd } from './maven-pmd.mjs';
+import { runCpd, runPmd } from './maven-pmd.mts';
 
 const roots = [];
 const RULESET = 'http://pmd.sourceforge.net/ruleset/2.0.0';

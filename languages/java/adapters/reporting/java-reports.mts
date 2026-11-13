@@ -15,7 +15,7 @@ import {
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
-import { readGuardFindings } from '../../guards/index.mjs';
+import { readGuardFindings } from '../../guards/index.mts';
 import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mts';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';

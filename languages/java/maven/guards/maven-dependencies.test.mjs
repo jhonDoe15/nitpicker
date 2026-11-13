@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { zipOf } from '../../builds/test-support/zip-writer.mjs';
-import { declaredDependencies, dependencyReport } from './maven-dependencies.mjs';
+import { declaredDependencies, dependencyReport } from './maven-dependencies.mts';
 
 const roots = [];
 
