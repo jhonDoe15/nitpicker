@@ -79,6 +79,11 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - name: Pack this checkout
+        id: pack
+        run: |
+          npm pack --silent --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/packed.txt"
+          echo "tarball=$RUNNER_TEMP/$(tail -n 1 "$RUNNER_TEMP/packed.txt")" >> "$GITHUB_OUTPUT"
       - name: Seed a finding
         id: seed
         run: |
@@ -93,7 +98,7 @@ jobs:
         with:
           working-directory: .github/sample-project
           base-ref: ${{ steps.seed.outputs.base }}
-          install-command: npm ci && npm install --no-save "$GITHUB_WORKSPACE"
+          install-command: npm ci && npm install --no-save "${{ steps.pack.outputs.tarball }}"
           artifact-name: nitpicker-sample-report-${{ matrix.os }}
       - name: The action reported the seeded finding
         env:
