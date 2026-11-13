@@ -2026,6 +2026,7 @@ runs only when `--fix --rule` names one of its rules.
 | java   | `checkstyle/UpperEll`                    | `java-upper-ell`       | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments |
 | kotlin | `detekt/detekt.style.NewLineAtEndOfFile` | `kotlin-final-newline` | ends a file with a line break, CRLF when the file uses CRLF                                  |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes)                                                                                                                                                                                            | `java-error-prone-safe`, `java-error-prone-review`                                                                   | applies the fix Error Prone suggests, to the changed lines of `.java` files                                                                     |
+| java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks)                                                                                                                                                                                 | `java-source-safe`, `java-source-review`                                                                             | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files                                                           |
 | kotlin       | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst`, `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags                                                                                                         |
 | kotlin       | `catch-log-without-exception`, `LogStringConcatenation`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget`                                                                                                                    | `kotlin-catch-log-without-exception` and its siblings                                                                | passes the exception to the logger, uses `{}` placeholders, deletes commented-out code, drops the marker or focus, writes `@field:`             |
 | kotlin       | `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`                                                                                                                                 | `kotlin-use-is-null-or-empty` and its siblings                                                                       | `review` recipes: they run only when their rule is selected, because the text does not prove them                                               |
@@ -2207,6 +2208,23 @@ the preset asks for. The other checks are on the review list and run only when a
 `errorprone/ClassCanBeStatic`: their fix changes behaviour on purpose, changes a
 public signature, or touches several places that must change together. The lists and the reasons
 are in `skills/nitpicker-java/SOURCES.md`.
+
+### Fix-only Error Prone checks
+
+PMD ships no fixes. For some of its rules nitpicker ships its own Error Prone checks, in
+`languages/java/gradle/errorprone/fix-checks/`. They only fix: the finding still comes from PMD,
+and a fix is reported under that rule, for example `pmd/PreserveStackTrace`. nitpicker compiles
+them against the pinned Error Prone when it runs the patch compile above, so they cost no extra
+compile, and they never run in the gate. Each check edits one file, so none renames a public symbol.
+
+`pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
+`pmd/LogStringConcatenation` and `pmd/UseCollectionIsEmpty` are on the safe list. The others
+(`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
+`pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`) change what the
+code does or what the tests measure, so they run only when a run selects their rule. When two
+fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
+under the nearest rule. Which rules have a check, and why the others do not, is in
+`skills/nitpicker-java/SOURCES.md`.
 
 ## Java preset
 

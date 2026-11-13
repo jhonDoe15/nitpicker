@@ -8,6 +8,7 @@ import {
   REVIEW_CHECKS,
   SAFE_CHECKS,
 } from './error-prone-checks.mjs';
+import { ownChecksOf } from '../own/own-checks.mjs';
 
 const CHECKS = JSON.parse(
   readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
@@ -45,8 +46,14 @@ describe('the Error Prone fix lists', () => {
 });
 
 describe('patchChecks', () => {
-  it('uses the safe list when no rule is selected', () => {
-    expect(patchChecks([])).toEqual(SAFE_CHECKS);
+  it('uses the safe list and the safe own checks when no rule is selected', () => {
+    expect(patchChecks([])).toEqual([...SAFE_CHECKS, ...ownChecksOf('safe')]);
+  });
+
+  it('adds an own check when the rule it fixes is selected', () => {
+    expect(
+      patchChecks(['pmd/PreserveStackTrace', 'errorprone/MissingOverride', 'pmd/Nope']),
+    ).toEqual(['MissingOverride', 'PreserveStackTrace']);
   });
 
   it('uses the selected Error Prone checks that have a fix, and nothing else', () => {
