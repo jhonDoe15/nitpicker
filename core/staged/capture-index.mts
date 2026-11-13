@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { GitCommandError, runGit } from '../diff/git/repository/command.mjs';
 import { commitTreeOverHead } from '../diff/git/repository/git.mjs';
-import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mjs';
+import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mts';
 
 function stagedRunNotice(projectRoot: string, indexFile: string | undefined): string {
   const repositoryRoot = runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim();

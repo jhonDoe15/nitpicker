@@ -1,4 +1,11 @@
-export function validateRunProfile(options) {
+type ProfileOptions = {
+  readonly quick: boolean;
+  readonly shardCount?: number | undefined;
+  readonly staged: boolean;
+  readonly fix: boolean;
+};
+
+export function validateRunProfile(options: ProfileOptions): void {
   if (options.quick && options.shardCount !== undefined) {
     throw new Error(
       [

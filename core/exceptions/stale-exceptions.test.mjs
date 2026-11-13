@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { staleExceptionLines } from './stale-exceptions.mjs';
+import { staleExceptionLines } from './stale-exceptions.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { gitCheckout } = useGitCheckouts();

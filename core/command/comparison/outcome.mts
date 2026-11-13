@@ -1,7 +1,7 @@
 import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
 import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
-import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
+import { renderClosingSections } from '../../exceptions/stale-exceptions.mts';
 import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { stagedHeader } from '../../quick/summary.mjs';
 import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
@@ -12,6 +12,7 @@ import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 type OutcomeCli = {
   readonly options: {
     readonly details: boolean;
+    readonly ruleFilters: readonly string[];
     readonly shardCount?: number | undefined;
     readonly deferExit: boolean;
   };
