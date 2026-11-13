@@ -4,7 +4,7 @@ import {
   renderSnapshotConsoleSummary,
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
-} from '../snapshot/reporters.mjs';
+} from '../snapshot/reporters.mts';
 import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { withTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
@@ -12,7 +12,7 @@ import {
   removeSnapshotDependencies,
 } from '../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
-import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
+import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
@@ -46,7 +46,7 @@ type SnapshotCli = {
   readonly scope: unknown;
 };
 
-type SnapshotReport = { readonly summary: object; readonly toolErrors: unknown; text?: unknown };
+type SnapshotReport = QualitySnapshot & { text?: unknown };
 
 type Capture = (repositoryRoot: string, headSha: string) => unknown;
 
@@ -60,15 +60,6 @@ type WorktreeRun = {
 
 const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
   selectAnalyzers;
-const runSnapshot: (request: {
-  readonly analyzers: readonly unknown[];
-  readonly projectRoot: string;
-  readonly policyRoot: string;
-  readonly toolRoot: unknown;
-  readonly liveProjectRoot: string;
-  readonly headPolicy: object | undefined;
-  readonly scope: unknown;
-}) => SnapshotReport = runQualitySnapshot;
 const inWorktree: (
   repositoryRoot: string,
   snapshot: { readonly commitSha: unknown; readonly warn: (message: string) => unknown },
@@ -176,7 +167,7 @@ function runInSnapshotWorktree(
       })
     : undefined;
   try {
-    return runSnapshot({
+    return runQualitySnapshot({
       analyzers: selectedAnalyzers,
       projectRoot: snapshotRoot,
       policyRoot: snapshotRoot,

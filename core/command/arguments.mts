@@ -3,7 +3,7 @@ import {
   parseDrillDownOptions,
   unknownArgumentError,
 } from '../diff/comparison/cli.mjs';
-import { validateRunProfile } from '../quick/validate.mjs';
+import { validateRunProfile } from '../quick/validate.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 type BooleanOption =

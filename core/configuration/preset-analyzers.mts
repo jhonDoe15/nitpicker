@@ -1,6 +1,11 @@
 import { fileURLToPath } from 'node:url';
-import { type Analyzer, analyzersOf } from '../../shared/values/analyzers.mts';
+import {
+  type Analyzer,
+  type ProfiledAnalyzer,
+  analyzersOf,
+} from '../../shared/values/analyzers.mts';
 import type { NitpickerConfig } from './config-types.mts';
+import { configureAnalyzers } from './configure-analyzers.mjs';
 import { createHistoryAnalyzers } from '../../shared/history/analyzers.mjs';
 import { createHygieneAnalyzers } from '../../shared/hygiene/analyzers.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
@@ -12,6 +17,10 @@ import {
   javascriptAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+
+export const configureAll: (
+  ...request: Parameters<typeof configureAnalyzers>
+) => readonly ProfiledAnalyzer[] = configureAnalyzers;
 
 const entryPath = fileURLToPath(checkoutModuleUrl(new URL('../cli.mjs', import.meta.url)));
 const hygieneAnalyzers = analyzersOf(createHygieneAnalyzers(entryPath));

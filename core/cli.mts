@@ -7,7 +7,7 @@ import { runChangelogCommand } from './command/changelog/changelog.mts';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
 import { runBaseCommand } from './command/base.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
-import { resolveRunTarget } from './scope/run-target.mjs';
+import { resolveRunTarget } from './scope/run-target.mts';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -15,8 +15,7 @@ import {
   loadConfig,
 } from './configuration/config.mjs';
 import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
-import { configureAnalyzers } from './configuration/configure-analyzers.mjs';
-import { presetAnalyzers } from './configuration/preset-analyzers.mts';
+import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
@@ -31,7 +30,7 @@ import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs'
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixIfRequested } from './command/fix-request.mts';
-import { applyRunProfile } from './quick/profile.mjs';
+import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
 import { baseSetupResolver } from './command/policy-review/base-setup.mts';
@@ -184,7 +183,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const profiled = applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options);
+  const profiled = applyRunProfile(configureAll(presetSet, config, headPolicy), options);
   const setup: RunSetup = {
     analyzers: profiled.analyzers,
     quick: profiled.quick,

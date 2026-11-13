@@ -1,7 +1,7 @@
 import { describeError } from '../../../shared/messages/error-chain.mjs';
 import { applyDisable, loadConfig } from '../../configuration/config.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { resolveRunTarget } from '../../scope/run-target.mjs';
+import { resolveRunTarget } from '../../scope/run-target.mts';
 import { missingPathHint } from '../arguments.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
