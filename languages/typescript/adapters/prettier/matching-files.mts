@@ -28,7 +28,8 @@ async function isDirectory(projectRoot: string, base: string): Promise<boolean> 
   const segments = base.length === 0 ? [] : base.split('/');
   for (const [index, segment] of segments.entries()) {
     if (SKIPPED_DIRECTORIES.has(segment)) return false;
-    const directory = path.join(projectRoot, ...segments.slice(0, index + 1));
+    const directory = path.resolve(projectRoot, ...segments.slice(0, index + 1));
+    if (!directory.startsWith(projectRoot + path.sep)) return false;
     const entry = await lstat(directory).catch((error: NodeJS.ErrnoException) => {
       if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return undefined;
       throw error;
