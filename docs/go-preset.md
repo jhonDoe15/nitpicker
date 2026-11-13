@@ -90,34 +90,34 @@ per source hash and toolchain into the nitpicker cache.
 
 ## What runs
 
-| Check                  | Tool                       | Finding                                                                             |
-| ---------------------- | -------------------------- | ----------------------------------------------------------------------------------- |
-| Format                 | gofmt, gofumpt, goimports  | `<formatter>/format`, one per file                                                  |
-| Compile errors         | `go vet`                   | `build/compile-error` at the position the compiler names                            |
-| Vet                    | `go vet` (all analyzers)   | `vet/<analyzer>`, for example `vet/printf`                                          |
-| More vet passes        | lint program               | `vet/<analyzer>`, for example `vet/nilness`                                         |
-| staticcheck            | lint program               | `staticcheck/<check>`, for example `staticcheck/SA4006`                             |
-| Unchecked errors       | lint program (errcheck)    | `errcheck/unchecked`                                                                |
-| Modern forms           | lint program (modernize)   | `modernize/<analyzer>`, for example `modernize/rangeint`                            |
-| Security               | lint program (gosec)       | `gosec/<rule>`, for example `gosec/G404`                                            |
-| Own one-way rules      | lint program (go-rules)    | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                         |
-| Failing tests          | `go test -json`            | `tests/tests-failed` tool error quoting each failure                                |
-| Data races             | `go test -race`            | `race/data-race`, one per pair of conflicting functions                             |
-| No tests ran           | `go test -json`            | `tests/no-tests-ran`                                                                |
-| Slow tests             | `go test -json`            | `test-runtime/slow-test`                                                            |
-| Branch coverage        | coverage profile           | `coverage/changed-branch-coverage`                                                  |
-| CRAP                   | coverage profile           | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                               |
-| Mutation testing       | metrics program, `go test` | `mutation/mutant-survived`, `mutation/mutant-nocoverage`, `mutation/mutant-timeout` |
-| Function limits        | metrics program            | `structure/function-*-limit`                                                        |
-| Type limits            | metrics program            | `structure/class-methods-limit`, `class-fields-limit`                               |
-| File and folder limits | metrics program            | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit` |
-| Duplicates             | jscpd, renamed-clone pass  | `duplicates/duplicate-clone`                                                        |
-| Package coupling       | metrics program            | `coupling/stability-direction`                                                      |
-| Feature layout         | metrics program            | `facts/shared-used-by-one-feature`                                                  |
-| Test-only code         | metrics program            | `facts/test-only-export`                                                            |
-| Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                         |
-| Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                |
-| Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                              |
+| Check                  | Tool                       | Finding                                                                                                  |
+| ---------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Format                 | gofmt, gofumpt, goimports  | `<formatter>/format`, one per file                                                                       |
+| Compile errors         | `go vet`                   | `build/compile-error` at the position the compiler names                                                 |
+| Vet                    | `go vet` (all analyzers)   | `vet/<analyzer>`, for example `vet/printf`                                                               |
+| More vet passes        | lint program               | `vet/<analyzer>`, for example `vet/nilness`                                                              |
+| staticcheck            | lint program               | `staticcheck/<check>`, for example `staticcheck/SA4006`                                                  |
+| Unchecked errors       | lint program (errcheck)    | `errcheck/unchecked`                                                                                     |
+| Modern forms           | lint program (modernize)   | `modernize/<analyzer>`, for example `modernize/rangeint`                                                 |
+| Security               | lint program (gosec)       | `gosec/<rule>`, for example `gosec/G404`                                                                 |
+| Own one-way rules      | lint program (go-rules)    | `go-rules/<rule>`, for example `go-rules/panic-for-failure`                                              |
+| Failing tests          | `go test -json`            | `tests/tests-failed` tool error quoting each failure                                                     |
+| Data races             | `go test -race`            | `race/data-race`, one per pair of conflicting functions                                                  |
+| No tests ran           | `go test -json`            | `tests/no-tests-ran`                                                                                     |
+| Slow tests             | `go test -json`            | `test-runtime/slow-test`                                                                                 |
+| Branch coverage        | coverage profile           | `coverage/changed-branch-coverage`                                                                       |
+| CRAP                   | coverage profile           | `crap/crap-score-limit`, `crap/crap-coverage-unknown`                                                    |
+| Mutation testing       | metrics program, `go test` | `mutation/mutant-survived`, `mutation/mutant-nocoverage`, `mutation/mutant-timeout`                      |
+| Function limits        | metrics program            | `structure/function-*-limit`                                                                             |
+| Type limits            | metrics program            | `structure/class-methods-limit`, `class-fields-limit`                                                    |
+| File and folder limits | metrics program            | `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `folder-depth-limit`                      |
+| Duplicates             | jscpd, renamed-clone pass  | `duplicates/duplicate-clone`                                                                             |
+| Package coupling       | metrics program            | `coupling/stability-direction`                                                                           |
+| Feature layout         | metrics program            | `facts/shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle` |
+| Test-only code         | metrics program            | `facts/test-only-export`                                                                                 |
+| Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                                              |
+| Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                                     |
+| Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                                                   |
 
 ## Format check: following the project
 
@@ -731,8 +731,14 @@ message suggests an interface the stable package owns.
 `layout.featureRoots` and `layout.sharedRoots` (defaults `**/features` and `**/shared`) feed
 `shared-used-by-one-feature`: a file under a shared root that only one feature uses, directly or
 through other shared code, fails. A blank import (`import _ ".../shared/drivers"`) counts as a use
-of every file of the package. The compiler already enforces `internal/` visibility and rejects
-import cycles, so the preset has no rule for either.
+of every file of the package. The same layout feeds the feature boundary rules every preset runs
+(see [Stability direction](usage.md#stability-direction) and the
+[checks table](../spec/checks.md#custom-rules)): `feature-internal-import` (a file outside a feature
+uses a package below the feature's top package; the public face of `features/billing` is the package
+directly in that folder), `shared-imports-feature` (a file under a shared root uses a feature) and
+`feature-cycle` (a use between two features that closes a cycle of features). The compiler already
+enforces `internal/` visibility and rejects package import cycles, so the preset has no rule for
+either; a cycle of features is still possible, since a feature holds several packages.
 
 ## Dead code
 
@@ -786,7 +792,7 @@ add a test.
 | `tools.gofumpt.precedence`, `tools.goimports.precedence` | read the formatter's options from the golangci-lint config   |
 | `tools.staticcheck.precedence`                           | read the project's `staticcheck.conf` files                  |
 | `tools.jscpd.precedence`                                 | read the project's `.jscpd.json` for the duplicate scan      |
-| `layout.featureRoots`, `layout.sharedRoots`              | the feature layout `shared-used-by-one-feature` reads        |
+| `layout.featureRoots`, `layout.sharedRoots`              | the feature layout the feature rules read                    |
 | `testConsole.allow`                                      | test output messages `test-console-output` accepts           |
 | `duplicates.skippedFolders`                              | folder names the duplicate scan skips                        |
 | `thresholds`, `exclude`, `exceptions`, `legacyInventory` | shared with every preset                                     |
@@ -831,7 +837,6 @@ there are no source roots to set) are config errors with `"preset": "go"`, each 
   `go.work` workspace's other modules are not analyzed.
 - Generated files are listed but not measured, format-checked, linted or duplicate-scanned; they
   still compile and vet, and the names they use count as uses.
-- The feature boundary rules other than `shared-used-by-one-feature` are not run for Go yet.
 - Mutants run one after another, each a `go test` of its test packages, so mutation testing costs
   roughly one test run of those packages per mutant on the changed lines. Go's build cache keeps the
   unchanged packages compiled.

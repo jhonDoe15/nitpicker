@@ -105,7 +105,9 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   package needs a detail from a narrower one, define an interface in the widely used package and
   let the narrower one implement it.
 - Code under a `shared` folder is used by more than one feature (`shared-used-by-one-feature`);
-  code only one feature uses lives in that feature.
+  code only one feature uses lives in that feature. Other code uses only the package directly in a
+  feature folder, never its sub-packages (`feature-internal-import`); `shared` never uses a feature
+  (`shared-imports-feature`); features never depend on each other in a cycle (`feature-cycle`).
 - `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
   import (`unused-dependency`, `unlisted-dependency`).
 
