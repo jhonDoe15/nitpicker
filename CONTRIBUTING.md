@@ -205,7 +205,7 @@ Python end-to-end CI uses two isolated shards with two test workers each and ret
 `scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
 
-Go end-to-end CI uses two shards and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
+Go end-to-end CI uses one shard and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
 on the `PATH` (1.26 or newer, or an older one with the default `GOTOOLCHAIN=auto`, which downloads
 1.26 to build the pinned gofumpt and goimports) and network access to the Go module proxy the
 first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
