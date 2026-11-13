@@ -7,7 +7,6 @@ import {
   readUnchangedShards as readShardsUnchanged,
 } from './read-shards.mts';
 import { parseArguments as readArguments } from './arguments.mts';
-import { noChangesReport as untypedNoChangesReport } from '../comparison/results.mjs';
 import { writeDiffReports as untypedWriteReports } from '../reporting/reporters.mjs';
 import {
   policyHash as untypedPolicyHash,
@@ -28,6 +27,7 @@ import { textOf, textsOf } from '../../../shared/values/readers.mts';
 
 export type { Entry, ShardEntries, ShardReport, UnchangedShard } from './read-shards.mts';
 export { planAnalyzerShards } from './sharding.mts';
+export { noChangesReport } from '../comparison/results.mts';
 export { resolveMetadata } from './metadata.mts';
 export { commonSummary, readAndValidateShard, validateCommonSummaries } from './read-shards.mts';
 
@@ -122,9 +122,6 @@ export function readUnchangedShards(
   const [first, ...rest] = readShardsUnchanged(inputRoot, shardCount) ?? [];
   return first === undefined ? undefined : [first, ...rest];
 }
-export const noChangesReport: (context: object) => AggregateReport & {
-  readonly summary: Entry & { elapsedMs?: number };
-} = untypedNoChangesReport;
 export const writeDiffReports: (
   outputRoot: string,
   report: AggregateReport,
