@@ -1,4 +1,6 @@
-import type { Finding } from '../../static-checks/shared.mts';
+import type { Finding, NodeToolResult } from '../../static-checks/shared.mts';
+import type { Mutant } from './mutation.mts';
+import type { TestReport } from '../../test-runners/typed/runner-types.mts';
 import {
   addMetric as untypedAddMetric,
   declarationLine as untypedDeclarationLine,
@@ -74,6 +76,115 @@ export type FailingTest = {
 export type ShownValues = {
   readonly expected?: string | undefined;
   readonly received?: string | undefined;
+};
+
+export type Position = { readonly line?: number; readonly column?: number };
+
+export type Span = { readonly start?: Position; readonly end?: Position };
+
+export type BranchMapEntry = {
+  readonly type?: string;
+  readonly loc?: Span;
+  readonly locations?: readonly Span[];
+};
+
+export type FileCoverage = {
+  readonly b?: Readonly<Record<string, readonly number[]>>;
+  readonly branchMap?: Readonly<Record<string, BranchMapEntry>>;
+  readonly branchSourceHashes?: Readonly<Record<string, string>>;
+  readonly uncoveredArms?: Readonly<Record<string, readonly string[]>>;
+  readonly branchFunctions?: Readonly<Record<string, string | undefined>>;
+};
+
+export type CoverageReport = Readonly<Record<string, FileCoverage>>;
+
+export type Percent = { readonly percent?: number };
+
+export type CrapEntry = {
+  readonly source: string;
+  readonly function: string;
+  readonly crap?: number;
+  readonly complexity?: number;
+  readonly start?: number;
+  readonly end?: number;
+  readonly lines?: { readonly start?: number; readonly end?: number };
+  readonly sourceHash?: string;
+  readonly anchorHash?: string;
+  readonly declarationHash?: string;
+  readonly statementCoverage?: Percent;
+  readonly branchCoverage?: Percent;
+  readonly effectiveCoverage?: Percent;
+};
+
+export type CrapReport = {
+  readonly summary?: Readonly<Record<string, unknown>>;
+  readonly functions?: readonly CrapEntry[];
+};
+
+export type CoverageOptions = { readonly projectRoot: string; readonly testCount: unknown };
+
+export type FileCoverageTarget = { readonly analyzerName: string; readonly relativePath: string };
+
+export type Efficiency = { readonly coveredBranchOutcomes: number; readonly testCount: number };
+
+export type CrapSite = {
+  readonly analyzerName: string;
+  readonly scoreLimit: number;
+  readonly occurrence: number;
+  readonly violationOccurrence: number;
+};
+
+export type MutantTally = {
+  readonly filePath: string;
+  readonly mutants: NeutralMutant[];
+  readonly statusCounts: Map<string, number>;
+  readonly occurrences: Map<string, number>;
+};
+
+export type ReportedFile = { readonly mutants?: readonly Partial<Mutant>[] };
+
+export type MutantSite = {
+  readonly filePath: string;
+  readonly status: string;
+  readonly occurrences: Map<string, number>;
+};
+
+export type ToolErrorDetails = {
+  readonly rule: string;
+  readonly path?: string | undefined;
+  readonly message: string;
+  readonly anchor: string | undefined;
+};
+
+export type ProjectTestRun = {
+  readonly report: TestReport;
+  readonly result: NodeToolResult;
+  readonly runnerName: string;
+  readonly precedingCommands: unknown;
+};
+
+export type Failure = {
+  readonly file: string;
+  readonly name: string;
+  readonly assertion: string;
+  readonly line?: number;
+  readonly expected?: unknown;
+  readonly received?: unknown;
+};
+
+export type FailureContext = {
+  readonly runnerName?: string | undefined;
+  readonly precedingCommands?: unknown;
+  readonly snapshot?: string | undefined;
+};
+
+export type ProcessOutput = { readonly stderr?: unknown; readonly stdout?: unknown };
+
+export type Point = NonNullable<Span['start']>;
+
+export type KnipReport = {
+  readonly files?: readonly string[];
+  readonly issues?: readonly Readonly<Record<string, unknown>>[];
 };
 
 export function addMetric(findings: Finding[], metric: Metric): void {

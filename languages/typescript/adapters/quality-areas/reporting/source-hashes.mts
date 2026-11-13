@@ -1,27 +1,21 @@
 import { hash } from '../typed/repository.mts';
-import { declarationLine, nameFreeHash, positiveInteger } from '../typed/reporting.mts';
+import {
+  type BranchMapEntry,
+  type CoverageReport,
+  type CrapEntry,
+  type CrapReport,
+  type FileCoverage,
+  type Point,
+  type Span,
+  declarationLine,
+  nameFreeHash,
+} from '../typed/reporting.mts';
 import { functionIdentity } from '../../exceptions/function-identity.mts';
 import type { FunctionIdentity } from '../../exceptions/function-units.mts';
-import { escapeRegExp } from '../../typed/tooling.mts';
-import { fieldOf, fieldsOf, listOf, objectOf } from '../../../../../shared/values/readers.mts';
+import { objectOf } from '../../../../../shared/values/readers.mts';
 import type { MutantLocation, MutationReport } from '../typed/mutation.mts';
-import type {
-  BranchMapEntry,
-  CoverageReport,
-  CrapEntry,
-  CrapReport,
-  FileCoverage,
-  Span,
-} from './tests.mts';
 
-type Point = NonNullable<Span['start']>;
-
-type KnipReport = {
-  readonly files?: readonly string[];
-  readonly issues?: readonly Readonly<Record<string, unknown>>[];
-};
-
-function reportOf(value: unknown, name: string): object {
+export function reportOf(value: unknown, name: string): object {
   const report = objectOf(value);
   if (report === undefined) {
     throw new TypeError(`The ${name} report is not an object`);
@@ -135,7 +129,7 @@ function armPosition(location: Span | undefined, branch: BranchMapEntry): string
 }
 
 function armName(branch: BranchMapEntry, index: number, source: string): string {
-  switch (branch.type) {
+  switch (branch.type ?? '') {
     case 'if':
       return index === 0 ? 'the true arm of the if' : 'the false arm of the if (or its else)';
     case 'cond-expr':
@@ -173,52 +167,6 @@ function offsetOf(source: string, { line = 0, column }: Point): number {
   return precedingLines.reduce((total, text) => total + text.length + 1, 0) + (column ?? 0);
 }
 
-export function withDeadCodeSourceHashes(parsed: unknown, projectRoot: string): object {
-  const report: KnipReport = reportOf(parsed, 'dead-code');
-  return {
-    ...report,
-    files: (report.files ?? []).map((file) => ({
-      path: file,
-      sourceHash: hash(readProjectSource(projectRoot, file)),
-    })),
-    issues: (report.issues ?? []).map((issue) => {
-      const lines = readProjectSource(projectRoot, String(issue['file'])).split('\n');
-      return Object.fromEntries(
-        Object.entries(issue).map(([category, entries]) => [
-          category,
-          Array.isArray(entries)
-            ? listOf(entries).map((entry) => withDeclarationSourceHash(entry, lines))
-            : entries,
-        ]),
-      );
-    }),
-  };
-}
-
-function withDeclarationSourceHash(entry: unknown, lines: readonly string[]): unknown {
-  const line = positiveInteger(fieldOf(entry, 'line'));
-  if (typeof entry !== 'object' || line === undefined || line > lines.length) {
-    return entry;
-  }
-  return {
-    ...fieldsOf(entry),
-    sourceHash: hash(lines[line - 1]?.trim()),
-    usedInFile: isUsedBesidesDeclaration(fieldOf(entry, 'name'), lines, line),
-  };
-}
-
-function isUsedBesidesDeclaration(
-  name: unknown,
-  lines: readonly string[],
-  declarationLine: number,
-): boolean {
-  if (typeof name !== 'string' || name.length === 0) {
-    return false;
-  }
-  const word = new RegExp(`(?<![\\w$])${escapeRegExp(name)}(?![\\w$])`, 'u');
-  return lines.some((text, index) => index !== declarationLine - 1 && word.test(text));
-}
-
 export function withMutationSourceHashes(
   report: MutationReport,
   projectRoot: string,
@@ -246,7 +194,7 @@ export function withMutationSourceHashes(
   };
 }
 
-function readProjectSource(projectRoot: string, relativePath: string): string {
+export function readProjectSource(projectRoot: string, relativePath: string): string {
   return readFileSync(
     path.join(projectRoot, relativeProjectFile(projectRoot, relativePath)),
     'utf8',

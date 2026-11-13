@@ -222,9 +222,14 @@ function runStrykerOrExplainSkip(
   }
 }
 
+function isMutationReport(value: unknown): value is MutationReport {
+  return typeof value === 'object' && value !== null;
+}
+
 function readMutationReport(projectRoot: string, coverageAnalysis: unknown): MutationReport {
-  return withUnreachedMutantsUncovered(
-    parseJson(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8')),
-    coverageAnalysis,
-  );
+  const report = parseJson(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8'));
+  if (!isMutationReport(report)) {
+    throw new TypeError('The mutation report is not an object');
+  }
+  return withUnreachedMutantsUncovered(report, coverageAnalysis);
 }
