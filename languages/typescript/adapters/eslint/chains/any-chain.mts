@@ -1,12 +1,13 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { nodeChain, enclosingSymbol, findReportedNode, stableSyntaxAnchor } from '../syntax.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 type Node = TypeScript.Node;
 type SourceFile = TypeScript.SourceFile;
 type Identifier = TypeScript.Identifier;
 
-export type ChainMessage = {
+type ChainMessage = {
   readonly ruleId: string;
   readonly message: string;
   readonly messageId?: unknown;
@@ -43,10 +44,6 @@ const COLLAPSED_RULE = '@typescript-eslint/no-unsafe-member-access';
 const ANY_CHAIN_MESSAGE_ID = 'anyChain';
 const ANY_TYPE = /[`'"]any[`'"]/u;
 const ERROR_TYPE = /\berror\b/u;
-
-function fieldOf(value: object, name: string): unknown {
-  return (value as Readonly<Record<string, unknown>>)[name];
-}
 
 function isChainMessage(message: unknown): message is ChainMessage {
   if (typeof message !== 'object' || message === null) {
@@ -114,6 +111,12 @@ function rootIdentifier(node: Node): Identifier | undefined {
   return last !== undefined && ts.isIdentifier(last) ? last : undefined;
 }
 
+function innerNames(pattern: TypeScript.BindingPattern): TypeScript.BindingName[] {
+  return pattern.elements.flatMap((element) =>
+    ts.isOmittedExpression(element) ? [] : [element.name],
+  );
+}
+
 function bindingNames(name: TypeScript.BindingName): Identifier[] {
   const pending: TypeScript.BindingName[] = [name];
   const names: Identifier[] = [];
@@ -121,11 +124,7 @@ function bindingNames(name: TypeScript.BindingName): Identifier[] {
     if (ts.isIdentifier(current)) {
       names.push(current);
     } else {
-      for (const element of current.elements) {
-        if (!ts.isOmittedExpression(element)) {
-          pending.push(element.name);
-        }
-      }
+      pending.push(...innerNames(current));
     }
   }
   return names;
@@ -235,12 +234,17 @@ function declarationPlace(declared: Identifier, sourceFile: SourceFile): Place {
   };
 }
 
-function collapsed(
-  first: ChainMessage,
-  uses: number,
-  grouping: Grouping,
-  sourceFile: SourceFile,
-): ChainMessage {
+function collapsed({
+  first,
+  uses,
+  grouping,
+  sourceFile,
+}: {
+  readonly first: ChainMessage;
+  readonly uses: number;
+  readonly grouping: Grouping;
+  readonly sourceFile: SourceFile;
+}): ChainMessage {
   const value = grouping.name === '' ? 'an `any` value' : `the \`any\` value \`${grouping.name}\``;
   const text = `Unsafe use of ${value} in ${grouping.symbol}: it affects ${String(uses)} ${uses === 1 ? 'place' : 'places'}.`;
   return {
@@ -253,10 +257,7 @@ function collapsed(
   };
 }
 
-export function collapseAnyChains(
-  messages: readonly unknown[],
-  sourceFile: SourceFile,
-): unknown[] {
+export function collapseAnyChains(messages: readonly unknown[], sourceFile: SourceFile): unknown[] {
   const groups = new Map<string, ChainMessage[]>();
   const groupingOfMessage = new Map<unknown, Grouping>();
   for (const message of messages.filter(isChainMessage)) {
@@ -278,6 +279,6 @@ export function collapseAnyChains(
       return [];
     }
     emitted.add(grouping.key);
-    return [collapsed(first, group.length, grouping, sourceFile)];
+    return [collapsed({ first, uses: group.length, grouping, sourceFile })];
   });
 }

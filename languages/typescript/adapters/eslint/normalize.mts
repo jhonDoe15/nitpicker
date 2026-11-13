@@ -139,10 +139,7 @@ function normalizeMessage({
 }: MessageContext): NormalizedMessage {
   assertMessageRecord(message, context);
   const messageText = validatedMessageText(message, context);
-  const ruleId =
-    typeof message.ruleId === 'string' && message.ruleId.length > 0
-      ? message.ruleId
-      : nonRuleDiagnosticId(messageText, context);
+  const ruleId = ruleIdOf(message, messageText, context);
   const positions = reportedPositions(message, context, sourceFile);
   const report = locateReport(sourceFile, positions);
   const messageIdentity = messageIdentityOf(message, messageText);
@@ -152,13 +149,7 @@ function normalizeMessage({
     tool: analyzerName,
     rule: ruleId,
     path: relativePath,
-    identity: [
-      `message:${messageIdentity}`,
-      `node:${report.nodeType}`,
-      `syntax:${report.syntax}`,
-      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
-      ...(message.chainUses === undefined ? [] : [`uses:${String(message.chainUses)}`]),
-    ].join('|'),
+    identity: findingIdentity({ messageIdentity, report, metric, uses: message.chainUses }),
     ...hintedMessage({
       ruleId,
       messageText,
@@ -185,6 +176,32 @@ function normalizeMessage({
     finding,
     plan: plan === undefined || anchorHash === undefined ? plan : { ...plan, anchorHash },
   };
+}
+
+function ruleIdOf(message: EslintMessage, messageText: string, context: string): string {
+  return typeof message.ruleId === 'string' && message.ruleId.length > 0
+    ? message.ruleId
+    : nonRuleDiagnosticId(messageText, context);
+}
+
+function findingIdentity({
+  messageIdentity,
+  report,
+  metric,
+  uses,
+}: {
+  readonly messageIdentity: string;
+  readonly report: LocatedReport;
+  readonly metric: { readonly value: number } | undefined;
+  readonly uses: number | undefined;
+}): string {
+  return [
+    `message:${messageIdentity}`,
+    `node:${report.nodeType}`,
+    `syntax:${report.syntax}`,
+    ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+    ...(uses === undefined ? [] : [`uses:${String(uses)}`]),
+  ].join('|');
 }
 
 function assertMessageRecord(message: unknown, context: string): asserts message is EslintMessage {

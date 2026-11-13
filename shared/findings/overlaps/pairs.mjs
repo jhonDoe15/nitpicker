@@ -1,23 +1,23 @@
+const SILENT_CATCH = { tool: 'eslint-errors', rule: 'nitpicker/no-silent-catch' };
+const LINT_TOOL = 'eslint-lint';
+const CATCH_PARAMETER = 'Catch parameter';
+
 export const CROSS_TOOL_OVERLAPS = [
   {
-    primary: { tool: 'eslint-errors', rule: 'nitpicker/no-silent-catch' },
+    primary: SILENT_CATCH,
     secondary: {
-      tool: 'eslint-lint',
+      tool: LINT_TOOL,
       rule: '@typescript-eslint/no-unused-vars',
-      messageStartsWith: 'Catch parameter',
+      messageStartsWith: CATCH_PARAMETER,
     },
   },
   {
-    primary: { tool: 'eslint-errors', rule: 'nitpicker/no-silent-catch' },
-    secondary: {
-      tool: 'eslint-lint',
-      rule: 'no-unused-vars',
-      messageStartsWith: 'Catch parameter',
-    },
+    primary: SILENT_CATCH,
+    secondary: { tool: LINT_TOOL, rule: 'no-unused-vars', messageStartsWith: CATCH_PARAMETER },
   },
   {
-    primary: { tool: 'eslint-errors', rule: 'nitpicker/no-silent-catch' },
-    secondary: { tool: 'eslint-lint', rule: 'no-empty' },
+    primary: SILENT_CATCH,
+    secondary: { tool: LINT_TOOL, rule: 'no-empty' },
   },
 ];
 

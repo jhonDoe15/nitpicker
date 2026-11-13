@@ -3,27 +3,29 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { writeSnapshotReports } from '../../../../snapshot/reporters.mts';
 
+const METRIC_RULE = 'module-coupling';
+
 export const PRESETS = {
   typescript: {
     tool: 'eslint-lint',
     rule: 'no-debugger',
     file: (index) => `src/feature-${String(index)}.ts`,
     metricTool: 'coupling',
-    metricRule: 'module-coupling',
+    metricRule: METRIC_RULE,
   },
   java: {
     tool: 'pmd',
     rule: 'UnusedLocalVariable',
     file: (index) => `src/main/java/app/Feature${String(index)}.java`,
     metricTool: 'java-coupling',
-    metricRule: 'module-coupling',
+    metricRule: METRIC_RULE,
   },
   python: {
     tool: 'ruff',
     rule: 'F401',
     file: (index) => `app/feature_${String(index)}.py`,
     metricTool: 'python-coupling',
-    metricRule: 'module-coupling',
+    metricRule: METRIC_RULE,
   },
 };
 

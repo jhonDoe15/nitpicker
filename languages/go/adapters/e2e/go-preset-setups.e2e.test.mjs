@@ -24,10 +24,13 @@ import {
   SLOW_INTEGRATION_TEST,
   SLOW_TEST,
 } from './test-support/go-fixtures.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
-const GO_NOT_FOUND =
-  'go was not found on the PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH';
+const GO_NOT_FOUND = `go was not found on the PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH. See ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.goMissing)}`;
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
 const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');
 
