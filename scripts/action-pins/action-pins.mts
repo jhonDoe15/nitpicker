@@ -1,6 +1,7 @@
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
+import { fieldsOf, listOf } from '../json/fields.mts';
 
 const fullVersionTag = /^[\w.-]+\/[\w./-]+@v\d+\.\d+\.\d+$/u;
 const fullCommitSha = /^[\w.-]+\/[\w./-]+@[\da-f]{40}$/u;
@@ -9,36 +10,40 @@ const pinned = [fullVersionTag, fullCommitSha, ownReleaseLine];
 const yamlFence =
   /^ {0,3}(`{3,}|~{3,})(?:yaml|yml)[^\S\r\n]*\r?\n([\s\S]*?)^ {0,3}\1[^\S\r\n]*$/gmu;
 
-function references(value) {
-  const found = [];
-  const pending = [value];
-  const seen = new WeakSet();
+function references(value: unknown): unknown[] {
+  const found: unknown[] = [];
+  const pending: unknown[] = [value];
+  const seen = new WeakSet<object>();
   for (const node of pending) {
-    if (!node || typeof node !== 'object' || seen.has(node)) {
+    if (typeof node !== 'object' || node === null || seen.has(node)) {
       continue;
     }
     seen.add(node);
-    if (Object.hasOwn(node, 'uses')) {
-      found.push(node.uses);
+    const fields = fieldsOf(node);
+    if (fields !== undefined && Object.hasOwn(fields, 'uses')) {
+      found.push(fields['uses']);
     }
-    pending.push(...Object.values(node));
+    pending.push(...(fields === undefined ? listOf(node) : Object.values(fields)));
   }
   return found;
 }
 
-export function unpinnedActions(text) {
-  return references(parse(text)).filter(
+export function unpinnedActions(text: string): unknown[] {
+  const parsed: unknown = parse(text);
+  return references(parsed).filter(
     (reference) =>
       typeof reference !== 'string' ||
       (!reference.startsWith('./') && !pinned.some((pattern) => pattern.test(reference))),
   );
 }
 
-function yamlDocuments(file, text) {
-  return file.endsWith('.md') ? [...text.matchAll(yamlFence)].map((match) => match[2]) : [text];
+function yamlDocuments(file: string, text: string): string[] {
+  return file.endsWith('.md')
+    ? [...text.matchAll(yamlFence)].map((match) => match[2] ?? '')
+    : [text];
 }
 
-export function actionPinProblems(root) {
+export function actionPinProblems(root: string): string[] {
   const base = path.resolve(root);
   const files = [
     ...new Set(

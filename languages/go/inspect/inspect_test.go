@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -68,8 +69,10 @@ func TestMeasuresFunctionStructure(t *testing.T) {
 	want := Function{
 		File: "demo.go", Name: "Classify", Start: 3, End: 19, Lines: 17,
 		Statements: 9, MaxControlNesting: 3, Parameters: 3, Complexity: 7,
+		Body: Position{Line: 3, Column: 70}, Close: Position{Line: 19, Column: 1},
 	}
-	if got != want {
+	got.Branches = nil
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("got %+v, want %+v", got, want)
 	}
 }
@@ -162,5 +165,58 @@ func TestMeasuresFunctionLiteralsInPackageVariables(t *testing.T) {
 	route := functionNamed(t, report, "routes.func1")
 	if route.Statements != 1 || len(report.Functions) != 2 {
 		t.Fatalf("functions: %+v", report.Functions)
+	}
+}
+
+const graded = `package demo
+
+func Grade(score int, tags []string, events chan int) string {
+	if score > 90 {
+		return "A"
+	} else if score > 50 {
+		return "B"
+	}
+	for _, tag := range tags {
+		_ = tag
+	}
+	switch score {
+	case 1, 2:
+		fallthrough
+	case 3:
+	}
+	select {
+	case <-events:
+	default:
+	}
+	return "C"
+}
+`
+
+func TestRecordsEachBranchWithItsArms(t *testing.T) {
+	report := inspected(t, map[string]string{"go.mod": "module demo\n", "grade.go": graded})
+	at := func(line, column int) Position { return Position{Line: line, Column: column} }
+	fallthroughAt := at(14, 3)
+	want := []Branch{
+		{File: "grade.go", Function: "Grade", Kind: "if", At: at(4, 2), Arms: []Arm{
+			{Label: "the if body", From: at(4, 16), To: at(5, 3)},
+			{Label: "the else branch", From: at(6, 3), To: at(6, 9)},
+		}},
+		{File: "grade.go", Function: "Grade", Kind: "if", At: at(6, 9), Arms: []Arm{
+			{Label: "the if body", From: at(6, 23), To: at(7, 3)},
+		}, Implicit: "the condition false (the if body skipped)"},
+		{File: "grade.go", Function: "Grade", Kind: "range", At: at(9, 2), Arms: []Arm{
+			{Label: "the loop body", From: at(9, 27), To: at(10, 3)},
+		}},
+		{File: "grade.go", Function: "Grade", Kind: "switch", At: at(12, 2), Arms: []Arm{
+			{Label: "case 1, 2", From: at(13, 12), To: at(14, 3), Fallthrough: &fallthroughAt},
+			{Label: "case 3", From: at(15, 9), To: at(15, 9)},
+		}, Implicit: "no case matching"},
+		{File: "grade.go", Function: "Grade", Kind: "select", At: at(17, 2), Arms: []Arm{
+			{Label: "case <-events", From: at(18, 16), To: at(18, 16)},
+			{Label: "default", From: at(19, 10), To: at(19, 10)},
+		}},
+	}
+	if !reflect.DeepEqual(report.Branches, want) {
+		t.Fatalf("got %+v\nwant %+v", report.Branches, want)
 	}
 }
