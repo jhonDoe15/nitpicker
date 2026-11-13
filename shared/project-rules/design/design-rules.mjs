@@ -23,6 +23,7 @@ const GO_DESIGN_RULES = new Set([
   DESIGN_RULE_IDS.contextThreading,
   DESIGN_RULE_IDS.callerProtocol,
   DESIGN_RULE_IDS.protocolContract,
+  DESIGN_RULE_IDS.forwardingChain,
 ]);
 
 export const DESIGN_RULE_LANGUAGES = Object.fromEntries(

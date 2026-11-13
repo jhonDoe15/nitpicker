@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/index"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
@@ -97,6 +98,7 @@ func functionFact(info *index.FuncInfo, h *hierarchy, known func(string) bool) C
 		Kind: kind, Exported: exported, Owner: ownerID(info), Entry: isEntry(info, h),
 		Params:       signatureParams(info.Decl.Type, info.File),
 		Returns:      signatureReturns(info.Decl.Type, info.File),
+		Forward:      chain.Of(env, info.Decl, known),
 		Calls:        calls.Collect(env, info.Decl.Body, known),
 		ParamUses:    uses.Params(env, info.Decl, hasMembers, known),
 		ReturnsField: returnedField(env, info),

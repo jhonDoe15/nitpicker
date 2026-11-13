@@ -772,6 +772,15 @@ that implement it, and on a struct also the structs that embed it: a struct impl
 when its method set (embedded types included) has every method name with the same number of
 parameters and results; the methods it implements are entries, like `String` and `Error`.
 
+**`forwarding-chain`.** Report-only. Two or more hops in a row, each in another file, whose whole
+body is `return f(a, b)` (or the bare call `f(a, b)` when there is no result) with every parameter
+passed in order and nothing else, and that have the same parameter types and result as the function
+they call. The call may be a package function (`store.Load(id, limit)`) or a method on a value the
+program can type (`s.backend.Fetch(id, limit)`). A hop with a variadic parameter or a spread
+argument, a call with another argument (a constant, an expression, a field), a result that is
+converted or wrapped, and an unexported hop into an unexported function are not forwarding. Call
+the last function directly, or let a hop own something.
+
 Unexported names count as private even though the other files of the package can reach them, and
 callers in the same file as the owner are not judged, as in the other languages.
 

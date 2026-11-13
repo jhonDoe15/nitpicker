@@ -39,20 +39,13 @@ func Params(env *scope.Env, declaration *ast.FuncDecl, accepts func(*index.TypeI
 		return nil
 	}
 	w := &walker{env: env, known: known, params: map[*ast.Object]*tracked{}}
-	position := 0
-	for _, field := range declaration.Type.Params.List {
-		_, variadic := field.Type.(*ast.Ellipsis)
-		project := index.Ty{Expr: field.Type, File: env.File}.Project()
-		for _, name := range field.Names {
-			if project != nil && !variadic && accepts(project) && name.Obj != nil {
-				entry := &tracked{use: ParamUse{Param: position, Fields: []string{}, Forwards: []Forward{}}, fields: map[string]bool{}}
-				w.params[name.Obj] = entry
-				w.order = append(w.order, entry)
-			}
-			position++
-		}
-		if len(field.Names) == 0 {
-			position++
+	for _, param := range scope.ParamObjects(declaration) {
+		_, variadic := param.Field.Type.(*ast.Ellipsis)
+		project := index.Ty{Expr: param.Field.Type, File: env.File}.Project()
+		if project != nil && !variadic && accepts(project) {
+			entry := &tracked{use: ParamUse{Param: param.Position, Fields: []string{}, Forwards: []Forward{}}, fields: map[string]bool{}}
+			w.params[param.Object] = entry
+			w.order = append(w.order, entry)
 		}
 	}
 	if len(w.order) == 0 {

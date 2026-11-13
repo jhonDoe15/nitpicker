@@ -130,6 +130,9 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   by an early `return` (`protocol-contract` fails). Three functions repeating the same
   three calls on one type are reported by `caller-protocol` (report-only): give the type one method
   that does them all.
+- A function whose whole body is `return other(a, b)` into another file, called through a second
+  such function, is a pass-through chain (`forwarding-chain`, report-only): call the last function
+  where the first is used, or let a hop own something (a conversion, a default, a dependency).
 
 ## Size and tests
 

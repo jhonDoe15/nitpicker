@@ -201,3 +201,29 @@ func (e *Env) typeSwitch(statement *ast.TypeSwitchStmt) {
 		binding.Count++
 	}
 }
+
+type ParamObject struct {
+	Object   *ast.Object
+	Position int
+	Field    *ast.Field
+}
+
+func ParamObjects(declaration *ast.FuncDecl) []ParamObject {
+	var objects []ParamObject
+	if declaration.Type.Params == nil {
+		return objects
+	}
+	position := 0
+	for _, field := range declaration.Type.Params.List {
+		for _, name := range field.Names {
+			if name.Obj != nil {
+				objects = append(objects, ParamObject{Object: name.Obj, Position: position, Field: field})
+			}
+			position++
+		}
+		if len(field.Names) == 0 {
+			position++
+		}
+	}
+	return objects
+}
