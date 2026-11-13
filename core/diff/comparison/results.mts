@@ -45,6 +45,7 @@ export type ReportContext = {
 export type CombineRequest = ReportContext & {
   readonly baseRun: unknown;
   readonly headRoot?: string;
+  readonly fixRecipes?: unknown[] | undefined;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
@@ -68,6 +69,11 @@ type BuildContext = Omit<ReportContext, 'additionalToolErrors'> & {
   readonly toolErrors: ReportEntry[];
 };
 
+const withFixes: (
+  findings: Finding[],
+  root: string | undefined,
+  recipes: unknown[] | undefined,
+) => Finding[] = attachFixes;
 const accepted: (
   loosenings: readonly unknown[],
   digest: unknown,
@@ -98,7 +104,10 @@ export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
   const notes = scopedNotes(compared.notes, context.scope);
   const report = buildReport({ ...context, outcomes, notes, toolErrors });
-  return { ...report, newFindings: attachFixes(report.newFindings, context.headRoot) };
+  return {
+    ...report,
+    newFindings: withFixes(report.newFindings, context.headRoot, context.fixRecipes),
+  };
 }
 
 export function noChangesReport(

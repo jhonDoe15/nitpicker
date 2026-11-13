@@ -1,17 +1,29 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { KNOWN_RECIPES } from './known-recipes.mjs';
 
 const SINGLE_FILE_EDITS = new Set(['replace', 'write']);
 
-function readText(projectRoot, name) {
-  const base = path.resolve(projectRoot);
-  const full = path.resolve(base, name);
-  if (!full.startsWith(base + path.sep)) {
-    return undefined;
+function readFile(projectRoot, name) {
+  try {
+    const base = realpathSync(projectRoot);
+    const full = path.resolve(base, name);
+    if (!full.startsWith(base + path.sep)) {
+      return { failure: `${name} is outside the project` };
+    }
+    if (!existsSync(full)) {
+      return { failure: `${name} does not exist` };
+    }
+    return realpathSync(full) === full
+      ? { text: readFileSync(full, 'utf8') }
+      : { failure: `${name} goes through a symbolic link` };
+  } catch (error) {
+    return { failure: String(error) };
   }
-  return existsSync(full) ? readFileSync(full, 'utf8') : undefined;
+}
+
+function readText(projectRoot, name) {
+  return readFile(projectRoot, name).text;
 }
 
 function covers(recipe, finding) {
@@ -54,36 +66,76 @@ function fixData(recipe, fix, text) {
   };
 }
 
+function plannedFixes(recipe, finding, context) {
+  const key = `${recipe.id}\0${finding.path}`;
+  if (!context.plans.has(key)) {
+    context.plans.set(key, planned(recipe, finding, context.projectRoot));
+  }
+  return context.plans.get(key);
+}
+
 function planned(recipe, finding, projectRoot) {
   const text = readText(projectRoot, finding.path);
   if (text === undefined) {
-    return { kind: 'unreadable' };
+    return { text, fixes: [] };
   }
   try {
     const files = [{ path: finding.path, text }];
     const { fixes } = recipe.plan({ files, read: (name) => readText(projectRoot, name) });
-    const fix = fixes.find((candidate) => matches(candidate, finding));
-    return fix === undefined ? { kind: 'none' } : { kind: 'fix', fix: fixData(recipe, fix, text) };
+    return { text, fixes: Array.isArray(fixes) ? fixes : [] };
   } catch (error) {
-    return { kind: 'failed', recipe: recipe.id, message: String(error) };
+    return { text, fixes: [], failure: String(error) };
   }
 }
 
-function withFix(finding, { projectRoot, recipes }) {
-  if (finding.fix !== undefined || finding.location === undefined) {
-    return finding;
-  }
-  for (const recipe of recipes.filter((candidate) => covers(candidate, finding))) {
-    const outcome = planned(recipe, finding, projectRoot);
-    if (outcome.kind === 'fix') {
-      return { ...finding, fix: outcome.fix };
+function startOf(fix) {
+  const starts = fix.edits.map((edit) => edit.start).filter(Number.isInteger);
+  return starts.length === 0 ? Infinity : Math.min(...starts);
+}
+
+function siteKey({ tool, rule, path: name, location }) {
+  return JSON.stringify([tool, rule, name, location?.line]);
+}
+
+function candidates(group, context) {
+  const [finding] = group;
+  for (const recipe of context.recipes.filter((candidate) => covers(candidate, finding))) {
+    const { text, fixes } = plannedFixes(recipe, finding, context);
+    const own = fixes.filter((fix) => matches(fix, finding));
+    if (own.length > 0) {
+      return own.length === group.length
+        ? own
+            .toSorted((left, right) => startOf(left) - startOf(right))
+            .map((fix) => fixData(recipe, fix, text))
+        : [];
     }
   }
-  return finding;
+  return [];
 }
 
-export function attachFixes(findings, projectRoot, recipes = KNOWN_RECIPES) {
-  return projectRoot === undefined
-    ? findings
-    : findings.map((finding) => withFix(finding, { projectRoot, recipes }));
+function assignments(findings, context) {
+  const groups = Map.groupBy(
+    findings.filter((finding) => finding.fix === undefined && finding.location !== undefined),
+    siteKey,
+  );
+  const assigned = new Map();
+  for (const group of groups.values()) {
+    const ordered = group.toSorted(
+      (left, right) => (left.location.column ?? 0) - (right.location.column ?? 0),
+    );
+    for (const [index, fix] of candidates(ordered, context).entries()) {
+      assigned.set(ordered[index], fix);
+    }
+  }
+  return assigned;
+}
+
+export function attachFixes(findings, projectRoot, recipes = []) {
+  if (projectRoot === undefined) {
+    return findings;
+  }
+  const assigned = assignments(findings, { projectRoot, recipes, plans: new Map() });
+  return findings.map((finding) =>
+    assigned.has(finding) ? { ...finding, fix: assigned.get(finding) } : finding,
+  );
 }

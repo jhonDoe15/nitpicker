@@ -14,6 +14,7 @@ import {
   type EntryIndex,
   type Fact,
   closestNames,
+  fixStatusOf,
   directoriesUp,
   entriesNamed,
   entryUrl,
@@ -35,10 +36,10 @@ type ReferenceCli = {
   readonly currentProjectRoot?: string | undefined;
 };
 
-type RulesOptions = { preset?: string; tool?: string };
+type RulesOptions = { preset?: string; tool?: string; fixable: boolean };
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
-const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>]\n`;
+const RULES_USAGE = `Usage: nitpicker rules [--preset <${PRESETS.join('|')}>] [--tool <name>] [--fixable]\n`;
 const DEFAULT_PRESET = 'typescript';
 const FIRST_SENTENCE = /^.*?[.!?](?=\s|$)/su;
 const INDENT = '  ';
@@ -117,9 +118,14 @@ export function runExplainCommand({ commandArguments, stdout, stderr }: Referenc
   return unknown.length === 0 ? 0 : 1;
 }
 
-const RULES_OPTIONS: ReadonlyMap<string, keyof RulesOptions> = new Map([
+const RULES_OPTIONS: ReadonlyMap<string, 'preset' | 'tool'> = new Map([
   ['--preset', 'preset'],
   ['--tool', 'tool'],
+]);
+const FIXABLE_FLAG = '--fixable';
+const FIXABLE_STATUSES: ReadonlyMap<string, string> = new Map([
+  ['automatic', 'automatic'],
+  ['review', 'with --fix --rule'],
 ]);
 
 function splitOption(argument: string): readonly [string, string | undefined] {
@@ -129,22 +135,38 @@ function splitOption(argument: string): readonly [string, string | undefined] {
     : [argument.slice(0, equals), argument.slice(equals + 1)];
 }
 
+function applyRulesOption(
+  options: RulesOptions,
+  argument: string,
+  remaining: ArrayIterator<string>,
+): string | undefined {
+  const [flag, inline] = splitOption(argument);
+  if (flag === FIXABLE_FLAG && inline === undefined) {
+    options.fixable = true;
+    return undefined;
+  }
+  const property = RULES_OPTIONS.get(flag);
+  if (property === undefined) {
+    return RULES_USAGE;
+  }
+  const value = inline ?? remaining.next().value;
+  if (value === undefined || value === '' || value.startsWith('--')) {
+    return `nitpicker: ${flag} requires a value.\n${RULES_USAGE}`;
+  }
+  options[property] = value;
+  return undefined;
+}
+
 function readRulesOptions(
   commandArguments: readonly string[],
 ): { readonly options: RulesOptions; readonly error?: undefined } | { readonly error: string } {
-  const options: RulesOptions = {};
+  const options: RulesOptions = { fixable: false };
   const remaining = commandArguments.values();
   for (const argument of remaining) {
-    const [flag, inline] = splitOption(argument);
-    const property = RULES_OPTIONS.get(flag);
-    if (property === undefined) {
-      return { error: RULES_USAGE };
+    const error = applyRulesOption(options, argument, remaining);
+    if (error !== undefined) {
+      return { error };
     }
-    const value = inline ?? remaining.next().value;
-    if (value === undefined || value === '' || value.startsWith('--')) {
-      return { error: `nitpicker: ${flag} requires a value.\n${RULES_USAGE}` };
-    }
-    options[property] = value;
   }
   if (options.preset !== undefined && !PRESETS.includes(options.preset)) {
     return {
@@ -180,14 +202,15 @@ function summaryLine(entry: Entry, root: string | undefined): string {
 function listedEntries(
   preset: string,
   config: NitpickerConfig,
-  tool: string | undefined,
+  { tool, fixable }: RulesOptions,
 ): readonly Entry[] {
   const enabled = enabledAnalyzers(preset, config);
   return readEntries()
     .filter(({ analyzers }) => reportsFor(analyzers[preset], enabled))
     .filter(
       (entry) => tool === undefined || [entry.tool, ...(entry.findingTools ?? [])].includes(tool),
-    );
+    )
+    .filter((entry) => !fixable || FIXABLE_STATUSES.has(fixStatusOf(entry, preset)));
 }
 
 function rulesPreset(
@@ -203,12 +226,16 @@ function rulesPreset(
   return { preset, config };
 }
 
-function rulesText(preset: string, listed: readonly Entry[]): string {
-  const root = docsRootUrl();
+function ruleLine(entry: Entry, preset: string, fixable: boolean): string {
+  const line = summaryLine(entry, docsRootUrl());
+  return fixable ? `${line} [${FIXABLE_STATUSES.get(fixStatusOf(entry, preset)) ?? ''}]` : line;
+}
+
+function rulesText(preset: string, listed: readonly Entry[], fixable: boolean): string {
   return (
-    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} rules. ` +
+    `${presetTitles[preset] ?? preset} preset: ${String(listed.length)} ${fixable ? 'fixable ' : ''}rules. ` +
     'nitpicker explain <tool/rule> describes one.\n' +
-    listed.map((entry) => `${summaryLine(entry, root)}\n`).join('')
+    listed.map((entry) => `${ruleLine(entry, preset, fixable)}\n`).join('')
   );
 }
 
@@ -228,7 +255,7 @@ export function runRulesCommand({
     return 2;
   }
   const { preset, config } = rulesPreset(read.options, currentProjectRoot);
-  const listed = listedEntries(preset, config, read.options.tool);
-  stdout.write(rulesText(preset, listed));
+  const listed = listedEntries(preset, config, read.options);
+  stdout.write(rulesText(preset, listed, read.options.fixable));
   return 0;
 }

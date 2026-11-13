@@ -34,7 +34,7 @@ const EXPECTED_USAGE_HEAD = [
   '       nitpicker changelog [<version>]',
   '       nitpicker base [--base <ref>]',
   '       nitpicker explain <tool/rule>...',
-  '       nitpicker rules [--preset <name>] [--tool <name>]',
+  '       nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
   '',
   'Commands (nitpicker <command> --help lists its options):',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',

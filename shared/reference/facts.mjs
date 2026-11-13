@@ -1,4 +1,5 @@
 import { docsUrl } from '../messages/docs-url.mjs';
+import { fixText } from './fix-status.mjs';
 import { exceptionAdvice, joinedWords, PRESET_TITLES, PRESETS } from './entry.mjs';
 
 const BUILD_TITLES = { gradle: 'Gradle', maven: 'Maven' };
@@ -150,6 +151,7 @@ export function entryFacts(entry) {
     ['Scope', entry.scope],
     ['Why it is on', entry.why],
     ['Allowed form', allowedText(entry)],
+    ['Fix', entry.fix === undefined ? undefined : fixText(entry, presetsOf(entry))],
   ]
     .filter(([, text]) => text !== undefined)
     .map(([label, text]) => ({ label, text }));

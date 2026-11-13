@@ -7,10 +7,13 @@ import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.
 import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
 import { coreRuleEntries } from './config-entries.mts';
+import { withFixStatus, DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mjs';
 import { guideLink, headingAnchors } from '../../shared/reference/build/guide-pages.mjs';
 import { fieldOf, listOf, textOf } from '../../shared/values/readers.mts';
 
 export type ReferenceEntry = Readonly<Record<string, unknown>>;
+
+export type FixSources = typeof DEFAULT_FIX_SOURCES;
 
 type Entries = () => readonly ReferenceEntry[];
 
@@ -22,6 +25,10 @@ const pythonRules: Entries = pythonRuleEntries;
 const pageIds: readonly unknown[] = PAGE_IDS;
 const anchorsOf: (text: string) => readonly unknown[] = headingAnchors;
 const linkToGuide: (guide: string, anchor: unknown) => object = guideLink;
+
+function withStatus(entry: ReferenceEntry, sources: FixSources): ReferenceEntry {
+  return withFixStatus({ fixableIn: undefined, ...entry }, sources);
+}
 
 function duplicates(values: readonly unknown[]): unknown[] {
   const counts = Map.groupBy(values, (value) => value);
@@ -110,7 +117,10 @@ function withGuidePages(entry: ReferenceEntry): ReferenceEntry {
   return { ...entry, docs: listOf(entry['docs']).map(withGuidePage) };
 }
 
-export function buildReference(repositoryRoot: string): ReferenceEntry[] {
+export function buildReference(
+  repositoryRoot: string,
+  fixSources: FixSources = DEFAULT_FIX_SOURCES,
+): ReferenceEntry[] {
   const entries = [
     ...sharedChecks(),
     ...typescriptChecks(),
@@ -120,6 +130,7 @@ export function buildReference(repositoryRoot: string): ReferenceEntry[] {
     ...pythonRules(),
   ]
     .map(withGuidePages)
+    .map((entry) => withStatus(entry, fixSources))
     .toSorted((a, b) => textOf(a['id']).localeCompare(textOf(b['id'])));
   const problems = entryProblems(entries, repositoryRoot);
   if (problems.length > 0) {

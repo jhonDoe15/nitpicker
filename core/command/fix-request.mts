@@ -1,4 +1,7 @@
+import { ALL_RECIPES } from '../fix/engine/all-recipes.mjs';
 import { fixWorkingTree } from '../fix/run-fix.mjs';
+
+export const FIX_RECIPES: unknown = ALL_RECIPES;
 import type { TextOutput } from '../cli-context.mts';
 import { clearDryRunOutput, reportDryRun } from './fix/dry-run-report.mts';
 import type { DryRunPlan } from './fix/dry-run-report.mts';

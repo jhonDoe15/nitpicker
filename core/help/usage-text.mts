@@ -89,7 +89,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
   'nitpicker explain <tool/rule>...',
-  'nitpicker rules [--preset <name>] [--tool <name>]',
+  'nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
 ];
 
 function table(rows: readonly Row[]): string {

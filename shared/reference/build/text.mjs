@@ -1,6 +1,9 @@
+import { asSentence } from '../entry.mjs';
+
+export { asSentence };
+
 const CODE_SPAN = /(`[^`]*`)/u;
 const EMPHASIS = /(?<![\p{L}\p{N}\\])(\*\*|\*|_)(?=\S)(.+?)(?<=\S)\1(?![\p{L}\p{N}])/gu;
-const SENTENCE_END = /[.!?]$/u;
 const FIRST_SENTENCE = /^(.+?[.!?])(?:\s+|$)(?=[A-Z`([]|$)/su;
 
 function outsideCode(text, transform) {
@@ -23,13 +26,6 @@ export function paragraphsOf(text) {
     .split(/\n\s*\n/u)
     .map(flatText)
     .filter((paragraph) => paragraph !== '');
-}
-
-/** `text` with a capital first letter and a full stop at the end. */
-export function asSentence(text) {
-  const trimmed = text.trim();
-  const capitalized = `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
-  return SENTENCE_END.test(capitalized) ? capitalized : `${capitalized}.`;
 }
 
 /** The first sentence of a one-line text, and the rest, if any. */

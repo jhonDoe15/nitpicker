@@ -7,20 +7,22 @@ import { isPresetRule } from './ruff-selection.mjs';
 export const RUFF_RULES_FILE = new URL('../ruff/ruff-rules.json', import.meta.url);
 
 const DOCUMENTATION = 'https://docs.astral.sh/ruff/rules';
+const PYTHON = 'python';
 const PLACEHOLDER = /\{(\w+)\}/gu;
 
-function ruffEntry({ code, name, linter, summary, whatItDoes, why, useInstead }) {
+function ruffEntry({ code, name, linter, summary, whatItDoes, why, useInstead, safeFix }) {
   const hint = hintFor({ tool: 'ruff', rule: code });
   const selected = `Selected in the ruff config of the Python preset, with the ${linter} rules (\`${name}\`).`;
   return ruleEntry({
     tool: 'ruff',
     rule: code,
     page: 'python-ruff',
-    analyzers: { python: ['python'] },
+    analyzers: { python: [PYTHON] },
     summary: whatItDoes ?? summary.replaceAll(PLACEHOLDER, '<$1>'),
     why: why === undefined ? selected : `${why} ${selected}`,
     ...(hint === undefined ? {} : { allowed: allowedOf(hint) }),
-    ...(useInstead === undefined ? {} : { example: { code: useInstead, language: 'python' } }),
+    ...(useInstead === undefined ? {} : { example: { code: useInstead, language: PYTHON } }),
+    ...(safeFix === true ? { fixableIn: [PYTHON] } : {}),
     links: [{ label: 'Ruff rule documentation', url: `${DOCUMENTATION}/${name}/` }],
     exception: { key: 'python.exceptions', rule: code },
   });

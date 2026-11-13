@@ -6,6 +6,7 @@ import { readEslintInventory } from './eslint-inventory.mjs';
 import { ruleSets } from './rule-sets.mjs';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
+const FIX_TOOL = 'eslint-lint';
 const NITPICKER_PREFIX = 'nitpicker/';
 const REACT_IDS = new Set([...reactRuleIds, ...reactTestRuleIds]);
 const I18N_IDS = new Set(i18nRuleIds);
@@ -112,6 +113,12 @@ function summaryOf({ description, messages }) {
   return description ?? messages?.[0] ?? 'Reported by the rule.';
 }
 
+function fixablePresets(analyzers) {
+  return Object.entries(analyzers)
+    .filter(([, tools]) => tools.includes(FIX_TOOL))
+    .map(([preset]) => preset);
+}
+
 function entryOf(id, byVariant, sets) {
   const facts = Object.values(byVariant).find((found) => found !== undefined);
   const analyzers = Object.fromEntries(
@@ -123,6 +130,7 @@ function entryOf(id, byVariant, sets) {
       .filter(([, tools]) => tools.length > 0),
   );
   const scope = scopeOf(id, Object.keys(analyzers));
+  const fixableIn = facts.fixable === true ? fixablePresets(analyzers) : [];
   const forms = formsOf(facts, id);
   return ruleEntry({
     tool: 'eslint',
@@ -137,6 +145,7 @@ function entryOf(id, byVariant, sets) {
     ...(facts.url === undefined
       ? {}
       : { links: [{ label: 'Rule documentation', url: facts.url }] }),
+    ...(fixableIn.length === 0 ? {} : { fixableIn }),
     docs: docsOf(id),
     exception: { key: 'exceptions', rule: id },
   });

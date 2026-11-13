@@ -1,5 +1,14 @@
 import { exceptionEntryText, exceptionSentence } from '../messages/exception-sentence.mjs';
 
+const SENTENCE_END = /[.!?]$/u;
+
+/** `text` with a capital first letter and a full stop at the end. */
+export function asSentence(text) {
+  const trimmed = text.trim();
+  const capitalized = `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}`;
+  return SENTENCE_END.test(capitalized) ? capitalized : `${capitalized}.`;
+}
+
 export const PRESET_TITLES = {
   typescript: 'TypeScript',
   javascript: 'JavaScript',
