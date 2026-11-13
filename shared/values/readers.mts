@@ -24,6 +24,6 @@ export function objectOf(value: unknown): object | undefined {
   return typeof value === 'object' && value !== null ? value : undefined;
 }
 
-export function listOf(value: unknown): unknown[] {
+export function listOf(value: unknown): readonly unknown[] {
   return Array.isArray(value) ? value : [];
 }

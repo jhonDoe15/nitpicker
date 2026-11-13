@@ -63,7 +63,7 @@ type Settings = Omit<DiffOptions, 'includeWorkingTree'> &
     readonly includeWorkingTree: boolean;
     readonly captureHead: CaptureHead;
     readonly additionalToolErrors: readonly ReportEntry[];
-    readonly configOverrides: unknown[];
+    readonly configOverrides: readonly unknown[];
   };
 
 type BaseSetup = {

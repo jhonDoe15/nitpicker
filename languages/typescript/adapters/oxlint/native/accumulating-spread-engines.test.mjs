@@ -7,6 +7,7 @@ import { createFindingsCache } from '../../../../../core/diff/cache/findings-cac
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { hashFiles } from '../../../preset/checks/hash.mjs';
@@ -183,11 +184,18 @@ function oxlintResults(root) {
 }
 
 function lintPlan(root) {
-  return spawnJson([path.join(import.meta.dirname, '..', 'oxlint-plan.mjs'), root, ...PATTERNS], {
-    cwd: root,
-    env: environmentOf(root),
-    context: 'oxlint planning',
-  });
+  return spawnJson(
+    [
+      checkoutModulePath(path.join(import.meta.dirname, '..', 'oxlint-plan.mjs')),
+      root,
+      ...PATTERNS,
+    ],
+    {
+      cwd: root,
+      env: environmentOf(root),
+      context: 'oxlint planning',
+    },
+  );
 }
 
 function nativeRulesByFile(plan, bridgedRules) {
