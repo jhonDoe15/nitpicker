@@ -8,6 +8,7 @@ import { layoutTransformFor as untypedLayoutTransformFor } from '../../preset/to
 
 export type Layout = {
   readonly exclude: readonly string[];
+  readonly graphRoots: readonly string[];
   isExcluded(relativePath: string): boolean;
   projectCodeFiles(projectRoot: string): readonly string[];
 };

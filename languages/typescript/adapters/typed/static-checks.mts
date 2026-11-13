@@ -31,12 +31,12 @@ export type CruiseReport = { readonly summary?: CruiseSummary; readonly modules?
 export type DependencyGraphRequest = {
   readonly projectRoot: string;
   readonly policyRoot: string;
-  readonly liveProjectRoot: string;
+  readonly liveProjectRoot?: string;
   readonly patterns: readonly string[];
   readonly exclude: string | undefined;
-  readonly includeOnly: string | undefined;
-  readonly configRelativePath: string;
-  readonly reportsConfigErrors: boolean;
+  readonly includeOnly?: string | undefined;
+  readonly configRelativePath?: string;
+  readonly reportsConfigErrors?: boolean;
 };
 
 export type SnapshotDependencyRequest = {
