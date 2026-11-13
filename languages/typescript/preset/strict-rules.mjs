@@ -55,6 +55,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-process-globals-outside-main-guard',
   'nitpicker/no-promise-chain',
   'nitpicker/no-raised-test-timeout',
+  'nitpicker/no-repeated-string-literal',
   'nitpicker/no-self-recursion',
   'nitpicker/no-server-or-worker-per-test',
   'nitpicker/no-service-locator',

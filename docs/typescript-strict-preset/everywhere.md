@@ -484,6 +484,30 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
   `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
+- No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
+  presets, both lint engines; tests are exempt). A string of five characters or more with a letter
+  or digit that appears three times or more in a file (a template literal without expressions counts
+  too) is reported from the third use on: name it once as a constant and use the constant. Not
+  counted: import and export sources, `require()`, `import()` and `vi.mock`/`jest.mock` arguments,
+  directives, object, class and enum member keys, the value under a `type`, `kind`, `tag` or
+  `variant` key, a string compared with `===`, `!==`, `==` or `!=` to a member named `type`, `kind`,
+  `tag` or `variant` (`node.type === "Identifier"`), the elements of an array literal or a
+  `new Set([...])` whose `includes` or `has` is called with such a member, the `"error"` severity of
+  a lint config entry (`"nitpicker/rule": "error"` or `["error", { ... }]` under a key that holds a
+  `/` or `-`), computed member keys (`row["customer_id"]`), the left side of `in`, `case` labels,
+  string literal types, JSX attribute values, strings inside a `className` expression or a `cn`,
+  `clsx`, `classnames` or `twMerge` call, the initializer of a `const` or an enum member, a `typeof`
+  comparison (`typeof x === "undefined"`), decorator arguments, the event name of `on`, `once`,
+  `off`, `emit`, `addListener`, `addEventListener` and their removals, the first argument of a
+  translation call (`t`, `formatMessage`, `getTranslations` and the like), tagged templates, and
+  idiomatic text (encodings, HTTP methods, MIME types, time formats). The lists and the thresholds
+  are shared with the Python, Kotlin and Go counterparts in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs).
+  An exception fits only for text that must stay inline. Java reports the same through PMD
+  `AvoidDuplicateLiterals`, Kotlin as `kotlin-source/RepeatedStringLiteral`, Python and Go as
+  `repeated-string-literal`. Python, Kotlin and Go exempt the discriminant comparison the same way;
+  the membership lists and the lint severity are TypeScript and JavaScript only, because the other
+  presets have no ESLint rule table and test a discriminant through `when` or `match`.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`

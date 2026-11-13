@@ -1,4 +1,4 @@
-/** The logic rules and the shared logic module they run on: a change to one invalidates the lint cache. */
+/** The logic and literal rules and the shared modules they run on: a change to one invalidates the lint cache. */
 export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-config/logic/logic-policy-files.mjs',
   'shared/logic/decide.mjs',
@@ -26,4 +26,6 @@ export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/operands/operand-chains.mjs',
   'languages/typescript/preset/eslint-plugin/rules/operands/operand-terms.mjs',
   'languages/typescript/preset/eslint-plugin/rules/operands/constant-comparisons.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/literals/no-repeated-string-literal.mjs',
+  'shared/literals/repeated-literal-exemptions.mjs',
 ];

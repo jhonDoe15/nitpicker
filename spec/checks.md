@@ -180,6 +180,34 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
 
+<<<<<<< HEAD
+Repeated string literals: `nitpicker/no-repeated-string-literal` (production source, in `eslint-lint`) reports
+each use from the third on of a string of five characters or more that appears three times in a file, so
+the text is named once as a constant. Import sources, keys, `case` labels, string literal types, JSX
+attribute values, `const` initializers, `typeof` comparisons, decorator arguments, translation keys, discriminant values and idiomatic texts are not
+counted. The same definition runs as `repeated-string-literal` in the Python and Go presets, as
+`kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in the Java preset.
+=======
+Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file, folder, class,
+interface, type alias or enum whose last name word is `utils`, `helpers`, `manager`, `common`, `misc` or a variant, so
+code is named for what it does and shared pure logic goes in a shared folder. The same list runs as `generic-name` in the
+Python and Go presets, as `kotlin-source/GenericTypeName`, `GenericFileName` and `GenericPackageName` in the Kotlin
+preset, and as `pmd/GenericTypeName` and `pmd/GenericPackageName` in the Java preset (a Java file is named after its
+type). A framework role (`CacheManager`, `SessionManager`) and a type that extends a type with the same last word pass.
+
+Repeated string literals: `nitpicker/no-repeated-string-literal` (production source, in
+`eslint-lint`) reports each use from the third on of a string of five characters or more that
+appears three times in a file (a template literal without expressions counts), so the text is named
+once as a constant. Import sources, keys, `case` labels, string literal types, JSX attribute and
+`className` values, `const` initializers, `typeof` comparisons, decorator arguments, event names,
+module mocks, translation keys, discriminant values (the value under a `type`, `kind`, `tag` or
+`variant` key, or a text compared with a member of that name), the `error` severity in a lint config
+entry and idiomatic texts are not counted. The same
+definition runs as `repeated-string-literal` in the Python and Go presets, as
+`kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
+the Java preset.
+>>>>>>> 93c7aa212 (fixup! Report string literals repeated three times in TypeScript and JavaScript)
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

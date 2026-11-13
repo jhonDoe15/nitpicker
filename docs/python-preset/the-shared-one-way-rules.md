@@ -648,8 +648,10 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
   three times or more in a file (not tests, not generated migrations) and reports each use from the
   third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
-  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
-  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  arguments the same way; TypeScript and JavaScript exempt JSX attribute values, Java has none),
+  dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, a comparison with an attribute or subscript of that name
+  (`node.type == "order-placed"`), subscript keys, `match` patterns, docstrings and bare strings,
   `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
   message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
   formats). The minimum length, the number of allowed uses and those lists are defined once in

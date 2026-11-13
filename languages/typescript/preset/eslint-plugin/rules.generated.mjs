@@ -60,6 +60,7 @@ import { rule as ruleNoProductionImportsInSetupFiles } from './test-isolation/no
 import { rule as ruleNoPromiseChain } from './rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from './test-isolation/no-real-time-random-or-network.mjs';
+import { rule as ruleNoRepeatedStringLiteral } from './rules/literals/no-repeated-string-literal.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as ruleNoSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as ruleNoServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
@@ -195,6 +196,7 @@ export const directoryRules = {
   'no-promise-chain': ruleNoPromiseChain,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
