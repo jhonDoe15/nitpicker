@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 const MODULES_FILE = 'modules.json';
+const NOT_AFFECTED_FILE = 'not-affected.json';
 const MANIFEST_FILE = 'manifest.json';
 const JACOCO_FILE = 'jacoco.xml';
 const MAIN_CLASSES_FILE = 'jdeps-classes.txt';
@@ -135,4 +136,9 @@ export function readMainCheckstyle(projectRoot, module, preset) {
     return undefined;
   }
   throw new Error(`The ${preset} preset found no Checkstyle report for ${moduleLabel(module)}`);
+}
+
+export function readNotAffected(reportBase) {
+  const file = path.join(reportBase, NOT_AFFECTED_FILE);
+  return existsSync(file) ? readJson(file) : [];
 }

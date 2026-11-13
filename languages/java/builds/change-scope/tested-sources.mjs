@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { byCodeUnits, listedProjectFiles } from '../../../../core/scope/mutation-scope.mjs';
+import { isMultiModule, repositoryChangeKey } from './affected/changed-files.mjs';
 import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mjs';
 
 export const MAX_TESTED_SOURCES = 10;
@@ -109,12 +110,13 @@ function contentDigest(root, file) {
     : createHash('sha256').update(readFileSync(full)).digest('hex');
 }
 
-export function changedTestsKey({ touchedPaths, headRoot, quick }) {
+export function changedTestsKey({ touchedPaths, headRoot, mergeBaseSha, quick }) {
+  const scope = isMultiModule(headRoot) ? repositoryChangeKey(headRoot, mergeBaseSha) : undefined;
   const tests = touchedPaths.filter(isJvmTestPath).toSorted(byCodeUnits);
   if (quick) {
     return undefined;
   }
   const digests = tests.map((file) => [file, contentDigest(headRoot, file)]);
   const onHead = digests.filter(([, digest]) => digest !== 'absent').map(([file]) => file);
-  return JSON.stringify({ tests: digests, reached: reachedFrom(headRoot, onHead) });
+  return JSON.stringify({ tests: digests, reached: reachedFrom(headRoot, onHead), scope });
 }

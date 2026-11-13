@@ -267,6 +267,7 @@ function runBaseSide(context) {
     analyzers: withComparisonKeys(quickScoped(settings, layout, baseSetup.analyzers), {
       touchedPaths: [...layout.touchedPaths],
       headRoot: roots.headSnapshotRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
       quick: settings.quick !== undefined,
     }),
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),

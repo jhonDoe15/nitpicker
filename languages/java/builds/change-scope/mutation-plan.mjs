@@ -1,32 +1,12 @@
 import { createHash } from 'node:crypto';
-import { realpathSync } from 'node:fs';
 import { isInMutationScope } from '../../../../core/scope/mutation-scope.mjs';
-import { readComparisonChanges } from './comparison-changes.mjs';
+import { comparisonRoots, readComparisonChanges } from './comparison-changes.mjs';
 import { MAX_TESTED_SOURCES, testedSources } from './tested-sources.mjs';
 
 const MUTATION_TOOL = 'pit';
 const SUMMARY_RULE = 'mutation-summary';
 const NAMED_CAPPED = 3;
 const DIGEST_LENGTH = 16;
-
-function sameDirectory(left, right) {
-  return realpathSync.native(left) === realpathSync.native(right);
-}
-
-function comparisonRoots(projectRoot, policy) {
-  if (policy.quick === true) {
-    return undefined;
-  }
-  if (policy.snapshot === 'base') {
-    const head = policy.policyRoot;
-    return head === undefined || sameDirectory(head, projectRoot)
-      ? undefined
-      : { base: projectRoot, head };
-  }
-  return policy.baselineRoot === undefined
-    ? undefined
-    : { base: policy.baselineRoot, head: projectRoot };
-}
 
 function withinScope(files, mutationScope) {
   return files.filter((file) => isInMutationScope(file, mutationScope));
@@ -53,7 +33,7 @@ function cappedNotice(capped) {
 }
 
 export function comparisonMutationPlan(projectRoot, policy = {}) {
-  const roots = comparisonRoots(projectRoot, policy);
+  const roots = policy.quick === true ? undefined : comparisonRoots(projectRoot, policy);
   if (roots === undefined) {
     return undefined;
   }

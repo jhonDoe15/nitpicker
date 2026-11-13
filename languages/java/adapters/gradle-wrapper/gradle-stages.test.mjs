@@ -50,3 +50,29 @@ describe('the mutation scope of a Gradle run', () => {
     expect(scopeProperties({})).toEqual([]);
   });
 });
+
+describe('the changed files of a Gradle run', () => {
+  function changedFilesProperty(policy) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-gradle-stages-'));
+    roots.push(root);
+    const [stage] = gradleStages([], {
+      projectRoot: root,
+      initScript: 'init.gradle',
+      policy,
+      directory: path.join(root, 'tool-config'),
+    });
+    return stage().filter((argument) => argument.startsWith('-Pnitpicker.changedFiles='));
+  }
+
+  it('reach Gradle as a file of paths, so the init script can skip unaffected projects', () => {
+    const [property] = changedFilesProperty({ changedFiles: ['core/src/Core.java'] });
+
+    expect(JSON.parse(readFileSync(property.split('=').slice(1).join('='), 'utf8'))).toEqual([
+      'core/src/Core.java',
+    ]);
+  });
+
+  it('are not passed when the change is unknown', () => {
+    expect(changedFilesProperty({})).toEqual([]);
+  });
+});

@@ -38,6 +38,34 @@ function coordinates(project) {
   return `${groupId}:${textAt(project, 'artifactId')}`;
 }
 
+function coordinatesOf(element) {
+  const groupId = textAt(element, 'groupId');
+  const artifactId = textAt(element, 'artifactId');
+  return groupId === undefined || artifactId === undefined ? [] : [`${groupId}:${artifactId}`];
+}
+
+function importedCoordinates(project) {
+  return childrenAt(project, 'dependencyManagement', 'dependencies', 'dependency')
+    .filter((dependency) =>
+      ['import', 'pom'].includes(textAt(dependency, 'scope') ?? textAt(dependency, 'type')),
+    )
+    .flatMap(coordinatesOf);
+}
+
+function requiredCoordinates(project, plugins, pomFile) {
+  const parent = childAt(project, 'parent');
+  return [
+    ...(parent === undefined ? [] : coordinatesOf(parent)),
+    ...childrenAt(project, 'dependencies', 'dependency').flatMap(coordinatesOf),
+    ...importedCoordinates(project),
+    ...(existsSync(pomFile) ? importedCoordinates(parseXml(readFileSync(pomFile, 'utf8'))) : []),
+    ...[...plugins.entries()].flatMap(([key, plugin]) => [
+      key,
+      ...childrenAt(plugin, 'dependencies', 'dependency').flatMap(coordinatesOf),
+    ]),
+  ];
+}
+
 function configured(execution, plugin, name) {
   return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
 }
@@ -130,6 +158,13 @@ function jacocoSettings(plugin, basedir) {
   };
 }
 
+function resourceRootsOf(build, basedir) {
+  return childrenAt(build, 'resources', 'resource')
+    .map((resource) => textAt(resource, 'directory'))
+    .filter((directory) => directory !== undefined)
+    .map((directory) => path.resolve(basedir, directory));
+}
+
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -160,10 +195,7 @@ function describeModule(project, { basedir, pomFile }) {
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
       ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
     ],
-    resourceRoots: childrenAt(build, 'resources', 'resource')
-      .map((resource) => textAt(resource, 'directory'))
-      .filter((directory) => directory !== undefined)
-      .map((directory) => path.resolve(basedir, directory)),
+    resourceRoots: resourceRootsOf(build, basedir),
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
@@ -178,6 +210,7 @@ function describeModule(project, { basedir, pomFile }) {
     ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: compilerSettings(project),
+    requires: [...new Set(requiredCoordinates(project, plugins, pomFile))],
   };
 }
 

@@ -9,6 +9,7 @@ import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
 const MUTATION_SCOPE_FILE = 'mutation-scope.json';
+const CHANGED_FILES_FILE = 'changed-files.json';
 
 function exportArguments(common, { initScript, directory, policy }) {
   mkdirSync(directory, { recursive: true });
@@ -55,6 +56,15 @@ function mutationScopeProperties({ mutationScope }, directory) {
   return [`-Pnitpicker.mutationScope=${file}`];
 }
 
+function changedFilesProperties({ changedFiles }, directory) {
+  if (changedFiles === undefined) {
+    return [];
+  }
+  const file = path.join(directory, CHANGED_FILES_FILE);
+  writeFileSync(file, JSON.stringify(changedFiles));
+  return [`-Pnitpicker.changedFiles=${file}`];
+}
+
 export function gradleStages(
   baseArguments,
   { projectRoot, initScript, policy, directory, testsFailedModules = [] },
@@ -75,6 +85,7 @@ export function gradleStages(
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
       ...mutationScopeProperties(policy, directory),
+      ...changedFilesProperties(policy, directory),
       ...pitHistoryProperties(policy, projectRoot),
       '-I',
       initScript,

@@ -4,7 +4,8 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 
 - Multi-module builds: every project with the Kotlin plugin is analyzed and its findings carry
   the project's folder, as for Java. A build where no project applies the Kotlin plugin is a tool
-  error saying so.
+  error saying so. A comparison gates the affected modules only, see
+  [multi-module builds](multi-module-scope.md).
 - Kotlin and Java files are linted in main and test sources, as in the Java preset. Generated
   sources under the build directory are skipped.
 - The Kotlin metrics step needs network access to Maven Central for `kotlin-compiler-embeddable`

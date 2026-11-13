@@ -26,6 +26,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 
 - [How it works](java-preset/how-it-works.md)
 - [Maven builds](java-preset/maven-builds.md)
+- [Multi-module builds: affected modules](java-preset/multi-module-scope.md)
 - [Slices](java-preset/slices.md)
 - [Slice 4: ArchUnit](java-preset/slice-4-archunit.md)
 - [Slice 7: mutation with PIT](java-preset/slice-7-mutation-with-pit.md)
