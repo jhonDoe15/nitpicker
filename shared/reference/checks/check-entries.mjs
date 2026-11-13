@@ -17,11 +17,13 @@ import {
 import { PYTHON_SIZE_RULES } from '../../project-rules/size-rules.mjs';
 import { UNUSED_API_RULE_IDS } from '../../unused-api/unused-api-policy.mjs';
 import { PRESETS, ruleEntry } from '../entry.mjs';
+import { DOMAIN_RULE_IDS } from '../../project-rules/domain/domain-rules.mjs';
+import { BOUNDARY_NOTES } from './boundary-notes.mjs';
 import { QUALITY_NOTES } from './quality-notes.mjs';
 import { SIZE_NOTES } from './size-notes.mjs';
 import { STRUCTURE_NOTES } from './structure-notes.mjs';
 
-const NOTES = { ...SIZE_NOTES, ...QUALITY_NOTES, ...STRUCTURE_NOTES };
+const NOTES = { ...SIZE_NOTES, ...QUALITY_NOTES, ...STRUCTURE_NOTES, ...BOUNDARY_NOTES };
 const PYTHON_TOP_LEVEL = [
   ...COMMON_EXCEPTION_RULES,
   ...PYTHON_SIZE_RULES,
@@ -43,7 +45,14 @@ const PARTIAL_JAVASCRIPT = 'The JavaScript preset enforces this check only in pa
 const REPORT_ONLY = 'Report-only: it never fails the gate.';
 const NO_EXCEPTION_NOTE =
   'It has no exception: fix the sites instead of raising the allowance of the legacy inventory.';
+const JVM_COUPLING_RULES = Object.fromEntries(
+  Object.values(DOMAIN_RULE_IDS).map((id) => [
+    id,
+    { java: `coupling/${id}`, kotlin: `coupling/${id}` },
+  ]),
+);
 const NATIVE_RULES = {
+  ...JVM_COUPLING_RULES,
   [RULE_IDS.docCommentContent]: {
     typescript: 'nitpicker/no-comments',
     javascript: 'nitpicker/no-comments',
