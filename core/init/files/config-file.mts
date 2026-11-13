@@ -1,35 +1,47 @@
 import { isDeepStrictEqual } from 'node:util';
 import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mjs';
-import { projectFileText } from '../support/inside-project.mjs';
-import { placeFile } from './place-file.mjs';
+import { projectFileText } from '../support/inside-project.mts';
+import { type Placed, type Revision, placeFile } from './place-file.mts';
+import { fieldsOf } from '../../../shared/values/readers.mts';
+
+type Config = Readonly<Record<string, unknown>>;
+
+type ParsedConfig =
+  | { readonly kind: 'parsed'; readonly config: Config }
+  | { readonly kind: 'invalid'; readonly error?: unknown };
+
+export type ExistingConfig = ParsedConfig | { readonly kind: 'missing' };
+
+const plainObject: (value: unknown) => boolean = isPlainObject;
+const configName: string = CONFIG_FILE_NAME;
 
 const DEFAULT_PRESET = 'typescript';
 const PRESET_ENTRY = /("preset"\s*:\s*)"(?:[^"\\]|\\.)*"/u;
 const NEXT_LINE_INDENT = /^[ \t]*\n([ \t]*)/u;
 const NOT_AN_OBJECT = 'It is not a JSON object, so init cannot add the preset to it.';
 
-export function renderConfig(config) {
+export function renderConfig(config: Config): string {
   const entries = Object.entries(config).map(
     ([key, value]) => `${JSON.stringify(key)}: ${JSON.stringify(value)}`,
   );
   return `{ ${entries.join(', ')} }\n`;
 }
 
-function parsedConfig(text) {
+function parsedConfig(text: string): ParsedConfig {
   try {
-    const config = JSON.parse(text);
-    return isPlainObject(config) ? { kind: 'parsed', config } : { kind: 'invalid' };
+    const config: unknown = JSON.parse(text);
+    return plainObject(config) ? { kind: 'parsed', config: fieldsOf(config) } : { kind: 'invalid' };
   } catch (error) {
     return { kind: 'invalid', error };
   }
 }
 
-export function existingConfig(root) {
-  const text = projectFileText(root, CONFIG_FILE_NAME);
+export function existingConfig(root: string): ExistingConfig {
+  const text = projectFileText(root, configName);
   return text === undefined ? { kind: 'missing' } : parsedConfig(text);
 }
 
-function insertedPreset(text, entry) {
+function insertedPreset(text: string, entry: string): string {
   const open = text.indexOf('{');
   const head = text.slice(0, open + 1);
   const rest = text.slice(open + 1);
@@ -43,10 +55,10 @@ function insertedPreset(text, entry) {
   return `${head}${/^\s/u.test(rest) ? ' ' : ''}${entry}, ${rest.trimStart()}`;
 }
 
-function revisedText(text, config, preset) {
+function revisedText(text: string, config: Config, preset: string): string {
   const value = JSON.stringify(preset);
   const edited =
-    config.preset === undefined
+    config['preset'] === undefined
       ? insertedPreset(text, `"preset": ${value}`)
       : text.replace(PRESET_ENTRY, `$1${value}`);
   const wanted = {
@@ -59,12 +71,12 @@ function revisedText(text, config, preset) {
     : `${JSON.stringify(wanted, undefined, 2)}\n`;
 }
 
-function revision(text, preset) {
+function revision(text: string, preset: string): Revision | undefined {
   const parsed = parsedConfig(text);
   if (parsed.kind === 'invalid') {
     return { after: renderConfig({ preset }), reason: NOT_AN_OBJECT };
   }
-  const declared = parsed.config.preset;
+  const declared = parsed.config['preset'];
   if (declared === preset || (declared === undefined && preset === DEFAULT_PRESET)) {
     return undefined;
   }
@@ -77,10 +89,10 @@ function revision(text, preset) {
   };
 }
 
-export function placeConfig(root, preset) {
+export function placeConfig(root: string, preset: string): Placed {
   return placeFile({
     root,
-    relative: CONFIG_FILE_NAME,
+    relative: configName,
     content: renderConfig({ preset }),
     revise: (current) => revision(current, preset),
   });

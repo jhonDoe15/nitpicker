@@ -1,6 +1,6 @@
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { textOf } from '../../../shared/values/readers.mts';
-import { packageVersion } from '../../help/package-version.mjs';
+import { packageVersion } from '../../help/package-version.mts';
 import { type InformationCli, projectAnalyzers } from './project-analyzers.mts';
 import { usageText } from '../../help/usage-text.mts';
 import type { CliOptions, TextOutput } from '../../cli-context.mts';

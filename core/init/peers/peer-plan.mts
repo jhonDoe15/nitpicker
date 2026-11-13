@@ -1,7 +1,15 @@
-import { assertTypeScriptNode, missingNodePeers } from './node-peers.mjs';
-import { pythonPeerStatus } from './python-peers.mjs';
+import { textOf } from '../../../shared/values/readers.mts';
+import { assertTypeScriptNode, missingNodePeers } from './node-peers.mts';
+import { pythonPeerStatus } from './python-peers.mts';
+import type { InitProject, Peers } from '../init-types.mts';
 
-const PYTHON_INSTALLERS = {
+type PeerStatus = {
+  readonly requirement: string;
+  readonly declared: boolean;
+  readonly installed: boolean;
+};
+
+const PYTHON_INSTALLERS: Readonly<Record<string, string>> = {
   uv: 'uv add --dev',
   poetry: 'poetry add --group dev',
   pipenv: 'pipenv install --dev',
@@ -10,28 +18,33 @@ const PYTHON_INSTALLERS = {
   conda: 'conda install --channel conda-forge',
 };
 const PIP_INSTALLER = 'python -m pip install';
-const PYTHON_ADVICE = {
+const PYTHON_ADVICE: Readonly<Record<string, string>> = {
   hatch:
     'This installs them into the default hatch environment, which nitpicker uses. To keep them, list them in "dependencies" under [tool.hatch.envs.default].',
   conda:
     "Run it with the project's conda environment active, or add the packages to environment.yml.",
 };
 const JVM_REQUIREMENTS = 'Java 21 or newer. nitpicker adds its own analysis tools to the build.';
-const NOTHING = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
+const NOTHING: Peers = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
 
-export function shellQuoted(requirement) {
+export function shellQuoted(requirement: string): string {
   return /^[\w@/.=-]+$/u.test(requirement) ? requirement : `'${requirement}'`;
 }
 
-export function pythonInstaller(tool) {
-  return PYTHON_INSTALLERS[tool] ?? PIP_INSTALLER;
+export function pythonInstaller(tool: string | undefined): string {
+  return PYTHON_INSTALLERS[textOf(tool)] ?? PIP_INSTALLER;
 }
 
-export function installCommand(installer, requirements) {
+export function installCommand(installer: string, requirements: readonly string[]): string {
   return `${installer} ${requirements.map(shellQuoted).join(' ')}`;
 }
 
-function nodePlan(projectRoot, project, nodeVersion) {
+function adviceOf(tool: string | undefined): { readonly advice?: string } {
+  const advice = PYTHON_ADVICE[textOf(tool)];
+  return advice === undefined ? {} : { advice };
+}
+
+function nodePlan(projectRoot: string, project: InitProject, nodeVersion: string): Peers {
   assertTypeScriptNode(projectRoot, nodeVersion);
   const { add, uninstalled } = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
   return {
@@ -40,16 +53,19 @@ function nodePlan(projectRoot, project, nodeVersion) {
     uninstalled,
     command:
       add.length === 0
-        ? project.packageManager.install
-        : installCommand(project.packageManager.add, add),
+        ? textOf(project.packageManager?.install)
+        : installCommand(textOf(project.packageManager?.add), add),
   };
 }
 
-function requirementsWhere(status, keep) {
+function requirementsWhere(
+  status: readonly PeerStatus[],
+  keep: (peer: PeerStatus) => boolean,
+): string[] {
   return status.filter(keep).map(({ requirement }) => requirement);
 }
 
-function pythonPlan(projectRoot, project) {
+function pythonPlan(projectRoot: string, project: InitProject): Peers {
   const status = pythonPeerStatus(projectRoot, project);
   const missing = requirementsWhere(status, ({ declared, installed }) => !declared && !installed);
   return {
@@ -58,11 +74,15 @@ function pythonPlan(projectRoot, project) {
     undeclared: requirementsWhere(status, ({ declared }) => !declared),
     installedOnly: requirementsWhere(status, ({ declared, installed }) => !declared && installed),
     command: installCommand(pythonInstaller(project.tool), missing),
-    advice: PYTHON_ADVICE[project.tool],
+    ...adviceOf(project.tool),
   };
 }
 
-export function planPeers(projectRoot, project, nodeVersion = process.versions.node) {
+export function planPeers(
+  projectRoot: string,
+  project: InitProject,
+  nodeVersion: string = process.versions.node,
+): Peers {
   if (project.family === 'jvm') {
     return { ...NOTHING, requirements: JVM_REQUIREMENTS };
   }

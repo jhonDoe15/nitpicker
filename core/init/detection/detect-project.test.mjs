@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { detectProject } from './detect-project.mjs';
+import { detectProject } from './detect-project.mts';
 
 const project = useProjects();
 const SOURCE = 'export const value = 1;\n';

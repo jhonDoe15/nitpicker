@@ -8,7 +8,7 @@ import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
 import { INIT_OPTIONS } from '../init/init-arguments.mts';
-import { packageVersion } from './package-version.mjs';
+import { packageVersion } from './package-version.mts';
 import {
   AGGREGATE_FLAGS,
   CACHE_PUBLISH_FLAGS,
