@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'no
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { acquireRunLock, describeRunInProgress, isProcessAlive, withRunLock } from './run-lock.mjs';
+import { acquireRunLock, describeRunInProgress, isProcessAlive, withRunLock } from './run-lock.mts';
 
 const temporaryRoots = [];
 

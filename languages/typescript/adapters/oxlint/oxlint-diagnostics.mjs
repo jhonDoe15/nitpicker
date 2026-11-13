@@ -2,20 +2,21 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mjs';
 import { reportedRuleKey } from './oxlint-translation.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
 const IRREGULAR_WHITESPACE_RULE = 'no-irregular-whitespace';
 const MESSAGE_IN_HELP_RULES = new Set(['no-restricted-imports', 'no-restricted-properties']);
 const TSCONFIG_ERROR_CODE = 'typescript(tsconfig-error)';
-const TOLERATED_TSCONFIG_ERRORS = [
-  /Cannot find type definition file/u,
-  /Option '[^']+' (?:has been removed|is deprecated)/u,
-];
 
 export function eslintShapedResults(stage, diagnostics, naming) {
   const reported = distinctDiagnostics(diagnostics).filter(
     (diagnostic) => !isIgnoredDiagnostic(diagnostic),
   );
+  rejectTsconfigErrors(stage, reported);
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
     const filePath = filename.replaceAll('\\', '/');
@@ -36,6 +37,34 @@ export function eslintShapedResults(stage, diagnostics, naming) {
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });
+}
+
+const TSCONFIG_REJECTED =
+  'oxlint rejected the tsconfig nitpicker derives from the project tsconfig, so it ran no type-aware lint rule';
+
+function rejectTsconfigErrors(stage, diagnostics) {
+  const rejections = diagnostics
+    .filter((diagnostic) => diagnostic.code === TSCONFIG_ERROR_CODE)
+    .map((diagnostic) => `${diagnostic.message} ${diagnostic.help ?? ''}`.trim())
+    .map((text) => withoutStage(text, stage).replace(/\.$/u, ''));
+  if (rejections.length === 0) {
+    return;
+  }
+  throw troubleshootingError(
+    [
+      `${TSCONFIG_REJECTED}: ${[...new Set(rejections)].join('; ')}.`,
+      'If `npx tsc --noEmit` accepts the project tsconfig, report this to nitpicker,',
+      'or lint with ESLint: "tools": { "eslint": { "engine": "eslint" } }.',
+    ].join(' '),
+    TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
+  );
+}
+
+function withoutStage(text, stage) {
+  return [stage, stage.replaceAll('\\', '/')].reduce(
+    (current, prefix) => current.replaceAll(`${prefix}/`, '').replaceAll(`${prefix}\\`, ''),
+    text,
+  );
 }
 
 function stagedFile(stage, filename) {
@@ -68,10 +97,6 @@ function isNeutralizerWhitespace(message, neutralized) {
 }
 
 function isIgnoredDiagnostic(diagnostic) {
-  if (diagnostic.code === TSCONFIG_ERROR_CODE) {
-    const text = `${diagnostic.message} ${diagnostic.help ?? ''}`;
-    return TOLERATED_TSCONFIG_ERRORS.some((pattern) => pattern.test(text));
-  }
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused oxlint-');
 }
 

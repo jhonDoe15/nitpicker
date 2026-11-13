@@ -12,7 +12,7 @@ import {
   ACTION_BLOCK_END,
   ACTION_BLOCK_START,
   renderActionReference,
-} from '../../../../../scripts/action-inputs.mjs';
+} from '../../../../../scripts/action-inputs.mts';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../..');
 

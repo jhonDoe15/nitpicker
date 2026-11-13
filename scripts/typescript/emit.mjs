@@ -1,14 +1,21 @@
-import { existsSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { filesUnder } from '../../shared/filesystem.mjs';
 
 const PACKAGE_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const SHIPPED_FOLDERS = ['core', 'shared', 'languages'];
 const SHIPPED_FOLDER = /^(?:core|shared|languages)\//u;
 const UNSHIPPED_PATH =
   /(?:^|\/)(?:node_modules|fixtures|test-support|__tests__)\/|\.test\.m[jt]s$/u;
+const UNSHIPPED_FOLDER = /^(?:node_modules|fixtures|test-support|__tests__)$/u;
 const SOURCE = /\.mts$/u;
 
 export function isShippedPath(relative) {
@@ -24,10 +31,31 @@ function folderIn(root, folder) {
   return full;
 }
 
+function entryPath(directory, entry) {
+  return path.join(directory, entry.name);
+}
+
+function filesIn(folder) {
+  const files = [];
+  const pending = [folder];
+  for (const directory of pending) {
+    const entries = readdirSync(directory, { withFileTypes: true });
+    files.push(
+      ...entries.filter((entry) => entry.isFile()).map((entry) => entryPath(directory, entry)),
+    );
+    pending.push(
+      ...entries
+        .filter((entry) => entry.isDirectory() && !UNSHIPPED_FOLDER.test(entry.name))
+        .map((entry) => entryPath(directory, entry)),
+    );
+  }
+  return files;
+}
+
 export function shippedSources(root = PACKAGE_ROOT) {
   return SHIPPED_FOLDERS.map((folder) => folderIn(root, folder))
     .filter((folder) => existsSync(folder))
-    .flatMap((folder) => [...filesUnder(folder)])
+    .flatMap((folder) => filesIn(folder))
     .map((file) => path.relative(root, file).split(path.sep).join('/'))
     .filter((relative) => SOURCE.test(relative) && isShippedPath(relative))
     .sort()

@@ -6,15 +6,21 @@
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mjs",
       "shared/logic/sync/decide-worker.mts",
+      "languages/java/maven/parallel/tool-supervisor.mts",
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",
+      "scripts/check.mts",
+      "scripts/record-eslint-reports.mts",
+      "scripts/test-shards/repository-timeouts.mts",
+      "scripts/shard-weights/measure.mts",
+      "scripts/release/changelog.mts",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
-      "languages/typescript/adapters/entry-points-runner.mjs",
+      "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
-      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
+      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
@@ -22,23 +28,24 @@
       "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
       "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
       "languages/typescript/preset/eslint-config/policies/module-effects.config.mjs",
-      "core/bin.mjs",
-      "core/cli.mjs",
-      "core/diff/sharding/aggregate-shards.mjs",
+      "core/bin.mts",
+      "core/cli.mts",
+      "core/diff/sharding/aggregate-shards.mts",
       "core/diff/execution/analyzer-scheduler.mjs",
+      "core/reference/generate.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
-      "languages/java/adapters/gradle-reports/gradle-guards.mjs",
-      "languages/java/builds/rulesets/write-rules.mjs",
+      "languages/java/adapters/gradle-reports/gradle-guards.mts",
+      "languages/java/builds/rulesets/write-rules.mts",
       "languages/java/builds/tools/tool-commands.mjs",
       "languages/typescript/adapters/eslint-runner.mjs",
       "languages/typescript/adapters/quality-areas-runner.mjs",
-      "languages/typescript/adapters/static-checks-runner.mjs",
+      "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
       "languages/typescript/preset/coding-standards/check.mjs",
-      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs",
+      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },
@@ -166,13 +173,8 @@
       "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
     },
     {
-      "rule": "no-restricted-syntax",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
-    },
-    {
       "rule": "nitpicker/no-default-export",
-      "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
+      "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts"],
       "reason": "node --test-reporter loads a reporter only through the module's default export."
     },
     {
@@ -182,6 +184,7 @@
       "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
     }
   ],
+  "analyzerTimeoutMinutes": { "coding-standards": 5, "structure": 5 },
   "tools": {
     "tests": {
       "timeouts": {
