@@ -7,8 +7,8 @@ export function flagsFor(texts) {
   return projectFlags(texts.map((text) => ({ scanned: scanTestFile(text) })));
 }
 
-function reportsFor(text, flags = flagsFor([text])) {
-  const scanned = scanTestFile(text);
+function reportsFor(text, flags = flagsFor([text]), assertionNames = []) {
+  const scanned = scanTestFile(text, assertionNames);
   return fileReports(scanned, flags).map((report) => ({
     ...report,
     line: lineOf(scanned, report.offset),
@@ -19,8 +19,8 @@ export function summaryOf(text, flags) {
   return reportsFor(text, flags).map(({ rule, symbol }) => `${rule} ${symbol}`);
 }
 
-export function rulesOf(text, rule, flags) {
-  return reportsFor(text, flags)
+export function rulesOf(text, rule, flags, assertionNames) {
+  return reportsFor(text, flags, assertionNames)
     .filter((report) => report.rule === rule)
     .map(({ symbol, line }) => `${symbol}@${String(line)}`);
 }

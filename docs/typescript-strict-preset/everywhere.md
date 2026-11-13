@@ -30,6 +30,63 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
+- `nitpicker/no-cleanup-skipped-on-failure`: cleanup must not stop at the first failed release. In a
+  function named `close`, `dispose`, `destroy`, `shutdown`, `stop`, `teardown`, `disconnect` or `end` (also
+  `onModuleDestroy`, `onApplicationShutdown`, `[Symbol.dispose]`), in an `afterAll`, `afterEach` or `after`
+  callback, in a callback registered for `SIGTERM`, `SIGINT` or `beforeExit`, and in an `onClose` hook (`app.addHook('onClose', ...)`), it reports a
+  release call, awaited or not, (`close`, `disconnect`, `destroy`, `end`, `quit`, `stop`, `terminate`, `unsubscribe`,
+  `dispose`) that a later statement of the same block follows with another release call or a state reset
+  (an assignment of `undefined`, `null`, a literal or a new collection, or `.clear()`), also when the release sits
+  in an `if`, a loop or a `return`, since a rejection
+  skips those steps and leaves the next start with a half-closed client. It also reports `Promise.all`
+  over two or more release calls or a `.map` callback that releases, which rejects at the first failure
+  and leaves the others unobserved. Allowed: `Promise.allSettled` over the releases and a rethrow of the
+  first failure, `try { await a.close(); } finally { this.a = undefined; }`, a `try`/`catch` around each
+  release, or one release per block.
+- `nitpicker/settle-pending-on-close`: a close function must settle the pending requests its scope keeps. For a
+  class or a factory function with a close, dispose, stop or shutdown function, it reports a `Map`, object or
+  array that gets `resolve` and `reject` pairs, deferreds or promise settle functions added (a function or an
+  object with such members under a name such as `resolve`, `reject`, `deferred`, `resolver` or `settle`, or any
+  function when the collection is named `pending`, `inFlight`, `waiting`, `waiters`, `callbacksById` or
+  `requests`; event handler registries such as `handlers` or `listeners` are not pending requests) when no
+  close function, nor a function it calls (three levels deep), passes the collection to a call or a
+  `forEach`, iterates it (also through a local alias or a snapshot) and settles or hands each entry on.
+  Failure paths that give up before close (a decode error, a give-up timeout) are not read: the preset has no
+  advisory level, and a report-only form would be a finding nobody can act on. A `.clear()` alone leaves every caller still waiting hanging forever. Allowed: reject
+  or resolve each entry before clearing, or hand the collection to a helper that does.
+- `nitpicker/release-listeners-on-close`: listeners and timers must be released by the scope that registers
+  them. In a class or factory with a close, dispose, stop or shutdown function, outside composition-root
+  files, it reports `on`, `addListener` and `addEventListener` on an emitter held in a field (`this.socket`),
+  a closure or module variable or `process` when nothing in the scope calls `off`, `removeListener`,
+  `removeEventListener` or `removeAllListeners` (or closes or destroys the emitter) on it, and a
+  `setInterval`, or a `setTimeout` whose handle is kept in a field or long-lived variable, that the scope
+  never passes to `clearInterval` or `clearTimeout`. Emitters created inside the method that uses them, a
+  registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
+  emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
+  Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
+- `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
+  a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
+  assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,
+  `conn ||= start()`, `return conn ?? (conn = start())`, `if (!conn) conn = start(); return conn`), it reports
+  the assignment when no rejection path clears it (an assignment of `undefined`, `null` or `void 0` inside a
+  `catch` or a `.catch`, `.then` or `.finally` callback of the same function), and reports the clearing when it
+  never compares the binding with the attempt (`conn === attempt`). Unknown types are never findings, and
+  an assignment that always replaces the value without a guard is a fresh attempt and is left alone. Concurrent lazy loads that do not share one in-flight promise are not reported: that needs data flow across calls, and the rule reads one function at a time. A static field cached through the class name (`A.c ??= connect()`) is not tracked. A clear inside a `finally` block or a same-class helper that the rejection path calls counts. Allowed:
+  `const attempt = start(); conn = attempt; try { return await attempt; } catch (error) { if (conn === attempt)
+- `nitpicker/no-add-only-collection`: a long-lived collection must not only grow. For a `Map`, `Set` or array held
+  in a class field of a long-lived class (one with a close, dispose, stop or shutdown function, a decorator, or a
+  name ending in `Service`, `Manager`, `Registry`, `Store`, `Cache`, `Client`, `Server`, `Gateway` or `Repository`)
+  or in the closure variable of a factory function that has such a close function, that a method or returned function adds to (`set`,
+  `add`, `push`, `unshift`, `[key] =`) with a non-literal key outside the constructor, it reports the collection when
+  nothing in the scope removes from it (`delete`, `clear`, `splice`, `shift`, `pop`, `length = 0`, a reassignment),
+  reads its `size` or `length` (a bound), or hands it to a call. Registries are skipped: adds in the constructor, in
+  `init*`, `register*` or `on*Init` functions, or with a literal key, and a `WeakMap` or `WeakSet`. Module-level
+  bindings are not checked, also in files where the module state rule is off, because a module has no close
+  function to compare with, and collections that `nitpicker/settle-pending-on-close` owns are skipped. An access
+  through `const { m } = this` or `this['m']` counts like `this.m`. And callbacks passed to a call (`forEach`, `on`)
+  are not factory closures. Allowed: delete the entry when its request, session or run ends, in `finally` or the close
+  handler, bound it, or key a `WeakMap` by the object.
+  { conn = undefined; } throw error; }`.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),
@@ -108,6 +165,31 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
   and the rest once after it. An exception fits only for a source that always stays small. The same
   form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
+  that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
+  preset: six characters or more with letters and digits, or three character classes; placeholders,
+  paths, message keys, URLs and a value equal to the name are not secrets) given to a name ending in
+  `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`,
+  `accessKey`, `secretKey`, `authKey`, `signingKey`, `encryptionKey`, `hmacKey` or `jwtKey`: a variable,
+  a class field, an object property, an assignment to a variable or member (`config["api_key"] = ...`), a
+  parameter default, and the fallback of an environment read (`process.env.API_TOKEN ?? "..."`,
+  `import.meta.env`, `Deno.env.get`). The literal may be built from parts (`"..." + suffix`), cast, trimmed
+  or wrapped in `Buffer.from`, or sit in either branch of a conditional or in a `||`/`??` fallback. It also
+  reports, anywhere, a string shaped like an AWS key, a GitHub or Slack token, a `sk_live_` or `sk-proj-` key,
+  a private key header, a URL with `user:password@`, or a `Bearer`/`Basic`/`Token` value. Allowed form: read
+  it from the environment or a secrets manager and inject it. Test code and the support folders (`test-support/`,
+  `mocks/`, `__fixtures__/`, stories) are not production code, so neither secret rule runs there. An exception fits a
+  public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
+  `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
+  source checks (Kotlin).
+- `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
+  `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
+  `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
+  template, in a `+`, in a `||`/`??`/conditional branch, as an object property or key, inside `String(...)`,
+  `JSON.stringify(...)` or `.toString()`, or an environment read of such a name. `hasToken`, `isSecret`, a
+  `SCREAMING_CASE` constant, `token.length`, `typeof token`, a masking call and a property whose value is a
+  status are fine. Allowed form: log that the secret is set, or a masked tail. The same form runs as
+  `secret-in-log` (Python and Go), `pmd/SecretInLog` (Java) and the `SecretInLog` source check (Kotlin).
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
@@ -484,6 +566,48 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
   `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
+- No generic names (`nitpicker/no-generic-name`, production code of both presets, both lint engines;
+  tests are exempt). A file, a folder, or a class, interface, type alias, enum or namespace whose
+  last name word is `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`,
+  `managers`, `common`, `commons`, `misc` or `miscellaneous` is reported (`string-utils.ts`,
+  `user.helper.ts`, `common/`, `OrderHelper`, `Utils`). Words are split at case changes, hyphens,
+  dots and underscores; trailing digits and version words such as `v2` are ignored; a closing
+  `functions`, `methods`, `module`, `mixin`, `base`, `classes` or `Impl` is dropped first
+  (`helper-functions.ts`, `UserManagerImpl`); and role suffixes of a file name (`.config`,
+  `.service`, `.module`, `.controller`, `.types`, `.d` and the like) are dropped, so
+  `utils.config.ts` and `common.module.ts` are reported. `AuthenticationManager`,
+  `TransactionManager`, `CacheManager`, `EntityManager`, `SessionManager`, `ConnectionManager`,
+  `LockManager` and `ResourceManager` pass, and so does a type that extends or implements a type
+  whose last word is the same (`class ModelManager extends EntityManager`). A manager that is a
+  domain term of the project (`PackageManager`) takes the exception. Allowed form: a name that says
+  what the code does (`price-rounding.ts`, `PriceRounder`); pure logic shared between features goes
+  in the shared folder under such a name. The word list is shared with Python, Kotlin and Go
+  (`shared/naming/smell-words.mjs`); Java reports the same as `pmd/GenericTypeName` and
+  `pmd/GenericPackageName`. An exception fits only for a name a tool or framework requires.
+- No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
+  presets, both lint engines; tests are exempt). A string of five characters or more with a letter
+  or digit that appears three times or more in a file (a template literal without expressions counts
+  too) is reported from the third use on: name it once as a constant and use the constant. Not
+  counted: import and export sources, `require()`, `import()` and `vi.mock`/`jest.mock` arguments,
+  directives, object, class and enum member keys, the value under a `type`, `kind`, `tag` or
+  `variant` key, a string compared with `===`, `!==`, `==` or `!=` to a member named `type`, `kind`,
+  `tag` or `variant` (`node.type === "Identifier"`), the elements of an array literal or a
+  `new Set([...])` whose `includes` or `has` is called with such a member, the `"error"` severity of
+  a lint config entry (`"nitpicker/rule": "error"` or `["error", { ... }]` under a key that holds a
+  `/` or `-`), computed member keys (`row["customer_id"]`), the left side of `in`, `case` labels,
+  string literal types, JSX attribute values, strings inside a `className` expression or a `cn`,
+  `clsx`, `classnames` or `twMerge` call, the initializer of a `const` or an enum member, a `typeof`
+  comparison (`typeof x === "undefined"`), decorator arguments, the event name of `on`, `once`,
+  `off`, `emit`, `addListener`, `addEventListener` and their removals, the first argument of a
+  translation call (`t`, `formatMessage`, `getTranslations` and the like), tagged templates, and
+  idiomatic text (encodings, HTTP methods, MIME types, time formats). The lists and the thresholds
+  are shared with the Python, Kotlin and Go counterparts in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs).
+  An exception fits only for text that must stay inline. Java reports the same through PMD
+  `AvoidDuplicateLiterals`, Kotlin as `kotlin-source/RepeatedStringLiteral`, Python and Go as
+  `repeated-string-literal`. Python, Kotlin and Go exempt the discriminant comparison the same way;
+  the membership lists and the lint severity are TypeScript and JavaScript only, because the other
+  presets have no ESLint rule table and test a discriminant through `when` or `match`.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
@@ -700,6 +824,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
+  Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
+  that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
+  `nitpicker/require-process-timeout` cover where the call is made.
 - Time values in one unit meet only values in the same unit (`nitpicker/time-unit-mismatch`, production
   files). Units come from the API (`Date.now()`, `getTime()`, `Date.parse`, `Date.UTC` and `performance.now()`
   in milliseconds, `process.uptime()` in seconds, `process.hrtime.bigint()` in nanoseconds, the JWT claims
@@ -903,6 +1031,17 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   The message says to call the target directly and delete the alias; when the target is `private`,
   `protected` or `#private` and the alias is more visible it says to rename the target to the alias
   name instead. Add an exception for a public alias that must stay.
+- `nitpicker/no-boolean-flag-parameter`: a `boolean` parameter that an exported function or a public
+  class member or a method of an exported object literal branches on (an `if`, `while`, `for`,
+  `switch` or ternary test, or `urgent && run()` as a statement, also through `!`, `&&`, `||` or
+  `=== true`) makes the call `send(order, true)` unreadable. Reported for a parameter typed `boolean`
+  or defaulted to `true` or `false`; the JavaScript preset also reads `@param {boolean}`. Not reported:
+  a parameter that is only passed on, stored or reassigned, an optional parameter (`urgent?: boolean`,
+  the tri-state rule's), a function that is not exported, a `private`, `protected`, `#private`,
+  `override`, getter, setter or constructor member, a member of a class that `extends` or `implements`
+  another type (the supertype dictates the signature), a `static create*` or `valueOf*` factory, a nested function, and the builders `set*`, `with*`,
+  `from*`, `of` and `builder`. The message names two functions, an options object or a union of string
+  literals.
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,

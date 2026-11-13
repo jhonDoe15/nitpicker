@@ -33,3 +33,11 @@ func Describe(order Order) string {
 func Routes() []string {
 	return []string{"api/users", "api/users", "api/users", "50% off", "50% off", "50% off"} // want repeated-string-literal
 }
+
+func Matches(first, second, third Order) bool {
+	return first.Kind == "return label" && second.Kind != "return label" && third.Kind == "return label"
+}
+
+func Ready(first, second, third Order) bool {
+	return first.State == "label printed" || second.State == "label printed" || third.State == "label printed" // want repeated-string-literal
+}
