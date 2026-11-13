@@ -1,6 +1,5 @@
 import { globSync } from 'node:fs';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
   NODE_TEST_OPTIONS_NITPICKER_SETS,
@@ -9,6 +8,7 @@ import {
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
 import { startTestConsole } from '../test-console-run.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import {
   readRun,
   removeTemporary,
@@ -19,7 +19,7 @@ import {
   workerCount,
 } from '../test-run.mjs';
 
-const REPORTER = pathToFileURL(path.join(import.meta.dirname, 'node-test-reporter.mjs')).href;
+const REPORTER = checkoutModuleUrl(new URL('node-test-reporter.mjs', import.meta.url)).href;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
 const SCRIPT_EXTENSIONS = '{cjs,mjs,js,cts,mts,ts}';
 const LOADER_OPTIONS = new Set([
