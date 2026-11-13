@@ -1,19 +1,20 @@
 import path from 'node:path';
-import { runFormat } from '../format/maven-format.mjs';
+import { runFormat } from '../format/maven-format.mts';
 import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mjs';
 import { archunitMatcher } from '../maven-tests.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mjs';
-import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mjs';
+import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
-import { runGuards } from '../guards/maven-guards.mjs';
-import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
-import { runJdeps, runStructure } from '../parallel/module-metrics.mjs';
-import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mjs';
-import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
+import { runGuards } from '../guards/maven-guards.mts';
+import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
+import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
+import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mts';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import type { Classpaths, MavenModule } from '../typed/maven-values.mts';
 
@@ -31,10 +32,16 @@ type SourceTask = {
 };
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
-const LINT_URL = new URL('../maven-lint.mjs', import.meta.url).href;
-const FORMAT_URL = new URL('../format/maven-format.mjs', import.meta.url).href;
-const ERRORPRONE_URL = new URL('../errorprone/maven-errorprone.mjs', import.meta.url).href;
-const METRICS_URL = new URL('../parallel/module-metrics.mjs', import.meta.url).href;
+const LINT_URL = textOf(checkoutModuleUrl(new URL('../maven-lint.mjs', import.meta.url)).href);
+const FORMAT_URL = textOf(
+  checkoutModuleUrl(new URL('../format/maven-format.mjs', import.meta.url)).href,
+);
+const ERRORPRONE_URL = textOf(
+  checkoutModuleUrl(new URL('../errorprone/maven-errorprone.mjs', import.meta.url)).href,
+);
+const METRICS_URL = textOf(
+  checkoutModuleUrl(new URL('../parallel/module-metrics.mjs', import.meta.url)).href,
+);
 
 function runArchitecture(options: ModuleOptions): void {
   const { module, reportDir, tools, classpaths, pinned, springArch, springRoles } = options;
@@ -115,8 +122,6 @@ export function analyzeModule(options: ModuleRequest): unknown {
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = callUntyped(archunitMatcher, module['archunitIncludes']);
   const manifest = moduleManifestOf(options);
-  const spring = fieldOf(manifest, 'spring');
-  const springArch = fieldOf(manifest, 'springArch');
   const runs = callUntyped(readTestRuns, {
     ...options,
     reportDir,
@@ -124,8 +129,13 @@ export function analyzeModule(options: ModuleRequest): unknown {
     testRuntime: classpaths.testRuntime,
   });
   const failure = fieldOf(runs, 'failure');
-  const reactor: unknown = usesReactor(classpaths);
-  const kotlin = analyzeSources({ ...options, reportDir, spring, springArch, reactor });
+  const kotlin = analyzeSources({
+    ...options,
+    reportDir,
+    spring: fieldOf(manifest, 'spring'),
+    springArch: fieldOf(manifest, 'springArch'),
+    reactor: usesReactor(classpaths),
+  });
   if (failure === undefined) {
     callUntyped(runCoverageTools, {
       ...options,
