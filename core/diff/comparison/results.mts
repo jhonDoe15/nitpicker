@@ -26,7 +26,7 @@ export type ReportContext = {
   readonly additionalToolErrors: readonly ReportEntry[];
   readonly comparison: ComparisonShas;
   readonly startedAt: number;
-  readonly configOverrides: unknown[];
+  readonly configOverrides: readonly unknown[];
   readonly policyChanges: unknown;
   readonly policyLoosenings: readonly unknown[];
   readonly notices: readonly unknown[];
