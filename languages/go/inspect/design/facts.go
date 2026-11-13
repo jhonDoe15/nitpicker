@@ -2,6 +2,7 @@ package design
 
 import (
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/calls"
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/chain"
 	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/uses"
 )
 
@@ -45,6 +46,7 @@ type Callable struct {
 	Entry        bool            `json:"entry,omitempty"`
 	Params       []Param         `json:"params,omitempty"`
 	Returns      string          `json:"returns,omitempty"`
+	Forward      *chain.Forward  `json:"forward,omitempty"`
 	Calls        []calls.Call    `json:"calls,omitempty"`
 	ParamUses    []uses.ParamUse `json:"paramUses,omitempty"`
 	ReturnsField string          `json:"returnsField,omitempty"`

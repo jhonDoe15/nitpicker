@@ -4,6 +4,7 @@ import {
   TWO_CALLERS_FILES,
   UNCLOSED_FILES,
 } from './calls-fixtures.mjs';
+import { FORWARDING_FILES, OWNING_HOP_FILES } from './surface-fixtures.mjs';
 import {
   COPYING_FILES,
   ESCAPING_FILES,
@@ -58,6 +59,18 @@ export const SCENARIOS = [
     branch: 'two-callers',
     title: 'passes the same steps in only two callers',
     files: TWO_CALLERS_FILES,
+    expected: [],
+  },
+  {
+    branch: 'forwarding-chain',
+    title: 'reports two hops that pass the same parameters on and return the result unchanged',
+    files: FORWARDING_FILES,
+    expected: ['forwarding-chain internal/api/orders.go descriptive'],
+  },
+  {
+    branch: 'owning-hop',
+    title: 'passes a chain whose middle hop supplies one argument itself',
+    files: OWNING_HOP_FILES,
     expected: [],
   },
 ];
