@@ -2,8 +2,7 @@ import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { Finding } from '../static-checks/shared.mts';
 import { loadDependencyGraph as loadUntypedDependencyGraph } from '../dependency-graph/project-dependency-graph.mjs';
-import { applyAreaExceptions as applyUntypedAreaExceptions } from '../exceptions/area-exceptions.mjs';
-import { withTypeScriptHint as withUntypedTypeScriptHint } from '../hints/tool-failure-hint.mjs';
+import { withTypeScriptHint } from '../hints/tool-failure-hint.mts';
 import {
   prepareSnapshotDependencies as prepareUntypedSnapshotDependencies,
   removeSnapshotDependencies as removeUntypedSnapshotDependencies,
@@ -49,11 +48,6 @@ export type SnapshotDependencyRequest = {
 
 export const loadDependencyGraph: (request: DependencyGraphRequest) => CruiseReport =
   loadUntypedDependencyGraph;
-
-export const applyAreaExceptions: (findings: readonly Finding[]) => Finding[] =
-  applyUntypedAreaExceptions;
-
-export const withTypeScriptHint: (failure: unknown) => Error = withUntypedTypeScriptHint;
 
 export const sharedReachPath: (
   violation: CruiseViolation,

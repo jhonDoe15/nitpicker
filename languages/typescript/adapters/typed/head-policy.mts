@@ -20,6 +20,7 @@ export type Layout = {
   readonly exclude: readonly string[];
   readonly graphRoots: readonly string[];
   readonly sourceRoots: readonly string[];
+  readonly javascript: boolean;
   isExcluded(relativePath: string): boolean;
   readonly isSourceFile: (relativePath: string) => boolean;
   readonly isRunnableTestFile: (relativePath: string) => boolean;

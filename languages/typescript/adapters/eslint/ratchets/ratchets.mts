@@ -1,7 +1,9 @@
 import type TypeScript from 'typescript';
 import { typescriptApi } from '../../typed/typescript-program.mts';
 import { nodeChain } from '../typed/syntax.mts';
-import { type EslintFinding, growthAdviceFor, metricGrowth } from '../typed/engine.mts';
+import type { EslintFinding } from '../typed/engine.mts';
+import { growthAdviceFor } from '../../hints/growth-advice.mts';
+import { metricGrowth } from '../../hints/eslint-routes.mts';
 
 export type Metric = { readonly value: number; readonly label: string };
 

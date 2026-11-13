@@ -1,5 +1,11 @@
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { kindOfTypeName } from './types.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../typed/typescript-program.mts';
+import type { Kind } from './kinds.mts';
+import { kindOfTypeName } from './types.mts';
+
+type Expression = TypeScript.Expression;
+
+const ts = typescriptApi();
 
 const ARRAY_PRODUCING_METHODS = new Set([
   'concat',
@@ -23,7 +29,7 @@ const ARRAY_PRODUCING_STATICS = new Set([
   'Object.values',
 ]);
 
-export function unwrapExpression(expression) {
+export function unwrapExpression(expression: Expression): Expression {
   const chain = [expression];
   for (const current of chain) {
     if (
@@ -36,10 +42,10 @@ export function unwrapExpression(expression) {
       chain.push(current.expression);
     }
   }
-  return chain.at(-1);
+  return chain.at(-1) ?? expression;
 }
 
-export function kindOfExpression(expression) {
+export function kindOfExpression(expression: Expression): Kind | undefined {
   const unwrapped = unwrapExpression(expression);
   if (ts.isArrayLiteralExpression(unwrapped)) {
     return 'array';
@@ -53,7 +59,7 @@ export function kindOfExpression(expression) {
   return ts.isCallExpression(unwrapped) ? kindOfCall(unwrapped) : undefined;
 }
 
-function kindOfCall(call) {
+function kindOfCall(call: TypeScript.CallExpression): Kind | undefined {
   const callee = call.expression;
   if (!ts.isPropertyAccessExpression(callee)) {
     return undefined;
@@ -75,7 +81,7 @@ function kindOfCall(call) {
   return rootIdentifier(callee) === 'z' ? 'schema' : undefined;
 }
 
-function rootIdentifier(expression) {
+function rootIdentifier(expression: Expression): string | undefined {
   const chain = [expression];
   for (const current of chain) {
     if (ts.isPropertyAccessExpression(current) || ts.isCallExpression(current)) {
@@ -83,5 +89,5 @@ function rootIdentifier(expression) {
     }
   }
   const root = chain.at(-1);
-  return ts.isIdentifier(root) ? root.text : undefined;
+  return root !== undefined && ts.isIdentifier(root) ? root.text : undefined;
 }

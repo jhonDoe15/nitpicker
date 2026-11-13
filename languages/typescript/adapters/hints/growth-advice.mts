@@ -1,7 +1,9 @@
 const NO_THROW_GROWTH_FORM =
   'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.';
 
-const GROWTH_ADVICE = new Map([
+type GrowthAdvice = { readonly growthAdvice: string; readonly growthAllowedForm: string };
+
+const GROWTH_ADVICE = new Map<string, GrowthAdvice>([
   [
     'nitpicker/no-throw',
     {
@@ -12,6 +14,6 @@ const GROWTH_ADVICE = new Map([
 ]);
 
 /** The ratchet fields that tell a count rule what to do when its count grows; undefined for other rules. */
-export function growthAdviceFor(ruleId) {
+export function growthAdviceFor(ruleId: string): GrowthAdvice | undefined {
   return GROWTH_ADVICE.get(ruleId);
 }
