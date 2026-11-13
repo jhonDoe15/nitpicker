@@ -210,6 +210,8 @@ as the [README](../README.md) describes.
 npx nitpicker
 ```
 
+[Worked examples](examples.md) shows this and the other common runs with what they print.
+
 Run it from anywhere inside your project. A TypeScript project needs no configuration; for any
 other language, `npx nitpicker init` writes the one line it needs (see
 [Set up with `nitpicker init`](#set-up-with-nitpicker-init)).
@@ -830,12 +832,14 @@ nitpicker rules [--preset <name>] [--tool <name>]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
-- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). It
+  filters what is listed, not what runs: every analyzer still runs, so use `--analyzer` to run less.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
   [JSON output](#json-output)).
-- `--output <dir>`: where reports go.
+- `--output <dir>`: where reports go. A relative `<dir>` is relative to the project (the directory
+  that holds `package.json` or `nitpicker.config.json`), not to the current folder.
 - `--shard-count <n>`, `--shard-index <i>` and `--defer-exit`: run one shard of a split run; see
   [Sharding in CI](#sharding-in-ci).
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
