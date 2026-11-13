@@ -19,12 +19,14 @@ from silent_tests.shapes import (
     invoked,
     is_irrefutable,
     is_suppress,
+    literal_tables,
     nested_callables,
 )
 from syntax.folding import Folder
 from syntax.walk import if_chain
 
 ASSERT, FAIL, SKIP = "assert", "fail", "skip"
+LOOP_KINDS = {"for", "while", "comprehension", "subTest"}
 SKIP_CALLS = {"pytest.skip", "pytest.xfail", "pytest.importorskip", "pytest.exit"}
 START = (None, None, frozenset())
 
@@ -34,9 +36,11 @@ class Scan:
         self.aliases = context.aliases
         self.helpers = helpers
         self.folder = Folder(context.tree, context.aliases)
-        self.local = set()
-        self.methods = set()
+        self.tables = literal_tables(context.tree)
+        self.local = {}
+        self.methods = {}
         self.nested = {}
+        self.loops = {}
 
 
 def classify(node, scan):
@@ -119,7 +123,7 @@ def children(node, state, scan):
         return match_children(node, state, scan)
     if isinstance(node, ast.ExceptHandler) and node.name:
         caught = caught | {node.name}
-    construct = construct_kind(node)
+    construct = construct_kind(node, scan.tables)
     if construct is not None and kind is None:
         kind, outer = construct, node
     inner = (kind, outer, caught)
@@ -194,6 +198,8 @@ def analyze(function, scan):
             hidden = disguised(node) if kind == ASSERT and state[0] is None else None
             if hidden:
                 records.append((ASSERT, hidden, node, node, state[2]))
+            if isinstance(node, ast.Call):
+                records.extend(helper_loops(node, scan))
             if not isinstance(node, ast.With):
                 continue
         if isinstance(node, ast.Call):
@@ -209,9 +215,32 @@ def analyze(function, scan):
     return records
 
 
+def helper_of(call, scan):
+    func = call.func
+    if isinstance(func, ast.Name):
+        return scan.local.get(func.id)
+    if isinstance(func, ast.Attribute) and is_self(func.value):
+        return scan.methods.get(func.attr)
+    return None
+
+
+def helper_loops(call, scan):
+    target = helper_of(call, scan)
+    if target is None:
+        return []
+    key = id(target)
+    if key not in scan.loops:
+        scan.loops[key] = []
+        saved = scan.nested
+        found = analyze(target, scan)
+        scan.nested = saved
+        scan.loops[key] = [record for record in found if record[1] in LOOP_KINDS]
+    return scan.loops[key]
+
+
 def asserting_names(nodes, scan):
     return {
-        function.name
+        function.name: function
         for function in nodes
         if isinstance(function, DEFINITIONS)
         and not is_test_function(function)
@@ -227,4 +256,4 @@ def local_scan(context, helpers):
 
 
 def methods_of(owner, scan):
-    return asserting_names(owner.body, scan) if owner is not None else set()
+    return asserting_names(owner.body, scan) if owner is not None else {}

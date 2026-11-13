@@ -22,6 +22,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
   (`nitpicker/no-assertion-in-loop`). The rules of the other pages (`for...of` only, no `.then()`, no `as`) apply
   to tests too.
+- Run the function a helper returns (`nitpicker/no-dropped-test-callback`): `run(check(ctx))` or `check(ctx)()`,
+  not a bare `check(ctx);` statement or `run((context) => check(ctx))` when `check` returns a function.
 - Assert the value, not that something is there (`nitpicker/no-weak-assertion`): no `not.toBe(null)`,
   `expect(x.length).toBeGreaterThan(0)`, `assert.ok(x.length)` or `toHaveBeenCalledWith(expect.anything())`
   as the whole check; assert the exact value, contents or length and the call's arguments. `assert(x != null)`

@@ -18,10 +18,25 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
+- A `close()`, `@AfterEach` or `@PreDestroy` method that releases several resources uses one try-with-resources or
+  `try`/`finally` per release, never `a.close(); b.close();` in sequence (`pmd/CleanupSkippedOnFailure`).
+- A `close()` that clears a map of pending futures completes every entry first
+  (`pending.values().forEach(f -> f.completeExceptionally(...))`), so no caller waits forever
+  (`pmd/PendingFuturesNotFailedOnClose`).
+- A class that creates a `ScheduledExecutorService` or `Timer` shuts it down in `close()` (`shutdown()` then
+  `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
+- A `CompletableFuture` field returned on later calls is reset when the attempt fails
+  (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
+- A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the
+  request ends, or is a bounded cache (`pmd/UnboundedCollectionField`).
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
   (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
+- Waits for other work have a deadline: `future.get(30, TimeUnit.SECONDS)`, `latch.await(30, TimeUnit.SECONDS)`,
+  `thread.join(30_000)`, `future.orTimeout(30, TimeUnit.SECONDS).join()`, and `mono.block(Duration.ofSeconds(30))`
+  (also `blockOptional`, `blockFirst`, `blockLast`); never the no-argument form
+  (`pmd/UnboundedWait`, `pmd/ReactorBlockWithoutTimeout`; a command's `main` that waits for its work takes an exception).
 - HTTP calls: every request has a deadline. `HttpRequest.newBuilder(uri).timeout(...)`,
   `setReadTimeout` on an `HttpURLConnection`, `setDefaultRequestConfig(...)` on an Apache client
   builder, `readTimeout` on a JAX-RS `ClientBuilder`; not `URL.openStream()` or
@@ -37,6 +52,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Build shareable objects once: an `ObjectMapper`, `Gson`, `JAXBContext`, `ValidatorFactory` or
   `DateTimeFormatter.ofPattern("...")` goes in a `static final` constant, a final field or a `@Bean`,
   not inside a method that runs per call (`pmd/ReusableObjectPerCall`).
+- Database queries have a deadline: with a database server in `spring.datasource.url`, set
+  `spring.jpa.properties.jakarta.persistence.query.timeout`, `spring.transaction.default-timeout`,
+  `spring.jdbc.template.query-timeout` or a driver `socketTimeout` (`spring/datasource-without-timeout`).
 - Resources: try-with-resources for anything `Closeable`, also one used once: not
   `resource.getInputStream().readAllBytes()` or `load(new JarFile(root))`
   (`pmd/UnclosedInlineResource`). No `finally` that returns or throws.

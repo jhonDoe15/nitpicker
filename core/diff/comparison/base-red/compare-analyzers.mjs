@@ -6,7 +6,14 @@ import {
   TESTS_FAILED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
-import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
+import {
+  baseFailuresOf,
+  baseNoteOf,
+  mutationFailuresOf,
+  redBaseAnalyzers,
+  unknownMutantsFor,
+  unknownOnBaseFor,
+} from './unknown-base.mjs';
 
 export function compareAnalyzers(context) {
   const { analyzers, baseRun, headRun, toolErrors } = context;
@@ -108,19 +115,36 @@ function blocksComparison(error, name, stopped) {
   return error.rule !== COMPILE_FAILED_SKIPPED_RULE && !baseTestsFailed;
 }
 
+function eitherOf(first, second) {
+  return first === undefined || second === undefined
+    ? (first ?? second)
+    : (finding) => first(finding) || second(finding);
+}
+
+function unknownOnBaseOf({ name, baseRun, touchedCode, unknownFailures }) {
+  return eitherOf(
+    unknownFailures === undefined ? undefined : unknownOnBaseFor(unknownFailures, touchedCode),
+    unknownMutantsFor(mutationFailuresOf(baseRun.reports.get(name)), touchedCode),
+  );
+}
+
+function withoutUnmeasuredMutants(baseFindings, { name, headRun }) {
+  const unmeasured = unknownMutantsFor(mutationFailuresOf(headRun.reports.get(name)));
+  return unmeasured === undefined
+    ? baseFindings
+    : baseFindings.filter((finding) => !unmeasured(finding));
+}
+
 function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors, unknownFailures } = context;
+  const { name, baseFindings, headFindings, toolErrors } = context;
   try {
     const result = compareFindings({
-      baseFindings,
+      baseFindings: withoutUnmeasuredMutants(baseFindings, context),
       headFindings,
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       touchedCode: context.touchedCode,
-      unknownOnBase:
-        unknownFailures === undefined
-          ? undefined
-          : unknownOnBaseFor(unknownFailures, context.touchedCode),
+      unknownOnBase: unknownOnBaseOf(context),
     });
     return {
       ...result,
