@@ -6,20 +6,10 @@ import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/
 import { listNames } from '../../../shared/messages/messages.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { describePackageManager } from '../detection/package-manager.mjs';
-import { nodePeerNeeds, runnerPeers } from '../peers/node-peers.mjs';
-import { installCommand } from '../peers/peer-plan.mjs';
+import { type PeerNeeds, nodePeerNeeds, runnerPeers } from '../peers/node-peers.mts';
+import { installCommand } from '../peers/peer-plan.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-
-type Outdated = { readonly name: string; readonly installed: string; readonly range: string };
-
-type PeerNeeds = {
-  readonly add: readonly string[];
-  readonly uninstalled: readonly string[];
-  readonly absent: readonly string[];
-  readonly outdated: readonly Outdated[];
-};
-
-type PackageManager = { readonly install: string; readonly add: string };
+import type { PackageManager } from '../init-types.mts';
 
 type PeerRun = {
   readonly projectRoot: string;
@@ -30,16 +20,9 @@ type PeerRun = {
 
 const TYPESCRIPT = 'typescript';
 
-const peerNeedsOf: (
-  projectRoot: string,
-  names: readonly string[],
-  options: { readonly loadedFrom: Record<string, string> },
-) => PeerNeeds = nodePeerNeeds;
-const peersOfRunner: (runner: string) => readonly string[] = runnerPeers;
 const managerOf: (projectRoot: string) => PackageManager = describePackageManager;
 const runnerOf: (projectRoot: string, configured: unknown) => { readonly runner?: unknown } =
   testRunnerFor;
-const commandOf: (installer: string, requirements: readonly string[]) => string = installCommand;
 
 function neededPeers(
   projectRoot: string,
@@ -56,7 +39,7 @@ function neededPeers(
   const runner = runsTests ? runnerOf(projectRoot, configuredRunner).runner : undefined;
   return [
     ...(needsTypeScript ? [TYPESCRIPT] : []),
-    ...(runner === undefined ? [] : peersOfRunner(textOf(runner))),
+    ...(runner === undefined ? [] : runnerPeers(textOf(runner))),
   ];
 }
 
@@ -71,7 +54,7 @@ function problems(projectRoot: string, { absent, outdated }: PeerNeeds): string[
       : [`${textOf(listNames(absent))} ${verb(absent)} not installed in ${projectRoot}`]),
     ...outdated.map(
       ({ name, installed, range }) =>
-        `${name} ${installed} is installed and nitpicker needs ${range}`,
+        `${name} ${textOf(installed)} is installed and nitpicker needs ${textOf(range)}`,
     ),
   ];
 }
@@ -86,13 +69,13 @@ function remedy(needs: PeerNeeds, manager: PackageManager): string {
     uninstalled.length === 0
       ? ''
       : ` (it also installs ${textOf(listNames(uninstalled))} from package.json)`;
-  return `${commandOf(manager.add, add)}${declared}`;
+  return `${installCommand(manager.add, add)}${declared}`;
 }
 
 export function assertProjectPeers(run: PeerRun): void {
   const { projectRoot, analyzers, configuredRunner, packageRoot = PACKAGE_ROOT } = run;
   const names = neededPeers(projectRoot, analyzers, configuredRunner);
-  const needs = peerNeedsOf(projectRoot, names, { loadedFrom: { [TYPESCRIPT]: packageRoot } });
+  const needs = nodePeerNeeds(projectRoot, names, { loadedFrom: { [TYPESCRIPT]: packageRoot } });
   if (needs.add.length === 0 && needs.uninstalled.length === 0) {
     return;
   }

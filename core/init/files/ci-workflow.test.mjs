@@ -11,7 +11,7 @@ import {
   placeWorkflow,
   renderWorkflow,
   workflowPath,
-} from './ci-workflow.mjs';
+} from './ci-workflow.mts';
 
 const project = useProjects();
 const VERSION = '1.2.3';

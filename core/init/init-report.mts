@@ -1,24 +1,8 @@
 import { listNames } from '../../shared/messages/messages.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import type { InitProject as Project, Peers } from './init-types.mts';
 
-type PackageManager = { readonly run: string; readonly install: string; readonly add: string };
-
-export type Project = {
-  readonly family: string;
-  readonly preset: string;
-  readonly summary: string;
-  readonly notes: readonly string[];
-  readonly packageManager?: PackageManager;
-};
-
-export type Peers = {
-  readonly missing: readonly string[];
-  readonly uninstalled: readonly string[];
-  readonly installedOnly: readonly string[];
-  readonly command?: string;
-  readonly advice?: string;
-  readonly requirements?: string;
-};
+export type { InitProject as Project, Peers } from './init-types.mts';
 
 export type PlacedFile = {
   readonly status: string;
@@ -28,7 +12,7 @@ export type PlacedFile = {
   readonly notes?: readonly string[];
 };
 
-export type AgentsResult = { readonly status: string; readonly relative: string };
+type AgentsResult = { readonly status: string; readonly relative: string };
 
 export type Placed = {
   readonly project: Project;
