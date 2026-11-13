@@ -1,4 +1,11 @@
 {
-  "languages/go/adapters/e2e/go-preset-gates.e2e.test.mjs": 40,
-  "languages/go/adapters/e2e/go-preset-setups.e2e.test.mjs": 30
+  "languages/go/adapters/e2e/go-preset-dead-code.e2e.test.mjs": 161,
+  "languages/go/adapters/e2e/go-preset-facts.e2e.test.mjs": 36,
+  "languages/go/adapters/e2e/go-preset-gates.e2e.test.mjs": 175,
+  "languages/go/adapters/e2e/go-preset-linters.e2e.test.mjs": 96,
+  "languages/go/adapters/e2e/go-preset-reuse.e2e.test.mjs": 35,
+  "languages/go/adapters/e2e/go-preset-setups.e2e.test.mjs": 293,
+  "languages/go/adapters/e2e/test-checks/go-preset-coverage.e2e.test.mjs": 69,
+  "languages/go/adapters/e2e/test-checks/go-preset-mutation.e2e.test.mjs": 65,
+  "languages/go/adapters/e2e/test-checks/go-preset-races.e2e.test.mjs": 31
 }

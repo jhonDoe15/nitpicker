@@ -272,3 +272,47 @@ the suite has grown from 79 to 261 cases since then. As for Java, the lower shar
 maintainers' choice to stay within the concurrent job limit, and it costs wall time per run (the
 slowest shard is 39 minutes, under the 60-minute job limit but with little margin: the maximum
 was 46 minutes). Setup is about 2 percent of a shard job.
+
+### Python: 2 shards, 136 files, 1,668 cases
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Slowest shard job | 556 s | 489 to 632 s |
+| Median shard job | 522 s | 468 to 548 s |
+| Runner minutes per run | 17.4 | 15.6 to 18.3 |
+| Setup overhead per shard job | 54 s | 47.5 to 58.5 s |
+| Queue delay per shard job | 182 s | 3 to 271 s |
+
+Setup is about 10 percent of a shard job: roughly 19 seconds for the three Python versions, 12 for
+the constrained tool install, 3 for Poetry and 15 for `npm ci`. The sequencer plans 903
+seconds of test time per shard (two workers each), against the measured 470 to 580 seconds of
+test step. Four of the 135 weighted files had drifted by more than a quarter and ten seconds and five
+files had no weight; all are refreshed or added. The earlier four-shard sample (127 to 193 seconds per
+shard, 760 runner-seconds) came from a smaller suite.
+
+Outcome against the target of two to four minutes: not met. The slowest shard takes about nine
+minutes, and with two shards the runner minutes (17.4) are above the four-shard run (12.7) because
+the suite has grown. The Python weights shown above hold for any shard count, so raising it again
+is a one-line matrix change.
+
+The uv cache is not added. The only cache in the workflow is the pip cache of `setup-python`,
+which holds the constrained tool wheels (the 12-second install step); the environments of the sample
+projects are built by `uv` inside the test step, and the logs of that step do not separate download
+time from build and test time, so no measurement shows what a `~/.cache/uv` cache would save. It could
+save at most the wheel downloads of a test step of about 520 seconds per shard, while each shard
+would pay a restore and a save step (about 10 seconds for the Gradle one) and a cache that is
+stored per shard and per constraints hash. Without a measured saving that exceeds this cost the
+cache is not worth carrying. To measure it, run a shard once with `UV_CACHE_DIR` on an
+`actions/cache` path and compare the test step of a warm run against this table.
+
+### Go: 1 shard, 9 files
+
+| Measure | Median | Range |
+| --- | --- | --- |
+| Shard job | 382 s | 318 to 416 s |
+| Runner minutes per run | 6.4 | 5.3 to 6.9 |
+| Setup overhead per job | 31.5 s | 29 to 40 s |
+| Queue delay | 464 s | 59 to 1,490 s |
+
+Only two of the nine Go files had a weight (30 and 40 seconds); the profile now holds the measured
+medians of all nine (31 to 293 seconds). It does not change the plan while there is one shard.
