@@ -3,6 +3,7 @@ import { ALL_RECIPES } from '../engine/all-recipes.mjs';
 import { defineRecipes } from '../engine/recipes.mjs';
 import { DEFAULT_FIX_SOURCES, fixStatusFor, withFixStatus } from './fix-status.mjs';
 import { FIX_PLAN_RULES } from './fix-plan-rules.mjs';
+import { readReferenceEntries } from '../../../shared/reference/store.mjs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { fixText } from '../../../shared/reference/fix-status.mjs';
 
@@ -71,8 +72,27 @@ describe('fixStatusFor', () => {
 });
 
 describe('the registered fixers', () => {
-  it('has no fix plan rules until the plans exist', () => {
-    expect(FIX_PLAN_RULES).toEqual([]);
+  it('lists the rules of the fix plan builders', () => {
+    const found = FIX_PLAN_RULES.find(
+      ({ tool, rule }) => tool === 'structure' && rule === 'function-lines-limit',
+    );
+
+    expect(found?.presets).toEqual(['typescript', 'javascript', 'java', 'kotlin', 'python', 'go']);
+    expect(withFixStatus(entry('structure', 'function-lines-limit')).fix).toEqual({
+      java: 'plan',
+      kotlin: 'plan',
+    });
+  });
+
+  it('marks every rule of a plan builder with a plan in each of its presets, unless a fix beats it', () => {
+    const unmarked = readReferenceEntries()
+      .filter((candidate) =>
+        FIX_PLAN_RULES.some(({ tool, rule }) => tool === candidate.tool && rule === candidate.rule),
+      )
+      .filter((candidate) => Object.values(withFixStatus(candidate).fix).includes('none'))
+      .map(({ id }) => id);
+
+    expect(unmarked).toEqual([]);
   });
 
   it('gives every recipe rule an automatic or review status in the reference', () => {

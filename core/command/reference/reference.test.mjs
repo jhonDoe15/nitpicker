@@ -76,7 +76,7 @@ describe('nitpicker explain', () => {
         'Analyzers: structure (TypeScript and JavaScript); java (Java); kotlin (Kotlin); python (Python)',
         'Why it is on: Long functions hide several jobs in one place; agents grow them instead of splitting them.',
         'Allowed form: Split it into functions named for what each part does and put new code in a new function. A function, file or class already over its limit may be edited as long as the change does not make it worse.',
-        'Fix: None: fix it by hand.',
+        'Fix: Fix plan: nitpicker writes the steps for the finding, and --fix does not rewrite the code.',
         'Threshold: more than 50 lines',
         'Exception: If this is intended, add {"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."} to "exceptions" in nitpicker.config.json.',
         `Checks catalog: ${docsUrl('spec/checks.md')}`,
