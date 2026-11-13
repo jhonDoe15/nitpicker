@@ -154,6 +154,12 @@ Kotlin preset, and `unbounded-wait` runs them in the Python preset for `concurre
 `concurrent.futures.wait` and `as_completed`, and `threading.Thread.join()`. The TypeScript and
 JavaScript presets have no counterpart, since a promise has no blocking wait.
 
+Blocking helpers in async code: `blocking-helper-in-async` (Python, main sources) reports a call from an `async def`
+to a project function that calls `requests`, `httpx`, `urllib.request.urlopen`, `time.sleep`, `os.system` or
+`subprocess.run` (up to three calls deep), unless the helper is offloaded with `asyncio.to_thread` or
+`run_in_executor`; a blocking call written in the async function itself stays with ruff `ASYNC210` to `ASYNC251`.
+The other presets have no helper-aware counterpart.
+
 Time units: `nitpicker/time-unit-mismatch` (production source, in `eslint-lint`) reports time values in
 two different units that meet without a conversion: a `+`, `-` or comparison of seconds with milliseconds
 (or nanoseconds, microseconds, minutes), a value assigned or passed under a name or parameter of another
