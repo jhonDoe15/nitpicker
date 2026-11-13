@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { type ReporterEvent, reportFromEvents } from './node-test-reporter.mts';
+import type { ReporterEvent } from './node-test-report-types.mts';
+import { reportFromEvents } from './node-test-reporter.mts';
 
 const file = path.resolve('test/a.test.ts');
 
