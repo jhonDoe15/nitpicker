@@ -1,6 +1,7 @@
-import { lstat, readdir } from 'node:fs/promises';
+import { type Dirent, lstatSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
 import path from 'node:path';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher } from '../typed/head-policy.mts';
 
 const GLOB_CHARACTER = /[*?{[\]()!+@|]/u;
 const SKIPPED_DIRECTORIES = new Set(['node_modules', '.git']);
@@ -10,6 +11,8 @@ type PatternPlan = {
   readonly maxDepth: number;
   readonly matcher: { test(value: string): boolean };
 };
+
+type DirectoryFrame = { readonly relative: string; readonly depth: number };
 
 function patternPlan(pattern: string): PatternPlan {
   const normalized = pattern.replace(/^\.\//u, '');
@@ -24,34 +27,51 @@ function patternPlan(pattern: string): PatternPlan {
   };
 }
 
-async function isDirectory(projectRoot: string, base: string): Promise<boolean> {
+function isDirectory(projectRoot: string, base: string): boolean {
   const segments = base.length === 0 ? [] : base.split('/');
   for (const [index, segment] of segments.entries()) {
-    if (SKIPPED_DIRECTORIES.has(segment)) return false;
+    if (SKIPPED_DIRECTORIES.has(segment)) {
+      return false;
+    }
     const directory = path.resolve(projectRoot, ...segments.slice(0, index + 1));
-    if (!directory.startsWith(projectRoot + path.sep)) return false;
-    const entry = await lstat(directory).catch((error: NodeJS.ErrnoException) => {
-      if (error.code === 'ENOENT' || error.code === 'ENOTDIR') return undefined;
-      throw error;
-    });
-    if (entry?.isDirectory() !== true) return false;
+    if (!directory.startsWith(projectRoot + path.sep)) {
+      return false;
+    }
+    if (lstatSync(directory, { throwIfNoEntry: false })?.isDirectory() !== true) {
+      return false;
+    }
   }
   return true;
 }
 
+function subdirectories(
+  entries: readonly Dirent[],
+  { relative, depth }: DirectoryFrame,
+  maxDepth: number,
+): DirectoryFrame[] {
+  if (depth >= maxDepth) {
+    return [];
+  }
+  return entries
+    .filter((entry) => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name))
+    .map((entry) => ({ relative: path.posix.join(relative, entry.name), depth: depth + 1 }));
+}
+
 async function filesForPattern(projectRoot: string, plan: PatternPlan): Promise<string[]> {
-  if (!(await isDirectory(projectRoot, plan.base))) return [];
+  if (!isDirectory(projectRoot, plan.base)) {
+    return [];
+  }
   const files: string[] = [];
   const pending = [{ relative: plan.base, depth: 0 }];
-  for (const { relative, depth } of pending) {
-    const entries = await readdir(path.join(projectRoot, relative), { withFileTypes: true });
-    for (const entry of entries) {
-      const file = path.posix.join(relative, entry.name);
-      if (entry.isFile() && plan.matcher.test(file)) files.push(file);
-      if (entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name) && depth < plan.maxDepth) {
-        pending.push({ relative: file, depth: depth + 1 });
-      }
-    }
+  for (const frame of pending) {
+    const entries = await readdir(path.join(projectRoot, frame.relative), { withFileTypes: true });
+    files.push(
+      ...entries
+        .filter((entry) => entry.isFile())
+        .map((entry) => path.posix.join(frame.relative, entry.name))
+        .filter((file) => plan.matcher.test(file)),
+    );
+    pending.push(...subdirectories(entries, frame, plan.maxDepth));
   }
   return files;
 }
@@ -63,5 +83,5 @@ export async function matchingFiles(
   const matches = await Promise.all(
     patterns.map((pattern) => filesForPattern(projectRoot, patternPlan(pattern))),
   );
-  return [...new Set(matches.flat())].toSorted();
+  return [...new Set(matches.flat())].toSorted((left, right) => left.localeCompare(right));
 }

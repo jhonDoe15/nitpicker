@@ -5,6 +5,10 @@ import {
   usesLayeredPrettier as untypedUsesLayeredPrettier,
 } from '../../preset/head-policy.mjs';
 import { layoutTransformFor as untypedLayoutTransformFor } from '../../preset/tool-configs.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
+
+export const globMatcher: (pattern: string) => { test(value: string): boolean } =
+  untypedGlobMatcher;
 
 export type Layout = {
   readonly exclude: readonly string[];
