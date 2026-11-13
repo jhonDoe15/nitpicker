@@ -189,7 +189,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     analyzers: profiled.analyzers,
     quick: profiled.quick,
     captureHead: stagedCapture(cli, currentProjectRoot),
-    setupErrors: emptySourcesErrors(config, currentProjectRoot, headPolicy),
+    setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
   const selected = selectFrom(setup.analyzers, options.analyzerNames);
