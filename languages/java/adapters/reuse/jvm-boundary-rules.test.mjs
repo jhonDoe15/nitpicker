@@ -20,7 +20,7 @@ afterEach(() => {
 });
 
 function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'jvm-shared-usage-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'jvm-boundary-rules-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
@@ -183,5 +183,92 @@ describe('shared-used-by-one-feature on Java and Kotlin', () => {
       sharedUsage(files, { policy: { exceptions: [{ rule: RULE, paths: [MONEY] }] } }),
     ).toEqual([]);
     expect(sharedUsage(files, { policy: { layout: { featureRoots: [] } } })).toEqual([]);
+  });
+});
+
+const BYPASS = 'public-alternative-bypass';
+const INTERNAL_INVOICE = `${KOTLIN_ROOT}/shop/billing/internal/Invoice.kt`;
+const BILLING_ALIASES = `${KOTLIN_ROOT}/shop/billing/Aliases.kt`;
+const ALIASED_BILLING = {
+  [INTERNAL_INVOICE]: 'package shop.billing.internal\n\nclass Invoice(val cents: Long)\n',
+  [BILLING_ALIASES]: 'package shop.billing\n\ntypealias Invoice = shop.billing.internal.Invoice\n',
+};
+
+function bypasses(files) {
+  return readJvmReuseFindings(project(files), { projects: SINGLE, kotlin: true })
+    .filter(({ rule }) => rule === BYPASS)
+    .map(({ tool, path: file, identity, allowedForm }) => [tool, file, identity, allowedForm]);
+}
+
+describe('public-alternative-bypass on Kotlin type aliases', () => {
+  it('reports Kotlin code outside the package that names the class the alias stands for', () => {
+    const cart = `${KOTLIN_ROOT}/shop/orders/Cart.kt`;
+
+    expect(
+      bypasses({
+        ...ALIASED_BILLING,
+        [cart]:
+          'package shop.orders\n\nimport shop.billing.internal.Invoice\n\nfun bill() = Invoice(1)\n',
+        [`${KOTLIN_ROOT}/shop/orders/Checkout.kt`]:
+          'package shop.orders\n\nimport shop.billing.Invoice\n\nfun pay() = Invoice(2)\n',
+        [`${KOTLIN_ROOT}/shop/billing/Refund.kt`]:
+          'package shop.billing\n\nimport shop.billing.internal.Invoice\n\nfun refund() = Invoice(3)\n',
+      }),
+    ).toEqual([
+      ['entry-points', cart, `target:${INTERNAL_INVOICE}`, 'Import Invoice from shop.billing.'],
+    ]);
+  });
+
+  it('leaves Java code, which cannot use an alias, and private or generic aliases alone', () => {
+    const files = {
+      [INTERNAL_INVOICE]: 'package shop.billing.internal\n\nclass Invoice(val cents: Long)\n',
+      [BILLING_ALIASES]: [
+        'package shop.billing',
+        '',
+        'import shop.billing.internal.Invoice',
+        '',
+        'private typealias Hidden = shop.billing.internal.Invoice',
+        'internal typealias Inside = shop.billing.internal.Invoice',
+        'typealias Invoices = List<Invoice>',
+        '',
+      ].join('\n'),
+      [`${KOTLIN_ROOT}/shop/orders/Cart.kt`]:
+        'package shop.orders\n\nimport shop.billing.internal.Invoice\n\nfun bill() = Invoice(1)\n',
+    };
+
+    expect(bypasses(files)).toEqual([]);
+    expect(
+      bypasses({
+        ...ALIASED_BILLING,
+        [`${JAVA_ROOT}/shop/orders/Cart.java`]: javaClass(
+          'shop.orders',
+          'Cart',
+          '  Object bill() { return new Invoice(1); }\n',
+          'import shop.billing.internal.Invoice;\n\n',
+        ),
+      }),
+    ).toEqual([]);
+  });
+
+  it('names a renamed alias, and leaves an alias of a class in its own package alone', () => {
+    const cart = `${KOTLIN_ROOT}/shop/orders/Cart.kt`;
+    const importer =
+      'package shop.orders\n\nimport shop.billing.internal.Invoice\n\nfun bill() = Invoice(1)\n';
+    const renamed = {
+      ...ALIASED_BILLING,
+      [BILLING_ALIASES]: 'package shop.billing\n\ntypealias Bill = shop.billing.internal.Invoice\n',
+      [cart]: importer,
+    };
+    const sameFolder = {
+      [INTERNAL_INVOICE]: ALIASED_BILLING[INTERNAL_INVOICE],
+      [`${KOTLIN_ROOT}/shop/billing/internal/Names.kt`]:
+        'package shop.billing.internal\n\ntypealias Bill = Invoice\n',
+      [cart]: importer,
+    };
+
+    expect(bypasses(renamed).map(([, , , allowedForm]) => allowedForm)).toEqual([
+      'Import Bill from shop.billing.',
+    ]);
+    expect(bypasses(sameFolder)).toEqual([]);
   });
 });
