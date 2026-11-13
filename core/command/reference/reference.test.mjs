@@ -360,9 +360,11 @@ describe('nitpicker rules', () => {
       'ruff-format/format',
     ]);
     expect(listedIds(run(['rules', '--fixable', '--tool', 'checkstyle']).stdout)).toEqual([]);
-    expect(
-      listedIds(run(['rules', '--preset', 'kotlin', '--fixable', '--tool', 'detekt']).stdout),
-    ).toEqual(['detekt/detekt.style.NewLineAtEndOfFile']);
+    const detekt = listedIds(
+      run(['rules', '--preset', 'kotlin', '--fixable', '--tool', 'detekt']).stdout,
+    );
+    expect(detekt.includes('detekt/detekt.style.NewLineAtEndOfFile')).toBe(true);
+    expect(detekt.includes('detekt/detekt.style.MagicNumber')).toBe(false);
   });
 
   it('fails on an unknown preset and on a bad option, and prints usage for --help', () => {

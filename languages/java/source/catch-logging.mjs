@@ -57,7 +57,7 @@ function rethrows(body, name) {
   );
 }
 
-export function catchLogViolations(code, language, { reportedElsewhere = new Set() } = {}) {
+export function catchLogCalls(code, language, { reportedElsewhere = new Set() } = {}) {
   const blocks = catchBlocks(code, language);
   return logCalls(code)
     .filter(isFailureCall)
@@ -68,6 +68,12 @@ export function catchLogViolations(code, language, { reportedElsewhere = new Set
         reportedElsewhere.has(block.open) ||
         passesException(call, block.name) ||
         rethrows(code.slice(block.open, block.close), block.name);
-      return handled ? [] : [{ receiver: call.receiver, level: call.level, caught: block.name }];
+      return handled
+        ? []
+        : [{ receiver: call.receiver, level: call.level, caught: block.name, call }];
     });
+}
+
+export function catchLogViolations(code, language, options) {
+  return catchLogCalls(code, language, options).map(({ call, ...violation }) => violation);
 }

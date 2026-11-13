@@ -136,10 +136,24 @@ export function annotationMarkers(scanned) {
     const { index, 2: name } = match;
     const rule = coverageMarker(scanned.code, match);
     if (rule !== undefined) {
-      return [{ rule, offset: index, subject: name }];
+      return [
+        {
+          rule,
+          offset: index,
+          subject: name,
+          end: skipArguments(scanned.code, index + match[0].length),
+        },
+      ];
     }
     return MUTATION_MARKERS.has(name)
-      ? [{ rule: 'MutationIgnoreMarker', offset: index, subject: name }]
+      ? [
+          {
+            rule: 'MutationIgnoreMarker',
+            offset: index,
+            subject: name,
+            end: skipArguments(scanned.code, index + match[0].length),
+          },
+        ]
       : [];
   });
 }
@@ -227,7 +241,14 @@ export function commentedOutCode(scanned) {
     const index = firstCodeLine(lines);
     return index === -1
       ? []
-      : [{ rule: 'CommentedOutCode', offset: group[0].start, subject: lines[index] }];
+      : [
+          {
+            rule: 'CommentedOutCode',
+            offset: group[0].start,
+            subject: lines[index],
+            end: group.at(-1).end,
+          },
+        ];
   });
 }
 

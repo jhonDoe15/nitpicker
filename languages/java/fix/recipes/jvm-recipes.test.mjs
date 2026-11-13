@@ -70,6 +70,43 @@ describe('--fix runs the JVM recipes before the formatter', () => {
       `${KT}/New.kt:1 detekt/detekt.style.NewLineAtEndOfFile (kotlin-final-newline)`,
     ]);
   });
+  it.each(Object.entries(BUILDS))('applies the Kotlin source recipes on %s', (_, build) => {
+    const source = [
+      'package demo',
+      '',
+      'private val NAME = "demo"',
+      '',
+      'fun verify(values: List<String>?, size: Int) {',
+      '    var total = 0',
+      '    if (size < 0) throw IllegalArgumentException("negative")',
+      '    println(total + NAME.length)',
+      '}',
+      '',
+    ].join('\n');
+    const { result, read } = fixTopic(build, { [`${KT}/New.kt`]: source }, { preset: 'kotlin' });
+
+    const lines = read(`${KT}/New.kt`)
+      .split('\n')
+      .map((line) => line.trim());
+
+    expect(lines).toEqual([
+      'package demo',
+      '',
+      'private const val NAME = "demo"',
+      '',
+      'fun verify(values: List<String>?, size: Int) {',
+      'val total = 0',
+      'require(!(size < 0)) { "negative" }',
+      'println(total + NAME.length)',
+      '}',
+      '',
+    ]);
+    expect(result.fixedFindings).toEqual([
+      `${KT}/New.kt:7 detekt/detekt.style.UseRequire (kotlin-use-require)`,
+      `${KT}/New.kt:6 detekt/detekt.style.VarCouldBeVal (kotlin-var-could-be-val)`,
+      `${KT}/New.kt:3 detekt/detekt.style.MayBeConst (kotlin-may-be-const)`,
+    ]);
+  });
   it('fixes nothing in a file outside the source sets', () => {
     const { result, read } = fixTopic(
       BUILDS.gradle,

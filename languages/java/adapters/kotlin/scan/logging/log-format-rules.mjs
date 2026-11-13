@@ -39,7 +39,7 @@ const KINDS = [
   },
 ];
 
-function operands(code, { start, end }) {
+export function operands(code, { start, end }) {
   const parts = [];
   let depth = 0;
   let from = start;

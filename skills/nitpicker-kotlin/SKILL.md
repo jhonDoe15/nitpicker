@@ -101,3 +101,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
+Why each fix recipe rewrites what it does, and what it leaves alone: [SOURCES.md](SOURCES.md).
