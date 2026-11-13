@@ -14,17 +14,21 @@ import {
 } from './declarations/maven-formatter-declarations.mjs';
 import { gradleValue } from './declarations/value-references.mjs';
 
+const PALANTIR_STYLE = 'palantir';
+const GOOGLE_STYLE = 'google';
 const PALANTIR = /palantirjavaformat|palantir-java-format|com\.palantir\.java-format/u;
 const GOOGLE = /googlejavaformat|google-java-format|com\.spotify\.fmt/u;
 const OTHER_FORMATTER = /\b(?:eclipse|prettier)\s*\(/iu;
-const PREFERENCE = ['palantir', 'google', 'none'];
+const PREFERENCE = [PALANTIR_STYLE, GOOGLE_STYLE, 'none'];
 
 function legacyDeclaration(code) {
   const lower = code.toLowerCase();
   if (PALANTIR.test(lower)) {
-    return { formatter: 'palantir' };
+    return { formatter: PALANTIR_STYLE };
   }
-  return GOOGLE.test(lower) ? { formatter: 'google', aosp: GOOGLE_AOSP.test(lower) } : undefined;
+  return GOOGLE.test(lower)
+    ? { formatter: GOOGLE_STYLE, aosp: GOOGLE_AOSP.test(lower) }
+    : undefined;
 }
 
 const GOOGLE_AOSP =
@@ -41,14 +45,14 @@ function stepDeclaration(step, reading) {
     step.chain.some(({ name }) => name === 'aosp') || unquoted(style?.argument ?? '') === 'aosp';
   if (
     step.name === 'palantirjavaformat' &&
-    ['google', 'aosp'].includes(unquoted(style?.argument ?? ''))
+    [GOOGLE_STYLE, 'aosp'].includes(unquoted(style?.argument ?? ''))
   ) {
-    return { formatter: 'google', aosp };
+    return { formatter: GOOGLE_STYLE, aosp };
   }
-  const formatter = step.name === 'palantirjavaformat' ? 'palantir' : 'google';
+  const formatter = step.name === 'palantirjavaformat' ? PALANTIR_STYLE : GOOGLE_STYLE;
   return {
     formatter,
-    aosp: formatter === 'google' && aosp,
+    aosp: formatter === GOOGLE_STYLE && aosp,
     ...stepFormatterDetails(formatter, {
       version: versionValue(step.version, reading),
       formatJavadoc: chainFlag(step, 'formatJavadoc', reading),

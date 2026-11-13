@@ -28,7 +28,7 @@ const MAX_WORKERS = 4;
 export function testTimeouts(
   file?: string,
   policy = readHeadPolicyFile(),
-  { floors = true }: { readonly floors?: boolean } = {},
+  { floors }: { readonly floors: boolean } = { floors: true },
 ): TimeoutLimits {
   return resolveTestTimeouts(policy, {
     file,

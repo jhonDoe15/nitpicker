@@ -23,4 +23,4 @@ export type AreaReport = {
 
 export type AreaResult = Finding[] | AreaReport;
 
-export type TextOutput = { write(text: string): unknown };
+export type { TextOutput } from '../../../../../core/cli-context.mts';

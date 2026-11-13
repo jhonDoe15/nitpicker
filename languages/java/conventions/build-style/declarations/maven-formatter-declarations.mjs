@@ -3,9 +3,11 @@ import { stepFormatterDetails } from '../java-formatter-options.mjs';
 import { flagValue, versionValue } from './formatter-values.mjs';
 import { mavenValue } from './value-references.mjs';
 
+const PALANTIR_STYLE = 'palantir';
+const GOOGLE_STYLE = 'google';
 const MAVEN_FORMATTER_ARTIFACTS = new Map([
-  ['palantir-java-format', { formatter: 'palantir' }],
-  ['google-java-format', { formatter: 'google' }],
+  ['palantir-java-format', { formatter: PALANTIR_STYLE }],
+  ['google-java-format', { formatter: GOOGLE_STYLE }],
 ]);
 
 function descendants(root, name) {
@@ -44,15 +46,15 @@ function spotlessStep(step, reading) {
   const style = styleOf(step);
   if (name === 'googlejavaformat') {
     return {
-      formatter: 'google',
+      formatter: GOOGLE_STYLE,
       aosp: style === 'aosp',
-      ...mavenDetails(step, 'google', reading),
+      ...mavenDetails(step, GOOGLE_STYLE, reading),
     };
   }
   if (name === 'palantirjavaformat') {
-    return style === 'google' || style === 'aosp'
-      ? { formatter: 'google', aosp: style === 'aosp' }
-      : { formatter: 'palantir', ...mavenDetails(step, 'palantir', reading) };
+    return style === GOOGLE_STYLE || style === 'aosp'
+      ? { formatter: GOOGLE_STYLE, aosp: style === 'aosp' }
+      : { formatter: PALANTIR_STYLE, ...mavenDetails(step, PALANTIR_STYLE, reading) };
   }
   return name === 'eclipse' || name === 'prettier' ? { formatter: 'none' } : undefined;
 }
@@ -70,7 +72,10 @@ function pluginDeclarations(plugin, reading) {
   const artifact = childAt(plugin, 'artifactId')?.text;
   if (artifact === 'fmt-maven-plugin') {
     return [
-      { formatter: 'google', aosp: styleOf(childAt(plugin, 'configuration') ?? plugin) === 'aosp' },
+      {
+        formatter: GOOGLE_STYLE,
+        aosp: styleOf(childAt(plugin, 'configuration') ?? plugin) === 'aosp',
+      },
     ];
   }
   return artifact === 'spotless-maven-plugin'

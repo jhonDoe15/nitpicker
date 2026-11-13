@@ -6,7 +6,7 @@ export type RunnerName = 'vitest' | 'jest' | 'node' | 'mocha';
 export type Rerun = {
   readonly files: readonly string[];
   readonly namePattern?: string | undefined;
-  readonly withoutMockPin?: boolean | undefined;
+  readonly withoutMockPin: boolean;
 };
 
 export type TestOptions = QualityAreaOptions & { readonly rerun?: Rerun | undefined };

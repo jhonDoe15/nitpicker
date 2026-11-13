@@ -14,6 +14,8 @@ import { cappedRange, chooseVitest, minimumOf, typescriptRequirement } from './p
 import type { FoundVersion, VitestPeerTable } from './peer-pins.mts';
 import { satisfiesRange } from './version-range.mts';
 
+const PEER_DEPENDENCIES = 'peerDependencies';
+
 type PeerVersions = { readonly installed?: unknown; readonly declared?: unknown };
 
 type PeerStatus = PeerVersions & { readonly name: string; readonly supported: boolean };
@@ -53,7 +55,7 @@ const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependenc
 const TYPESCRIPT = 'typescript';
 const NITPICKER = 'nitpicker';
 const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?(?:\.(?<patch>\d+))?/u;
-const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), 'peerDependencies');
+const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), PEER_DEPENDENCIES);
 const NATIVE_TYPESCRIPT_MAJOR = 7;
 const VITEST = 'vitest';
 const OTHER_VITEST_PEERS: VitestPeerTable = {
@@ -62,7 +64,7 @@ const OTHER_VITEST_PEERS: VitestPeerTable = {
 };
 function typescriptToolRange(): unknown {
   return fieldOf(
-    fieldOf(installedManifest(PACKAGE_ROOT, 'typescript-eslint'), 'peerDependencies'),
+    fieldOf(installedManifest(PACKAGE_ROOT, 'typescript-eslint'), PEER_DEPENDENCIES),
     TYPESCRIPT,
   );
 }
@@ -74,7 +76,7 @@ function javascriptApiTypeScript(): string {
 export function vitestPeers(): VitestPeerTable {
   const own = installedManifest(PACKAGE_ROOT, VITEST);
   const major = Number(/\d+/u.exec(textOf(fieldOf(own, 'version')))?.[0]);
-  const vite = fieldOf(fieldOf(own, 'peerDependencies'), 'vite');
+  const vite = fieldOf(fieldOf(own, PEER_DEPENDENCIES), 'vite');
   return typeof vite === 'string' && Number.isFinite(major)
     ? { ...OTHER_VITEST_PEERS, [major]: { vite } }
     : OTHER_VITEST_PEERS;

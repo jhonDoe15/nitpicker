@@ -1,5 +1,10 @@
 import { GO_LINT_TOOLS } from '../../../languages/go/adapters/configuration/go-config.mjs';
 
+const KOTLIN = 'kotlin';
+const PYTHON = 'python';
+const TYPESCRIPT = 'typescript';
+const JAVASCRIPT = 'javascript';
+
 const OWN_ANALYZER =
   "nitpicker's own analyzer: it has no tool config file of the project to read, so there is nothing to layer";
 
@@ -10,7 +15,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'oxlint',
     {
-      presets: ['typescript', 'javascript'],
+      presets: [TYPESCRIPT, JAVASCRIPT],
       reason:
         'the lint engine, chosen with "tools.eslint.engine"; "tools.eslint.precedence" layers the project\'s ESLint config on both engines',
     },
@@ -18,7 +23,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'vitest',
     {
-      presets: ['typescript', 'javascript'],
+      presets: [TYPESCRIPT, JAVASCRIPT],
       reason:
         'a test runner, covered by "tools.tests.precedence" (retries) and "tools.tests.runner"',
     },
@@ -26,7 +31,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'basedpyright',
     {
-      presets: ['python'],
+      presets: [PYTHON],
       reason:
         'a variant of the type checker covered by "tools.pyright.precedence", which reads its tables too',
     },
@@ -34,14 +39,14 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'coverage-py',
     {
-      presets: ['python'],
+      presets: [PYTHON],
       reason: 'covered by "tools.coverage.precedence"',
     },
   ],
   [
     'import-linter',
     {
-      presets: ['python'],
+      presets: [PYTHON],
       reason:
         "its contracts are the project's own and nitpicker has none to merge them with; they run as written and a weakening edit is a policy change",
     },
@@ -49,7 +54,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'archunit',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason:
         "its rules are the project's own test classes, run as written, and nitpicker has none to merge them with",
     },
@@ -57,7 +62,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'jacoco',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason:
         "nitpicker's init script applies its own JaCoCo agent and report; the coverage numbers feed the changed-line checks, so a project's report settings cannot be layered without moving them",
     },
@@ -65,7 +70,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'google-java-format',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason:
         'the formatter is followed from the build file as a layout convention (see "conventions" with "java.formatter"), not as a config file',
     },
@@ -73,7 +78,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'palantir-java-format',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason:
         'the formatter is followed from the build file as a layout convention (see "conventions" with "java.formatter"), not as a config file',
     },
@@ -81,7 +86,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'javac',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason:
         'compiles with the compiler flags nitpicker sets; the build file decides the language level only',
     },
@@ -89,7 +94,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'kotlinc',
     {
-      presets: ['kotlin'],
+      presets: [KOTLIN],
       reason:
         'compiles with the compiler flags nitpicker sets; the build file decides the language level only',
     },
@@ -97,54 +102,48 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'forbiddenapis',
     {
-      presets: ['java', 'kotlin'],
+      presets: ['java', KOTLIN],
       reason: "nitpicker's own signature lists; there is no project config of the same kind",
     },
   ],
-  ['spring', { presets: ['java', 'kotlin'], reason: OWN_ANALYZER }],
-  ['dependencies', { presets: ['java', 'kotlin', 'python'], reason: OWN_ANALYZER }],
-  ['kotlin-source', { presets: ['kotlin'], reason: OWN_ANALYZER }],
-  [
-    'crap',
-    { presets: ['java', 'kotlin', 'python', 'typescript', 'javascript'], reason: OWN_ANALYZER },
-  ],
+  ['spring', { presets: ['java', KOTLIN], reason: OWN_ANALYZER }],
+  ['dependencies', { presets: ['java', KOTLIN, PYTHON], reason: OWN_ANALYZER }],
+  ['kotlin-source', { presets: [KOTLIN], reason: OWN_ANALYZER }],
+  ['crap', { presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT], reason: OWN_ANALYZER }],
   [
     'structure',
     {
-      presets: ['java', 'kotlin', 'python', 'typescript', 'javascript', 'go'],
+      presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT, 'go'],
       reason: OWN_ANALYZER,
     },
   ],
-  [
-    'coupling',
-    { presets: ['java', 'kotlin', 'python', 'typescript', 'javascript'], reason: OWN_ANALYZER },
-  ],
-  ['facts', { presets: ['java', 'kotlin', 'python', 'go'], reason: OWN_ANALYZER }],
+  ['coupling', { presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT], reason: OWN_ANALYZER }],
+  ['facts', { presets: ['java', KOTLIN, PYTHON, 'go'], reason: OWN_ANALYZER }],
   [
     'test-runtime',
     {
-      presets: ['java', 'kotlin', 'python', 'typescript', 'javascript', 'go'],
+      presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT, 'go'],
       reason: OWN_ANALYZER,
     },
   ],
   [
     'repository-hygiene',
     {
-      presets: ['java', 'kotlin', 'python', 'typescript', 'javascript', 'go'],
+      presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT, 'go'],
       reason: OWN_ANALYZER,
     },
   ],
   [
     'change-history',
     {
-      presets: ['java', 'kotlin', 'python', 'typescript', 'javascript', 'go'],
+      presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT, 'go'],
       reason: OWN_ANALYZER,
     },
   ],
   [
     'mutation',
     {
-      presets: ['typescript', 'javascript', 'go'],
+      presets: [TYPESCRIPT, JAVASCRIPT, 'go'],
       reason:
         'covered by "tools.stryker.precedence" with the TypeScript and JavaScript presets; the Go mutation runner is nitpicker\'s own',
     },
@@ -152,28 +151,28 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   [
     'coverage',
     {
-      presets: ['typescript', 'javascript'],
+      presets: [TYPESCRIPT, JAVASCRIPT],
       reason:
         "the test runner's coverage report, produced with nitpicker's options so the changed-line checks can read it",
     },
   ],
   [
     'dead-code',
-    { presets: ['typescript', 'javascript'], reason: 'covered by "tools.knip.precedence"' },
+    { presets: [TYPESCRIPT, JAVASCRIPT], reason: 'covered by "tools.knip.precedence"' },
   ],
-  ['entry-points', { presets: ['typescript', 'javascript'], reason: OWN_ANALYZER }],
-  ['coding-standards', { presets: ['typescript', 'javascript'], reason: OWN_ANALYZER }],
+  ['entry-points', { presets: [TYPESCRIPT, JAVASCRIPT], reason: OWN_ANALYZER }],
+  ['coding-standards', { presets: [TYPESCRIPT, JAVASCRIPT], reason: OWN_ANALYZER }],
   [
     'dependency-architecture',
     {
-      presets: ['typescript', 'javascript'],
+      presets: [TYPESCRIPT, JAVASCRIPT],
       reason: 'covered by "tools.dependency-cruiser.precedence"',
     },
   ],
   [
     'duplicates',
     {
-      presets: ['java', 'kotlin', 'python', 'typescript', 'javascript'],
+      presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT],
       reason: 'covered by "tools.jscpd.precedence"',
     },
   ],
@@ -186,7 +185,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
     },
   ],
   ['go-rules', { presets: ['go'], reason: OWN_ANALYZER }],
-  ['python-rules', { presets: ['python'], reason: OWN_ANALYZER }],
+  ['python-rules', { presets: [PYTHON], reason: OWN_ANALYZER }],
   [
     'revive',
     {
@@ -205,12 +204,12 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   ],
   [
     'ruff-format',
-    { presets: ['python'], reason: 'the format check of ruff, covered by "tools.ruff.precedence"' },
+    { presets: [PYTHON], reason: 'the format check of ruff, covered by "tools.ruff.precedence"' },
   ],
   [
     'test-console',
     {
-      presets: ['python'],
+      presets: [PYTHON],
       reason:
         'reads the console output of the test run, which has no config of its own; the run follows "tools.tests.precedence"',
     },

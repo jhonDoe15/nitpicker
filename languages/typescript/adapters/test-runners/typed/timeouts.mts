@@ -12,7 +12,7 @@ export const resolveTestTimeouts: (
   context: {
     readonly file: string | undefined;
     readonly language: string;
-    readonly integration?: boolean;
+    readonly integration: boolean;
   },
 ) => TimeoutLimits = untypedResolveTestTimeouts;
 

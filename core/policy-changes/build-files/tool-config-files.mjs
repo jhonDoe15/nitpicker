@@ -44,6 +44,8 @@ import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-for
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 import { readPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mjs';
 
+const PYTHON_PRESET = 'python';
+
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const GO_TOOLS = ['gofumpt', 'goimports', 'staticcheck'];
@@ -188,7 +190,7 @@ function pytestRetryFingerprints(side, gitBlobId) {
 }
 
 function sideFingerprints(tool, side, gitBlobId) {
-  if (tool === TESTS_TOOL && side.config.preset === 'python') {
+  if (tool === TESTS_TOOL && side.config.preset === PYTHON_PRESET) {
     return pytestRetryFingerprints(side, gitBlobId);
   }
   if (
@@ -203,7 +205,7 @@ function sideFingerprints(tool, side, gitBlobId) {
   return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
 }
 function pythonEntries(tool, side) {
-  return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
+  return side.config.preset === PYTHON_PRESET ? pythonConfigEntries(tool, side.root) : [];
 }
 
 function evidenceOf(tool, head, gitBlobId) {
@@ -217,7 +219,7 @@ function evidenceOf(tool, head, gitBlobId) {
 }
 
 function importLinterOn(config) {
-  return config.preset === 'python' && config.python?.importLinter !== false;
+  return config.preset === PYTHON_PRESET && config.python?.importLinter !== false;
 }
 
 function importLinterSide({ config, root }) {
