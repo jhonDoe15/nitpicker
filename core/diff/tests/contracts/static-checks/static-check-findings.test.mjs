@@ -142,6 +142,59 @@ describe('static differential adapters', () => {
     expect(first[0].path).toBe(second[0].path);
     expect(first[0].path).toBe('src/main/a.ts');
   });
+  it('reports a self-import cycle alongside the other architecture findings', () => {
+    const selfImport = architectureReport(['src/main/self.ts'], 'src/main/self.ts');
+    const other = architectureReport(['src/main/b.ts', 'src/main/a.ts']);
+    const findings = normalizeArchitectureViolations(
+      {
+        summary: {
+          violations: [...selfImport.summary.violations, ...other.summary.violations],
+        },
+      },
+      'dependency-architecture',
+    );
+
+    expect(findings.map(({ path, identity, message }) => ({ path, identity, message }))).toEqual([
+      {
+        path: 'src/main/self.ts',
+        identity: 'cycle:src/main/self.ts|occurrence:1',
+        message: 'Dependency cycle: src/main/self.ts -> src/main/self.ts',
+      },
+      {
+        path: 'src/main/a.ts',
+        identity: 'cycle:src/main/a.ts>src/main/b.ts|occurrence:1',
+        message: 'Dependency cycle: src/main/a.ts -> src/main/b.ts -> src/main/a.ts',
+      },
+    ]);
+  });
+  it.each([undefined, [], [{ name: '' }], [{}], ['src/main/a.ts']].map((cycle) => ({ cycle })))(
+    'keeps dependency findings when cycle details are malformed: %j',
+    ({ cycle }) => {
+      const report = architectureReport(['src/main/a.ts', 'src/main/b.ts']);
+      const violation = report.summary.violations[0];
+      const findings = normalizeArchitectureViolations(
+        {
+          summary: {
+            violations: [{ ...violation, cycle }, violation],
+          },
+        },
+        'dependency-architecture',
+      );
+
+      expect(findings.map(({ path, identity, message }) => ({ path, identity, message }))).toEqual([
+        {
+          path: 'src/main/a.ts',
+          identity: 'target:src/main/b.ts|occurrence:1',
+          message: 'src/main/a.ts must not depend on src/main/b.ts',
+        },
+        {
+          path: 'src/main/a.ts',
+          identity: 'cycle:src/main/a.ts>src/main/b.ts|occurrence:1',
+          message: 'Dependency cycle: src/main/a.ts -> src/main/b.ts -> src/main/a.ts',
+        },
+      ]);
+    },
+  );
   it('reports dependencies on modules outside the analyzed snapshot', () => {
     const from = 'src/main/features/greeting/domain/stamp.ts';
     const findings = normalizeArchitectureViolations(
