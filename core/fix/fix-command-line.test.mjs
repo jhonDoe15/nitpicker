@@ -80,6 +80,7 @@ describe('nitpicker --fix for a Python project', () => {
     expect(readFileSync(path.join(repository.root, 'unchanged.py'), 'utf8')).toBe('u  =  1\n');
     expect(tools.operations()).toEqual([
       'python-probe',
+      'python-probe',
       'ruff-fix',
       'ruff-fix',
       'ruff-format-fix',

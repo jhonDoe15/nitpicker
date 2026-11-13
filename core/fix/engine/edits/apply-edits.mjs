@@ -13,6 +13,7 @@ import path from 'node:path';
 import { replaceIfUnchanged } from '../../common/rewrite/safe-write.mjs';
 import { sourceOf } from './check-fixes.mjs';
 import { checkRealPath } from './real-paths.mjs';
+import { indexListing, restoreIndex, untrackPath } from './untrack.mjs';
 
 const SUFFIX_BYTES = 6;
 
@@ -104,7 +105,21 @@ function removed({ projectRoot, file, expected }, edit) {
   };
 }
 
-function applyPath(context, name, edits) {
+function untracked(projectRoot, name) {
+  const listing = indexListing(projectRoot, name);
+  untrackPath(projectRoot, name);
+  return {
+    undo: () => {
+      restoreIndex(projectRoot, [listing]);
+    },
+    commit: () => undefined,
+  };
+}
+
+function applyTextEdits(context, name, edits) {
+  if (edits.length === 0) {
+    return { undo: () => undefined, commit: () => undefined };
+  }
   const file = checkRealPath(context.projectRoot, name);
   const expected = context.snapshot.entry(name)?.bytes;
   const [whole] = edits.filter(({ type }) => type !== 'replace');
@@ -115,6 +130,31 @@ function applyPath(context, name, edits) {
     return whole.isNew ? created(file, whole.text) : replaced(file, expected, whole.text);
   }
   return removed({ projectRoot: context.projectRoot, file, expected }, whole);
+}
+
+function applyPath(context, name, edits) {
+  const record = applyTextEdits(
+    context,
+    name,
+    edits.filter((edit) => edit.type !== 'untrack'),
+  );
+  if (record === undefined || !edits.some((edit) => edit.type === 'untrack')) {
+    return record;
+  }
+  try {
+    const index = untracked(context.projectRoot, name);
+    return {
+      undo: () => {
+        for (const { undo } of [index, record]) {
+          undo();
+        }
+      },
+      commit: record.commit,
+    };
+  } catch (error) {
+    record.undo();
+    throw error;
+  }
 }
 
 function attempt(context, name, edits) {
@@ -150,6 +190,10 @@ function dropClosure(entries, initial) {
   return { dropped: [...state.dropped], failed: state.failed };
 }
 
+function isTextEdit(edit) {
+  return edit.type !== 'untrack';
+}
+
 function grouped(entries) {
   const byPath = new Map();
   for (const edit of entries.flatMap(({ edits }) => edits)) {
@@ -178,7 +222,9 @@ function sourceState(context, name) {
 
 function checkedSources(context, prepared) {
   const sources = new Set(
-    prepared.flatMap(({ edits }) => edits.filter((edit) => !edit.isNew).map(sourceOf)),
+    prepared.flatMap(({ edits }) =>
+      edits.filter((edit) => !edit.isNew && isTextEdit(edit)).map(sourceOf),
+    ),
   );
   const states = [...sources].map((name) => sourceState(context, name));
   return {
@@ -210,8 +256,9 @@ export function applyFixes(projectRoot, snapshot, entries) {
   const { dropped, unwritten } = settleOutcomes(outcomes, current, stale);
   const errors = [...refused, ...outcomes.filter(({ error }) => error !== undefined)];
   const failedNames = new Set(errors.map(({ name }) => name));
+  const written = current.filter((item) => !dropped.includes(item)).map(({ entry }) => entry);
   return {
-    applied: current.filter((item) => !dropped.includes(item)).map(({ entry }) => entry),
+    applied: written,
     changedMeanwhile: [...stale, ...unwritten.filter((name) => !failedNames.has(name))].toSorted(
       (left, right) => left.localeCompare(right),
     ),

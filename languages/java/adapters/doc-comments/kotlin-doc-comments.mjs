@@ -243,7 +243,7 @@ function declarationAt(code, from, scope) {
     : memberDeclaration(code, at, { keyword, scope });
 }
 
-export function kotlinDocComments(source) {
+export function kotlinDocCommentEntries(source) {
   const scanned = scanKotlinSource(source);
   const { code } = scanned;
   const { types, constructors } = typeDeclarations(code);
@@ -257,14 +257,17 @@ export function kotlinDocComments(source) {
         return [];
       }
       const owner = constructorOwner(constructors, doc.start);
-      return [
-        docComment({
-          text: doc.text,
-          marker: KDOC_MARKER,
-          line: lineOf(scanned, doc.start),
-          declared,
-          chain: owner === undefined ? scope.chain : [...scope.chain, owner],
-        }),
-      ];
+      const comment = docComment({
+        text: doc.text,
+        marker: KDOC_MARKER,
+        line: lineOf(scanned, doc.start),
+        declared,
+        chain: owner === undefined ? scope.chain : [...scope.chain, owner],
+      });
+      return [{ span: { start: doc.start, end: doc.end }, comment }];
     });
+}
+
+export function kotlinDocComments(source) {
+  return kotlinDocCommentEntries(source).map(({ comment }) => comment);
 }

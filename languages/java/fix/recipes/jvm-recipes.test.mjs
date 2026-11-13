@@ -36,7 +36,11 @@ function fixTopic(base, changes, config, extra = {}) {
     environment: { NITPICKER_GRADLE: '', NITPICKER_MAVEN: 'fake-mvn' },
     ...extra,
   });
-  return { result, read: (name) => readFileSync(path.join(repository.root, name), 'utf8') };
+  return {
+    result,
+    root: repository.root,
+    read: (name) => readFileSync(path.join(repository.root, name), 'utf8'),
+  };
 }
 
 describe('--fix runs the JVM recipes before the formatter', () => {
@@ -139,4 +143,52 @@ describe('--fix runs the JVM recipes before the formatter', () => {
       expect(fixed.result.notes.join('\n')).not.toContain('application.yml');
     },
   );
+  it.each(Object.entries(BUILDS))(
+    'deletes a doc comment that restates the name on %s',
+    (_, build) => {
+      const source = 'class New {\n    /** Gets the id. */\n    int getId() { return 1; }\n}\n';
+      const { result, read } = fixTopic(
+        build,
+        { [`${JAVA}/New.java`]: source },
+        { preset: 'java' },
+      );
+
+      expect(read(`${JAVA}/New.java`)).toBe('class New {\n int getId() { return 1; }\n}\n');
+      expect(result.fixedFindings).toEqual([
+        `${JAVA}/New.java:2 facts/doc-comment-content (java-restating-doc-comment)`,
+      ]);
+    },
+  );
+  it('deletes a KDoc that restates the name in a Kotlin project', () => {
+    const { result, read } = fixTopic(
+      BUILDS.gradle,
+      { [`${KT}/New.kt`]: 'class New {\n    /** The id. */\n    val id = 1\n}\n' },
+      { preset: 'kotlin' },
+    );
+
+    expect(read(`${KT}/New.kt`)).toBe('class New {\n val id = 1\n}\n');
+    expect(result.fixedFindings).toEqual([
+      `${KT}/New.kt:2 facts/doc-comment-content (kotlin-restating-doc-comment)`,
+    ]);
+  });
+  it('untracks a committed .env only when its rule is selected, even with no changed file', () => {
+    const base = { ...BUILDS.gradle, '.env': 'TOKEN=abc\n' };
+    const plain = fixTopic(base, {}, { preset: 'java' });
+    const selected = fixTopic(
+      base,
+      {},
+      { preset: 'java' },
+      {
+        selectedRules: ['repository-hygiene/committed-env-file'],
+      },
+    );
+
+    expect(fixtureGit(plain.root, ['ls-files'])).toBe('.env\nbuild.gradle\n');
+    expect(fixtureGit(selected.root, ['ls-files'])).toBe('build.gradle\n');
+    expect(selected.read('.env')).toBe('TOKEN=abc\n');
+    expect(selected.read('.gitignore')).toBe('/.env\n');
+    expect(selected.result.fixedFindings).toEqual([
+      '.env:1 repository-hygiene/committed-env-file (untrack-committed-files)',
+    ]);
+  });
 });

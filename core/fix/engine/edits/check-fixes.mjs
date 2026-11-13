@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { containedPath } from '../../common/contained-path.mjs';
 import { checkRealPath } from './real-paths.mjs';
 
 const WHOLE = 'whole';
@@ -62,7 +63,18 @@ function checkMove(edit, settings) {
   }
 }
 
+function checkUntrack(edit, { projectRoot, scope }) {
+  if (typeof edit.path !== 'string' || edit.path === '') {
+    fail('an untrack edit has no path');
+  }
+  containedPath(projectRoot, edit.path);
+  if (scope !== 'project') {
+    fail(`an untrack edit on ${edit.path} needs a recipe of project scope`);
+  }
+}
+
 const EDIT_CHECKS = {
+  untrack: checkUntrack,
   replace: checkReplace,
   write: checkWrite,
   move: checkMove,
@@ -74,16 +86,21 @@ function checkEdit(edit, settings) {
   if (check === undefined) {
     fail(`unknown edit type ${edit?.type}`);
   }
-  checkPaths(edit, settings);
-  if (settings.scope === 'file' && !settings.changed.has(sourceOf(edit))) {
-    fail(`${sourceOf(edit)} is not a changed file`);
+  if (edit.type !== 'untrack') {
+    checkPaths(edit, settings);
+    if (settings.scope === 'file' && !settings.changed.has(sourceOf(edit))) {
+      fail(`${sourceOf(edit)} is not a changed file`);
+    }
   }
   check(edit, settings);
 }
 
-function overlaps(left, right) {
-  if (left === WHOLE || right === WHOLE || left.start === right.start) {
+function overlaps(left, right, strictInserts = true) {
+  if (left === WHOLE || right === WHOLE) {
     return true;
+  }
+  if (left.start === right.start) {
+    return strictInserts || left.start !== left.end || right.start !== right.end;
   }
   return left.start < right.end && right.start < left.end;
 }
@@ -101,7 +118,7 @@ function claimsOf(edits) {
 
 function conflicts(claims, taken) {
   return [...claims].some(([name, ranges]) =>
-    ranges.some((range) => (taken.get(name) ?? []).some((other) => overlaps(range, other))),
+    ranges.some((range) => (taken.get(name) ?? []).some((other) => overlaps(range, other, false))),
   );
 }
 
@@ -126,8 +143,13 @@ export function checkFix(fix, recipe, settings) {
   if (!Array.isArray(edits) || edits.length === 0) {
     fail(`a fix for ${finding.path}:${finding.line} has no edits`);
   }
+  const covered = {
+    ...settings,
+    scope: recipe.scope,
+    accepts: (name) => settings.accepts(name) || recipe.accepts?.(name) === true,
+  };
   for (const edit of edits) {
-    checkEdit(edit, { ...settings, scope: recipe.scope });
+    checkEdit(edit, covered);
   }
   if (selfOverlapping(claimsOf(edits))) {
     fail(`the edits of the fix for ${finding.path}:${finding.line} overlap`);

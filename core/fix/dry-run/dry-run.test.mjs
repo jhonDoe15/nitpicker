@@ -1,8 +1,9 @@
 import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { createSnapshot } from '../engine/edits/snapshot.mjs';
 import { defineRecipes } from '../engine/recipes.mjs';
 import { runRecipes } from '../engine/run-recipes.mjs';
 import { writeTexts } from '../engine/write-texts.mjs';
@@ -10,7 +11,7 @@ import { dryRun } from './dry-run.mjs';
 import { createJournal, journalWriter } from './journal.mjs';
 import { applyPatch, treeOf } from './test-support/tree.mjs';
 
-const { temporaryRoot } = useGitFixtures();
+const { createGitRepository, temporaryRoot } = useGitFixtures();
 
 const RULE = { tool: 'demo', rule: 'shout' };
 const FILES = {
@@ -155,6 +156,42 @@ describe('dryRun', () => {
       .filter((line) => line.startsWith('--- ') || line.startsWith('+++ '));
     expect(headers).toEqual(['--- a/app/a.txt', '+++ b/app/a.txt']);
     expect(readFileSync(path.join(projectRoot, 'a.txt'), 'utf8')).toBe('a  b\n');
+  });
+  it('puts a path an untrack edit removed back into the git index', () => {
+    const { root } = createGitRepository({ '.env': 'A=1\n', 'a.txt': 'a\n' });
+    const journal = createJournal(root);
+    const entries = [
+      {
+        recipe: 'untrack',
+        safety: 'review',
+        fix: {
+          finding: { tool: 'demo', rule: 'x', path: '.env', line: 1 },
+          edits: [{ type: 'untrack', path: '.env' }],
+        },
+      },
+    ];
+    let during;
+
+    const outcome = dryRun({
+      repositoryRoot: root,
+      journal,
+      run: () => {
+        const snapshot = createSnapshot(root, ['.env']);
+        journalWriter(journal).apply(snapshot, entries);
+        during = fixtureGit(root, ['ls-files']);
+      },
+    });
+
+    expect(during).toBe('a.txt\n');
+    expect(fixtureGit(root, ['ls-files'])).toBe('.env\na.txt\n');
+    expect(outcome.fixes).toEqual([
+      {
+        recipe: 'untrack',
+        safety: 'review',
+        finding: { tool: 'demo', rule: 'x', path: '.env', line: 1 },
+        files: ['.env'],
+      },
+    ]);
   });
   it('restores the tree when the run throws', () => {
     const root = sample();

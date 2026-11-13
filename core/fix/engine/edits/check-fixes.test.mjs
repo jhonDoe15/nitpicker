@@ -91,7 +91,60 @@ describe('checkFix', () => {
   });
 });
 
+describe('checkFix with an untrack edit', () => {
+  const files = { 'a.txt': 'abcdef' };
+  const untrack = fixOf([{ type: 'untrack', path: '.env' }]);
+
+  it('accepts a path the plan never read, from a project recipe', () => {
+    expect(() => {
+      checkFix(
+        untrack,
+        { ...RECIPE, scope: 'project' },
+        { ...settingsFor(files), accepts: () => false },
+      );
+    }).not.toThrow();
+  });
+  it.each([
+    ['a recipe of file scope', untrack, RECIPE, 'needs a recipe of project scope'],
+    [
+      'a path outside the project',
+      fixOf([{ type: 'untrack', path: '../.env' }]),
+      { ...RECIPE, scope: 'project' },
+      'is outside',
+    ],
+    ['no path', fixOf([{ type: 'untrack' }]), { ...RECIPE, scope: 'project' }, 'has no path'],
+  ])('refuses %s', (_, fix, recipe, message) => {
+    expect(() => {
+      checkFix(fix, recipe, settingsFor(files));
+    }).toThrow(message);
+  });
+  it('accepts a file the recipe itself covers although the fixer does not', () => {
+    const recipe = { ...RECIPE, scope: 'project', accepts: (name) => name === '.gitignore' };
+    const fix = fixOf([{ type: 'write', path: '.gitignore', text: '.env\n' }]);
+
+    expect(() => {
+      checkFix(fix, recipe, { ...settingsFor(files), accepts: () => false });
+    }).not.toThrow();
+    expect(() => {
+      checkFix(fixOf([{ type: 'write', path: 'other', text: '' }]), recipe, {
+        ...settingsFor(files),
+        accepts: () => false,
+      });
+    }).toThrow('is outside the files --fix covers');
+  });
+});
+
 describe('acceptFixes', () => {
+  it('keeps pure inserts at one offset from different fixes and skips an insert beside a range', () => {
+    const planned = [fixOf([replace(6, 6)]), fixOf([replace(6, 6)]), fixOf([replace(6, 8)])].map(
+      (fix, index) => ({ recipe: `r${index}`, fix }),
+    );
+
+    const { accepted, skipped } = acceptFixes(planned);
+
+    expect(accepted.map(({ recipe }) => recipe)).toEqual(['r0', 'r1']);
+    expect(skipped.map(({ recipe }) => recipe)).toEqual(['r2']);
+  });
   function entries(...fixes) {
     return fixes.map((fix, index) => ({ recipe: `r${index}`, fix }));
   }

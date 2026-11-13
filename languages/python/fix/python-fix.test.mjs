@@ -89,6 +89,7 @@ describe('--fix for Python', () => {
     ]);
     expect(tools.operations()).toEqual([
       'python-probe',
+      'python-probe',
       'ruff-fix',
       'ruff-fix',
       'ruff-format-fix',
@@ -186,7 +187,13 @@ describe('--fix for Python', () => {
         '-',
       ],
     });
-    expect(tools.operations()).toEqual(['python-probe', 'ruff-fix', 'black-fix', 'black-fix']);
+    expect(tools.operations()).toEqual([
+      'python-probe',
+      'python-probe',
+      'ruff-fix',
+      'black-fix',
+      'black-fix',
+    ]);
   });
   it('honours the formatter named in the python settings', () => {
     const repository = topic({ 'a.py': 'a = 1\n' }, { 'a.py': 'a  =  2\n' });
@@ -194,7 +201,13 @@ describe('--fix for Python', () => {
 
     fix(repository, tools, { config: { python: { formatter: 'black' } } });
 
-    expect(tools.operations()).toEqual(['python-probe', 'ruff-fix', 'black-fix', 'black-fix']);
+    expect(tools.operations()).toEqual([
+      'python-probe',
+      'python-probe',
+      'ruff-fix',
+      'black-fix',
+      'black-fix',
+    ]);
   });
   it('skips excluded paths and paths outside the Python sources', () => {
     const repository = topic(

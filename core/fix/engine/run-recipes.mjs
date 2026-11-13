@@ -1,12 +1,16 @@
 import { fixerError } from '../common/fix-command.mjs';
 import { acceptFixes, checkFix, fixOrder } from './edits/check-fixes.mjs';
 import { createSnapshot } from './edits/snapshot.mjs';
+import { isTracked } from './edits/untrack.mjs';
 import { activeRecipes, ruleName } from './recipes.mjs';
 import { directWriter } from './writer.mjs';
 
 export const MAX_PASSES = 3;
 
-function changesText(edit, snapshot) {
+function changesText(edit, snapshot, projectRoot) {
+  if (edit.type === 'untrack') {
+    return isTracked(projectRoot, edit.path);
+  }
   if (edit.type === 'replace') {
     return snapshot.read(edit.path).slice(edit.start, edit.end) !== edit.text;
   }
@@ -23,11 +27,13 @@ function selectedFixes(planned, recipe, run) {
 }
 
 function planRecipe(recipe, snapshot, run) {
+  const { projectRoot, accepts, inputs = {} } = run.settings;
   const planned = recipe.plan({
     files: snapshot.files,
     read: snapshot.read,
-    projectRoot: run.settings.projectRoot,
-    accepts: run.settings.accepts,
+    projectRoot,
+    accepts,
+    inputs,
   });
   const fixes = selectedFixes(planned, recipe, run);
   for (const fix of fixes) {
@@ -35,7 +41,9 @@ function planRecipe(recipe, snapshot, run) {
   }
   return {
     entries: fixes
-      .filter(({ edits }) => edits.some((edit) => changesText(edit, snapshot)))
+      .filter(({ edits }) =>
+        edits.some((edit) => changesText(edit, snapshot, run.settings.projectRoot)),
+      )
       .sort(fixOrder)
       .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, fix })),
     notes: planned.notes ?? [],
@@ -115,18 +123,23 @@ function applyError(messages) {
     : [fixerError('fix-apply', new Error(`--fix could not write ${messages.join('; ')}`))];
 }
 
+function staysNote(entry) {
+  return `--fix applied ${findingText(entry)} but the finding stays: ${entry.fix.stays}`;
+}
+
 export function runRecipes({
   projectRoot,
   files,
   recipes,
   preset,
-  selectedRules = [],
+  selectedRules,
   accepts,
   writer = directWriter(projectRoot),
+  inputs,
 }) {
   const run = {
     active: activeRecipes(recipes, { preset, selectedRules }),
-    settings: { projectRoot, accepts, writer },
+    settings: { projectRoot, accepts, writer, inputs },
     selected: new Set(selectedRules),
     failed: new Map(),
     state: {
@@ -140,11 +153,15 @@ export function runRecipes({
   const leftovers = run.active.length === 0 ? [] : settle(run);
   const { state } = run;
   return {
-    fixedFindings: state.fixed.map(findingText),
+    fixedFindings: state.fixed.filter(({ fix }) => fix.stays === undefined).map(findingText),
     files: files.map((file, index) =>
       state.names[index] === file.path ? file : { ...file, path: state.names[index] },
     ),
     toolErrors: [...run.failed.values(), ...applyError(state.applyErrors)],
-    notes: [...new Set(state.notes), ...closingNotes(state, leftovers)],
+    notes: [
+      ...new Set(state.notes),
+      ...state.fixed.filter(({ fix }) => fix.stays !== undefined).map(staysNote),
+      ...closingNotes(state, leftovers),
+    ],
   };
 }
