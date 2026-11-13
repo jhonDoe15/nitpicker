@@ -37,3 +37,15 @@ visible in the whole module, so it is not feature-private; what counts is the pa
   `IdTable` (`IntIdTable`, `LongIdTable`, `UUIDTable`) or DAO `Entity` subclass is an entity, and a
   repository declared as `interface PaymentRepository : CrudRepository<Payment, Long>` is a
   repository even when it shares its file with the entity; the file is the unit.
+
+**Domain boundaries.**
+The [domain rules](../java-preset/domain-boundaries.md) (`domain-imports-adapter`, `domain-imports-io`,
+`domain-imports-client`, `domain-imports-logger`, `domain-imports-random`,
+`domain-imports-framework-context`, `domain-reaches-io`) run on Kotlin classes from the same graph.
+Kotlin's own forms are in the lists: `kotlin.io` file functions (`File.readText()` compiles to a
+call on the `FilesKt` facade, reported as `FilesKt`) and `kotlin.io.path`, `kotlin.concurrent`
+threads and timers, `kotlin.random.Random`, kotlin-logging (`io.github.oshai.kotlinlogging`, and
+the older `mu` package), the Ktor client, and `Uuid.random()` from `kotlin.uuid`, found in the
+source like `UUID.randomUUID()`. A top-level function in a domain package is checked through its
+file facade, so the finding is on its file. An `inline` library function is copied into the
+domain class, so the edge is to what its body calls.
