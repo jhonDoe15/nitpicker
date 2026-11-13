@@ -22,10 +22,14 @@ const PARTIAL = new Set([
   'UUF_UNUSED_FIELD',
 ]);
 const KOTLIN_TOOL = 'kotlin-source/';
-const KOTLIN_EVIDENCE = {
+const E2E_EVIDENCE = {
   'line: kotlin-source/ChildCoroutineOutlivesResource over pmd/CoroutineEscapesTest': path.resolve(
     import.meta.dirname,
     '../kotlin-e2e/review-rules/kotlin-preset-review-rules-coroutines.e2e.test.mjs',
+  ),
+  'line: checkstyle/FileTabCharacter over checkstyle/Indentation': path.resolve(
+    import.meta.dirname,
+    '../../maven/preset/maven-preset-checkstyle.e2e.test.mjs',
   ),
 };
 const roots = [];
@@ -65,6 +69,10 @@ function pairName({ primary, secondary, scope }) {
 
 function kotlinOnly({ primary, secondary }) {
   return [...primary, ...secondary].some((rule) => rule.startsWith(KOTLIN_TOOL));
+}
+
+function outsideProbe(pair) {
+  return kotlinOnly(pair) || Object.hasOwn(E2E_EVIDENCE, pairName(pair));
 }
 
 function name(finding) {
@@ -192,22 +200,22 @@ describe('overlaps on the probe project', () => {
 
   it('drop a secondary under every pair of the table, so each pair matches real findings', () => {
     expect(
-      OVERLAP_PAIRS.filter((pair) => !kotlinOnly(pair) && droppedBy(pair).length === 0).map(
+      OVERLAP_PAIRS.filter((pair) => !outsideProbe(pair) && droppedBy(pair).length === 0).map(
         pairName,
       ),
     ).toStrictEqual([]);
   });
 
-  it('leave only the Kotlin pairs to the Kotlin e2e, which runs both rules on the same line', () => {
-    const kotlinPairs = OVERLAP_PAIRS.filter(kotlinOnly);
-    const unexercised = kotlinPairs.flatMap((pair) => {
-      const evidence = readFileSync(KOTLIN_EVIDENCE[pairName(pair)], 'utf8');
+  it('leave the Kotlin pairs and the formatter-less layout pair to an e2e that runs both rules on one line', () => {
+    const e2ePairs = OVERLAP_PAIRS.filter(outsideProbe);
+    const unexercised = e2ePairs.flatMap((pair) => {
+      const evidence = readFileSync(E2E_EVIDENCE[pairName(pair)], 'utf8');
       return [...pair.primary, ...pair.secondary].filter(
         (rule) => !evidence.includes(rule.split('/').at(-1)),
       );
     });
 
-    expect(kotlinPairs.map(pairName)).toStrictEqual(Object.keys(KOTLIN_EVIDENCE));
+    expect(e2ePairs.map(pairName)).toStrictEqual(Object.keys(E2E_EVIDENCE));
     expect(unexercised).toStrictEqual([]);
   });
 
