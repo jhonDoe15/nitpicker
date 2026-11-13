@@ -11,7 +11,7 @@ Part of the [Java preset guide](../java-preset.md).
   starting with `test` (`integrationTest`, `testFixtures`, not `latest`) and that is not generated (Spring Boot's `aotTest`, see Spring AOT); the task
   compiles only those, so a `jmh` or `benchmark` source set is neither compiled for it nor counted
   as a test. Maven runs the same single jdeps call over
-  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
+  `target/classes` and `target/test-classes` (`builds/jdeps-reports.mts`). Neither build holds
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
   jdeps comes with the JDK that runs Gradle; nothing is downloaded and no version is pinned. The

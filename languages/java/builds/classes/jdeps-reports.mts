@@ -15,14 +15,36 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { StringDecoder } from 'node:string_decoder';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+
+type Classes = { readonly mainClasses: readonly string[]; readonly testClasses: readonly string[] };
+type Edges = { readonly main: string; readonly test: string };
+type JdepsRun = {
+  readonly command: string;
+  readonly cwd: unknown;
+  readonly directories: readonly string[];
+  readonly spawn: unknown;
+};
+type JdepsCommand = JdepsRun & { readonly outputFile: string };
+type JdepsWrite = JdepsRun & { readonly reportDir: string };
+type Targets = { readonly main: number; readonly test: number };
+type JdepsReports = {
+  readonly command: string;
+  readonly cwd: unknown;
+  readonly mainDirectory: unknown;
+  readonly testDirectory: unknown;
+  readonly reportDir: string;
+  readonly spawn?: unknown;
+};
 
 const CHUNK_BYTES = 1024 * 1024;
 const JDEPS_OUTPUT = 'jdeps-output.txt';
 const EDGE = /^\s+(\S+)\s+->\s+\S+/u;
 const SKIPPED_CLASSES = new Set(['module-info.class', 'package-info.class']);
 
-export function classNamesIn(directory) {
-  return existsSync(directory)
+export function classNamesIn(directory: unknown): string[] {
+  return typeof directory === 'string' && existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
         .filter((entry) => !SKIPPED_CLASSES.has(entry.name))
@@ -37,15 +59,15 @@ export function classNamesIn(directory) {
     : [];
 }
 
-function sourceOf(line) {
-  return EDGE.exec(line)[1];
+function sourceOf(line: string): string {
+  return EDGE.exec(line)?.[1] ?? '';
 }
 
-function linesOf(selected) {
+function linesOf(selected: readonly string[]): string {
   return selected.map((line) => `${line}\n`).join('');
 }
 
-export function splitJdepsEdges(text, { mainClasses, testClasses }) {
+export function splitJdepsEdges(text: string, { mainClasses, testClasses }: Classes): Edges {
   const main = new Set(mainClasses);
   const test = new Set(testClasses);
   const edges = text.split(/\r?\n/u).filter((line) => EDGE.test(line));
@@ -55,25 +77,26 @@ export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   };
 }
 
-function runJdepsCommand({ command, cwd, directories, outputFile, spawn }) {
+function runJdepsCommand({ command, cwd, directories, outputFile, spawn }: JdepsCommand): void {
   const output = openSync(outputFile, 'w');
   try {
-    const result = spawn(command, ['-verbose:class', '-filter:none', ...directories], {
+    const result = callUntyped(spawn, command, ['-verbose:class', '-filter:none', ...directories], {
       cwd,
       encoding: 'utf8',
       stdio: ['ignore', output, 'pipe'],
     });
-    if (result.error !== undefined || result.status !== 0) {
-      throw new Error(
-        `jdeps failed with exit code ${String(result.status)}: ${result.error?.message ?? result.stderr}`,
-      );
+    const error = fieldOf(result, 'error');
+    const status = fieldOf(result, 'status');
+    if (error !== undefined || status !== 0) {
+      const reason = error === undefined ? fieldOf(result, 'stderr') : fieldOf(error, 'message');
+      throw new Error(`jdeps failed with exit code ${String(status)}: ${textOf(reason)}`);
     }
   } finally {
     closeSync(output);
   }
 }
 
-function runJdeps(context) {
+function runJdeps(context: JdepsCommand): void {
   if (
     !context.directories.some((directory) => existsSync(path.join(directory, 'module-info.class')))
   ) {
@@ -100,17 +123,17 @@ function runJdeps(context) {
   }
 }
 
-function chunkStarts(descriptor) {
+function chunkStarts(descriptor: number): number[] {
   const size = fstatSync(descriptor).size;
   return Array.from({ length: Math.ceil(size / CHUNK_BYTES) }, (_, index) => index * CHUNK_BYTES);
 }
 
-function splitFile(file, classes, targets) {
+function splitFile(file: string, classes: Classes, targets: Targets): void {
   const input = openSync(file, 'r');
   const decoder = new StringDecoder('utf8');
   const buffer = Buffer.alloc(CHUNK_BYTES);
   let rest = '';
-  function write(text) {
+  function write(text: string): void {
     const edges = splitJdepsEdges(text, classes);
     writeSync(targets.main, edges.main);
     writeSync(targets.test, edges.test);
@@ -120,7 +143,7 @@ function splitFile(file, classes, targets) {
       const lines = (
         rest + decoder.write(buffer.subarray(0, readSync(input, buffer, 0, CHUNK_BYTES, position)))
       ).split('\n');
-      rest = lines.pop();
+      rest = lines.pop() ?? '';
       write(lines.join('\n'));
     }
     write(rest + decoder.end());
@@ -129,7 +152,10 @@ function splitFile(file, classes, targets) {
   }
 }
 
-function writeEdges({ command, cwd, directories, reportDir, spawn }, classes) {
+function writeEdges(
+  { command, cwd, directories, reportDir, spawn }: JdepsWrite,
+  classes: Classes,
+): void {
   const targets = {
     main: openSync(path.join(reportDir, 'jdeps.txt'), 'w'),
     test: openSync(path.join(reportDir, 'jdeps-test.txt'), 'w'),
@@ -154,12 +180,12 @@ export function writeJdepsReports({
   testDirectory,
   reportDir,
   spawn = spawnSync,
-}) {
+}: JdepsReports): void {
   const mainClasses = classNamesIn(mainDirectory);
   const testClasses = classNamesIn(testDirectory);
   const directories = [
-    ...(mainClasses.length > 0 ? [mainDirectory] : []),
-    ...(testClasses.length > 0 ? [testDirectory] : []),
+    ...(mainClasses.length > 0 ? [textOf(mainDirectory)] : []),
+    ...(testClasses.length > 0 ? [textOf(testDirectory)] : []),
   ];
   writeEdges({ command, cwd, directories, reportDir, spawn }, { mainClasses, testClasses });
   writeFileSync(

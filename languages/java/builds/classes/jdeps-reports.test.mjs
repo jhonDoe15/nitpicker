@@ -10,7 +10,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { classNamesIn, splitJdepsEdges, writeJdepsReports } from './jdeps-reports.mjs';
+import { classNamesIn, splitJdepsEdges, writeJdepsReports } from './jdeps-reports.mts';
 
 const roots = [];
 
