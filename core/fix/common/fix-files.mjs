@@ -50,6 +50,13 @@ export function rewrittenPaths(projectRoot, files, before) {
     .map(({ path: name }) => name);
 }
 
+export function changedFiles(projectRoot, files, before) {
+  return files.filter(({ path: name }) => {
+    const file = containedPath(projectRoot, name);
+    return existsSync(file) && !before.get(name)?.equals(readFileSync(file));
+  });
+}
+
 export function splitByEncoding(projectRoot, files) {
   const bytes = readBytes(projectRoot, files);
   return {

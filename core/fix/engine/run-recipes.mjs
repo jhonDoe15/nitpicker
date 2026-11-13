@@ -1,8 +1,8 @@
 import { fixerError } from '../common/fix-command.mjs';
-import { applyFixes } from './edits/apply-edits.mjs';
 import { acceptFixes, checkFix, fixOrder } from './edits/check-fixes.mjs';
 import { createSnapshot } from './edits/snapshot.mjs';
 import { activeRecipes, ruleName } from './recipes.mjs';
+import { directWriter } from './writer.mjs';
 
 export const MAX_PASSES = 3;
 
@@ -32,7 +32,7 @@ function planRecipe(recipe, snapshot, run) {
     entries: fixes
       .filter(({ edits }) => edits.some((edit) => changesText(edit, snapshot)))
       .sort(fixOrder)
-      .map((fix) => ({ recipe: recipe.id, fix })),
+      .map((fix) => ({ recipe: recipe.id, safety: recipe.safety, fix })),
     notes: planned.notes ?? [],
   };
 }
@@ -85,11 +85,7 @@ function runPass(run) {
   const snapshot = createSnapshot(run.settings.projectRoot, state.names);
   const planned = planPass(run, snapshot);
   const { accepted } = acceptFixes(planned.entries);
-  const { applied, changedMeanwhile, errors } = applyFixes(
-    run.settings.projectRoot,
-    snapshot,
-    accepted,
-  );
+  const { applied, changedMeanwhile, errors } = run.settings.writer.apply(snapshot, accepted);
   for (const name of changedMeanwhile) {
     state.changedMeanwhile.add(name);
   }
@@ -114,10 +110,18 @@ function applyError(messages) {
     : [fixerError('fix-apply', new Error(`--fix could not write ${messages.join('; ')}`))];
 }
 
-export function runRecipes({ projectRoot, files, recipes, preset, selectedRules = [], accepts }) {
+export function runRecipes({
+  projectRoot,
+  files,
+  recipes,
+  preset,
+  selectedRules = [],
+  accepts,
+  writer = directWriter(projectRoot),
+}) {
   const run = {
     active: activeRecipes(recipes, { preset, selectedRules }),
-    settings: { projectRoot, accepts },
+    settings: { projectRoot, accepts, writer },
     selected: new Set(selectedRules),
     failed: new Map(),
     state: {

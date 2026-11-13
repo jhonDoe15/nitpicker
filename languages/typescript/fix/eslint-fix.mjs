@@ -13,6 +13,7 @@ import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.
 import { readBytes } from '../../../core/fix/common/fix-files.mjs';
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
+import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mjs';
 import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
@@ -30,7 +31,7 @@ function runEslint(settings, files, linked) {
       resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
       '--config',
       path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-wrapper.config.mjs'),
-      '--fix-dry-run',
+      ...(settings.selectedRules.length === 0 ? ['--fix-dry-run'] : []),
       '--format',
       'json',
       '--no-warn-ignored',
@@ -90,11 +91,21 @@ function reportedFiles(projectRoot, files, stdout) {
     if (name === undefined) {
       throw new Error(`ESLint reported a file it was not given: ${filePath}`);
     }
-    return { name, output, fatal: messages.some(({ fatal }) => fatal === true) };
+    return { name, output, messages, fatal: messages.some(({ fatal }) => fatal === true) };
   });
 }
 
-function writeOutputs(projectRoot, before, outputs) {
+function narrowed(settings, before, reported) {
+  const ruleIds = selectedEslintRules(settings.selectedRules);
+  return settings.selectedRules.length === 0
+    ? reported
+    : reported.map((file) => ({
+        ...file,
+        output: selectedOutput(before.get(file.name).toString('utf8'), file.messages, ruleIds),
+      }));
+}
+
+function writeOutputs(settings, before, outputs) {
   const planned = outputs
     .map(({ name, output }) => ({
       name,
@@ -102,8 +113,9 @@ function writeOutputs(projectRoot, before, outputs) {
     }))
     .filter(({ name, text }) => text !== before.get(name).toString('utf8'));
   const { written, changedMeanwhile, unwritable } = writeTexts(
-    projectRoot,
+    settings.writer,
     planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
+    TOOL,
   );
   return { rewritten: written, changedMeanwhile, unwritable };
 }
@@ -122,9 +134,9 @@ function attemptEslintFix(settings, files, before) {
       linked,
       unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
       ...writeOutputs(
-        projectRoot,
+        settings,
         before,
-        reported.filter(({ output }) => typeof output === 'string'),
+        narrowed(settings, before, reported).filter(({ output }) => typeof output === 'string'),
       ),
     };
   } catch (error) {
@@ -149,7 +161,9 @@ function removeLinkedFile(linked) {
 }
 
 export function eslintFixStep(settings, files) {
-  if (files.length === 0) {
+  const unselected =
+    settings.selectedRules.length > 0 && selectedEslintRules(settings.selectedRules).length === 0;
+  if (files.length === 0 || unselected) {
     return { toolErrors: [], notes: [] };
   }
   const attempt = attemptEslintFix(settings, files, readBytes(settings.projectRoot, files));

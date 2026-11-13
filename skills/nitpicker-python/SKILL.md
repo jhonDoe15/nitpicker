@@ -39,6 +39,9 @@ full run below.
    `tools.<formatter>.precedence` in `nitpicker.config.json` lists `"project"`, as the gate does) to
    the changed files and lists the rewritten ones under "Fixed files:"; re-read those files before
    you edit them again. It takes minutes and prints a progress line for each slow analyzer.
+   To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes
+   `fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the
+   fixes of the rules you name, including their `review` recipes.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.

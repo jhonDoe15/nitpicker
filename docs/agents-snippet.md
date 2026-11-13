@@ -25,6 +25,10 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
   ktfmt; gofmt, gofumpt or goimports), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
   cannot be combined with `--all`.
+- `npx nitpicker --fix --dry-run` changes no file: it writes `fix.patch` (apply it with `git apply`
+  from the repository root) and `fixes.json` to the output folder and prints one line per fix.
+  `npx nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the named rules,
+  including their `review` recipes, and formats only the files those fixes touched.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any

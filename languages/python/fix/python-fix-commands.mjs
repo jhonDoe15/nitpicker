@@ -7,7 +7,7 @@ export { FORMAT_FAILURE_STATUS } from '../adapters/python-tools.mjs';
 export const BLACK_DEFAULT_EXCLUDES =
   '/(\\.direnv|\\.eggs|\\.git|\\.hg|\\.ipynb_checkpoints|\\.mypy_cache|\\.nox|\\.pytest_cache|\\.ruff_cache|\\.tox|\\.svn|\\.venv|\\.vscode|__pypackages__|_build|buck-out|build|dist|venv)/';
 
-export function lintFixCommands(context) {
+export function lintFixCommands(context, fixable = []) {
   const options = lintOptions(context).filter((option) => option !== '--ignore-noqa');
   return (file) => [
     'ruff',
@@ -15,6 +15,7 @@ export function lintFixCommands(context) {
     ...options,
     '--force-exclude',
     '--fix-only',
+    ...(fixable.length === 0 ? [] : ['--fixable', fixable.join(',')]),
     '--exit-non-zero-on-fix',
     `--stdin-filename=${file}`,
     '-',

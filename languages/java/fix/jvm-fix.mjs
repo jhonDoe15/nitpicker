@@ -1,5 +1,6 @@
 import { fixerError, fixSpawn } from '../../../core/fix/common/fix-command.mjs';
 import {
+  changedFiles,
   collectFixFiles,
   excludedBy,
   readBytes,
@@ -112,13 +113,15 @@ function applyStep(step, classpaths, scope) {
         files: step.files,
         format: step.formatWith(classpaths),
         touchedLinesOnly: step.touchedLinesOnly === true,
+        tool: step.plan.label,
+        writer: scope.writer,
       }),
     ),
   }));
 }
 
-function rewriteScope({ projectRoot, repositoryRoot }, mergeBaseSha) {
-  return { projectRoot, repositoryRoot, mergeBaseSha };
+function rewriteScope({ projectRoot, repositoryRoot, writer }, mergeBaseSha) {
+  return { projectRoot, repositoryRoot, mergeBaseSha, writer };
 }
 
 function runSteps(settings, steps, mergeBaseSha) {
@@ -148,6 +151,7 @@ function runSteps(settings, steps, mergeBaseSha) {
 
 export function fixJvm(settings) {
   const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
+  const selectedRules = settings.selectedRules ?? [];
   const headPolicy = settings.headPolicy ?? {};
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
@@ -175,15 +179,15 @@ export function fixJvm(settings) {
   const recipes = runRecipes({
     projectRoot,
     files,
-    recipes: JVM_RECIPES,
+    recipes: settings.recipes ?? JVM_RECIPES,
+    writer: settings.writer,
     preset: config.preset ?? 'java',
+    selectedRules,
     accepts,
   });
-  const outcomes = runSteps(
-    resolved,
-    plannedSteps(resolved, recipes.files),
-    comparison.mergeBaseSha,
-  );
+  const formatted =
+    selectedRules.length === 0 ? recipes.files : changedFiles(projectRoot, recipes.files, before);
+  const outcomes = runSteps(resolved, plannedSteps(resolved, formatted), comparison.mergeBaseSha);
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
     fixedFindings: recipes.fixedFindings,

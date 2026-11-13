@@ -39,6 +39,9 @@ full run below.
    layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with
    the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the
    PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
+   To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes
+   `fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the
+   fixes of the rules you name, including their `review` recipes.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
