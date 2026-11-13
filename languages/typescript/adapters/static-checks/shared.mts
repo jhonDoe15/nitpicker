@@ -14,7 +14,7 @@ export type Finding = {
   path: string;
   identity: string;
   message: string;
-  classification: 'enforceable' | 'descriptive';
+  classification: string;
   symbol?: string;
   location?: { line: number; column?: number; endLine?: number };
 };

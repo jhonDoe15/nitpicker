@@ -1,6 +1,10 @@
 import { QUALITY_AREA_RUNNERS } from './quality-areas/registry.mts';
 import { readLayout } from './typed/head-policy.mts';
-import type { AreaReport, AreaResult, QualityAreaOptions } from './quality-areas/registry.mts';
+import type {
+  AreaReport,
+  AreaResult,
+  QualityAreaOptions,
+} from './quality-areas/typed/area-types.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
 import {
   applyAreaExceptions,

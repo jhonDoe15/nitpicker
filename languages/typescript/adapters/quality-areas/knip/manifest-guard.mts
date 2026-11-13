@@ -3,44 +3,50 @@ import { syncBuiltinESMExports } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isPlainObject } from '../../../../../shared/config.mjs';
-import { parsedJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
+import { fieldsOf } from '../../../../../shared/values/readers.mts';
+import { parsedJsonc as untypedParsedJsonc } from '../../../../../shared/jsonc/jsonc.mjs';
+
+type ParsedJsonc = { readonly kind: string; readonly value?: unknown; readonly reason?: string };
+
+const parsedJsonc: (text: string) => ParsedJsonc = untypedParsedJsonc;
 
 const KNIP_KEY = 'knip';
 const MANIFEST = 'package.json';
 
-function filePathOf(file) {
+function filePathOf(file: unknown): string | undefined {
   if (file instanceof URL) {
     return fileURLToPath(file);
   }
   return typeof file === 'string' ? file : undefined;
 }
 
-function realPathOf(file) {
+function realPathOf(file: string): string {
   const resolved = path.resolve(file);
   return fs.existsSync(resolved) ? fs.realpathSync.native(resolved) : resolved;
 }
 
-function withoutKnipKey(contents, manifestPath) {
+function withoutKnipKey(contents: unknown, manifestPath: string): unknown {
   const text = String(contents);
   const parsed = parsedJsonc(text);
   if (parsed.kind !== 'json') {
     if (text.includes(JSON.stringify(KNIP_KEY))) {
       throw new Error(
-        `${manifestPath} does not parse, so its "${KNIP_KEY}" key cannot be left out: ${parsed.reason}`,
+        `${manifestPath} does not parse, so its "${KNIP_KEY}" key cannot be left out: ${String(parsed.reason)}`,
       );
     }
     return contents;
   }
-  if (!isPlainObject(parsed.value) || !Object.hasOwn(parsed.value, KNIP_KEY)) {
+  const manifest = fieldsOf(parsed.value);
+  if (!isPlainObject(parsed.value) || !Object.hasOwn(manifest, KNIP_KEY)) {
     return contents;
   }
   const kept = JSON.stringify(
-    Object.fromEntries(Object.entries(parsed.value).filter(([key]) => key !== KNIP_KEY)),
+    Object.fromEntries(Object.entries(manifest).filter(([key]) => key !== KNIP_KEY)),
   );
   return typeof contents === 'string' ? kept : Buffer.from(kept);
 }
 
-function isGuarded(file, target) {
+function isGuarded(file: unknown, target: string): boolean {
   const filePath = filePathOf(file);
   return (
     filePath !== undefined &&
@@ -49,13 +55,13 @@ function isGuarded(file, target) {
   );
 }
 
-export function guardKnipManifest(manifestPath) {
+export function guardKnipManifest(manifestPath: string): () => void {
   const target = realPathOf(manifestPath);
   const readFile = fs.promises.readFile;
-  fs.promises.readFile = async (file, ...rest) => {
-    const contents = await readFile(file, ...rest);
+  Reflect.set(fs.promises, 'readFile', async (file: unknown, ...rest: readonly unknown[]) => {
+    const contents: unknown = await Reflect.apply(readFile, fs.promises, [file, ...rest]);
     return isGuarded(file, target) ? withoutKnipKey(contents, target) : contents;
-  };
+  });
   syncBuiltinESMExports();
   return () => {
     fs.promises.readFile = readFile;

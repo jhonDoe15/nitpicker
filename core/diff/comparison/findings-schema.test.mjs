@@ -6,8 +6,8 @@ import {
   normalizeCoupling,
   normalizeStructure,
   normalizeTestRuntime,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
+} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
 import {
   normalizeCrap,
   normalizeMutation,
