@@ -23,8 +23,8 @@ import { historyAvailabilityNotes, noticeDescriber } from './command/policy-revi
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
-import { resolveBase } from './diff/git/repository/base-ref.mjs';
-import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
+import { resolveBase } from './diff/git/repository/base-ref.mts';
+import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';

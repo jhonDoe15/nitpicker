@@ -3,7 +3,7 @@ import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
 
 const CONFIGURATION_VARIABLES = new Set(['GIT_CONFIG_PARAMETERS', 'GIT_CONFIG_COUNT']);
 
-function localVariableNames(environment) {
+function localVariableNames(environment: NodeJS.ProcessEnv): string[] {
   const result = spawnSync('git', ['rev-parse', '--local-env-vars'], {
     encoding: 'utf8',
     env: environment,
@@ -15,11 +15,12 @@ function localVariableNames(environment) {
   return result.stdout.split(/\r?\n/).filter((name) => name.length > 0);
 }
 
-export function detachLocalGitVariables(environment) {
-  const detached = {};
+export function detachLocalGitVariables(environment: NodeJS.ProcessEnv): Record<string, string> {
+  const detached: Record<string, string> = {};
   for (const name of localVariableNames(environment)) {
-    if (!CONFIGURATION_VARIABLES.has(name) && environment[name] !== undefined) {
-      detached[name] = environment[name];
+    const value = environment[name];
+    if (!CONFIGURATION_VARIABLES.has(name) && value !== undefined) {
+      detached[name] = value;
       Reflect.deleteProperty(environment, name);
     }
   }

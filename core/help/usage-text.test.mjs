@@ -6,7 +6,7 @@ import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mts';
 import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
+import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mts';
 import { INIT_OPTIONS } from '../init/init-arguments.mts';
 import { packageVersion } from './package-version.mts';
 import {
