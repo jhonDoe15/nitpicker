@@ -38,7 +38,34 @@ any opt-in; the Kotlin preset does the same for the ktfmt style its build names.
 Checkstyle config, detekt, `.editorconfig`, `ruff.toml`) are read only once their tool lists
 `"project"`.
 
-The build files are read from the same snapshot as the measured conventions: the merge base in a
+The version and options the build file pins for a Spotless formatter are followed the same way, on
+Gradle (Groovy and Kotlin DSL) and Maven (`spotless-maven-plugin`): `palantirJavaFormat("2.90.0")` and
+`googleJavaFormat("1.17.0")` (or `<version>` in the Maven step) select that release from Maven Central
+instead of the one nitpicker pins, and `formatJavadoc` and `reflowLongStrings` are applied as Spotless
+reads them. Spotless defaults apply when the step does not set them: Javadoc is formatted for
+google-java-format and left as written for palantir-java-format, and long strings are not reflowed for
+either, so nitpicker passes `--skip-reflowing-long-strings` (and `--skip-javadoc-formatting` for
+google-java-format with `formatJavadoc(false)`). The printed line says what was followed, for example
+`Java formatter: palantir-java-format, version 2.90.0, Javadoc left as written, long strings not
+reflowed (from your build file)`. Options that cannot be honoured fall back and say so in that line:
+palantir-java-format's command line cannot format Javadoc, so `formatJavadoc(true)` prints `Javadoc
+formatting (formatJavadoc) is not checked`; a google-java-format release older than 1.8 has no skip
+flags, so none are passed. A version or option that is a variable is resolved when it is simple: a
+`libs.versions.*` entry of `gradle/libs.versions.toml`, a `gradle.properties` key, a local `def` or
+`val` string, `"$name"`, or a Maven `${property}` of the POMs. When it cannot be read, the run prints
+`Could not read the Java formatter version (...) in build.gradle; using the version nitpicker pins`, and
+an option it cannot read counts as not set (`using the Spotless default`) and never as enabled. Only
+the steps in the `java` block of `spotless` count (a `format 'docs', { ... }` block for other targets
+is ignored); the version and options come from one declaration, and a run says when two declarations
+disagree and which one it used. Steps of other plugins (`com.palantir.java-format`, a version catalog
+entry) carry no version, and the pinned release runs. palantir-java-format has accepted
+`--skip-reflowing-long-strings` in every release published to Maven Central, so it needs no version
+guard. A
+`java.formatter` pin in `nitpicker.config.json` ignores the build file's version and options. `--fix`
+formats with the same release and flags. The Kotlin preset's Java sources are handled the same way.
+
+The build files are read from the same snapshot as the measured conventions, the formatter version and
+options included: the merge base in a
 comparison (so a pull request that adds `palantirJavaFormat()` is still judged at the limits of its
 base, and starts being judged at 120 once it is merged), the checked-out tree for `--all`, and the
 pull request's own tree only when the base has no Java sources yet. The Checkstyle config below is

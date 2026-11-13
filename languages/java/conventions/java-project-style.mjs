@@ -3,7 +3,14 @@ import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mj
 import { PROJECT_TOOL_CONFIGS } from '../adapters/gradle-presets.mjs';
 import { checkstyleLineLength } from './build-style/checkstyle-width.mjs';
 import { declaredJavaFormatter } from './build-style/java-formatter-detection.mjs';
-import { JAVA_FORMATTER, JAVA_INDENTATION_ID, JAVA_LINE_LENGTH_ID } from './java-conventions.mjs';
+import {
+  JAVA_FORMATTER,
+  JAVA_FORMATTER_OPTIONS,
+  JAVA_FORMATTER_VERSION,
+  JAVA_INDENTATION_ID,
+  JAVA_LINE_LENGTH_ID,
+} from './java-conventions.mjs';
+import { SKIP_JAVADOC, SKIP_REFLOW } from './build-style/java-formatter-options.mjs';
 import { declaredToolNotices } from '../adapters/tool-config/declared/declared-choices.mjs';
 
 const FORMATTER_NAMES = {
@@ -92,26 +99,70 @@ function formatterChoices(origin, detected) {
   throw contradictionError(origin, conflict);
 }
 
-function derivedChoices(detected, source, notes) {
+const FROM_BUILD_FILE = 'your build file';
+
+function declaredDetails(declared) {
+  return {
+    ...(declared.version === undefined
+      ? {}
+      : { [JAVA_FORMATTER_VERSION]: { choice: declared.version, from: FROM_BUILD_FILE } }),
+    ...(declared.options === undefined
+      ? {}
+      : { [JAVA_FORMATTER_OPTIONS]: { choice: declared.options, from: FROM_BUILD_FILE } }),
+  };
+}
+
+function derivedChoices(detected, { source, notes, declaration }) {
   const entry = detected[JAVA_FORMATTER];
   const { declared, notes: found } = entry.source === 'pinned' ? {} : declaredJavaFormatter(source);
   notes.push(...(found ?? []));
+  declaration.current = declared;
   const origin = formatterOrigin(entry, declared);
   return {
     ...(declared === undefined
       ? {}
-      : { [JAVA_FORMATTER]: { choice: declared.formatter, from: 'your build file' } }),
+      : {
+          [JAVA_FORMATTER]: { choice: declared.formatter, from: FROM_BUILD_FILE },
+          ...(declared.formatter === 'none' ? {} : declaredDetails(declared)),
+        }),
     ...formatterChoices(origin, detected),
   };
 }
 
+function javadocNote({ formatter, options }) {
+  if (options.includes(SKIP_JAVADOC)) {
+    return 'Javadoc left as written';
+  }
+  return formatter === 'palantir'
+    ? 'Javadoc formatting (formatJavadoc) is not checked: the palantir-java-format command line cannot format it'
+    : 'Javadoc formatted';
+}
+
+function formatterNote(id, declared) {
+  if (id !== JAVA_FORMATTER || declared === undefined) {
+    return undefined;
+  }
+  const { version, options } = declared;
+  const parts = [
+    ...(version === undefined ? [] : [`version ${version}`]),
+    ...(options === undefined
+      ? []
+      : [
+          javadocNote(declared),
+          options.includes(SKIP_REFLOW) ? 'long strings not reflowed' : 'long strings reflowed',
+        ]),
+  ];
+  return parts.length === 0 ? undefined : parts.join(', ');
+}
+
 export function javaProjectStyle({ config, source }) {
   const notes = [];
+  const declaration = {};
   return {
     unused: {},
     project: checkstyleChoices(source, config.tools ?? {}, notes),
-    note: () => undefined,
-    derive: (detected) => derivedChoices(detected, source, notes),
+    note: (id) => formatterNote(id, declaration.current),
+    derive: (detected) => derivedChoices(detected, { source, notes, declaration }),
     summary: () => [...notes, ...toolNotices(config, source)],
   };
 }

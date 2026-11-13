@@ -36,6 +36,24 @@ describe('javaStyleProperties', () => {
     expect(properties(undefined)).toEqual([]);
   });
 
+  it('passes the version and flags the build file declares for the formatter', () => {
+    const conventions = {
+      'java.formatter': 'palantir',
+      'java.formatterVersion': '2.90.0',
+      'java.formatterOptions': ['skipJavadocFormatting', 'skipReflowingLongStrings'],
+    };
+
+    expect(javaStyleProperties({ javaStyle: 'palantir', conventions })).toEqual([
+      '-Pnitpicker.java.formatterVersion=2.90.0',
+      '-Pnitpicker.java.formatterFlags=--skip-reflowing-long-strings',
+      '-Pnitpicker.java.style=palantir',
+    ]);
+    expect(javaStyleProperties({ javaStyle: 'none', conventions })).toEqual([
+      '-Pnitpicker.java.style=none',
+      '-Pnitpicker.java.indentation=2',
+    ]);
+  });
+
   it('passes the indentation along when no formatter runs, for the Checkstyle checks', () => {
     const properties = (conventions) => javaStyleProperties({ javaStyle: 'none', conventions });
 

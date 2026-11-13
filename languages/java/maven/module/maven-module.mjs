@@ -56,7 +56,11 @@ function runSourceTools(options) {
       auxClasspath: kotlin.auxClasspath,
     }),
     sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
-    sourceTask(runFormat, FORMAT_URL, { ...base, javaStyle: style.javaStyle }),
+    sourceTask(runFormat, FORMAT_URL, {
+      ...base,
+      javaStyle: style.javaStyle,
+      formatterFlags: style.formatterFlags,
+    }),
     sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),

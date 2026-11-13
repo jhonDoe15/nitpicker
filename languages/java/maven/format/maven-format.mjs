@@ -6,7 +6,15 @@ import { FORMAT_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs
 import { runJava } from '../maven-command.mjs';
 import { JAVAC_EXPORTS, javaFiles } from '../maven-lint.mjs';
 
-export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn, timeoutMs }) {
+export function runFormat({
+  module,
+  reportDir,
+  tools,
+  javaStyle = 'google',
+  formatterFlags = [],
+  spawn,
+  timeoutMs,
+}) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
   const formatter = JAVA_FORMATTERS[javaStyle];
@@ -21,7 +29,7 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google', spaw
       classpath: tools[formatter.classpath],
       jvmArgs: JAVAC_EXPORTS,
       mainClass: formatter.mainClass,
-      args: [...formatter.flags, '--dry-run', ...files],
+      args: [...formatter.flags, ...formatterFlags, '--dry-run', ...files],
       cwd: module.basedir,
       accept: ({ status }) => status === 0,
       spawn,

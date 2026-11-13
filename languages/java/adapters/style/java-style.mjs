@@ -1,10 +1,12 @@
 import { JAVA_LINE_LENGTH } from '../../../../shared/project-rules/size-rules.mjs';
 import {
   JAVA_FORMATTER,
+  JAVA_FORMATTER_OPTIONS,
+  JAVA_FORMATTER_VERSION,
   JAVA_INDENTATION_ID,
   JAVA_LINE_LENGTH_ID,
 } from '../../conventions/java-conventions.mjs';
-import { JAVA_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
+import { formatterOptionFlags, JAVA_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
 
 const DEFAULT_JAVA_STYLE = 'google';
 const DEFAULT_INDENTATION = '2';
@@ -35,8 +37,27 @@ export function checkstyleIndentation(conventions) {
   return conventions?.[JAVA_INDENTATION_ID] ?? DEFAULT_INDENTATION;
 }
 
+export function javaFormatterSettings(conventions) {
+  const version = conventions?.[JAVA_FORMATTER_VERSION];
+  const options = conventions?.[JAVA_FORMATTER_OPTIONS];
+  return {
+    ...(version === undefined ? {} : { version }),
+    ...(options === undefined ? {} : { options }),
+  };
+}
+
+export function javaFormatterFlags(conventions) {
+  return formatterOptionFlags(javaStyle(conventions), javaFormatterSettings(conventions));
+}
+
 export function javaStyleProperties({ javaStyle, conventions }) {
+  const { version } = javaFormatterSettings(conventions);
+  const flags = javaStyle === 'none' ? [] : javaFormatterFlags(conventions);
   return [
+    ...(version === undefined || javaStyle === 'none'
+      ? []
+      : [`-Pnitpicker.java.formatterVersion=${version}`]),
+    ...(flags.length === 0 ? [] : [`-Pnitpicker.java.formatterFlags=${flags.join(',')}`]),
     ...(javaStyle === undefined || javaStyle === DEFAULT_JAVA_STYLE
       ? []
       : [`-Pnitpicker.java.style=${javaStyle}`]),

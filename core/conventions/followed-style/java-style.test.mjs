@@ -11,6 +11,8 @@ const { createGitRepository } = useGitFixtures();
 const HEADER = "Following this project's conventions:\n";
 const PALANTIR_CODE = wrappedCall({ step: 4, last: 100 });
 const GOOGLE_CODE = wrappedCall({ step: 2, last: 85 });
+const PALANTIR_OPTIONS = ['skipJavadocFormatting', 'skipReflowingLongStrings'];
+const GOOGLE_OPTIONS = ['skipReflowingLongStrings'];
 const SPOTLESS_PALANTIR = 'spotless { java { palantirJavaFormat() } }';
 const CHECKSTYLE_PATH = 'config/checkstyle/checkstyle.xml';
 const CHECKSTYLE_120 =
@@ -47,12 +49,13 @@ describe('the Java formatter and line length', () => {
     expect(follow({ preset: 'java' }, files)).toEqual({
       conventions: {
         'java.formatter': 'palantir',
+        'java.formatterOptions': PALANTIR_OPTIONS,
         'java.indentation': '4',
         'java.lineLength': '120',
       },
       printed:
         HEADER +
-        '  Java formatter: palantir-java-format (from your build file)\n' +
+        '  Java formatter: palantir-java-format, Javadoc left as written, long strings not reflowed (from your build file)\n' +
         '  Java indentation: 4 spaces (from palantir-java-format)\n' +
         '  Java line length: 120 columns (from palantir-java-format)\n',
     });
@@ -199,6 +202,7 @@ describe('the Java formatter and line length', () => {
 
     expect(follow({ preset: 'kotlin' }, files).conventions).toEqual({
       'java.formatter': 'palantir',
+      'java.formatterOptions': PALANTIR_OPTIONS,
       'java.indentation': '4',
       'java.lineLength': '120',
     });
@@ -324,7 +328,10 @@ describe('the Checkstyle LineLength', () => {
       ...javaFiles(GOOGLE_CODE),
     };
 
-    expect(follow(listed, files).conventions).toEqual({ 'java.lineLength': '110' });
+    expect(follow(listed, files).conventions).toEqual({
+      'java.formatterOptions': GOOGLE_OPTIONS,
+      'java.lineLength': '110',
+    });
   });
 });
 
@@ -346,6 +353,7 @@ describe('where the formatter is declared', () => {
     expect(files.map(conventionsOf)).toEqual(
       files.map(() => ({
         'java.formatter': 'palantir',
+        'java.formatterOptions': PALANTIR_OPTIONS,
         'java.indentation': '4',
         'java.lineLength': '120',
       })),
@@ -358,7 +366,7 @@ describe('where the formatter is declared', () => {
     expect(
       follow({ preset: 'java' }, { 'build.gradle': build, ...javaFiles(GOOGLE_CODE) }),
     ).toEqual({
-      conventions: { 'java.indentation': '4' },
+      conventions: { 'java.formatterOptions': GOOGLE_OPTIONS, 'java.indentation': '4' },
       printed: HEADER + '  Java indentation: 4 spaces (from google-java-format --aosp)\n',
     });
   });
@@ -382,6 +390,7 @@ describe('where the formatter is declared', () => {
       follow({ preset: 'java' }, { 'build.gradle': build, ...javaFiles(GOOGLE_CODE) }).conventions,
     ).toEqual({
       'java.formatter': 'palantir',
+      'java.formatterOptions': PALANTIR_OPTIONS,
       'java.indentation': '4',
       'java.lineLength': '120',
     });
@@ -400,7 +409,24 @@ describe('where the formatter is declared', () => {
         { 'build.gradle': SPOTLESS_PALANTIR, ...base },
         { 'README.md': 'x' },
       ).conventions,
-    ).toEqual({ 'java.formatter': 'palantir', 'java.indentation': '4', 'java.lineLength': '120' });
+    ).toEqual({
+      'java.formatter': 'palantir',
+      'java.formatterOptions': PALANTIR_OPTIONS,
+      'java.indentation': '4',
+      'java.lineLength': '120',
+    });
+  });
+
+  it('reads the formatter version and options at the base, so a branch cannot change what both sides are checked with', () => {
+    const pinned = (version) => `spotless { java { googleJavaFormat('${version}') } }`;
+    const base = { 'build.gradle': pinned('1.17.0'), ...javaFiles(GOOGLE_CODE) };
+
+    expect(
+      compare({ preset: 'java' }, base, { 'build.gradle': pinned('1.25.2') }).conventions,
+    ).toEqual({
+      'java.formatterOptions': ['skipReflowingLongStrings'],
+      'java.formatterVersion': '1.17.0',
+    });
   });
 
   it('reads the base Checkstyle config too, so a branch cannot widen the limit by editing it', () => {
@@ -417,6 +443,7 @@ describe('where the formatter is declared', () => {
 
     expect(compare({ preset: 'java' }, { 'README.md': 'x' }, files).conventions).toEqual({
       'java.formatter': 'palantir',
+      'java.formatterOptions': PALANTIR_OPTIONS,
       'java.indentation': '4',
       'java.lineLength': '120',
     });

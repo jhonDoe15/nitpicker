@@ -6,7 +6,11 @@ import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
-import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
+import {
+  checkstyleIndentation,
+  javaFormatterFlags,
+  javaFormatterSettings,
+} from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
@@ -111,6 +115,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
   const style = {
     javaStyle: policy.javaStyle,
     indentation: checkstyleIndentation(policy.conventions),
+    formatterFlags: javaFormatterFlags(policy.conventions),
   };
   const springRoles = writeSpringRoles(policy.springRoles, work);
   const springRules = writeSpringRuleset(shared.projectRoot, work);
@@ -137,7 +142,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
 function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-    ...formatTool(policy.javaStyle, pinned),
+    ...formatTool(policy.javaStyle, pinned, javaFormatterSettings(policy.conventions).version),
     ...kotlin.extraTools,
     ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
   ];
