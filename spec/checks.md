@@ -261,6 +261,16 @@ Python preset (a task or future on an attribute, and `functools.cache` on an `as
 `async`; the stale-attempt form is not read there) and `go-rules/once-keeps-error` in the Go preset (`sync.Once` and
 `sync.OnceValues` around an initialiser that can fail).
 
+Long-lived collections that only grow: `nitpicker/no-add-only-collection` (strict preset, production source) reports a
+`Map`, `Set` or array in a class field or in a factory closure (a factory with a close function) that a method or returned function adds to per key and that
+nothing in the scope removes from, bounds by `size` or `length`, or hands to a call; startup registries (the
+constructor, `init*`, `register*`, literal keys) and `WeakMap` are skipped, and module-level state stays with
+`nitpicker/no-module-level-mutable-state` (module bindings are never checked, because a module has no close function; collections that `settle-pending-on-close` owns are skipped). The same form runs as `unbounded-collection` in the Python preset (an
+attribute `dict`, `set` or `list` of a class with a close method), `pmd/UnboundedCollectionField` in the Java preset and
+`kotlin-source/UnboundedCollectionProperty` in the Kotlin preset (both limited to a singleton bean: a Spring
+stereotype or `@Singleton`) and `go-rules/map-only-grows` in the Go preset (a map field of a struct that holds a
+mutex).
+
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main

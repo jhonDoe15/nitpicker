@@ -46,6 +46,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
   still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
   (`nitpicker/no-cached-rejection`).
+- A Map, Set or array in a class field or factory closure that a method adds per request, session or run to is
+  removed from when that ends (`finally`, close), bounded by a `size` check, or a `WeakMap`
+  (`nitpicker/no-add-only-collection`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.

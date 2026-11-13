@@ -205,6 +205,7 @@ describe('readKotlinSourceFindings', () => {
         'TimerNotStoppedOnClose',
         'TlsVerificationOff',
         'TriStateBoolean',
+        'UnboundedCollectionProperty',
         'UnboundedFanOut',
         'UnboundedQueryArray',
         'UnboundedReactiveFanOut',

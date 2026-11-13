@@ -72,6 +72,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-task-outliving-resource',
   'nitpicker/settle-pending-on-close',
   'nitpicker/release-listeners-on-close',
+  'nitpicker/no-add-only-collection',
   'nitpicker/no-sync-node-api-in-async',
   'nitpicker/no-test-retry',
   'nitpicker/no-throw',

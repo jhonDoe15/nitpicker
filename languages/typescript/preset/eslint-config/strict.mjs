@@ -115,6 +115,7 @@ const productionSourceRules = {
   'nitpicker/no-task-outliving-resource': 'error',
   'nitpicker/settle-pending-on-close': 'error',
   'nitpicker/release-listeners-on-close': 'error',
+  'nitpicker/no-add-only-collection': 'error',
   'nitpicker/no-tri-state-boolean': 'error',
   'nitpicker/no-unhandled-url-parse': 'error',
   'nitpicker/reusable-object-per-call': 'error',

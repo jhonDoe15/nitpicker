@@ -6,6 +6,7 @@ import { kotlinSourceRules as rulesCostlyCollections } from '../collections/cost
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
 import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
+import { kotlinSourceRules as rulesAddOnlyProperties } from '../lifecycles/growth/add-only-properties.mjs';
 import { kotlinSourceRules as rulesCachedDeferred } from '../lifecycles/memo/cached-deferred.mjs';
 import { kotlinSourceRules as rulesPendingFutures } from '../lifecycles/pending/pending-futures.mjs';
 import { kotlinSourceRules as rulesTimerFields } from '../lifecycles/timers/timer-fields.mjs';
@@ -45,6 +46,7 @@ export const directoryRules = [
   rulesConfigurationReads,
   rulesFutureCompletions,
   rulesCleanupOrder,
+  rulesAddOnlyProperties,
   rulesCachedDeferred,
   rulesPendingFutures,
   rulesTimerFields,

@@ -73,7 +73,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   never compares the binding with the attempt (`conn === attempt`). Unknown types are never findings, and
   an assignment that always replaces the value without a guard is a fresh attempt and is left alone. Concurrent lazy loads that do not share one in-flight promise are not reported: that needs data flow across calls, and the rule reads one function at a time. A static field cached through the class name (`A.c ??= connect()`) is not tracked. A clear inside a `finally` block or a same-class helper that the rejection path calls counts. Allowed:
   `const attempt = start(); conn = attempt; try { return await attempt; } catch (error) { if (conn === attempt)
-{ conn = undefined; } throw error; }`.
+- `nitpicker/no-add-only-collection`: a long-lived collection must not only grow. For a `Map`, `Set` or array held
+  in a class field of a long-lived class (one with a close, dispose, stop or shutdown function, a decorator, or a
+  name ending in `Service`, `Manager`, `Registry`, `Store`, `Cache`, `Client`, `Server`, `Gateway` or `Repository`)
+  or in the closure variable of a factory function that has such a close function, that a method or returned function adds to (`set`,
+  `add`, `push`, `unshift`, `[key] =`) with a non-literal key outside the constructor, it reports the collection when
+  nothing in the scope removes from it (`delete`, `clear`, `splice`, `shift`, `pop`, `length = 0`, a reassignment),
+  reads its `size` or `length` (a bound), or hands it to a call. Registries are skipped: adds in the constructor, in
+  `init*`, `register*` or `on*Init` functions, or with a literal key, and a `WeakMap` or `WeakSet`. Module-level
+  bindings are not checked, also in files where the module state rule is off, because a module has no close
+  function to compare with, and collections that `nitpicker/settle-pending-on-close` owns are skipped. An access
+  through `const { m } = this` or `this['m']` counts like `this.m`. And callbacks passed to a call (`forEach`, `on`)
+  are not factory closures. Allowed: delete the entry when its request, session or run ends, in `finally` or the close
+  handler, bound it, or key a `WeakMap` by the object.
+  { conn = undefined; } throw error; }`.
 - `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
   still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
   closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),

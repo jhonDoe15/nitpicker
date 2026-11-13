@@ -27,6 +27,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
 - A `CompletableFuture` field returned on later calls is reset when the attempt fails
   (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
+- A `Map`, `Set` or `List` field of a singleton bean that a method adds to per request is removed from when the
+  request ends, or is a bounded cache (`pmd/UnboundedCollectionField`).
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
