@@ -1,6 +1,5 @@
 import type { Finding } from '../../static-checks/shared.mts';
 import type { Layout } from '../../typed/head-policy.mts';
-import type { QualityAreaOptions } from './area-types.mts';
 import { parseChangedLines as untypedParseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
 import { runGit as untypedRunGit } from '../../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase as untypedDiffFromBase } from '../../../../../core/tooling/git/base-diff.mjs';
@@ -12,13 +11,6 @@ import { globMatcher as untypedGlobMatcher } from '../../../../../shared/paths/g
 import { pathInside as untypedPathInside } from '../../../../../shared/filesystem.mjs';
 import { exceptionRoute as untypedExceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { mutantRuleId as untypedMutantRuleId } from '../../../../../shared/policy.mjs';
-import { projectTestRunner as untypedProjectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
-import {
-  cracoJestConfigText as untypedCracoJestConfigText,
-  mutationRunnerConfig as untypedMutationRunnerConfig,
-  unsupportedMutationRunner as untypedUnsupportedMutationRunner,
-} from '../../test-runners/mutation-runner-config.mjs';
-import { runnableTestFiles as untypedRunnableTestFiles } from '../../test-runners/test-run.mjs';
 import {
   layeredStrykerConfig as untypedLayeredStrykerConfig,
   withoutProjectIgnoredMutants as untypedWithoutProjectIgnoredMutants,
@@ -49,13 +41,6 @@ export type MutationOutcome =
   | { readonly report: MutationReport; readonly skipped?: undefined };
 
 export type StrykerConfig = Readonly<Record<string, unknown>>;
-
-export type RunnerCommand = {
-  readonly launcher?: string;
-  readonly environment: Readonly<Record<string, string>>;
-};
-
-export type TestRunner = { readonly runner: unknown; readonly command: RunnerCommand };
 
 export type ChangedFile = { readonly path: string; readonly ranges: [number, number][] };
 
@@ -106,27 +91,6 @@ export function exceptionRoute(rule: string, path: string): string {
 }
 
 export const mutantRuleId: (status: string) => string = untypedMutantRuleId;
-
-export const projectTestRunner: (options: QualityAreaOptions) => TestRunner =
-  untypedProjectTestRunner;
-
-export const unsupportedMutationRunner: (
-  options: QualityAreaOptions,
-  runner: unknown,
-) => string | undefined = untypedUnsupportedMutationRunner;
-
-export const cracoJestConfigText: () => string = untypedCracoJestConfigText;
-
-export const mutationRunnerConfig: (request: {
-  readonly options: QualityAreaOptions;
-  readonly runner: unknown;
-  readonly command: RunnerCommand;
-  readonly testFiles: readonly string[];
-  readonly sourceConfig: StrykerConfig;
-}) => StrykerConfig = untypedMutationRunnerConfig;
-
-export const runnableTestFiles: (options: QualityAreaOptions) => string[] =
-  untypedRunnableTestFiles;
 
 export const layeredStrykerConfig: (config: StrykerConfig) => StrykerConfig =
   untypedLayeredStrykerConfig;

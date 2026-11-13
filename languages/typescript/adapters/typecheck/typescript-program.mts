@@ -3,8 +3,7 @@ import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { isToolInstalled, resolveTool } from '../typed/tooling.mts';
-import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { escapeRegExp, isToolInstalled, resolveTool } from '../typed/tooling.mts';
 import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
 import { chainOf, isTypeScriptApi, parentOf, typescriptApi } from '../typed/typescript-program.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
@@ -24,8 +23,6 @@ export type PreEmitRequest = {
 };
 
 const NO_INPUTS_CODE = 18003;
-
-const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 
 export function projectTypeScript(projectRoot: string = PACKAGE_ROOT): ProjectTypeScript {
   if (!isToolInstalled('typescript', { projectRoot })) {

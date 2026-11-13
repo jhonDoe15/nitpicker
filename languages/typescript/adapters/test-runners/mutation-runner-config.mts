@@ -1,8 +1,11 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mochaMutationOptions, projectMocha } from '../../preset/test-runner/mocha-options.mjs';
-import { nodeTestSelection } from './node-test/node-test.mjs';
-import { TEST_TIMEOUT_MS } from './test-run.mjs';
+import { parseJson } from '../../../../shared/values/readers.mts';
+import { mochaMutationOptions, projectMocha } from './typed/runner-tools.mts';
+import type { RunnerCommand, RunnerName, TestOptions } from './typed/runner-types.mts';
+import type { StrykerConfig } from '../quality-areas/typed/mutation.mts';
+import { nodeTestSelection } from './node-test/node-test.mts';
+import { TEST_TIMEOUT_MS } from './test-run.mts';
 
 const RUNNER_PLUGINS = {
   vitest: '@stryker-mutator/vitest-runner',
@@ -36,22 +39,25 @@ const CRACO_JEST_CONFIG_LINES = [
   '',
 ];
 
-function pluginPath(name) {
+function pluginPath(name: string): string {
   return fileURLToPath(import.meta.resolve(name));
 }
 
-function relativeFiles(options, files) {
+function relativeFiles(options: TestOptions, files: readonly string[]): string[] {
   return files.map((file) =>
     path.isAbsolute(file) ? path.relative(options.projectRoot, file).replaceAll('\\', '/') : file,
   );
 }
 
-function optionValue(tokens, index) {
-  const token = tokens[index];
+function optionValue(tokens: readonly string[], index: number): string | undefined {
+  const token = tokens[index] ?? '';
   return token.includes('=') ? token.slice(token.indexOf('=') + 1) : tokens[index + 1];
 }
 
-export function unsupportedMutationRunner(options, runner) {
+export function unsupportedMutationRunner(
+  options: TestOptions,
+  runner: RunnerName,
+): string | undefined {
   const major = runner === 'mocha' ? projectMocha(options.projectRoot)?.major : undefined;
   if (major === undefined || major <= MOCHA_MUTATION_MAX_MAJOR) {
     return undefined;
@@ -64,11 +70,15 @@ export function unsupportedMutationRunner(options, runner) {
   );
 }
 
-export function cracoJestConfigText() {
+export function cracoJestConfigText(): string {
   return CRACO_JEST_CONFIG_LINES.join('\n');
 }
 
-function jestConfigSource(command) {
+function jestConfigSource(command: RunnerCommand): {
+  readonly projectType: string;
+  readonly configFile?: string;
+  readonly config?: unknown;
+} {
   if (command.launcher === 'react-scripts') {
     return { projectType: 'create-react-app' };
   }
@@ -76,22 +86,28 @@ function jestConfigSource(command) {
     return { projectType: 'custom', configFile: CRACO_JEST_CONFIG };
   }
   const tokens = command.arguments_;
-  const configIndex = tokens.findIndex((token) => JEST_CONFIG_OPTIONS.has(token.split('=')[0]));
+  const configIndex = tokens.findIndex((token) =>
+    JEST_CONFIG_OPTIONS.has(token.split('=')[0] ?? token),
+  );
   const value = configIndex === -1 ? undefined : optionValue(tokens, configIndex);
   if (value === undefined) {
     return { projectType: 'custom' };
   }
   return value.trimStart().startsWith('{')
-    ? { projectType: 'custom', config: JSON.parse(value) }
+    ? { projectType: 'custom', config: parseJson(value) }
     : { projectType: 'custom', configFile: value };
 }
 
-function jestOptions(command) {
+function jestOptions(command: RunnerCommand): StrykerConfig {
   const { projectType, ...source } = jestConfigSource(command);
   return { projectType, enableFindRelatedTests: false, ...source };
 }
 
-function mochaConfig(options, command, testFiles) {
+function mochaConfig(
+  options: TestOptions,
+  command: RunnerCommand,
+  testFiles: readonly string[],
+): StrykerConfig {
   const { mochaOptions, nodeArguments } = mochaMutationOptions({
     projectRoot: options.projectRoot,
     tokens: command.arguments_,
@@ -100,7 +116,14 @@ function mochaConfig(options, command, testFiles) {
   return { testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments], mochaOptions };
 }
 
-function runnerOptions({ options, runner, command, testFiles }) {
+type RunnerRequest = {
+  readonly options: TestOptions;
+  readonly runner: RunnerName;
+  readonly command: RunnerCommand;
+  readonly testFiles: readonly string[];
+};
+
+function runnerOptions({ options, runner, command, testFiles }: RunnerRequest): StrykerConfig {
   if (runner === 'jest') {
     return {
       testRunnerNodeArgs: command.nodeArguments,
@@ -123,7 +146,13 @@ function runnerOptions({ options, runner, command, testFiles }) {
   };
 }
 
-export function mutationRunnerConfig({ options, runner, command, testFiles, sourceConfig }) {
+export function mutationRunnerConfig({
+  options,
+  runner,
+  command,
+  testFiles,
+  sourceConfig,
+}: RunnerRequest & { readonly sourceConfig: StrykerConfig }): StrykerConfig {
   const { vitest, ...withoutVitest } = sourceConfig;
   const plugins = [
     pluginPath(RUNNER_PLUGINS[runner]),

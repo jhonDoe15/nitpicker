@@ -5,6 +5,7 @@ import {
   untrackTemporaryPath as untrackUntypedTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mjs';
 import { spawnSyncWithOutputFile as spawnUntypedWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import {
   isToolInstalled as untypedIsToolInstalled,
@@ -35,6 +36,8 @@ export const projectFilesUnder: (
     readonly skipDirectory: (absolute: string, entry: { readonly name: string }) => boolean;
   },
 ) => string[] = untypedProjectFilesUnder;
+
+export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 
 export const toolNameForPath: (relativeToolPath: string) => string = untypedToolNameForPath;
 

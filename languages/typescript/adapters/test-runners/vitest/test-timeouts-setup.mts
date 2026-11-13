@@ -1,8 +1,14 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { resolveTestTimeouts } from '../../../../../shared/test-timeouts/resolve.mjs';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { resolveTestTimeouts } from '../typed/timeouts.mts';
+import type { TimeoutLimits } from '../typed/runner-types.mts';
 
-export function applyVitestTimeouts(policy, { file, root = process.cwd() }, configure) {
+export function applyVitestTimeouts(
+  policy: Parameters<typeof resolveTestTimeouts>[0],
+  { file, root = process.cwd() }: { readonly file: string; readonly root?: string },
+  configure: (settings: Readonly<Record<string, unknown>>) => void,
+): TimeoutLimits {
   const limits = resolveTestTimeouts(policy, {
     file: path.relative(root, file).replaceAll('\\', '/'),
     language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
@@ -19,12 +25,14 @@ export function applyVitestTimeouts(policy, { file, root = process.cwd() }, conf
   return limits;
 }
 
-export function timeoutSetupSource(policyRoot) {
+export function timeoutSetupSource(policyRoot: string): string {
   const shared = pathToFileURL(path.join(policyRoot, 'shared')).href;
-  const setup = pathToFileURL(
-    path.join(
-      policyRoot,
-      'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
+  const setup = checkoutModuleUrl(
+    pathToFileURL(
+      path.join(
+        policyRoot,
+        'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
+      ),
     ),
   ).href;
   return `import { expect, vi } from 'vitest';

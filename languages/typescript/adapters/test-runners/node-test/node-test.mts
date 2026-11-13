@@ -1,13 +1,13 @@
 import { globSync } from 'node:fs';
 import path from 'node:path';
-import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
 import {
   NODE_TEST_OPTIONS_NITPICKER_SETS,
   RUNNER_NAMES,
 } from '../../../preset/test-runner/runners.mjs';
-import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
-import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mjs';
-import { startTestConsole } from '../test-console-run.mjs';
+import { spawnNodeTool, withoutOptions } from '../typed/runner-tools.mts';
+import type { RunnerCommand, TestOptions, TestRun } from '../typed/runner-types.mts';
+import { startV8Coverage } from '../v8-coverage/v8-coverage-run.mts';
+import { startTestConsole } from '../test-console-run.mts';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import {
   readRun,
@@ -17,7 +17,7 @@ import {
   testTimeoutMs,
   uncoveredRun,
   workerCount,
-} from '../test-run.mjs';
+} from '../test-run.mts';
 
 const REPORTER = checkoutModuleUrl(new URL('node-test-reporter.mjs', import.meta.url)).href;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
@@ -54,9 +54,12 @@ const VALUED_NODE_OPTIONS = new Set([
   '--test-skip-pattern',
 ]);
 
-function splitArguments(tokens) {
-  const options = [];
-  const patterns = [];
+function splitArguments(tokens: readonly string[]): {
+  readonly options: string[];
+  readonly patterns: string[];
+} {
+  const options: string[] = [];
+  const patterns: string[] = [];
   const pending = { value: false };
   for (const token of tokens) {
     const isOptionValue = pending.value;
@@ -70,28 +73,44 @@ function splitArguments(tokens) {
   return { options, patterns };
 }
 
-function typeStrippingArguments(nodeArguments, files) {
+function typeStrippingArguments(
+  nodeArguments: readonly string[],
+  files: readonly string[],
+): string[] {
   const hasTypeScript = files.some((file) => TYPESCRIPT_FILE.test(file));
-  const usesLoader = nodeArguments.some((token) => LOADER_OPTIONS.has(token.split('=')[0]));
+  const usesLoader = nodeArguments.some((token) =>
+    LOADER_OPTIONS.has(token.split('=')[0] ?? token),
+  );
   const needsStripping = (hasTypeScript && !usesLoader) || TYPESCRIPT_FILE.test(REPORTER);
   return needsStripping && process.features.typescript === false
     ? ['--experimental-strip-types']
     : [];
 }
 
-function matchedFiles(projectRoot, patterns) {
+function matchedFiles(projectRoot: string, patterns: readonly string[]): string[] {
   return globSync(patterns, {
     cwd: projectRoot,
-    exclude: (entry) => SKIPPED_DIRECTORY.test(path.basename(entry.name ?? entry)),
+    exclude: (entry) => SKIPPED_DIRECTORY.test(path.basename(entry)),
   }).map((file) => path.resolve(projectRoot, file));
 }
 
-function selectedTestFiles(options, patterns, files) {
+function selectedTestFiles(
+  options: TestOptions,
+  patterns: readonly string[],
+  files: readonly string[],
+): readonly string[] {
   const selected = [...new Set([...matchedFiles(options.projectRoot, patterns), ...files])];
   return selected.length === 0 ? patterns : selected;
 }
 
-export function nodeTestSelection(options, command) {
+export function nodeTestSelection(
+  options: TestOptions,
+  command: RunnerCommand,
+): {
+  readonly nodeArguments: string[];
+  readonly scriptOptions: string[];
+  readonly testFiles: readonly string[];
+} {
   const { options: scriptOptions, patterns } = splitArguments(
     withoutOptions(command.arguments_, NODE_TEST_OPTIONS_NITPICKER_SETS),
   );
@@ -110,7 +129,7 @@ export function nodeTestSelection(options, command) {
   };
 }
 
-function testArguments(options, command, reportPath) {
+function testArguments(options: TestOptions, command: RunnerCommand, reportPath: string): string[] {
   const { nodeArguments, scriptOptions, testFiles } = nodeTestSelection(options, command);
   return [
     ...nodeArguments,
@@ -125,7 +144,7 @@ function testArguments(options, command, reportPath) {
   ];
 }
 
-export async function runNodeTest(options, command) {
+export async function runNodeTest(options: TestOptions, command: RunnerCommand): Promise<TestRun> {
   const reportPath = temporaryProjectPath(options, 'node-test-report.json');
   const testConsole = startTestConsole(options, { collectsLines: true });
   const coverage =

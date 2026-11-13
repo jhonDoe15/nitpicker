@@ -8,7 +8,7 @@ import type {
 import { parseArguments } from './quality-areas/arguments.mts';
 import { isInvokedModule, writeAdapterReport } from './typed/static-checks.mts';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
-import { hasProjectTests } from './test-runners/test-run.mjs';
+import { hasProjectTests } from './test-runners/test-run.mts';
 import type { Finding } from './static-checks/shared.mts';
 
 function areaResult(options: QualityAreaOptions): AreaResult | Promise<AreaResult> {

@@ -14,6 +14,7 @@ export type HeadPolicy = {
   readonly testConsole: { readonly allow?: unknown[] };
   readonly tools: { readonly knip?: unknown; readonly eslint?: EslintToolSettings };
   readonly history: unknown;
+  readonly thresholds?: unknown;
 };
 
 export type Layout = {
@@ -25,7 +26,12 @@ export type Layout = {
   readonly isSourceFile: (relativePath: string) => boolean;
   readonly isRunnableTestFile: (relativePath: string) => boolean;
   readonly isTestFile: (relativePath: string) => boolean;
-  projectCodeFiles(projectRoot: string): readonly string[];
+  readonly testRoots: readonly string[];
+  readonly sourceGlobs: readonly string[];
+  readonly sourceTestDirectoryGlobs: readonly string[];
+  readonly excludedGlobs: readonly string[];
+  readonly isEndToEndTest: (relativePath: string) => boolean;
+  projectCodeFiles(projectRoot: string, roots?: readonly string[]): readonly string[];
 };
 
 export const readHeadPolicy: () => HeadPolicy = readUntypedHeadPolicy;

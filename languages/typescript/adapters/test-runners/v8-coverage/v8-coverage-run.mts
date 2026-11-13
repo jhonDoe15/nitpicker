@@ -1,37 +1,64 @@
 import { mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import type TypeScript from 'typescript';
 import {
   coverageOutputFile,
   coverageSourceFiles,
   removeTemporary,
   temporaryProjectPath,
-} from '../test-run.mjs';
-import { writeV8Coverage } from './v8-coverage.mjs';
+} from '../test-run.mts';
+import { writeV8Coverage } from './v8-coverage.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import type {
+  CoverageRun,
+  Environment,
+  RunnerCommand,
+  TestOptions,
+} from '../typed/runner-types.mts';
+
+type ProjectTypeScript = typeof TypeScript & {
+  readonly getEmitScriptTarget: (options: TypeScript.CompilerOptions) => TypeScript.ScriptTarget;
+};
 
 const LOADED_SOURCES = path.join(import.meta.dirname, 'loaded-sources.cjs');
 const TS_NODE_OPTIONS = 'TS_NODE_COMPILER_OPTIONS';
 const COVERAGE_TARGET = 'es2022';
 
-function projectTypeScript(projectRoot) {
+function isProjectTypeScript(value: unknown): value is ProjectTypeScript {
+  return typeof fieldOf(value, 'getEmitScriptTarget') === 'function';
+}
+
+function projectTypeScript(
+  projectRoot: string,
+): { readonly typescript: unknown } | { readonly unavailable: unknown } {
   try {
-    return { typescript: createRequire(path.join(projectRoot, 'package.json'))('typescript') };
+    const typescript: unknown = createRequire(path.join(projectRoot, 'package.json'))('typescript');
+    return { typescript };
   } catch (error) {
     return { unavailable: error };
   }
 }
 
-function writtenOptions(text) {
+function writtenOptions(
+  text: string | undefined,
+): { readonly options: object } | { readonly malformed: unknown } {
   try {
-    const options = JSON.parse(text ?? '{}');
+    const options: unknown = JSON.parse(text ?? '{}');
     return typeof options === 'object' && options !== null ? { options } : { malformed: text };
   } catch (error) {
     return { malformed: error };
   }
 }
 
-function compiledOptions(typescript, projectRoot, written) {
-  const configFile = typescript.findConfigFile(projectRoot, typescript.sys.fileExists);
+function compiledOptions(
+  typescript: ProjectTypeScript,
+  projectRoot: string,
+  written: object,
+): TypeScript.CompilerOptions {
+  const configFile = typescript.findConfigFile(projectRoot, (file) =>
+    typescript.sys.fileExists(file),
+  );
   const host = { ...typescript.sys, onUnRecoverableConfigFileDiagnostic: () => {} };
   const configured =
     configFile === undefined
@@ -43,12 +70,14 @@ function compiledOptions(typescript, projectRoot, written) {
   };
 }
 
-function tsNodeEnvironment(projectRoot, environment) {
-  const { typescript } = projectTypeScript(projectRoot);
-  const { options: written } = writtenOptions(environment[TS_NODE_OPTIONS]);
-  if (typeof typescript?.getEmitScriptTarget !== 'function' || written === undefined) {
+function tsNodeEnvironment(projectRoot: string, environment: Environment): Environment {
+  const loaded = projectTypeScript(projectRoot);
+  const typescript = 'typescript' in loaded ? loaded.typescript : undefined;
+  const parsed = writtenOptions(environment[TS_NODE_OPTIONS]);
+  if (!(isProjectTypeScript(typescript) && 'options' in parsed)) {
     return {};
   }
+  const written = parsed.options;
   const options = compiledOptions(typescript, projectRoot, written);
   if (typescript.getEmitScriptTarget(options) >= typescript.ScriptTarget.ES2022) {
     return {};
@@ -63,7 +92,7 @@ function tsNodeEnvironment(projectRoot, environment) {
   };
 }
 
-export function startV8Coverage(options, command) {
+export function startV8Coverage(options: TestOptions, command: RunnerCommand): CoverageRun {
   const coverageDirectory = temporaryProjectPath(options, 'v8-coverage');
   const sourcesDirectory = temporaryProjectPath(options, 'loaded-sources');
   mkdirSync(coverageDirectory);
