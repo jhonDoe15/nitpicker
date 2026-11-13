@@ -2,18 +2,23 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
 import { escapeXml } from '../../tool-config/xml-write.mjs';
-import { projectProxyAnnotations } from './proxy-annotations.mjs';
+import { type ProxyAnnotations, projectProxyAnnotations } from './proxy-annotations.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
 
 export const SPRING_RULESET = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
 const PROXY_RULES = ['SpringProxyMethodVisibility', 'SpringProxySelfCall'];
 const RULESET_FILE = 'spring-ruleset-project.xml';
 
-function property(name, values) {
-  return `      <property name="${name}" value="${escapeXml(values.join(','))}"/>`;
+function escaped(text: string): string {
+  return textOf(escapeXml(text));
 }
 
-export function springRuleset({ proxied, constraints }) {
-  const reference = escapeXml(SPRING_RULESET);
+function property(name: string, values: readonly string[]): string {
+  return `      <property name="${name}" value="${escaped(values.join(','))}"/>`;
+}
+
+export function springRuleset({ proxied, constraints }: ProxyAnnotations): string {
+  const reference = escaped(SPRING_RULESET);
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<ruleset name="nitpicker-spring" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
@@ -34,11 +39,7 @@ export function springRuleset({ proxied, constraints }) {
   ].join('\n');
 }
 
-/**
- * Writes the Spring ruleset for a project that declares proxied annotations of its own, and returns
- * its path; undefined when the project declares none, so the plain ruleset applies.
- */
-export function writeSpringRuleset(projectRoot, directory) {
+export function writeSpringRuleset(projectRoot: string, directory: string): string | undefined {
   const annotations = projectProxyAnnotations(projectRoot);
   if (annotations.proxied.length === 0 && annotations.constraints.length === 0) {
     return undefined;
