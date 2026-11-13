@@ -24,36 +24,53 @@ run; finish with the plain run below.
 ## Finish with the gate
 
 While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
-read the printed skipped list for what it left out. A quick run is never a pass; finish with the
-full run below.
+read the printed skipped list for what it left out. `--analyzer <name>` runs one analyzer only,
+which is faster still. A run narrowed with `--quick` or `--analyzer` is never a pass: finish with
+the full run below, without them.
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests make the
    gate exit 1, and so does a change that does not compile: each compile error is a
    `build/compile-error` finding at its line, and the other checks wait until it builds.
-2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
-   code. It first rewrites the changed Java files with the formatter the run names under
-   "Following this project's conventions" (google-java-format 1.35.0, `--aosp` for the aosp style,
-   or palantir-java-format) and lists them under "Fixed files:"; re-read a file it lists before you
-   edit it again. When the run says no Java formatter runs, it leaves the files alone; keep the
-   layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with
-   the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the
-   PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
+   first rewrites the changed Java files with the formatter the run names under "Following this
+   project's conventions" (google-java-format 1.35.0, `--aosp` for the aosp style, or
+   palantir-java-format) and lists them under "Fixed files:". When the run says no Java formatter
+   runs, it leaves the files alone; keep the layout by hand. Then it runs the build on the merge
+   base and on head, with the project's `./gradlew` or `./mvnw` when there is one, otherwise
+   `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It
+   takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
-     and you run the gate again without it before you finish.
+   - 0: done, unless you narrowed the run with `--analyzer` or `--quick`: the summary then says
+     `Ran only: ...` or names the skipped checks, and you run the gate again without them before you
+     finish.
    - 1: fix the failing tests the summary leads with, every new finding (printed as
-     `tool/rule path:line`) and any tool error listed below them, then rerun.
-   - 2: no new findings, but a tool failed (the build, or a base that does not compile). Fix
-     the cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
-     it; never kill it.
-     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
-4. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
-   `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
-   exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
-   SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
+     `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Re-read the files `--fix`
+     changed before editing them. Then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (the build, or a base that does
+     not compile) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait for
+     that run; never kill it. When the message links to
+     [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md),
+     the fix is there.
+
+   If the console output is cut off, read `reports/quality/diff/report.txt`, then
+   `new-findings.json` and `tool-errors.json` in the same folder.
+
+   A note such as `Note: 1 existing lint finding in edited code (not failing, no more than before)`
+   or a "Touched, still over limit" list names held findings in code you edited. It never fails the
+   run: leave that code alone.
+
+4. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE` comments,
+   coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`),
+   config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one exception is
+   `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native SQL
+   ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change`
    label: a `nitpicker-config/policy-loosened` finding is for a person to accept.
+5. Code that is right despite a rule: a finding message may end with the `exceptions` entry that
+   would accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`).
+   That entry is for a human reviewer. Never add one, and never fill in its `reason`, to get past
+   the gate: stop and ask a human, and quote the finding with its entry.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
@@ -63,7 +80,10 @@ If your change edits a method, class, file or package that existed before it, re
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
-To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+To learn why a rule is on and what form it allows before you write or change code, run
+`npx nitpicker explain <tool/rule>` with the name a finding prints, or read the
+[rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md).
+`npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 

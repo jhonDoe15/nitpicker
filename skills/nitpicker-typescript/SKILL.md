@@ -27,38 +27,55 @@ project, so it takes as long as a full run; finish with the plain run below.
 ## Finish with the gate
 
 While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
-read the printed skipped list for what it left out. A quick run is never a pass; finish with the
-full run below.
+read the printed skipped list for what it left out. `--analyzer <name>` runs one analyzer only,
+which is faster still. A run narrowed with `--quick` or `--analyzer` is never a pass: finish with
+the full run below, without them.
 
 1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
-   and mutation from running.
-   The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
-   `@types/node` in devDependencies.
+   and mutation from running. The gate type-checks for you. Node globals (`process`, `AbortSignal`)
+   and `node:` imports need `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
-   without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
-   configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
-   most of the project's files), then checks your change against the merge base. It
-   takes minutes and prints a progress line for each slow analyzer.
+   without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
+   applies ESLint and Prettier fixes with its own configs (do not format with plain `prettier`; its
+   quotes, semicolons, indentation and width follow most of the project's files), then checks your
+   change against the merge base. It takes minutes and prints a progress line for each slow
+   analyzer.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
-     and you run the gate again without it before you finish.
-   - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
-     below them. Re-read the files `--fix`
-     changed before editing them, then rerun.
-   - 2: no new findings, but a tool failed. Fix the cause it names (usually a missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
-     wait for that run; never kill it.
-     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
-4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
-   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
-   or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person to
-   accept.
-5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
-   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
-   entry is for a human reviewer. Never add one, and never fill in its
-   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
-   TypeScript compiler error has no entry; fix the type.
+   - 0: done, unless you narrowed the run with `--analyzer` or `--quick`: the summary then says
+     `Ran only: ...` or names the skipped checks, and you run the gate again without them before you
+     finish.
+   - 1: fix the failing tests the summary leads with, every new finding (printed as
+     `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Re-read the files `--fix`
+     changed before editing them. Then rerun.
+   - 2: no new findings, but a tool failed. Fix the cause it names (usually a missing package) and
+     rerun. Exit 2 is never a pass. If it says another run is in progress, wait for that run; never
+     kill it. When the message links to
+     [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md),
+     the fix is there.
 
-To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+   If the console output is cut off, read `reports/quality/diff/report.txt`, then
+   `new-findings.json` and `tool-errors.json` in the same folder.
+
+   A note such as `Note: 1 existing lint finding in edited code (not failing, no more than before)`
+   or a "Touched, still over limit" list names held findings in code you edited. It never fails the
+   run: leave that code alone.
+
+4. Never suppress: no `eslint-disable`, `@ts-ignore`, coverage or mutation ignore comments
+   (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy
+   entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests.
+   If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set
+   `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change` label: a
+   `nitpicker-config/policy-loosened` finding is for a person to accept.
+5. Code that is right despite a rule: a finding message may end with the `exceptions` entry that
+   would accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`).
+   That entry is for a human reviewer. Never add one, and never fill in its `reason`, to get past
+   the gate: stop and ask a human, and quote the finding with its entry. A TypeScript compiler error
+   has no entry; fix the type.
+
+To learn why a rule is on and what form it allows before you write or change code, run
+`npx nitpicker explain <tool/rule>` with the name a finding prints, or read the
+[rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md).
+`npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 

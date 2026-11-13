@@ -14,25 +14,28 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 ### Run it
 
 - `npx nitpicker` checks your changes (committed, staged, unstaged and untracked) against the merge
-  base. Run it from anywhere inside the project, and run it before you finish a task.
+  base. Run it from anywhere inside the project, and run it before you finish a task. Run it as a
+  background command you wait on, without a pipe: you need its exit code. Wait for it: do not start
+  a second run or kill it. A full run takes minutes and prints a progress line to stderr for each
+  slow analyzer. A second run in the same project exits 2 at once with `another run is in progress`.
 - When nothing changed since the merge base, no analyzer runs: it prints
   `No changes since <base> (<sha>); nothing to check.` and exits 0.
-- `npx nitpicker --quick` skips the tests and the checks built on them; read the printed skipped
-  list for what it left out.
-  Use it while you iterate; a quick run is never a pass, so run `npx nitpicker` without `--quick`
-  before you finish. `--quick` works with `--fix`, `--base`, `--analyzer` and `--all`.
+- While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+  read the printed skipped list for what it left out. `--quick` works with `--fix`, `--base`,
+  `--analyzer` and `--all`. `--analyzer <name>` runs one analyzer only, which is faster still. A run
+  narrowed with `--quick` or `--analyzer` is never a pass: finish with the full run below, without
+  them.
 - `npx nitpicker --fix` first applies the preset's fixers to the changed files (ESLint and Prettier;
   `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
-  ktfmt), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
-  cannot be combined with `--all`.
+  ktfmt), then runs the comparison. Use it to clear formatting and auto-fixable lint findings, and
+  re-read the files it lists under "Fixed files:" before you edit them again. It cannot be combined
+  with `--all`.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
   with `--base`, `--fix`, sharding or `--defer-exit`.
-- `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
-  runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
-  says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
+- `--rule <substring>` lists the findings whose rule matches, after the summary.
 - `npx nitpicker show` prints the summary of the last run again without running anything. Add
   `--rule <substring>`, `--path <file or folder>` or `--details` to read one rule, one folder or the
   full messages instead of running again. It names the run it shows and warns when the working tree
@@ -42,34 +45,33 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 
 | Code | Meaning                                                                                                                                |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer` or `--quick`.                          |
 | 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
 | 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 
-A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
-not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
-
-Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
-`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. When the message links to
-[troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
-`npx nitpicker init` lists the missing peers with the install command for the project's package
-manager; it never overwrites an existing file.
+Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool
+errors, fix the cause (a missing peer such as `vitest` or `typescript`, a bad
+`nitpicker.config.json`, a wrong `--base`) and rerun. When the message links to
+[troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix
+is there. `npx nitpicker init` lists the missing peers with the install command for the project's
+package manager; it never overwrites an existing file.
 
 ### Read the report
 
-The console summary lists each new code violation as `<tool>/<rule> <path>:<line>` followed
-by its message. A change to `nitpicker.config.json` that checks less is not listed that way: it
-appears under "Policy changed in this change", followed by `Unapproved policy changes
-(nitpicker-config/policy-loosened): N`, and fails the run. Full reports are written to
-`reports/quality/diff/` (`reports/quality/snapshot/`
-for `--all`):
+The console summary lists each new code violation as `<tool>/<rule> <path>:<line>` followed by its
+message. A change to `nitpicker.config.json` that checks less is not listed that way: it appears
+under "Policy changed in this change", followed by
+`Unapproved policy changes (nitpicker-config/policy-loosened): N`, and fails the run.
+
+If the console output is cut off, read `reports/quality/diff/report.txt`, then `new-findings.json`
+and `tool-errors.json` in the same folder. Full reports are written to `reports/quality/diff/`
+(`reports/quality/snapshot/` for `--all`):
 
 - `report.txt`: the readable report. Start here.
 - `new-findings.json`: the new findings that count against you. Each has a tool, rule, path,
   location and message, and where the rule states them, `allowedForm` (what to write instead) and
   `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
-  the config list). Use `allowedForm` to fix the code. Never add `exception` yourself (step 3
-  below).
+  the config list). Use `allowedForm` to fix the code. Never add `exception` yourself.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
@@ -82,19 +84,23 @@ for `--all`):
 above that compare with the base, and no `report-baseline.sarif`.
 
 Only new enforceable findings fail the run. Resolved and unchanged findings, descriptive findings
-and metric changes are reported but never fail.
+and metric changes are reported but never fail. A note such as
+`Note: 1 existing lint finding in edited code (not failing, no more than before)` or a "Touched,
+still over limit" list names held findings in code you edited. It never fails the run: leave that
+code alone.
 
 ### Handle a finding
 
-1. Read the message. It says what is wrong. To read one rule or one folder of the last run again
-   without running it, use `npx nitpicker show --rule <substring>` or `--path <folder>`.
-2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0.
+1. Read the message. It says what is wrong.
+2. Fix the code so the finding goes away, then rerun `npx nitpicker` until it exits 0. While you
+   iterate, `--quick` and `--analyzer` are faster; finish with a full run.
 3. **Never suppress a finding.** Do not add `eslint-disable` comments, `@ts-ignore` or
    `@ts-expect-error`, edit the rule configuration, add to `exclude`, `disable` or `exceptions` in
    `nitpicker.config.json`, add to `nitpicker.legacy.json`, mark a file you wrote as generated
-   (`@generated`, `DO NOT EDIT`), or delete or weaken tests to make the gate pass. Those overrides are listed in the report and change the policy hash, so they are
-   visible in review. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or
-   add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding means stop and
-   ask a person to review the change.
+   (`@generated`, `DO NOT EDIT`), or delete or weaken tests to make the gate pass. Those overrides
+   are listed in the report and change the policy hash, so they are visible in review. Never pass
+   `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE` or add the `accept-policy-change`
+   label: a `nitpicker-config/policy-loosened` finding means stop and ask a person to review the
+   change.
 4. If a finding looks wrong, or fixing it needs a decision you cannot make, stop and ask the
    maintainer. Do not work around it.

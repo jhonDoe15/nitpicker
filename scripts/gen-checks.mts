@@ -1,6 +1,8 @@
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { applySkillSection, applySnippetSections } from '../core/skills/fix-loop.mts';
+import { SLOTS } from '../core/skills/fix-loop-slots.mts';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
 import { applyActionReference } from './action-inputs.mts';
 import { applySupportMatrix } from './platforms/support-matrix.mts';
@@ -14,6 +16,11 @@ export const GENERATED_FILES = [
   },
   { file: path.join(repositoryRoot, 'docs/ci.md'), generate: applyActionReference },
   { file: path.join(repositoryRoot, 'docs/compatibility.md'), generate: applySupportMatrix },
+  { file: path.join(repositoryRoot, 'docs/agents-snippet.md'), generate: applySnippetSections },
+  ...SLOTS.map(({ preset }) => ({
+    file: path.join(repositoryRoot, `skills/nitpicker-${preset}/SKILL.md`),
+    generate: applySkillSection(preset),
+  })),
 ];
 
 export function staleFiles(): string[] {
