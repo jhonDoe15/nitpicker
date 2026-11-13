@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { goFactFindings } from './go-fact-findings.mjs';
 import { goFacts } from './go-facts.mjs';
 
@@ -201,6 +202,59 @@ describe('Go facts', () => {
         policy: { layout: { sharedRoots: ['lib'] } },
       }),
     ).toEqual([]);
+  });
+
+  it('reports feature internals, shared code using a feature and a cycle of features', () => {
+    const report = {
+      files: [
+        file('features/cart/cart.go'),
+        file('features/billing/billing.go'),
+        file('features/billing/store/store.go'),
+        file('shared/money/round.go'),
+      ],
+      definitions: [
+        definition('features/cart/cart.go', 'Add'),
+        definition('features/billing/billing.go', 'Charge'),
+        definition('features/billing/store/store.go', 'Save'),
+        definition('shared/money/round.go', 'Round'),
+      ],
+      usages: [
+        usage('features/cart/cart.go', {
+          imports: [
+            { path: 'shop/features/billing', name: '', line: 3 },
+            { path: 'shop/features/billing/store', name: '', line: 4 },
+          ],
+          names: ['billing', 'store'],
+          selectors: [
+            { qualifier: 'billing', name: 'Charge' },
+            { qualifier: 'store', name: 'Save' },
+          ],
+        }),
+        usage('features/billing/billing.go', {
+          imports: [{ path: 'shop/features/cart', name: '', line: 3 }],
+          names: ['cart'],
+          selectors: [{ qualifier: 'cart', name: 'Add' }],
+        }),
+        usage('features/billing/store/store.go'),
+        usage('shared/money/round.go', {
+          imports: [{ path: 'shop/features/billing', name: '', line: 3 }],
+          names: ['billing'],
+          selectors: [{ qualifier: 'billing', name: 'Charge' }],
+        }),
+      ],
+    };
+
+    const findings = goFactFindings(goFacts(report, { module: 'shop' }));
+
+    expect(findings.map(({ rule, path }) => `${rule} ${path}`).sort()).toEqual([
+      'feature-cycle features/billing/billing.go',
+      'feature-cycle features/cart/cart.go',
+      'feature-internal-import features/cart/cart.go',
+      'shared-imports-feature shared/money/round.go',
+    ]);
+    expect(findings.find(({ rule }) => rule === 'feature-internal-import').message).toBe(
+      `Import feature billing only through the package directly in features/billing/: features/cart/cart.go imports its internal module features/billing/store/store.go. Expose what it needs there, or move the code both use to a shared root. ${exceptionHint('feature-internal-import', 'features/cart/cart.go')}`,
+    );
   });
 
   it('reports doc comments that restate their name and new console output of tests', () => {

@@ -1,0 +1,164 @@
+import { readFileSync } from 'node:fs';
+import { afterEach, describe, expect, it } from 'vitest';
+import { readCouplingFindings } from '../metrics/java-coupling.mjs';
+import { SPRING_LAYER_PACKAGES, springRootFolders } from './feature-layout.mjs';
+import { readFeatureGraph } from './feature-findings.mjs';
+import {
+  featureProjects,
+  javaSources,
+  projectFindings,
+  rows,
+} from './test-support/feature-project.mjs';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
+
+const { project: featureProject, remove } = featureProjects();
+
+afterEach(remove);
+
+const ROOT = 'com.acme.shop';
+const FOLDER = 'src/main/java/com/acme/shop';
+const CLASSES = [
+  `${ROOT}.ShopApplication`,
+  `${ROOT}.billing.Invoice`,
+  `${ROOT}.billing.internal.Rates`,
+  `${ROOT}.orders.OrderService`,
+  `${ROOT}.orders.internal.OrderRepository`,
+  `${ROOT}.orders.internal.Audit`,
+  `${ROOT}.shared.Money`,
+  `${ROOT}.service.LegacyService`,
+];
+const EDGES = [
+  [`${ROOT}.ShopApplication`, `${ROOT}.orders.internal.Audit`],
+  [`${ROOT}.billing.Invoice`, `${ROOT}.orders.internal.OrderRepository`],
+  [`${ROOT}.billing.Invoice`, `${ROOT}.billing.internal.Rates`],
+  [`${ROOT}.billing.Invoice`, `${ROOT}.shared.Money`],
+  [`${ROOT}.orders.OrderService`, `${ROOT}.billing.Invoice`],
+  [`${ROOT}.billing.internal.Rates`, `${ROOT}.service.LegacyService`],
+  [`${ROOT}.service.LegacyService`, `${ROOT}.billing.Invoice`],
+];
+const BOUNDARY = {
+  rule: 'spring-feature-boundary',
+  className: `${ROOT}.billing.Invoice`,
+  fileName: 'Invoice.java',
+  detail: `${ROOT}.orders.internal.OrderRepository`,
+};
+
+function springFindings({ layout, violations = [BOUNDARY] } = {}) {
+  const project = featureProject({
+    files: javaSources(CLASSES),
+    modules: [{ classes: CLASSES, edges: EDGES, springArch: { root: ROOT, violations } }],
+  });
+  return rows(projectFindings(project, { policy: layout === undefined ? {} : { layout } }));
+}
+
+describe('Spring package-by-feature roles', () => {
+  it('takes the root sub-packages as features and leaves their boundary edges to ArchUnit', () => {
+    expect(springFindings()).toEqual([
+      ['package-cycle', `${FOLDER}/billing/Invoice.java`, `cycle:${ROOT}.billing`],
+      ['package-cycle', `${FOLDER}/billing/internal/Rates.java`, `cycle:${ROOT}.billing.internal`],
+      ['package-cycle', `${FOLDER}/service/LegacyService.java`, `cycle:${ROOT}.service`],
+      ['feature-cycle', `${FOLDER}/billing/Invoice.java`, `${FOLDER}/orders|feature-cycle`],
+      ['feature-cycle', `${FOLDER}/orders/OrderService.java`, `${FOLDER}/billing|feature-cycle`],
+    ]);
+  });
+
+  it('hands the Spring features to the stability rule as units, without the layer packages', () => {
+    const project = featureProject({
+      files: javaSources(CLASSES),
+      modules: [{ classes: CLASSES, edges: EDGES, springArch: { root: ROOT, violations: [] } }],
+    });
+    const { layout } = readFeatureGraph(project.root, { ...project, policy: {} });
+    const stability = (options) =>
+      readCouplingFindings(project.projects[0].reportRoot, {
+        projectRoot: project.root,
+        sourceRoots: ['src/main/java'],
+        ...options,
+      })
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ identity }) => identity);
+    expect(layout).toEqual({
+      featureRoots: [FOLDER],
+      sharedRoots: [`${FOLDER}/shared`],
+      notFeatures: ['shared', ...SPRING_LAYER_PACKAGES],
+      aliases: {},
+    });
+    expect(stability({ layout })).toEqual([
+      `package-edge:${ROOT}.orders->${ROOT}.billing`,
+      `package-edge:${ROOT}.service->${ROOT}.billing`,
+    ]);
+    expect(stability({})).toEqual([`package-edge:${ROOT}.service->${ROOT}.billing`]);
+  });
+
+  it('runs every rule with an explicit layout, without the edges ArchUnit already reports', () => {
+    const found = springFindings({ layout: { featureRoots: ['**/com/acme/shop'] } });
+
+    expect(found.filter(([rule]) => rule === 'feature-internal-import')).toEqual([
+      [
+        'feature-internal-import',
+        `${FOLDER}/ShopApplication.java`,
+        `feature-internal:${FOLDER}/orders/internal/Audit.java`,
+      ],
+    ]);
+    expect(
+      springFindings({ layout: { featureRoots: ['**/com/acme/shop'] }, violations: [] }).filter(
+        ([rule]) => rule === 'feature-internal-import',
+      ),
+    ).toEqual([
+      [
+        'feature-internal-import',
+        `${FOLDER}/billing/Invoice.java`,
+        `feature-internal:${FOLDER}/orders/internal/OrderRepository.java`,
+      ],
+      [
+        'feature-internal-import',
+        `${FOLDER}/ShopApplication.java`,
+        `feature-internal:${FOLDER}/orders/internal/Audit.java`,
+      ],
+    ]);
+  });
+
+  it('keeps the default layout in a Spring module whose ArchUnit run found no root package', () => {
+    const project = featureProject({
+      files: javaSources([`${ROOT}.features.a.A`, `${ROOT}.features.b.internal.B`]),
+      modules: [
+        {
+          classes: [`${ROOT}.features.a.A`, `${ROOT}.features.b.internal.B`],
+          edges: [[`${ROOT}.features.a.A`, `${ROOT}.features.b.internal.B`]],
+          springArch: { root: null, violations: [] },
+        },
+      ],
+    });
+
+    expect(rows(projectFindings(project)).map(([rule]) => rule)).toEqual([
+      'feature-internal-import',
+    ]);
+  });
+});
+
+describe('Spring layer packages', () => {
+  it('names the same layer packages as the ArchUnit spring-layout rule', () => {
+    const layoutRule = readFileSync(
+      new URL('../../gradle/archunit/Layout.java', import.meta.url),
+      'utf8',
+    );
+    const [, listed] = /LAYER_PACKAGES =\s*Set\.of\(([^)]*)\)/u.exec(layoutRule);
+
+    expect([...listed.matchAll(/"(\w+)"/gu)].map(([, name]) => name).toSorted(byText)).toEqual(
+      SPRING_LAYER_PACKAGES.toSorted(),
+    );
+  });
+});
+
+describe('springRootFolders', () => {
+  it('finds the folder of the root package, also for Kotlin files that leave out its folders', () => {
+    const classes = [
+      { packageName: ROOT, file: `${FOLDER}/ShopApplication.java` },
+      { packageName: `${ROOT}.billing`, file: 'src/main/kotlin/billing/Invoice.kt' },
+      { packageName: `${ROOT}.billing.internal`, file: `${FOLDER}/billing/internal/Rates.java` },
+      { packageName: 'com.acme.shopping', file: 'src/main/java/com/acme/shopping/Cart.java' },
+      { packageName: `${ROOT}.orders`, file: 'src/main/kotlin/Orders.kt' },
+    ];
+
+    expect(springRootFolders([ROOT], classes)).toEqual([FOLDER, 'src/main/kotlin']);
+  });
+});

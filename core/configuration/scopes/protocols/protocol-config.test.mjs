@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../../shared/head-policy.mjs';
 import { validateConfig } from '../../validate.mjs';
 import { looseningKindOfSetting } from '../../../policy-changes/loosenings.mjs';
-import { DESIGN_RULE_LANGUAGES } from '../../../../shared/project-rules/design/design-rules.mjs';
+import {
+  DESIGN_RULE_IDS,
+  DESIGN_RULE_LANGUAGES,
+} from '../../../../shared/project-rules/design/design-rules.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
-const PRESETS = Object.keys(DESIGN_RULE_LANGUAGES);
+const PRESETS = Object.keys(DESIGN_RULE_LANGUAGES[DESIGN_RULE_IDS.protocolContract]);
 const runsProtocols = (preset) => registeredFactRules(preset).includes('protocol-contract');
 
 describe('protocols config', () => {

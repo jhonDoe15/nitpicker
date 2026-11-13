@@ -22,6 +22,22 @@ describe('feature roles', () => {
     expect(roleOf(file)).toEqual(role);
   });
 
+  it('leaves the folders named in notFeatures out of the features under a feature root', () => {
+    const springRoles = featureRoles({
+      sharedRoots: ['src/shop/shared'],
+      featureRoots: ['src/shop'],
+      notFeatures: ['service'],
+    });
+
+    expect(springRoles('src/shop/service/Billing.java')).toEqual({ kind: 'other' });
+    expect(springRoles('src/shop/billing/service/Rates.java')).toEqual({
+      kind: 'feature',
+      directory: 'src/shop/billing',
+      name: 'billing',
+    });
+    expect(springRoles('src/shop/shared/Money.java')).toEqual({ kind: 'shared' });
+  });
+
   it('keeps a configured shared root shared inside a feature', () => {
     const configured = featureRoles(
       featureLayout({ sharedRoots: ['**/shared'], featureRoots: ['app/features'] }),
@@ -79,6 +95,28 @@ describe('the feature role contract', () => {
   it('leaves shared and other files as they are', () => {
     expect(python('src/app/shared/money.py')).toEqual({ kind: 'shared' });
     expect(python('src/app/main.py')).toEqual({ kind: 'other' });
+  });
+
+  it('gives an aliased feature folder the directory it names, and leaves excluded folders out', () => {
+    const roleOf = featureRoleContract(
+      {
+        featureRoots: ['**/features'],
+        aliases: { 'kt/features/orders': 'java/features/orders' },
+        notFeatureFolders: ['kt/features/lib'],
+      },
+      PUBLIC_FACES.jvm,
+    );
+
+    expect(roleOf('kt/features/orders/Rules.kt')).toEqual({
+      kind: 'feature',
+      directory: 'java/features/orders',
+      folder: 'kt/features/orders',
+      name: 'orders',
+      isPublic: true,
+      face: PUBLIC_FACES.jvm.describe('java/features/orders'),
+    });
+    expect(roleOf('kt/features/orders/internal/Ledger.kt').isPublic).toBe(false);
+    expect(roleOf('kt/features/lib/Util.kt')).toEqual({ kind: 'other' });
   });
 
   it('defaults to the **/features and **/shared folders', () => {

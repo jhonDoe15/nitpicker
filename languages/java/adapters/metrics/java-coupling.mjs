@@ -68,7 +68,7 @@ export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerCl
 
 export function readCouplingFindings(
   reportRoot,
-  { projectRoot, sourceRoots, kotlin, files, layout },
+  { projectRoot, sourceRoots, kotlin, files, layout, features },
 ) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
@@ -77,7 +77,10 @@ export function readCouplingFindings(
   }
   const classes = readFileSync(classList, 'utf8').split(/\r?\n/).filter(Boolean);
   function fileOf(className) {
-    const known = kotlin?.fileOf.get(className) ?? files?.get(className);
+    const known =
+      kotlin?.fileOf.get(className) ??
+      features?.classFiles?.get(className) ??
+      files?.get(className);
     if (known !== undefined) {
       return known;
     }
@@ -97,7 +100,7 @@ export function readCouplingFindings(
   const report = analyzeJavaCoupling({ classes, edges, fileOf, moduleOf, layout });
   return [
     ...evaluateCoupling(report, COUPLING_TOOL),
-    ...packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }),
+    ...packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }, features),
   ];
 }
 
@@ -115,7 +118,7 @@ function permittedEdges(reportRoot) {
   );
 }
 
-function packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }) {
+function packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }, features) {
   const permitted = permittedEdges(reportRoot);
   return cycleFindings(
     {
@@ -127,5 +130,6 @@ function packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }) {
       fileOf,
     },
     COUPLING_TOOL,
+    features,
   );
 }
