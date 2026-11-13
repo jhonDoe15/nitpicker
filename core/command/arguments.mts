@@ -9,7 +9,7 @@ import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 type BooleanOption =
   'all' | 'details' | 'dryRun' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
-type ValueOption = 'baseRef' | 'outputRoot';
+type ValueOption = 'baseRef' | 'outputRoot' | 'verify';
 
 type CommandOptions = Record<BooleanOption, boolean> &
   Partial<Record<ValueOption, string>> & {
@@ -41,6 +41,7 @@ const ACCEPT_FLAG = '--accept-policy-change';
 const VALUES = new Map<string, ValueOption>([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
+  ['--verify', 'verify'],
 ]);
 const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init'];
 
@@ -52,6 +53,7 @@ export const COMPARISON_OPTIONS = [
 ];
 
 const EXACT_RULE = /^[^/\s]+\/\S+$/u;
+const VERIFY_MODES = ['narrow', 'full'];
 const HELP_POINTER = 'Run nitpicker --help for the options.';
 
 function unknownArgument(argument: string): Error {
@@ -146,6 +148,12 @@ function remainingOptions(commandArguments: readonly string[]): CommandOptions {
 function validateFixOptions(options: ParsedArguments): void {
   if (options.dryRun && !options.fix) {
     throw new Error('--dry-run only works with --fix: use nitpicker --fix --dry-run');
+  }
+  if (options.verify !== undefined && !options.fix) {
+    throw new Error('--verify only works with --fix: use nitpicker --fix --verify full');
+  }
+  if (options.verify !== undefined && !VERIFY_MODES.includes(options.verify)) {
+    throw new Error(`--verify takes ${VERIFY_MODES.join(' or ')}, not ${options.verify}`);
   }
   const unnamed = options.fix ? options.ruleFilters.filter((rule) => !EXACT_RULE.test(rule)) : [];
   if (unnamed.length > 0) {

@@ -29,7 +29,7 @@ function fixTopic(analyzeFixes) {
   return { result, text: readFileSync(path.join(repository.root, 'src/a.ts'), 'utf8') };
 }
 
-function reportsTypeError(request, root) {
+function reportsTypeError(_request, root) {
   const text = readFileSync(path.join(root, 'src/a.ts'), 'utf8');
   return {
     findings: text.includes('/**')

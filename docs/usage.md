@@ -716,7 +716,7 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 ## Command line
 
 ```text
-nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run]]
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix [--dry-run] [--verify narrow|full]]
           [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
           [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
@@ -758,6 +758,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
   error; the other fixers and the comparison still run. Cannot be combined with `--all`. See
   [Preview and pick fixes](#preview-and-pick-fixes) for `--dry-run` and `--rule`.
+- `--verify <narrow|full>`: with `--fix`, how the fixes are checked; see
+  [Verify the fixes](#verify-the-fixes). `narrow` is the default.
 - `--dry-run`: with `--fix`, write `fix.patch` and `fixes.json` to the output folder and change no
   file (see [Preview and pick fixes](#preview-and-pick-fixes)).
 - `--base <ref>`: the ref to compare against.
@@ -2086,6 +2088,35 @@ they flag what the rules flag and convert the positions to text offsets in UTF-1
 declines, with a "Fix notes:" line, when it cannot prove the rewrite: dynamic or spread arguments,
 an existing keyword of the same name, comments inside the edited span, or a logger that is not the
 standard library's. Recipes marked review run only when you select their rule.
+
+### Verify the fixes
+
+A recipe can be wrong in a case its author did not foresee. After the fixers have run, `--fix`
+checks every recipe that applied a fix:
+
+1. It runs again the analyzers that report the fixed rules, plus the one that compiles or type
+   checks the project (`typescript-typecheck` for TypeScript, the build for Java and Kotlin, the
+   type checker of the preset for Python). The analyzers are found from the tools they report, and
+   they run in the `--quick` profile, so no tests, coverage or mutation run. The findings are
+   compared by tool, rule and file with the ones the same analyzers give for the files before the
+   fix.
+2. A recipe is rolled back when its finding is still there, when it adds a finding in a file it
+   touched, or when it adds a compile or type error. A new compile or type error in a file that no
+   recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
+3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
+   names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
+   Two recipes that touched the same file are rolled back together. The other recipes stay applied,
+   and the comparison runs on the tree that is left. The files of a rolled back recipe are not
+   formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
+
+When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
+fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
+Formatters and `eslint --fix` are trusted and are not rolled back by themselves. `--fix --dry-run`
+verifies too, so the plan only lists the fixes that would stay.
+
+`nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
+mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
+every recipe back too. It takes as long as a normal run.
 
 ### Fixes in the reports
 

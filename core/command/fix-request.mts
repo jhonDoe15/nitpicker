@@ -3,18 +3,18 @@ import { fixWorkingTree } from '../fix/run-fix.mts';
 
 export const FIX_RECIPES: unknown = ALL_RECIPES;
 import type { TextOutput } from '../cli-context.mts';
+import { fixAnalysis, type VerifyCli } from './fix/verify-analysis.mts';
 import { clearDryRunOutput, reportDryRun } from './fix/dry-run-report.mts';
 import type { DryRunPlan } from './fix/dry-run-report.mts';
 
-type FixCli = {
+type FixCli = VerifyCli & {
   readonly options: {
     readonly fix: boolean;
     readonly dryRun: boolean;
     readonly ruleFilters: readonly string[];
+    readonly verify?: string | undefined;
   };
-  readonly currentProjectRoot: string;
   readonly executeFixCommand?: unknown;
-  readonly headPolicy: unknown;
   readonly config: unknown;
   readonly scope: unknown;
   readonly environment: NodeJS.ProcessEnv;
@@ -64,6 +64,8 @@ export function fixIfRequested(
     dryRun: cli.options.dryRun,
     selectedRules: cli.options.ruleFilters,
     recipes: cli.fixRecipes,
+    analyzeFixes: fixAnalysis(cli),
+    verifyMode: cli.options.verify === 'full' ? 'full' : 'narrow',
   });
   if (fixResult.dryRun !== undefined) {
     reportDryRun(cli.stdout, cli.outputRoot, fixResult.dryRun);

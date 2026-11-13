@@ -48,7 +48,7 @@ function run(repository, extra, tools, fixRecipes) {
     arguments_: [...extra, '--base', repository.baseRef, '--output', outputRoot],
     currentProjectRoot: repository.root,
     environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
-    analyzers: [fakeAnalyzer()],
+    analyzers: [{ ...fakeAnalyzer(), reportedTools: ['checkstyle'] }],
     executeFixCommand: tools?.executeFixCommand,
     fixRecipes,
     stdout: output.stdout,
