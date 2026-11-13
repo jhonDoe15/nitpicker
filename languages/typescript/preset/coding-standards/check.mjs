@@ -93,7 +93,9 @@ export function collectArchitectureSignals(root = projectRoot, layout = readLayo
 }
 
 function contractUsage(configPath, analyzedConfigs, root) {
-  if (analyzedConfigs.has(configPath)) return [];
+  if (analyzedConfigs.has(configPath)) {
+    return [];
+  }
   analyzedConfigs.add(configPath);
   return analyzePublicContractUsage(configPath, { displayRoot: root });
 }

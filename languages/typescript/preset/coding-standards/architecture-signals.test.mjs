@@ -24,7 +24,7 @@ describe('architecture signal paths', () => {
   }
 
   function config(file, include, rootDir) {
-    write(file, JSON.stringify({ compilerOptions: { noLib: true, rootDir }, include }));
+    write(file, JSON.stringify({ compilerOptions: { noLib: true, types: [], rootDir }, include }));
   }
 
   function contract(file) {
