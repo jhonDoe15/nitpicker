@@ -118,13 +118,10 @@ Changed metrics: 0
 Tool errors: 0
 
 Per-tool counts:
-largest: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
-coverage: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
-crap: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
-medium: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
 small: base=0 head=0 new=1 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+4 analyzers ran clean
 
-New findings:
+New failing findings:
 small/example src/main/example.ts example finding
 `),
     );
@@ -211,8 +208,7 @@ Changed metrics: 0
 Tool errors: 0
 
 Per-tool counts:
-structure: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
-other: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+2 analyzers ran clean
 
 Touched, still over limit (not failing):
 ${HELD_STRUCTURE_NOTE}

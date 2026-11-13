@@ -81,6 +81,7 @@ describe.each(Object.entries(PRESETS))('the --all console for a %s snapshot', (_
     expect(lines.filter((line) => line.includes('Remove the unused code'))).toHaveLength(
       FINDING_COUNT,
     );
+    expect(lines.filter((line) => line.includes('(fanIn '))).toHaveLength(NOTE_COUNT);
     expect(text).toContain(`Enforceable findings: ${String(FINDING_COUNT)}`);
     expect(text).toContain(`Tool errors: ${String(input.toolErrors.length)}`);
   });

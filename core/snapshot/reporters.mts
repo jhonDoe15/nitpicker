@@ -12,6 +12,12 @@ import {
   renderCodeQualityReport,
 } from '../diff/reporting/format/codequality.mjs';
 
+import { appendFindingSection as untypedAppendFindingSection } from '../diff/reporting/console/finding-lines.mjs';
+import {
+  cleanLine as untypedCleanLine,
+  isActiveSnapshotTool as untypedIsActive,
+  splitTools as untypedSplitTools,
+} from '../diff/reporting/console/tool-table.mjs';
 import { renderSnapshotConsole as untypedConsole } from '../diff/reporting/summary.mjs';
 
 import { textOf } from '../../shared/values/readers.mts';
@@ -19,6 +25,17 @@ import { textOf } from '../../shared/values/readers.mts';
 type ConsoleOptions = { readonly diagnosticsPath: string; readonly color: boolean };
 
 const consoleOf: (report: SnapshotReport, options: ConsoleOptions) => unknown = untypedConsole;
+const appendSection: (
+  lines: string[],
+  heading: string,
+  findings: readonly ReportFinding[],
+) => void = untypedAppendFindingSection;
+const cleanLineOf: (clean: number) => string = untypedCleanLine;
+const isActiveTool: (tool: ToolCount) => boolean = untypedIsActive;
+const splitTools: (
+  tools: readonly ToolCount[],
+  isActive: (tool: ToolCount) => boolean,
+) => { readonly active: readonly ToolCount[]; readonly clean: number } = untypedSplitTools;
 
 type ReportFinding = {
   readonly tool?: unknown;
@@ -215,12 +232,16 @@ function appendToolCountSection(lines: string[], tools: readonly ToolCount[]): v
     lines.push('Analyzers: none configured');
     return;
   }
+  const { active, clean } = splitTools(tools, isActiveTool);
   lines.push('', 'Per-tool counts:');
-  for (const tool of tools) {
+  for (const tool of active) {
     lines.push(
       `${textOf(tool.name)}: total=${textOf(tool.total)} enforceable=${String(tool.enforceable)} ` +
         `descriptive=${textOf(tool.descriptive)}`,
     );
+  }
+  if (clean > 0) {
+    lines.push(cleanLineOf(clean));
   }
 }
 
@@ -229,15 +250,7 @@ function appendFindingSection(
   heading: string,
   findings: readonly ReportFinding[],
 ): void {
-  if (findings.length === 0) {
-    return;
-  }
-  lines.push('', `${heading}:`);
-  for (const finding of findings) {
-    const location = finding.location === undefined ? '' : `:${textOf(finding.location.line)}`;
-    const rule = `${textOf(finding.tool)}/${textOf(finding.rule)}`;
-    lines.push(`${rule} ${textOf(finding.path)}${location} ${textOf(finding.message)}`);
-  }
+  appendSection(lines, heading, findings);
 }
 
 function appendToolErrorSection(lines: string[], toolErrors: readonly ReportFinding[]): void {
