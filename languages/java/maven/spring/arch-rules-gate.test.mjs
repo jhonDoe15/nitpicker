@@ -6,7 +6,7 @@ import {
   usesSpring,
   withDeclaredSpring,
   withFeatureFolders,
-} from './arch-rules-gate.mjs';
+} from './arch-rules-gate.mts';
 
 const jarsOn = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
