@@ -18,7 +18,7 @@ var releaseNames = []string{
 }
 
 func Analyzers() []*analysis.Analyzer {
-	return []*analysis.Analyzer{cleanupAnalyzer, pendingAnalyzer, tickerAnalyzer}
+	return []*analysis.Analyzer{cleanupAnalyzer, pendingAnalyzer, tickerAnalyzer, onceAnalyzer}
 }
 
 func isCloseName(name string) bool {

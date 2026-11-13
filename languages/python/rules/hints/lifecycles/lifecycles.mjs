@@ -27,4 +27,14 @@ export const LIFECYCLE_HINTS = [
     allowed:
       'Keep the handle (`self._handle = loop.call_later(...)`) and call `self._handle.cancel()` in the close method, remove a signal handler with `loop.remove_signal_handler(...)` there, or stop a `threading.Timer` with `cancel()`. An exception fits only when the timer or handler dies with this object.',
   },
+  {
+    tool: RULES_TOOL,
+    rules: ['cached-rejection'],
+    describe: (subject) =>
+      subject.includes('functools cache')
+        ? `\`${subject}\`: the cache stores the coroutine object, so the second call awaits an already awaited coroutine and raises`
+        : `\`${subject}\`: a cached task or future keeps its failure, so every later call replays it instead of trying again`,
+    allowed:
+      'Store the task, then clear the attribute in an `except` only while it still holds this attempt: `attempt = asyncio.ensure_future(self._open()); self._connection = attempt; try: return await attempt; except Exception: if self._connection is attempt: self._connection = None; raise`. Cache an async result by awaiting first (`self._value = await load()`), not with `functools.cache`. An exception fits only when keeping the first failure is intended (a startup-only cache).',
+  },
 ];

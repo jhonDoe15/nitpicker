@@ -25,6 +25,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`pmd/PendingFuturesNotFailedOnClose`).
 - A class that creates a `ScheduledExecutorService` or `Timer` shuts it down in `close()` (`shutdown()` then
   `awaitTermination`, or `cancel()`), `pmd/TimerNotStoppedOnClose`.
+- A `CompletableFuture` field returned on later calls is reset when the attempt fails
+  (`whenComplete`, or `AtomicReference.compareAndSet(future, null)`), `pmd/CachedFutureKeepsFailure`.
 - Child processes: wait with a deadline and destroy the child when it runs over,
   `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
   another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone

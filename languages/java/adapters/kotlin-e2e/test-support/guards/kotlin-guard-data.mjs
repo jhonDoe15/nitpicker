@@ -60,6 +60,7 @@ const BANNED_GUARDS = {
   'Cleanup.kt': `${PACKAGE}class Cleanup(private val first: AutoCloseable, private val second: AutoCloseable) : AutoCloseable {\n    override fun close() {\n        first.close()\n        second.close()\n    }\n}\n`,
   'Pending.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.ConcurrentHashMap\n\nclass Pending : AutoCloseable {\n    private val waiting = ConcurrentHashMap<String, CompletableFuture<String>>()\n\n    fun add(id: String, reply: CompletableFuture<String>) {\n        waiting[id] = reply\n    }\n\n    override fun close() {\n        waiting.clear()\n    }\n}\n`,
   'Timers.kt': `${PACKAGE}import java.util.concurrent.Executors\n\nclass Timers : AutoCloseable {\n    private val scheduler = Executors.newSingleThreadScheduledExecutor()\n\n    fun start() {\n        scheduler.submit { }\n    }\n\n    override fun close() {\n        started = false\n    }\n\n    private var started = true\n}\n`,
+  'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            conn = scope.async { "link" }\n        }\n        return conn!!.await()\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): List<String> {\n        val seen = mutableListOf<String>()\n        for (path in paths) {\n            if (path !in seen) seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> = paths.map { p -> known.find { it.length == p.length } }\n\n    fun shortest(paths: List<String>): String = paths.sortedBy { it.length }.first()\n}\n`,
 };
 
@@ -102,6 +103,7 @@ const ALLOWED_GUARDS = {
   'Cleanup.kt': `${PACKAGE}class Cleanup(private val first: AutoCloseable, private val second: AutoCloseable) : AutoCloseable {\n    override fun close() {\n        first.use { second.close() }\n    }\n}\n`,
   'Pending.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.ConcurrentHashMap\n\nclass Pending : AutoCloseable {\n    private val waiting = ConcurrentHashMap<String, CompletableFuture<String>>()\n\n    fun add(id: String, reply: CompletableFuture<String>) {\n        waiting[id] = reply\n    }\n\n    override fun close() {\n        waiting.values.forEach { it.completeExceptionally(IllegalStateException("closed")) }\n        waiting.clear()\n    }\n}\n`,
   'Timers.kt': `${PACKAGE}import java.util.concurrent.Executors\n\nclass Timers : AutoCloseable {\n    private val scheduler = Executors.newSingleThreadScheduledExecutor()\n\n    fun start() {\n        scheduler.submit { }\n    }\n\n    override fun close() {\n        scheduler.shutdownNow()\n    }\n\n    private var started = true\n}\n`,
+  'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            val attempt = scope.async { "link" }\n            conn = attempt\n            attempt.invokeOnCompletion { if (it != null && conn === attempt) conn = null }\n        }\n        return conn!!.await()\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): Set<String> {\n        val seen = mutableSetOf<String>()\n        for (path in paths) {\n            seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> {\n        val byLength = known.associateBy { it.length }\n        return paths.map { p -> byLength[p.length] }\n    }\n\n    fun shortest(paths: List<String>): String? = paths.minByOrNull { it.length }\n}\n`,
 };
 
@@ -160,6 +162,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/CleanupSkippedOnFailure Cleanup.kt',
   'kotlin-source/PendingFuturesNotFailedOnClose Pending.kt',
   'kotlin-source/TimerNotStoppedOnClose Timers.kt',
+  'kotlin-source/CachedDeferredKeepsFailure Link.kt',
   'kotlin-source/ListUsedAsSet Paths.kt',
   'kotlin-source/LinearLookupInLoop Paths.kt',
   'kotlin-source/SortForExtreme Paths.kt',

@@ -16,6 +16,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   (`pending-unsettled-on-close`).
 - A class with a `close` keeps the handle of every `loop.call_later`, `call_at` or `threading.Timer` and cancels it
   there, and removes its `add_signal_handler` registrations (`handle-unreleased-on-close`).
+- A task or future kept on an attribute and awaited on later calls is cleared in an `except` only while it still
+  is this attempt (`if self._connection is attempt: self._connection = None`); never `functools.cache` on an
+  `async def` (`cached-rejection`).
 - Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
   `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
   blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`

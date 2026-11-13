@@ -158,6 +158,7 @@ describe('readKotlinSourceFindings', () => {
       [
         'BacktrackingRegex',
         'BooleanFlagParameter',
+        'CachedDeferredKeepsFailure',
         'CatchOnlyLogsOrReturnsDefault',
         'ChildCoroutineOutlivesResource',
         'CleanupSkippedOnFailure',
