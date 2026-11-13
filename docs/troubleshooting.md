@@ -377,7 +377,7 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 ### Tests fail
 
 **Symptom.** A tool error on `head` that lists the failing tests: `<n> tests fail; <what was skipped>. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
-test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail; the build stopped, so no other check ran. Fix the tests and rerun:` as the `gradle-failure` or `maven-failure` of Java and Kotlin. The analyzers that need the
+test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail in <module>; coverage, CRAP and mutation were skipped there, the other checks ran. Fix the tests and rerun:` as the `tests/tests-failed` of each failing Java or Kotlin module. The analyzers that need the
 tests (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit
 code 2 when there is no new finding.
 

@@ -121,7 +121,6 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         module,
         classpaths,
         style,
-        tolerateFailures: policy.snapshot === 'base',
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: kotlin.options,
         spring: policy.spring,

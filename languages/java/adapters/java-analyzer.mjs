@@ -12,6 +12,7 @@ import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { HEAD_TESTS_TOOL } from './red-base/tests-failed.mjs';
 import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
@@ -120,7 +121,7 @@ function hashConfiguration() {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
-const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL];
+const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL, COMPILE_ERROR_TOOL, HEAD_TESTS_TOOL];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();

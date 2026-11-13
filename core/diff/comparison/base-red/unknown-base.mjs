@@ -80,11 +80,26 @@ export function testFailuresOf(report) {
   return redBase ? errors : [];
 }
 
+function isScopedHeadTestFailure(finding, name) {
+  return (
+    isToolError(finding) &&
+    finding.rule === TESTS_FAILED_RULE &&
+    finding.tool !== name &&
+    finding.symbol !== undefined
+  );
+}
+
+export function headTestFailuresOf(report, name) {
+  return (report?.findings ?? []).filter((finding) => isScopedHeadTestFailure(finding, name));
+}
+
 function isCleanHead(headRun, name) {
   const report = headRun.reports.get(name);
   return (
     report !== undefined &&
-    !report.findings.some(isToolError) &&
+    !report.findings.some(
+      (finding) => isToolError(finding) && !isScopedHeadTestFailure(finding, name),
+    ) &&
     !headRun.toolErrors.some(({ tool }) => tool === name)
   );
 }
