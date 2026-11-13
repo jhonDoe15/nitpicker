@@ -19,7 +19,7 @@ import {
   freshExecFiles,
   runJacocoReport,
 } from './maven-tests.mjs';
-import { javaArgumentFile, runPit } from './pit/maven-pit.mjs';
+import { javaArgumentFile, runPit } from './pit/maven-pit.mts';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
 import { pitTargets } from './module/pit-scope.mjs';

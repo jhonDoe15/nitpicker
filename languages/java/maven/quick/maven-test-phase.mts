@@ -5,8 +5,8 @@ import {
   collectTestResults,
   runJacocoReport,
 } from '../maven-tests.mjs';
-import { runPit } from '../pit/maven-pit.mjs';
-import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
+import { runPit } from '../pit/maven-pit.mts';
+import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
 import { lifecycleArgs } from '../maven-project.mjs';
 import { jacocoPlugin } from '../maven-tools.mjs';
 import { relativeTo } from '../module/module-paths.mjs';
