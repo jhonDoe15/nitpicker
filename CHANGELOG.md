@@ -13,6 +13,14 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ### Changed
 
+- TypeScript and JavaScript: `nitpicker/no-null` allows `null` as an object field, array element or
+  conditional branch in the data passed to `JSON.stringify`, where it is the JSON value for nothing
+  (an explicit `null` field of a request body, or a key a tsconfig or merge patch must unset) (#1100).
+  `null` built outside the call, or passed to another function inside it, is still reported.
+- Java: Error Prone's `ForEachIterable` and `FieldCanBeStatic` are off. Every Error Prone release
+  from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
+  fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
+  fields (SpotBugs only when the initializer is a compile-time constant).
 - An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
   and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
   `accept-policy-change` approval (#1094). An entry that covers a file other production code
@@ -230,6 +238,10 @@ Other changes:
 
 ### Fixed
 
+- TypeScript: the type-aware lint rules run on projects whose tsconfig sets `rootDir`, `rootDirs`,
+  `isolatedDeclarations`, an option TypeScript 7 removed, or a `types` entry that is not installed.
+  Any other tsconfig error oxlint reports now fails the ESLint analyzer with a message naming it,
+  instead of reporting without the type-aware findings (#1056).
 - Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
   aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
   (#1052).

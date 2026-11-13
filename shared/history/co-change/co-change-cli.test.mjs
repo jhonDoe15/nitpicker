@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../../core/cli.mjs';
+import { runCli } from '../../../core/cli.mts';
 import { captureOutput } from '../../../core/diff/reporting/test-support/output-capture.mjs';
 import { fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { createHistoryAnalyzers } from '../analyzers.mjs';
@@ -15,6 +15,7 @@ import {
   SOURCE_FILES,
   useHistoryRepositories,
 } from '../../../core/diff/git/test-support/history-repository.mjs';
+import { checkoutModuleUrl } from '../../paths/checkout-module.mjs';
 
 const { historyRepository } = useHistoryRepositories();
 const BASE_REF = 'comparison-base';
@@ -23,7 +24,7 @@ const PARTNER_NOTICE =
   'Files you changed in src/billing usually change together with src/invoicing (8 of 12 commits, 67%), ' +
   'which this change leaves alone. Check that they need no matching edit; ' +
   'if they usually do, see the co-change finding for the knowledge both share.';
-const ENTRY = fileURLToPath(new URL('../../../core/cli.mjs', import.meta.url));
+const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
 const repositories = {};
 
 function repositoryWithChange(config, change) {

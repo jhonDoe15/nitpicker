@@ -2,7 +2,7 @@ import { existsSync, symlinkSync } from 'node:fs';
 import { format } from 'prettier';
 import { describe, expect, it } from 'vitest';
 import { useProjects, readText } from '../test-support/projects.mjs';
-import { placeConfig, renderConfig } from './config-file.mjs';
+import { placeConfig, renderConfig } from './config-file.mts';
 
 const project = useProjects();
 

@@ -19,6 +19,7 @@ on:
       - 'scripts/test-shards/**'
       - 'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs'
       - 'evals/**/*.test.mjs'
+      - 'evals/**/*.test.mts'
       - 'scripts/ci/**'
       - '.github/workflows/java-e2e.yml'
   pull_request:
@@ -53,7 +54,7 @@ jobs:
         uses: actions/github-script@v8.0.0
         with:
           script: |
-            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mts`);
             await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/java-e2e.yml' });
 
   java-shard:

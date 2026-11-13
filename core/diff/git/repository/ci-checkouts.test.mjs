@@ -3,7 +3,7 @@ import { commit, fixtureGit, useGitFixtures } from '../test-support/git-reposito
 import { writeFiles } from '../test-support/fixture-files.mjs';
 import { resolveBase } from './base-ref.mjs';
 import { resolveComparison } from './git.mjs';
-import { runCli } from '../../../cli.mjs';
+import { runCli } from '../../../cli.mts';
 import { captureOutput } from '../../reporting/test-support/output-capture.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();

@@ -7,7 +7,7 @@ import { readJson } from '../git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../git/test-support/git-repository.mjs';
 import { exactText } from '../reporting/test-support/output-expectations.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
-import { aggregateShardReports } from './aggregate-shards.mjs';
+import { aggregateShardReports } from './aggregate-shards.mts';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
 const { createFixture } = useShardFixtures();

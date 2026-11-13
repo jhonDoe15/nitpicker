@@ -86,19 +86,27 @@ async function check() {
 }
 
 export function collectArchitectureSignals(root = projectRoot, layout = readLayout()) {
+  const contractsByConfig = new Map();
   return layout.sourceRoots.flatMap((layoutSourceRoot) =>
-    collectRootArchitectureSignals(root, layoutSourceRoot, layout),
+    collectRootArchitectureSignals(root, layoutSourceRoot, { layout, contractsByConfig }),
   );
 }
 
-function collectRootArchitectureSignals(root, layoutSourceRoot, layout) {
+function contractUsage(configPath, contractsByConfig) {
+  if (!contractsByConfig.has(configPath)) {
+    contractsByConfig.set(configPath, analyzePublicContractUsage(configPath));
+  }
+  return contractsByConfig.get(configPath);
+}
+
+function collectRootArchitectureSignals(root, layoutSourceRoot, { layout, contractsByConfig }) {
   const sourceRoot = path.join(root, layoutSourceRoot);
   if (!existsSync(sourceRoot)) return [];
   const configPath = [
     path.join(sourceRoot, 'tsconfig.json'),
     path.join(root, 'tsconfig.json'),
   ].find(existsSync);
-  const contracts = (configPath ? analyzePublicContractUsage(configPath) : [])
+  const contracts = (configPath ? contractUsage(configPath, contractsByConfig) : [])
     .map((item) => ({
       file: `${layoutSourceRoot}/${item.file}`,
       rule: 'public-contract-production-use',

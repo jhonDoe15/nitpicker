@@ -875,7 +875,10 @@ reports are stored. When the base is reused, the progress line names the local c
 A quick run uses the same cache. The Python, Java and Kotlin analyzers and the custom analyzers
 produce different output in quick mode, so their quick entries are keyed apart from full ones: a
 quick run never reads a full entry and a full run never reads a quick one. The file-local analyzers
-that a quick run limits to the changed files are keyed by that list of files as well. The other
+that a quick run limits to the changed files are keyed by that list of files as well. The Java and
+Kotlin base entries of a full comparison are keyed by the changed test files, their head contents and
+the production files they reach on head, since that base side mutates only what those tests use, so
+they do not share entries with `nitpicker cache publish`, which mutates every class. The other
 TypeScript and JavaScript analyzers produce the same findings as in a full run, so they share the
 full run's entries; both the base and the head of a quick comparison run the same quick set. A quick
 run also caches its head side, keyed by the git tree of the captured head (the working tree, or the
@@ -2250,8 +2253,8 @@ new and touched code must comply.
   keyword (arrow functions only as callbacks); named exports only (config files and
   `declare module` blocks may default-export); early returns, no `else` after
   `return`, no nested ternaries; `switch` over a union handles every case; no `as` (except
-  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
-  `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
+  `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and
+  as an object field or array element in the data passed to `JSON.stringify`, or its replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
   `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
   (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
@@ -3164,6 +3167,10 @@ Findings match ESLint's with these known differences:
 
 - Type-aware rules see the project through TypeScript 7, so a rule such as
   `@typescript-eslint/unbound-method` can find a few cases TypeScript 6 missed.
+  TypeScript 7 removed some compiler options, so oxlint gets a copy of the lint config with those
+  unset (TypeScript 7's defaults apply), `rootDir` unset, `isolatedDeclarations` off and `types` that
+  are not installed left out. A config error oxlint still reports fails the analyzer; see
+  [The TypeScript config cannot be read](troubleshooting.md#the-typescript-config-cannot-be-read).
 - A disable comment for a rule the analyzer does not run is reported as unused, where ESLint
   reports that the rule definition was not found.
 - Rules oxlint has its own port of word some messages differently, and a few report a different
@@ -3291,52 +3298,152 @@ You can also relax the gate while you adopt it: `disable` analyzers you are not 
 sources are not under `src/`. Each
 of these is visible in the report. Remove them as the codebase improves.
 
-## Container image
+## Container images
 
-The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
-on the host. It is Node 22 (slim) with Git, `ps` (procps, which mutation testing uses to manage child
-processes), nitpicker installed from source as `nitpicker` (the entrypoint), and `/work` as the
-working directory. Build it from the repository root; no image is
-published yet.
+The repository's `Dockerfile` builds one image per preset family, so the gate runs in any CI without
+installing a toolchain on the host. Every image has Node 24, Git, nitpicker installed from source as
+`nitpicker` (the entrypoint), Corepack (pnpm and Yarn, downloaded on first use), Bun 1.4.2 for the
+base's dependency install, and `/work` as the working directory. The images are built for
+`linux/amd64` only; arm64 images are tracked in
+[#562](https://github.com/jhonDoe15/nitpicker/issues/562).
+
+| Image (target) | Presets                | Adds to the base                                                          | Size         |
+| -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
+| `typescript`   | typescript, javascript | nothing; the default target                                               | about 1.2 GB |
+| `jvm`          | java, kotlin           | Temurin JDK 21, Maven 3.9 and Gradle 8.14 (for projects without wrappers) | about 1.9 GB |
+| `python`       | python                 | uv, CPython 3.13 managed by uv, and Poetry                                | about 1.5 GB |
+| `all`          | every preset           | everything above                                                          | about 2.3 GB |
+
+The first release after the images were added publishes them, and every release after it, to
+GitHub Container Registry as `ghcr.io/jhondoe15/nitpicker:<version>-<target>` (for example
+`:0.2.0-jvm`); the TypeScript image is also `:<version>`, and a stable release moves
+`:latest-<target>` and `:latest`. Until the package is made public they can be pulled only after
+`docker login ghcr.io`. To build one yourself, from the repository root:
 
 ```sh
-docker build -t nitpicker .
-docker run --rm -v "$PWD":/work nitpicker            # same as: npx nitpicker
-docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/quality/diff
+docker build --target jvm -t nitpicker:jvm .
+docker run --rm -v "$PWD":/work nitpicker:jvm            # same as: npx nitpicker
+docker run --rm -v "$PWD":/work nitpicker:jvm --base origin/main --output reports/quality/diff
 ```
 
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
-codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
-(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
-its history must contain the merge base. Reports are written under the mount, owned by the
-container user; add `--user "$(id -u):$(id -g)"` to own them yourself, together with
-`-e HOME=/tmp` so that the package managers have a writable cache. The image carries Corepack
-(pnpm and Yarn, downloaded on first use) and Bun 1.4.2 for the base's dependency install; a project
-that pins another Bun needs its own image.
+codes are the same (0, 1, 2). The project's history must contain the merge base (`fetch-depth: 0` in
+`actions/checkout`), and `--base` names it as it does outside a container.
 
-GitHub Actions:
+Run the container as yourself with `--user "$(id -u):$(id -g)"`, so that the reports and anything
+the container installs in the checkout belong to you rather than to root. Any user works, with or
+without a passwd entry: the home directory (`/home/nitpicker`), the Corepack cache and the uv Python
+directory are writable for everyone, and Gradle and Maven keep their caches in that home directory
+whoever runs them. Mount a directory at `/home/nitpicker` to keep the npm, pnpm, Yarn, Bun, uv,
+Poetry, Gradle and Maven caches between runs; a host directory you own works with `--user`. The
+examples below leave out `--user` and the cache mount for brevity.
+
+The gate needs network access: the base's dependency install runs the project's package manager,
+and the Java and Kotlin tools come from Maven Central and the Gradle plugin portal on first use.
+Credentials for a private registry reach the container only if you pass them: environment variables
+that the project's `.npmrc` reads (`-e NODE_AUTH_TOKEN`), uv's and Poetry's index variables, or a
+file mounted into the home directory (`-v ~/.npmrc:/home/nitpicker/.npmrc:ro`,
+`/home/nitpicker/.m2/settings.xml`, `/home/nitpicker/.gradle/gradle.properties`).
+
+`--accept-policy-change` is honoured only at an interactive terminal, so a local run that accepts a
+policy change needs `docker run -it`.
+
+What each project provides:
+
+- **TypeScript and JavaScript.** Dependencies installed in `node_modules` (`vitest`,
+  `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`). Install them
+  in the image, with the package manager the project uses (`--user` makes them yours):
+
+  ```sh
+  docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work --entrypoint npm nitpicker:typescript ci
+  # pnpm: --entrypoint pnpm nitpicker:typescript install --frozen-lockfile
+  # Yarn: --entrypoint yarn nitpicker:typescript install --immutable (Yarn 1: --frozen-lockfile)
+  # Bun:  --entrypoint bun nitpicker:typescript install --frozen-lockfile
+  ```
+
+  A `node_modules` installed on the host works only on a Linux x86-64 host: on macOS, Windows or an
+  arm64 machine its native packages (esbuild, Rollup, SWC) are built for the host and fail in the
+  container. A project that pins another Bun than 1.4.2 needs its own image.
+
+- **Java and Kotlin.** A `nitpicker.config.json` with the preset. Gradle runs through the project's
+  `gradlew` and Maven through its `mvnw` when it has them, else through the image's `gradle` and
+  `mvn`; the JDK is `JAVA_HOME`. The Gradle wrapper downloads its distribution from
+  `services.gradle.org` on first use, so allow that host too.
+- **Python.** A `nitpicker.config.json` with the preset, and the project's environment created
+  before the gate runs, as the [Python preset](python-preset.md#the-projects-own-environment)
+  requires. Create it in the image, so that its interpreter exists there:
+  `docker run --rm -v "$PWD":/work --entrypoint uv nitpicker:python sync`, or `poetry install`
+  with `--entrypoint poetry` (the image sets `POETRY_VIRTUALENVS_IN_PROJECT=true`, so Poetry keeps
+  the environment in the checkout's `.venv` instead of the container's home directory), then run the
+  gate. The `.venv` points at the image's Python, so the host cannot use it. A project that asks for
+  another Python than 3.13 (`.python-version`, `requires-python`) makes uv download it into
+  `/opt/python` inside the container, where it is gone when the container exits and the `.venv`
+  breaks. Then either create the environment and run the gate in one container
+  (`--entrypoint sh nitpicker:python -c 'uv sync && nitpicker'`), keep `/opt/python` in a volume
+  named after the image version for both runs (`-v nitpicker-python-<version>:/opt/python`; the
+  volume hides the image's own `/opt/python` once it exists, so do not reuse it across versions), or
+  build an image `FROM` this one that runs `uv python install <version>`. pipenv, PDM, Hatch and
+  conda are not in the image; build one `FROM` it that installs the manager your project uses.
+
+The images have no C compiler or build tools, so a dependency that builds native code at install
+time (an npm addon without a prebuilt binary, a Python package without a wheel for Linux x86-64)
+fails to install, and the JVM images have only JDK 21, so a Gradle or Maven toolchain that asks for
+another JDK fails. Build an image `FROM` the one you use that adds them, for example with
+`apt-get install build-essential`.
+
+GitHub Actions, for a TypeScript project:
 
 ```yaml
 jobs:
   nitpicker:
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/jhondoe15/nitpicker:<version>
+      NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
     steps:
       - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - run: npm ci
-      - run: docker build -t nitpicker path/to/nitpicker
-      - run: docker run --rm -v "$PWD":/work -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE nitpicker
-        env:
-          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
+      - run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work --entrypoint npm "$IMAGE" ci
+      - run: >-
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work
+          -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE "$IMAGE"
 ```
 
-`NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
-person accepts a loosening of `nitpicker.config.json` by setting it to the digest the finding
-names; the container needs `CI` too, since the variable is honoured only in CI. For the label route,
+`--user` runs the container as the runner's user, so later steps (an artifact upload, a cache save)
+can read and remove what it wrote. `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable
+that only an admin can set, so a person accepts a loosening of `nitpicker.config.json` by setting it
+to the digest the finding names; the container needs `CI` too, since the variable is honoured only
+in CI. For the label route,
 add the two approval steps of `action.yml` before the run and pass their `acceptance` output instead
 (see [Accepting a policy change with a label](ci.md#accepting-a-policy-change-with-a-label)).
+
+For a Python project, create the environment and run the gate in one container (the `.venv` it
+leaves also serves a later run of the same image):
+
+```yaml
+- run: >-
+    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work
+    -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE
+    --entrypoint sh ghcr.io/jhondoe15/nitpicker:<version>-python -c 'uv sync && nitpicker'
+```
+
+For a Java or Kotlin project, with the Gradle and Maven caches kept between runs in a host
+directory mounted as the home directory:
+
+```yaml
+- uses: actions/cache@v6.1.0
+  with:
+    path: ~/nitpicker-home
+    key: nitpicker-home-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/pom.xml') }}
+    restore-keys: nitpicker-home-
+- run: mkdir -p ~/nitpicker-home
+- run: >-
+    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work -v ~/nitpicker-home:/home/nitpicker
+    -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE
+    ghcr.io/jhondoe15/nitpicker:<version>-jvm
+```
 
 ## Sharding in CI
 

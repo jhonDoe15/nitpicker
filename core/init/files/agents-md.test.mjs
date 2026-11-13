@@ -1,7 +1,7 @@
 import { symlinkSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readText, useProjects } from '../test-support/projects.mjs';
-import { appendSnippet, readSnippet } from './agents-md.mjs';
+import { appendSnippet, readSnippet } from './agents-md.mts';
 
 const project = useProjects();
 

@@ -5,6 +5,11 @@ import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
+import {
+  aliasEntryFields,
+  kotlinEntryPointFindings,
+  typeAliasReexports,
+} from './kotlin-type-aliases.mjs';
 
 const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
@@ -43,11 +48,15 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
     bindings: fileBindings(index, entry),
     scope: referenceScope(index, entry),
   }));
+  const aliases = bound.flatMap((entry) => typeAliasReexports(index, entry));
   return {
-    modules: bound.map(({ file, parsed }) => ({
-      file,
+    modules: bound.map((entry) => ({
+      file: entry.file,
       role: 'production',
-      ...(parsed.definitions.some(({ entry }) => entry === true) ? { entry: true } : {}),
+      ...(entry.parsed.definitions.some(({ entry: isEntry }) => isEntry === true)
+        ? { entry: true }
+        : {}),
+      ...aliasEntryFields(entry, aliases),
     })),
     packages: projects.map((project) => ({
       root: project.qualifier ?? '',
@@ -58,7 +67,7 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
         neutralDefinition(entry.file, definition, entry),
       ),
     ),
-    imports: bound.flatMap((entry) => importFacts(index, entry)),
+    imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
   };
 }
 
@@ -116,6 +125,7 @@ export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {
       rules: SHARED_USAGE_RULES,
       policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
     }),
+    ...(kotlin ? kotlinEntryPointFindings(facts, exceptions) : []),
   ];
   return { findings, imports: facts.imports };
 }
