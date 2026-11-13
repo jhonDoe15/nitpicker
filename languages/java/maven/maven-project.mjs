@@ -130,6 +130,37 @@ function jacocoSettings(plugin, basedir) {
   };
 }
 
+function resourceRootsOf(build, basedir) {
+  return [
+    ...new Set(
+      childrenAt(build, 'resources', 'resource')
+        .map((resource) => textAt(resource, 'directory'))
+        .filter((directory) => directory !== undefined)
+        .map((directory) => path.resolve(basedir, directory)),
+    ),
+  ];
+}
+
+function layoutOf({ build, plugins, basedir, buildDirectory }) {
+  return {
+    outputDirectory:
+      resolvedText(build, basedir, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
+    testOutputDirectory:
+      resolvedText(build, basedir, 'testOutputDirectory') ??
+      path.join(buildDirectory, 'test-classes'),
+    sourceRoots: [
+      resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
+      ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
+    ],
+    testSourceRoots: [
+      resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
+      ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
+    ],
+    resourceRoots: resourceRootsOf(build, basedir),
+  };
+}
+
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -139,31 +170,13 @@ function describeModule(project, { basedir, pomFile }) {
   const reports = setting(surefire, 'test', 'reportsDirectory');
   const failsafeReports = setting(failsafe, 'integration-test', 'reportsDirectory');
   const integrationTests = defaultExecution(failsafe, 'integration-test');
-  const sourceRoots = [
-    resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
-    ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
-  ];
   return {
     basedir,
     pomFile,
     coordinates: coordinates(project),
     packaging: textAt(project, 'packaging') ?? 'jar',
     buildDirectory,
-    outputDirectory:
-      resolvedText(build, basedir, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
-    testOutputDirectory:
-      resolvedText(build, basedir, 'testOutputDirectory') ??
-      path.join(buildDirectory, 'test-classes'),
-    sourceRoots,
-    testSourceRoots: [
-      resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
-      ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
-      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
-    ],
-    resourceRoots: childrenAt(build, 'resources', 'resource')
-      .map((resource) => textAt(resource, 'directory'))
-      .filter((directory) => directory !== undefined)
-      .map((directory) => path.resolve(basedir, directory)),
+    ...layoutOf({ build, plugins, basedir, buildDirectory }),
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
