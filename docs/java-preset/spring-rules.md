@@ -60,7 +60,10 @@ arguments are not plain string literals, as `pmd/InlineSuppression` (Node side,
 and strings and comments skipped first). The one accepted marker is
 `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a method: native SQL is sometimes needed, and
 the decision belongs on that one method rather than in a config exception that covers paths.
-Compiler-only warnings such as `"unchecked"` and `"rawtypes"` are not affected.
+Compiler-only warnings such as `"unchecked"`, `"rawtypes"` and `"cast"` are not reported by this
+scan, and they hide nothing either: the javac lint blanks every `@SuppressWarnings(...)` out of the
+copy it compiles, in main and in test sources, so a bare `@SuppressWarnings("unchecked")` over an
+unchecked operation leaves its `javac/unchecked` finding in place.
 
 SpotBugs has no switch to ignore its annotations, so the same scan reports every annotation
 SpotBugs honors as `spotbugs/InlineSuppression`: any name ending in `SuppressFBWarnings`, any

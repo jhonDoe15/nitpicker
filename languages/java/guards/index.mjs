@@ -9,6 +9,7 @@ export function readGuardFindings({ reportRoot, projectRoot, manifest, module, l
     ...readLintFindings(reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
+      testRoots: manifest.testSourceRoots ?? [],
       module,
     }),
     ...readForbiddenApiFindings(reportRoot, { locate, projectRoot }),
