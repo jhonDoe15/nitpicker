@@ -2,6 +2,13 @@ import path from 'node:path';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { byText } from '../../shared/text-order/by-text.mjs';
 
+const git: (
+  root: string,
+  commandArguments: readonly string[],
+  options: { readonly environment: NodeJS.ProcessEnv | undefined },
+) => string = runGit;
+const textOrder: (first: string, second: string) => number = byText;
+
 const CONFIG_FILE_NAMES = new Set([
   'nitpicker.config.json',
   'package.json',
@@ -31,32 +38,32 @@ const CONFIG_FILE_PATTERNS = [
   /^vitest\.config\.[cm]?[jt]s$/u,
 ];
 
-function isConfigFile(file) {
+function isConfigFile(file: string): boolean {
   const name = path.posix.basename(file);
   return CONFIG_FILE_NAMES.has(name) || CONFIG_FILE_PATTERNS.some((pattern) => pattern.test(name));
 }
 
-function listed(output) {
+function listed(output: string): string[] {
   return output.split('\0').filter((file) => file !== '');
 }
 
-export function stagedConfigDrift(repositoryRoot, indexFile) {
+export function stagedConfigDrift(repositoryRoot: string, indexFile: string | undefined): string[] {
   const environment =
     indexFile === undefined
       ? undefined
       : { GIT_INDEX_FILE: path.resolve(repositoryRoot, indexFile) };
   const changed = [
-    ...listed(runGit(repositoryRoot, ['diff', '--name-only', '-z'], { environment })),
+    ...listed(git(repositoryRoot, ['diff', '--name-only', '-z'], { environment })),
     ...listed(
-      runGit(repositoryRoot, ['ls-files', '--others', '--exclude-standard', '-z'], {
+      git(repositoryRoot, ['ls-files', '--others', '--exclude-standard', '-z'], {
         environment,
       }),
     ),
   ];
-  return [...new Set(changed.filter(isConfigFile))].sort(byText);
+  return [...new Set(changed.filter(isConfigFile))].sort(textOrder);
 }
 
-export function stagedConfigNotice(files) {
+export function stagedConfigNotice(files: readonly string[]): string {
   if (files.length === 0) {
     return '';
   }

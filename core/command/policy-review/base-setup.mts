@@ -7,13 +7,12 @@ import {
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
-import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { describeConfigOverrides, readConfigFile } from '../../configuration/config.mjs';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { applyRunProfile } from '../../quick/profile.mjs';
+import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { applyRunProfile } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import { objectOf, textOf } from '../../../shared/values/readers.mts';
@@ -139,7 +138,7 @@ function measuredBase({
   const configured = new Map(
     analyzersOf(
       applyRunProfile(
-        configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
+        configureAll(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy),
         { ...profile, analyzerNames: [] },
       ).analyzers,
     ).map((analyzer) => [analyzer.name, analyzer]),

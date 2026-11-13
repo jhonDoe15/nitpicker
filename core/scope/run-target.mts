@@ -3,6 +3,22 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 
+type TargetRequest = {
+  readonly options: { readonly paths?: readonly string[] | undefined };
+  readonly currentProjectRoot?: string | undefined;
+  readonly workingDirectory?: string | undefined;
+  readonly missingPathHint: (given: string) => string;
+};
+
+type RunTarget = {
+  readonly currentProjectRoot: string;
+  readonly scope?: { readonly paths: string[] } | undefined;
+};
+
+type Target = { readonly given: string; readonly absolute: string };
+
+const projectRootOf: (start?: string) => string = resolveProjectRoot;
+
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -11,12 +27,12 @@ export function resolveRunTarget({
   currentProjectRoot,
   workingDirectory,
   missingPathHint,
-}) {
+}: TargetRequest): RunTarget {
   const paths = options.paths ?? [];
   if (paths.length === 0) {
     return {
       currentProjectRoot:
-        currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot),
+        currentProjectRoot === undefined ? projectRootOf() : realpathSync(currentProjectRoot),
     };
   }
   const base = realpathSync(workingDirectory ?? process.cwd());
@@ -25,7 +41,7 @@ export function resolveRunTarget({
     given,
     absolute: existingPath({ base, repositoryRoot, given, missingPathHint }),
   }));
-  const projectRoot = projectOf(targets[0].absolute);
+  const projectRoot = projectOf(targets[0]?.absolute ?? base);
   const relativePaths = targets.map((target) => scopePath(projectRoot, target));
   return {
     currentProjectRoot: projectRoot,
@@ -33,7 +49,7 @@ export function resolveRunTarget({
   };
 }
 
-function git(cwd, args) {
+function git(cwd: string, args: readonly string[]): string {
   return execFileSync('git', args, {
     cwd,
     encoding: 'utf8',
@@ -42,7 +58,7 @@ function git(cwd, args) {
   });
 }
 
-function repositoryOf(base) {
+function repositoryOf(base: string): string {
   try {
     return git(base, ['rev-parse', '--show-toplevel']).trim();
   } catch (error) {
@@ -55,7 +71,17 @@ function repositoryOf(base) {
   }
 }
 
-function existingPath({ base, repositoryRoot, given, missingPathHint }) {
+function existingPath({
+  base,
+  repositoryRoot,
+  given,
+  missingPathHint,
+}: {
+  readonly base: string;
+  readonly repositoryRoot: string;
+  readonly given: string;
+  readonly missingPathHint: (given: string) => string;
+}): string {
   const absolute = path.resolve(base, given);
   if (path.relative(repositoryRoot, absolute).startsWith('..')) {
     throw new Error(`${given} is outside the repository ${repositoryRoot}`);
@@ -71,11 +97,11 @@ function existingPath({ base, repositoryRoot, given, missingPathHint }) {
   return target;
 }
 
-function projectOf(absolute) {
-  return resolveProjectRoot(statSync(absolute).isDirectory() ? absolute : path.dirname(absolute));
+function projectOf(absolute: string): string {
+  return projectRootOf(statSync(absolute).isDirectory() ? absolute : path.dirname(absolute));
 }
 
-function scopePath(projectRoot, { given, absolute }) {
+function scopePath(projectRoot: string, { given, absolute }: Target): string {
   const relative = path.relative(projectRoot, absolute);
   if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
     throw new Error(`${given} is outside the project ${projectRoot}; give paths in one project`);
@@ -93,7 +119,7 @@ function scopePath(projectRoot, { given, absolute }) {
   return scoped;
 }
 
-function hasCheckedFile(projectRoot, scoped) {
+function hasCheckedFile(projectRoot: string, scoped: string): boolean {
   const listed = git(projectRoot, [
     'ls-files',
     '--cached',
