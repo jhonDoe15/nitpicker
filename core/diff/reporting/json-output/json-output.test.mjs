@@ -309,6 +309,21 @@ describe('nitpicker --json', () => {
     });
   });
 
+  it('names the analyzers no changed file can affect and marks a run that skipped them all', () => {
+    const repository = createRepository({ 'quality-policy.json': policy(), 'README.md': 'a\n' });
+    writeFiles(repository.root, { 'README.md': 'b\n' });
+    const execution = { ...fakeAnalyzer(), inputs: { scope: 'execution' } };
+
+    const { exitCode, result } = runJson(repository, ['--base', repository.baseRef], {
+      analyzers: [execution],
+    });
+
+    expect(exitCode).toBe(0);
+    expect(result.skippedAll).toBe(true);
+    expect(result.skippedAnalyzers).toEqual(['fake-quality-analyzer']);
+    expect(result.noChanges).toBeUndefined();
+  });
+
   it('folds unreached mutants and names the analyzers a narrowed run left out', () => {
     const repository = changedRepository();
     const mutant = (line) =>

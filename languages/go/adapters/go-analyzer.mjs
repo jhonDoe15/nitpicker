@@ -7,6 +7,7 @@ import { toolVersions } from './execution/go-tools.mjs';
 import { GO_LINTER_TOOLS } from './configuration/go-config.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 export const GO_ANALYZER_NAME = 'go';
 export const GO_MUTATION_ANALYZER_NAME = 'mutation';
@@ -88,6 +89,7 @@ function resolveGoVersion(liveProjectRoot) {
 function createGoAnalyzer(settings) {
   return {
     name: GO_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: 'unresolved',
     resolveVersion: resolveGoVersion,
     configurationHash: hashConfiguration(settings),
@@ -118,6 +120,7 @@ function createGoAnalyzer(settings) {
 function createGoMutationAnalyzer(settings) {
   return {
     name: GO_MUTATION_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: 'unresolved',
     resolveVersion: resolveGoVersion,
     configurationHash: hashConfiguration({ ...settings, part: GO_MUTATION_ANALYZER_NAME }),

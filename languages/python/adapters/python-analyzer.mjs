@@ -7,6 +7,7 @@ import { createToolContext, mutationVersions, toolVersions } from './python-tool
 import { TEST_CONSOLE_TOOL } from './test-results/console-output.mjs';
 import { FACTS_TOOL } from './facts/python-facts.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 export const PYTHON_ANALYZER_NAME = 'python';
 export const MUTATION_ANALYZER_NAME = 'mutation';
@@ -85,6 +86,7 @@ function pythonInvocation(settings, part) {
 function pythonAnalyzer(settings, probes) {
   return {
     name: PYTHON_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
@@ -120,6 +122,7 @@ function pythonAnalyzer(settings, probes) {
 function mutationAnalyzer(settings, probes) {
   return {
     name: MUTATION_ANALYZER_NAME,
+    inputs: EXECUTION_INPUTS,
     version: UNRESOLVED_VERSION,
     resolveVersion: (liveProjectRoot) =>
       resolveVersion(liveProjectRoot, mutationVersions, { settings, probes }),

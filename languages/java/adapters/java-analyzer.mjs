@@ -13,6 +13,7 @@ import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
 import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
+import { EXECUTION_INPUTS } from '../../../shared/input-sets/inputs.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -51,6 +52,8 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/pit/pit-scope.gradle',
+  'languages/java/gradle/pit/pit-process.gradle',
+  'languages/java/gradle/affected/affected-projects.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
   'languages/java/gradle/kotlin/kotlin-source-modules.gradle',
   'languages/java/gradle/errorprone/checks.json',
@@ -127,6 +130,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
   let runtimeVersion;
   return {
     name: kotlin ? 'kotlin' : 'java',
+    inputs: EXECUTION_INPUTS,
     publishesModuleImports: true,
     version: readPinnedVersions(),
     resolveVersion: () => {
