@@ -24,6 +24,7 @@ import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mjs';
 import { outputRootFor } from '../diff/reporting/reporters.mjs';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
+import { runStamp as untypedRunStamp } from '../diff/reporting/run-stamp/run-stamp.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
@@ -38,6 +39,7 @@ type SnapshotCli = {
   readonly options: {
     readonly analyzerNames: readonly string[];
     readonly ruleFilters: readonly string[];
+    readonly details: boolean;
     readonly staged: boolean;
     readonly outputRoot?: string;
   };
@@ -74,6 +76,10 @@ const inWorktree: (
   operation: (worktreeRoot: string) => SnapshotReport,
 ) => SnapshotReport = withTemporaryWorktree;
 const failingTestsOf: (toolErrors: unknown) => readonly unknown[] = failingHeadTests;
+const runStampOf: (request: {
+  readonly projectRoot: string;
+  readonly outputRoot: string;
+}) => object = untypedRunStamp;
 const capturedTree: Capture = captureWorkingTree;
 const prepareDependencies: (options: {
   readonly projectRoot: string;
@@ -97,6 +103,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     throw new Error('No quality analyzers are configured.');
   }
   clearSnapshotReports(outputRoot);
+  const stamp = runStampOf({ projectRoot: currentProjectRoot, outputRoot });
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
     currentProjectRoot,
@@ -117,6 +124,8 @@ export function runSnapshotCli(cli: SnapshotCli): number {
   );
   Object.assign(
     report.summary,
+    { headSha: capturedSha },
+    stamp,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
     runProfileSummary({ quick: cli.quick, staged: options.staged }),
   );
@@ -138,6 +147,7 @@ function writeSnapshotOutcome(
       renderSnapshotConsoleSummary(report, {
         diagnosticsPath: displayPath(path.join(outputRoot, 'report.txt')),
         color: colorEnabled(stdout, cli.environment),
+        details: cli.options.details,
         projectRoot: cli.currentProjectRoot,
       }),
     );

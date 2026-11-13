@@ -25,6 +25,7 @@ import { textOf } from '../../shared/values/readers.mts';
 type ConsoleOptions = {
   readonly diagnosticsPath: string;
   readonly color: boolean;
+  readonly details: boolean;
   readonly projectRoot: string;
 };
 

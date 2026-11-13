@@ -16,6 +16,10 @@ export const COMMANDS: readonly Row[] = [
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
   ['nitpicker changelog', 'Print what changed in a version, from the changelog of the package.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
+  [
+    'nitpicker show',
+    'Print the summary of the last run again, filtered, without running anything.',
+  ],
   ['nitpicker explain', 'Print what the rule reference says about the rules named.'],
   ['nitpicker rules', 'List the rules the preset of the project reports.'],
 ];
@@ -81,6 +85,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   CACHE_PUBLISH_USAGE,
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
+  'nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]',
   'nitpicker explain <tool/rule>...',
   'nitpicker rules [--preset <name>] [--tool <name>]',
 ];
@@ -140,7 +145,8 @@ export function usageText({
     `Options:\n${table(FLAGS)}\n${analyzerBlock(analyzers)}\n` +
     'Exit codes: 0 pass; 1 new findings or failing tests; 2 tool error or invalid input (not a pass).\n' +
     'Reports: reports/quality/diff/ (--all: reports/quality/snapshot/, or --output <dir>). Read\n' +
-    'new-findings.json (--all: findings.json) first, then report.txt.\n\n' +
+    'new-findings.json (--all: findings.json) first, then report.txt. nitpicker show prints the last\n' +
+    'run again, filtered by --rule or --path, without running it.\n\n' +
     `Examples:\n${examples(analyzers)}` +
     'Paths limit the findings shown and gate the run; the analysis still covers the whole project.\n\n' +
     `Start a new project with nitpicker init.${reference}\n`

@@ -180,6 +180,8 @@ Full diagnostics: ${outputRoot}/report.txt
       exclusions: [],
       renamedPaths: 0,
       elapsedMs: expect.any(Number),
+      generatedAt: expect.any(String),
+      workingTree: expect.stringMatching(exactText`${/[a-f0-9]{64}/}`),
       overallStatus: 'tool-error',
       newEnforceableFindings: 0,
       policyChanges: [],

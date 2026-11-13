@@ -119,6 +119,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         renamedPaths: 0,
         elapsedMs: expect.any(Number),
         mode: 'full',
+        generatedAt: expect.any(String),
+        workingTree: expect.any(String),
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,

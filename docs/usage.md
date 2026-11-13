@@ -451,8 +451,7 @@ Full diagnostics: reports/quality/diff/report.txt
 Findings that are allowed because the base already had them ("still over a limit", "existing lint
 findings in edited code") are listed after the violations, at most 10 of each, without their
 exception entries. `--details` prints every finding with its full message instead, the layout
-`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
-`--details` changes nothing there.
+`report.txt`, the JSON reports and SARIF always keep. `--all` takes `--details` too.
 
 ### JSON output
 
@@ -754,6 +753,7 @@ nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>] [--help]
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
+nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]
 nitpicker explain <tool/rule>...
 nitpicker rules [--preset <name>] [--tool <name>]
 ```
@@ -880,6 +880,17 @@ The other commands:
   full, and `--tool` keeps one tool.
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+- `nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]`:
+  print the console summary of the last run again, without running any analyzer. It reads the
+  reports of the last comparison in `reports/quality/diff/` (or in `--output`), and with `--all`, or
+  when there is no comparison report, those of the last `--all` run in `reports/quality/snapshot/`.
+  `--rule` (repeatable), `--path` (a file or folder, relative to the current folder) and `--details`
+  filter and expand the summary as they do for a run. The first line names the run it shows (the
+  base, the head commit and the time), and one line warns when the working tree changed since that
+  run, which `summary.json` records as `generatedAt` and `workingTree`. Exit codes: 0 when the run
+  passed; 1 when it had new enforceable findings, failing tests or a tool error; 2 when there is no
+  report to show, with a hint to run `nitpicker` first. Use it to read one rule or one folder of a
+  finished run instead of running it again.
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
