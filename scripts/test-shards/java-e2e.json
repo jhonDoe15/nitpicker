@@ -16,6 +16,7 @@
   "languages/java/adapters/java-e2e/integration/integration-suite.e2e.test.mjs": 43,
   "languages/java/adapters/java-e2e/integration/integration-tasks-and-maven.e2e.test.mjs": 47,
   "languages/java/adapters/java-e2e/integration/integration-unchecked.e2e.test.mjs": 91,
+  "languages/java/adapters/java-e2e/multi-project-scope.e2e.test.mjs": 120,
   "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 106,
   "languages/java/adapters/java-e2e/overlap-probe.e2e.test.mjs": 76,
   "languages/java/adapters/java-e2e/pit-history.e2e.test.mjs": 15,

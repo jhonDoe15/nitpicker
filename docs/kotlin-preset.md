@@ -39,6 +39,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Duplicates](kotlin-preset/duplicates.md)
 - [Coupling](kotlin-preset/coupling.md)
 - [Maven](kotlin-preset/maven.md)
+- [Multi-module builds: affected modules](kotlin-preset/multi-module-scope.md)
 - [Failure policy](kotlin-preset/failure-policy.md)
 - [Config keys](kotlin-preset/config-keys.md)
 - [Slow tests](kotlin-preset/slow-tests.md)

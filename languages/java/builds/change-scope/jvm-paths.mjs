@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 const JVM_SOURCE = /\.(?:java|kt)$/u;
 const TEST_FOLDERS = new Set(['test', 'tests', 'it']);
 const TEST_SOURCE_SET = /^tests?(?:$|[A-Z_-])|[a-z0-9](?:Tests?|[_-]tests?)$/u;
@@ -21,4 +23,15 @@ export function isJvmTestPath(file) {
 
 export function isJvmProductionPath(file) {
   return isJvmSourcePath(file) && !isJvmTestPath(file);
+}
+
+export function parentChain(start) {
+  const chain = [start];
+  for (const current of chain) {
+    const parent = path.dirname(current);
+    if (parent !== current) {
+      chain.push(parent);
+    }
+  }
+  return chain;
 }

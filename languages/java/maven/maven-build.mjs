@@ -17,6 +17,7 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
+import { mavenScope } from './reactor/maven-scope.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
 const PROJECT_CHECKS_OFF = [
@@ -43,6 +44,7 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  selection = [],
 }) {
   runMaven({
     projectRoot,
@@ -51,6 +53,7 @@ export function buildAndTest({
     timeoutMs,
     args: [
       '--quiet',
+      ...selection,
       ...buildGoals({ quick, pinned, modules }),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
@@ -88,11 +91,12 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
+function readModules({ projectRoot, maven, work, spawn, timeoutMs, changedFiles }) {
   const effectivePom = readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs });
-  const modules = readReactor(projectRoot, effectivePom).filter(
-    (module) => module.packaging !== 'pom',
-  );
+  const reactor = readReactor(projectRoot, effectivePom);
+  const built = reactor.filter((module) => module.packaging !== 'pom');
+  const scope = mavenScope({ modules: reactor, projectRoot, changedFiles });
+  const modules = scope.reported.filter((module) => module.packaging !== 'pom');
   if (modules.length === 0) {
     throw new Error(
       `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
@@ -104,7 +108,7 @@ function readModules({ projectRoot, maven, work, spawn, timeoutMs }) {
   for (const module of modules) {
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
-  return { modules, effectivePom };
+  return { modules, built, scope, effectivePom };
 }
 
 function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
@@ -154,12 +158,28 @@ export function runMavenPreset(
   }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
+  const run = {
+    projectRoot,
+    maven,
+    spawn,
+    timeoutMs,
+    pinned,
+    quick: policy.quick === true,
+  };
   try {
-    const { modules, effectivePom } = readModules({ ...run, work });
-    const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
+    const { modules, built, scope, effectivePom } = readModules({
+      ...run,
+      work,
+      changedFiles: policy.changedFiles,
+    });
+    const kotlin = kotlinSetup({ ...run, policy, modules: built, effectivePom, work, environment });
     const since = Date.now() - 2000;
-    buildAndTest({ ...run, work, modules });
+    buildAndTest({
+      ...run,
+      work,
+      modules: built,
+      selection: scope.selection,
+    });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -179,12 +199,13 @@ export function runMavenPreset(
       policy,
       kotlin,
       work,
-      project: guardProject(projectRoot, policy, modules),
+      project: guardProject(projectRoot, policy, built),
     });
     return {
       moduleDirs: modules.map((module) => module.basedir),
       testsFailures,
       formatAdvice: kotlin.options?.advice,
+      notAffected: scope.notAffected,
     };
   } finally {
     rmSync(work, { recursive: true, force: true });

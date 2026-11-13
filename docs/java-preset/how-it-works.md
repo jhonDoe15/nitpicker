@@ -34,7 +34,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
   analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
-  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
+  projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies. A
+  comparison narrows this to the affected projects, see
+  [affected modules](multi-module-scope.md).
   File limits, coupling (with the stability direction) and package cycles are evaluated once over
   all projects, as for Maven modules, so a package dependency from one project to another counts
   and a cycle through two projects is one cycle. Packages and classes of a project other than the
