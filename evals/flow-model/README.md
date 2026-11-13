@@ -12,6 +12,9 @@ runs at any point.
 | Folder      | Contents                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------- |
 | `extract/`  | TypeScript program (with `allowJs`), binding resolution, canonical model of statements   |
+| `model/`    | Shared types for the model, contracts, inputs and checker state; typed traversal helpers |
+| `mutation/` | Classifies mutations and clobbered bindings of unsupported syntax                        |
+| `dispatch/` | Resolves a call to a helper, an effect contract, a pure global or an unknown call        |
 | `check/`    | Path-sensitive checker: facts, effect outcomes, contracts, bounds, partial reasons       |
 | `oracle/`   | Transpiles and executes trusted sources with injected effects over finite inputs         |
 | `report/`   | Canonical JSON, semantic hashes, cache keys, base/head diff, views, descriptive findings |
@@ -19,8 +22,8 @@ runs at any point.
 | `real/`     | The reviewed protocol for `lookUpCachedReport` and its seeded and unsupported variants   |
 | `census/`   | Runs the engine without contracts over every production function of this repository      |
 
-`analyze.mjs` is the entry (`analyzeSource({ file, text, entry, contracts, inputs, bounds })`),
-`evaluate.mjs` runs every evaluation, and `run.mjs` writes the artifacts.
+`analyze.mts` is the entry (`analyzeSource({ file, text, entry, contracts, inputs, bounds })`),
+`evaluate.mts` runs every evaluation, and `run.mts` writes the artifacts.
 
 ## Supported subset
 
@@ -73,7 +76,7 @@ written `?`, so a violation that happens in there is still covered by the result
 `extractModel` returns canonical JSON: `{ analyzer, file, entry, functions, missingHelpers }`. Each
 function keeps its parameters and a statement tree; every statement, call and decision carries a
 `loc` (line and column). Local bindings are identified by declaration order (`payOrder:id#2`), not
-by position, so the model is stable under whitespace changes. `report/view.mjs` renders a decision
+by position, so the model is stable under whitespace changes. `report/view.mts` renders a decision
 table and a path table from the same model and check result.
 
 ## Contracts
@@ -126,7 +129,7 @@ each with a source location.
 
 ## Diff, hashes and cache keys
 
-`report/diff.mjs` hashes each function model with locations removed, so a whitespace-only change
+`report/diff.mts` hashes each function model with locations removed, so a whitespace-only change
 keeps the semantic hash and shows no changed function in the diff. The cache key covers the analyzer
 version, the TypeScript version, the file, the entry, the semantic hash of every function in the
 entry's transitive same-file closure, a hash of the same functions with their locations (so a cache
@@ -137,8 +140,8 @@ completions with their locations, plus changed violations and path outcomes.
 
 ## Findings
 
-`report/findings.mjs` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
-`identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mjs` passes every
+`report/findings.mts` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
+`identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mts` passes every
 finding through `parseAnalyzerReport` from `core/diff/comparison/finding-schema.mjs`. The model,
 paths and witnesses stay in separate artifacts. A violation's identity includes its call site, so
 two calls that break the same rule are two findings, and the identity survives whitespace changes.
@@ -196,7 +199,7 @@ unknown recovery call, aliased method dispatch, repeated reads in a loop.
 
 ## Measured results
 
-Measured by `node evals/flow-model/run.mjs`; `summary.json` records the SHA-256 of the analyzed
+Measured by `node evals/flow-model/run.mts`; `summary.json` records the SHA-256 of the analyzed
 source and entry function.
 
 | Measure                             | Synthetic fixtures | `lookUpCachedReport` variants |
@@ -230,7 +233,7 @@ retains; it is not a token or cost benchmark, and no token or cost savings are c
 
 ## Census of this repository
 
-`census/run.mjs` runs the engine, without contracts or input domains, on every top-level function
+`census/run.mts` runs the engine, without contracts or input domains, on every top-level function
 declaration and function-valued `const` in the production `.mjs` files under `core/`, `shared/` and
 `languages/` (tests, fixtures, test support, `__tests__` and e2e folders left out). It writes
 `reports/flow-model/census.json`. Each function falls in one class:
@@ -292,11 +295,11 @@ spike set out not to build.
 
 ```sh
 node node_modules/vitest/vitest.mjs run --config vitest.config.mts evals/flow-model
-node evals/flow-model/run.mjs
-node evals/flow-model/census/run.mjs
+node evals/flow-model/run.mts
+node evals/flow-model/census/run.mts
 ```
 
-`run.mjs` prints the summary and regenerates `reports/flow-model/` (git-ignored): `summary.json`,
+`run.mts` prints the summary and regenerates `reports/flow-model/` (git-ignored): `summary.json`,
 per-target models and results, `views.md`, `witnesses.md`, `diff.json`, `findings.json`, and the
 generated fixture and variant sources the findings point to.
 

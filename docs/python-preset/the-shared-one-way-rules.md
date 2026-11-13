@@ -14,6 +14,7 @@ are listed at the end.
 | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                                 | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                                                                                                                                                                                                                              |
 | Environment              | read once in a composition root, pass values in                                                                                                                                        | `process-env-access` (script)                                                                                                                                                                                                                                                                                                                                                       |
+| Environment values       | a truth test: `if not os.environ.get("X"):`, `os.environ.get("X") or default`                                                                                                          | `env-none-only-check` (script)                                                                                                                                                                                                                                                                                                                                                      |
 | Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                  | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                                                                                                                                                                                                                                               |
 | Service lookups          | a parameter, resolved once in a composition root                                                                                                                                       | `service-locator-lookup` (script)                                                                                                                                                                                                                                                                                                                                                   |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                                | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                                                                                                                                                                                                                       |
@@ -45,6 +46,7 @@ are listed at the end.
 | ORM schema at startup    | migrations: Alembic `alembic upgrade head` in the deploy step, Django migrations, Aerich                                                                                               | `orm-schema-sync` (script)                                                                                                                                                                                                                                                                                                                                                          |
 | ORM query logging        | `echo` and the query loggers off; slow queries logged from cursor events or by the database                                                                                            | `orm-query-logging` (script)                                                                                                                                                                                                                                                                                                                                                        |
 | Query rows in memory     | `.count()`, `.exists()`, `.filter()`, `.order_by()`, `.aggregate()` (Django); `where`, `order_by`, `func.count`/`func.sum` (SQLAlchemy)                                                | `in-memory-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
+| Boolean logic            | the printed simpler form: `return a < b`, `if a and b:`, `a != b`, `if ready:` first, `not (a or b)`                                                                                   | `simpler-boolean-logic` (script), ruff `SIM` (below)                                                                                                                                                                                                                                                                                                                                |
 | Collection joins         | one collection per `joinedload`/`contains_eager` query; the others with `selectinload` or `subqueryload`                                                                               | `multiple-collection-joins` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Foreign key indexes      | `index=True` on the foreign-key column, an `Index` that starts with it; Django keeps `db_index`                                                                                        | `unindexed-foreign-key` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                        | `falsy-default` (script)                                                                                                                                                                                                                                                                                                                                                            |
@@ -194,6 +196,24 @@ Details that are decisions rather than the table:
   `[project.entry-points]`, poetry scripts and plugins, flit), `setup.cfg` or `setup.py`; or a file
   matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `env-none-only-check` reports an environment variable tested only for being missing, which
+  counts an empty value as set: `API_URL=` gives `""`, which passes the test, so the feature turns
+  on with nothing to use. Reported, in every non-test file: `is None`, `is not None`, `== None` and
+  `!= None` on `os.environ.get("X")` or `os.getenv("X")` (also `key="X"`, through
+  `from os import ...` and aliases, through a walrus, and on a name assigned once from one, such as
+  a module constant `API_URL = os.getenv("API_URL")`; a parameter, `except` name, function, class
+  or import of the same name is another name); `"X" in os.environ` and `not in`; and a string
+  default (`os.getenv("PORT", "8000")`, `os.environ.get("HOST", default="localhost")`, or a name
+  holding one), which an empty value skips. A default of `""` or `None` gives the same result and
+  passes, and a default that is not a string is left to ruff `PLW1508`. Not reported either: a
+  `None` test joined by `and`/`or` with a test of the value itself (`url is not None and
+url.strip() != ""`, `len(...)`, `bool(...)`, the value, or any method call on it), and a line
+  where `process-env-access` (outside the composition root) or `hardcoded-secret` already
+  reports, whose fix removes the read or the default. The allowed form tests the value for truth:
+  `if not os.environ.get("API_URL"):`, `os.environ.get("PORT") or "8000"`, `.strip()` first when
+  blanks count as empty. When an empty value is a real setting, add an exception for the rule. The TypeScript preset reports the same mistake as
+  `nitpicker/no-undefined-only-env-check`, and the Java and Kotlin presets on Spring configuration
+  as `pmd/SpringNullOnlyConfigCheck`.
 - `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
   also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
   `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
@@ -241,6 +261,25 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
+- `future-without-exception` reports a future that only a callback completes, and only with a
+  result: a local assigned from `loop.create_future()` (any receiver, `asyncio.get_running_loop()`
+  included), `asyncio.Future()` or `concurrent.futures.Future()` whose `set_result` is called inside
+  a nested function or lambda, or passed as a callback (`register(reply.set_result)`,
+  `loop.call_soon_threadsafe(reply.set_result, value)`), while nothing in the function calls or
+  passes `set_exception` or `cancel` on it. When the work behind the callback fails, the future
+  never completes and whoever awaits it waits forever. Allowed: a failure path that calls
+  `set_exception` (`register(reply.set_result, reply.set_exception)`, or an `except` in the callback
+  that sets the exception), `cancel`, or a coroutine API that raises by itself
+  (`loop.run_in_executor`, `asyncio.to_thread`). A future stored in a container, an attribute or
+  another name, or passed to a call other than `asyncio.wait_for`, `shield`, `wait`, `gather`,
+  `wrap_future` or `as_completed`, is left to that owner and not reported. `set_result` called
+  directly in the function body completes the future at once and is not reported. A future awaited through
+  `asyncio.wait_for(reply, 5)` is still reported: the wait ends, but the failure turns into a
+  `TimeoutError` that hides the real error. Not in tests or
+  test support. The TypeScript and JavaScript presets report the same mistake on a `new Promise`
+  executor (`nitpicker/require-promise-reject`); Python's node-style callbacks with an error first
+  argument are rare, so that half of the TypeScript rule has no Python form. `loop.run_in_executor` needs no
+  rule either: awaiting the future it returns raises the function's exception by itself.
 - `subprocess-without-timeout` reports waiting for a child process without a deadline:
   `subprocess.run`, `call`, `check_call` and `check_output` without `timeout=` or with `timeout=None`
   (also through a `**options` dict and a `functools.partial`, reported where the partial is called),
@@ -997,6 +1036,20 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
   `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
   `nitpicker/strict-boolean-expressions`.
+- `simpler-boolean-logic` and ruff's `SIM` rules report boolean logic with a strictly simpler
+  exact form (#905; the counterpart of the TypeScript `nitpicker/simpler-boolean-logic` and of the
+  Java PMD rules `SimplifyBooleanReturns`, `SimplifiedTernary`, `CollapsibleIfStatements`,
+  `LogicInversion`, `ConfusingTernary` and `NegatedOperands`). Ruff covers `if c: return True`
+  then `return False` (`SIM103`), a nested `if` (`SIM102`), `not a == b` and `not a != b`
+  (`SIM201`, `SIM202`), `not not x` (`SIM208`), `True if c else False` and `False if c else True`
+  (`SIM210`, `SIM211`) and `b if not a else a` (`SIM212`). The script rule adds the three forms
+  ruff has no rule for, and prints the simpler form: `if not ready:` with an `else:` is
+  `if ready:` with the branches swapped, `a if not ready else b` is `b if ready else a`, and an
+  `and`/`or` whose every operand is a `not` is one negation (`not a and not b` is
+  `not (a or b)`). Not reported: an `elif` chain (an `else:` that holds an `if` is swapped), an
+  `if not` without an `else`, a test that is `not not x` (`SIM208`'s), a ternary with a ternary
+  in either branch, the twisted ternary `SIM212` reports, a chain with an operand that is not
+  negated, and a chain whose operand is itself such a chain (the inner one is reported first).
 - `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
   `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
   `MutableSet`, or a project `TypedDict` (a class that derives from `TypedDict`, resolved

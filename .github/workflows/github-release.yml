@@ -1,8 +1,9 @@
 name: github-release
 
-# Manual only: publishes a GitHub release for a commit on main, with the packed tarball and its
-# checksum attached. The tag points at a commit on top of it that adds the rule pages. It never
-# publishes to npm.
+# Manual only: builds, smoke-tests and pushes the container images of a commit on main to the
+# registry set in container.yml, then publishes a GitHub release for that commit with the packed
+# tarball and its checksum attached. The tag points at a commit on top of it that adds the rule
+# pages. It never publishes to npm.
 on:
   workflow_dispatch:
     inputs:
@@ -22,9 +23,50 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Check the commit and read the version
+        id: version
+        env:
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          git merge-base --is-ancestor "$COMMIT" origin/main
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+  # Builds the images from the commit, gates the sample projects in them and pushes them tagged with
+  # the version; a stable release also moves the latest tags. The release below waits for them, so a
+  # failing image stops the release. Re-running after a later failure pushes the same tags again.
+  images:
+    needs: version
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/container.yml
+    with:
+      commit: ${{ inputs.commit }}
+      version: ${{ needs.version.outputs.version }}
+      publish: true
+      latest: ${{ !inputs.prerelease }}
+
   release:
+    needs: [version, images]
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7.0.1
         with:
