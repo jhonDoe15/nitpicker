@@ -31,6 +31,10 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   },
   go: {
     ...GO_FACT_RULES_NOT_RUN,
+    'domain-imports-framework-context': {
+      file: 'languages/go/adapters/domain/go-domain-libraries.mjs',
+      evidence: /const WHOLE_PACKAGE_RULES = \[\n {2}\[RULE_IDS\.domainImportsClient/u,
+    },
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',
       evidence: /Go has no inheritance/u,
