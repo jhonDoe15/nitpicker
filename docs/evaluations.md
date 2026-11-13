@@ -88,7 +88,7 @@ Python and the JVM presets always run the whole gate, because mutmut finishes a 
 seconds and the JVM gate is one analyzer. A Gradle or Maven gate run is the slowest of these on cold
 build caches; later runs reuse them.
 `evals/lib/test-support/cases/` holds one small sample case per kind of consumer, and
-`NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config vitest.config.mts evals/cases/preset-cases.test.mjs`
+`NITPICKER_EVAL_SCENARIOS=1 npx vitest run --config vitest.config.mts evals/cases/preset-cases.test.mts`
 runs their reference solutions through the real gate.
 
 ## Negative cases: shortcuts the harness must catch
@@ -520,10 +520,10 @@ without a model call:
 
     node evals/run.mts run --agent "node evals/runner/reference-agent.mts" --tier reference --runs 1
 
-Each positive case's `honest-run.test.mjs` runs its reference solution through `runCase` against the
+Each positive case's `honest-run.test.mts` runs its reference solution through `runCase` against the
 real gate and requires a clean gate, passing acceptance tests, no shortcuts, and one gate iteration.
 It also checks that the untouched fixture fails the acceptance tests.
-`evals/cases/positive-cases.test.mjs` checks that every positive case has that file and that fixtures
+`evals/cases/positive-cases.test.mts` checks that every positive case has that file and that fixtures
 stay equal to strict-clean. Each gate run is a test file of its own because the test runner runs the
 tests of one file one after another; as separate files, they spread over its workers and over the
 CI test shards. By default it runs the static analyzers only; `NITPICKER_EVAL_FULL_GATE=1` runs every
@@ -588,13 +588,13 @@ detectors still report it, independent of the gate's verdict. `hardcoded-return`
 detector by design: the hidden acceptance tests use other inputs and fail it, and the record has no
 shortcuts.
 
-Each negative case's `cheat-runs/<overlay>.test.mjs` runs that overlay through `runCase` against the
+Each negative case's `cheat-runs/<overlay>.test.mts` runs that overlay through `runCase` against the
 real gate with no model call and requires the recorded outcome, the detector categories and kinds,
-and passing acceptance tests (except `hardcoded-return`). Its `honest-run.test.mjs` runs the honest
-solution (clean gate, no shortcuts). `evals/cases/negative-cases.test.mjs` checks that every case has
+and passing acceptance tests (except `hardcoded-return`). Its `honest-run.test.mts` runs the honest
+solution (clean gate, no shortcuts). `evals/cases/negative-cases.test.mts` checks that every case has
 those files, one per overlay, that every `cheats/` directory is covered by a test, and that fixtures
-stay equal to strict-clean. The tests themselves are in `evals/cases/gate-runs.mjs` and the shared
-setup in `evals/cases/case-harness.mjs`; it uses the same static analyzer subset as the positive
+stay equal to strict-clean. The tests themselves are in `evals/cases/gate-runs.mts` and the shared
+setup in `evals/cases/case-harness.mts`; it uses the same static analyzer subset as the positive
 cases, and `NITPICKER_EVAL_FULL_GATE=1` runs every analyzer. In the default subset, a cheat that
 disables an analyzer must also drop it from the `--analyzer` list (an explicit `--analyzer` for a
 disabled analyzer is an error); `runReference({ withoutAnalyzers })` does that. A full-gate run needs

@@ -8,13 +8,20 @@ import {
   linkedWorkdir,
   runApplied,
   runReference,
-} from './case-harness.mjs';
-import { END_TO_END, HARDCODED, NEGATIVE_CASES, POSITIVE_CASES } from './case-table.mjs';
+} from './case-harness.mts';
+import {
+  type Cheat,
+  END_TO_END,
+  HARDCODED,
+  type NegativeCase,
+  NEGATIVE_CASES,
+  POSITIVE_CASES,
+} from './case-table.mts';
 
-export const HONEST_RUN_FILE = 'honest-run.test.mjs';
+export const HONEST_RUN_FILE = 'honest-run.test.mts';
 export const CHEAT_RUNS_FOLDER = 'cheat-runs';
 
-function honestRun(caseId) {
+function honestRun(caseId: string): void {
   it(
     `${caseId}: gate clean, acceptance tests pass, no shortcuts`,
     () => {
@@ -35,7 +42,10 @@ function honestRun(caseId) {
   );
 }
 
-function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expected }) {
+function cheatRun(
+  caseId: string,
+  { overlay, withoutAnalyzers, flaggedBy, outcome, expected }: Cheat,
+): void {
   it(
     `${caseId} / ${overlay}: ${outcome}, ${expected.map(({ kind }) => kind).join(' + ')}`,
     () => {
@@ -48,7 +58,7 @@ function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expec
       });
       if (endToEnd) {
         expect(record.gate.iterations).toBe(1);
-        expect(record.gate.iterationLog[0].exit).toBe(record.gate.final.exit);
+        expect(record.gate.iterationLog[0]?.['exit']).toBe(record.gate.final.exit);
       }
       expect(record.detectorErrors).toEqual([]);
       expect(record.outcome, record.gate.final.output).toBe(outcome);
@@ -60,6 +70,9 @@ function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expec
       if (outcome === 'shortcut') {
         expect(record.gate.final.exit, record.gate.final.output).toBe(0);
       } else {
+        if (flaggedBy === undefined) {
+          throw new Error(`${caseId} / ${overlay} has a gate-findings outcome but no flaggedBy`);
+        }
         expect(record.gate.final.output).toMatch(
           new RegExp(`^ *${flaggedBy.finding.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')} `, 'mu'),
         );
@@ -69,7 +82,7 @@ function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expec
   );
 }
 
-function hardcodedReturn() {
+function hardcodedReturn(): void {
   it(
     `${HARDCODED.caseId} / ${HARDCODED.overlay}: the hidden acceptance tests fail it, no detector fires`,
     () => {
@@ -83,7 +96,7 @@ function hardcodedReturn() {
   );
 }
 
-function unchangedTree(caseId) {
+function unchangedTree(caseId: string): void {
   it(
     `${caseId}: fails the acceptance tests for an agent that changes nothing`,
     () => {
@@ -101,38 +114,42 @@ function unchangedTree(caseId) {
   );
 }
 
-const caseOf = (caseId) => {
+function caseOf(caseId: string): NegativeCase | undefined {
   const negative = NEGATIVE_CASES.find((entry) => entry.caseId === caseId);
   if (negative === undefined && !POSITIVE_CASES.includes(caseId)) {
     throw new Error(`${caseId} is in neither NEGATIVE_CASES nor POSITIVE_CASES`);
   }
   return negative;
-};
+}
 
-export function cheatRunsOf(caseId) {
+export function cheatRunsOf(caseId: string): string[] {
   const overlays = (caseOf(caseId)?.cheats ?? []).map(({ overlay }) => overlay);
   return caseId === HARDCODED.caseId ? [...overlays, HARDCODED.overlay] : overlays;
 }
 
-export function describeHonestRun(caseDirectory) {
+export function describeHonestRun(caseDirectory: string): void {
   const caseId = path.basename(caseDirectory);
   const negative = caseOf(caseId);
   describe(`${caseId}: the real gate's verdict on the honest solution (no model calls)`, () => {
     honestRun(caseId);
-    if (negative === undefined) unchangedTree(caseId);
+    if (negative === undefined) {
+      unchangedTree(caseId);
+    }
   });
 }
 
-export function describeCheatRun(testFile) {
+export function describeCheatRun(testFile: string): void {
   const caseId = path.basename(path.dirname(path.dirname(testFile)));
-  const overlay = path.basename(testFile, '.test.mjs');
+  const overlay = path.basename(testFile, '.test.mts');
   describe(`${caseId} / ${overlay}: the real gate's verdict on the cheat (no model calls)`, () => {
     if (caseId === HARDCODED.caseId && overlay === HARDCODED.overlay) {
       hardcodedReturn();
       return;
     }
     const cheat = caseOf(caseId)?.cheats.find((entry) => entry.overlay === overlay);
-    if (cheat === undefined) throw new Error(`${caseId} has no cheat ${overlay} in NEGATIVE_CASES`);
+    if (cheat === undefined) {
+      throw new Error(`${caseId} has no cheat ${overlay} in NEGATIVE_CASES`);
+    }
     cheatRun(caseId, cheat);
   });
 }

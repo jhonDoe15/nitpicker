@@ -3,11 +3,10 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadTree } from '../detectors/tree.mts';
 import { listCases, loadCase } from '../case-definition/case-definition.mts';
-import { casesDirectory, strictCleanRoot } from './case-harness.mjs';
-import { POSITIVE_CASES } from './case-table.mjs';
-import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE } from './gate-runs.mjs';
+import { casesDirectory, strictCleanRoot } from './case-harness.mts';
+import { POSITIVE_CASES } from './case-table.mts';
+import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE } from './gate-runs.mts';
 
-// Fixture files a case may extend beyond strict-clean (the bug case wires its buggy function).
 const EXTENDED_BY_CASE = new Set([
   'src/main/composition-root.ts',
   'src/main/features/greeting/index.ts',
@@ -16,7 +15,7 @@ const EXTENDED_BY_CASE = new Set([
 describe('positive case definitions', () => {
   it('lists at least three positive cases besides the trivial runner case', () => {
     const ids = listCases(casesDirectory).map((entry) => entry.id);
-    expect(ids).toEqual(expect.arrayContaining(POSITIVE_CASES));
+    expect(ids).toEqual(expect.arrayContaining([...POSITIVE_CASES]));
   });
 
   for (const caseId of POSITIVE_CASES) {
@@ -24,7 +23,7 @@ describe('positive case definitions', () => {
       const definition = loadCase(path.join(casesDirectory, caseId));
 
       it('pins a preset version and has a prompt that names the gate and the test file', () => {
-        expect(definition.pin.presetVersion).toBe('0.0.0');
+        expect(definition.pin['presetVersion']).toBe('0.0.0');
         expect(definition.prompt).toContain('nitpicker-gate');
         expect(definition.prompt).toMatch(/test\/[\w-]+\.test\.ts/);
       });
