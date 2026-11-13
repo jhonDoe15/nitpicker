@@ -10,6 +10,10 @@ import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventor
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
 import { realTemporaryDirectory } from '../../../../core/tooling/temporary-files.mjs';
+import {
+  MUTATION_SCOPE_OPTION,
+  parseMutationScope,
+} from '../../../../core/tooling/runner-arguments.mjs';
 
 const VALUE_ARGUMENTS = new Set([
   '--analyzer-name',
@@ -24,6 +28,7 @@ const VALUE_ARGUMENTS = new Set([
   '--baseline-moves-file',
   '--crap-score-limit',
   '--legacy-inventory',
+  MUTATION_SCOPE_OPTION,
 ]);
 
 export function parseArguments(arguments_) {
@@ -57,6 +62,7 @@ export function parseArguments(arguments_) {
       undefined,
     ),
     baselineMovesFile: optionalValue(values.get('--baseline-moves-file'), movesFileOf, undefined),
+    mutationScope: optionalValue(values.get(MUTATION_SCOPE_OPTION), parseMutationScope, undefined),
   };
 }
 

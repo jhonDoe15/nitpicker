@@ -30,7 +30,7 @@ export function buildGoals({ quick, pinned, modules }) {
     ];
   }
   return [
-    `${jacocoPlugin(pinned)}:prepare-agent`,
+    `${jacocoPlugin(pinned, modules)}:prepare-agent`,
     `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
     ...lifecycleArgs(modules),
   ];
@@ -72,5 +72,6 @@ export function runCoverageTools(options) {
   const execFiles = jacocoExecFiles(module);
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
   const history = options.pitHistory;
-  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, history, ...run });
+  const scope = { projectRoot: options.projectRoot, mutationScope: options.mutationScope };
+  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, history, scope, ...run });
 }

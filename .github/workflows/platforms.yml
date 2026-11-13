@@ -1,10 +1,10 @@
 name: platforms
 
-# The CLI as a user runs it, on small sample projects (scripts/platforms/samples.mjs): the TypeScript strict-clean
+# The CLI as a user runs it, on small sample projects (scripts/platforms/samples.mts): the TypeScript strict-clean
 # fixture, a Gradle and a Maven Java project and a Python project, each with `--all` and then with a change that adds
 # one violation. The samples run on Linux, macOS and Windows, and the TypeScript sample also under Deno; every
 # run must give the same findings as the Linux run under Node, except the differences listed in
-# scripts/platforms/compare-runs.mjs, which docs/compatibility.md shows. The logic solver's tests run on Linux x64
+# scripts/platforms/compare-runs.mts, which docs/compatibility.md shows. The logic solver's tests run on Linux x64
 # and arm64. Not a required check. It runs on a push to
 # main that touches the paths below, by hand from the Actions tab, and on a pull request when a label is added
 # while it carries `run-ci` and it changes a file in the paths below, like the language end-to-end workflows.
@@ -110,7 +110,7 @@ jobs:
       # Each sample's reports folder (report.txt, findings.json, tool-errors.json) goes into the artifact too.
       - name: Sample projects
         run: >-
-          node scripts/platforms/smoke.mjs typescript gradle maven python
+          node scripts/platforms/smoke.mts typescript gradle maven python
           --output "reports/platforms/${{ runner.os }}"
       # One artifact per system, replaced when a failed job is re-run, so the platforms job of a re-run
       # compares the newest run of every system.
@@ -138,20 +138,20 @@ jobs:
         with:
           deno-version: 2.9.6
       - run: npm ci
-      - run: node scripts/platforms/smoke.mjs typescript --output reports/runtimes/node
-      - run: node scripts/platforms/smoke.mjs typescript --runtime deno --output reports/runtimes/deno
+      - run: node scripts/platforms/smoke.mts typescript --output reports/runtimes/node
+      - run: node scripts/platforms/smoke.mts typescript --runtime deno --output reports/runtimes/deno
       # Stryker's first test run sometimes fails under Deno (about one run in four locally, never under
       # Node, cause not known yet; see docs/compatibility.md), so a differing Deno run gets one more try.
       - name: Deno gives the findings of Node
         run: |
           compare() {
-            node scripts/platforms/compare-runs.mjs --report reports/runtimes/comparison.txt \
+            node scripts/platforms/compare-runs.mts --report reports/runtimes/comparison.txt \
               reports/runtimes/node reports/runtimes/deno
           }
           if ! compare; then
             echo "::warning::The Deno run differed from Node; running the Deno sample once more."
             cat reports/runtimes/comparison.txt
-            node scripts/platforms/smoke.mjs typescript --runtime deno --output reports/runtimes/deno
+            node scripts/platforms/smoke.mts typescript --runtime deno --output reports/runtimes/deno
             compare
           fi
       # The expected differences and the tool error messages of each run.
@@ -209,7 +209,7 @@ jobs:
       - name: macOS and Windows give the findings of Linux
         if: needs.changes.outputs.run == 'true'
         run: >-
-          node scripts/platforms/compare-runs.mjs --report reports/comparison.txt
+          node scripts/platforms/compare-runs.mts --report reports/comparison.txt
           reports/platforms/Linux reports/platforms/macOS reports/platforms/Windows
       - name: Comparison
         if: ${{ !cancelled() && needs.changes.outputs.run == 'true' }}

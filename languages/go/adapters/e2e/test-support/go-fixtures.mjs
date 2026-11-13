@@ -1,5 +1,5 @@
 const GO_MOD = 'module example.com/shop\n\ngo 1.22\n';
-const CONFIG = '{ "preset": "go" }\n';
+const CONFIG = '{ "preset": "go", "disable": ["mutation"] }\n';
 
 const PRICE = `package shop
 
@@ -96,6 +96,17 @@ func Grade(score, bonus int) string {
 }
 `;
 
+export const NESTED_TEST = `package shop
+
+import "testing"
+
+func TestGrade(t *testing.T) {
+	if Grade(95, 1) != "A" || Grade(10, 1) != "B" || Grade(-1, 0) != "B" {
+		t.Fatal("wrong grade")
+	}
+}
+`;
+
 export const LEGACY_TOUCHED = `package shop
 
 func Legacy(a, b, c, d int) int {
@@ -113,6 +124,7 @@ func TestBroken(t *testing.T) {
 `;
 
 function sleepingTest(header, name, seconds, guard = '') {
+  const helper = name.replace('Test', 'restock');
   return `${header}package shop
 
 import (
@@ -121,8 +133,14 @@ import (
 )
 
 func ${name}(t *testing.T) {
-${guard}	time.Sleep(${String(seconds)} * time.Second)
-	t.Log("woke up")
+${guard}	if got := ${helper}(); got != 1 {
+		t.Fatalf("${helper}() = %d, want 1", got)
+	}
+}
+
+func ${helper}() int {
+	time.Sleep(${String(seconds)} * time.Second)
+	return 1
 }
 `;
 }
@@ -157,5 +175,55 @@ export const GOFUMPT_ONLY = `package shop
 func Rounded(value int) int {
 
 	return value / 10 * 10
+}
+`;
+
+export const DISCOUNT_HALF_TEST = `package shop
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if Discount(200, 10) != 180 {
+		t.Fatal("wrong discount")
+	}
+}
+`;
+
+export const UNTESTED_LEGACY = `package shop
+
+func Fee(weight int) int {
+	if weight > 10 {
+		return 5
+	}
+	return 1
+}
+`;
+
+export const BRANCHY = `package shop
+
+func Size(weight int) string {
+	switch {
+	case weight > 100:
+		return "huge"
+	case weight > 50:
+		return "large"
+	case weight > 10:
+		return "medium"
+	case weight > 0:
+		return "small"
+	}
+	return "none"
+}
+`;
+
+export const DISCOUNT_PANIC_TEST = `package shop
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if Discount(200, 10) != 180 || Discount(200, 0) != 200 {
+		t.Fatal("wrong discount")
+	}
+	panic("crashed after the checks")
 }
 `;

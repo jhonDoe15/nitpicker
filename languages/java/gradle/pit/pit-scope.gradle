@@ -1,0 +1,91 @@
+def scopeFile = gradle.startParameter.projectProperties['nitpicker.mutationScope']
+def scopePaths = scopeFile == null ? null
+    : new groovy.json.JsonSlurper().parse(new File(scopeFile.toString()), 'UTF-8')
+def scopeRoot = gradle.startParameter.currentDir.canonicalFile.toPath()
+def constantSizes = [3: 4, 4: 4, 9: 4, 10: 4, 11: 4, 12: 4, 17: 4, 18: 4, 7: 2, 8: 2, 16: 2, 19: 2, 20: 2, 15: 3]
+
+def posixPath = { java.nio.file.Path from, File file ->
+    from.relativize(file.canonicalFile.toPath()).toString().replace(File.separatorChar, '/' as char)
+}
+
+def classSourceFile = { File file ->
+    def input = new DataInputStream(new ByteArrayInputStream(file.bytes))
+    if (Integer.toUnsignedLong(input.readInt()) != 0xCAFEBABEL) {
+        return null
+    }
+    input.skipBytes(4)
+    def count = input.readUnsignedShort()
+    def texts = [:]
+    for (int index = 1; index < count; index++) {
+        def tag = input.readUnsignedByte()
+        if (tag == 1) {
+            texts[index] = input.readUTF()
+        } else if (tag == 5 || tag == 6) {
+            input.skipBytes(8)
+            index++
+        } else if (constantSizes.containsKey(tag)) {
+            input.skipBytes(constantSizes[tag])
+        } else {
+            throw new GradleException("nitpicker cannot read the class file ${file}: unknown constant pool tag ${tag}")
+        }
+    }
+    input.skipBytes(6)
+    input.skipBytes(2 * input.readUnsignedShort())
+    def readAttributes = { ->
+        def found = null
+        input.readUnsignedShort().times {
+            def name = texts[input.readUnsignedShort()]
+            def length = input.readInt()
+            if (name == 'SourceFile' && found == null) {
+                found = texts[input.readUnsignedShort()]
+                input.skipBytes(length - 2)
+            } else {
+                input.skipBytes(length)
+            }
+        }
+        found
+    }
+    2.times {
+        input.readUnsignedShort().times {
+            input.skipBytes(6)
+            readAttributes()
+        }
+    }
+    readAttributes()
+}
+
+def sourceKey = { File file ->
+    def matcher = file.getText('UTF-8').replace('\uFEFF', '') =~ /(?m)^\s*(?:@file:\S+\s+)*package\s+([\w.`]+)/
+    def declared = matcher.find() ? matcher.group(1).replace('`', '') : ''
+    (declared.split(/\./).findAll { it } + [file.name]).join('/')
+}
+
+def inScope = { File file ->
+    def relative = posixPath(scopeRoot, file)
+    scopePaths.any { relative == it || relative.startsWith("${it}/") }
+}
+
+project.ext.nitpickerScopedPitTargets = { Collection<File> classDirs, Collection<File> sourceFiles ->
+    if (scopePaths == null) {
+        return null
+    }
+    def keys = sourceFiles
+        .findAll { it.isFile() && (it.name.endsWith('.java') || it.name.endsWith('.kt')) && inScope(it) }
+        .collect { sourceKey(it) } as Set
+    classDirs.collectMany { File dir ->
+        def classes = []
+        def from = dir.canonicalFile.toPath()
+        dir.eachFileRecurse(groovy.io.FileType.FILES) { File file ->
+            def relative = posixPath(from, file)
+            if (!relative.endsWith('.class') || relative ==~ /(.*\/)?(package|module)-info\.class/) {
+                return
+            }
+            def folder = relative.contains('/') ? relative.substring(0, relative.lastIndexOf('/')) : ''
+            def sourceFile = classSourceFile(file)
+            if (sourceFile != null && keys.contains(folder ? "${folder}/${sourceFile}".toString() : sourceFile)) {
+                classes << relative.replaceAll(/\.class$/, '').replace('/', '.')
+            }
+        }
+        classes
+    }.unique().sort()
+}

@@ -8,7 +8,12 @@ import {
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
 import { couplingRules, entryPointRule, reuseRules } from './project-rules/reuse-rules.mjs';
-import { NO_TYPE_ONLY, slowTest, testConsoleRule } from './project-rules/test-runtime-rules.mjs';
+import {
+  GO_NO_TYPE_ONLY,
+  NO_TYPE_ONLY,
+  slowTest,
+  testConsoleRule,
+} from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -135,7 +140,7 @@ export const MUTATION_EXCEPTION_RULES = [
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
-/** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
+/** A CRAP score at or above this fails (`thresholds.crapLimit` overrides it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
 /** A changed branch below this percentage of coverage fails. */
@@ -211,32 +216,32 @@ const CATALOG = [
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
-    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: withKotlin(ALL, true),
+    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`thresholds.crapLimit\` (positive number)`,
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.duplicateClone,
@@ -261,7 +266,7 @@ const CATALOG = [
     limit:
       'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
     enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
-    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY },
+    notApplicable: { java: NO_TYPE_ONLY, kotlin: NO_TYPE_ONLY, go: GO_NO_TYPE_ONLY },
   },
   {
     id: RULE_IDS.baselineExpansion,

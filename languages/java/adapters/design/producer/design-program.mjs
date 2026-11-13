@@ -66,7 +66,7 @@ export function compileDesignProgram({ sources = designSources(), cache, spawn =
     runJava({
       tool: TOOL,
       java: javaCommand('javac'),
-      jvmArgs: ['-proc:none', '-nowarn', '-d', staging],
+      jvmArgs: ['--release', '21', '-proc:none', '-nowarn', '-d', staging],
       args: sources,
       cwd: SOURCE_DIRECTORY,
       accept: (result) => result.status === 0,
@@ -80,8 +80,16 @@ export function compileDesignProgram({ sources = designSources(), cache, spawn =
   return classes;
 }
 
-export function runDesignProgram({ classes, projectRoot, fileList, output, spawn = spawnSync }) {
+export function runDesignProgram({
+  classes,
+  projectRoot,
+  fileList,
+  output,
+  java,
+  spawn = spawnSync,
+}) {
   runJava({
+    ...(java === undefined ? {} : { java }),
     tool: TOOL,
     classpath: [classes],
     mainClass: MAIN_CLASS,
