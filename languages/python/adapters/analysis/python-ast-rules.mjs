@@ -6,10 +6,12 @@ import { detectTargetVersion } from '../execution/python-project.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { listProductionModules, testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf } from '../../rules/libraries/entry-modules.mjs';
+import { startedPythonFiles } from '../../rules/started-files/started-files.mjs';
 import { designFiles } from './design/design-files.mjs';
 import { designDistributions } from './design/design-distributions.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
@@ -77,6 +79,8 @@ export function contractFaces(sources, layout) {
 
 function rulesOptions({ projectRoot, project, layout }, sources, pytestConfig) {
   const modules = listProductionModules(projectRoot, project.sourceRoots);
+  const started = startedPythonFiles(projectRoot);
+  const packageFacts = readPackageFacts(projectRoot);
   return {
     sourceRoots: project.sourceRoots,
     testRunner: project.testRunner,
@@ -84,11 +88,17 @@ function rulesOptions({ projectRoot, project, layout }, sources, pytestConfig) {
     xfailStrict: pytestConfig.xfailStrict,
     minimumPython: minimumPython(projectRoot),
     testFiles: sources.filter(testFileMatcher(projectRoot)),
-    entryFiles: entryFilesOf(sources, project.entryPoints),
+    entryFiles: [
+      ...new Set([
+        ...entryFilesOf(sources, project.entryPoints),
+        ...sources.filter((file) => started.files.includes(file)),
+      ]),
+    ],
     boundaryRoots: boundaryRoots(detectLibraries(projectRoot)),
     modules: Object.fromEntries(modules.map(({ file, module }) => [file, module])),
     contractFaces: contractFaces(sources, layout),
-    ...readPackageFacts(projectRoot),
+    ...packageFacts,
+    entryModules: [...new Set([...packageFacts.entryModules, ...started.modules])].toSorted(byText),
   };
 }
 

@@ -1,7 +1,6 @@
 import ast
 
 from checks.common import finding, last_name
-from environment.environment import is_main_guard
 from environment.roots import is_composition_root
 from locators.labels import lookup_label
 from locators.resolve.references import uses_containers
@@ -23,14 +22,10 @@ def subject_of(node, context):
     return f"{last_name(node.func)} via {label} in {path}"
 
 
-def has_main_guard(tree):
-    return any(isinstance(node, ast.If) and is_main_guard(node) for node in tree.body)
-
-
 def check(context):
     if context.tests or not uses_containers(context.project):
         return []
-    if is_composition_root(context) or has_main_guard(context.tree):
+    if is_composition_root(context):
         return []
     found = {}
     sites = (n for n in ast.walk(context.tree) if isinstance(n, SITES))

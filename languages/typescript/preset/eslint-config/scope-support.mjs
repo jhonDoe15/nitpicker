@@ -1,9 +1,11 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { readTextIfExists } from '../../../../shared/filesystem.mjs';
 import { codeExtensions } from '../layout.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
 import { projectConfigFile } from '../test-environment/config-files.mjs';
 import { nestEntryPoints } from './nest/nest-project.mjs';
+import { startedFiles } from './started-files/started-files.mjs';
 
 const scopePackages = {
   react: ['react'],
@@ -87,12 +89,8 @@ function hasConfigFile(entries, stem) {
   return configExtensions.some((extension) => entries.has(`${stem}.${extension}`));
 }
 
-function readText(file) {
-  return existsSync(file) ? readFileSync(file, 'utf8') : '';
-}
-
 function indexHtmlEntries(projectRoot) {
-  return [...readText(path.join(projectRoot, 'index.html')).matchAll(moduleScript)]
+  return [...readTextIfExists(path.join(projectRoot, 'index.html')).matchAll(moduleScript)]
     .map(([, attributes]) =>
       moduleType.test(attributes) ? scriptSource.exec(attributes)?.[1] : undefined,
     )
@@ -119,14 +117,22 @@ export function frameworkConventions(projectRoot) {
   const reactRouter =
     names.some((name) => reactRouterPackage.test(name)) ||
     hasConfigFile(entries, 'react-router.config');
+  const started = startedFiles(projectRoot);
   return {
     defaultExports: [
+      ...started.defaultExports,
       ...(next ? nextConventionGlobs : []),
       ...(storybook ? storyGlobs : []),
       ...(names.includes('expo-router') ? expoRouterGlobs : []),
       ...(reactRouter ? reactRouterGlobs : []),
     ],
-    entryPoints: [...(vite ? viteEntryPoints(projectRoot) : []), ...nestEntryPoints(projectRoot)],
+    entryPoints: [
+      ...new Set([
+        ...(vite ? viteEntryPoints(projectRoot) : []),
+        ...nestEntryPoints(projectRoot),
+        ...started.entryPoints,
+      ]),
+    ],
   };
 }
 
@@ -153,7 +159,7 @@ export function testsCleanUpAutomatically(projectRoot) {
     return true;
   }
   const configFile = projectConfigFile(projectRoot);
-  return configFile !== undefined && vitestGlobals.test(readText(configFile));
+  return configFile !== undefined && vitestGlobals.test(readTextIfExists(configFile));
 }
 
 export function isReactNativePackage(name) {

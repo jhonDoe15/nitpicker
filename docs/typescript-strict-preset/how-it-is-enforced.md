@@ -109,6 +109,15 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `entryPoints` are globs added to knip's entries for files that are loaded by path, not imported (what
   they re-export is not reported as `test-only-export`);
   the module-load-effects check does not apply to them, since running at load is what a script does.
+  The TypeScript and JavaScript presets add the files that something starts by path, so they need
+  no entry: a file that a `package.json` script or a GitHub Actions step runs (`node`, `tsx`,
+  `ts-node`, `bun`, `nodemon` and similar launchers, including the modules given to `--import`,
+  `--loader`, `--require` and `--test-reporter`, which may also `export default`); a file named by a
+  literal path in `new Worker(...)`, `fork(...)` or a spawn of `process.execPath`, in a script that
+  uses them; a file that a Gradle or Maven task runs with `node`; and a file with a shebang or a
+  main-module guard (`import.meta.main`, `require.main === module`, `process.argv[1]` compared with
+  the file's own URL). Only a path that names a tracked file counts, and a compiled name
+  (`worker.js`) finds its source (`worker.ts`). `layout.entryPoints` stays for what this misses.
 - A root `e2e/` of Playwright or Cypress specs needs no exception. Its specs need no production
   import (`nitpicker/test-must-use-production-runtime` and the `test-runtime` analysis skip it, as
   they skip `contract/`), `async ({}, use)` fixtures are allowed there, and the folder is never

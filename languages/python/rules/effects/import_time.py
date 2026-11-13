@@ -5,7 +5,7 @@ from effects.calls import EXTERNAL, IO, Scope, bindings, direct_effects
 from effects.resolve import Caller, display
 from effects.summaries import chain_text, summaries_of
 from environment.environment import is_main_guard
-from environment.roots import is_composition_root
+from environment.roots import is_declared_root
 from index.scopes import DEFINITIONS, FUNCTIONS
 from security.support import exempt
 
@@ -79,7 +79,7 @@ def load_time_statements(tree):
 
 
 def is_out_of_scope(context):
-    return exempt(context) or is_composition_root(context)
+    return exempt(context) or is_declared_root(context)
 
 
 class ImportTime:
