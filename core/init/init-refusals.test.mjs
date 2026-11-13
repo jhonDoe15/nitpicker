@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { packageVersion } from '../help/package-version.mjs';
+import { packageVersion } from '../help/package-version.mts';
 import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
 
 const createProject = useProjects();
