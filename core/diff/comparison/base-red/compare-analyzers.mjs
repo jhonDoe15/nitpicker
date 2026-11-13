@@ -143,6 +143,7 @@ function compareOrReportError(context) {
       headFindings,
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
+      baseToHeadPackages: context.baseToHeadPackages,
       touchedCode: context.touchedCode,
       unknownOnBase: unknownOnBaseOf(context),
     });

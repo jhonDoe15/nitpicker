@@ -12,6 +12,7 @@ import {
   normalizeStructure,
 } from '../reporting/repository.mjs';
 import { normalizeDeadCode } from '../reporting/dead-code.mjs';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 import path from 'node:path';
 import { existsSync, readFileSync, writeFileSync, realpathSync, unlinkSync } from 'node:fs';
 import { existingRoots } from '../../../preset/layout.mjs';
@@ -117,7 +118,7 @@ export async function runTestRuntime(options) {
   });
   report.findings = report.findings.map((finding) => ({
     ...finding,
-    sourceHash: hash(sourceTexts.get(finding.test) ?? ''),
+    sourceHash: wholeFileHash(sourceTexts.get(finding.test) ?? '', finding.test),
   }));
   return normalizeTestRuntime(report, options.analyzerName);
 }

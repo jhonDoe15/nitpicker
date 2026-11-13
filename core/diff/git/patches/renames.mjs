@@ -10,7 +10,7 @@ export function directoryMoves(renames) {
   );
 }
 
-function directoryOf(filePath) {
+export function directoryOf(filePath) {
   const directory = path.posix.dirname(filePath);
   return directory === '.' ? '' : directory;
 }

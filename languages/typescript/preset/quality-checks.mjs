@@ -238,6 +238,8 @@ function graphChecksFor(exclusions) {
       configurationFiles: [
         ...DEPENDENCY_GRAPH_FILES,
         'languages/typescript/preset/test-runtime/analyze.mjs',
+        'languages/typescript/adapters/quality-areas/hashing/whole-file-hash.mjs',
+        'shared/paths/script-stem.mjs',
       ],
     },
     {
