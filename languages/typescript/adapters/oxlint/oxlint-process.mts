@@ -6,6 +6,7 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { troubleshootingError, withTroubleshooting } from '../lint-engine/typed/tools.mts';
+import { INCOMPATIBLE_MARKER } from '../lint-engine/compatibility/incompatible-package.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
 
@@ -59,6 +60,9 @@ export function tsgolintBinary(): string {
 }
 
 export function withEngineHint(detail: string): string {
+  if (detail.includes(INCOMPATIBLE_MARKER)) {
+    return detail;
+  }
   return detail.includes(CONFIG_FILE_NAME)
     ? detail
     : withTroubleshooting(`${detail}\n${ENGINE_HINT}`, TROUBLESHOOTING_ANCHORS.engineUnavailable);

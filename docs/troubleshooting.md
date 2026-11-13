@@ -582,6 +582,18 @@ the project.
 Switching engines reports the differences between them as new once; see
 [Lint engine](usage.md#lint-engine).
 
+### A project package does not support this ESLint
+
+**Symptom.** `@typescript-eslint/utils 8.46.2 cannot run with ESLint 10 (it supports eslint ^8.57.0 || ^9.0.0). Update it, or the package that depends on it, to a version that supports ESLint 10.`
+It replaces the raw `TypeError` that the package throws while the project's ESLint config loads.
+
+**Cause.** nitpicker loads your ESLint config with its own ESLint, so the config's plugins run on that
+version. A package in the config chain declares a peer range for `eslint` that does not include it, and
+fails to load. Switching to `"engine": "eslint"` loads the same chain and fails the same way.
+
+**Fix.** Update the named package, or the package that depends on it, to a version that supports the
+ESLint major in the message, then reinstall.
+
 ### The TypeScript config cannot be read
 
 **Symptom.** `The TypeScript config could not be read: ...`, a TypeScript diagnostic such as
