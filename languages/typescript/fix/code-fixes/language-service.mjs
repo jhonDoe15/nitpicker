@@ -33,31 +33,44 @@ export function createFixService({ projectRoot, javascript, names }) {
   const roots = new Set([...fileNames, ...names.map(absolute)]);
   const texts = new Map();
   const versions = new Map();
+  function textOf(file) {
+    return texts.has(file) ? texts.get(file) : ts.sys.readFile(file);
+  }
+  function insideKnownFile(directory) {
+    return [...texts].some(
+      ([file, text]) => text !== undefined && file.startsWith(`${directory}/`),
+    );
+  }
   const host = {
-    getScriptFileNames: () => [...roots],
+    getScriptFileNames: () => [...roots].filter((file) => textOf(file) !== undefined),
     getScriptVersion: (file) => String(versions.get(file) ?? 0),
     getScriptSnapshot: (file) => {
-      const text = texts.get(file) ?? ts.sys.readFile(file);
+      const text = textOf(file);
       return text === undefined ? undefined : ts.ScriptSnapshot.fromString(text);
     },
     getCurrentDirectory: () => projectRoot,
     getCompilationSettings: () => options,
     getDefaultLibFileName: (settings) => ts.getDefaultLibFilePath(settings),
-    fileExists: ts.sys.fileExists,
-    readFile: ts.sys.readFile,
+    fileExists: (file) => textOf(file) !== undefined,
+    readFile: textOf,
     readDirectory: ts.sys.readDirectory,
-    directoryExists: ts.sys.directoryExists,
+    directoryExists: (directory) => ts.sys.directoryExists(directory) || insideKnownFile(directory),
     getDirectories: ts.sys.getDirectories,
   };
   const service = ts.createLanguageService(host, ts.createDocumentRegistry());
   return {
     service,
+    host,
     absolute,
     setText(name, text) {
       const file = absolute(name);
       texts.set(file, text);
       versions.set(file, (versions.get(file) ?? 0) + 1);
     },
-    dispose: () => service.dispose(),
+    dispose() {
+      texts.clear();
+      versions.clear();
+      service.dispose();
+    },
   };
 }

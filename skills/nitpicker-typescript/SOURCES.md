@@ -81,16 +81,64 @@ where the compiler reports the error.
 
 ## knip
 
-`knip --fix --fix-type exports,types,dependencies` removes the `export` keyword of unused exports,
-unused exported types, and unused dependencies from `package.json`. nitpicker runs it on a
+`knip --fix --fix-type dependencies` removes unused dependencies from `package.json`. With
+`--rule dead-code/exports` or `dead-code/types`, it also removes the `export` keyword of unused
+exports and unused exported types. nitpicker runs it on a
 temporary copy of the project with the same configuration the dead-code check uses, and writes back
 only the edits to files you changed, through the engine's checked write. A changed `package.json`
 keeps its indentation and line endings.
 
 | Fix type           | Decision | Why                                                                                  |
-| ------------------ | -------- | ------------------------------------------------------------------------------------ |
-| `exports`, `types` | safe     | removes only the `export` keyword of a symbol nothing imports                        |
+| ------------------ | -------- | -------------------------------------------------------------------------------------------------------- |
+| `exports`, `types` | review   | removes only the `export` keyword; the declaration stays and can become unused, so only `--rule` runs it |
 | `dependencies`     | safe     | removes a dependency nothing imports, when `package.json` is among the changed files |
 | `files`            | opt-in   | deletes a file; runs only when `--fix --rule dead-code/files` selects it             |
 
 knip is licensed ISC, which the license policy allows.
+
+## Project recipes
+
+Project recipes rewrite code across files with the TypeScript language service of the installed
+`typescript` package (no ts-morph, no jscodeshift). They run only with `--fix --rule <tool/rule>`,
+because each one changes a module path or a public name. Each recipe runs the rule's own check, so it
+flags what the rule flags, and declines when the language service cannot show every reference.
+After a plan, nitpicker applies it to a second in-memory copy of the project and refuses it when a
+touched file gets more compiler errors, and so does any file that imports a touched file, directly or
+through a re-export. A recipe also declines when a `package.json` entry (`main`, `module`, `types`,
+`bin`, `exports`) names the moved module, when a `.vue`, `.svelte`, `.astro`, `.md` or `.mdx` file may
+import it, or when a string names it, such as `vi.mock('./greet.js')`. `jsconfig.json` is read when
+there is no `tsconfig.json`, and JavaScript projects are checked with `checkJs` for this comparison.
+
+| Rule                                                     | Decision | What the recipe does, and when it declines                                                                                                                                                                              |
+| -------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eslint/nitpicker/no-default-export`                     | review   | names the default export and rewrites default, renamed, namespace and `export { default as x }` importers. Declines for `import()` or `require()` of the module, a computed namespace key, or `export { default } from` |
+| `eslint/nitpicker/file-name-casing`                      | review   | renames the file with `getEditsForFileRename`. Declines when the new name is taken, a string names the path, or a computed `import()` could load it                                                                     |
+| `eslint/nitpicker/naming-convention`                     | review   | renames with `findRenameLocations`, keeping leading underscores. Declines when the new name collides (a new compiler error) or an exported name is read at run time. Messages other than the format one are left        |
+| `eslint/nitpicker/no-compatibility-shim`                 | review   | deletes the alias export and renames its uses to the canonical name. Declines when an importer already imports the canonical name. `@deprecated` tags are left to the comment rules                                     |
+| `eslint/nitpicker/no-test-helpers-in-source`             | review   | moves the helper to `<test root>/test-support/<path>` (or `test-support/` beside it when tests are colocated). Declines when production code imports it                                                                 |
+| `eslint/nitpicker/no-uncollected-tests`                  | review   | renames the file to `*.test.<ext>`. Declines when that name is taken                                                                                                                                                    |
+| `eslint/nitpicker/no-external-executables-in-unit-tests` | review   | moves `<root>/unit/...` to `<root>/integration/...`, and a source `__tests__` file to `<test root>/integration/...`                                                                                                     |
+| `coupling/shared-used-by-one-feature`                    | review   | moves the module into the feature directory the rule names, under its own file name. Declines when a production importer sits outside that feature, or the name is taken                                                |
+| `entry-points/public-alternative-bypass`                       | review   | imports from the entry point and adds the export there when it is missing. Declines a default import, a namespace import or an entry point that is not a module of the project                                          |
+| `dependency-architecture/feature-internals-only-through-index` | review   | imports from the feature index and adds the export there when it is missing. Declines a default or namespace import, and leaves files inside the feature alone                                                          |
+| `structure/duplicate-definition`                               | review   | keeps the exported copy (else the first), exports it if needed, and imports it in the other module, keeping the name exported there. Declines when the import would add a cycle                                         |
+| `structure/exported-name-collision`                            | safe     | aliases one import with `as` to the next free name. Pure local renaming, so it is safe                                                                                                                                  |
+| `eslint/nitpicker/no-forwarding-wrapper`                       | review   | points callers at the target and deletes the wrapper. Declines when the wrapper is exported and read at run time, or a caller cannot be rewritten                                                                       |
+| `structure/unused-prop`                                        | review   | drops the property from the type and the destructuring. Declines when a caller passes it or a spread could                                                                                                              |
+| `structure/unused-option`                                      | review   | drops the property from the type and the destructuring. Declines when a caller passes it or a spread could                                                                                                              |
+| `dead-code/test-only-export`                                   | review   | moves the declaration to test support and repoints test imports. Dropping `export` when nothing imports it is left to the knip `dead-code/exports` fix                                                                  |
+| `eslint/nitpicker/no-dev-dependency-in-production`             | review   | moves the package from `devDependencies` to `dependencies` with the same range and formatting. Declines when the manifest has no such entry The lockfile is not updated, so reinstall afterwards.                       |
+| `dead-code/files`                                        | opt-in   | not a recipe: the knip step deletes the file (see knip), and keeps it when a computed `import()` or a string path could load it                                                                                         |
+
+## Not fixed, on purpose
+
+- `eslint/nitpicker/no-unsafe-deserialization`: the Python preset rewrites `yaml.unsafe_load` and
+  `yaml.full_load` to `yaml.safe_load`. The TypeScript rule covers `node-serialize`-style packages,
+  `v8.deserialize`, `vm` code runners, `js-yaml` full schemas, BSON function options and XML
+  entities. Each needs a different library or a redesign of what the data may contain, so no single
+  rewrite is safe and there is no recipe.
+- `typescript-typecheck/TS6133` and the related codes: an unused variable whose initializer calls,
+  constructs or awaits something is kept, and so is an unused parameter of an exported function or a
+  public method, because removing either changes behaviour or the public signature.
+- `dead-code/exports`, `dead-code/types`: only run with `--rule`, because the declaration stays
+  after its `export` is removed.

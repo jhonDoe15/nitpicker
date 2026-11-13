@@ -2070,10 +2070,11 @@ only what is listed as safe. Every decision is recorded in
 [`skills/nitpicker-typescript/SOURCES.md`](../skills/nitpicker-typescript/SOURCES.md).
 
 | Preset                 | Rule                                                                  | Fixer               | What it does                                                                                                                                                                 |
-| ---------------------- | --------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------- | ----------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | typescript, javascript | `eslint-lint/<rule>` of a rule that only offers suggestions           | ESLint suggestion   | applies the suggestion when the rule offers exactly one; a rule that offers two or more is left alone                                                                        |
 | typescript, javascript | `typescript-typecheck/TS<code>`                                       | TypeScript code fix | applies the language service's fix for an allowlisted error code, such as a missing `override` (safe) or a missing import, an unused declaration, a missing `await` (review) |
-| typescript, javascript | `dead-code/exports`, `dead-code/types`, `dead-code/unused-dependency` | knip `--fix`        | removes unused `export` keywords, unused exported types and unused dependencies, in changed files and a changed `package.json`                                               |
+| typescript, javascript | `dead-code/unused-dependency`                               | knip `--fix`        | removes an unused dependency from a changed `package.json`                                                                                                                   |
+| typescript, javascript | `dead-code/exports`, `dead-code/types`                      | knip `--fix`        | removes the `export` keyword of an unused export or type, only when `--rule` selects it; the declaration stays, so it may then be reported as unused                         |
 | typescript, javascript | `dead-code/files`                                                     | knip `--fix`        | deletes an unused changed file, only when `--rule dead-code/files` selects it                                                                                                |
 
 A fix marked review changes behaviour on purpose, so it runs only when its rule is selected with
@@ -2084,11 +2085,28 @@ Review recipes can be wrong for a project, so `--fix` runs them only when you se
 `--rule <tool/rule>`:
 
 | Preset | Rule                                                                                                           | Recipe                    | What it does                                                                                                                                                                                    |
-| ------ | -------------------------------------------------------------------------------------------------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | all    | `repository-hygiene/committed-env-file`, `committed-build-output`, `committed-binary`, `committed-private-key` | `untrack-committed-files` | untracks the file or folder with `git rm --cached` and adds an anchored line to the `.gitignore` of the project (created when missing, line endings kept, no duplicate); the working copy stays |
 | python | `dependencies/unused-dependency`                                                                               | `python-dependencies`     | removes the dependency from `pyproject.toml` (PEP 621 `[project] dependencies`, or Poetry `[tool.poetry.dependencies]`)                                                                         |
 | python | `dependencies/unlisted-dependency`                                                                             | `python-dependencies`     | adds `name>=<installed version>` to `pyproject.toml`: the project dependencies, or the uv `dev` group, `[tool.uv] dev-dependencies` or the Poetry dev table when only tests import it           |
 | python | `dependencies/no-dev-dependency-in-production`                                                                 | `python-dependencies`     | moves the entry from the development group to the project dependencies as it was written                                                                                                        |
+| typescript, javascript | `eslint/nitpicker/no-default-export`                                                                           | `typescript-no-default-export`                     | turns the default export into a named export (the declared name, or the file name for an anonymous one) and rewrites every importer                                                             |
+| typescript, javascript | `eslint/nitpicker/file-name-casing`                                                                            | `typescript-file-name-casing`                      | renames the file to the expected casing and rewrites every import path, the file's own relative imports included                                                                                |
+| typescript, javascript | `eslint/nitpicker/naming-convention`                                                                           | `typescript-naming-convention`                     | renames the identifier to the casing the rule names, in every file that refers to it                                                                                                            |
+| typescript, javascript | `eslint/nitpicker/no-compatibility-shim`                                                                       | `typescript-no-compatibility-shim`                 | deletes the second exported name and points its importers at the canonical name                                                                                                                 |
+| typescript, javascript | `eslint/nitpicker/no-test-helpers-in-source`                                                                   | `typescript-no-test-helpers-in-source`             | moves the helper to `test-support/` under the test root, or beside the code in a colocated layout                                                                                               |
+| typescript, javascript | `eslint/nitpicker/no-uncollected-tests`                                                                        | `typescript-no-uncollected-tests`                  | renames the file to `<name>.test.<ext>`                                                                                                                                                         |
+| typescript, javascript | `eslint/nitpicker/no-external-executables-in-unit-tests`                                                       | `typescript-no-external-executables-in-unit-tests` | moves the unit test into the integration folder of the test root                                                                                                                                |
+| typescript, javascript | `coupling/shared-used-by-one-feature`                                                                          | `typescript-shared-used-by-one-feature`            | moves the shared module into the one feature that imports it                                                                                                                                    |
+| typescript, javascript | `entry-points/public-alternative-bypass`                                                                       | `typescript-public-alternative-bypass`             | imports from the entry point and adds the export there when it is missing                                                                                                                       |
+| typescript, javascript | `dependency-architecture/feature-internals-only-through-index`                                                 | `typescript-feature-internals-only-through-index`  | imports from the feature index and adds the export there when it is missing                                                                                                                     |
+| typescript, javascript | `structure/duplicate-definition`                                                                               | `typescript-duplicate-definition`                  | keeps the exported copy (else the first), exports it if needed, and imports it in the other module, keeping the name exported there                                                             |
+| typescript, javascript | `structure/exported-name-collision`                                                                            | `typescript-exported-name-collision`               | aliases one import with `as` to the next free name                                                                                                                                              |
+| typescript, javascript | `eslint/nitpicker/no-forwarding-wrapper`                                                                       | `typescript-no-forwarding-wrapper`                 | points callers at the target and deletes the wrapper                                                                                                                                            |
+| typescript, javascript | `structure/unused-prop`                                                                                        | `typescript-unused-prop`                           | drops the property from the type and the destructuring                                                                                                                                          |
+| typescript, javascript | `structure/unused-option`                                                                                      | `typescript-unused-option`                         | drops the property from the type and the destructuring                                                                                                                                          |
+| typescript, javascript | `dead-code/test-only-export`                                                                                   | `typescript-test-only-export`                      | moves the declaration to test support and repoints test imports                                                                                                                                 |
+| typescript, javascript | `eslint/nitpicker/no-dev-dependency-in-production`                                                             | `typescript-no-dev-dependency-in-production`       | moves the package from `devDependencies` to `dependencies` with the same range and formatting; reinstall afterwards to refresh the lockfile                                                     |
 
 The installed version is read with `importlib.metadata` in the interpreter the Python checks use. When
 it cannot be read, needs a newer Python than the `requires-python` of `pyproject.toml` allows (checked when the
@@ -2142,6 +2160,31 @@ verifies too, so the plan only lists the fixes that would stay.
 `nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
 mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
 every recipe back too. It takes as long as a normal run.
+
+The TypeScript project recipes read the whole project, not only the changed files, because a rename
+or a move has to reach every importer. They use the TypeScript language service of the installed
+`typescript` package (`findRenameLocations` and `getEditsForFileRename`) over the file texts the run
+read, so planning does not write. Each flags what its rule flags: the recipe runs the rule's own
+check on the file. A recipe declines, with a "Fix notes:" line, and leaves the finding when it
+cannot prove the rewrite:
+
+- a `import()` or `require()` with a path that is computed, or one that loads the module in a way
+  that names its exports at run time (for a default export or a rename);
+- a string that names the module path, such as `vi.mock('./file')`;
+- a namespace import that is read with a computed key, and a default export that is re-exported as
+  a default;
+- a target path that is taken, or an importer that `--fix` does not cover;
+- a module that `package.json` names as an entry point, that a `.vue`, `.svelte`, `.astro`, `.md` or
+  `.mdx` file may import, or that a string names, such as `vi.mock('./greet.js')`;
+- a module that another module re-exports as a namespace (`export * as name`);
+- a change that would add a compiler error to a file it touches or to a file that imports one of
+  them (the plan is checked on a second copy of the project before it is accepted).
+
+A move or a rename changes the module path that other code, and other repositories, may import, so
+all of these recipes are `review`. `dead-code/files` is not a recipe of its own: the knip step above
+deletes an unused file when `--fix --rule dead-code/files` selects it, and keeps the file, with a
+"Fix notes:" line, when a computed `import()` or a string path could still load it. The other
+decisions are in `skills/nitpicker-typescript/SOURCES.md`.
 
 ### Fixes in the reports
 

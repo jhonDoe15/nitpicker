@@ -37,7 +37,7 @@ function createProject() {
   return root;
 }
 
-function fix(root, names, selectedRules = []) {
+function fix(root, names, selectedRules = [], execute = spawnInvocation) {
   const policy = resolveHeadPolicy();
   return knipFixStep(
     {
@@ -46,7 +46,7 @@ function fix(root, names, selectedRules = []) {
       layout: resolveLayoutFor(policy),
       knipSettings: policy.tools?.knip,
       policyEnvironment: {},
-      executeFixCommand: (invocation) => spawnInvocation(invocation),
+      executeFixCommand: (invocation) => execute(invocation),
       selectedRules,
     },
     names.map((name) => ({ path: name })),
@@ -105,6 +105,22 @@ describe('knipFixStep', () => {
     fix(root, ['package.json']);
 
     expect(read(root, 'package.json').endsWith('}')).toBe(true);
+  });
+
+  it('puts back the final newline that knip dropped from a package.json', () => {
+    const root = createProject();
+    const dropping = (invocation) => {
+      const result = spawnInvocation(invocation);
+      const copy = path.join(invocation.cwd, 'package.json');
+      writeFileSync(copy, readFileSync(copy, 'utf8').trimEnd());
+      return result;
+    };
+
+    fix(root, ['package.json'], [], dropping);
+
+    expect(read(root, 'package.json')).toBe(
+      '{\n    "name": "sample",\n    "type": "module",\n    "dependencies": {}\n}\n',
+    );
   });
 
   it('leaves unused files alone unless dead-code/files is selected', () => {

@@ -42,7 +42,7 @@ full run below.
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. It applies ESLint fixes, single ESLint suggestions of
-   reviewed rules, safe TypeScript code fixes, knip's removal of unused exports, types and
+   reviewed rules, safe TypeScript code fixes, knip's removal of unused
    dependencies, and Prettier fixes with its own
    configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
    most of the project's files), then checks your change against the merge base. It
