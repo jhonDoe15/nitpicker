@@ -8,7 +8,7 @@ import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
 import { readJavaFindings } from '../reporting/java-reports.mjs';
 import { readReportModules } from '../gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../../maven/maven-build.mts';
-import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../../maven/module/maven-module.mts';
 import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
 import { resolveKotlinRun } from '../kotlin/kotlin-run.mjs';
