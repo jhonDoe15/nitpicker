@@ -30,17 +30,17 @@ const cases = [
 ];
 const SCOPES = { diff: 'new', snapshot: 'in the snapshot' };
 
-function snapshotLines(count, notes) {
+function snapshotLines(count, notes, diagnosticsPath) {
   return [
-    'Nitpicker quality snapshot',
-    'Status: clean',
-    'Enforceable findings: 0',
-    `Descriptive findings: ${String(count)}`,
-    'Tool errors: 0',
     '',
-    'Per-tool counts:',
-    `fake-quality-analyzer: total=${String(count)} enforceable=0 descriptive=${String(count)}`,
+    'Quality snapshot summary',
+    '✓ No enforceable findings',
     ...notes,
+    'By analyzer:',
+    count === 0
+      ? '  1 analyzer ran clean'
+      : `  fake-quality-analyzer: 0 enforceable, ${String(count)} descriptive`,
+    `Full diagnostics: ${diagnosticsPath}`,
     '',
   ];
 }
@@ -87,7 +87,7 @@ describe.each(['diff', 'snapshot'])('design review notes in %s mode', (mode) => 
     const expected =
       mode === 'diff'
         ? diffLines(repository, diagnosticsPath, notes)
-        : snapshotLines(count, [...(count === 0 ? [] : ['']), ...notes]);
+        : snapshotLines(count, notes, diagnosticsPath);
     expect(exitCode).toBe(0);
     expect(stripVTControlCharacters(output.stdoutText)).toBe(expected.join('\n'));
     expect(output.stderrText).toBe('');

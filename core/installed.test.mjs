@@ -443,7 +443,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
+        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput());
       });
       it('lists and explains rules from the reference data the package ships, linking the release tag', async () => {
         expect(rules.status, rules.output).toBe(0);

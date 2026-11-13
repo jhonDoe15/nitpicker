@@ -13,6 +13,10 @@ import {
 } from '../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
+import {
+  colorEnabled as untypedColorEnabled,
+  displayPath as untypedDisplayPath,
+} from '../../shared/messages/terminal/terminal-text.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
@@ -25,6 +29,10 @@ import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.
 import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
 import type { TextOutput } from '../cli-context.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
+
+const displayPath: (absolutePath: string) => string = untypedDisplayPath;
+const colorEnabled: (stream: unknown, environment: NodeJS.ProcessEnv) => boolean =
+  untypedColorEnabled;
 
 type SnapshotCli = {
   readonly options: {
@@ -126,7 +134,12 @@ function writeSnapshotOutcome(
 ): number {
   const { stdout, jsonOutput } = cli;
   if (jsonOutput === undefined) {
-    stdout.write(textOf(renderSnapshotConsoleSummary(report, path.join(outputRoot, 'report.txt'))));
+    stdout.write(
+      renderSnapshotConsoleSummary(report, {
+        diagnosticsPath: displayPath(path.join(outputRoot, 'report.txt')),
+        color: colorEnabled(stdout, cli.environment),
+      }),
+    );
   }
   stdout.write(textOf(renderSnapshotRuleFilterSection(report, cli.options.ruleFilters)));
   writeGithubOutput({

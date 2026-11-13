@@ -556,7 +556,10 @@ A comparison run writes these files to `reports/quality/diff/`:
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
-`report.sarif` and `codequality.json`.
+`report.sarif` and `codequality.json`. The console prints the same summary layout as a comparison
+run: findings grouped by rule, at most ten design notes, the tool errors, one line for each analyzer
+with findings and a count of the analyzers that ran clean, and the path of `report.txt`, which keeps
+the full list. The exit codes do not change.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run. Today there is

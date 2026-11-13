@@ -4,10 +4,6 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
-import {
-  toolErrorHelpLine,
-  troubleshootingLinkOf,
-} from '../../../shared/messages/troubleshooting.mjs';
 import { designNoteLines } from './format/design-notes.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
@@ -17,12 +13,23 @@ import { scopeLine } from '../../scope/scope-findings.mjs';
 import { skippedLines, unaffectedLine } from '../skipping/lines.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import { failingHeadTests, failingTestLines } from './failing-tests/failing-tests.mjs';
+import { ANSI, pluralize, style } from './console/style.mjs';
 import {
-  TESTS_FAILED_RULE,
-  TESTS_FAILED_SKIPPED_RULE,
-} from '../../../shared/rules/finding-helpers.mjs';
+  appendToolErrorSummary,
+  errorHeadline,
+  withoutSkipNotices,
+} from './console/tool-errors.mjs';
+import { snapshotToolLines } from './console/snapshot-tools.mjs';
 
 const SHORT_SHA_LENGTH = 12;
+
+export function renderSnapshotConsole(report, options = {}) {
+  const { findings, summary, toolErrors } = report;
+  return renderGateSummary(
+    { summary, toolErrors, newFindings: findings, unchangedFindings: [] },
+    { ...options, snapshot: true },
+  );
+}
 
 export function renderConsoleSummary(report, options = {}) {
   if (report.summary?.noChanges !== true && report.summary?.skippedAll !== true) {
@@ -36,23 +43,12 @@ export function renderConsoleSummary(report, options = {}) {
   return report.toolErrors.length === 0 ? line : `${line}${renderGateSummary(report, options)}`;
 }
 
-function renderGateSummary(
-  report,
-  {
-    color = true,
-    details = false,
-    diagnosticsPath = 'reports/quality/diff/combined/report.txt',
-  } = {},
-) {
-  const violations = report.newFindings.filter(
-    ({ classification }) => classification === 'enforceable',
-  );
+function gateHead(report, { color, diagnosticsPath, snapshot }, { violations, failingTests }) {
   const hasFailures = violations.length > 0 || report.toolErrors.length > 0;
-  const { failingTests, otherErrors } = splitToolErrors(report.toolErrors);
-  const lines = [
+  return [
     '',
     style(
-      'Quality gate summary',
+      snapshot ? 'Quality snapshot summary' : 'Quality gate summary',
       hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green],
       color,
     ),
@@ -63,6 +59,37 @@ function renderGateSummary(
       diagnosticsPath,
     }),
   ];
+}
+
+function gateTail(lines, report, { color, diagnosticsPath, snapshot }) {
+  if (snapshot) {
+    lines.push(...snapshotToolLines(report.summary.tools));
+  }
+  for (const line of footerLines(report.summary)) {
+    lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
+  }
+  lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
+  return `${lines.join('\n')}\n`;
+}
+
+function renderGateSummary(
+  report,
+  {
+    color = true,
+    details = false,
+    diagnosticsPath = 'reports/quality/diff/combined/report.txt',
+    snapshot = false,
+  } = {},
+) {
+  const violations = report.newFindings.filter(
+    ({ classification }) => classification === 'enforceable',
+  );
+  const { failingTests, otherErrors } = splitToolErrors(report.toolErrors);
+  const lines = gateHead(
+    report,
+    { color, diagnosticsPath, snapshot },
+    { violations, failingTests },
+  );
   appendViolationSummary(
     lines,
     {
@@ -70,6 +97,7 @@ function renderGateSummary(
       incomplete: otherErrors.length > 0,
       testsFail: failingTests.length > 0,
       policyCount: violations.filter(isPolicyFinding).length,
+      snapshot,
     },
     { color, details },
   );
@@ -77,14 +105,10 @@ function renderGateSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
-  lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
   appendNoteSummary(lines, report.notes, color);
-  appendToolErrorSummary(lines, otherErrors, color);
-  for (const line of footerLines(report.summary)) {
-    lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
-  }
-  lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
-  return `${lines.join('\n')}\n`;
+  appendToolErrorSummary(lines, otherErrors, { color });
+  return gateTail(lines, report, { color, diagnosticsPath, snapshot });
 }
 
 function footerLines(summary) {
@@ -140,7 +164,9 @@ function appendNoteSummary(lines, notes, color) {
   }
 }
 
-function violationHeadline({ violations, incomplete, testsFail, policyCount }, color) {
+function violationHeadline({ violations, incomplete, testsFail, policyCount, snapshot }, color) {
+  const fresh = snapshot ? '' : 'new ';
+  const noun = snapshot ? 'finding' : 'violation';
   const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
   const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   if (violations.length === 0 && policyCount > 0) {
@@ -149,18 +175,18 @@ function violationHeadline({ violations, incomplete, testsFail, policyCount }, c
     return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`, color);
   }
   if (violations.length === 0 && incomplete) {
-    return 'No new enforceable violations, but the run is incomplete:';
+    return `No ${fresh}enforceable ${noun}s, but the run is incomplete:`;
   }
   if (violations.length === 0) {
     return testsFail
-      ? 'No new enforceable violations in the checks that ran.'
-      : style('✓ No new enforceable violations', [ANSI.green], color);
+      ? `No ${fresh}enforceable ${noun}s in the checks that ran.`
+      : style(`✓ No ${fresh}enforceable ${noun}s`, [ANSI.green], color);
   }
   const total = violations.length + policyCount;
   return failing(
     policyCount === 0
-      ? `✖ ${String(total)} new enforceable ${pluralize('violation', total)}`
-      : `✖ ${String(total)} new enforceable violations: ${code} and ${policy}`,
+      ? `✖ ${String(total)} ${fresh}enforceable ${pluralize(noun, total)}`
+      : `✖ ${String(total)} ${fresh}enforceable ${noun}s: ${code} and ${policy}`,
     color,
   );
 }
@@ -211,73 +237,5 @@ function describeLocations(group) {
   return ` (${String(group.length)} times${lineList})`;
 }
 
-function appendToolErrorSummary(lines, shown, color) {
-  if (shown.length === 0) {
-    return;
-  }
-  lines.push(
-    style(
-      `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}`,
-      [ANSI.bold, ANSI.red],
-      color,
-    ),
-  );
-  for (const error of shown) {
-    const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
-    if (error.rule === undefined) {
-      lines.push(`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`);
-      continue;
-    }
-    const [first, ...rest] = String(error.message).split('\n');
-    lines.push(
-      `  ${style(label, [ANSI.yellow], color)}: ${first}`,
-      ...rest.map((line) => `  ${line}`),
-    );
-  }
-  const help = toolErrorHelpLine(shown.map(({ message }) => message));
-  if (help !== undefined) {
-    lines.push(style(help, [ANSI.dim], color));
-  }
-}
-
-export function withoutSkipNotices(toolErrors) {
-  const listedSnapshots = new Set(
-    toolErrors.filter(({ rule }) => rule === TESTS_FAILED_RULE).map(({ snapshot }) => snapshot),
-  );
-  return toolErrors.filter(
-    ({ rule, snapshot }) => rule !== TESTS_FAILED_SKIPPED_RULE || !listedSnapshots.has(snapshot),
-  );
-}
-
-const ERROR_HEADLINE_LIMIT = 300;
-
-const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
-
-export function errorHeadline(message) {
-  const link = troubleshootingLinkOf(String(message));
-  const text = singleLine(String(message).replace(link ?? '', ''));
-  const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);
-  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT).trimEnd();
-  const shown =
-    headline.length < text.length - start
-      ? `${headline}… (full text in the diagnostics file)`
-      : headline;
-  return link === undefined ? shown : `${shown} ${link}`;
-}
-
-export function pluralize(noun, count) {
-  return count === 1 ? noun : `${noun}s`;
-}
-
-function style(value, codes, color) {
-  return color ? `${codes.join('')}${value}${ANSI.reset}` : value;
-}
-
-const ANSI = {
-  reset: '\u001B[0m',
-  bold: '\u001B[1m',
-  dim: '\u001B[2m',
-  red: '\u001B[31m',
-  green: '\u001B[32m',
-  yellow: '\u001B[33m',
-};
+export { errorHeadline, withoutSkipNotices };
+export { pluralize };

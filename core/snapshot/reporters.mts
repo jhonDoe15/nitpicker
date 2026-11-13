@@ -4,16 +4,21 @@ import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/r
 import { quickLines, stagedLines } from '../quick/summary.mjs';
 import { junitRunProfile } from '../quick/report-formats.mjs';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
-import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
 import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
-import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
+import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME,
   renderCodeQualityReport,
 } from '../diff/reporting/format/codequality.mjs';
 
+import { renderSnapshotConsole as untypedConsole } from '../diff/reporting/summary.mjs';
+
 import { textOf } from '../../shared/values/readers.mts';
+
+type ConsoleOptions = { readonly diagnosticsPath: string; readonly color: boolean };
+
+const consoleOf: (report: SnapshotReport, options: ConsoleOptions) => unknown = untypedConsole;
 
 type ReportFinding = {
   readonly tool?: unknown;
@@ -69,11 +74,6 @@ const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
 const referenceLinesOf: (findings: unknown, reference: ReferenceLinks) => readonly string[] =
   ruleReferenceLines;
-const designNotesOf: (
-  findings: unknown,
-  diagnosticsPath: string,
-  options: { readonly snapshot: boolean },
-) => readonly string[] = designNoteLines;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const profileOf: (
   summary: unknown,
@@ -93,7 +93,6 @@ const sarifOf: (report: SnapshotReport, options: RenderOptions) => unknown =
 const codeQualityOf: (findings: unknown, options: RenderOptions) => unknown =
   renderCodeQualityReport;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
-const linksOf: () => ReferenceLinks = referenceLinks;
 const codeQualityFile: string = CODE_QUALITY_REPORT_FILE_NAME;
 
 const SNAPSHOT_REPORTS: readonly ReportFile[] = [
@@ -135,20 +134,12 @@ export function writeSnapshotReports(
 
 export function renderSnapshotConsoleSummary(
   report: SnapshotReport,
-  diagnosticsPath: string,
+  options: ConsoleOptions,
 ): string {
-  return renderTextReport(
-    report,
-    linksOf(),
-    designNotesOf(report.findings, diagnosticsPath, { snapshot: true }),
-  );
+  return textOf(consoleOf(report, options));
 }
 
-function renderTextReport(
-  report: SnapshotReport,
-  reference: ReferenceLinks,
-  descriptiveLines?: readonly string[],
-): string {
+function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): string {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -165,11 +156,7 @@ function renderTextReport(
 
   appendToolCountSection(lines, report.summary.tools);
   appendFindingSection(lines, 'Enforceable findings', enforceable);
-  if (descriptiveLines === undefined) {
-    appendFindingSection(lines, 'Descriptive findings', descriptive);
-  } else if (descriptiveLines.length > 0) {
-    lines.push('', ...descriptiveLines);
-  }
+  appendFindingSection(lines, 'Descriptive findings', descriptive);
   lines.push(...referenceLinesOf(report.findings, reference));
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
