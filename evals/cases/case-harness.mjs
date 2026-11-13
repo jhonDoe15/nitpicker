@@ -1,9 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { quickAnalyzersOf } from '../lib/presets.mjs';
-import { linkedTree, linkedWorkdir } from '../lib/workdirs.mjs';
+import { quickAnalyzersOf } from '../lib/presets.mts';
+import { linkedTree, linkedWorkdir } from '../lib/workdirs.mts';
 import { loadTree } from '../detectors/tree.mjs';
-import { loadCase, referenceTree, runCase } from '../runner/run-case.mjs';
+import { runCase } from '../runner/run-case.mts';
+import { loadCase, referenceTree } from '../case-definition/case-definition.mts';
 
 export { linkedWorkdir };
 
@@ -17,7 +18,7 @@ export const strictCleanRoot = path.join(
   'fixtures',
   'strict-clean',
 );
-export const referenceAgent = path.join(casesDirectory, '..', 'runner', 'reference-agent.mjs');
+export const referenceAgent = path.join(casesDirectory, '..', 'runner', 'reference-agent.mts');
 // The full gate includes mutation testing and takes minutes per case, so the default run uses the
 // quick analyzers of the case's preset (see `quickAnalyzersOf`). NITPICKER_EVAL_FULL_GATE=1 runs
 // every analyzer, as the strict-clean fixture test does.

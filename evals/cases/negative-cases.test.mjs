@@ -2,7 +2,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { loadTree } from '../detectors/tree.mjs';
-import { loadCase } from '../runner/run-case.mjs';
+import { loadCase } from '../case-definition/case-definition.mts';
 import { casesDirectory, strictCleanRoot } from './case-harness.mjs';
 import { HARDCODED, NEGATIVE_CASES } from './case-table.mjs';
 import { CHEAT_RUNS_FOLDER, HONEST_RUN_FILE, cheatRunsOf } from './gate-runs.mjs';

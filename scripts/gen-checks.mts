@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
 import { applyActionReference } from './action-inputs.mts';
-import { applySupportMatrix } from './platforms/support-matrix.mjs';
+import { applySupportMatrix } from './platforms/support-matrix.mts';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 export const GENERATED_FILES = [

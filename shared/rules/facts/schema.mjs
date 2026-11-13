@@ -41,6 +41,9 @@ const SHAPES = {
     file: isProjectPath,
     role: oneOf(ROLES),
     entry: optional(isBoolean),
+    publicNames: optional(isStrings),
+    entryName: optional(isNonEmpty),
+    compositionRoot: optional(isBoolean),
     generated: optional(isBoolean),
     initializer: optional(isBoolean),
   },
@@ -73,6 +76,7 @@ const SHAPES = {
     typeOnly: optional(isBoolean),
     conditional: optional(isBoolean),
     reference: optional(isBoolean),
+    local: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,

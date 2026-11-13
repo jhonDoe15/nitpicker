@@ -10,6 +10,7 @@ import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
 import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
 import { factsBundle } from './facts-bundle.mjs';
+import { withEntryPoints } from '../entry-points/python-entry-points.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
@@ -92,7 +93,7 @@ function scanFacts(context, run, root) {
       : JSON.parse(
           run(context, ['python', '-I', SCAN_SCRIPT, request], { rule: FACTS_FAILED_RULE }).stdout,
         );
-  return factsBundle({
+  const bundle = factsBundle({
     modules,
     scanned,
     isTest,
@@ -101,6 +102,7 @@ function scanFacts(context, run, root) {
     packageOf: distributionLookup(root),
     ...readPackageFacts(root),
   });
+  return withEntryPoints(bundle, scanned);
 }
 
 export function collectFacts(context, run) {

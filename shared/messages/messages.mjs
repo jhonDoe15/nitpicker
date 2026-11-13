@@ -41,6 +41,7 @@ export const BASE_MESSAGES = {
   restatingDocComment: `This doc comment only restates {name}. ${allowedForm('Delete it, or say what the name cannot: a unit, a limit, an edge case or why.')} ${EXCEPTION_HINT}`,
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). ${allowedForm('Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.')} ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. ${allowedForm('{fix}.')} ${EXCEPTION_HINT}`,
+  publicAlternativeBypass: `{names} is imported from {target}, around its public entry point {entry}. ${allowedForm('Import {publicNames} from {entry}.')} ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. ${allowedForm('Move it into {directory}.')} ${EXCEPTION_HINT}`,
   featureInternalImport: `Import feature {feature} only through {face}: {importer} imports its internal module {target}. ${allowedForm('Expose what it needs there, or move the code both use to a shared root.')} ${EXCEPTION_HINT}`,
   sharedImportsFeature: `Shared code imports only shared code: {importer} is shared and imports feature {feature} ({targets}). ${allowedForm(SHARED_IMPORTS_FEATURE_FORM)} ${EXCEPTION_HINT}`,
