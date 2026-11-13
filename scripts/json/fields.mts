@@ -1,3 +1,7 @@
+import { listOf } from '../../shared/values/readers.mts';
+
+export { listOf };
+
 export type Fields = Readonly<Record<string, unknown>>;
 
 function isFields(value: unknown): value is Fields {
@@ -6,10 +10,6 @@ function isFields(value: unknown): value is Fields {
 
 export function fieldsOf(value: unknown): Fields | undefined {
   return isFields(value) ? value : undefined;
-}
-
-export function listOf(value: unknown): readonly unknown[] {
-  return Array.isArray(value) ? value : [];
 }
 
 export function fieldAt(value: unknown, ...keys: readonly (string | number)[]): unknown {
