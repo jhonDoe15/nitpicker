@@ -20,11 +20,6 @@ export const JAVA_FORMATTERS = {
   },
 };
 
-export function javaFormatterCommand(style) {
-  const { tool, flags } = JAVA_FORMATTERS[style];
-  return [tool, ...flags, '--replace', '<Java files>'].join(' ');
-}
-
 export const KOTLIN_FORMATTERS = {
   ktlint: {
     label: 'ktlint',
