@@ -38,7 +38,7 @@ func TestTally(t *testing.T) {
 
 export const RACE_BASE_FILES = {
   'go.mod': GO_MOD,
-  'nitpicker.config.json': '{ "preset": "go" }\n',
+  'nitpicker.config.json': '{ "preset": "go", "disable": ["mutation"] }\n',
   'shop/tally.go': TALLY,
   'shop/tally_test.go': TALLY_TEST,
 };

@@ -1,6 +1,7 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { declarationParts, fileBindings, freeBindings } from './bindings.mjs';
 import { leafTexts, normalizedTexts } from './tokens.mjs';
+import { untypedParts } from './type-syntax.mjs';
 
 const WRAPPERS = new Set(['memo', 'forwardRef']);
 const LITERAL_KINDS = new Set([
@@ -92,6 +93,8 @@ function definitionOf(spec, sourceFile, lookup) {
   ];
   const texts = leafTexts(nodes, sourceFile);
   const tokens = Object.freeze(normalizedTexts(texts));
+  const untypedTexts = leafTexts(untypedParts(spec.node), sourceFile, { untyped: true });
+  const untypedTokens = Object.freeze(normalizedTexts(untypedTexts));
   const first = sourceFile.getLineAndCharacterOfPosition(spec.statement.getStart(sourceFile)).line;
   const last = sourceFile.getLineAndCharacterOfPosition(spec.statement.getEnd()).line;
   return {
@@ -99,6 +102,7 @@ function definitionOf(spec, sourceFile, lookup) {
     kind: spec.kind,
     text: `${spec.tag}|${tokens.join(' ')}`,
     tokens,
+    untypedTokens,
     free: freeBindings(nodes, lookup),
     size: texts.length,
     exported: spec.exported,
