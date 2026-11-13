@@ -28,7 +28,7 @@ const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--sou
 
 if (isInvokedModule(import.meta.url)) {
   process.exitCode = await writeAdapterFindings(
-    'Entry-point differential adapter',
+    'Entry-point differential adapter failed',
     () => entryPointFindings(parseArguments(process.argv.slice(2))),
     process,
   );
