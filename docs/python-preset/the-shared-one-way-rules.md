@@ -241,6 +241,25 @@ factory=make_mailer)`, `injector.binder.bind(...)`). A call to a project functio
   `os.exec*`, `os.spawn*`, `pty.spawn` and `asyncio.create_subprocess_*` calls (also
   `create_subprocess_shell`). A list of arguments, or a fixed command string that ruff already
   accepts, is the allowed form. Not in tests.
+- `future-without-exception` reports a future that only a callback completes, and only with a
+  result: a local assigned from `loop.create_future()` (any receiver, `asyncio.get_running_loop()`
+  included), `asyncio.Future()` or `concurrent.futures.Future()` whose `set_result` is called inside
+  a nested function or lambda, or passed as a callback (`register(reply.set_result)`,
+  `loop.call_soon_threadsafe(reply.set_result, value)`), while nothing in the function calls or
+  passes `set_exception` or `cancel` on it. When the work behind the callback fails, the future
+  never completes and whoever awaits it waits forever. Allowed: a failure path that calls
+  `set_exception` (`register(reply.set_result, reply.set_exception)`, or an `except` in the callback
+  that sets the exception), `cancel`, or a coroutine API that raises by itself
+  (`loop.run_in_executor`, `asyncio.to_thread`). A future stored in a container, an attribute or
+  another name, or passed to a call other than `asyncio.wait_for`, `shield`, `wait`, `gather`,
+  `wrap_future` or `as_completed`, is left to that owner and not reported. `set_result` called
+  directly in the function body completes the future at once and is not reported. A future awaited through
+  `asyncio.wait_for(reply, 5)` is still reported: the wait ends, but the failure turns into a
+  `TimeoutError` that hides the real error. Not in tests or
+  test support. The TypeScript and JavaScript presets report the same mistake on a `new Promise`
+  executor (`nitpicker/require-promise-reject`); Python's node-style callbacks with an error first
+  argument are rare, so that half of the TypeScript rule has no Python form. `loop.run_in_executor` needs no
+  rule either: awaiting the future it returns raises the function's exception by itself.
 - `subprocess-without-timeout` reports waiting for a child process without a deadline:
   `subprocess.run`, `call`, `check_call` and `check_output` without `timeout=` or with `timeout=None`
   (also through a `**options` dict and a `functools.partial`, reported where the partial is called),
