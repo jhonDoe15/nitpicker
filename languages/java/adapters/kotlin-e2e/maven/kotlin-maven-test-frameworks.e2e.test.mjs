@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import {
   copyFixture,
   kotlinE2eEnabled,

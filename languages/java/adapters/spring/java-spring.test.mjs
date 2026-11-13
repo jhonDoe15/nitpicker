@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { withoutRouteFields } from '../../../../core/exceptions/test-support/route-check.mjs';
-import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
+import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mts';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
 import {
   nestedCheckout,

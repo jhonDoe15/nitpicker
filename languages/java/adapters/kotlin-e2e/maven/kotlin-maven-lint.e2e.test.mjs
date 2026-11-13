@@ -2,8 +2,8 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { resolveProjectHeadPolicy } from '../../../../../core/conventions/project-head-policy.mjs';
-import { collectJavaFindings } from '../../java-diff.mjs';
-import { withHeadPolicy } from '../../java-runner.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
+import { withHeadPolicy } from '../../java-runner.mts';
 import { BAD } from '../test-support/kotlin-lint-data.mjs';
 import {
   BAD_BRANCH_FINDINGS,

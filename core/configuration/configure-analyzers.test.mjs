@@ -6,7 +6,7 @@ import {
   PYTHON_ANALYZER_NAME,
   createPythonAnalyzers,
 } from '../../languages/python/adapters/python-analyzer.mjs';
-import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mts';
 import { createGoAnalyzers } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides } from './config.mjs';

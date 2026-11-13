@@ -1,4 +1,6 @@
-export function readOptions(policy = {}) {
+import type { JavaPolicy } from '../typed/java-values.mts';
+
+export function readOptions(policy: JavaPolicy = {}): Readonly<Record<string, unknown>> {
   return {
     crapLimit: policy.crapLimit,
     quick: policy.quick,

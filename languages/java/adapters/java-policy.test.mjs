@@ -3,9 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readConfigFile } from '../../../core/configuration/config.mjs';
-import { createJavaAnalyzer } from './java-analyzer.mjs';
+import { createJavaAnalyzer } from './java-analyzer.mts';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
-import { lintBaselineProperties } from './java-diff.mjs';
+import { lintBaselineProperties } from './collect/build-findings.mts';
 import {
   configureJavaAnalyzer,
   parseJavaRunnerArguments,

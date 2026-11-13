@@ -1,6 +1,6 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { createJavaAnalyzer } from '../java-analyzer.mjs';
+import { createJavaAnalyzer } from '../java-analyzer.mts';
 import { configureJavaAnalyzer, validateJavaConfig } from '../java-policy.mjs';
 import { parseJavaRunnerArguments } from '../java-policy.mjs';
 

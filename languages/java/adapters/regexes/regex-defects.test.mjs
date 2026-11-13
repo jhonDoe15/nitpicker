@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { javaStringLiteral, withRegexDefects } from './regex-defects.mjs';
+import { javaStringLiteral, withRegexDefects } from './regex-defects.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-regex-'));
 afterAll(() => {

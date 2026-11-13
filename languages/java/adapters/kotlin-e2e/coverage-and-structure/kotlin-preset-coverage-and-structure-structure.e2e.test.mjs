@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { analyzeJavaSnapshot } from '../../java-runner.mjs';
+import { analyzeJavaSnapshot } from '../../java-runner.mts';
 import {
   diffOf,
   git,

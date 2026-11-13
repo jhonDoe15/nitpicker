@@ -14,7 +14,7 @@ import {
 } from '../../../typescript/preset/head-policy.mjs';
 import { resolveProjectHeadPolicy } from '../../../../core/conventions/project-head-policy.mjs';
 import { declaresSpring, hasFeatureFolders, javaHeadFacts } from './head-facts.mjs';
-import { analyzeJavaSnapshot, readRunnerPolicy, withHeadPolicy } from '../java-runner.mjs';
+import { analyzeJavaSnapshot, readRunnerPolicy, withHeadPolicy } from '../java-runner.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { gitCheckout } = useGitCheckouts();
