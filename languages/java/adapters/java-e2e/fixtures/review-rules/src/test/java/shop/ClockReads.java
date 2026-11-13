@@ -16,7 +16,7 @@ class ClockReads {
     Instant created = Instant.now(); // violation: RealClockInTest
     assertThat(LocalDate.now(ZoneOffset.UTC)).isAfter(LocalDate.of(2020, 1, 1)); // violation: RealClockInTest
     assertThat(Clock.systemUTC().millis()).isPositive(); // violation: RealClockInTest
-    assertThat(created).isNotNull();
+    assertThat(created.atZone(ZoneOffset.UTC).getYear()).isEqualTo(2024);
   }
 
   void passesAFixedClock() {
