@@ -58,8 +58,9 @@ is rejected with an error.
 Everything else becomes an explicit `unsupported` node and makes the result partial: loops,
 `finally`, `switch`, `await`, `async` and generator functions, optional chains and calls, `null`,
 `typeof`, `instanceof`, `??`, arithmetic, spread, computed member calls, nested binding patterns,
-rest elements, closures, comma and `void` expressions, labeled statements, module-level `let` or
-`var`, and every mutating form other than a property `=` (local reassignment, `+=`, `||=`, `&&=`,
+computed destructuring keys, rest elements, closures, comma and `void` expressions, labeled
+statements, module-level `let` or `var`, and every mutating form other than a property `=` (local
+reassignment, `+=`, `||=`, `&&=`,
 `??=`, `++`, `--`, `delete`, and an assignment used as an expression). The locals and parameters an
 unsupported node writes or declares become fresh unknown values. When it writes a property or
 contains a call, all facts are widened and input fields lose their declared domains and fixed
