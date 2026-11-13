@@ -8,6 +8,7 @@ import { rule as noMockingSubjectUnderTest } from '../rules/testing/assertions/n
 import { rule as testTsconfigPinsLibAndTypes } from '../rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 import { rule as testMustUseProductionRuntime } from '../rules/testing/assertions/test-must-use-production-runtime.mjs';
 import { rule as integrationTestUsesApprovedHarness } from '../rules/testing/processes/integration-test-uses-approved-harness.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -156,7 +157,7 @@ ruleTester.run('integration-test-uses-approved-harness', integrationTestUsesAppr
     },
   ],
 });
-ruleTester.run('test-tsconfig-pins-lib-and-types', testTsconfigPinsLibAndTypes, {
+ruleTester.run('test-tsconfig-pins-lib-and-types', withoutFixes(testTsconfigPinsLibAndTypes), {
   valid: [
     {
       filename: testFile,

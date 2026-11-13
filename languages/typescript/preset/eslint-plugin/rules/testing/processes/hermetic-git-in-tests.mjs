@@ -1,3 +1,5 @@
+import { hermeticFix } from '../../../fixes/processes/hermetic-git-fix.mjs';
+import { fixable } from '../../../fixes/support/descriptors.mjs';
 import {
   describeSubprocess,
   describeWrapperCall,
@@ -46,6 +48,7 @@ function isHermetic(context, described) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [],
     messages: {
       nonHermeticGit:
@@ -60,7 +63,12 @@ export const rule = {
         return;
       }
       reported.add(node);
-      context.report({ node, messageId: 'nonHermeticGit' });
+      context.report(
+        fixable(
+          { node, messageId: 'nonHermeticGit' },
+          hermeticFix(context.sourceCode, described.optionsNode),
+        ),
+      );
     }
     return {
       Program(node) {

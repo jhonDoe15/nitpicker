@@ -7,11 +7,12 @@ import { rule as noUnknownInDomain } from '../boundaries/no-unknown-in-domain.mj
 import { rule as noUnvalidatedSchemaField } from '../boundaries/no-unvalidated-schema-field.mjs';
 import { rule as preserveErrorCause } from '../errors/preserve-error-cause.mjs';
 import { rule as reportModuleLoadEffects } from '../modules/report-module-load-effects.mjs';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
 const tester = createRuleTester();
 const root = '/repo/src/main/composition-root.ts';
 
-tester.run('preserve-error-cause for Error subclasses', preserveErrorCause, {
+tester.run('preserve-error-cause for Error subclasses', withoutFixes(preserveErrorCause), {
   valid: [
     'try { run(); } catch (error) { throw new AppError("failed", { cause: error }); }',
     'try { run(); } catch (error) { throw new AppError("failed", 500, { cause: error }); }',

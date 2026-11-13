@@ -119,3 +119,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
 - A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
   like every other test file (see [Test runners](../usage.md#test-runners)).
+
+## Fixes
+
+Seventeen of nitpicker's own ESLint rules offer a rewrite. A `safe` rule has an ESLint fix that
+`nitpicker --fix` applies. A `review` rule (`no-falsy-default`, `require-http-timeout`,
+`require-test-process-timeout`, `no-raised-test-timeout`, `no-disabled-tls-verification`,
+`no-shell-string-command`) changes behaviour on purpose, so it offers the rewrite as an ESLint
+suggestion that only a run which selects the rule applies. A fixer gives up and leaves the finding when it
+cannot prove the rewrite is safe. The list, with what each rewrite does, is under
+[ESLint rule fixes](../usage.md#eslint-rule-fixes).

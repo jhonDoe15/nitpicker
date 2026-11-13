@@ -116,6 +116,7 @@ describe('rules the language fixers select', () => {
     expect(found('eslint-lint', 'no-prototype-builtins', 'typescript')).toBe('automatic');
     expect(found('eslint-lint', 'use-isnan', 'javascript')).toBe('review');
     expect(found('eslint-lint', 'no-empty', 'typescript')).toBe('none');
+    expect(found('eslint-lint', 'nitpicker/no-falsy-default', 'typescript')).toBe('review');
   });
 });
 

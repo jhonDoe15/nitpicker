@@ -1,5 +1,7 @@
 import { readLayout } from '../../../../head-policy.mjs';
 import { ancestorsOf } from '../../analysis/ancestry.mjs';
+import { pauseFix } from '../../../fixes/processes/container-pause-fix.mjs';
+import { fixable } from '../../../fixes/support/descriptors.mjs';
 
 const { isTestFixture } = readLayout();
 
@@ -16,6 +18,7 @@ function isInsideGuardedTry(node) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [],
     messages: {
       unguardedPause:
@@ -35,7 +38,9 @@ export const rule = {
         )
           return;
         if (isInsideGuardedTry(node)) return;
-        context.report({ node, messageId: 'unguardedPause' });
+        context.report(
+          fixable({ node, messageId: 'unguardedPause' }, pauseFix(context.sourceCode, node)),
+        );
       },
     };
   },

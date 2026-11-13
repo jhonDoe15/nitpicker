@@ -1,4 +1,6 @@
 import { resolveConstant } from '../../analysis/test-code-analysis.mjs';
+import { fixable } from '../../../fixes/support/descriptors.mjs';
+import { pinsFix } from '../../../fixes/tests/tsconfig-pins-fix.mjs';
 
 function propertyName(property) {
   if (property.type !== 'Property' || property.computed) return undefined;
@@ -42,6 +44,7 @@ function knownKeys(context, node, seen = new Set()) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [],
     messages: {
       unpinnedTsconfig:
@@ -61,7 +64,12 @@ export const rule = {
         const keys = knownKeys(context, compilerOptions.value);
         if (keys === undefined) return;
         if (keys.has('types') && (keys.has('lib') || keys.has('noLib'))) return;
-        context.report({ node: compilerOptions, messageId: 'unpinnedTsconfig' });
+        context.report(
+          fixable(
+            { node: compilerOptions, messageId: 'unpinnedTsconfig' },
+            pinsFix(context.sourceCode, compilerOptions),
+          ),
+        );
       },
     };
   },

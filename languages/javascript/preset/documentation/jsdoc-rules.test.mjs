@@ -52,6 +52,7 @@ tester.run('no-comments with JSDoc types', noComments, {
       (comment) => ({
         code: `${comment}\nexport function add(a, b) { return a + b; }`,
         options: jsdocTypes,
+        output: 'export function add(a, b) { return a + b; }',
         errors: [{ messageId: 'coverageSuppression' }],
       }),
     ),
@@ -108,30 +109,36 @@ tester.run('no-comments with JSDoc types', noComments, {
     {
       code: '// a line comment\nconst value = 1;',
       options: jsdocTypes,
+      output: 'const value = 1;',
       errors: [{ messageId: 'comment' }],
     },
     {
       code: '/* a block comment */\nconst value = 1;',
       options: jsdocTypes,
+      output: 'const value = 1;',
       errors: [{ messageId: 'comment' }],
     },
     {
       code: '// @ts-ignore\nconst value = 1;',
       options: jsdocTypes,
+      output: 'const value = 1;',
       errors: [{ messageId: 'typescriptSuppression' }],
     },
     {
       code: '/** @ts-expect-error */\nconst value = 1;',
       options: jsdocTypes,
+      output: 'const value = 1;',
       errors: [{ messageId: 'typescriptSuppression' }],
     },
     {
       code: '// eslint-disable-next-line no-undef\nconst value = 1;',
       options: jsdocTypes,
+      output: 'const value = 1;',
       errors: [{ messageId: 'eslintSuppression' }],
     },
     {
       code: '/** @param {string} name */\nfunction greet(name) { return name; }',
+      output: 'function greet(name) { return name; }',
       errors: [{ messageId: 'internalDocComment' }],
     },
   ],

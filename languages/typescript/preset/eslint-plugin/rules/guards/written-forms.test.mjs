@@ -3,6 +3,7 @@ import { rule as noModuleLevelMutableState } from './no-module-level-mutable-sta
 import { rule as noProcessAccess } from './no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './no-shell-string-command.mjs';
 import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mjs';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
 const tester = createRuleTester();
 const adapter = '/repo/src/main/features/a/adapters/x.ts';
@@ -78,7 +79,7 @@ const shellProgram = [{ messageId: 'shellProgram' }];
 
 tester.run(
   'no-shell-string-command through a shell program or shared options',
-  noShellStringCommand,
+  withoutFixes(noShellStringCommand),
   {
     valid: [
       { code: 'import { spawn } from "node:child_process"; spawn("sh", ["-c", "git status"]);' },

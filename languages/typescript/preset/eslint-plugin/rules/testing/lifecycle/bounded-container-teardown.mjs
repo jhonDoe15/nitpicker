@@ -1,5 +1,7 @@
 import { readLayout } from '../../../../head-policy.mjs';
 import { ancestorsOf, scopeChain } from '../../analysis/ancestry.mjs';
+import { teardownFix } from '../../../fixes/processes/container-teardown-fix.mjs';
+import { fixable } from '../../../fixes/support/descriptors.mjs';
 
 const { isTestFixture } = readLayout();
 
@@ -32,6 +34,7 @@ function isContainerExpression(node, sourceCode) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [],
     messages: {
       unboundedStop:
@@ -63,7 +66,12 @@ export const rule = {
                 node.range[1] <= argument.range[1],
             )
           ) {
-            context.report({ node, messageId: 'unboundedStop' });
+            context.report(
+              fixable(
+                { node, messageId: 'unboundedStop' },
+                teardownFix(context.sourceCode, node, callee),
+              ),
+            );
             return;
           }
         }

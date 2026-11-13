@@ -1,6 +1,10 @@
+import { catchLoggingFix } from '../../fixes/errors/catch-logging-fix.mjs';
+import { fixable } from '../../fixes/support/descriptors.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { loggerShapes } from '../../../libraries/project-libraries.mjs';
+
+const ERROR_FIELD = 'err-field';
 
 const LOG_METHODS = new Set(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
 
@@ -99,6 +103,21 @@ function followInitializers(fields, initializers, visited) {
   return current;
 }
 
+function trackDeclarator(sourceCode, currentCatch, node) {
+  if (currentCatch === undefined) {
+    return;
+  }
+  if (node.id.type === 'Identifier' && node.init) {
+    currentCatch.initializers.set(node.id.name, node.init);
+  }
+  if (node.init && referencesCaughtValue(node.init, currentCatch.variables)) {
+    currentCatch.variables.push(...sourceCode.getDeclaredVariables(node));
+  }
+  if (isCaughtValue(node.init, currentCatch.caught)) {
+    currentCatch.caught.push(...sourceCode.getDeclaredVariables(node));
+  }
+}
+
 function loggingVisitors(context, shapes) {
   const sourceCode = context.sourceCode;
   const catchStack = [];
@@ -110,16 +129,7 @@ function loggingVisitors(context, shapes) {
       catchStack.push({ node, variables, caught: [...variables], initializers: new Map() });
     },
     VariableDeclarator(node) {
-      const currentCatch = catchStack.at(-1);
-      if (currentCatch && node.id.type === 'Identifier' && node.init) {
-        currentCatch.initializers.set(node.id.name, node.init);
-      }
-      if (currentCatch && node.init && referencesCaughtValue(node.init, currentCatch.variables)) {
-        currentCatch.variables.push(...sourceCode.getDeclaredVariables(node));
-      }
-      if (currentCatch && isCaughtValue(node.init, currentCatch.caught)) {
-        currentCatch.caught.push(...sourceCode.getDeclaredVariables(node));
-      }
+      trackDeclarator(sourceCode, catchStack.at(-1), node);
     },
     CallExpression(node) {
       const currentCatch = catchStack.at(-1);
@@ -131,12 +141,18 @@ function loggingVisitors(context, shapes) {
         return;
       }
       const accepted = shapes.some((shape) =>
-        shape === 'err-field'
+        shape === ERROR_FIELD
           ? hasErrorField(node, currentCatch)
           : hasCaughtValueArgument(node, currentCatch.caught),
       );
       if (!accepted) {
-        context.report({ node, messageId });
+        const isErrorField = shapes.length === 1 && shapes[0] === ERROR_FIELD;
+        const plan = isErrorField
+          ? catchLoggingFix(sourceCode, node, (argument) =>
+              isCaughtValue(argument, currentCatch.caught),
+            )
+          : undefined;
+        context.report(fixable({ node, messageId }, plan));
       }
     },
     'CatchClause:exit'() {
@@ -149,13 +165,14 @@ function messageIdFor(shapes) {
   if (shapes.length > 1) {
     return 'caughtEitherShape';
   }
-  return shapes[0] === 'err-field' ? 'caughtErrorShape' : 'caughtValueShape';
+  return shapes[0] === ERROR_FIELD ? 'caughtErrorShape' : 'caughtValueShape';
 }
 
 export function structuredCatchLoggingRule(rootLibraries) {
   return {
     meta: {
       type: 'problem',
+      fixable: 'code',
       docs: {
         description: 'Keep a caught error on the logger call in the shape the project logger reads',
       },

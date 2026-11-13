@@ -1,4 +1,6 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { causeFix } from '../../fixes/errors/cause-fix.mjs';
+import { fixable } from '../../fixes/support/descriptors.mjs';
 
 const ERROR_SUBCLASS_NAME = /Error$/;
 const SUBCLASS_WRAPPER = { optionsIndex: undefined };
@@ -130,6 +132,7 @@ const EXCEPTION_ROUTE =
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [
       {
         type: 'object',
@@ -167,7 +170,11 @@ export const rule = {
         if (!handler) return;
         const messageId = causeReport(context.sourceCode, { wrapper, node, handler });
         if (messageId !== undefined) {
-          context.report({ node, messageId });
+          const plan =
+            messageId === 'lostCause'
+              ? causeFix(context.sourceCode, { wrapper, node, handler })
+              : undefined;
+          context.report(fixable({ node, messageId }, plan));
         }
       },
     };

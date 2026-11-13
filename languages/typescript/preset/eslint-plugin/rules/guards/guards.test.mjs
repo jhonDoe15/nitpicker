@@ -4,6 +4,7 @@ import { rule as noProcessAccess } from './no-process-access-outside-composition
 import { rule as noShellStringCommand } from './no-shell-string-command.mjs';
 import { rule as noUnknownMainFolder } from './no-unknown-main-folder.mjs';
 import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mjs';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
 const tester = createRuleTester();
 const adapter = '/repo/src/main/features/a/adapters/x.ts';
@@ -211,7 +212,7 @@ tester.run('no-process-access-outside-composition-root', noProcessAccess, {
   ],
 });
 
-tester.run('no-shell-string-command', noShellStringCommand, {
+tester.run('no-shell-string-command', withoutFixes(noShellStringCommand), {
   valid: [
     { code: 'import { execFile } from "node:child_process"; execFile("ls", [dir]);' },
     { code: 'import { exec } from "node:child_process"; exec("ls -la");' },

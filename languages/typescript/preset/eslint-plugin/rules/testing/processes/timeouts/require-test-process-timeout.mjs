@@ -1,7 +1,15 @@
+import path from 'node:path';
+import { readHeadPolicyFile } from '../../../../../../../../shared/head-policy.mjs';
+import { resolveTestTimeouts } from '../../../../../../../../shared/test-timeouts/resolve.mjs';
+import { suggestible } from '../../../../fixes/support/descriptors.mjs';
+import { processTimeoutFix } from '../../../../fixes/processes/process-timeout-fix.mjs';
 import { variableNamed } from '../../../analysis/ancestry.mjs';
 import { importedCalleeName, moduleBindings } from '../../../analysis/subprocess-calls.mjs';
 import { memberName } from '../../../analysis/test-code-analysis.mjs';
-import { lacksProcessTimeout } from '../../../processes/process-timeout-options.mjs';
+import {
+  lacksProcessTimeout,
+  optionsArgument,
+} from '../../../processes/process-timeout-options.mjs';
 
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
 const SYNC_METHODS = new Set(['spawnSync', 'execSync', 'execFileSync']);
@@ -36,14 +44,36 @@ function methodOf(context, callee, bindings) {
     : importedCalleeName(callee, bindings);
 }
 
+function defaultTimeoutMs(context) {
+  const policy = context.settings.nitpickerTestTimeoutPolicy ?? readHeadPolicyFile();
+  return resolveTestTimeouts(policy, {
+    file: path.relative(context.cwd, context.filename).replaceAll('\\', '/'),
+    language: policy.preset === 'javascript' ? 'javascript' : 'typescript',
+  }).testDeclarationCeilingMs;
+}
+
+function reportMissing(context, node, method) {
+  const timeout = defaultTimeoutMs(context);
+  const optionsNode = optionsArgument(context, node, method === 'execSync');
+  const plan = processTimeoutFix(context.sourceCode, node, { method, timeout, optionsNode });
+  context.report(
+    suggestible(
+      { node, messageId: 'missingTimeout', data: { method } },
+      { messageId: 'addTimeout', plan, data: { ms: String(timeout) } },
+    ),
+  );
+}
+
 export const rule = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: { description: 'Require a timeout on synchronous test subprocesses' },
     schema: [],
     messages: {
       missingTimeout:
         'Give {{method}} a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline.',
+      addTimeout: 'Add a timeout of {{ms}} ms.',
     },
   },
   create(context) {
@@ -55,7 +85,7 @@ export const rule = {
       CallExpression(node) {
         const method = methodOf(context, node.callee, bindings);
         if (SYNC_METHODS.has(method) && lacksProcessTimeout(context, node, method)) {
-          context.report({ node, messageId: 'missingTimeout', data: { method } });
+          reportMissing(context, node, method);
         }
       },
     };

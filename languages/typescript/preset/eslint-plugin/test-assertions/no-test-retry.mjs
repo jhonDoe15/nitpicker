@@ -1,4 +1,6 @@
 import { ancestorsOf, chainOf } from '../rules/analysis/ancestry.mjs';
+import { fixable } from '../fixes/support/descriptors.mjs';
+import { retryFix } from '../fixes/tests/test-retry-fix.mjs';
 import {
   constantNumber,
   isTestFactoryMember,
@@ -153,6 +155,7 @@ function retryNodes(context, node, bindings) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [],
     messages: {
       retry:
@@ -167,7 +170,9 @@ export const rule = {
         for (const retry of retryNodes(context, node, bindings)) {
           if (!reported.has(retry) && !isOffEverywhere(context, retry)) {
             reported.add(retry);
-            context.report({ node: retry, messageId: 'retry' });
+            context.report(
+              fixable({ node: retry, messageId: 'retry' }, retryFix(context.sourceCode, retry)),
+            );
           }
         }
       },

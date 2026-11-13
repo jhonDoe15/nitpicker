@@ -753,7 +753,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   follow symbolic links; each of these is named in a "Fix notes:" line. ESLint, `ruff check --fix`
   and the Python, Java and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
   the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
-  `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)) and
+  `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)); the
+  ESLint step applies the fixes of nitpicker's own rules (see [ESLint rule fixes](#eslint-rule-fixes)); and
   lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
   error; the other fixers and the comparison still run. Cannot be combined with `--all`. See
   [Preview and pick fixes](#preview-and-pick-fixes) for `--dry-run` and `--rule`.
@@ -2046,6 +2047,43 @@ edit may set `fix` on its finding, and nitpicker keeps it. Presets whose recipes
 In `report.sarif` and `report-baseline.sarif`, the result of such a finding has `fixes[]` with
 `artifactChanges[].replacements[]`: a `deletedRegion` with `charOffset` and `charLength`, and the
 `insertedContent.text`. Editors and code review tools can offer it as one click.
+
+## ESLint rule fixes
+
+With the TypeScript and JavaScript presets, `--fix` also applies the fixes of nitpicker's own ESLint
+rules, in the same ESLint step as the rest. A fix is offered only when one rewrite is correct in every
+case the rule reports. When nitpicker cannot prove the rewrite is safe (a computed key, a spread, a
+dynamic callee, a comment inside the text it would replace, a name that is not in scope), it leaves the
+finding as it is. No fix adds a comment.
+
+| Rule                                                 | Kind   | What it does                                                                                                             |
+| ---------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `nitpicker/no-comments`                              | safe   | deletes the comment, and its whole line when it is alone on it; keeps JSDoc that carries types                           |
+| `nitpicker/preserve-error-cause`                     | safe   | adds `{ cause: error }` to the wrapper call; leaves a catch without a binding                                            |
+| `nitpicker/structured-catch-logging`                 | safe   | turns `logger.error('message', error)` into `logger.error({ err: error }, 'message')`                                    |
+| `nitpicker/no-unused-dom-environment`                | safe   | changes a `@vitest-environment` or `@jest-environment` directive to `node`                                               |
+| `nitpicker/no-test-retry`                            | safe   | removes the retry option or the `jest.retryTimes` and `this.retries` call                                                |
+| `nitpicker/bounded-container-teardown`               | safe   | writes `teardownContainer(container)` when that function is in scope                                                     |
+| `nitpicker/container-pause-requires-finally-unpause` | safe   | wraps the work between `pause()` and `unpause()` in `withPausedContainer` when that function is in scope                 |
+| `nitpicker/fake-timers-require-restore`              | safe   | adds an `afterEach` that restores the timers, stubbed globals or stubbed environment                                     |
+| `nitpicker/test-tsconfig-pins-lib-and-types`         | safe   | adds `types: []` and `lib: ['ES2022']` to a literal `compilerOptions`                                                    |
+| `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
+| `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
+| `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
+| `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
+| `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
+| `nitpicker/no-raised-test-timeout`                   | review | removes the raised timeout so the default applies                                                                        |
+| `nitpicker/no-disabled-tls-verification`             | review | removes the option or assignment that turns verification off                                                             |
+| `nitpicker/no-shell-string-command`                  | review | turns a plain command template into an `execFile` call with an argument array, or drops `shell: true`                    |
+
+A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
+offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
+(`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
+files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+
+`nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
+`--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied
+like the others; the logging check's other rule, `nitpicker/no-production-console`, has no fix.
 
 ## Java preset
 
