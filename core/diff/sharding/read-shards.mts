@@ -165,8 +165,8 @@ function unchangedShard({
 }
 
 function shardFile(root: string, fileName: string, shardIndex: number): string {
-  const filePath = path.resolve(root, fileName);
-  if (!filePath.startsWith(`${path.resolve(root)}${path.sep}`)) {
+  const filePath = path.join(root, fileName);
+  if (!path.resolve(filePath).startsWith(`${path.resolve(root)}${path.sep}`)) {
     throw new Error(`Quality shard ${String(shardIndex)} file ${fileName} is outside its folder`);
   }
   return filePath;
