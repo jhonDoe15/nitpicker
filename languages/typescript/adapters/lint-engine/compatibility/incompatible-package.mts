@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
 import { withTroubleshooting } from '../typed/tools.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
@@ -14,6 +13,10 @@ type PackageInfo = {
 
 const FRAME_PATH = /([^\s()]*node_modules[^\s()]*?):\d+:\d+/gu;
 const COMPARATOR = /^(>=|<=|>|<|\^|~|=)?v?(\d+|x|\*)/u;
+const OPERATOR_SPACE = /(>=|<=|>|<|\^|~|=)\s+/gu;
+const HYPHEN_RANGE = /(\S+)\s+-\s+(\S+)/gu;
+const ERROR_LINE = /^\w*Error\b.*$/mu;
+const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
 
 export const INCOMPATIBLE_MARKER = 'cannot run with ESLint';
 
@@ -43,7 +46,8 @@ function comparatorAccepts(comparator: string, major: number): boolean {
 }
 
 export function rangeAcceptsMajor(range: string, major: number): boolean {
-  return range.split('||').some((alternative) =>
+  const normalized = range.replaceAll(OPERATOR_SPACE, '$1').replaceAll(HYPHEN_RANGE, '>=$1 <=$2');
+  return normalized.split('||').some((alternative) =>
     alternative
       .trim()
       .split(/\s+/u)
@@ -51,12 +55,20 @@ export function rangeAcceptsMajor(range: string, major: number): boolean {
   );
 }
 
+function manifestContent(manifest: string): unknown {
+  try {
+    return JSON.parse(readFileSync(manifest, 'utf8'));
+  } catch (error) {
+    return { unreadable: error };
+  }
+}
+
 function manifestAt(directory: string): PackageInfo | undefined {
   const manifest = path.join(directory, 'package.json');
   if (!existsSync(manifest)) {
     return undefined;
   }
-  const content: unknown = JSON.parse(readFileSync(manifest, 'utf8'));
+  const content = manifestContent(manifest);
   const name = fieldOf(content, 'name');
   const version = fieldOf(content, 'version');
   const range = fieldOf(fieldOf(content, 'peerDependencies'), 'eslint');
@@ -69,22 +81,19 @@ function manifestAt(directory: string): PackageInfo | undefined {
     : undefined;
 }
 
-function ancestors(directory: string): string[] {
+function installedAncestors(directory: string): string[] {
   const { root } = path.parse(directory);
   const segments = path
     .relative(root, directory)
     .split(path.sep)
     .filter((part) => part !== '');
-  return [
-    ...segments.map((_part, index) =>
-      path.join(root, ...segments.slice(0, segments.length - index)),
-    ),
-    root,
-  ];
+  return segments
+    .map((_part, index) => path.join(root, ...segments.slice(0, segments.length - index)))
+    .filter((folder) => `${folder}${path.sep}`.includes(NODE_MODULES));
 }
 
 function packageAbove(directory: string): PackageInfo | undefined {
-  for (const folder of ancestors(directory)) {
+  for (const folder of installedAncestors(directory)) {
     const found = manifestAt(folder);
     if (found !== undefined) {
       return found;
@@ -93,11 +102,22 @@ function packageAbove(directory: string): PackageInfo | undefined {
   return undefined;
 }
 
+function framePath(found: string, cwd: string): string {
+  const local =
+    found.startsWith('file://') && URL.canParse(found)
+      ? decodeURIComponent(new URL(found).pathname)
+      : found;
+  return path.resolve(cwd, local);
+}
+
 function framePackages(text: string, cwd: string): PackageInfo[] {
-  const files = [...text.matchAll(FRAME_PATH)].map(([, found = '']) =>
-    path.resolve(cwd, found.startsWith('file://') ? fileURLToPath(found) : found),
-  );
+  const files = [...text.matchAll(FRAME_PATH)].map(([, found = '']) => framePath(found, cwd));
   return [...new Set(files)].flatMap((file) => packageAbove(path.dirname(file)) ?? []);
+}
+
+function originalError(text: string): string {
+  const line = ERROR_LINE.exec(text)?.[0].trim();
+  return line === undefined ? '' : ` It failed with: ${line}`;
 }
 
 export function incompatiblePackageMessage(
@@ -112,7 +132,7 @@ export function incompatiblePackageMessage(
     : withTroubleshooting(
         `${found.name} ${found.version} ${INCOMPATIBLE_MARKER} ${String(major)} ` +
           `(it supports eslint ${found.eslintRange}). Update it, or the package that depends on it, ` +
-          `to a version that supports ESLint ${String(major)}.`,
+          `to a version that supports ESLint ${String(major)}.${originalError(text)}`,
         TROUBLESHOOTING_ANCHORS.incompatibleEslintPackage,
       );
 }
