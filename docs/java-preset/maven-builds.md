@@ -53,7 +53,7 @@ by field. Per snapshot:
    the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
-   one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
+   one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mts`).
 
 - **Integration tests.** Failsafe runs in a module whose effective POM (`<build><plugins>`, so
   neither `<pluginManagement>` alone nor an inactive profile) binds maven-failsafe-plugin's
