@@ -3,8 +3,7 @@ import { PRESETS, ruleEntry } from '../../shared/reference/entry.mjs';
 const POLICY_ALLOWED =
   "Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code.";
 
-/** The entries of the findings the core adds on top of the analyzers. */
-export function coreRuleEntries() {
+export function coreRuleEntries(): Readonly<Record<string, unknown>>[] {
   return [
     ruleEntry({
       tool: 'nitpicker-config',
