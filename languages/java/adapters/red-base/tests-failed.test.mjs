@@ -9,7 +9,7 @@ import {
   testsFailedFinding,
   withRootSourceRoots,
   withTestsFailures,
-} from './tests-failed.mjs';
+} from './tests-failed.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const temporaryRoots = [];

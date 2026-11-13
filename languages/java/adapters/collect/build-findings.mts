@@ -13,7 +13,7 @@ import { detectJavaBuild, INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../../builds/java-modules.mts';
 import { resolveKotlinRun } from '../kotlin/kotlin-run.mjs';
 import { runGradleStage } from '../red-base/gradle-stage.mts';
-import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mjs';
+import { runOrNoteFailingTests, withRootSourceRoots } from '../red-base/tests-failed.mts';
 import { gradleBudget } from '../gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mts';
 import { gradleDesignFindings, mavenDesignFindings } from '../design/design-modules.mts';
@@ -97,7 +97,7 @@ function gradleFindings(
 ): JavaReport {
   const preset = options.policy?.preset ?? 'java';
   const kotlinRun: unknown = resolveKotlinRun(projectRoot, options.policy);
-  const testsFailures = callUntyped(runOrNoteFailingTests, runJavaPreset, projectRoot, {
+  const testsFailures = runOrNoteFailingTests(runJavaPreset, projectRoot, {
     ...options,
     reportBase,
     kotlinRun,
@@ -122,7 +122,7 @@ function gradleFindings(
   return {
     findings: [...findingsOf(fieldOf(read, 'findings')), ...design],
     imports: fieldOf(read, 'imports'),
-    testsFailures: callUntyped(withRootSourceRoots, testsFailures, fieldOf(report, 'modules')),
+    testsFailures: withRootSourceRoots(testsFailures, fieldOf(report, 'modules')),
   };
 }
 
