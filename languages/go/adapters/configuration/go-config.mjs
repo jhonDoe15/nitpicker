@@ -43,6 +43,7 @@ const GO_CATALOG_TOOLS = [
   'usestdlibvars',
   'sloglint',
   'spancheck',
+  'gocritic',
 ];
 export const GO_LINTER_TOOLS = [
   'vet',
