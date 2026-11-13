@@ -168,7 +168,7 @@ describe('hints follow the libraries of the project', () => {
     [
       'TestA.test_a: subTest (unittest)',
       'a `subTest` loop',
-      'A suite that keeps `subTest` takes the exception.',
+      'a suite that keeps `subTest` over other collections takes the exception.',
     ],
     [
       'TestA.test_a: if (unittest)',

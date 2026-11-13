@@ -11,8 +11,12 @@ import { rule as ruleHoverTestNeedsKeyboard } from './rules/react-tests/hover-te
 import { rule as ruleIntegrationTestUsesApprovedHarness } from './rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as ruleNamingConvention } from './rules/wrapped/naming-convention.mjs';
 import { rule as ruleNoAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
+import { rule as ruleNoAddOnlyCollection } from './rules/lifecycles/growth/no-add-only-collection.mjs';
 import { rule as ruleNoAssertionInLoop } from './test-assertions/loop-assertions/no-assertion-in-loop.mjs';
+import { rule as ruleNoBooleanFlagParameter } from './rules/flags/no-boolean-flag-parameter.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from './rules/boundaries/no-branch-in-composition-root.mjs';
+import { rule as ruleNoCachedRejection } from './rules/lifecycles/memo/no-cached-rejection.mjs';
+import { rule as ruleNoCleanupSkippedOnFailure } from './rules/lifecycles/release/no-cleanup-skipped-on-failure.mjs';
 import { rule as ruleNoCollectedStreamRows } from './rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from './rules/modules/no-comments.mjs';
 import { rule as ruleNoCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
@@ -23,6 +27,7 @@ import { rule as ruleNoDecidedCondition } from './rules/decided/no-decided-condi
 import { rule as ruleNoDefaultExport } from './rules/syntax/no-default-export.mjs';
 import { rule as ruleNoDevDependencyInProduction } from './rules/dependencies/no-dev-dependency-in-production.mjs';
 import { rule as ruleNoDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
+import { rule as ruleNoDroppedTestCallback } from './test-assertions/dropped-callback/no-dropped-test-callback.mjs';
 import { rule as ruleNoEagerRelation } from './rules/persistence/no-eager-relation.mjs';
 import { rule as ruleNoExternalExecutablesInUnitTests } from './rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 import { rule as ruleNoFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
@@ -31,8 +36,10 @@ import { rule as ruleNoFixedSleepSynchronization } from './rules/testing/lifecyc
 import { rule as ruleNoFloatEqualityInTests } from './test-assertions/no-float-equality-in-tests.mjs';
 import { rule as ruleNoForwardingMethodAlias } from './rules/api-shape/no-forwarding-method-alias.mjs';
 import { rule as ruleNoForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as ruleNoGenericName } from './rules/naming/no-generic-name.mjs';
 import { rule as ruleNoGitRepositoryPerTest } from './rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as ruleNoHandwrittenBoundaryGuard } from './rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as ruleNoHardcodedSecret } from './rules/secrets/no-hardcoded-secret.mjs';
 import { rule as ruleNoInMemoryQuery } from './rules/queries/no-in-memory-query.mjs';
 import { rule as ruleNoInternalModuleMocks } from './rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as ruleNoIntervalPollingInTests } from './rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
@@ -59,7 +66,9 @@ import { rule as ruleNoProductionImportsInSetupFiles } from './test-isolation/no
 import { rule as ruleNoPromiseChain } from './rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoRaisedTestTimeout } from './rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from './test-isolation/no-real-time-random-or-network.mjs';
+import { rule as ruleNoRepeatedStringLiteral } from './rules/literals/no-repeated-string-literal.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
+import { rule as ruleNoSecretInLog } from './rules/secrets/no-secret-in-log.mjs';
 import { rule as ruleNoSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as ruleNoServerOrWorkerPerTest } from './rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as ruleNoServiceLocator } from './rules/service-locator/no-service-locator.mjs';
@@ -110,14 +119,17 @@ import { rule as ruleReactNoHardcodedColors } from './rules/react/theme/react-no
 import { rule as ruleReactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
 import { rule as ruleReactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 import { rule as ruleReactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
+import { rule as ruleReleaseListenersOnClose } from './rules/lifecycles/handles/release-listeners-on-close.mjs';
 import { rule as ruleReportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
 import { rule as ruleRequireAtomicUpdates } from './rules/wrapped/require-atomic-updates.mjs';
+import { rule as ruleRequireClientTimeout } from './rules/clients/require-client-timeout.mjs';
 import { rule as ruleRequireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as ruleRequireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as ruleRequireProcessTimeout } from './rules/processes/require-process-timeout.mjs';
 import { rule as ruleRequirePromiseReject } from './rules/promises/executors/require-promise-reject.mjs';
 import { rule as ruleRequireTestProcessTimeout } from './rules/testing/processes/timeouts/require-test-process-timeout.mjs';
 import { rule as ruleReusableObjectPerCall } from './rules/reuse/reusable-object-per-call.mjs';
+import { rule as ruleSettlePendingOnClose } from './rules/lifecycles/pending/settle-pending-on-close.mjs';
 import { rule as ruleSimplerBooleanLogic } from './rules/control/simpler-boolean-logic.mjs';
 import { rule as ruleStrictBooleanExpressions } from './rules/wrapped/strict-boolean-expressions.mjs';
 import { rule as ruleStructuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
@@ -143,8 +155,12 @@ export const directoryRules = {
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
   'naming-convention': ruleNamingConvention,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
+  'no-add-only-collection': ruleNoAddOnlyCollection,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
+  'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
+  'no-cached-rejection': ruleNoCachedRejection,
+  'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
   'no-compatibility-shim': ruleNoCompatibilityShim,
@@ -155,6 +171,7 @@ export const directoryRules = {
   'no-default-export': ruleNoDefaultExport,
   'no-dev-dependency-in-production': ruleNoDevDependencyInProduction,
   'no-disabled-tls-verification': ruleNoDisabledTlsVerification,
+  'no-dropped-test-callback': ruleNoDroppedTestCallback,
   'no-eager-relation': ruleNoEagerRelation,
   'no-external-executables-in-unit-tests': ruleNoExternalExecutablesInUnitTests,
   'no-falsy-default': ruleNoFalsyDefault,
@@ -163,8 +180,10 @@ export const directoryRules = {
   'no-float-equality-in-tests': ruleNoFloatEqualityInTests,
   'no-forwarding-method-alias': ruleNoForwardingMethodAlias,
   'no-forwarding-wrapper': ruleNoForwardingWrapper,
+  'no-generic-name': ruleNoGenericName,
   'no-git-repository-per-test': ruleNoGitRepositoryPerTest,
   'no-handwritten-boundary-guard': ruleNoHandwrittenBoundaryGuard,
+  'no-hardcoded-secret': ruleNoHardcodedSecret,
   'no-in-memory-query': ruleNoInMemoryQuery,
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
@@ -192,7 +211,9 @@ export const directoryRules = {
   'no-promise-chain': ruleNoPromiseChain,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
+  'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
   'no-server-or-worker-per-test': ruleNoServerOrWorkerPerTest,
   'no-service-locator': ruleNoServiceLocator,
@@ -243,14 +264,17 @@ export const directoryRules = {
   'react-no-random-key': ruleReactNoRandomKey,
   'react-single-styling-approach': ruleReactSingleStylingApproach,
   'react-test-no-implementation-details': ruleReactTestNoImplementationDetails,
+  'release-listeners-on-close': ruleReleaseListenersOnClose,
   'report-module-load-effects': ruleReportModuleLoadEffects,
   'require-atomic-updates': ruleRequireAtomicUpdates,
+  'require-client-timeout': ruleRequireClientTimeout,
   'require-error-listener': ruleRequireErrorListener,
   'require-http-timeout': ruleRequireHttpTimeout,
   'require-process-timeout': ruleRequireProcessTimeout,
   'require-promise-reject': ruleRequirePromiseReject,
   'require-test-process-timeout': ruleRequireTestProcessTimeout,
   'reusable-object-per-call': ruleReusableObjectPerCall,
+  'settle-pending-on-close': ruleSettlePendingOnClose,
   'simpler-boolean-logic': ruleSimplerBooleanLogic,
   'strict-boolean-expressions': ruleStrictBooleanExpressions,
   'structured-catch-logging': ruleStructuredCatchLogging,

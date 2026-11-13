@@ -92,12 +92,12 @@ describe('production rule classification', () => {
   it('keeps the layout rules out of the strict set', () => {
     const ruleIds = ruleIdsOf(productionLayoutConfigFor(layout));
 
-    expect(ruleIds).toEqual(['nitpicker/no-unknown-main-folder']);
+    expect(ruleIds).toEqual(['nitpicker/no-generic-name', 'nitpicker/no-unknown-main-folder']);
     expect(ruleIds.filter((rule) => isStrictRule(rule))).toEqual([]);
   });
 
   it('does not count an edit to line 1 of a legacy file in an unknown folder as new', () => {
-    const file = 'src/main/utils/format.ts';
+    const file = 'src/main/billing/format.ts';
     const base = findingsFor(file, 'export const label = "a";\n');
     const head = findingsFor(file, 'export const label = "b";\n');
 
@@ -113,7 +113,7 @@ describe('production rule classification', () => {
   });
 
   it('still counts a strict finding on an edited line 1 as new', () => {
-    const file = 'src/main/utils/format.ts';
+    const file = 'src/main/billing/format.ts';
     const base = findingsFor(file, 'export const label = "a";\n');
     const head = findingsFor(file, 'export const label = eval("a");\n');
 

@@ -4,6 +4,7 @@ import { createScripts } from '../../test-support/python-script-helpers.mjs';
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes, findingsOf } = createScripts({
   hidden: [
+    'client-without-timeout',
     'http-without-timeout',
     'shell-command',
     'module-level-mutable-state',

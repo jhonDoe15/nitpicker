@@ -1,10 +1,30 @@
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
+import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
+import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
 import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
 import { pitRunTargets } from '../module/pit-scope.mjs';
+
+const MINUTE_MS = 60_000;
+
+export function pitTimeoutMs(
+  timeoutMs = mavenBudget().commandTimeoutMs,
+  deadline = Number.POSITIVE_INFINITY,
+  now = Date.now(),
+) {
+  return Math.min(timeoutMs, Math.floor((deadline - now) / MINUTE_MS) * MINUTE_MS);
+}
+
+function notStarted(module) {
+  return (
+    `PIT was not started in ${module.basedir}: less than a minute of the Java analyzer's time ` +
+    'limit was left. Set NITPICKER_MAVEN_TIMEOUT_MINUTES, or analyzerTimeoutMinutes when the ' +
+    'config sets it, to give the Java analyzer more time'
+  );
+}
 
 export function javaArgumentFile(args) {
   return args
@@ -57,27 +77,9 @@ function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history
   ];
 }
 
-export function runPit({
-  module,
-  reportDir,
-  tools,
-  classpaths,
-  isArchunit,
-  configs,
-  history,
-  scope,
-  spawn,
-  timeoutMs,
-}) {
-  const pitDir = path.join(reportDir, 'pit');
-  rmSync(pitDir, { recursive: true, force: true });
-  mkdirSync(pitDir, { recursive: true });
-  const report = path.join(pitDir, 'mutations.xml');
-  if (classFiles(module.outputDirectory).length === 0) {
-    return;
-  }
-  const targets = pitRunTargets(module, scope);
-  if (targets.length > 0) {
+function pitRan(options, { pitDir, limit, targets }) {
+  const { module, tools, classpaths, isArchunit, configs, history, spawn } = options;
+  try {
     runJava({
       tool: 'PIT',
       classpath: pitClasspath(tools, classpaths.testRuntime),
@@ -86,10 +88,39 @@ export function runPit({
       cwd: module.basedir,
       accept: (result) => result.status === 0,
       spawn,
-      timeoutMs,
+      timeoutMs: limit,
     });
+    return true;
+  } catch (error) {
+    writePitFailure(pitDir, error);
+    return false;
   }
-  if (!existsSync(report)) {
+}
+
+export function runPit(options) {
+  const { module, reportDir, scope } = options;
+  const pitDir = path.join(reportDir, 'pit');
+  rmSync(pitDir, { recursive: true, force: true });
+  mkdirSync(pitDir, { recursive: true });
+  const report = path.join(pitDir, 'mutations.xml');
+  if (classFiles(module.outputDirectory).length === 0) {
+    return;
+  }
+  const targets = pitRunTargets(module, scope);
+  if (targets.length === 0) {
+    writeFileSync(report, '<mutations/>');
+    return;
+  }
+  mutate(options, { pitDir, report, targets });
+}
+
+function mutate(options, { pitDir, report, targets }) {
+  const limit = pitTimeoutMs(options.timeoutMs, options.deadline);
+  if (limit < MINUTE_MS) {
+    writePitFailure(pitDir, notStarted(options.module));
+    return;
+  }
+  if (pitRan(options, { pitDir, limit, targets }) && !existsSync(report)) {
     writeFileSync(report, '<mutations/>');
   }
 }

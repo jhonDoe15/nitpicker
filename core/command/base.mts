@@ -1,6 +1,6 @@
 import { realpathSync } from 'node:fs';
 import { loadConfig } from '../configuration/config.mjs';
-import { resolveBase } from '../diff/git/repository/base-ref.mjs';
+import { resolveBase } from '../diff/git/repository/base-ref.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { resolveProjectRoot } from '../configuration/project-checks/project-root.mjs';
 import { takeOptionValue, unknownArgumentError } from '../diff/comparison/cli.mjs';
@@ -16,13 +16,6 @@ type BaseCli = {
 };
 
 const BASE_USAGE = 'Usage: nitpicker base [--base <ref>]';
-
-const baseOf: (request: {
-  readonly repositoryRoot: string;
-  readonly explicitBase: unknown;
-  readonly configuredBase: unknown;
-  readonly environment: NodeJS.ProcessEnv;
-}) => { readonly baseRef: string } = resolveBase;
 
 function explicitBaseOf(commandArguments: readonly string[]): unknown {
   let explicitBase: unknown;
@@ -52,11 +45,12 @@ export function runBaseCommand({
   );
   const config: NitpickerConfig = loadConfig(projectRoot);
   const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
-  const { baseRef } = baseOf({
+  const { baseRef } = resolveBase({
     repositoryRoot,
     explicitBase,
     configuredBase: config.base,
     environment,
+    staged: false,
   });
   stdout.write(`${baseRef}\n`);
   return 0;
