@@ -41,3 +41,11 @@ export function pitFailureFindings(reportRoot, moduleDir = '') {
     classification: 'tool-error',
   }));
 }
+
+export function gradlePitDeadlineMs(
+  { commandTimeoutMs, pitDeadlineMs },
+  reserveMs,
+  now = Date.now(),
+) {
+  return Math.min(now + commandTimeoutMs - reserveMs, pitDeadlineMs ?? Number.POSITIVE_INFINITY);
+}

@@ -889,9 +889,11 @@ engine.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
-keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
-inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
+keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs inside the analysis
+command and gets the time left of `NITPICKER_GRADLE_TIMEOUT_MINUTES` after a one minute reserve for the
+reports (and never past the same two minute cut before the analyzer's deadline). When that time runs out
+nitpicker stops PIT and its minion JVMs, and the module reports a `pit-failure` tool error while the other
+findings are kept (also when the build is cancelled, PIT is stopped; on a Gradle daemon running Java 8 only the main PIT process can be stopped, not its minion JVMs). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
 
 ### Error Prone cannot find a JDK

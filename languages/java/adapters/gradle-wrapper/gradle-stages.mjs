@@ -5,6 +5,8 @@ import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-con
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mjs';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
+import { gradlePitDeadlineMs } from '../../builds/pit-failure/pit-failure.mjs';
+import { REPORT_OVERHEAD_MS } from './gradle-budget.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const CHECKSTYLE_EXPORT = 'checkstyle-nitpicker.xml';
@@ -65,9 +67,15 @@ function changedFilesProperties({ changedFiles }, directory) {
   return [`-Pnitpicker.changedFiles=${file}`];
 }
 
+function pitDeadlineProperties(budget) {
+  return budget === undefined
+    ? []
+    : [`-Pnitpicker.pit.deadline=${Math.floor(gradlePitDeadlineMs(budget, REPORT_OVERHEAD_MS))}`];
+}
+
 export function gradleStages(
   baseArguments,
-  { projectRoot, initScript, policy, directory, testsFailedModules = [] },
+  { projectRoot, initScript, policy, directory, testsFailedModules = [], budget },
 ) {
   const common = [
     ...baseArguments,
@@ -88,6 +96,7 @@ export function gradleStages(
       ...mutationScopeProperties(policy, directory),
       ...changedFilesProperties(policy, directory),
       ...pitHistoryProperties(policy, projectRoot),
+      ...pitDeadlineProperties(budget),
       '-I',
       initScript,
       'nitpickerJava',
