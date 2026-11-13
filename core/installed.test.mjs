@@ -14,7 +14,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readSnippet } from './init/files/agents-md.mjs';
+import { readSnippet } from './init/files/agents-md.mts';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 import {
   MINIMUM_NODE,

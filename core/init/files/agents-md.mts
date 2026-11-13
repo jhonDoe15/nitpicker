@@ -1,18 +1,24 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mjs';
+import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mts';
+
+type AgentsResult = { readonly relative: string; readonly status: string };
 
 const SNIPPET_FILE = 'docs/agents-snippet.md';
 const SNIPPET_SEPARATOR = '\n---\n';
-export const INSTRUCTION_FILES = ['AGENTS.md', 'CLAUDE.md'];
+export const INSTRUCTION_FILES: readonly string[] = ['AGENTS.md', 'CLAUDE.md'];
 
-export function readSnippet(packageRoot = PACKAGE_ROOT) {
+export function readSnippet(packageRoot: string = PACKAGE_ROOT): string {
   const text = readFileSync(path.join(packageRoot, SNIPPET_FILE), 'utf8').replaceAll('\r\n', '\n');
   return text.slice(text.indexOf(SNIPPET_SEPARATOR) + SNIPPET_SEPARATOR.length).trim();
 }
 
-function appended(existing, snippet) {
+function snippetHeading(snippet: string): string {
+  return snippet.split('\n')[0] ?? '';
+}
+
+function appended(existing: string | undefined, snippet: string): string {
   if (existing === undefined || existing.trim() === '') {
     return `${snippet}\n`;
   }
@@ -20,8 +26,8 @@ function appended(existing, snippet) {
   return existing.includes('\r\n') ? text.replaceAll(/\r?\n/gu, '\r\n') : text;
 }
 
-export function hasSnippet(root, packageRoot = PACKAGE_ROOT) {
-  const heading = readSnippet(packageRoot).split('\n')[0];
+export function hasSnippet(root: string, packageRoot: string = PACKAGE_ROOT): boolean {
+  const heading = snippetHeading(readSnippet(packageRoot));
   return INSTRUCTION_FILES.some((name) => {
     const file = insideProject(root, name);
     return (
@@ -31,10 +37,12 @@ export function hasSnippet(root, packageRoot = PACKAGE_ROOT) {
   });
 }
 
-export function appendSnippet(root, packageRoot = PACKAGE_ROOT) {
+export function appendSnippet(root: string, packageRoot: string = PACKAGE_ROOT): AgentsResult {
   const snippet = readSnippet(packageRoot);
-  const heading = snippet.split('\n')[0];
-  const holder = INSTRUCTION_FILES.find((name) => projectFileText(root, name)?.includes(heading));
+  const heading = snippetHeading(snippet);
+  const holder = INSTRUCTION_FILES.find(
+    (name) => projectFileText(root, name)?.includes(heading) === true,
+  );
   if (holder !== undefined) {
     return { relative: holder, status: 'unchanged' };
   }
