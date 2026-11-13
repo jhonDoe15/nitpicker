@@ -169,4 +169,15 @@ describe('overlap pairs', () => {
 
     expect(withoutOverlaps(findings, { readSource })).toStrictEqual([findings[0], findings[2]]);
   });
+
+  it('reports a tab once: drops Indentation on a line FileTabCharacter reports, keeps other lines', () => {
+    const tab = at('checkstyle/FileTabCharacter', 5);
+    const sameLine = at('checkstyle/Indentation', 5);
+    const otherLine = at('checkstyle/Indentation', 6);
+
+    expect(withoutOverlaps([tab, sameLine, otherLine], { readSource })).toStrictEqual([
+      tab,
+      otherLine,
+    ]);
+  });
 });

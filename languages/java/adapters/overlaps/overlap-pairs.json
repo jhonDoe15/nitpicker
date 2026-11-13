@@ -763,5 +763,10 @@
     "primary": ["checkstyle/MagicNumber"],
     "secondary": ["pmd/AvoidLiteralsInIfCondition"],
     "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/FileTabCharacter"],
+    "secondary": ["checkstyle/Indentation"],
+    "scope": "line"
   }
 ]
