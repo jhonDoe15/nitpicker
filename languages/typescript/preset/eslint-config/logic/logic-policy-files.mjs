@@ -1,4 +1,4 @@
-/** The logic and literal rules and the shared modules they run on: a change to one invalidates the lint cache. */
+/** The logic, literal and secret rules and the shared modules they run on: a change to one invalidates the lint cache. */
 export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-config/logic/logic-policy-files.mjs',
   'shared/logic/decide.mjs',
@@ -31,4 +31,9 @@ export const LOGIC_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/naming/no-generic-name.mjs',
   'languages/typescript/preset/eslint-plugin/rules/naming/generic-names.mjs',
   'shared/naming/smell-words.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/secrets/no-hardcoded-secret.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/secrets/no-secret-in-log.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/secrets/secret-nodes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/secrets/secret-operands.mjs',
+  'shared/naming/secret-words.mjs',
 ];

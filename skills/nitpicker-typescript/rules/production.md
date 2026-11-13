@@ -98,6 +98,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   shared folder under such a name (`nitpicker/no-generic-name`).
 - A string of five characters or more used three times in a file is named once as a constant
   (`nitpicker/no-repeated-string-literal`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
+  `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
+  set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

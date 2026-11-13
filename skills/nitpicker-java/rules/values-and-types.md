@@ -79,3 +79,6 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`,
+  `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
+  exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).

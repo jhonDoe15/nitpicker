@@ -2130,6 +2130,200 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="CredentialLiteral" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).">
+    <description>A string literal shaped like an access key, a token, a private key or a URL with a password.</description>
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $candidate := function($v) {
+      not(matches($v, '\s'))
+      and not(matches($v, '^(?:\*+\w{0,4}|x+|<.*>|\[.*\]|\$\{.*\}|\$[a-z_]\w*|\{\{.*\}\}|\{\w*\}|%s|%\(\w+\)s|:[a-z_]+|changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$', 'i'))
+      and not(matches($v, '^(?:[A-Z][A-Z0-9_]+|[A-Za-z]+(?:[._:/-][A-Za-z]+)+|[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+|(?:~|\.{1,2})?(?:/[\w.-]+)+/?|\^.*\$|\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?)$'))
+    },
+    $looksSecret := function($v) {
+      string-length($v) >= 6 and $candidate($v)
+      and ((matches($v, '\d') and matches($v, '[A-Za-z]'))
+        or count((matches($v, '[a-z]'), matches($v, '[A-Z]'), matches($v, '\d'), matches($v, '[^A-Za-z0-9]'))[.]) >= 3)
+    },
+    $shape := function($v) {
+      matches($v, '(?:^|[^A-Za-z0-9_])(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|[rs]k_(?:live|test)_[A-Za-z0-9]{20,}|sk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}|django-insecure-\S{6,})')
+      or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
+      or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
+        and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
+      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+        and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
+      or (matches($v, '[?&;]password=[^&;\s]+', 'i')
+        and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
+    }
+return //StringLiteral[$shape(@ConstValue)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="HardcodedSecret" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Read this secret from the environment or a secrets manager and inject it: this value is a hardcoded secret.">
+    <description>A secret-named variable, field, setter, builder method or map key that holds a secret-looking literal.</description>
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $words := function($s) {
+      tokenize(lower-case(replace(replace(replace($s, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2'),
+        '[^A-Za-z0-9]+', ' ')), ' ')[. != '']
+    },
+    $trimmed := function($n) {
+      replace(string-join($words($n), ' '), '(?: (?:value|raw|str|string|text|plain))+$', '')
+    },
+    $letters := function($text) { replace(string-join($words($text), ''), '[0-9]', '') },
+    $secretName := function($n) {
+      matches(replace($trimmed($n), '[ 0-9]', ''),
+        '(?:password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey|hmackey|jwtkey)$')
+      and not(matches($trimmed($n), '(?:^| )(?:eos|bos|pad|unk|cls|sep|mask|next|page|continuation|cancellation) token$')) and not(matches($trimmed($n), '(?:^| )(?:masked|redacted)(?: |$)'))
+    },
+    $candidate := function($v) {
+      not(matches($v, '\s'))
+      and not(matches($v, '^(?:\*+\w{0,4}|x+|<.*>|\[.*\]|\$\{.*\}|\$[a-z_]\w*|\{\{.*\}\}|\{\w*\}|%s|%\(\w+\)s|:[a-z_]+|changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$', 'i'))
+      and not(matches($v, '^(?:[A-Z][A-Z0-9_]+|[A-Za-z]+(?:[._:/-][A-Za-z]+)+|[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+|(?:~|\.{1,2})?(?:/[\w.-]+)+/?|\^.*\$|\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?)$'))
+    },
+    $looksSecret := function($v) {
+      string-length($v) >= 6 and $candidate($v)
+      and ((matches($v, '\d') and matches($v, '[A-Za-z]'))
+        or count((matches($v, '[a-z]'), matches($v, '[A-Z]'), matches($v, '\d'), matches($v, '[^A-Za-z0-9]'))[.]) >= 3)
+    },
+    $shape := function($v) {
+      matches($v, '(?:^|[^A-Za-z0-9_])(?:AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|[rs]k_(?:live|test)_[A-Za-z0-9]{20,}|sk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}|django-insecure-\S{6,})')
+      or matches($v, '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----')
+      or (matches($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@]+@', 'i')
+        and $looksSecret(replace($v, '^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@.*$', '$1', 'is')))
+      or (matches($v, '^(?:bearer|basic|token)\s+\S+$', 'i')
+        and $looksSecret(replace($v, '^\S+\s+(\S+)$', '$1', 'i')))
+      or (matches($v, '[?&;]password=[^&;\s]+', 'i')
+        and $looksSecret(replace($v, '^.*[?&;]password=([^&;\s]+).*$', '$1', 'is')))
+    },
+    $hard := function($v, $n) {
+      not($shape($v)) and not(matches($v, '^[a-z][a-z0-9+.-]*://', 'i'))
+      and not((matches($v, '^(?:[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+|[a-z]+(?:[A-Z][a-z0-9]*)+)$')
+          and matches($letters($v), 'password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|authkey|signingkey|encryptionkey|hmackey|jwtkey'))
+        or string-join($words($v), '') = string-join($words($n), ''))
+      and ($looksSecret($v)
+        or (string-length($v) >= 8 and matches($v, '[a-z][A-Z]') and $candidate($v)
+          and matches($letters($n), '(?:password|passwd|passphrase)$')))
+    },
+    $text := function($n) {
+      if ($n/self::InfixExpression) then string-join($n/*/@ConstValue, '') else string($n/@ConstValue)
+    },
+    $values := function($e) {
+      $e/(self::StringLiteral
+        | self::InfixExpression[@Operator = '+'][every $part in * satisfies $part[self::StringLiteral]]
+        | self::InfixExpression[@Operator = '+']/*[1][self::StringLiteral]
+        | self::ConditionalExpression/*[position() > 1][self::StringLiteral]
+        | self::MethodCall[@MethodName = ('toCharArray', 'getBytes', 'trim', 'strip', 'toString')]/*[1][self::StringLiteral]
+        | self::MethodCall[@MethodName = 'orElse']/ArgumentList/*[1][self::StringLiteral])
+    },
+    $keyed := ('put', 'putIfAbsent', 'setProperty', 'set', 'getProperty', 'getOrDefault')
+return (
+  for $site in //VariableDeclarator[$secretName(VariableId/@Name)]
+  return $values($site/*[2])[$hard($text(.), $site/VariableId/@Name)]
+  ,
+  for $site in //AssignmentExpression[$secretName(*[1][self::VariableAccess or self::FieldAccess]/@Name)]
+  return $values($site/*[2])[$hard($text(.), $site/*[1]/@Name)]
+  ,
+  for $site in //MethodCall[ArgumentList/@Size = 1][$secretName(replace(@MethodName, '^(set|with)([A-Z])', '$2'))]
+  return $values($site/ArgumentList/*[1])[$hard($text(.), $site/@MethodName)]
+  ,
+  for $site in //MethodCall[@MethodName = $keyed][ArgumentList/@Size = 2]
+      [ArgumentList/*[1][self::StringLiteral][$secretName(@ConstValue)]]
+  return $values($site/ArgumentList/*[2])[$hard($text(.), $site/ArgumentList/*[1]/@ConstValue)]
+  ,
+  for $site in //MethodCall[@MethodName = ('of', 'entry')][*[1][self::TypeExpression/ClassType/@SimpleName = 'Map']]
+      [ArgumentList/@Size mod 2 = 0],
+      $pair in (1 to xs:integer($site/ArgumentList/@Size div 2))
+  return $values($site/ArgumentList/*[2 * $pair])
+      [exists($site/ArgumentList/*[2 * $pair - 1][self::StringLiteral][$secretName(@ConstValue)])]
+      [$hard($text(.), $site/ArgumentList/*[2 * $pair - 1]/@ConstValue)]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="SecretInLog" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Log that the secret is set, or a masked tail, instead of the secret itself.">
+    <description>A secret-named value passed to a log call, to standard output or error, or to an exception message.</description>
+    <priority>1</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $words := function($s) {
+      tokenize(lower-case(replace(replace(replace($s, '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2'),
+        '[^A-Za-z0-9]+', ' ')), ' ')[. != '']
+    },
+    $trimmed := function($n) {
+      replace(string-join($words($n), ' '), '(?: (?:value|raw|str|string|text|plain))+$', '')
+    },
+    $secretName := function($n) {
+      matches(replace($trimmed($n), '[ 0-9]', ''),
+        '(?:password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey|hmackey|jwtkey)$')
+      and not(matches($trimmed($n), '(?:^| )(?:eos|bos|pad|unk|cls|sep|mask|next|page|continuation|cancellation) token$')) and not(matches($trimmed($n), '(?:^| )(?:masked|redacted)(?: |$)'))
+    },
+    $loggedName := function($n) {
+      $secretName($n) and not(matches($n, '^(?:has|is)[A-Z_]')) and not(matches($n, '^[A-Z][A-Z0-9_]*$'))
+    },
+    $secret := function($leaf) {
+      exists($leaf[self::VariableAccess or self::FieldAccess][$loggedName(@Name)]
+        | $leaf[self::MethodCall][ArgumentList/@Size = 0][matches(@MethodName, '^get[A-Z]')]
+            [$loggedName(substring(@MethodName, 4))]
+        | $leaf[self::MethodCall][@MethodName = ('getenv', 'getProperty')]
+            [ArgumentList/*[1][self::StringLiteral][$secretName(@ConstValue)]]
+        | $leaf[self::MethodCall][@MethodName = 'get'][*[1][self::VariableAccess or self::FieldAccess]
+            [matches(@Name, '^(?:env|environment|props|properties|config|settings)$', 'i')]]
+            [ArgumentList/*[1][self::StringLiteral][$secretName(@ConstValue)]])
+    },
+    $carried := function($leaf, $argument) {
+      every $step in ($leaf/ancestor::* intersect $argument/descendant::*) satisfies
+        exists($step[self::InfixExpression[@Operator = '+'] or self::ConditionalExpression or self::CastExpression
+          or self::MethodCall[@MethodName = ('valueOf', 'toString', 'copyValueOf', 'format', 'formatted', 'trim', 'strip',
+                                              'toUpperCase', 'toLowerCase', 'of', 'ofNullable', 'toCharArray', 'concat')]
+          or self::ConstructorCall[ClassType/@SimpleName = 'String'] or self::ArgumentList])
+    },
+    $logged := function($call) {
+      let $receiver := $call/*[1]
+      return $call/@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning',
+                                  'fine', 'finer', 'finest', 'atInfo', 'atWarn', 'atError', 'atDebug', 'atTrace')
+        and (exists($receiver[self::MethodCall][@MethodName = ('getLogger', 'getLog')])
+        or exists($receiver[self::VariableAccess or self::FieldAccess]
+          [@Name = ('log', 'logger', 'LOG', 'LOGGER', 'LOGGING', 'slf4jLogger')
+           or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger')
+           or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.commons.logging.Log')
+           or pmd-java:typeIs('org.jboss.logging.BasicLogger')]))
+    },
+    $console := function($call) {
+      $call/@MethodName = ('print', 'println', 'printf', 'format')
+        and exists($call/*[1][self::FieldAccess][@Name = ('out', 'err')]/*[1][self::TypeExpression/ClassType/@SimpleName = 'System'])
+    },
+    $keyed := function($call) {
+      $call/@MethodName = ('addKeyValue', 'put') and $call/ArgumentList/@Size = 2
+        and $call/ArgumentList/*[1][self::StringLiteral][$secretName(@ConstValue)]
+        and not($call/ArgumentList/*[2][self::StringLiteral])
+        and ($call/@MethodName = 'addKeyValue' or exists($call/*[1][self::TypeExpression/ClassType/@SimpleName = 'MDC']))
+    }
+return (
+  for $call in //MethodCall[$logged(.) or $console(.)],
+      $leaf in $call/ArgumentList/*/descendant-or-self::*[$secret(.)][$carried(., $call/ArgumentList)]
+  return $leaf
+  ,
+  for $call in //ConstructorCall[ClassType[matches(@SimpleName, '(?:Exception|Error)$')]],
+      $leaf in $call/ArgumentList/*/descendant-or-self::*[$secret(.)][$carried(., $call/ArgumentList)]
+  return $leaf
+  ,
+  for $call in //MethodCall[$keyed(.)]
+  return $call/ArgumentList/*[2]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="timeout-abandons-async-task" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="{0}(...) on a CompletableFuture from supplyAsync or runAsync stops waiting, not the task: cancelling or completing a CompletableFuture never interrupts its task, so the task keeps running with its thread and side effects, and a retry overlaps it. Submit the work to an ExecutorService instead, wait with future.get(timeout, unit) and call cancel(true) on that Future when the TimeoutException arrives.">
     <priority>3</priority>

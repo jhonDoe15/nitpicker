@@ -24,6 +24,8 @@ const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSibl
 
 const SUPPORT_OFF_RULES = [
   ...SECURITY_RULES,
+  'nitpicker/no-hardcoded-secret',
+  'nitpicker/no-secret-in-log',
   'nitpicker/timeout-abandons-operation',
   'nitpicker/require-client-timeout',
 ];
@@ -85,6 +87,8 @@ function productionRules({ react, routeHandlers }) {
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
     'nitpicker/no-repeated-string-literal': 'error',
+    'nitpicker/no-hardcoded-secret': 'error',
+    'nitpicker/no-secret-in-log': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {

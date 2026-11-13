@@ -200,6 +200,15 @@ entry and idiomatic texts are not counted. The same
 definition runs as `repeated-string-literal` in the Python and Go presets, as
 `kotlin-source/RepeatedStringLiteral` in the Kotlin preset and as PMD `AvoidDuplicateLiterals` in
 the Java preset.
+Hardcoded secrets and secrets in logs: `nitpicker/no-hardcoded-secret` and `nitpicker/no-secret-in-log`
+(production source, not tests or test-support folders, in `eslint-lint`) report a secret-looking string given to a secret-named variable,
+field, property, assignment, parameter default or environment-read fallback, a credential-shaped string
+anywhere, and a secret-named value passed to a log call or an error message. The same forms run as
+`hardcoded-secret`, `credential-shape` and `secret-in-log` in the Python and Go presets, as
+`pmd/HardcodedSecret`, `pmd/CredentialLiteral` and `pmd/SecretInLog` in the Java preset (main sources,
+Gradle and Maven) and as the `HardcodedSecret`, `CredentialLiteral` and `SecretInLog` source checks in the
+Kotlin preset. All presets share one definition of the names and the values
+(`shared/naming/secret-words.mjs`). Spring configuration files have their own `literal-secret` check.
 
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
