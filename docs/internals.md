@@ -152,9 +152,10 @@ required by a signature".
 | Python                 | ruff `ARG001`-`ARG005`; `@override`, `@abstractmethod`, dunders skipped          | a `_` prefix            | script `boolean-flag-parameter`: a positional pure `bool` used as a condition                 |
 | TypeScript, JavaScript | `@typescript-eslint/no-unused-vars` with `args: 'all'`, held to the edited lines | a `_` prefix            | `nitpicker/no-boolean-flag-parameter` (the guards branch)                                     |
 | Kotlin                 | detekt `UnusedParameter`; overrides, `main` and annotated functions skipped      | `ignored*` or `unused*` | source check `BooleanFlagParameter`: a `Boolean` used as an `if`, `when` or `while` condition |
-| Java                   | PMD `UnusedFormalParameter`; overrides and annotated methods skipped             | `ignored*` or `unused*` | `BooleanFlagParameter` (the guards branch)                                                    |
+| Java                   | PMD `UnusedFormalParameter`; overrides, `main` and annotated ones skipped        | `ignored*` or `unused*` | `BooleanFlagParameter` (the guards branch)                                                    |
+| Go                     | revive `unused-parameter`                                                        | a `_` name              | revive `flag-parameter`                                                                       |
 
-Python, TypeScript and JavaScript take the `_` prefix because the language and its linters treat it
+Python, TypeScript, JavaScript and Go take the `_` prefix because the language and its linters treat it
 as the discard marker. Kotlin parameters cannot be named `_`, and PMD's convention is the `ignored`
 and `unused` prefixes, so Java and Kotlin share those. A boolean flag parameter is fixed the same
 way everywhere: a keyword-only parameter (Python), two functions named for each behavior, or an
