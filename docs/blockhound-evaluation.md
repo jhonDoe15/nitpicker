@@ -23,7 +23,7 @@ guarantee.
 | Kotlin       | Kotlin 2.4.21, `kotlinx-coroutines-core-jvm` and `kotlinx-coroutines-debug` 1.10.2                |
 | Test runtime | JUnit Jupiter 5.11.4, launcher 1.11.4                                                             |
 | Builds       | Gradle 8.14.3 and Maven 3.9.11 (surefire 3.5.2), one project each with the same sources           |
-| Agents       | JaCoCo 0.8.12 and PIT 1.17.4 with the JUnit 5 plugin 1.2.1, the versions the presets pin          |
+| Agents       | JaCoCo 0.8.12 and PIT 1.17.4 with the JUnit 5 plugin 1.2.1, the versions the presets pinned then  |
 | JDK          | OpenJDK 21.0.12 only. Other JDKs were not available, so none is claimed                           |
 
 BlockHound 1.0.18.RELEASE was published on the day of the evaluation and was not used. The fixture
