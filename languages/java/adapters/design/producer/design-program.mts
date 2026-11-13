@@ -6,6 +6,22 @@ import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../../../maven/maven-command.mjs';
 import { cacheDirectory, publishDirectory } from '../../../maven/maven-tools.mjs';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import { type JavaSpawn, callUntyped } from '../../typed/java-values.mts';
+
+type CompileRequest = {
+  readonly sources?: readonly string[];
+  readonly cache?: string;
+  readonly spawn?: JavaSpawn;
+};
+type ProgramRun = {
+  readonly classes: string;
+  readonly projectRoot: string;
+  readonly fileList: string;
+  readonly output: string;
+  readonly java: string | undefined;
+  readonly spawn?: JavaSpawn;
+};
 
 const SOURCE_DIRECTORY = path.join(GRADLE_DIRECTORY, 'design');
 const TOOL = 'DesignFacts';
@@ -14,8 +30,8 @@ const KEY_LENGTH = 32;
 const NOISE = /^(?:Picked up |NOTE: Picked up )/u;
 const THREAD_STACK = '-Xss32m';
 
-function versionText(command, spawn) {
-  const result = spawn(javaCommand(command), ['-version'], { encoding: 'utf8' });
+function versionText(command: string, spawn: JavaSpawn): string {
+  const result = spawn(textOf(javaCommand(command)), ['-version'], { encoding: 'utf8' });
   if (result.error !== undefined) {
     throw new Error(
       `${TOOL} needs a JDK, but ${command} could not run: ${result.error.message}. Set JAVA_HOME to a JDK`,
@@ -27,15 +43,7 @@ function versionText(command, spawn) {
     .join('\n');
 }
 
-function designSources(directory = SOURCE_DIRECTORY) {
-  return readdirSync(directory, { recursive: true })
-    .map((name) => String(name).replaceAll('\\', '/'))
-    .filter((name) => name.endsWith('.java'))
-    .sort()
-    .map((name) => inside(directory, name));
-}
-
-function inside(root, name) {
+function inside(root: string, name: string): string {
   const full = resolveInside(root, name);
   if (full === undefined) {
     throw new Error(`${TOOL}: ${name} is outside ${root}`);
@@ -43,7 +51,15 @@ function inside(root, name) {
   return full;
 }
 
-function cacheKey(sources, spawn) {
+function designSources(directory: string = SOURCE_DIRECTORY): string[] {
+  return readdirSync(directory, { recursive: true, encoding: 'utf8' })
+    .map((name) => name.replaceAll('\\', '/'))
+    .filter((name) => name.endsWith('.java'))
+    .sort()
+    .map((name) => inside(directory, name));
+}
+
+function cacheKey(sources: readonly string[], spawn: JavaSpawn): string {
   const digest = createHash('sha256');
   for (const source of sources) {
     digest.update(`${path.relative(SOURCE_DIRECTORY, source).replaceAll('\\', '/')}\n`);
@@ -53,8 +69,16 @@ function cacheKey(sources, spawn) {
   return digest.digest('hex').slice(0, KEY_LENGTH);
 }
 
-export function compileDesignProgram({ sources = designSources(), cache, spawn = spawnSync } = {}) {
-  const root = cache ?? cacheDirectory('design-facts');
+function succeeded(result: unknown): boolean {
+  return fieldOf(result, 'status') === 0;
+}
+
+export function compileDesignProgram({
+  sources = designSources(),
+  cache,
+  spawn = spawnSync,
+}: CompileRequest = {}): string {
+  const root = cache ?? textOf(cacheDirectory('design-facts'));
   mkdirSync(root, { recursive: true });
   const classes = inside(root, cacheKey(sources, spawn));
   if (existsSync(classes)) {
@@ -63,13 +87,13 @@ export function compileDesignProgram({ sources = designSources(), cache, spawn =
   const staging = `${classes}.${randomUUID()}`;
   mkdirSync(staging, { recursive: true });
   try {
-    runJava({
+    callUntyped(runJava, {
       tool: TOOL,
-      java: javaCommand('javac'),
+      java: textOf(javaCommand('javac')),
       jvmArgs: ['--release', '21', '-proc:none', '-nowarn', '-d', staging],
       args: sources,
       cwd: SOURCE_DIRECTORY,
-      accept: (result) => result.status === 0,
+      accept: succeeded,
       spawn,
     });
   } catch (error) {
@@ -87,8 +111,8 @@ export function runDesignProgram({
   output,
   java,
   spawn = spawnSync,
-}) {
-  runJava({
+}: ProgramRun): void {
+  callUntyped(runJava, {
     ...(java === undefined ? {} : { java }),
     tool: TOOL,
     classpath: [classes],
@@ -96,7 +120,7 @@ export function runDesignProgram({
     jvmArgs: [THREAD_STACK],
     args: [output, projectRoot, fileList],
     cwd: projectRoot,
-    accept: (result) => result.status === 0,
+    accept: succeeded,
     spawn,
   });
 }
