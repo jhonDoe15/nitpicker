@@ -5,7 +5,7 @@ import {
 import { testRunnerFor } from '../../../languages/typescript/preset/test-runner/detect-runner.mjs';
 import { listNames } from '../../../shared/messages/messages.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { describePackageManager } from '../detection/package-manager.mjs';
+import { describePackageManager } from '../detection/package-manager.mts';
 import { type PeerNeeds, nodePeerNeeds, runnerPeers } from '../peers/node-peers.mts';
 import { installCommand } from '../peers/peer-plan.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
@@ -20,7 +20,6 @@ type PeerRun = {
 
 const TYPESCRIPT = 'typescript';
 
-const managerOf: (projectRoot: string) => PackageManager = describePackageManager;
 const runnerOf: (projectRoot: string, configured: unknown) => { readonly runner?: unknown } =
   testRunnerFor;
 
@@ -79,6 +78,6 @@ export function assertProjectPeers(run: PeerRun): void {
   if (needs.add.length === 0 && needs.uninstalled.length === 0) {
     return;
   }
-  const manager = managerOf(projectRoot);
+  const manager = describePackageManager(projectRoot);
   throw new Error(`${problems(projectRoot, needs).join('; ')}. Run ${remedy(needs, manager)}.`);
 }

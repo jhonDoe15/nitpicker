@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../help/package-version.mts';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
 import { readSnippet } from './files/agents-md.mts';
-import { unifiedDiff } from './files/line-diff.mjs';
+import { unifiedDiff } from './files/line-diff.mts';
 import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mjs';
 
 const createProject = useProjects();

@@ -21,6 +21,8 @@ export type InitProject = {
   readonly testRunner?: string;
   readonly typeChecker?: string;
   readonly tool?: string;
+  readonly buildTool?: string;
+  readonly javaSources?: unknown;
 };
 
 export type Peers = {

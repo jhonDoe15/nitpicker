@@ -1,13 +1,9 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mjs';
+import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mts';
 
 type AgentsResult = { readonly relative: string; readonly status: string };
-
-const insidePath: (root: string, relative: string) => string = insideProject;
-const fileText: (root: string, relative: string) => string | undefined = projectFileText;
-const writablePath: (root: string, relative: string) => string = writableProjectFile;
 
 const SNIPPET_FILE = 'docs/agents-snippet.md';
 const SNIPPET_SEPARATOR = '\n---\n';
@@ -33,7 +29,7 @@ function appended(existing: string | undefined, snippet: string): string {
 export function hasSnippet(root: string, packageRoot: string = PACKAGE_ROOT): boolean {
   const heading = snippetHeading(readSnippet(packageRoot));
   return INSTRUCTION_FILES.some((name) => {
-    const file = insidePath(root, name);
+    const file = insideProject(root, name);
     return (
       statSync(file, { throwIfNoEntry: false })?.isFile() === true &&
       readFileSync(file, 'utf8').includes(heading)
@@ -44,13 +40,15 @@ export function hasSnippet(root: string, packageRoot: string = PACKAGE_ROOT): bo
 export function appendSnippet(root: string, packageRoot: string = PACKAGE_ROOT): AgentsResult {
   const snippet = readSnippet(packageRoot);
   const heading = snippetHeading(snippet);
-  const holder = INSTRUCTION_FILES.find((name) => fileText(root, name)?.includes(heading) === true);
+  const holder = INSTRUCTION_FILES.find(
+    (name) => projectFileText(root, name)?.includes(heading) === true,
+  );
   if (holder !== undefined) {
     return { relative: holder, status: 'unchanged' };
   }
   const target =
-    INSTRUCTION_FILES.find((name) => fileText(root, name) !== undefined) ?? 'AGENTS.md';
-  const existing = fileText(root, target);
-  writeFileSync(writablePath(root, target), appended(existing, snippet));
+    INSTRUCTION_FILES.find((name) => projectFileText(root, name) !== undefined) ?? 'AGENTS.md';
+  const existing = projectFileText(root, target);
+  writeFileSync(writableProjectFile(root, target), appended(existing, snippet));
   return { relative: target, status: existing === undefined ? 'created' : 'appended' };
 }

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { textsOf } from '../../../shared/values/readers.mts';
-import { placeFile } from './place-file.mjs';
+import { placeFile } from './place-file.mts';
 import { workflowParts } from './ci-steps.mts';
 import { yamlScalar } from './workflow/yaml-steps.mts';
 import type { WorkflowContext } from '../init-types.mts';
