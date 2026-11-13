@@ -5,7 +5,7 @@ import { javaCommand, runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
 import { classFiles } from '../../builds/classes/class-file.mjs';
 import { runPermits } from '../../builds/classes/class-permits.mts';
-import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
+import { runJavacLint } from '../../builds/lint/javac-lint-runner.mts';
 import { runDependencies } from './maven-dependencies.mts';
 import { runCpd } from './maven-pmd.mts';
 import { guardCompiler } from '../errorprone/maven-compiler.mjs';
