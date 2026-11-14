@@ -1,23 +1,10 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule as noProductionImportsInSetupFiles } from './no-production-imports-in-setup-files.mjs';
 import { rule as noRealTimeRandomOrNetwork } from './no-real-time-random-or-network.mjs';
 import { rule as noUncollectedTests } from './no-uncollected-tests.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
-const lines = (...parts) => parts.join('\n');
+const tester = typescriptRuleTester();
+const lines = (...parts: string[]) => parts.join('\n');
 const setupFile = '/repo/test/setup.ts';
 
 tester.run('no-production-imports-in-setup-files', noProductionImportsInSetupFiles, {

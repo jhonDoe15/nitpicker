@@ -1,24 +1,11 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule as fakeTimersRequireRestore } from './fake-timers-require-restore.mjs';
 import { rule as noCopyPastedTests } from './no-copy-pasted-tests.mjs';
 import { rule as noSharedTestState } from './no-shared-test-state.mjs';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
-const lines = (...parts) => parts.join('\n');
+const tester = typescriptRuleTester();
+const lines = (...parts: string[]) => parts.join('\n');
 
 tester.run('no-shared-test-state', noSharedTestState, {
   valid: [
@@ -55,8 +42,9 @@ tester.run('no-shared-test-state', noSharedTestState, {
 });
 
 const copies = (
-  count,
-  body = (index) => `expect(total(${String(index)})).toBe(${String(index * 2)});`,
+  count: number,
+  body: (index: number) => string = (index) =>
+    `expect(total(${String(index)})).toBe(${String(index * 2)});`,
 ) =>
   Array.from(
     { length: count },
