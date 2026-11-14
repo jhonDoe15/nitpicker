@@ -1,72 +1,136 @@
 import {
-  headPolicyEnvironment,
-  resolveHeadPolicy,
-  withHeadPolicyFile,
+  headPolicyEnvironment as untypedHeadPolicyEnvironment,
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadPolicyFile as untypedWithHeadPolicyFile,
 } from '../preset/head-policy.mjs';
-import { resolveLayoutFor } from '../preset/layout.mjs';
+import { resolveLayoutFor as untypedResolveLayoutFor } from '../preset/layout.mjs';
 import {
-  changedFiles,
-  collectFixFiles,
-  readBytes,
-  rewrittenPaths,
-  splitByEncoding,
+  changedFiles as untypedChangedFiles,
+  collectFixFiles as untypedCollectFixFiles,
+  readBytes as untypedReadBytes,
+  rewrittenPaths as untypedRewrittenPaths,
+  splitByEncoding as untypedSplitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
-import { linkNote, undecodableNote } from '../../../core/fix/common/fix-notes.mjs';
-import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
+import {
+  linkNote as untypedLinkNote,
+  undecodableNote as untypedUndecodableNote,
+} from '../../../core/fix/common/fix-notes.mjs';
+import { runRecipes as untypedRunRecipes } from '../../../core/fix/engine/run-recipes.mjs';
 import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
-import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
+import { sharedInputs as untypedSharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
+import type {
+  FixFile,
+  FixOutcome,
+  FixSettings,
+  FixStep,
+} from '../../../core/fix/typed/fix-types.mts';
 import { TYPESCRIPT_RECIPES } from './recipes/typescript-recipes.mjs';
-import { fixTargets } from './fix-targets.mjs';
-import { type FixFile, type KnipFixSettings, knipFixStep } from './dead-code/knip-fix-step.mts';
-import { codeFixStep } from './code-fixes/code-fix-step.mjs';
-import { eslintFixStep } from './eslint-fix.mjs';
-import { prettierFixStep } from './prettier-fix.mjs';
+import { fixTargets as untypedFixTargets } from './fix-targets.mjs';
+import { type KnipFixSettings, knipFixStep } from './dead-code/knip-fix-step.mts';
+import { codeFixStep as untypedCodeFixStep } from './code-fixes/code-fix-step.mjs';
+import { eslintFixStep as untypedEslintFixStep } from './eslint-fix.mjs';
+import { prettierFixStep as untypedPrettierFixStep } from './prettier-fix.mjs';
 
 type Layout = { readonly isExcluded: (name: string) => boolean };
-type FixSettings = KnipFixSettings & {
-  readonly repositoryRoot: string;
-  readonly baseRef: unknown;
-  readonly allFiles?: boolean;
-  readonly scope: unknown;
+type HeadPolicy = { readonly tools?: { readonly eslint?: unknown; readonly knip?: unknown } };
+type PolicySettings = Omit<KnipFixSettings, 'headPolicy' | 'layout'> & {
+  readonly headPolicy: HeadPolicy;
   readonly layout: Layout;
   readonly eslintSettings: unknown;
-  readonly headPolicy: object;
-  readonly config?: { readonly preset?: string };
-  readonly selectedRules: readonly string[];
 };
-type Step = {
-  readonly toolErrors: readonly unknown[];
-  readonly notes: readonly string[];
-  readonly fixedFindings?: readonly unknown[];
-};
-type RecipeResult = Step & { readonly files: readonly FixFile[] };
+type Bytes = ReadonlyMap<string, Buffer>;
+type RecipeResult = FixStep & { readonly files: readonly FixFile[] };
 type SharedInputs = { readonly inputs: object; readonly toolErrors: readonly unknown[] };
-
-const runRecipeSet = runRecipes as (options: object) => RecipeResult;
-const sharedRecipeInputs = sharedInputs as (options: object) => SharedInputs;
-
-type TypeScriptFixOptions = Omit<
-  FixSettings,
-  | 'layout'
-  | 'knipSettings'
-  | 'eslintSettings'
-  | 'headPolicy'
-  | 'policyEnvironment'
-  | 'selectedRules'
-> & {
-  readonly headPolicy?: object & {
-    readonly tools?: { readonly eslint?: unknown; readonly knip?: unknown };
-  };
-  readonly selectedRules?: readonly string[];
+type StepInput = {
+  readonly decodable: readonly FixFile[];
+  readonly targets: Targets;
+  readonly before: Bytes;
+  readonly mergeBaseSha: string | undefined;
 };
+type Targets = {
+  readonly isEslintFile: (name: string) => boolean;
+  readonly isPrettierFile: (name: string) => boolean;
+};
+
+const headPolicyEnvironment: (policyFile: string) => NodeJS.ProcessEnv =
+  untypedHeadPolicyEnvironment;
+const resolveHeadPolicy: () => HeadPolicy = untypedResolveHeadPolicy;
+const withHeadPolicyFile: (
+  policy: HeadPolicy,
+  run: (policyFile: string) => FixOutcome,
+) => FixOutcome = untypedWithHeadPolicyFile;
+const resolveLayoutFor: (policy: HeadPolicy) => Layout = untypedResolveLayoutFor;
+const fixTargets: (layout: Layout) => Targets = untypedFixTargets;
+const collectFixFiles: (options: {
+  readonly repositoryRoot: string;
+  readonly projectRoot: string;
+  readonly baseRef: unknown;
+  readonly scope: unknown;
+  readonly allFiles: boolean;
+  readonly accepts: (name: string) => boolean;
+}) => {
+  readonly comparison: { readonly mergeBaseSha: string | undefined };
+  readonly files: readonly FixFile[];
+  readonly links: readonly string[];
+} = untypedCollectFixFiles;
+const readBytes: (projectRoot: string, files: readonly FixFile[]) => Bytes = untypedReadBytes;
+const changedFiles: (
+  projectRoot: string,
+  files: readonly FixFile[],
+  before: Bytes,
+) => readonly FixFile[] = untypedChangedFiles;
+const rewrittenPaths: (
+  projectRoot: string,
+  files: readonly FixFile[],
+  before: Bytes,
+) => readonly string[] = untypedRewrittenPaths;
+const splitByEncoding: (
+  projectRoot: string,
+  files: readonly FixFile[],
+) => { readonly files: readonly FixFile[]; readonly undecodable: readonly string[] } =
+  untypedSplitByEncoding;
+const linkNote: (paths: readonly string[]) => string[] = untypedLinkNote;
+const undecodableNote: (paths: readonly string[]) => string[] = untypedUndecodableNote;
+const typescriptRecipes: readonly unknown[] = TYPESCRIPT_RECIPES;
+const sharedRecipes: readonly unknown[] = SHARED_RECIPES;
+const runRecipes: (options: {
+  readonly projectRoot: string;
+  readonly files: readonly FixFile[];
+  readonly recipes: readonly unknown[];
+  readonly writer: FixSettings['writer'];
+  readonly preset: string;
+  readonly selectedRules: readonly string[];
+  readonly accepts: (name: string) => boolean;
+  readonly inputs: object;
+}) => RecipeResult = untypedRunRecipes;
+const sharedInputs: (options: {
+  readonly projectRoot: string;
+  readonly headPolicy: object | undefined;
+  readonly selectedRules: readonly string[];
+}) => SharedInputs = untypedSharedInputs;
+const codeFixStep: (settings: object, files: readonly FixFile[]) => FixStep = untypedCodeFixStep;
+const eslintFixStep: (settings: object, files: readonly FixFile[]) => FixStep =
+  untypedEslintFixStep;
+const prettierFixStep: (
+  settings: object,
+  files: readonly FixFile[],
+  mergeBaseSha: string | undefined,
+) => FixStep = untypedPrettierFixStep;
 
 function isManifest(name: string): boolean {
   return /(?:^|\/)package\.json$/u.test(name);
 }
 
-function findingsField(steps: readonly Step[]) {
+function findingsField(steps: readonly FixStep[]): { readonly fixedFindings?: readonly string[] } {
   const fixedFindings = steps.flatMap((step) => step.fixedFindings ?? []);
   return fixedFindings.length === 0 ? {} : { fixedFindings };
+}
+
+function presetOf(config: unknown): string {
+  if (typeof config !== 'object' || config === null || !('preset' in config)) {
+    return 'typescript';
+  }
+  return typeof config.preset === 'string' ? config.preset : 'typescript';
 }
 
 function recipeRun({
@@ -75,45 +139,39 @@ function recipeRun({
   accepts,
   inputs,
 }: {
-  readonly settings: FixSettings;
+  readonly settings: PolicySettings;
   readonly files: readonly FixFile[];
   readonly accepts: (name: string) => boolean;
   readonly inputs: object;
-}) {
-  return runRecipeSet({
+}): RecipeResult {
+  return runRecipes({
     projectRoot: settings.projectRoot,
     files,
-    recipes: [...TYPESCRIPT_RECIPES, ...SHARED_RECIPES],
+    recipes: [...typescriptRecipes, ...sharedRecipes],
     writer: settings.writer,
-    preset: settings.config?.preset ?? 'typescript',
+    preset: presetOf(settings.config),
     selectedRules: settings.selectedRules,
     accepts,
-    inputs: { ...inputs, layout: settings.layout, headPolicy: settings.headPolicy },
+    inputs: {
+      ...inputs,
+      layout: settings.layout,
+      headPolicy: settings.headPolicy,
+      policyEnvironment: settings.policyEnvironment,
+    },
   });
 }
 
 function fixSteps(
-  settings: FixSettings,
-  {
-    decodable,
-    formatted,
-    before,
-    isEslintFile,
-    mergeBaseSha,
-  }: {
-    readonly decodable: readonly FixFile[];
-    readonly formatted: readonly FixFile[];
-    readonly before: Map<string, Buffer>;
-    readonly isEslintFile: (name: string) => boolean;
-    readonly mergeBaseSha: string | undefined;
-  },
-): Step[] {
-  const eslintFiles = decodable.filter(({ path: name }: FixFile) => isEslintFile(name));
+  settings: PolicySettings,
+  { decodable, targets, before, mergeBaseSha }: StepInput,
+): FixStep[] {
+  const eslintFiles = decodable.filter(({ path: name }) => targets.isEslintFile(name));
+  const formatted = decodable.filter(({ path: name }) => targets.isPrettierFile(name));
   return [
     codeFixStep(settings, eslintFiles),
     knipFixStep(
       settings,
-      decodable.filter(({ path: name }: FixFile) => isEslintFile(name) || isManifest(name)),
+      decodable.filter(({ path: name }) => targets.isEslintFile(name) || isManifest(name)),
     ),
     eslintFixStep(settings, eslintFiles),
     prettierFixStep(
@@ -126,13 +184,13 @@ function fixSteps(
   ];
 }
 
-function fixWithPolicy(settings: FixSettings) {
-  const { repositoryRoot, projectRoot, baseRef, scope, layout } = settings;
-  const { selectedRules } = settings;
-  const { isEslintFile, isPrettierFile } = fixTargets(layout);
+function fixWithPolicy(settings: PolicySettings): FixOutcome {
+  const { repositoryRoot, projectRoot, baseRef, scope, layout, selectedRules } = settings;
+  const targets = fixTargets(layout);
   function accepts(name: string): boolean {
     return (
-      !layout.isExcluded(name) && (isEslintFile(name) || isPrettierFile(name) || isManifest(name))
+      !layout.isExcluded(name) &&
+      (targets.isEslintFile(name) || targets.isPrettierFile(name) || isManifest(name))
     );
   }
   const { comparison, files, links } = collectFixFiles({
@@ -140,23 +198,17 @@ function fixWithPolicy(settings: FixSettings) {
     projectRoot,
     baseRef,
     scope,
-    allFiles: settings.allFiles === true,
+    allFiles: settings.allFiles,
     accepts,
   });
   const before = readBytes(projectRoot, files);
-  const shared = sharedRecipeInputs({
-    projectRoot,
-    headPolicy: settings.headPolicy,
-    selectedRules,
-  });
+  const shared = sharedInputs({ projectRoot, headPolicy: settings.headPolicy, selectedRules });
   const recipes = recipeRun({ settings, files, accepts, inputs: shared.inputs });
   const { files: decodable, undecodable } = splitByEncoding(projectRoot, recipes.files);
-  const formatted = decodable.filter(({ path: name }: FixFile) => isPrettierFile(name));
   const steps = fixSteps(settings, {
     decodable,
-    formatted,
+    targets,
     before,
-    isEslintFile,
     mergeBaseSha: comparison.mergeBaseSha,
   });
   return {
@@ -176,14 +228,20 @@ function fixWithPolicy(settings: FixSettings) {
   };
 }
 
-export function fixTypeScript({
-  headPolicy = resolveHeadPolicy(),
-  ...options
-}: TypeScriptFixOptions) {
-  return withHeadPolicyFile(headPolicy, (policyFile: string) =>
+function policyOf(settings: { readonly headPolicy: unknown }): HeadPolicy {
+  return typeof settings.headPolicy === 'object' && settings.headPolicy !== null
+    ? settings.headPolicy
+    : resolveHeadPolicy();
+}
+
+export function fixTypeScript(
+  settings: Omit<FixSettings, 'selectedRules'> & { readonly selectedRules?: readonly string[] },
+): FixOutcome {
+  const headPolicy = policyOf(settings);
+  return withHeadPolicyFile(headPolicy, (policyFile) =>
     fixWithPolicy({
-      ...options,
-      selectedRules: options.selectedRules ?? [],
+      ...settings,
+      selectedRules: settings.selectedRules ?? [],
       headPolicy,
       layout: resolveLayoutFor(headPolicy),
       eslintSettings: headPolicy.tools?.eslint,

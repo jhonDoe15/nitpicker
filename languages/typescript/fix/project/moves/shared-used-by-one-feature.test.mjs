@@ -46,9 +46,20 @@ describe('sharedUsedByOneFeatureRecipe', () => {
       { recipe, rule: RULE, changed: [`${SHARED}/format-price.ts`] },
     );
     expect(result.tree[`${SHARED}/format-price.ts`]).toBeUndefined();
-    expect(result.tree[`${BILLING}/format-price.ts`]).toContain('formatPrice');
-    expect(result.tree[`${BILLING}/index.ts`]).toContain("from './format-price.js'");
-    expect(result.tree[`${BILLING}/domain/totals.ts`]).toContain("from '../format-price.js'");
+    expect(result.tree[`${BILLING}/format-price.ts`]).toMatchInlineSnapshot(`
+      "export const formatPrice = (n: number) => n;
+      "
+    `);
+    expect(result.tree[`${BILLING}/index.ts`]).toMatchInlineSnapshot(`
+      "import { formatPrice } from './format-price.js';
+      export const total = formatPrice(1);
+      "
+    `);
+    expect(result.tree[`${BILLING}/domain/totals.ts`]).toMatchInlineSnapshot(`
+      "import { formatPrice } from '../format-price.js';
+      export const t = formatPrice(2);
+      "
+    `);
     expect(remaining(result)).toEqual([]);
   });
 
@@ -65,7 +76,11 @@ describe('sharedUsedByOneFeatureRecipe', () => {
       changed: [`${SHARED}/format-price.ts`],
     });
     expect(result.tree[`${SHARED}/format-price.ts`]).toBe(files[`${SHARED}/format-price.ts`]);
-    expect(result.notes.join('\n')).toContain('shared-used-by-one-feature');
+    expect(result.notes).toMatchInlineSnapshot(`
+      [
+        "--fix left src/main/shared/format-price.ts:1 shared-used-by-one-feature: src/main/features/billing/format-price.ts is taken",
+      ]
+    `);
   });
 
   it('declines when another shared module imports it', () => {
@@ -77,6 +92,10 @@ describe('sharedUsedByOneFeatureRecipe', () => {
     };
     const result = projects.fix(files, { recipe, rule: RULE, changed: [`${SHARED}/leaf.ts`] });
     expect(result.tree[`${SHARED}/leaf.ts`]).toBe(files[`${SHARED}/leaf.ts`]);
-    expect(result.notes.join('\n')).toContain('imports it');
+    expect(result.notes).toMatchInlineSnapshot(`
+      [
+        "--fix left src/main/shared/leaf.ts:1 shared-used-by-one-feature: src/main/shared/helper.ts outside src/main/features/billing/ imports it",
+      ]
+    `);
   });
 });

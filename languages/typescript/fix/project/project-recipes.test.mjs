@@ -27,27 +27,56 @@ const MODULES = {
     './moves/shared-used-by-one-feature.mjs',
     'sharedUsedByOneFeatureRecipe',
   ],
+  'typescript-public-alternative-bypass': [
+    './imports/entry-point-imports.mjs',
+    'publicAlternativeBypassRecipe',
+  ],
+  'typescript-feature-internals-only-through-index': [
+    './imports/entry-point-imports.mjs',
+    'featureInternalsOnlyThroughIndexRecipe',
+  ],
+  'typescript-duplicate-definition': [
+    './reuse/duplicate-definition.mjs',
+    'duplicateDefinitionRecipe',
+  ],
+  'typescript-exported-name-collision': [
+    './reuse/name-collision.mjs',
+    'exportedNameCollisionRecipe',
+  ],
+  'typescript-no-forwarding-wrapper': [
+    './wrappers/forwarding-wrapper.mjs',
+    'noForwardingWrapperRecipe',
+  ],
+  'typescript-unused-prop': ['./members/unused-members.mjs', 'unusedPropRecipe'],
+  'typescript-unused-option': ['./members/unused-members.mjs', 'unusedOptionRecipe'],
+  'typescript-test-only-export': ['./members/test-only-export.mjs', 'testOnlyExportRecipe'],
+  'typescript-no-dev-dependency-in-production': [
+    './manifest/dev-dependency.mjs',
+    'noDevDependencyInProductionRecipe',
+  ],
 };
 
+function traits({ id, rules, presets, safety, scope }) {
+  return { id, rules, presets, safety, scope };
+}
+
+function loaded(recipe) {
+  const [module, exportName] = MODULES[recipe.id];
+  return require(module)[exportName];
+}
+
 describe('PROJECT_RECIPES', () => {
-  it('lists every project recipe once, as review recipes of project scope', () => {
-    expect(PROJECT_RECIPES.map(({ id }) => id).toSorted()).toEqual(Object.keys(MODULES).toSorted());
+  it('lists every project recipe once, as recipes of project scope', () => {
+    const ids = PROJECT_RECIPES.map(({ id }) => id);
+    expect(ids.toSorted((left, right) => left.localeCompare(right))).toEqual(
+      Object.keys(MODULES).toSorted((left, right) => left.localeCompare(right)),
+    );
     expect(new Set(PROJECT_RECIPES.map(({ safety, scope }) => `${safety} ${scope}`))).toEqual(
-      new Set(['review project']),
+      new Set(['review project', 'safe project']),
     );
   });
 
   it('describes each recipe as the recipe module it loads on demand does', () => {
-    for (const recipe of PROJECT_RECIPES) {
-      const [module, exportName] = MODULES[recipe.id];
-      const loaded = require(module)[exportName];
-      expect([loaded.id, loaded.rules, loaded.presets, loaded.safety, loaded.scope]).toEqual([
-        recipe.id,
-        recipe.rules,
-        recipe.presets,
-        recipe.safety,
-        recipe.scope,
-      ]);
-    }
+    expect(PROJECT_RECIPES.map(loaded).map(traits)).toEqual(PROJECT_RECIPES.map(traits));
   });
 });

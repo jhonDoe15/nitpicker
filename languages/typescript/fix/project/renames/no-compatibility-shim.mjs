@@ -91,6 +91,7 @@ function planMessage({ context, project, name, message }) {
 export const noCompatibilityShimRecipe = lintRecipe({
   id: 'typescript-no-compatibility-shim',
   ruleId: 'no-compatibility-shim',
+  exclusive: true,
   scopeOf: (context) => productionScope(context.inputs),
   planMessage,
 });

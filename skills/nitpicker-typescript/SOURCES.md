@@ -88,11 +88,11 @@ temporary copy of the project with the same configuration the dead-code check us
 only the edits to files you changed, through the engine's checked write. A changed `package.json`
 keeps its indentation and line endings.
 
-| Fix type           | Decision | Why                                                                                  |
+| Fix type           | Decision | Why                                                                                                      |
 | ------------------ | -------- | -------------------------------------------------------------------------------------------------------- |
 | `exports`, `types` | review   | removes only the `export` keyword; the declaration stays and can become unused, so only `--rule` runs it |
-| `dependencies`     | safe     | removes a dependency nothing imports, when `package.json` is among the changed files |
-| `files`            | opt-in   | deletes a file; runs only when `--fix --rule dead-code/files` selects it             |
+| `dependencies`     | safe     | removes a dependency nothing imports, when `package.json` is among the changed files                     |
+| `files`            | opt-in   | deletes a file; runs only when `--fix --rule dead-code/files` selects it                                 |
 
 knip is licensed ISC, which the license policy allows.
 
@@ -109,16 +109,16 @@ through a re-export. A recipe also declines when a `package.json` entry (`main`,
 import it, or when a string names it, such as `vi.mock('./greet.js')`. `jsconfig.json` is read when
 there is no `tsconfig.json`, and JavaScript projects are checked with `checkJs` for this comparison.
 
-| Rule                                                     | Decision | What the recipe does, and when it declines                                                                                                                                                                              |
-| -------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `eslint/nitpicker/no-default-export`                     | review   | names the default export and rewrites default, renamed, namespace and `export { default as x }` importers. Declines for `import()` or `require()` of the module, a computed namespace key, or `export { default } from` |
-| `eslint/nitpicker/file-name-casing`                      | review   | renames the file with `getEditsForFileRename`. Declines when the new name is taken, a string names the path, or a computed `import()` could load it                                                                     |
-| `eslint/nitpicker/naming-convention`                     | review   | renames with `findRenameLocations`, keeping leading underscores. Declines when the new name collides (a new compiler error) or an exported name is read at run time. Messages other than the format one are left        |
-| `eslint/nitpicker/no-compatibility-shim`                 | review   | deletes the alias export and renames its uses to the canonical name. Declines when an importer already imports the canonical name. `@deprecated` tags are left to the comment rules                                     |
-| `eslint/nitpicker/no-test-helpers-in-source`             | review   | moves the helper to `<test root>/test-support/<path>` (or `test-support/` beside it when tests are colocated). Declines when production code imports it                                                                 |
-| `eslint/nitpicker/no-uncollected-tests`                  | review   | renames the file to `*.test.<ext>`. Declines when that name is taken                                                                                                                                                    |
-| `eslint/nitpicker/no-external-executables-in-unit-tests` | review   | moves `<root>/unit/...` to `<root>/integration/...`, and a source `__tests__` file to `<test root>/integration/...`                                                                                                     |
-| `coupling/shared-used-by-one-feature`                    | review   | moves the module into the feature directory the rule names, under its own file name. Declines when a production importer sits outside that feature, or the name is taken                                                |
+| Rule                                                           | Decision | What the recipe does, and when it declines                                                                                                                                                                              |
+| -------------------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eslint/nitpicker/no-default-export`                           | review   | names the default export and rewrites default, renamed, namespace and `export { default as x }` importers. Declines for `import()` or `require()` of the module, a computed namespace key, or `export { default } from` |
+| `eslint/nitpicker/file-name-casing`                            | review   | renames the file with `getEditsForFileRename`. Declines when the new name is taken, a string names the path, or a computed `import()` could load it                                                                     |
+| `eslint/nitpicker/naming-convention`                           | review   | renames with `findRenameLocations`, keeping leading underscores. Declines when the new name collides (a new compiler error) or an exported name is read at run time. Messages other than the format one are left        |
+| `eslint/nitpicker/no-compatibility-shim`                       | review   | deletes the alias export and renames its uses to the canonical name. Declines when an importer already imports the canonical name. `@deprecated` tags are left to the comment rules                                     |
+| `eslint/nitpicker/no-test-helpers-in-source`                   | review   | moves the helper to `<test root>/test-support/<path>` (or `test-support/` beside it when tests are colocated). Declines when production code imports it                                                                 |
+| `eslint/nitpicker/no-uncollected-tests`                        | review   | renames the file to `*.test.<ext>`. Declines when that name is taken                                                                                                                                                    |
+| `eslint/nitpicker/no-external-executables-in-unit-tests`       | review   | moves `<root>/unit/...` to `<root>/integration/...`, and a source `__tests__` file to `<test root>/integration/...`                                                                                                     |
+| `coupling/shared-used-by-one-feature`                          | review   | moves the module into the feature directory the rule names, under its own file name. Declines when a production importer sits outside that feature, or the name is taken                                                |
 | `entry-points/public-alternative-bypass`                       | review   | imports from the entry point and adds the export there when it is missing. Declines a default import, a namespace import or an entry point that is not a module of the project                                          |
 | `dependency-architecture/feature-internals-only-through-index` | review   | imports from the feature index and adds the export there when it is missing. Declines a default or namespace import, and leaves files inside the feature alone                                                          |
 | `structure/duplicate-definition`                               | review   | keeps the exported copy (else the first), exports it if needed, and imports it in the other module, keeping the name exported there. Declines when the import would add a cycle                                         |
@@ -128,7 +128,7 @@ there is no `tsconfig.json`, and JavaScript projects are checked with `checkJs` 
 | `structure/unused-option`                                      | review   | drops the property from the type and the destructuring. Declines when a caller passes it or a spread could                                                                                                              |
 | `dead-code/test-only-export`                                   | review   | moves the declaration to test support and repoints test imports. Dropping `export` when nothing imports it is left to the knip `dead-code/exports` fix                                                                  |
 | `eslint/nitpicker/no-dev-dependency-in-production`             | review   | moves the package from `devDependencies` to `dependencies` with the same range and formatting. Declines when the manifest has no such entry The lockfile is not updated, so reinstall afterwards.                       |
-| `dead-code/files`                                        | opt-in   | not a recipe: the knip step deletes the file (see knip), and keeps it when a computed `import()` or a string path could load it                                                                                         |
+| `dead-code/files`                                              | opt-in   | not a recipe: the knip step deletes the file (see knip), and keeps it when a computed `import()` or a string path could load it                                                                                         |
 
 ## Not fixed, on purpose
 

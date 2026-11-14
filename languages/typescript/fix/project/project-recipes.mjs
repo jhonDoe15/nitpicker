@@ -1,5 +1,11 @@
 import { eslintRule, lazyRecipe } from './lazy-recipe.mjs';
 
+const TEST_PLACEMENT = './moves/test-placement.mjs';
+
+function structureRule(rule) {
+  return { tool: 'structure', rule };
+}
+
 export const PROJECT_RECIPES = [
   lazyRecipe({
     id: 'typescript-no-default-export',
@@ -28,19 +34,19 @@ export const PROJECT_RECIPES = [
   lazyRecipe({
     id: 'typescript-no-test-helpers-in-source',
     rule: eslintRule('no-test-helpers-in-source'),
-    module: './moves/test-placement.mjs',
+    module: TEST_PLACEMENT,
     exportName: 'noTestHelpersInSourceRecipe',
   }),
   lazyRecipe({
     id: 'typescript-no-external-executables-in-unit-tests',
     rule: eslintRule('no-external-executables-in-unit-tests'),
-    module: './moves/test-placement.mjs',
+    module: TEST_PLACEMENT,
     exportName: 'noExternalExecutablesInUnitTestsRecipe',
   }),
   lazyRecipe({
     id: 'typescript-no-uncollected-tests',
     rule: eslintRule('no-uncollected-tests'),
-    module: './moves/test-placement.mjs',
+    module: TEST_PLACEMENT,
     exportName: 'noUncollectedTestsRecipe',
   }),
   lazyRecipe({
@@ -48,5 +54,60 @@ export const PROJECT_RECIPES = [
     rule: { tool: 'coupling', rule: 'shared-used-by-one-feature' },
     module: './moves/shared-used-by-one-feature.mjs',
     exportName: 'sharedUsedByOneFeatureRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-public-alternative-bypass',
+    rule: { tool: 'entry-points', rule: 'public-alternative-bypass' },
+    module: './imports/entry-point-imports.mjs',
+    exportName: 'publicAlternativeBypassRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-feature-internals-only-through-index',
+    rule: { tool: 'dependency-architecture', rule: 'feature-internals-only-through-index' },
+    module: './imports/entry-point-imports.mjs',
+    exportName: 'featureInternalsOnlyThroughIndexRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-duplicate-definition',
+    rule: structureRule('duplicate-definition'),
+    module: './reuse/duplicate-definition.mjs',
+    exportName: 'duplicateDefinitionRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-exported-name-collision',
+    rule: structureRule('exported-name-collision'),
+    module: './reuse/name-collision.mjs',
+    exportName: 'exportedNameCollisionRecipe',
+    safety: 'safe',
+  }),
+  lazyRecipe({
+    id: 'typescript-no-forwarding-wrapper',
+    rule: eslintRule('no-forwarding-wrapper'),
+    module: './wrappers/forwarding-wrapper.mjs',
+    exportName: 'noForwardingWrapperRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-unused-prop',
+    rule: structureRule('unused-prop'),
+    module: './members/unused-members.mjs',
+    exportName: 'unusedPropRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-unused-option',
+    rule: structureRule('unused-option'),
+    module: './members/unused-members.mjs',
+    exportName: 'unusedOptionRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-test-only-export',
+    rule: { tool: 'dead-code', rule: 'test-only-export' },
+    module: './members/test-only-export.mjs',
+    exportName: 'testOnlyExportRecipe',
+  }),
+  lazyRecipe({
+    id: 'typescript-no-dev-dependency-in-production',
+    rule: eslintRule('no-dev-dependency-in-production'),
+    module: './manifest/dev-dependency.mjs',
+    exportName: 'noDevDependencyInProductionRecipe',
   }),
 ];

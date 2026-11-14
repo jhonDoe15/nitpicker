@@ -32,14 +32,19 @@ describe('noCompatibilityShimRecipe', () => {
       {
         'src/client.ts':
           'export function createClient() {\n  return 1;\n}\nexport const makeClient = createClient;\nexport { createClient as buildClient };\n',
-        'src/use.ts':
-          "import { makeClient, buildClient } from './client.js';\nexport const a = makeClient();\nexport const b = buildClient();\n",
+        'src/use.ts': "import { makeClient } from './client.js';\nexport const a = makeClient();\n",
+        'src/other.ts':
+          "import { buildClient } from './client.js';\nexport const b = buildClient();\n",
       },
       { recipe, rule: RULE, changed: ['src/client.ts'] },
     );
     expect(result.tree['src/client.ts']).toBe('export function createClient() {\n  return 1;\n}\n');
-    expect(result.tree['src/use.ts']).toContain('createClient');
-    expect(result.tree['src/use.ts']).not.toContain('makeClient');
+    expect(result.tree['src/use.ts']).toBe(
+      "import { createClient } from './client.js';\nexport const a = createClient();\n",
+    );
+    expect(result.tree['src/other.ts']).toBe(
+      "import { createClient } from './client.js';\nexport const b = createClient();\n",
+    );
     expect(remaining(result, 'src/client.ts')).toEqual([]);
   });
 
@@ -52,6 +57,10 @@ describe('noCompatibilityShimRecipe', () => {
     };
     const result = projects.fix(files, { recipe, rule: RULE, changed: ['src/client.ts'] });
     expect(result.tree['src/client.ts']).toBe(files['src/client.ts']);
-    expect(result.notes.join('\n')).toContain('--fix left src/client.ts:2 no-compatibility-shim');
+    expect(result.notes).toMatchInlineSnapshot(`
+      [
+        "--fix left src/client.ts:2 no-compatibility-shim: the change would add errors to src/use.ts",
+      ]
+    `);
   });
 });

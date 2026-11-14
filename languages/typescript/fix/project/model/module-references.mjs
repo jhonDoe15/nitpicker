@@ -61,6 +61,16 @@ function importTypeReference(node) {
     : undefined;
 }
 
+export function referencesTo(project, target) {
+  return project.names
+    .filter((importer) => importer !== target)
+    .flatMap((importer) =>
+      moduleReferences(project.sourceFile(importer))
+        .filter(({ specifier }) => project.resolve(specifier ?? '', importer) === target)
+        .map((reference) => ({ ...reference, importer })),
+    );
+}
+
 export function moduleReferences(sourceFile) {
   const found = [];
   function visit(node) {
