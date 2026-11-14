@@ -2,8 +2,17 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { IO_PACKAGES } from './io-packages.mjs';
-import { typescriptRuleTester } from './rule-tester.mjs';
+import { IO_PACKAGES } from './io-packages.mts';
+import { typescriptRuleTester, type TypedRuleTester } from '../rule-tester.mts';
+
+type TypedCase = { filename?: string; code: string };
+
+type TypedIoProject = {
+  tester: TypedRuleTester;
+  typed: (code: string) => TypedCase;
+  typedScript: (code: string) => TypedCase;
+  typedFile: (code: string, extension: string) => TypedCase;
+};
 
 const COMPILER_OPTIONS = {
   strict: true,
@@ -17,7 +26,11 @@ const COMPILER_OPTIONS = {
   checkJs: true,
 };
 
-export function typedIoProject(prefix, store, files = {}) {
+export function typedIoProject(
+  prefix: string,
+  store: string,
+  files: Record<string, string> = {},
+): TypedIoProject {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), `nitpicker-${prefix}-`)));
   for (const [name, declarations] of Object.entries(IO_PACKAGES)) {
     const folder = path.join(root, 'node_modules', name);
@@ -43,8 +56,8 @@ export function typedIoProject(prefix, store, files = {}) {
   afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   });
-  const written = [];
-  function typedFile(code, extension) {
+  const written: string[] = [];
+  function typedFile(code: string, extension: string): TypedCase {
     written.push(code);
     const filename = path.resolve(root, 'src', `case-${String(written.length)}.${extension}`);
     if (!filename.startsWith(`${root}${path.sep}`)) {
@@ -53,10 +66,10 @@ export function typedIoProject(prefix, store, files = {}) {
     writeFileSync(filename, code);
     return { filename, code };
   }
-  function typed(code) {
+  function typed(code: string) {
     return typedFile(code, 'ts');
   }
-  function typedScript(code) {
+  function typedScript(code: string) {
     return typedFile(code, 'js');
   }
   return {
