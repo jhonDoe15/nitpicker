@@ -138,10 +138,21 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
       });
     });
 
-    it('fails a head whose tests still fail', () => {
-      expect(() => diffOf(root, 'still-red')).toThrow(
-        /^\d+ tests? fails?(?: in [^;]+)?; the build stopped, so no other check ran\./u,
+    it('fails a head whose tests still fail with a tests error', () => {
+      const result = diffOf(root, 'still-red');
+      const errors = result.newFindings.filter(
+        ({ classification }) => classification === 'tool-error',
       );
+
+      expect([result.failed, errors.map(({ tool, rule }) => `${tool} ${rule}`)]).toEqual([
+        true,
+        ['tests tests-failed'],
+      ]);
+      const [summary, ...tests] = errors[0].message.split('\n');
+      expect(summary).toMatch(
+        /^\d+ tests? fails?[^;]*; coverage, CRAP and mutation were skipped[^,]*, the other checks ran\. Fix[^:]+:$/u,
+      );
+      expect(tests.length > 0 && tests.every((line) => /^ {2}\S/u.test(line))).toBe(true);
     });
   },
 );

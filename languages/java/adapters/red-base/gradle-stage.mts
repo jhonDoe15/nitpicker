@@ -7,6 +7,7 @@ import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.
 import { failingTestsOf } from '../gradle-reports/failing-tests.mts';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 import { presetLabel, withCompileErrors } from '../../builds/compile-errors/compile-findings.mjs';
+import { MINUTE_MS } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';
@@ -66,6 +67,10 @@ export function assertGradleSucceeded(
   }
   const stage = failedStage(result, projectRoot, { policy, command, budget });
   const error = withGradleLog(stage, result, log);
+  if (fieldOf(result.error, 'code') === 'ETIMEDOUT') {
+    const minutes = (budget.commandTimeoutMs ?? 0) / MINUTE_MS;
+    throw Object.defineProperty(error, 'timedOut', { value: { build: 'Gradle', minutes } });
+  }
   throw result.error === undefined
     ? callUntyped(withCompileErrors, error, outputOf(result), projectRoot)
     : error;

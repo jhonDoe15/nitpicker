@@ -39,13 +39,7 @@ describe.skipIf(!enabled)('integration tests left out of check or failing on Gra
     const project = projectOf(path.join(fixtures, 'integration-tasks'), { sources: true });
     const test = path.join(project, 'src/test/java/demo/GreeterIT.java');
     writeFileSync(test, readFileSync(test, 'utf8').replace('Goodbye, Ada', 'Nope'));
-    try {
-      collectJavaFindings(project, { gradle, policy });
-    } catch (error) {
-      runs.failure = error.message
-        .replaceAll(project, '<project>')
-        .replace(/\nFull Gradle log: \S+$/u, '');
-    }
+    runs.failing = collectJavaFindings(project, { gradle, policy });
   }, 180_000);
 
   it('leave a suite alone that the project does not wire to check', () => {
@@ -64,10 +58,14 @@ describe.skipIf(!enabled)('integration tests left out of check or failing on Gra
     ]);
   });
 
-  it('fail the build naming the failing cases of a checked integration task', () => {
-    expect(runs.failure).toEqual(
-      '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+  it('report the failing cases of a checked integration task and keep the other checks', () => {
+    const failures = runs.failing.filter(({ rule }) => rule === 'tests-failed');
+
+    expect(mutations(runs.failing)).toEqual([]);
+    expect(failures.map(({ tool, message }) => `${tool} ${message}`)).toEqual([
+      'tests ' +
+        '1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. Fix the tests and rerun:\n' +
         '  demo/GreeterIT.java:10 > demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
-    );
+    ]);
   });
 });

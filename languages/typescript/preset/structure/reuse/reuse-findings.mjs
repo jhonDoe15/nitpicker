@@ -9,7 +9,7 @@ import { readHeadPolicy, readLayout } from '../../head-policy.mjs';
 import { resolveModuleSpecifier } from '../../modules/module-resolution.mjs';
 import { sharedFactFindings } from '../../../../../shared/rules/facts/evaluate.mjs';
 import { uniqueFindings } from '../../../../../shared/rules/reuse/reuse-finding.mjs';
-import { neutralReuseFacts } from './definition-facts.mjs';
+import { importSourceText, neutralReuseFacts } from './definition-facts.mjs';
 import { baselineFileReader, productionFacts, svgFiles } from './project-files.mjs';
 import { projectPathOf } from './reuse-paths.mjs';
 import { typescriptFeatureLayout } from '../../coupling/feature-layout.mjs';
@@ -18,7 +18,13 @@ import { redefinedLibraryComponentFindings } from './rules/library-components.mj
 
 const IGNORED = { kind: 'ignored' };
 
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+  'duplicate-branch',
+];
 const FEATURE_RULES = ['foreign-feature-persistence'];
 
 function projectTarget(target, source) {
@@ -70,7 +76,9 @@ export function reuseFindings(
   const { exceptions, react, layout: configured } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const resolve = projectResolver(projectRoot);
-  const facts = productionFacts(projectRoot, layout);
+  const facts = productionFacts(projectRoot, layout, (specifier, file) =>
+    importSourceText(resolve(specifier, file), specifier, file),
+  );
   const context = { analyzerName, isExcepted: exceptionMatcher(exceptions), resolve };
   const baseline =
     baselineRoot === undefined

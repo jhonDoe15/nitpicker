@@ -5,6 +5,7 @@ import { ingestJacoco } from '../../../ingest/coverage-reports/jacoco.mts';
 import { ingestPit } from '../../../ingest/pit.mts';
 import { ingestJacocoBranches } from '../../../ingest/coverage-reports/jacoco-branches.mts';
 import { pitFailureFindings } from '../../../builds/pit-failure/pit-failure.mjs';
+import { pitSkippedFindings } from '../../../builds/pit-failure/pit-skipped.mjs';
 import { firstProjectFile } from '../../../../../shared/conventions/read-inside.mjs';
 import { archunitFindings, springArchFindings } from '../archunit/archunit-findings.mts';
 import { javaMethodText } from '../../metrics/java-structure.mjs';
@@ -74,10 +75,11 @@ function jacocoLocator(context: ModuleContext): unknown {
 function pitFindings(context: ModuleContext): Findings {
   const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  const failures =
-    fieldOf(context['manifest'], 'testsFailed') === true
-      ? []
-      : findingsFrom(pitFailureFindings, reportRoot, fieldOf(context['module'], 'moduleDir'));
+  if (fieldOf(context['manifest'], 'testsFailed') === true) {
+    return [];
+  }
+  const moduleDir = fieldOf(context['module'], 'moduleDir');
+  const failures = findingsFrom(pitFailureFindings, reportRoot, moduleDir);
   if (failures.length > 0 || !existsSync(pitReport)) {
     return failures;
   }
@@ -89,7 +91,10 @@ function pitFindings(context: ModuleContext): Findings {
     sourceText: sourceTextReader(projectRoot),
     ...(context.kotlin ? { generated: callUntyped(kotlinGeneratedFilter, context) } : {}),
   });
-  return listOf(fieldOf(pit, 'findings'));
+  return [
+    ...listOf(fieldOf(pit, 'findings')),
+    ...findingsFrom(pitSkippedFindings, reportRoot, moduleDir),
+  ];
 }
 
 export function branchFindings(context: ModuleContext, jacoco: unknown): Findings {

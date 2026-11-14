@@ -5,6 +5,8 @@ import {
   DESIGN_RULES,
 } from './design/design-rules.mjs';
 
+const NEAR_DUPLICATE_UNITS = 'nearDuplicateUnits';
+
 const TYPESCRIPT_AND_JAVASCRIPT = {
   typescript: true,
   javascript: true,
@@ -51,6 +53,15 @@ export const FACT_RULE_LANGUAGES = {
     python: true,
   },
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
+  'near-duplicate': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
+  'decided-condition': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    typescript: OWN_TOOL,
+    javascript: OWN_TOOL,
+    ...JVM,
+    python: true,
+  },
+  'duplicate-branch': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true, go: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
@@ -92,6 +103,9 @@ export const FACT_RULE_LISTS = {
   'duplicate-definition': ['modules', 'packages', 'definitions', 'imports'],
   'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
   'sibling-copy-edit': ['modules', 'packages', 'definitions'],
+  'near-duplicate': [NEAR_DUPLICATE_UNITS],
+  'decided-condition': [NEAR_DUPLICATE_UNITS],
+  'duplicate-branch': [NEAR_DUPLICATE_UNITS],
   'shared-used-by-one-feature': ['modules', 'imports'],
   'feature-internal-import': ['modules', 'imports'],
   'shared-imports-feature': ['modules', 'imports'],

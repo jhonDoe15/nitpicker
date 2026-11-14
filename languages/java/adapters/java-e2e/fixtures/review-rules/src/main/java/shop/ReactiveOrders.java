@@ -9,6 +9,8 @@ import java.io.StringReader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 import reactor.core.publisher.Flux;
@@ -114,11 +116,31 @@ public final class ReactiveOrders {
   }
 
   String blocksOutsideAReactiveMethod(Mono<String> other) {
-    return other.block();
+    return other.block(); // violation: ReactorBlockWithoutTimeout
+  }
+
+  String blocksWithADeadline(Mono<String> other) {
+    return other.block(Duration.ofSeconds(30));
+  }
+
+  Optional<String> blocksForAnOptionalWithADeadline(Mono<String> other) {
+    return other.blockOptional(Duration.ofSeconds(30));
+  }
+
+  String blocksForTheFirstWithoutADeadline(Flux<String> other) {
+    return other.blockFirst(); // violation: ReactorBlockWithoutTimeout
+  }
+
+  String blocksForTheLastWithoutADeadline(Flux<String> other) {
+    return other.blockLast(); // violation: ReactorBlockWithoutTimeout
+  }
+
+  Optional<String> blocksForAnOptionalWithoutADeadline(Mono<String> other) {
+    return other.blockOptional(); // violation: ReactorBlockWithoutTimeout
   }
 
   Mono<String> blocksInASourceSupplier(Mono<String> other) {
-    return Mono.fromSupplier(() -> other.block());
+    return Mono.fromSupplier(() -> other.block()); // violation: ReactorBlockWithoutTimeout
   }
 
   Mono<Boolean> publishesOnBoundedElasticOnlyAfterTheCheck() {

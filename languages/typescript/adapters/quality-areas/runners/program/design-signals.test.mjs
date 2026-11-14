@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runDesignSignals } from './design-signals.mjs';
+import { runDesignSignals } from './design-signals.mts';
 
 const ANALYZER = 'languages/typescript/preset/design/analyze.mjs';
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';

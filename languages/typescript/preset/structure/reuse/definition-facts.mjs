@@ -60,16 +60,20 @@ function exportedAs(fact, definition) {
   ];
 }
 
-function sourceText(target, specifier, importer) {
-  if (target.kind === 'file') return `file:${target.path}`;
-  if (!specifier.startsWith('.')) return `${target.kind}:${specifier}`;
+export function importSourceText(target, specifier, importer) {
+  if (target.kind === 'file') {
+    return `file:${target.path}`;
+  }
+  if (!specifier.startsWith('.')) {
+    return `${target.kind}:${specifier}`;
+  }
   return `path:${path.posix.join(path.posix.dirname(importer), specifier)}`;
 }
 
 function bindingText(binding, fact, resolve) {
   if (binding.kind === 'local') return `local:${binding.text}`;
   const target = resolve(binding.specifier, fact.path);
-  return `${sourceText(target, binding.specifier, fact.path)}#${binding.imported}`;
+  return `${importSourceText(target, binding.specifier, fact.path)}#${binding.imported}`;
 }
 
 function keyOf(definition, fact, resolve) {
@@ -119,5 +123,16 @@ export function neutralReuseFacts(facts, resolve) {
     imports: facts
       .flatMap((fact) => neutralImports(fact, resolve))
       .filter(({ to }) => files.has(to)),
+    nearDuplicateUnits: facts.flatMap((fact) =>
+      fact.nearDuplicateUnits.map(({ file, name, start, end, tokens, final, tree }) => ({
+        file,
+        name,
+        start,
+        end,
+        tokens,
+        final,
+        tree,
+      })),
+    ),
   };
 }

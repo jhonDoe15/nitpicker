@@ -43,15 +43,13 @@ describe.skipIf(!enabled)(
       (_name, extra) => {
         const project = projectOf('gradle');
         appendFileSync(path.join(project, 'build.gradle'), extra);
-        let message;
-        try {
-          collectJavaFindings(project, { gradle, policy: {} });
-        } catch (error) {
-          message = error.message.replace(/\nFull Gradle log: \S+$/u, '');
-        }
+        const [message] = collectJavaFindings(project, { gradle, policy: {} })
+          .filter(({ rule }) => rule === 'tests-failed')
+          .map((finding) => finding.message);
 
         expect(message).toEqual(
-          '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+          '1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+            'Fix the tests and rerun:\n' +
             `  demo/GreeterTest.java:22 > ${FAILURE}: first attempt ==> expected: <true> but was: <false>`,
         );
       },
@@ -61,8 +59,13 @@ describe.skipIf(!enabled)(
     it('fails on Maven with a rerunFailingTestsCount set in the POM', () => {
       const project = projectOf('maven');
 
-      expect(() => collectJavaFindings(project, { maven, policy: {} })).toThrow(
-        '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+      const [message] = collectJavaFindings(project, { maven, policy: {} })
+        .filter(({ rule }) => rule === 'tests-failed')
+        .map((finding) => finding.message);
+
+      expect(message).toEqual(
+        '1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+          'Fix the tests and rerun:\n' +
           `  demo/GreeterTest.java:22 > ${FAILURE}: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): first attempt ==> ` +
           'expected: <true> but was: <false>',
       );

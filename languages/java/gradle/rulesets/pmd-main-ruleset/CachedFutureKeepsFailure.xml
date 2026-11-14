@@ -1,0 +1,24 @@
+  <rule name="CachedFutureKeepsFailure" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This field caches a CompletableFuture and later calls return it, but nothing ever resets it after a failure, so a first attempt that fails is replayed to every later caller instead of being retried. Reset the field when the attempt fails, and only if it still holds this attempt: future.whenComplete((value, error) -&gt; reset(future, error)), or keep the future in an AtomicReference and call compareAndSet(future, null). An exception fits only when keeping the first failure is intended.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ClassDeclaration/ClassBody/FieldDeclaration[@Static = false()]
+  [ClassType[pmd-java:typeIs('java.util.concurrent.CompletableFuture')]]
+  [let $name := VariableDeclarator/VariableId/@Name,
+       $body := ancestor::ClassBody[1],
+       $handlers := $body//MethodCall[@MethodName = ('whenComplete', 'exceptionally', 'handle', 'whenCompleteAsync', 'handleAsync')],
+       $resetters := ($handlers//MethodCall/@MethodName | $handlers//MethodReference/@MethodName),
+       $assigned := $body//AssignmentExpression[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]]
+   return exists($assigned[*[2][not(self::NullLiteral)]])
+     and empty($assigned[*[2][self::NullLiteral]][ancestor::LambdaExpression or ancestor::CatchClause or ancestor::FinallyClause
+                                           or ancestor::MethodDeclaration[@Name = $resetters]])
+     and exists($body//InfixExpression[@Operator = ('==', '!=')][*[(self::VariableAccess or self::FieldAccess) and @Name = $name]][NullLiteral])
+     and exists($body//ReturnStatement[*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]
+                                       or *[1][self::ConditionalExpression]/*[(self::VariableAccess or self::FieldAccess) and @Name = $name]])
+     and empty($body//MethodCall[@MethodName = 'compareAndSet'][*[1][(self::VariableAccess or self::FieldAccess) and @Name = $name]])]
+]]></value>
+      </property>
+    </properties>
+  </rule>

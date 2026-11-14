@@ -72,6 +72,8 @@ const GUARD_RULES = new Set([
   'AlwaysFailingAssertion',
   'MockedValueType',
   'TestOrderDependence',
+  'DroppedCallbackInTest',
+  'MessageAfterAssertion',
   'TestClassWithoutTestCases',
   'ConstantName',
   'MagicNumber',

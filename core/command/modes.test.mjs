@@ -258,8 +258,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       stderr: output.stderr,
     });
 
-    expect(exitCode).toBe(0);
-    expect(output.stderrText).toBe('');
+    expect([exitCode, output.stderrText]).toEqual([0, '']);
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
@@ -311,6 +310,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
   it('returns a tool error for a crashing --all analyzer', () => {
     const repository = createRepository({
       'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+      'src/main/clean.ts': 'export const clean = true;\n',
     });
     const output = captureOutput();
     expect(

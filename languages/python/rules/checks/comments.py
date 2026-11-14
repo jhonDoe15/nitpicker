@@ -17,7 +17,7 @@ SUPPRESSION = re.compile(
 TASK_MARKER = re.compile(r"(?<![\w./-])(?:TODO|FIXME|XXX|HACK)(?![\w-])(?![./]\w)")
 MARKER_FOLLOWER = re.compile(r"^[:(]")
 REFERENCE = r"#\d+|[A-Z][A-Z0-9]+-\d+|https?://\S+"
-DIRECT_REFERENCE = re.compile(rf"^(?:\(\s*({REFERENCE})\s*\)|:?\s+({REFERENCE}))")
+ANY_REFERENCE = re.compile(rf"(?<![\w-])({REFERENCE})")
 NOT_ISSUE_KEYS = {
     "SHA",
     "UTF",
@@ -49,9 +49,12 @@ def comments_of(text):
 
 
 def is_referenced(rest):
-    match = DIRECT_REFERENCE.match(rest)
-    reference = match.group(1) or match.group(2) if match else None
-    return reference is not None and reference.split("-")[0] not in NOT_ISSUE_KEYS
+    following = TASK_MARKER.search(rest)
+    scope = rest[: following.start()] if following else rest
+    return any(
+        match.group(1).split("-")[0] not in NOT_ISSUE_KEYS
+        for match in ANY_REFERENCE.finditer(scope)
+    )
 
 
 def has_unreferenced_tag(line):

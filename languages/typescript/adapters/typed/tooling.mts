@@ -5,7 +5,10 @@ import {
   untrackTemporaryPath as untrackUntypedTemporaryPath,
 } from '../../../../core/tooling/temporary-files.mjs';
 import { spawnSyncWithOutputFile as spawnUntypedWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
+import { escapeRegExp as untypedEscapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { projectFilesUnder as untypedProjectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 import {
+  isToolInstalled as untypedIsToolInstalled,
   resolveTool as resolveUntypedTool,
   toolNameForPath as untypedToolNameForPath,
 } from '../../../../core/tooling/tool-resolution.mjs';
@@ -22,6 +25,19 @@ export type LinkedPolicyFile = { readonly targetPath: string; remove(): void };
 
 export const resolveTool: (name: string, location?: ToolLocation) => ResolvedTool =
   resolveUntypedTool;
+
+export const isToolInstalled: (name: string, location?: ToolLocation) => boolean =
+  untypedIsToolInstalled;
+
+export const projectFilesUnder: (
+  root: string,
+  options: {
+    readonly includeIgnored: boolean;
+    readonly skipDirectory: (absolute: string, entry: { readonly name: string }) => boolean;
+  },
+) => string[] = untypedProjectFilesUnder;
+
+export const escapeRegExp: (value: string) => string = untypedEscapeRegExp;
 
 export const toolNameForPath: (relativeToolPath: string) => string = untypedToolNameForPath;
 

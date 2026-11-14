@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createProject } from '../test-support/oxlint-project.mjs';
-import { stageConfigOptions } from './oxlint-paths.mjs';
+import { stageConfigOptions } from './oxlint-paths.mts';
 
 const roots = [];
 

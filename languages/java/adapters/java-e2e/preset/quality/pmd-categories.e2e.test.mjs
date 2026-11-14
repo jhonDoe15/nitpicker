@@ -47,6 +47,7 @@ const categories = new Set([
   'DoubleCheckedLocking',
   'NonThreadSafeSingleton',
   'UnsynchronizedStaticFormatter',
+  'UnusedFormalParameter',
   'UseConcurrentHashMap',
   'UseNotifyAllInsteadOfNotify',
   'HardCodedCryptoKey',
@@ -91,6 +92,7 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
       'HardCodedCryptoKey',
       'InsecureCryptoIv',
       'StringInstantiation',
+      'UnusedFormalParameter',
       'UseArraysAsList',
     ]);
   });
@@ -101,6 +103,7 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
       'AvoidFileStream',
       'DontCallThreadRun',
       'StringInstantiation',
+      'UnusedFormalParameter',
       'UseArraysAsList',
     ]);
   });

@@ -2,13 +2,12 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
-import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mts';
+import { archunitTool, formatTool, resolveTools } from './maven-tools.mjs';
+import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
@@ -17,7 +16,7 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
-import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mts';
+import { buildOrSkipTests, jacocoExecFiles } from './quick/maven-test-phase.mts';
 import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
@@ -39,7 +38,6 @@ type MavenRun = {
   readonly pinned: unknown;
   readonly quick: boolean;
 };
-type BuildRequest = MavenRun & { readonly work: string; readonly modules: readonly MavenModule[] };
 type AnalyzedModule = {
   readonly module: MavenModule;
   readonly classpaths: Classpaths;
@@ -54,6 +52,7 @@ type AnalyzeRequest = MavenRun & {
   readonly configs: unknown;
   readonly since: number;
   readonly project: unknown;
+  readonly testsSkipped: boolean;
 };
 type ToolsRequest = {
   readonly modules: readonly MavenModule[];
@@ -78,51 +77,10 @@ type MavenPresetRun = {
 };
 
 const CLOCK_SLACK_MS = 2000;
-const PROJECT_CHECKS_OFF = [
-  '-Dcheckstyle.skip=true',
-  '-Dpmd.skip=true',
-  '-Dcpd.skip=true',
-  '-Dspotbugs.skip=true',
-  '-Dspotless.check.skip=true',
-  '-Dktlint.skip=true',
-  '-Ddetekt.skip=true',
-];
 
 function dependencyFile(work: string, module: MavenModule): string {
   const [groupId = '', artifactId = ''] = module.coordinates.split(':');
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
-}
-
-export function buildAndTest({
-  projectRoot,
-  maven,
-  work,
-  pinned,
-  modules,
-  spawn,
-  timeoutMs,
-  quick,
-}: BuildRequest): void {
-  callUntyped(runMaven, {
-    projectRoot,
-    maven,
-    spawn,
-    timeoutMs,
-    args: [
-      '--quiet',
-      ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
-      `${textOf(MAVEN_PLUGINS.dependency)}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
-      '-DoutputAbsoluteArtifactFilename=true',
-      '-DappendOutput=false',
-      '-Dmaven.test.failure.ignore=true',
-      '-DskipTests=false',
-      '-Dmaven.test.skip=false',
-      ...TEST_RERUNS_OFF,
-      ...PROJECT_CHECKS_OFF,
-      ...textsOf(callUntyped(springAotSkip, modules)),
-    ],
-  });
 }
 
 function readClasspaths(
@@ -200,7 +158,6 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeReques
         module,
         classpaths,
         style,
-        tolerateFailures: policy.snapshot === 'base',
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: fieldOf(kotlin, 'options'),
         spring: policy['spring'],
@@ -251,7 +208,7 @@ function presetInWork(
   const setup = { ...run, policy, modules, effectivePom, work, environment };
   const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - CLOCK_SLACK_MS;
-  buildAndTest({ ...run, work, modules });
+  const timedOut = buildOrSkipTests({ ...run, work, modules }, policy);
   const analyzed = modules.map((module) => ({
     module,
     classpaths: readClasspaths(work, module),
@@ -263,6 +220,7 @@ function presetInWork(
   });
   const testsFailures = analyzeAll({
     ...run,
+    testsSkipped: timedOut.length > 0,
     pitDeadline,
     analyzed,
     tools,
@@ -275,7 +233,7 @@ function presetInWork(
   });
   return {
     moduleDirs: modules.map((module) => module.basedir),
-    testsFailures,
+    testsFailures: [...testsFailures, ...timedOut],
     formatAdvice: fieldOf(fieldOf(kotlin, 'options'), 'advice'),
   };
 }

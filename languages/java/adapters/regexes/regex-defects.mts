@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { withMessage } from '../../../../shared/messages/advice/finding-advice.mjs';
+import { ROUTE_SENTENCE, appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { JVM_REGEX_RULES, jvmPatternFlags } from '../../../../shared/rules/regex/jvm-patterns.mjs';
 import {
@@ -14,6 +16,7 @@ import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 type Literal = { readonly value: string; readonly end: number };
 type PatternSite = { readonly pattern: string; readonly flags: string };
 
+const routeSentence: RegExp = ROUTE_SENTENCE;
 const KINDS = new Map(Object.entries(JVM_REGEX_RULES).map(([kind, rule]) => [rule, kind]));
 const ESCAPES: Readonly<Record<string, string>> = {
   b: '\b',
@@ -121,15 +124,19 @@ function defectFindings(
   );
   return defects
     .filter((defect) => fieldOf(defect, 'kind') === KINDS.get(finding.rule))
-    .map((defect) => {
+    .flatMap((defect) => {
       const key = `${textOf(fieldOf(defect, 'rule'))}\0${site.pattern}`;
       const occurrence: unknown = nextOccurrence(occurrences, `${finding.path}\0${key}`);
       const suffix = occurrence === 1 ? '' : `#${String(occurrence)}`;
-      return {
-        ...finding,
-        identity: `${finding.rule}:${hash(key)}${suffix}`,
-        message: textOf(fieldOf(defect, 'message')),
-      };
+      const route = routeSentence.exec(textOf(finding.message))?.[0];
+      const message: unknown = appendSentence(textOf(fieldOf(defect, 'message')), route);
+      return findingsOf([
+        callUntyped(
+          withMessage,
+          { ...finding, identity: `${finding.rule}:${hash(key)}${suffix}` },
+          { message },
+        ),
+      ]);
     });
 }
 

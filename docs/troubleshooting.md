@@ -224,14 +224,17 @@ test suite that waits on the network, or a project larger than the budget allows
 **Symptom.** `<analyzer> crashed with exit 1: ...`, `crashed with signal SIGKILL`, `<analyzer> did not
 produce valid JSON`, `<analyzer> exceeded the analyzer output limit`, `<analyzer> emitted a finding for
 unexpected tool <tool>`, `Analyzer scheduler crashed with exit 1: ...`, `Analyzer scheduler returned
-invalid JSON`, `Hygiene check failed: ...` or `History check failed: ...`, or `<analyzer> reported a finding
-that nitpicker cannot check, left out of the result; its other findings are kept`.
+invalid JSON`, `Hygiene check failed: ...` or `History check failed: ...`, `<analyzer> reported a finding
+that nitpicker cannot check, left out of the result; its other findings are kept`, or an `internal-error`
+tool error of the `java` (or `kotlin`) analyzer: `Internal error in the java analyzer: ...`.
 
 **Cause.** Analyzers run as child processes that report findings as JSON. This message means the
 process died, was killed (an out-of-memory kill shows as `SIGKILL`), printed something that is not a
 findings report, or printed too much. For a custom analyzer from the `analyzers` key, the cause is
 usually the command itself: a non-zero exit, text on stdout besides the JSON, or findings that do not
-match the finding schema (`tool` must equal the entry's `name`).
+match the finding schema (`tool` must equal the entry's `name`). An `internal-error` of the Java or
+Kotlin analyzer means the build ran but nitpicker's own code failed on it, often while reading a tool
+report the build left empty or cut off.
 
 **Fix.** The message ends with the process's own output; start there. For an out-of-memory kill, give the
 job more memory or run fewer analyzers at once with `NITPICKER_MAX_PARALLEL`. For a custom analyzer, run
@@ -377,7 +380,7 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 ### Tests fail
 
 **Symptom.** A tool error on `head` that lists the failing tests: `<n> tests fail; <what was skipped>. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
-test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail; the build stopped, so no other check ran. Fix the tests and rerun:` as the `gradle-failure` or `maven-failure` of Java and Kotlin. The analyzers that need the
+test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail<in module>; coverage, CRAP and mutation were skipped there, the other checks ran. Fix the tests and rerun:` as the `tests/tests-failed` of each failing Java or Kotlin module. The analyzers that need the
 tests (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit
 code 2 when there is no new finding.
 
@@ -501,6 +504,21 @@ shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node
 `Cannot read properties of null (reading 'edgesOut')` while installing Vitest 4.1, see
 [npm 10 and Vitest 4.1](usage.md#npm-10-and-vitest-41).
 
+### No source files under the source roots
+
+**Symptom.** The run exits 2 with the `source-roots` tool error `No TypeScript or JavaScript files under
+<roots>; nothing was analyzed. Set "layout.sourceRoots" (...)`. It appears on every run, full or comparison.
+`nitpicker init` prints the same sentence instead of "No TypeScript or JavaScript sources under src yet".
+
+**Cause.** The TypeScript or JavaScript preset found no source file under `layout.sourceRoots` (default
+`src`) and no test file under `layout.testRoots`, so the code analyzers had nothing to check. A
+workspace root whose code sits in `packages/*/src` is the usual case. The message lists up to three
+folders that hold TypeScript or JavaScript files (package `src` folders, or top-level folders),
+skipping dependency folders, build output, hidden folders and ignored files.
+
+**Fix.** Set `layout.sourceRoots` in `nitpicker.config.json` to the folders that hold the code, for
+example `{ "preset": "typescript", "layout": { "sourceRoots": ["packages", "excalidraw-app"] } }`.
+
 ### Dependencies are not installed
 
 **Symptom.** `Dependencies are not installed: <dir>/node_modules is missing. Run `npm install` in
@@ -578,6 +596,18 @@ the project.
 
 Switching engines reports the differences between them as new once; see
 [Lint engine](usage.md#lint-engine).
+
+### A project package does not support this ESLint
+
+**Symptom.** `@typescript-eslint/utils 8.46.2 cannot run with ESLint 10 (it supports eslint ^8.57.0 || ^9.0.0). Update it, or the package that depends on it, to a version that supports ESLint 10.`
+It replaces the raw `TypeError` that the package throws while the project's ESLint config loads.
+
+**Cause.** nitpicker loads your ESLint config with its own ESLint, so the config's plugins run on that
+version. A package in the config chain declares a peer range for `eslint` that does not include it, and
+fails to load. Switching to `"engine": "eslint"` loads the same chain and fails the same way.
+
+**Fix.** Update the named package, or the package that depends on it, to a version that supports the
+ESLint major in the message, then reinstall.
 
 ### The TypeScript config cannot be read
 
@@ -784,9 +814,20 @@ wrapper helps.
 
 ### Gradle or Maven times out
 
-**Symptom.** `Gradle did not finish within 15 minutes and was stopped. Set NITPICKER_GRADLE_TIMEOUT_MINUTES
-to give each Gradle command more time`, `Maven did not finish in <dir> within 15 minutes and was stopped`, or
-`NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1 to 17895 (minutes)`.
+**Symptom.** A `tests-timed-out` tool error, `Gradle did not finish the tests, coverage and mutation
+testing within 15 minutes, so they were skipped and the other checks ran without them` (or `Maven did
+not finish ...`); `Gradle did not finish within 15 minutes and was stopped. Set
+NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time`, `Maven did not finish in <dir>
+within 15 minutes and was stopped`; or `NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1
+to 17895 (minutes)`.
+
+When the full analysis command (tests, JaCoCo and PIT included) times out, nitpicker runs it once more
+without any test, coverage or mutation step, so PMD, SpotBugs, Error Prone, Checkstyle, the formatter
+check, structure, duplicates and the ArchUnit rule classes still report. The run then has no
+coverage, CRAP, slow-test or mutation results: on the head it is a `tests/tests-timed-out` tool error
+(exit 2) and none of the base's results of those rules counts as resolved; on the base it is a note,
+and the head's results of those rules count as new only on changed lines, as for a base whose tests
+fail. A `--quick` run, which runs no tests, and a second timeout stay the plain timeout error above.
 
 **Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional
 Checkstyle export and the analysis), and each Maven command 15 minutes. A cold Gradle cache, a wrapper
@@ -817,13 +858,21 @@ its `base` mutants.
 slow tests or Spring application contexts make it the longest step. `--all` mutates every class; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md) for what a comparison mutates. PIT
 also fails when a test fails or hangs under its agent, or when it cannot start the project's test
-engine.
+engine. PIT stops when a test does not pass on the unmutated code, which happens when an earlier test
+leaves state that only PIT's single-JVM run exposes. Nitpicker then runs PIT once more with PIT's own
+`--skipFailingTests` (this retry is nitpicker's; a project's `skipFailingTests` is still never taken from
+its config) and keeps the mutation findings of the remaining tests. A `pit-skipped-tests` notice, not
+an error, says `15 tests in ExampleTest did not pass without mutation under PIT; they pass under the
+build's test task`, names the first five skipped tests and the count of the rest, and warns that
+mutants only the skipped tests would kill may count as surviving. When the second run fails too, the
+`pit-failure` tool error leads with that same summary line. On Maven the retry uses only the analyzer
+time that is left and is not started with less than a minute left.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
 keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
 inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
+reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
 
 ### Error Prone cannot find a JDK

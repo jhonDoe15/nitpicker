@@ -12,6 +12,7 @@ import {
   withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mts';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mts';
+import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';
@@ -191,6 +192,7 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
       ...moduleFindings,
       ...listOf(wide.findings),
       ...listOf(readInlineSuppressionFindings(projectRoot, lintedRoots(manifest))),
+      ...listOf(readCommentFindings(projectRoot, lintedRoots(manifest))),
       ...springFindings(projectRoot, manifest, options),
     ],
     { preset, javaStyle: options['javaStyle'] },
