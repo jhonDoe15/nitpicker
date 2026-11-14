@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   copyFixtureRepository,
   runInitThenAll,
-} from '../../../../../core/init/test-support/init-then-all.mjs';
+} from '../../../../../core/init/test-support/init-then-all.mts';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/kotlin-project');

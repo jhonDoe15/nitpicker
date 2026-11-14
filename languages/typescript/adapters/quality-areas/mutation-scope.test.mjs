@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
 import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
 import { configuredTargets, mutationTargets } from './runners/mutation-scope.mts';
 import { createQualityAreaAnalyzer } from './analyzer.mjs';

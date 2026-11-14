@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { librariesForFile } from './file-libraries.mjs';
 import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mjs';

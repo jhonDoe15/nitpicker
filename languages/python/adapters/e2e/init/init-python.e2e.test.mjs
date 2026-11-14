@@ -3,7 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   copyFixtureRepository,
   runInitThenAll,
-} from '../../../../../core/init/test-support/init-then-all.mjs';
+} from '../../../../../core/init/test-support/init-then-all.mts';
 import { fixture, installPackages, pythonE2eEnabled } from '../test-support/python-e2e-support.mjs';
 
 const roots = [];

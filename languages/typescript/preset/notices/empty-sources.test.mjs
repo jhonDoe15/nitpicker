@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../../../../core/init/test-support/projects.mjs';
+import { useProjects } from '../../../../core/init/test-support/projects.mts';
 import { EMPTY_SOURCES_TOOL, emptySourcesErrors, emptySourcesMessage } from './empty-sources.mjs';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 

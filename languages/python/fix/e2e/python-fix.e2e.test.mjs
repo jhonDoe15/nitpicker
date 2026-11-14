@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mjs';
+import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mts';
 import { installPackages } from '../../adapters/e2e/test-support/python-e2e-support.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mjs';
-import { validateConfig } from '../../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mts';
 import { applyPythonExceptions } from '../../configuration/python-exceptions.mjs';
 import { applyRuleHints } from '../../../rules/rule-hints.mjs';
 import { readTestRuntimeFindings, scanTestStrings } from './python-test-runtime.mjs';

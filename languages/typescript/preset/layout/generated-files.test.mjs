@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
-} from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../../core/diff/git/test-support/git-checkout.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mts';
 import { hasGeneratorMarker } from '../../../../shared/conventions/generator-marker.mjs';
 import { markedGeneratedFiles } from './generated-files.mjs';
 

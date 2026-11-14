@@ -5,8 +5,8 @@ import {
   commit,
   fixtureGit,
   useGitFixtures,
-} from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+} from '../../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../../core/fix/run-fix.mts';
 import { OWN_CHECKS } from '../../../fix/errorprone/own/own-checks.mjs';
 

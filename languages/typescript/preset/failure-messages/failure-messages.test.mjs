@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { routeProblems } from '../../../../core/exceptions/test-support/route-check.mjs';
+import { routeProblems } from '../../../../core/exceptions/test-support/route-check.mts';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { eslintRoute } from '../../adapters/hints/eslint-routes.mts';
 import { checkFailureMessageCase, lintFixture, projectRelative } from './test-support/harness.mjs';

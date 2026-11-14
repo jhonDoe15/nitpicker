@@ -9,8 +9,8 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
+import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { resolveHeadPolicy } from '../preset/head-policy.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';

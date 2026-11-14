@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { conventionStyle } from '../../../../core/conventions/definitions.mjs';
+import { conventionStyle } from '../../../../core/conventions/definitions.mts';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { eslintConfigFiles, eslintProjectFacts } from './project-config.mjs';
 

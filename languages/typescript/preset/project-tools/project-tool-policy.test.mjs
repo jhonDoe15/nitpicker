@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { conventionStyle } from '../../../../core/conventions/definitions.mjs';
+import { conventionStyle } from '../../../../core/conventions/definitions.mts';
 import { projectToolLayer, withProjectToolConfigs } from './project-tool-policy.mjs';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 

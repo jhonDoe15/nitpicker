@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readConfigFile } from '../../../../core/configuration/config.mjs';
+import { readConfigFile } from '../../../../core/configuration/config.mts';
 import { kotlinRuleAliasNotices, withKotlinRuleAliases } from './kotlin-options.mjs';
 
 const roots = [];

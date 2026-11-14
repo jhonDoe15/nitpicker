@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { messageOf } from '../../analysis/test-runtime/test-support/runtime-data.mjs';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
+import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import {
   NOISY_TEST,
   RUNTIME_TEST,

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runJavaDiff } from '../../java-diff.mjs';
-import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 
 const GIT_TIMEOUT_MS = 30_000;
 const JDK_PROBE_TIMEOUT_MS = 30_000;

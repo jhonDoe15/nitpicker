@@ -5,10 +5,11 @@ import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.mjs';
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format');
 
-const RUNNER = path.join(PACKAGE_ROOT, 'core/fix/prettier-base-runner.mjs');
+const RUNNER = checkoutModulePath(path.join(PACKAGE_ROOT, 'core/fix/prettier-base-runner.mjs'));
 
 const REPORT_EXCERPT_LENGTH = 200;
 

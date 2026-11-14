@@ -2,7 +2,7 @@ import type { TimeoutLimits } from './runner-types.mts';
 import { resolveTestTimeouts as untypedResolveTestTimeouts } from '../../../../../shared/test-timeouts/resolve.mjs';
 
 export type TimeoutPolicy = {
-  readonly preset?: string;
+  readonly preset?: string | undefined;
   readonly tools?: { readonly tests?: { readonly timeouts?: unknown } };
 };
 
