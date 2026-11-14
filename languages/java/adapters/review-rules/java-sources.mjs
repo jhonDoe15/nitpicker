@@ -49,6 +49,25 @@ export function withoutGenerics(text) {
     .join('');
 }
 
+function blankedBlocks(text, keeps) {
+  let depth = 0;
+  let kept = '';
+  for (const character of text) {
+    depth -= character === '}' ? 1 : 0;
+    kept += keeps(depth, character) ? character : ' ';
+    depth += character === '{' ? 1 : 0;
+  }
+  return kept;
+}
+
+export function blankBlockBodies(text) {
+  return blankedBlocks(text, (depth) => depth === 0);
+}
+
+export function blankBlocks(text) {
+  return blankedBlocks(text, (depth, character) => depth === 0 && character !== '}');
+}
+
 export function pathInside(base, relative) {
   const root = path.resolve(base);
   const full = path.resolve(root, relative);

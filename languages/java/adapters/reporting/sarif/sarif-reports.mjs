@@ -10,6 +10,7 @@ import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
+import { dropComputedReads } from '../../spring/queries/persistent-reads.mjs';
 import {
   springRoots,
   withSpringTransactionFilters,
@@ -101,9 +102,13 @@ function withProjectFilters(findings, context) {
         withProjectTypeMocks(
           dropInheritedVersions(
             withJpaFilters(
-              withGeneratedMembers(withSpringTransactionFilters(findings, context), {
-                projectRoot,
-              }),
+              withGeneratedMembers(
+                dropComputedReads(withSpringTransactionFilters(findings, context), {
+                  projectRoot,
+                  roots: springRoots(context),
+                }),
+                { projectRoot },
+              ),
               { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
             ),
             { projectRoot, sourceRoots: allSourceRoots },
