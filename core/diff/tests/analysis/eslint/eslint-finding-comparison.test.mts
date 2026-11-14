@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import {
   fakeEslintCliPath,
   comparisonOptions,
@@ -7,12 +8,14 @@ import {
   recordedEslintAnalyzer,
   policyFiles,
   sourceWithDebugger,
-} from './test-support/eslint-fixtures.mjs';
+} from './test-support/eslint-fixtures.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
 
 const { createRepository } = useEslintFixtures();
+
+const countAnchor: unknown = expect.stringMatching(/^count:/u);
 
 describe('ESLint finding comparison', () => {
   it('preserves unchanged, line-moved, and renamed findings while separating added and resolved findings', () => {
@@ -37,8 +40,8 @@ describe('ESLint finding comparison', () => {
     );
 
     expect(report.toolErrors).toEqual([]);
-    expect(report.summary.overallStatus).toBe('completed');
-    expect(report.summary.renamedPaths).toBe(1);
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
+    expect(fieldAt(report.summary, 'renamedPaths')).toBe(1);
     expect(report.newFindings).toEqual([
       {
         tool: 'eslint-lint',
@@ -53,7 +56,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'added',
         location: { line: 2, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -71,7 +74,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'resolved',
         location: { line: 2, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -90,7 +93,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'moved',
         location: { line: 5, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -106,7 +109,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'renamed',
         location: { line: 2, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -122,7 +125,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'stable',
         location: { line: 2, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -165,7 +168,7 @@ describe('ESLint finding comparison', () => {
     );
 
     expect(report.toolErrors).toEqual([]);
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(new Set(report.newFindings.map((finding) => finding.tool))).toEqual(
       new Set(['eslint-lint', 'eslint-errors', 'eslint-logging', 'eslint-module-effects']),
     );
@@ -182,7 +185,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'empty',
         location: { line: 2, column: 25 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -211,7 +214,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 1, existingCodeOnly: true },
       },
       {
@@ -240,7 +243,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'unreachable',
         location: { line: 6, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unreachableCode', value: 1, existingCodeOnly: true },
       },
     ]);
@@ -291,7 +294,7 @@ describe('ESLint finding comparison', () => {
         classification: 'enforceable',
         symbol: 'repeated',
         location: { line: 7, column: 3 },
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: { key: 'count:unexpected', value: 3, existingCodeOnly: true },
       },
     ]);
@@ -422,7 +425,7 @@ describe('ESLint finding comparison', () => {
       ]),
     );
 
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(report.unchangedFindings).toHaveLength(1);
     expect(report.toolErrors).toEqual([]);
   });

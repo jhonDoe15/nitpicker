@@ -7,15 +7,31 @@ import {
   writeFileSync,
 } from 'node:fs';
 import path from 'node:path';
+import type { FileMap } from '../../../git/test-support/fixture-files.mts';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   dependencyPreparationMode,
-  prepareSnapshotDependencies,
-  removeSnapshotDependencies,
+  prepareSnapshotDependencies as prepareSnapshotDependenciesJs,
+  removeSnapshotDependencies as removeSnapshotDependenciesJs,
 } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
-import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
-import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
+import { installFakeManagers as installFakeManagersJs } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
+import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+
+type Dependencies = {
+  readonly kind: string;
+  readonly dependencyPath?: string;
+  readonly memberPaths?: readonly string[];
+};
+
+const prepareSnapshotDependencies: (request: {
+  readonly projectRoot: string;
+  readonly liveProjectRoot: string;
+  readonly toolRoot: string;
+}) => Dependencies = prepareSnapshotDependenciesJs;
+const removeSnapshotDependencies: (dependencies: Dependencies) => void =
+  removeSnapshotDependenciesJs;
+const installFakeManagers: (directory: string) => string = installFakeManagersJs;
 
 const { temporaryDirectory, createRepository } = useStaticCheckFixtures();
 
@@ -25,7 +41,7 @@ afterEach(() => {
 
 const MANIFEST = '{"name":"fixture"}\n';
 
-function snapshotAndLive(files) {
+function snapshotAndLive(files: { readonly snapshot: FileMap; readonly live: FileMap }) {
   const projectRoot = createRepository({ 'package.json': MANIFEST, ...files.snapshot }).root;
   const liveProjectRoot = createRepository({ 'package.json': MANIFEST, ...files.live }).root;
   return { projectRoot, liveProjectRoot };
@@ -82,7 +98,7 @@ describe('dependency preparation for every package manager', () => {
   describe('for a project inside a workspace', () => {
     const member = { 'packages/app/package.json': '{"name":"app"}\n' };
 
-    function memberRoots(files) {
+    function memberRoots(files: { readonly snapshot: FileMap; readonly live: FileMap }) {
       const { projectRoot, liveProjectRoot } = snapshotAndLive(files);
       return {
         projectRoot: path.join(projectRoot, 'packages/app'),
@@ -207,7 +223,7 @@ describe('dependency preparation for every package manager', () => {
 
     expect(() => prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot })).toThrow(
       new Error(
-        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${liveProjectRoot}. ${linkSentence('unsupportedYarn')}`,
+        `Dependencies are not installed: ${path.join(liveProjectRoot, 'node_modules')} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${liveProjectRoot}. ${String(linkSentence('unsupportedYarn'))}`,
       ),
     );
   });
@@ -215,7 +231,7 @@ describe('dependency preparation for every package manager', () => {
   it('installs the base with the manager it uses and removes the installed folders afterwards', () => {
     vi.stubEnv(
       'PATH',
-      `${installFakeManagers(temporaryDirectory('fake-managers-'))}${path.delimiter}${process.env.PATH}`,
+      `${installFakeManagers(temporaryDirectory('fake-managers-'))}${path.delimiter}${String(process.env['PATH'])}`,
     );
     const { projectRoot, liveProjectRoot } = snapshotAndLive({
       snapshot: {

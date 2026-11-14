@@ -1,17 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeDuplicates } from '../../../../../languages/typescript/preset/duplicates/normalize.mjs';
+import type { ParsedFinding } from '../../../comparison/test-support/parsed-findings.mts';
+import { normalizeDuplicates as normalizeDuplicatesJs } from '../../../../../languages/typescript/preset/duplicates/normalize.mjs';
+
+type DuplicateOptions = {
+  readonly configuredPaths: string[];
+  readonly isTestFile?: (file: string) => boolean;
+};
+
+const normalizeWithRenames: (
+  report: object,
+  analyzerName: string,
+  options: DuplicateOptions & { readonly renamedReport: undefined },
+) => ParsedFinding[] = normalizeDuplicatesJs;
+
+function normalizeDuplicates(
+  report: object,
+  analyzerName: string,
+  options: DuplicateOptions,
+): ParsedFinding[] {
+  return normalizeWithRenames(report, analyzerName, { ...options, renamedReport: undefined });
+}
 
 describe('duplicate findings in the quality-area analyzers', () => {
   it('reports a helper copied between test files but not repeated expected data', () => {
-    const clone = (fragment) => ({
+    const clone = (fragment: string) => ({
       firstFile: { name: 'test/a.test.ts', start: 2 },
       secondFile: { name: 'test/b.test.ts', start: 7 },
       fragment,
       lines: 12,
       tokens: 80,
     });
-    const isTestFile = (file) => file.startsWith('test/');
-    const failures = (fragments) =>
+    const isTestFile = (file: string) => file.startsWith('test/');
+    const failures = (fragments: readonly string[]) =>
       normalizeDuplicates(
         { duplicates: fragments.map((fragment) => clone(fragment)) },
         'duplicates',

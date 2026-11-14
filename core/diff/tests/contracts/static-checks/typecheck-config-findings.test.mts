@@ -3,13 +3,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
 import { runTypecheck } from '../../../../../languages/typescript/adapters/static-checks/typescript.mts';
-import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
 
 const { temporaryDirectory, generatedSnapshot } = useStaticCheckFixtures();
 const POLICY_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
 
-function typecheck(projectConfig) {
+function typecheck(projectConfig: object) {
   const projectRoot = generatedSnapshot();
   writeFiles(projectRoot, {
     'package.json': '{"name":"config-findings"}\n',

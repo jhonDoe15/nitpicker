@@ -1,17 +1,61 @@
 import { describe, expect, it } from 'vitest';
 import {
-  applyThresholds,
+  applyThresholds as applyThresholdsJs,
   configuredAnalyzers,
 } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mjs';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+import { fieldOf, parseJson } from '../../../../../shared/values/readers.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import type { CrapEntry } from '../../../../../languages/typescript/adapters/quality-areas/typed/reporting.mts';
 import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 
-const packageAnalyzers = configuredAnalyzers();
+type CrapAnalyzer = {
+  readonly name: string;
+  readonly configurationHash: unknown;
+  readonly resolveVersion: unknown;
+  readonly createInvocation: (context: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+    readonly snapshot: string;
+  }) => { readonly args: readonly string[] };
+};
+
+const catalog: () => CrapAnalyzer[] = configuredAnalyzers;
+const applyThresholds: (
+  analyzers: CrapAnalyzer[],
+  thresholds: { readonly crapLimit: number },
+) => CrapAnalyzer[] = applyThresholdsJs;
+const packageAnalyzers = catalog();
+
+function isCrapEntry(value: unknown): value is CrapEntry {
+  return typeof fieldOf(value, 'source') === 'string';
+}
+function descriptive(name: string, value: number) {
+  return {
+    tool: 'crap',
+    rule: 'function-crap',
+    path: 'src/main/value.ts',
+    identity: `function:value:occurrence:1:${name}`,
+    message: `${name} for value`,
+    classification: 'descriptive',
+    metric: { name, value },
+    symbol: 'value',
+    location: { line: 1 },
+  };
+}
+const fullCoverage = [
+  descriptive('statementCoverage', 100),
+  descriptive('branchCoverage', 100),
+  descriptive('effectiveCoverage', 100),
+];
+const heldCrap: unknown = expect.closeTo(9.5, 10);
 describe('CRAP reporting in the quality-area analyzers', () => {
   it('assigns repeated CRAP symbols by source order instead of report rank', () => {
-    function functionEntry(line, crap) {
+    function functionEntry(line: number, crap: number): CrapEntry {
       return {
         source: 'src/main/value.ts',
         function: 'constructor',
@@ -32,10 +76,12 @@ describe('CRAP reporting in the quality-area analyzers', () => {
       { functions: [functionEntry(10, 20), functionEntry(40, 2)] },
       'crap',
     );
-    function identityAt(findings, line) {
+    function identityAt(findings: readonly Finding[], line: number): unknown {
       return findings.find(
-        ({ rule, metric, location }) =>
-          rule === 'function-crap' && metric.name === 'complexity' && location.line === line,
+        (finding) =>
+          finding.rule === 'function-crap' &&
+          fieldAt(finding, 'metric', 'name') === 'complexity' &&
+          fieldAt(finding, 'location', 'line') === line,
       )?.identity;
     }
 
@@ -43,24 +89,37 @@ describe('CRAP reporting in the quality-area analyzers', () => {
     expect(identityAt(first, 40)).toBe(identityAt(second, 40));
   });
   it('enforces CRAP scores at 9 or higher and unknown coverage', () => {
-    function functionEntry(crap, sourceHash) {
-      return {
-        source: 'src/main/value.ts',
-        function: 'value',
-        sourceHash,
-        lines: { start: 1, end: 3 },
-        complexity: 1,
-        statementCoverage: { percent: crap === null ? null : 100 },
-        branchCoverage: { percent: crap === null ? null : 100 },
-        effectiveCoverage: { percent: crap === null ? null : 100 },
-        crap,
-      };
+    function functionEntry(
+      crap: number | 'unknown-coverage' | undefined,
+      sourceHash: string,
+    ): CrapEntry {
+      const unknownCoverage = crap === 'unknown-coverage';
+      const percent = unknownCoverage ? null : 100;
+      const entry = parseJson(
+        JSON.stringify({
+          source: 'src/main/value.ts',
+          function: 'value',
+          sourceHash,
+          lines: { start: 1, end: 3 },
+          complexity: 1,
+          statementCoverage: { percent },
+          branchCoverage: { percent },
+          effectiveCoverage: { percent },
+          crap: unknownCoverage ? null : crap,
+        }),
+      );
+      if (!isCrapEntry(entry)) {
+        throw new TypeError('not a CRAP entry');
+      }
+      return entry;
     }
 
     expect(normalizeCrap({ functions: [functionEntry(8.99, 'safe')] }, 'crap')).not.toContainEqual(
       expect.objectContaining({ classification: 'enforceable' }),
     );
-    expect(normalizeCrap({ functions: [functionEntry(9, 'limit')] }, 'crap')).toEqual([
+    expect(
+      normalizeCrap({ functions: [functionEntry(DEFAULT_CRAP_SCORE_LIMIT, 'limit')] }, 'crap'),
+    ).toEqual([
       {
         tool: 'crap',
         rule: 'crap-score-limit',
@@ -74,7 +133,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         location: { line: 1, endLine: 3 },
         ratchet: {
           key: 'function:value:occurrence:1:crap',
-          value: 9,
+          value: DEFAULT_CRAP_SCORE_LIMIT,
           worseMessage:
             'value CRAP rose from {base} to 9 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
           worseAllowedForm: 'Put new code in a new function and cover it with tests.',
@@ -82,63 +141,13 @@ describe('CRAP reporting in the quality-area analyzers', () => {
             'value: CRAP 9.00 (limit 9), allowed because base was {base}; any increase fails.',
         },
       },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:complexity',
-        message: 'complexity for value',
-        classification: 'descriptive',
-        metric: { name: 'complexity', value: 1 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:statementCoverage',
-        message: 'statementCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'statementCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:branchCoverage',
-        message: 'branchCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'branchCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:effectiveCoverage',
-        message: 'effectiveCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'effectiveCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:crap',
-        message: 'crap for value',
-        classification: 'descriptive',
-        metric: { name: 'crap', value: 9 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
+      descriptive('complexity', 1),
+      ...fullCoverage,
+      descriptive('crap', DEFAULT_CRAP_SCORE_LIMIT),
     ]);
-    expect(normalizeCrap({ functions: [functionEntry(null, 'unknown')] }, 'crap')).toEqual([
+    expect(
+      normalizeCrap({ functions: [functionEntry('unknown-coverage', 'unknown')] }, 'crap'),
+    ).toEqual([
       {
         tool: 'crap',
         rule: 'crap-coverage-unknown',
@@ -151,17 +160,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         symbol: 'value',
         location: { line: 1, endLine: 3 },
       },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:complexity',
-        message: 'complexity for value',
-        classification: 'descriptive',
-        metric: { name: 'complexity', value: 1 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
+      descriptive('complexity', 1),
     ]);
     expect(normalizeCrap({ functions: [functionEntry(undefined, 'missing')] }, 'crap')).toEqual([
       {
@@ -176,50 +175,8 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         symbol: 'value',
         location: { line: 1, endLine: 3 },
       },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:complexity',
-        message: 'complexity for value',
-        classification: 'descriptive',
-        metric: { name: 'complexity', value: 1 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:statementCoverage',
-        message: 'statementCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'statementCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:branchCoverage',
-        message: 'branchCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'branchCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:effectiveCoverage',
-        message: 'effectiveCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'effectiveCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
+      descriptive('complexity', 1),
+      ...fullCoverage,
     ]);
   });
   it('uses 9 by default and takes an explicit CRAP limit from the config thresholds', () => {
@@ -228,16 +185,16 @@ describe('CRAP reporting in the quality-area analyzers', () => {
       packageAnalyzers.filter(({ name }) => name === 'crap'),
       { crapLimit: 12 },
     );
-    const invocation = configured.createInvocation({
+    const invocation = configured?.createInvocation({
       projectRoot: '/project',
       policyRoot: '/policy',
       toolRoot: '/tools',
       snapshot: 'head',
     });
-    expect(invocation.args.slice(-2)).toEqual(['--crap-score-limit', '12']);
+    expect(invocation?.args.slice(-2)).toEqual(['--crap-score-limit', '12']);
     const defaultCrap = packageAnalyzers.find(({ name }) => name === 'crap');
-    expect(configured.configurationHash).not.toBe(defaultCrap.configurationHash);
-    expect(typeof configured.resolveVersion).toBe('function');
+    expect(configured?.configurationHash).not.toBe(defaultCrap?.configurationHash);
+    expect(typeof configured?.resolveVersion).toBe('function');
   });
   it('includes the active CRAP limit in the configuration hash', () => {
     expect(
@@ -253,7 +210,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
     );
   });
   it('allows CRAP scores to vary below an explicit limit', () => {
-    function functionEntry(crap) {
+    function functionEntry(crap: number): CrapEntry {
       return {
         source: 'src/main/value.ts',
         function: 'value',
@@ -300,65 +257,13 @@ describe('CRAP reporting in the quality-area analyzers', () => {
             'value: CRAP 12.00 (limit 12), allowed because base was {base}; any increase fails.',
         },
       },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:complexity',
-        message: 'complexity for value',
-        classification: 'descriptive',
-        metric: { name: 'complexity', value: 2 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:statementCoverage',
-        message: 'statementCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'statementCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:branchCoverage',
-        message: 'branchCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'branchCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:effectiveCoverage',
-        message: 'effectiveCoverage for value',
-        classification: 'descriptive',
-        metric: { name: 'effectiveCoverage', value: 100 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
-      {
-        tool: 'crap',
-        rule: 'function-crap',
-        path: 'src/main/value.ts',
-        identity: 'function:value:occurrence:1:crap',
-        message: 'crap for value',
-        classification: 'descriptive',
-        metric: { name: 'crap', value: 12 },
-        symbol: 'value',
-        location: { line: 1 },
-      },
+      descriptive('complexity', 2),
+      ...fullCoverage,
+      descriptive('crap', 12),
     ]);
   });
   it('reactivates excessive CRAP only when the function source changes and the score rises', () => {
-    function crapFindingsFor(sourceHash, crap = 9) {
+    function crapFindingsFor(sourceHash: string, crap = DEFAULT_CRAP_SCORE_LIMIT) {
       return normalizeCrap(
         {
           functions: [
@@ -367,7 +272,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
               function: 'value',
               sourceHash,
               lines: { start: 1, end: 3 },
-              complexity: 9,
+              complexity: DEFAULT_CRAP_SCORE_LIMIT,
               statementCoverage: { percent: 100 },
               branchCoverage: { percent: 100 },
               effectiveCoverage: { percent: 100 },
@@ -379,7 +284,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
       );
     }
     const base = crapFindingsFor('base');
-    const newFindingsFor = (headFindings) =>
+    const newFindingsFor = (headFindings: readonly Finding[]) =>
       compareFindings({ baseFindings: base, headFindings }).newFindings;
 
     expect(newFindingsFor(crapFindingsFor('base'))).toEqual([]);
@@ -406,7 +311,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         exceptionList: 'exceptions',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
-          value: expect.closeTo(9.5, 10),
+          value: heldCrap,
           worseMessage:
             'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
           worseAllowedForm: 'Put new code in a new function and cover it with tests.',

@@ -1,25 +1,29 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../../languages/typescript/adapters/static-checks-runner.mts';
-import { withDefaultAnalyzerParallelism } from '../../../execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../execution/test-support/analyzer-parallelism.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import type { DiffReport } from '../../../comparison/results.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
   toolRoot,
   useStaticCheckFixtures,
   fixtureAnalyzers,
   policyFiles,
   architectureReport,
-} from './test-support/static-check-fixtures.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
+} from './test-support/static-check-fixtures.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
 
+const configuredAnalyzers: () => { readonly name: string }[] = configuredAnalyzersJs;
 const packageAnalyzers = configuredAnalyzers();
 const { createRepository } = useStaticCheckFixtures();
 
 describe('static differential adapters', () => {
-  let difference;
-  function runStaticDifference() {
+  let difference: DiffReport | undefined;
+  function runStaticDifference(): DiffReport {
     if (difference !== undefined) {
       return difference;
     }
@@ -58,12 +62,13 @@ describe('static differential adapters', () => {
     );
     return difference;
   }
-  const atPath = (findings, filePath) => findings.filter((finding) => finding.path === filePath);
+  const atPath = (findings: readonly Finding[], filePath: string) =>
+    findings.filter((finding) => finding.path === filePath);
   it('reports new formatting, type, and architecture findings', () => {
     const report = runStaticDifference();
 
     expect(report.toolErrors).toEqual([]);
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(new Set(report.newFindings.map((finding) => finding.tool))).toEqual(
       new Set(['prettier-format', 'typescript-typecheck', 'dependency-architecture']),
     );
@@ -138,9 +143,9 @@ describe('static differential adapters', () => {
       'dependency-architecture',
     );
 
-    expect(first[0].identity).toBe(second[0].identity);
-    expect(first[0].path).toBe(second[0].path);
-    expect(first[0].path).toBe('src/main/a.ts');
+    expect(fieldAt(first, 0, 'identity')).toBe(fieldAt(second, 0, 'identity'));
+    expect(fieldAt(first, 0, 'path')).toBe(fieldAt(second, 0, 'path'));
+    expect(fieldAt(first, 0, 'path')).toBe('src/main/a.ts');
   });
   it('reports dependencies on modules outside the analyzed snapshot', () => {
     const from = 'src/main/features/greeting/domain/stamp.ts';
@@ -172,7 +177,7 @@ describe('static differential adapters', () => {
       },
       'dependency-architecture',
     );
-    const [cycle] = normalizeArchitectureViolations(
+    const cycles = normalizeArchitectureViolations(
       architectureReport(['../libs/a.ts', 'src/main/b.ts'], 'src/main/b.ts'),
       'dependency-architecture',
     );
@@ -181,12 +186,16 @@ describe('static differential adapters', () => {
       `${from} must not depend on fs through ../libs/shared/clock.ts`,
       `${from} must not depend on ../node_modules/pg/lib/index.js`,
     ]);
-    expect(cycle.path).toBe('src/main/b.ts');
+    expect(fieldAt(cycles, 0, 'path')).toBe('src/main/b.ts');
   });
   it.each([['single-command', packageAnalyzers]])(
     'includes all deterministic static checks in the %s analyzer catalog',
     (_dial, analyzers) => {
-      expect([...new Set(analyzers.map(({ name }) => name))].sort()).toEqual([
+      expect(
+        [...new Set(analyzers.map(({ name }) => name))].toSorted(
+          (a, b) => Number(a > b) - Number(a < b),
+        ),
+      ).toEqual([
         'coding-standards',
         'coupling',
         'coverage',

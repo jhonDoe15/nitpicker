@@ -1,17 +1,45 @@
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { createStaticCheckAnalyzer } from '../../../../../../languages/typescript/adapters/static-checks/analyzer.mjs';
+import type { ProfiledAnalyzer } from '../../../../../../shared/values/analyzers.mts';
+import { createProfiledAnalyzer } from '../../../analysis/eslint/test-support/eslint-fixtures.mts';
 import { PACKAGE_ROOT } from '../../../../../tooling/tool-resolution.mjs';
-import { useGitFixtures } from '../../../../git/test-support/git-repository.mjs';
+import type { FileMap } from '../../../../git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../../git/test-support/git-repository.mts';
 
 export const toolRoot = PACKAGE_ROOT;
 
+type StaticCheckOptions = {
+  readonly name: string;
+  readonly kind: string;
+  readonly version: string;
+  readonly configurationHash: string;
+  readonly exclusions: string[];
+  readonly configRelativePath: string;
+  readonly ignoreRelativePath: string | undefined;
+  readonly patterns: string[];
+  readonly includeOnly: string | undefined;
+  readonly exclude: string | undefined;
+  readonly timeoutMs: number | undefined;
+  readonly shardWeight: number;
+};
+
+type AnalyzerRequest = Pick<StaticCheckOptions, 'name' | 'kind' | 'configRelativePath'> &
+  Partial<StaticCheckOptions>;
+
 const COMPARISON_BASE_REF = 'comparison-base';
 
-export function useStaticCheckFixtures() {
+export function useStaticCheckFixtures(): {
+  readonly temporaryDirectory: (prefix: string) => string;
+  readonly createRepository: (initialFiles: FileMap) => {
+    readonly root: string;
+    readonly baseRef: string | undefined;
+  };
+  readonly generatedSnapshot: () => string;
+} {
   const git = useGitFixtures();
 
-  function createRepository(initialFiles) {
+  function createRepository(initialFiles: FileMap) {
     const { root, baseRef } = git.createGitRepository(initialFiles, {
       prefix: 'static-quality-diff-',
       baseRef: COMPARISON_BASE_REF,
@@ -28,7 +56,7 @@ export function useStaticCheckFixtures() {
   return { temporaryDirectory: git.temporaryRoot, createRepository, generatedSnapshot };
 }
 
-export function fixtureAnalyzers() {
+export function fixtureAnalyzers(): ProfiledAnalyzer[] {
   return [
     analyzer({
       name: 'prettier-format',
@@ -52,16 +80,22 @@ export function fixtureAnalyzers() {
   ];
 }
 
-export function analyzer(options) {
-  return createStaticCheckAnalyzer({
+export function analyzer(options: AnalyzerRequest): ProfiledAnalyzer {
+  return createProfiledAnalyzer(createStaticCheckAnalyzer, {
     version: 'fixture',
     configurationHash: 'fixture',
     exclusions: [],
+    ignoreRelativePath: undefined,
+    patterns: [],
+    includeOnly: undefined,
+    exclude: undefined,
+    timeoutMs: undefined,
+    shardWeight: 1,
     ...options,
   });
 }
 
-export function policyFiles() {
+export function policyFiles(): FileMap {
   return {
     '.prettierrc.json': '{"singleQuote":true}\n',
     '.prettierignore': 'src/main/ignored/\n',
@@ -99,14 +133,17 @@ export function policyFiles() {
   };
 }
 
-export function filler(count) {
+export function filler(count: number): string[] {
   return Array.from(
     { length: count },
     (_, index) => `export const f${String(index)} = ${String(index)};`,
   );
 }
 
-export function architectureReport(cycle, from = 'src/main/a.ts') {
+export function architectureReport(
+  cycle: readonly string[],
+  from = 'src/main/a.ts',
+): { readonly summary: { readonly violations: readonly object[] } } {
   return {
     summary: {
       violations: [

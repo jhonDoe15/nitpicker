@@ -3,6 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mts';
 import { runEslint } from '../../../../../languages/typescript/adapters/eslint-runner.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import type { ProfiledAnalyzer } from '../../../../../shared/values/analyzers.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import {
   toolRoot,
@@ -12,12 +14,15 @@ import {
   useEslintFixtures,
   policyFiles,
   sourceWithDebugger,
-} from './test-support/eslint-fixtures.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
+} from './test-support/eslint-fixtures.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, temporaryRoot } = useEslintFixtures();
+
+const countAnchor: unknown = expect.stringMatching(/^count:/u);
 
 const fixtureDependencyLockfile = `${JSON.stringify(
   {
@@ -39,18 +44,18 @@ const fixtureDependencyLockfile = `${JSON.stringify(
   2,
 )}\n`;
 
-function dependencyAnalyzer() {
+function dependencyAnalyzer(): ProfiledAnalyzer & Readonly<Record<string, unknown>> {
   return {
     name: 'dependency-analyzer',
     version: 'fixture',
     configurationHash: 'fixture',
     exclusions: [],
     requiresDependencies: true,
-    createInvocation({ toolRoot }) {
+    createInvocation(context) {
       return {
         command: process.execPath,
         args: ['-e', 'process.stdout.write(JSON.stringify({ findings: [] }))'],
-        cwd: toolRoot,
+        cwd: textOf(fieldOf(context, 'toolRoot')),
       };
     },
   };
@@ -100,7 +105,7 @@ describe('ESLint snapshot isolation and failures', () => {
         location: { line: 2, column: 3 },
         classification: 'enforceable',
         symbol: 'baseline',
-        anchor: { key: expect.stringMatching(/^count:/u) },
+        anchor: { key: countAnchor },
         ratchet: {
           key: 'count:`debugger` statement is not allowed',
           value: 1,
@@ -142,14 +147,14 @@ describe('ESLint snapshot isolation and failures', () => {
       ]),
     );
 
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(report.toolErrors).toEqual([]);
   });
   it('gives ESLint the configured analyzer deadline, else its own 4 minutes', () => {
     const root = temporaryRoot('nitpicker-diff-');
     const projectRoot = path.join(root, 'base/project');
     writeFiles(projectRoot, { 'package.json': '{"name":"fixture"}\n' });
-    const parse = (environment) =>
+    const parse = (environment: Readonly<Record<string, string>>) =>
       parseArguments(
         [
           '--analyzer-name',
@@ -208,10 +213,10 @@ describe('ESLint snapshot isolation and failures', () => {
       ]),
     );
 
-    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(2);
-    expect(report.toolErrors[0].message).toEqual(
-      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('typescriptToolFails')}`,
+    expect(fieldAt(report.toolErrors, 0, 'message')).toEqual(
+      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${String(linkSentence('typescriptToolFails'))}`,
     );
   });
   it.each(['malformed', 'configuration-error', 'crash', 'timeout'])(
@@ -234,7 +239,7 @@ describe('ESLint snapshot isolation and failures', () => {
         ]),
       );
 
-      expect(report.summary.overallStatus).toBe('tool-error');
+      expect(fieldAt(report.summary, 'overallStatus')).toBe('tool-error');
       expect(report.toolErrors).toHaveLength(2);
       expect(report.newFindings).toEqual([]);
     },

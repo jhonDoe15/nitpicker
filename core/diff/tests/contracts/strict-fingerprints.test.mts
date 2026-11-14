@@ -3,13 +3,37 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
-import { failureMessageCases as baseCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
-import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
-import { compareFindings } from '../../comparison/compare.mjs';
-import { testHonestyFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mjs';
+import { failureMessageCases as baseCasesJs } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
+import { lintFixture as lintFixtureJs } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
+import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldAt } from '../../../../scripts/json/fields.mts';
+import { testHonestyFailureMessageCases as honestyCasesJs } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mjs';
 
-const temporaryRoots = [];
-const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
+type FailureCase = {
+  readonly name: string;
+  readonly config: unknown;
+  readonly filename: string;
+  readonly banned: string;
+};
+
+function isFailureCase(value: unknown): value is FailureCase {
+  return (
+    typeof fieldOf(value, 'name') === 'string' &&
+    typeof fieldOf(value, 'filename') === 'string' &&
+    typeof fieldOf(value, 'banned') === 'string'
+  );
+}
+
+const baseCases: readonly FailureCase[] = listOf(baseCasesJs).filter(isFailureCase);
+const honestyCases: readonly FailureCase[] = listOf(honestyCasesJs).filter(isFailureCase);
+const lintFixture: (request: {
+  readonly config: unknown;
+  readonly filename: string;
+  readonly code: string;
+}) => unknown[] = lintFixtureJs;
+const temporaryRoots: string[] = [];
+const failureMessageCases = [...baseCases, ...honestyCases];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
@@ -17,13 +41,18 @@ afterAll(() => {
   }
 });
 
-function projectRelative(filename) {
+function projectRelative(filename: string) {
   return path.isAbsolute(filename) ? path.relative(process.cwd(), filename) : filename;
 }
 
-// Lints `code` with the real strict config, writes the source to a temporary snapshot and runs the
-// result through the same normalizer the differential ESLint analyzer uses.
-function findingsFor({ config, filename, code }, relativePath = projectRelative(filename)) {
+function findingsFor(
+  {
+    config,
+    filename,
+    code,
+  }: { readonly config: unknown; readonly filename: string; readonly code: string },
+  relativePath = projectRelative(filename),
+) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-strict-fingerprint-'));
   temporaryRoots.push(root);
   const absolutePath = path.join(root, relativePath);
@@ -37,7 +66,7 @@ function findingsFor({ config, filename, code }, relativePath = projectRelative(
   });
 }
 
-function moveTarget(relativePath) {
+function moveTarget(relativePath: string) {
   const directory = path.posix.dirname(relativePath);
   const base = path.posix.basename(relativePath);
   return `${directory}/moved/renamed-${base}`;
@@ -57,7 +86,7 @@ describe('strict findings keep their fingerprint', () => {
       expect(shiftedCompare.resolvedFindings).toEqual([]);
       expect(shiftedCompare.unchangedFindings).toHaveLength(base.length);
 
-      const oldPath = base[0].path;
+      const oldPath = textOf(fieldAt(base, 0, 'path'));
       const newPath = moveTarget(oldPath);
       const moved = findingsFor({ ...testCase, code: testCase.banned }, newPath);
       const movedCompare = compareFindings({
@@ -74,6 +103,9 @@ describe('strict findings keep their fingerprint', () => {
 
 describe('strict comment findings anchor on the comment, not on its neighbours', () => {
   const config = failureMessageCases.find((testCase) => testCase.name.includes('line comment'));
+  if (config === undefined) {
+    throw new Error('line comment case missing');
+  }
 
   it.each([
     [
@@ -104,18 +136,18 @@ describe('strict comment findings anchor on the comment, not on its neighbours',
 });
 
 describe('ESLint messages carry the allowed form without changing the finding identity', () => {
-  function normalizeOne(message, relativePath) {
+  function normalizeOne(message: object, relativePath: string) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-hint-'));
     temporaryRoots.push(root);
     const absolutePath = path.join(root, relativePath);
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     writeFileSync(absolutePath, 'export const value = [1].map((x) => x);\n');
-    const [finding] = normalizeEslintResults({
+    const findings = normalizeEslintResults({
       value: [{ filePath: absolutePath, messages: [message] }],
       projectRoot: root,
       analyzerName: 'eslint-lint',
     });
-    return finding;
+    return findings[0];
   }
 
   it('rewrites the immutability message but keeps the identity of the rule message', () => {
@@ -133,13 +165,13 @@ describe('ESLint messages carry the allowed form without changing the finding id
       'src/main/features/a/domain/x.ts',
     );
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       'Variable `value` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`. If this is intended, add {"rule":"functional/prefer-immutable-types","paths":["src/main/features/a/domain/x.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    expect(finding.identity.split('|').slice(0, 2)).toEqual([
+    expect(finding?.identity.split('|').slice(0, 2)).toEqual([
       'message:variable',
       'node:Identifier',
     ]);
-    expect(other.identity).toBe(finding.identity);
+    expect(other?.identity).toBe(finding?.identity);
   });
 });
