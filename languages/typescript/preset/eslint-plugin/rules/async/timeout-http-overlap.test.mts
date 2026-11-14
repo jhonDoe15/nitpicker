@@ -2,18 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { productionPolicyConfigFor } from '../../../eslint-config/policy/production-policy.mjs';
 import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../../layout.mjs';
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './timeout-abandons-operation.mjs';
 
 const REJECT_AFTER =
   'const rejectAfter = (ms: number) => new Promise<never>((_, reject) => setTimeout(reject, ms));\n';
 const RULES = new Set(['nitpicker/timeout-abandons-operation', 'nitpicker/require-http-timeout']);
 
-function ruleIdsFor(code, options) {
+function ruleIdsFor(code: string, options: Record<string, unknown>) {
   const config = productionPolicyConfigFor(defaultResolvedLayout, options);
   return lintFixture({ config, filename: 'src/fixture.ts', code })
     .map((message) => message.ruleId)
-    .filter((ruleId) => RULES.has(ruleId));
+    .filter((ruleId) => ruleId !== null && RULES.has(ruleId));
 }
 
 describe('timeout race next to the HTTP timeout rule', () => {
@@ -50,11 +50,13 @@ describe('timeout race next to the HTTP timeout rule', () => {
     const config = productionPolicyConfigFor(defaultResolvedLayout, {});
     const found = lintFixture({ config, filename: 'src/run.test.ts', code });
 
-    expect(found.filter((message) => RULES.has(message.ruleId))).toEqual([]);
+    expect(found.filter((message) => message.ruleId !== null && RULES.has(message.ruleId))).toEqual(
+      [],
+    );
   });
 });
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 tester.run('timeout-abandons-operation with HTTP clients', rule, {
   valid: [
     'import axios from "axios"; export const run = (url, timeout) => Promise.race([axios.get(url), timeout]);',

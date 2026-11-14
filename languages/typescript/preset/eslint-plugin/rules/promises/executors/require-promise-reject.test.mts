@@ -3,13 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../../adapters/eslint/normalize.mts';
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as deadlineRule } from './promise-wait-deadline.mjs';
 import { rule } from './require-promise-reject.mjs';
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 const missing = [{ messageId: 'missingReject' }];
-const ignored = (name) => [{ messageId: 'ignoredError', data: { name, callee: 'form.parse' } }];
+const ignored = (name: string) => [
+  { messageId: 'ignoredError', data: { name, callee: 'form.parse' } },
+];
 
 tester.run('require-promise-reject', rule, {
   valid: [
@@ -126,7 +128,7 @@ tester.run('promise-wait-deadline', deadlineRule, {
   ],
 });
 
-function classified(ruleId) {
+function classified(ruleId: string) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-promise-note-'));
   try {
     writeFileSync(path.join(root, 'read.ts'), 'export const read = 1;\n');
@@ -136,7 +138,7 @@ function classified(ruleId) {
       projectRoot: root,
       analyzerName: 'eslint-strict',
     });
-    return finding.classification;
+    return finding?.classification;
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

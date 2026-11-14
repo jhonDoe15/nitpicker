@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './require-process-timeout.mjs';
 
 const tester = typescriptRuleTester();
@@ -6,7 +6,7 @@ const CP =
   "import { exec, execFile, execFileSync, execSync, fork, spawn, spawnSync } from 'node:child_process';";
 const EVENTS = "import { once } from 'node:events';";
 
-function invalid(code, method, messageId = 'missingDeadline') {
+function invalid(code: string, method: string, messageId = 'missingDeadline') {
   return { code, errors: [{ messageId, data: { method } }] };
 }
 

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './require-error-listener.mjs';
 
 const typeRoot = fileURLToPath(new URL('../../../../../../node_modules/@types', import.meta.url));
@@ -39,7 +39,7 @@ for (const [name, text] of [
     'bus',
     'import { EventEmitter } from "node:events"; export declare class Bus extends EventEmitter {}',
   ],
-]) {
+] satisfies [string, string][]) {
   mkdirSync(path.join(root, 'node_modules', name), { recursive: true });
   writeFileSync(path.join(root, 'node_modules', name, 'index.d.ts'), text);
   writeFileSync(
@@ -66,7 +66,20 @@ afterAll(() => {
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-function typed(code, name, extension = 'ts') {
+type TypedCase = { filename: string; code: string };
+type ListenerError = { messageId: string; data: { name: string } };
+
+function typed(code: string, name?: undefined, extension?: string): TypedCase;
+function typed(
+  code: string,
+  name: string,
+  extension?: string,
+): TypedCase & { errors: ListenerError[] };
+function typed(
+  code: string,
+  name?: string,
+  extension = 'ts',
+): TypedCase | (TypedCase & { errors: ListenerError[] }) {
   const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
   writeFileSync(file, code);
   return {

@@ -1,27 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
 import { rule as deadlineRule } from './promise-wait-deadline.mjs';
 import { rule } from './require-promise-reject.mjs';
-
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-promise-reject-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: { strict: true, module: 'esnext', noEmit: true, types: [], lib: ['ES2022'] },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
 const PRELUDE = [
   'interface ErrnoException extends Error { code?: string }',
@@ -33,12 +12,13 @@ const PRELUDE = [
   'declare function readFile(path: string, done: (failure: ErrnoException | null, data: string) => void): void;',
 ].join('\n');
 
-function typed(body, errors) {
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
-  const code = `${PRELUDE}\n${body}`;
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
+type Errors = { messageId: string; data: Record<string, string> }[];
+
+const { tester, typed } = typedCaseProject<Errors>({
+  prefix: 'nitpicker-promise-reject-',
+  lib: ['ES2022'],
+  header: `${PRELUDE}\n`,
+});
 
 tester.run('require-promise-reject (typed)', rule, {
   valid: [

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-unhandled-void-promise.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-void-promise-')));
@@ -49,7 +49,22 @@ const PRELUDE = [
   'declare const logger: { error(value: unknown): void; flush(): Promise<void> };',
 ].join('\n');
 
-function typed(body, { invalid = false, options, extension = 'ts' } = {}) {
+type TypedOptions = {
+  invalid?: boolean;
+  options?: { runners: string[] }[];
+  extension?: string;
+};
+
+type ValidCase = { filename: string; code: string; options?: { runners: string[] }[] };
+
+type InvalidCase = ValidCase & { errors: { messageId: string }[] };
+
+function typed(body: string, settings: TypedOptions & { invalid: true }): InvalidCase;
+function typed(body: string, settings?: TypedOptions): ValidCase;
+function typed(
+  body: string,
+  { invalid = false, options, extension = 'ts' }: TypedOptions = {},
+): ValidCase | InvalidCase {
   const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
   const code = extension === 'ts' ? `${PRELUDE}\n${body}` : body;
   writeFileSync(file, code);
@@ -61,7 +76,7 @@ function typed(body, { invalid = false, options, extension = 'ts' } = {}) {
   };
 }
 
-const catching = (body) =>
+const catching = (body: string) =>
   `async function send(id: string) { try { ${body} } catch (error) { logger.error(error); } }`;
 
 tester.run('no-unhandled-void-promise', rule, {
