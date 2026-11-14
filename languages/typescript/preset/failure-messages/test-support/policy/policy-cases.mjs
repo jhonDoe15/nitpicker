@@ -99,6 +99,11 @@ export const policyFailureMessageCases = [
     'relay',
   ),
   adapterCase(
+    'resolver map query names the DataLoader',
+    "import { ApolloServer } from '@apollo/server';\nconst typeDefs = `type Query { views: [View!]! }`;\nconst resolvers = { View: { owner: (view) => ownerRepository.findOne(view.ownerId) } };\nexport const server = new ApolloServer({ typeDefs, resolvers });",
+    'DataLoader',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

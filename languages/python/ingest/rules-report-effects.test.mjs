@@ -61,6 +61,11 @@ describe('effect rules report', () => {
       'place|order.save()|notify.delay()|on-commit',
       '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
     ],
+    [
+      'resolver-query-per-parent',
+      'Order.customer|strawberry|database|services.load() > session.get()',
+      'The resolver `customer` of `Order` runs once per parent and sends a database query with `services.load()` (which calls `session.get()`) each time, so a list of N parents costs N queries',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

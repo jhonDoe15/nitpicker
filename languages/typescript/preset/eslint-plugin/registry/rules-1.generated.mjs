@@ -68,6 +68,7 @@ import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/n
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mjs';
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mjs';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mjs';
+import { rule as ruleNoQueryPerParent } from '../rules/resolvers/no-query-per-parent.mjs';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mjs';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framewo
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -171,6 +171,7 @@ export const partRules = {
   'no-production-console': ruleNoProductionConsole,
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
+  'no-query-per-parent': ruleNoQueryPerParent,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
 };

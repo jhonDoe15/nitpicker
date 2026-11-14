@@ -106,6 +106,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-retry-without-idempotency`).
 - Don't write to the database and publish a message in one function: write an outbox row in the same
   transaction and let a relay publish it (`nitpicker/no-dual-write`).
+- Resolve a GraphQL field of a listed type through a DataLoader (`loaders.owner.load(parent.ownerId)`), never with
+  a repository or service call per parent (`nitpicker/no-query-per-parent`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

@@ -26,6 +26,10 @@ const SAMPLES = [
     { method: METHOD, scope: '@Retryable', holder: HOLDER, write: 'insert', path: PATH },
   ],
   ['DualWriteWithoutOutbox', { method: METHOD, form: 'inline', write: WRITE, path: PATH }],
+  [
+    'GraphqlFieldPerParent',
+    { method: METHOD, framework: 'spring', kind: 'database', path: PATH },
+  ],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

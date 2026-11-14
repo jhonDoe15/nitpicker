@@ -86,6 +86,11 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `nitpicker/require-http-timeout` in TypeScript): Go's default client has no timeout at all.
   `io-in-loop` carries the Python rule's name and remedies: a query per item is the most common
   cause of slow endpoints.
+- **Resolvers (#799).** `query-per-parent-resolver` reads the list parent from Go types (a slice of it
+  in a struct field or a resolver result) instead of the GraphQL schema files, and reports only a query
+  that uses the parent, so a count that ignores the parent or a singular parent stays quiet. The
+  convention-measuring rules (#754, #1220, #758), the optimistic-lock retry rule (#739) and the future
+  rules (#796) are not built for Go; `docs/go-preset.md` says why.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,
