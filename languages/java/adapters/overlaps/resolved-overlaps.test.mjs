@@ -157,6 +157,7 @@ describe('overlaps on the probe project', () => {
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
       ['P2Inner.java:10', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['P2Inner.java:13', ['errorprone/ClassCanBeStatic', 'pmd/GenericTypeName']],
       ['P2Inner.java:6', ['checkstyle/VisibilityModifier', 'errorprone/NonFinalStaticField']],
       ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
