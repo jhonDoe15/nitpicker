@@ -8,6 +8,7 @@ import { testHonestySelectors } from './test-honesty/selectors.mjs';
 const processTimeoutRules = { 'nitpicker/require-test-process-timeout': 'error' };
 
 export const strictTestRules = {
+  'nitpicker/no-cleanup-skipped-on-failure': 'error',
   'nitpicker/no-git-repository-per-test': 'error',
   'nitpicker/hermetic-git-in-tests': 'error',
   'nitpicker/no-node-process-per-test': 'error',

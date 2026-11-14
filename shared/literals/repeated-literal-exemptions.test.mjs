@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   DISCRIMINANT_KEYS,
+  ESLINT_SEVERITIES,
   IDIOMATIC_TEXTS,
   TRANSLATION_CALLS,
   isIdiomaticText,
@@ -21,7 +22,7 @@ describe('isIdiomaticText', () => {
 
 describe('exemption lists', () => {
   it('hold each entry once', () => {
-    const lists = [IDIOMATIC_TEXTS, TRANSLATION_CALLS, DISCRIMINANT_KEYS];
+    const lists = [IDIOMATIC_TEXTS, TRANSLATION_CALLS, DISCRIMINANT_KEYS, ESLINT_SEVERITIES];
     expect(lists.map((list) => new Set(list).size)).toEqual(lists.map((list) => list.length));
   });
 });

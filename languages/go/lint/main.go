@@ -41,5 +41,8 @@ func configure(project *bool) error {
 		strict.HTTPStatusCodeWhitelist = []string{}
 		return &strict, nil
 	}
+	if err := gosecConfigure(); err != nil {
+		return err
+	}
 	return errcheckFlags()
 }

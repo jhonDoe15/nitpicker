@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { describeConfigOverrides } from '../configuration/config.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
@@ -371,6 +371,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
         'quality-policy.json': policy(),
         'custom-analyzer.mjs': customAnalyzerScript,
         'src/main/old.txt': 'legacy\n',
+        'src/main/code.ts': 'export const code = true;\n',
       });
       writeFiles(repository.root, {
         'nitpicker.config.json': JSON.stringify({ analyzers: [customAnalyzerEntry('files')] }),

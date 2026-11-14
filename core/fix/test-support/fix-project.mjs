@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
 import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';

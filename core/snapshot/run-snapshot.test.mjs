@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
-import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mjs';
+import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mts';
 
 // Most tests here are about snapshot report logic, so the analyzer task graph and the fixture
 // analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
@@ -35,6 +35,29 @@ describe('quality snapshot run', () => {
     expect(report.summary.overallStatus).toBe('clean');
     expect(report.summary.enforceableFindings).toBe(0);
     expect(report.findings).toEqual([]);
+  });
+
+  it('turns the status into a tool error when the run carries a setup error', () => {
+    const projectRoot = createFixtureRoot({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const setupError = {
+      tool: 'source-roots',
+      snapshot: 'head',
+      rule: 'empty-sources',
+      path: '',
+      message: 'No TypeScript or JavaScript files under src; nothing was analyzed.',
+    };
+
+    const report = runQualitySnapshot({
+      analyzers: [fakeAnalyzer()],
+      projectRoot,
+      setupErrors: [setupError],
+    });
+
+    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(report.toolErrors).toEqual([setupError]);
   });
 
   it('reports violations for every enforceable finding present right now, with no baseline', () => {

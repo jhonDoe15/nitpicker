@@ -75,7 +75,7 @@ func Retry(ctx context.Context, db *sql.DB, attempts int) error {
 func FirstReachable(ctx context.Context, client *http.Client, mirrors []string) (*http.Response, error) {
 	var lastErr error
 	for _, mirror := range mirrors {
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, mirror, nil)
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, mirror, nil) // want httpNoBody
 		if err != nil {
 			return nil, fmt.Errorf("request %s: %w", mirror, err)
 		}

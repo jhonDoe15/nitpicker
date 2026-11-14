@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import tseslint from 'typescript-eslint';
-import { testTimeouts } from '../../adapters/test-runners/test-run.mjs';
+import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';
 import { defaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
 import { isStrictRule } from '../strict-rules.mjs';

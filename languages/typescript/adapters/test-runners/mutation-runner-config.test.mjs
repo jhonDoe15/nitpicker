@@ -11,7 +11,7 @@ import {
   cracoJestConfigText,
   mutationRunnerConfig,
   unsupportedMutationRunner,
-} from './mutation-runner-config.mjs';
+} from './mutation-runner-config.mts';
 
 const RESTORE_MOCKS = path.join(import.meta.dirname, 'node-test', 'restore-mocks.cjs');
 

@@ -24,6 +24,13 @@ const TRANSLATION_KEY = new RegExp(
 const NAMED_ARGUMENT = /[(,]\s*\w+\s*=\s*$/;
 const PAIR_KEY = /^\s+to\s/;
 const PAIR_VALUE = /\bto\s+$/;
+const DISCRIMINANT_NAMES = DISCRIMINANT_KEYS.join('|');
+const COMPARED_TO_DISCRIMINANT_BEFORE = new RegExp(
+  String.raw`\.\s*(?:${DISCRIMINANT_NAMES})\s*[!=]=+\s*$`,
+);
+const COMPARED_TO_DISCRIMINANT_AFTER = new RegExp(
+  String.raw`^\s*[!=]=+\s*(?:[\w$]+\s*\??\.\s*)+(?:${DISCRIMINANT_NAMES})(?![\w$])`,
+);
 const SUBSCRIPT_OPEN = /[\w)\]]\s*\[\s*$/;
 const SUBSCRIPT_CLOSE = /^\s*\]/;
 const ADVICE =
@@ -119,7 +126,9 @@ function isNamedForm(literal, { code, mask, literalsByEnd }) {
     NAMED_ARGUMENT.test(before) ||
     PAIR_KEY.test(after) ||
     (SUBSCRIPT_OPEN.test(before) && SUBSCRIPT_CLOSE.test(after)) ||
-    isDiscriminantValue(before, windowStart, literalsByEnd)
+    isDiscriminantValue(before, windowStart, literalsByEnd) ||
+    COMPARED_TO_DISCRIMINANT_BEFORE.test(before) ||
+    COMPARED_TO_DISCRIMINANT_AFTER.test(after)
   );
 }
 

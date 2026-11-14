@@ -8,7 +8,7 @@ import { analyzeCoupling } from '../../preset/coupling/analyze.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs';
 import { analyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
-import { loadDependencyGraph } from './project-dependency-graph.mjs';
+import { loadDependencyGraph } from './project-dependency-graph.mts';
 
 const ALL_SOURCES = ['src/a.ts', 'src/b.ts', 'src/leaky.ts', 'test/a.test.ts', 'test/fixture.ts'];
 const temporaryRoots = [];

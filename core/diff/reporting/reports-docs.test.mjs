@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mjs';
+import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mts';
 import { REPORT_FILE_NAMES } from './reporters.mjs';
 import { guidePages, guideText } from '../../../shared/reference/build/guide-pages.mjs';
 

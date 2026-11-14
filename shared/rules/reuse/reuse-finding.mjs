@@ -42,3 +42,14 @@ export function uniqueFindings(findings) {
       left.identity.localeCompare(right.identity),
   );
 }
+
+/**
+ * A fact rule over function units: `findingsOf(unit, analyzerName)` for each function unit whose
+ * file `rule` is not excepted for.
+ */
+export function functionUnitRule(rule, findingsOf) {
+  return (units, { analyzerName, isExcepted }) =>
+    units
+      .filter((unit) => unit.tree?.kind === 'function' && !isExcepted(rule, unit.file))
+      .flatMap((unit) => findingsOf(unit, analyzerName));
+}

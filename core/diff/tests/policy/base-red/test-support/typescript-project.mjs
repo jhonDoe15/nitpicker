@@ -10,6 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
 
 const COMMAND_TIMEOUT_MS = 60_000;
 const GATE_TIMEOUT_MS = 5 * 60_000;
@@ -76,7 +77,7 @@ function runGate({ project, branch, options }) {
   const result = spawnSync(
     'node',
     [
-      path.join(project.packageRoot, 'core/cli.mjs'),
+      checkoutModulePath(path.join(project.packageRoot, 'core/cli.mjs')),
       ...(base === undefined ? [] : ['--base', base]),
       ...[...analyzerArguments, ...extraArguments, '--output', outputRoot],
     ],

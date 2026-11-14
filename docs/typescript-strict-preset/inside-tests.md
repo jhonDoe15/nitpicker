@@ -537,6 +537,18 @@ the spec for Mocha.
   mutation harness hides every mutant. For the same reason a test reads a global by its name
   (`globalThis.name`), not by a computed key (`Reflect.get(globalThis, key)`, `globalThis[key]`).
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
+- `nitpicker/no-dropped-test-callback` (strict, type-aware, so on both lint engines it runs through
+  ESLint with the project's types) rejects a call statement in a test file whose type is a plain
+  function, and an expression-bodied arrow function passed where a `void` callback is expected whose
+  body is such a call: `contextRunner.run((context) => hasSessions(1))` builds the check and drops it,
+  so it never runs and the test passes. Allowed: call the result (`hasSessions(1)(context)`), pass it
+  on (`run(hasSessions(1))`) or assign it. Registration calls are left alone: `subscribe`, `on`, `once`, `addListener`, `addEventListener`, `listen`,
+  `watch`, `observe` and `onX` return an unsubscribe function on purpose, and so does a call that takes a
+  function returning a no-argument `void` function. A function-typed value with properties (a `sinon` stub, a
+  Vitest mock) is not a plain function and is left alone. No existing `@typescript-eslint` or Vitest
+  rule reports this: `no-floating-promises`, `no-unused-expressions` and `expect-expect` read other
+  shapes. JavaScript projects have no type checker in the preset, so the rule does not apply there;
+  Python does not need it, since a dropped callable is legal and common there.
 - `vitest/no-conditional-in-test` (`jest/`, `node-test/` or `mocha/` for the other runners) is
   enabled for test files: no `if`, ternary or `&&`/`||` branching inside a test body. Give each
   outcome its own `it.each` table row instead of branching on it.

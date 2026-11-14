@@ -1,3 +1,5 @@
+import { GOSEC_HINTS, gosecMessage } from './gosec-hints.mjs';
+import { GOCRITIC_HINTS, GOCRITIC_MESSAGE_HINTS } from './gocritic-hints.mjs';
 import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
 
 function deferredClose(value) {
@@ -130,6 +132,7 @@ const HINTS = new Map([
   ],
   ['suite-broken-parallel', 'Remove the `t.Parallel()` call; suites run their tests in order.'],
   ['wastedassign', 'Remove the assignment, or use the value before it is assigned again.'],
+  ...GOCRITIC_HINTS,
   ['asciicheck', 'Rename it with ASCII letters only.'],
   [
     'bidichk',
@@ -148,6 +151,7 @@ const HINTS = new Map([
     'spancheck',
     'Assign the span and end it in a deferred call right after `tracer.Start`: `defer span.End()`.',
   ],
+  ...GOSEC_HINTS,
 ]);
 const MESSAGE_HINTS = [
   [
@@ -155,6 +159,7 @@ const MESSAGE_HINTS = [
     /^key-value pairs/u,
     'Pass typed attributes: `slog.String("name", name)`, `slog.Any("order", order)`.',
   ],
+  ...GOCRITIC_MESSAGE_HINTS,
 ];
 
 const RULE_NAMES = new Map([['errcheck', 'unchecked']]);
@@ -198,6 +203,7 @@ function hintOf(tool, rule, message) {
 
 export function lintMessage({ tool, rule, message }) {
   const hint = hintOf(tool, rule, message);
-  const text = sentence(stable(tool, rule, message));
+  const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
+  const text = sentence(stable(tool, rule, own));
   return hint === undefined ? text : `${text} ${hint}`;
 }

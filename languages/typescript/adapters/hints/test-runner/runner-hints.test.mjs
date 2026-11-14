@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../../preset/head-policy.mjs';
-import { eslintMessageWithHint } from '../eslint-hints.mjs';
+import { eslintMessageWithHint } from '../eslint-hints.mts';
 
 const REJECT = 'Expected the Promise rejection reason to be an Error.';
 

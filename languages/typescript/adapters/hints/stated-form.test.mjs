@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
 import { strictPresetConfig } from '../../preset/eslint-config/strict.mjs';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
-import { routedEslintFields } from './eslint-hints.mjs';
-import { statedAllowedForm, withStatedForm } from './stated-form.mjs';
+import { routedEslintFields } from './eslint-hints.mts';
+import { statedAllowedForm, withStatedForm } from './stated-form.mts';
 
 const PLUGIN_RULES = ['no-comments', 'no-magic-numbers', 'no-production-console'];
 const UNREPORTED_MESSAGES = new Set(['no-magic-numbers useConst']);

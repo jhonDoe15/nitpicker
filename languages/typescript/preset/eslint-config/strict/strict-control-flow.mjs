@@ -60,4 +60,8 @@ export const promiseChainRule = {
 
 export const controlFlowRules = { eqeqeq: ['error', 'always'], ...promiseChainRule };
 
-export const controlFlowTypedRules = { '@typescript-eslint/no-floating-promises': 'error' };
+export const controlFlowTypedRules = {
+  '@typescript-eslint/no-floating-promises': 'error',
+  '@typescript-eslint/prefer-find': 'error',
+  '@typescript-eslint/prefer-includes': 'error',
+};

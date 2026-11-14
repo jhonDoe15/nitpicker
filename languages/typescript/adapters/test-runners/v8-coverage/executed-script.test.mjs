@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pathToFileURL } from 'node:url';
-import { executedScript, scriptFile } from './executed-script.mjs';
+import { executedScript, scriptFile } from './executed-script.mts';
 
 const SOURCE = 'export const sign = (value: number): number => (value > 0 ? 1 : -1);\n';
 const STRIPPED = 'export const sign = (value        )         => (value > 0 ? 1 : -1);\n';

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "cleanup-skipped-on-failure",
+    "mention": "contextlib.ExitStack"
+  }
+]

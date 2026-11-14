@@ -9,6 +9,7 @@ export const FEATURE_RULES = [
   RULE_IDS.featureInternalImport,
   RULE_IDS.sharedImportsFeature,
   RULE_IDS.featureCycle,
+  RULE_IDS.foreignFeaturePersistence,
 ];
 
 function isPublicName(name) {
@@ -43,13 +44,21 @@ function statementEdges(importer, statement, { known, fileOf }) {
   }));
 }
 
-export function pythonImportFacts({ modules, imports }, isGenerated = () => false) {
+function moduleFact(file, persistence) {
+  return persistence.has(file)
+    ? { file, role: 'production', persistence: persistence.get(file) }
+    : { file, role: 'production' };
+}
+
+export function pythonImportFacts(
+  { modules, imports },
+  { isGenerated = () => false, persistence = new Map() } = {},
+) {
   const known = new Set(modules.map(({ module }) => module));
   const fileOf = new Map(modules.map(({ module, file }) => [module, file]));
   return {
     modules: modules.map(({ file, isPackage }) => ({
-      file,
-      role: 'production',
+      ...moduleFact(file, persistence),
       generated: isGenerated(file),
       initializer: isPackage === true,
     })),
@@ -61,8 +70,8 @@ export function pythonImportFacts({ modules, imports }, isGenerated = () => fals
   };
 }
 
-export function pythonFeatureAnalysis(report, { policy = {}, isGenerated } = {}) {
-  return featureFactAnalysis(pythonImportFacts(report, isGenerated), {
+export function pythonFeatureAnalysis(report, { policy = {}, isGenerated, persistence } = {}) {
+  return featureFactAnalysis(pythonImportFacts(report, { isGenerated, persistence }), {
     language: 'python',
     analyzerName: COUPLING_TOOL,
     rules: FEATURE_RULES,
