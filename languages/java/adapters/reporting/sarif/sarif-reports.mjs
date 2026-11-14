@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { sourceTextReader } from '../function-locator.mjs';
 import { dropEntityAssociations, dropInheritedVersions } from '../../jpa/jpa-source-filters.mjs';
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
@@ -9,12 +10,15 @@ import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
-import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import {
+  springRoots,
+  withSpringTransactionFilters,
+} from '../../spring/transactions/transaction-filters.mjs';
+import { withoutUnconstrainedBodies } from '../../spring/web/request-body-constraints.mjs';
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
-import { sourceTextReader } from '../function-locator.mjs';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mjs';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
@@ -78,12 +82,14 @@ function pmdFindings(raw, context) {
       { projectRoot },
     ),
   );
-  return withoutSpringCoveredReads(
+  const constrained = withoutUnconstrainedBodies(
     withoutRuntimeCryptoKeys(
       withRenderedPlaceholders(ingestSarif(pmd, { tool: 'pmd' }).findings, { sourceText }),
       { sourceText },
     ),
+    { projectRoot, roots: springRoots(context), readText: sourceText },
   );
+  return withoutSpringCoveredReads(constrained);
 }
 
 function withProjectFilters(findings, context) {

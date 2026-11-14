@@ -26,6 +26,15 @@ function scopeChains(scopes) {
   return chains;
 }
 
+function scopedTo(file, context) {
+  const resolve = nameResolver(file, context.declared);
+  return {
+    resolve,
+    projectClass: (text) => projectClass(context, resolve(text)),
+    metaAnnotated: (text, fqns) => metaAnnotated(context, resolve(text), fqns),
+  };
+}
+
 function fileView(file, context) {
   const resolve = nameResolver(file, context.declared);
   const chains = scopeChains(file.scopes);
@@ -41,6 +50,7 @@ function fileView(file, context) {
     chain: (id) => chains.get(id) ?? [],
     classes,
     is: (text, fqns) => resolvesTo(resolve, text, fqns),
+    scopedTo: (other) => scopedTo(other, context),
     isRepository: (text) => isRepositoryType(context, resolve, text),
     extendsType: (text, fqns) => extendsType(context, { resolve, text }, fqns),
     projectClass: (text) => projectClass(context, resolve(text)),
