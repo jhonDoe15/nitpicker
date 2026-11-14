@@ -1,39 +1,58 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
-import { isReactProject } from '../eslint-config/scope-support.mjs';
-import { readHeadPolicy, readLayout } from '../head-policy.mjs';
-import { createContext, isTypeScriptFile } from './context.mjs';
-import { unusedApiFindings } from './findings.mjs';
-import { createProjectProgram } from './program.mjs';
-import { collectReferences } from './references/references.mjs';
-import { declaresCheckable } from './syntax/candidates.mjs';
-import { collectTargets, registerWrapperAliases } from './syntax/declarations.mjs';
-import { loadPackages } from './workspace/packages.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
+import { createProjectProgram } from './program.mts';
+import {
+  type AnalysisLayout,
+  collectReferences,
+  collectTargets,
+  createContext,
+  declaresCheckable,
+  exceptionMatcher,
+  isReactProject,
+  isTypeScriptFile,
+  loadPackages,
+  readHeadPolicy,
+  readLayout,
+  registerWrapperAliases,
+  unusedApiFindings,
+} from './typed/analysis-views.mts';
 
-function parsedSource(projectRoot, file) {
+const ts = typescriptApi();
+
+function parsedSource(projectRoot: string, file: string): TypeScript.SourceFile {
   const fileName = path.join(projectRoot, file);
   return ts.createSourceFile(fileName, readFileSync(fileName, 'utf8'), ts.ScriptTarget.Latest);
 }
 
-function hasCheckableDeclarations({ projectRoot, layout, react }) {
+function hasCheckableDeclarations({
+  projectRoot,
+  layout,
+  react,
+}: {
+  projectRoot: string;
+  layout: AnalysisLayout;
+  react: boolean;
+}): boolean {
   return layout
     .projectCodeFiles(projectRoot)
     .filter((file) => layout.isSourceFile(file) && isTypeScriptFile(file))
     .some((file) => declaresCheckable(parsedSource(projectRoot, file), react));
 }
 
-/**
- * Unused props of components (React scope only) and unused options of exported functions, from one
- * type-checked program over the project and its workspace siblings.
- */
 export function analyzeUnusedApi({
   projectRoot,
   configPath,
   analyzerName,
   environment = process.env,
-}) {
+}: {
+  projectRoot: string;
+  configPath: string;
+  analyzerName: string;
+  environment?: NodeJS.ProcessEnv;
+}): Finding[] {
   const { exceptions, react: reactPolicy } = readHeadPolicy(environment);
   const layout = readLayout(environment);
   const react = isReactProject({ projectRoot, react: reactPolicy, javascript: layout.javascript });

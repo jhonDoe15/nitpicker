@@ -6,13 +6,13 @@ import {
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
-import { codeFilesUnder, walkRules } from './program.mjs';
-import { createProject, removeProject } from './test-support/project.mjs';
+import { codeFilesUnder, walkRules } from './program.mts';
+import { createProject, removeProject } from './test-support/project.mts';
 
 const { gitCheckout } = useGitCheckouts();
-let root;
+let root: string;
 
-function projectWith(files) {
+function projectWith(files: Readonly<Record<string, unknown>>) {
   root = createProject(files);
   symlinkSync(path.join(root, 'src/real'), path.join(root, 'src/linked'));
   symlinkSync(path.join(root, 'src/real/a.ts'), path.join(root, 'src/alias.ts'));

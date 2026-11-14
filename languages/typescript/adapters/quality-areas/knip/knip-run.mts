@@ -10,6 +10,7 @@ import { projectToolLayer as untypedProjectToolLayer } from '../../../preset/pro
 import { KNIP_TOOL } from '../../../preset/project-tools/project-config-files.mjs';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import type { KnipConfig } from '../typed/policy.mts';
+import type { KnipReport } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
 import { readHeadPolicy } from '../../typed/head-policy.mts';
 import { runNodeTool } from '../typed/tooling.mts';
 import { type KnipLayer, layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
@@ -50,7 +51,7 @@ export function knipConfigFile(
       };
 }
 
-export function knipReport(options: QualityAreaOptions, config: KnipConfig): unknown {
+export function knipReport(options: QualityAreaOptions, config: KnipConfig): KnipReport {
   const file = knipConfigFile(options.projectRoot, config);
   trackTemporaryPath(file.path);
   writeFileSync(file.path, file.text);

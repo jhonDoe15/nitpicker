@@ -4,7 +4,7 @@ import {
   analyzeProject,
   createProject,
   removeProject,
-} from '../test-support/project.mjs';
+} from '../test-support/project.mts';
 
 const BUTTON = `type ButtonProps = {
   label: string;
@@ -27,8 +27,8 @@ const FILES = {
 };
 const BROKEN_CONFIG = '{ "compilerOptions": { "target": 42 } }';
 
-let root;
-let findings;
+let root: string;
+let findings: ReturnType<typeof analyzeFiles>;
 
 beforeAll(() => {
   root = createProject(FILES);
@@ -61,7 +61,7 @@ describe('unused API findings', () => {
   it('keeps its identity when the code around the prop moves', () => {
     const moved = analyzeFiles({ ...FILES, 'src/button.tsx': `\n\n\n${BUTTON}` });
 
-    expect(moved.map(({ identity, location }) => [identity, location.line])).toEqual([
+    expect(moved.map(({ identity, location }) => [identity, location?.line])).toEqual([
       ['Button.tone', 6],
       ['run.retries', 1],
     ]);

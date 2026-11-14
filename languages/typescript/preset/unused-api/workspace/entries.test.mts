@@ -3,12 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveLayoutFor } from '../../layout.mjs';
-import { publicEntryGlobs, workspacePaths } from './entries.mjs';
+import { publicEntryGlobs, workspacePaths } from './entries.mts';
 
 const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
-let directory;
+let directory: string;
 
-function packageAt(name, manifest, files) {
+function packageAt(name: string, manifest: unknown, files: readonly string[]) {
   const dir = path.join(directory, name);
   for (const file of files) {
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
@@ -30,7 +30,7 @@ describe('workspace package paths', () => {
       ['lib/entry.ts'],
     );
     const built = packageAt('built', { main: 'dist/index.js' }, ['src/main/index.tsx']);
-    const roots = (dir) => ['src/main/*', 'src/*', '*'].map((root) => path.join(dir, root));
+    const roots = (dir: string) => ['src/main/*', 'src/*', '*'].map((root) => path.join(dir, root));
 
     expect(workspacePaths([exported, built], layout)).toEqual({
       exported: [path.join(exported.dir, 'lib/entry.ts')],

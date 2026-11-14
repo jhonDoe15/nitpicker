@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { analyzeFiles, findingsIn } from '../test-support/project.mjs';
+import { analyzeFiles, findingsIn } from '../test-support/project.mts';
 
 const UNSET = {
   'src/unset/run.ts': `export type RunOptions = { retries?: number; verbose?: boolean; label?: string };
@@ -84,7 +84,7 @@ legacyPlugin({ minify: true });
 `,
 };
 
-let findings;
+let findings: ReturnType<typeof analyzeFiles>;
 
 beforeAll(() => {
   findings = analyzeFiles({

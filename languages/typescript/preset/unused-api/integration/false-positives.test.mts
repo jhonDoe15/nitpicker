@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { analyzeFiles, findingsIn } from '../test-support/project.mjs';
+import { analyzeFiles, findingsIn } from '../test-support/project.mts';
 
-const part = (name) =>
+const part = (name: string) =>
   `export function ${name}(props: { a?: number; b?: number }) { return <i>{props.a}</i>; }\n`;
 
 const LIBRARY = {
@@ -170,7 +170,7 @@ export const Use = () => <ul><Item label="a" /><Entry label="b" /></ul>;
 `,
 };
 
-let findings;
+let findings: ReturnType<typeof analyzeFiles>;
 
 beforeAll(() => {
   findings = analyzeFiles({

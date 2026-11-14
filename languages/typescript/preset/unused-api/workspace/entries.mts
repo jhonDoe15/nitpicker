@@ -1,28 +1,33 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { depthFirst } from '../../../../../shared/traversal.mjs';
+import type { EntryLayout, PackageEntry } from './workspace-types.mts';
+import { fieldOf, fieldsOf } from '../../../../../shared/values/readers.mts';
+import { depthFirst } from './entry-views.mts';
 import { codeExtensionNames } from '../../layout.mjs';
 
 const MANIFEST_ENTRY_FIELDS = ['source', 'types', 'typings', 'module', 'main'];
 const FALLBACK_ROOTS = ['src', '.'];
 
-function exportChildren(value, includeSubpaths) {
+function exportChildren(value: unknown, includeSubpaths: boolean): unknown[] {
   if (value === null || typeof value !== 'object') return [];
-  const root = !includeSubpaths && Object.hasOwn(value, '.') ? value['.'] : value;
+  const root = !includeSubpaths && Object.hasOwn(value, '.') ? fieldOf(value, '.') : value;
   if (typeof root === 'string') return [root];
-  return Object.entries(root ?? {})
+  return Object.entries(fieldsOf(root))
     .filter(([key]) => includeSubpaths || !key.startsWith('.'))
     .map(([, target]) => target);
 }
 
-function manifestTargets(manifest, { includeSubpaths }) {
+function manifestTargets(
+  manifest: unknown,
+  { includeSubpaths }: { includeSubpaths: boolean },
+): string[] {
   return [
-    ...MANIFEST_ENTRY_FIELDS.map((field) => manifest[field]),
-    ...depthFirst(manifest.exports, (value) => exportChildren(value, includeSubpaths)),
+    ...MANIFEST_ENTRY_FIELDS.map((field) => fieldOf(manifest, field)),
+    ...depthFirst(fieldOf(manifest, 'exports'), (value) => exportChildren(value, includeSubpaths)),
   ].filter((target) => typeof target === 'string');
 }
 
-function isSourceEntry(file, layout) {
+function isSourceEntry(file: string, layout: EntryLayout): boolean {
   const extension = path.extname(file).slice(1);
   return (
     codeExtensionNames.includes(extension) &&
@@ -32,13 +37,13 @@ function isSourceEntry(file, layout) {
   );
 }
 
-function indexFiles(directory, roots) {
+function indexFiles(directory: string, roots: readonly string[]): string[] {
   return roots.flatMap((root) =>
     codeExtensionNames.map((extension) => path.join(directory, root, `index.${extension}`)),
   );
 }
 
-function sourceEntryOf({ dir, manifest }, layout) {
+function sourceEntryOf({ dir, manifest }: PackageEntry, layout: EntryLayout): string | undefined {
   const declared = manifestTargets(manifest, { includeSubpaths: false }).map((target) =>
     path.join(dir, target),
   );
@@ -46,28 +51,26 @@ function sourceEntryOf({ dir, manifest }, layout) {
   return candidates.find((file) => isSourceEntry(file, layout));
 }
 
-export function publicEntryGlobs(entry, layout) {
+export function publicEntryGlobs(entry: PackageEntry, layout: EntryLayout): string[] {
   const targets = manifestTargets(entry.manifest, { includeSubpaths: true }).map((target) =>
     path.join(entry.dir, target),
   );
   const sources = targets.filter((target) => target.includes('*') || isSourceEntry(target, layout));
-  return sources.length > 0 ? sources : [sourceEntryOf(entry, layout)].filter(Boolean);
+  return sources.length > 0
+    ? sources
+    : [sourceEntryOf(entry, layout)].filter((file) => file !== undefined);
 }
 
-/**
- * `paths` that resolve each workspace package to its source: the entry its `package.json` names
- * when that is a source file (`main`, `types`, `exports`), else the index of a layout source root;
- * `name/*` maps into the source roots.
- */
-export function workspacePaths(packages, layout) {
+export function workspacePaths(
+  packages: readonly PackageEntry[],
+  layout: EntryLayout,
+): Record<string, string[]> {
   return Object.fromEntries(
-    packages.flatMap((entry) => {
+    packages.flatMap((entry): [string, string[]][] => {
       const source = sourceEntryOf(entry, layout);
       const roots = [...layout.sourceRoots, ...FALLBACK_ROOTS];
-      return [
-        ...(source === undefined ? [] : [[entry.name, [source]]]),
-        [`${entry.name}/*`, roots.map((root) => path.join(entry.dir, root, '*'))],
-      ];
+      const named: [string, string[]][] = source === undefined ? [] : [[entry.name, [source]]];
+      return [...named, [`${entry.name}/*`, roots.map((root) => path.join(entry.dir, root, '*'))]];
     }),
   );
 }

@@ -7,13 +7,16 @@ import {
   useGitCheckouts,
 } from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { resolveLayoutFor } from '../../layout.mjs';
-import { loadPackages } from './packages.mjs';
+import { loadPackages as untypedLoadPackages } from './packages.mjs';
+import type { PackagesInfo } from './workspace-types.mts';
+
+const loadPackages: (project: string, layout: unknown) => PackagesInfo = untypedLoadPackages;
 
 const { gitCheckout } = useGitCheckouts();
 const layout = resolveLayoutFor({});
-let directory;
+let directory: string;
 
-function write(files) {
+function write(files: Readonly<Record<string, string>>) {
   directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-packages-'));
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
@@ -22,7 +25,7 @@ function write(files) {
   return directory;
 }
 
-function names(project) {
+function names(project: string) {
   return loadPackages(project, layout)
     .packages.map(({ name }) => name)
     .toSorted();
@@ -87,12 +90,13 @@ describe('workspace discovery', () => {
       'pkg/bare/package.json': '{"name":"bare","version":"1.0.0"}',
       'pkg/hidden/package.json': '{"name":"hidden","private":true,"main":"index.js"}',
     });
-    const { packages, packageOf } = loadPackages(path.join(project, 'pkg/lib'), layout);
+    const info = loadPackages(path.join(project, 'pkg/lib'), layout);
+    const { packages } = info;
 
     expect(
       packages.map(({ name, published }) => `${name} ${String(published)}`).toSorted(),
     ).toEqual(['bare false', 'hidden false', 'lib true', 'root false']);
-    expect(packageOf(path.join(project, 'pkg/lib/src/a.ts')).name).toBe('lib');
-    expect(packageOf(path.join(project, 'other/a.ts')).name).toBe('root');
+    expect(info.packageOf(path.join(project, 'pkg/lib/src/a.ts'))?.name).toBe('lib');
+    expect(info.packageOf(path.join(project, 'other/a.ts'))?.name).toBe('root');
   });
 });

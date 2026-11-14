@@ -2,22 +2,39 @@ import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveLayoutFor } from '../../layout.mjs';
-import { codeFilesUnder } from '../program.mjs';
-import { createProject, removeProject } from '../test-support/project.mjs';
+import { codeFilesUnder } from '../program.mts';
+import { createProject, removeProject } from '../test-support/project.mts';
 import { loadPackages } from '../workspace/packages.mjs';
-import { reexportedTestOnlyEntries } from './reexported-exports.mjs';
+import { reexportedTestOnlyEntries } from './reexported-exports.mts';
 
 const APP = { name: 'app', private: true };
-let root;
+let root: string;
 
-const walked = [];
+const walked: string[] = [];
 
-function walk(directories, layout, projectRoot) {
+type Listed = readonly (readonly [string, string])[];
+
+type Scenario = {
+  readonly files: Readonly<Record<string, unknown>>;
+  readonly listed: Listed;
+  readonly unused?: Listed;
+  readonly project?: string;
+  readonly sourceRoots?: readonly string[];
+  readonly entryPoints?: readonly string[];
+  readonly entryPatterns?: readonly string[];
+  readonly links?: Readonly<Record<string, string>>;
+};
+
+function walk(
+  directories: readonly string[],
+  layout: Parameters<typeof codeFilesUnder>[1],
+  projectRoot: string,
+) {
   walked.push(...directories);
   return codeFilesUnder(directories, layout, projectRoot);
 }
 
-function report(listed) {
+function report(listed: Listed) {
   const byFile = Map.groupBy(listed, ([file]) => file);
   return {
     issues: [...byFile].map(([file, items]) => ({
@@ -36,7 +53,7 @@ function reexportedItems({
   entryPoints = [],
   entryPatterns = ['src/main.ts'],
   links = {},
-}) {
+}: Scenario) {
   root = createProject(files, { manifest: files['package.json'] ?? APP });
   for (const [link, target] of Object.entries(links)) {
     symlinkSync(`${root}/${target}`, `${root}/${link}`);
@@ -54,9 +71,9 @@ function reexportedItems({
   });
 }
 
-function reexported(options) {
+function reexported(options: Scenario) {
   return reexportedItems(options)
-    .map(({ file, entry, reexportedBy }) => `${file} ${entry.name} via ${reexportedBy}`)
+    .map(({ file, entry, reexportedBy }) => `${file} ${entry.name} via ${String(reexportedBy)}`)
     .toSorted();
 }
 
@@ -88,7 +105,7 @@ import { starred } from './stars';
 export const check = [inner, starred];
 `,
     };
-    const listed = [
+    const listed: Listed = [
       ['src/stars.ts', 'starred'],
       ['src/one.ts', 'second'],
       ['src/main.ts', 'final'],
@@ -113,7 +130,7 @@ import { metadata } from './meta';
 export const check = [GET, metadata];
 `,
     };
-    const listed = [
+    const listed: Listed = [
       ['src/handlers.ts', 'GET'],
       ['src/meta.ts', 'metadata'],
       ['src/main.ts', 'metadata'],
@@ -143,7 +160,7 @@ export const fromNobody = 3;
 export const check = [fromScript, fromConfig, fromNobody];
 `,
     };
-    const listed = [
+    const listed: Listed = [
       ['src/main.ts', 'fromScript'],
       ['src/main.ts', 'fromConfig'],
       ['src/main.ts', 'fromNobody'],
@@ -159,7 +176,7 @@ export const check = [fromScript, fromConfig, fromNobody];
       'src/feat/impl.ts': 'export const unit = 1;\nexport function weigh() { return unit; }\n',
       'src/feat/impl.test.ts': "import { weigh } from './impl';\nexport const check = weigh;\n",
     };
-    const listed = [['src/main.ts', 'weigh']];
+    const listed: Listed = [['src/main.ts', 'weigh']];
 
     expect(reexportedItems({ files, listed }).map(({ file, entry }) => [file, entry])).toEqual([
       ['src/feat/impl.ts', { name: 'weigh', line: 2 }],
@@ -209,7 +226,7 @@ export const check = [fromScript, fromConfig, fromNobody];
 export const check = [shown, more, loaded];
 `,
     };
-    const listed = [
+    const listed: Listed = [
       ['src/impl.ts', 'shown'],
       ['src/impl.ts', 'more'],
       ['src/impl.ts', 'loaded'],
@@ -229,7 +246,7 @@ export const check = [shown, more, loaded];
       'src/impl.ts': 'export const handler = 1;\n',
       'src/impl.test.ts': "import { handler } from './impl';\nexport const check = handler;\n",
     };
-    const listed = [
+    const listed: Listed = [
       ['src/impl.ts', 'handler'],
       ['src/main.ts', 'handler'],
     ];
@@ -252,7 +269,7 @@ import { local } from './local';
 export const check = [core, local];
 `,
     };
-    const listed = [['src/main.ts', 'core']];
+    const listed: Listed = [['src/main.ts', 'core']];
 
     expect(reexported({ files, listed, project: 'packages/app' })).toEqual([]);
   });
@@ -268,7 +285,7 @@ export const check = [core, local];
     expect(reexported({ files: plain, listed: [] })).toEqual([]);
     expect(walked).toEqual([]);
 
-    const listed = [
+    const listed: Listed = [
       ['src/other.ts', 'other'],
       ['src/main.ts', 'other'],
     ];
@@ -285,7 +302,7 @@ describe('an alias that the entry passes onward', () => {
     'src/api.ts': 'export function handle() { return 1; }\n',
     'src/api.test.ts': "import { handle } from './api';\nexport const check = handle;\n",
   };
-  const forms = [
+  const forms: readonly (readonly [string, string, string | undefined, string])[] = [
     ['as the default export', 'export default serve;', "import used from './main';", 'default'],
     [
       'under another name',
@@ -301,10 +318,16 @@ describe('an alias that the entry passes onward', () => {
     ],
   ];
 
-  function filesOf({ onward, reader }) {
+  function filesOf({
+    onward,
+    reader,
+  }: {
+    onward: string | undefined;
+    reader?: string | undefined;
+  }) {
     return {
       ...api,
-      'src/main.ts': `import { handle } from './api';\nexport const serve = handle;\n${onward}\n`,
+      'src/main.ts': `import { handle } from './api';\nexport const serve = handle;\n${String(onward)}\n`,
       ...(reader === undefined
         ? {}
         : { 'src/runner.ts': `${reader}\nexport const go = () => used();\n` }),
@@ -313,7 +336,7 @@ describe('an alias that the entry passes onward', () => {
 
   it.each(forms)('follows production that imports the onward name (%s)', (...form) => {
     const [, onward, reader, name] = form;
-    const listed = [
+    const listed: Listed = [
       ['src/main.ts', 'serve'],
       ['src/main.ts', name],
     ];
@@ -333,11 +356,11 @@ describe('a namespace that an entry exports with export * as', () => {
 export const check = [handle, other];
 `,
   };
-  const listed = [
+  const listed: Listed = [
     ['src/api.ts', 'handle'],
     ['src/api.ts', 'other'],
   ];
-  const reader = (body) => ({
+  const reader = (body: string) => ({
     ...files,
     'src/runner.ts': `import { api } from './main';\n${body}\n`,
   });
@@ -380,20 +403,29 @@ describe('the entries found near a glob', () => {
     'src/impl.ts': 'export function impl() { return 1; }\n',
     'src/impl.test.ts': "import { impl } from './impl';\nexport const check = impl;\n",
   };
-  const skipped = [
-    ['a dot directory', '.hidden/*.ts', '.hidden/entry.ts', {}],
-    ['a dist directory', 'dist/*.ts', 'dist/entry.ts', {}],
-    ['a build directory', 'build/entry.ts', 'build/entry.ts', {}],
-    ['a generated directory', 'generated/*.ts', 'generated/entry.ts', {}],
-    ['a symlinked directory', 'linked/*.ts', 'linked/entry.ts', { linked: 'real' }],
-  ];
+  const skipped: readonly (readonly [string, string, string, Readonly<Record<string, string>>])[] =
+    [
+      ['a dot directory', '.hidden/*.ts', '.hidden/entry.ts', {}],
+      ['a dist directory', 'dist/*.ts', 'dist/entry.ts', {}],
+      ['a build directory', 'build/entry.ts', 'build/entry.ts', {}],
+      ['a generated directory', 'generated/*.ts', 'generated/entry.ts', {}],
+      ['a symlinked directory', 'linked/*.ts', 'linked/entry.ts', { linked: 'real' }],
+    ];
 
-  function found({ pattern, file, links }) {
+  function found({
+    pattern,
+    file,
+    links,
+  }: {
+    pattern: string;
+    file: string;
+    links: Readonly<Record<string, string>>;
+  }) {
     const [link, target] = Object.entries(links)[0] ?? [];
-    const written = link === undefined ? file : file.replace(`${link}/`, `${target}/`);
+    const written = link === undefined ? file : file.replace(`${link}/`, `${String(target)}/`);
     const toImpl = path.posix.relative(path.posix.dirname(written), 'src/impl');
     const files = { ...impl, [written]: `export { impl } from '${toImpl}';\n` };
-    const listed = [
+    const listed: Listed = [
       [file, 'impl'],
       ['src/impl.ts', 'impl'],
     ];

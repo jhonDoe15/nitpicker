@@ -3,10 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { runDeadCode } from '../../../adapters/quality-areas/runners/repository.mts';
-import { createProject } from '../test-support/project.mjs';
+import type { QualityAreaOptions } from '../../../adapters/quality-areas/typed/area-types.mts';
+import { createProject } from '../test-support/project.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
-const EXCEPTION = (file) =>
+const EXCEPTION = (file: string) =>
   `If this is intended, add {"rule":"test-only-export","paths":["${file}"],"reason":"..."} ` +
   'to "exceptions" in nitpicker.config.json.';
 const ONLY_TESTS_FINDING = {
@@ -137,9 +138,17 @@ it('uses them', () => { GET(); POST(); HomePage(); audit(); return metadata; });
 `,
 };
 
-let directories = [];
+let directories: string[] = [];
 
-function deadCode({ sources = SOURCES, manifest = PRIVATE_APP, policy = {} } = {}) {
+function deadCode({
+  sources = SOURCES,
+  manifest = PRIVATE_APP,
+  policy = {},
+}: {
+  sources?: Readonly<Record<string, unknown>>;
+  manifest?: unknown;
+  policy?: Readonly<Record<string, unknown>>;
+} = {}) {
   const root = createProject(sources, { manifest });
   const policyDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-'));
   directories.push(root, policyDirectory);
@@ -153,20 +162,29 @@ function deadCode({ sources = SOURCES, manifest = PRIVATE_APP, policy = {} } = {
   writeFileSync(policyFile, JSON.stringify({ ...fullPolicy, ...policy }));
   vi.stubEnv('NITPICKER_POLICY', policyFile);
   try {
-    return runDeadCode({
+    const options: QualityAreaOptions = {
       projectRoot: root,
+      projectPolicyRoot: packageRoot,
       policyRoot: packageRoot,
+      toolRoot: packageRoot,
       liveProjectRoot: packageRoot,
       analyzerName: 'dead-code',
       kind: 'dead-code',
-    }).filter(({ rule }) => rule === 'test-only-export');
+      snapshot: 'head',
+      legacyInventory: '',
+      crapScoreLimit: 0,
+      baselineRoot: undefined,
+      baselineMovesFile: undefined,
+      mutationScope: undefined,
+    };
+    return runDeadCode(options).filter(({ rule }) => rule === 'test-only-export');
   } finally {
     vi.unstubAllEnvs();
   }
 }
 
-function symbols(findings) {
-  return findings.map(({ path: file, symbol }) => `${file} ${symbol}`).toSorted();
+function symbols(findings: readonly { readonly path: string; readonly symbol?: string }[]) {
+  return findings.map(({ path: file, symbol }) => `${file} ${String(symbol)}`).toSorted();
 }
 
 const REEXPORTS = {
@@ -241,7 +259,7 @@ it('uses them', () => [handle(), stack(), unstack(), add(), drop()]);
 `,
 };
 
-let privateFindings;
+let privateFindings: ReturnType<typeof deadCode>;
 
 beforeAll(() => {
   privateFindings = deadCode();
@@ -265,7 +283,7 @@ describe('exports and modules only tests import', () => {
   it('names the export or the module and the exception that would lift the finding', () => {
     expect(
       privateFindings.filter(({ symbol }) =>
-        ['onlyTests', 'src/main/builders.ts'].includes(symbol),
+        ['onlyTests', 'src/main/builders.ts'].includes(symbol ?? ''),
       ),
     ).toEqual(
       [BUILDERS_FINDING, ONLY_TESTS_FINDING].toSorted((left, right) =>
@@ -293,7 +311,7 @@ describe('exports and modules only tests import', () => {
 });
 
 describe('exports that an entry re-exports', () => {
-  let reexportFindings;
+  let reexportFindings: ReturnType<typeof deadCode>;
 
   beforeAll(() => {
     reexportFindings = deadCode({ sources: REEXPORTS });
@@ -320,7 +338,7 @@ describe('exports that an entry re-exports', () => {
   it('locates an export that knip does not list by its declaration', () => {
     const located = reexportFindings.find(({ symbol }) => symbol === 'dyeCloth');
 
-    expect(located.location).toEqual({ line: 1 });
+    expect(located?.location).toEqual({ line: 1 });
   });
 
   it('counts the re-export of a published package, whose entry is public', () => {
