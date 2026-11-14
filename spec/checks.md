@@ -230,6 +230,11 @@ reports a Stripe `create` without an idempotency key, a broker publish without a
 SQL `INSERT` inside a retry wrapper (`p-retry`, `async-retry`, `exponential-backoff`, cockatiel) or a
 hand-written retry loop, direct or through project helpers.
 
+Dual writes: `nitpicker/no-dual-write` (production source, in `eslint-lint`, type-aware) reports a function
+that writes to the database and publishes a broker message at separate calls, since a crash between them
+loses or duplicates the message; the outbox table or relay is the allowed form. An outbox relay (publish a
+row read from the database, then mark it sent) is not reported.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic

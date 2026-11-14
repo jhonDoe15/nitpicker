@@ -124,6 +124,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - A retried write carries one key for all attempts: a Stripe `idempotencyKey`, a `MessageDeduplicationId`,
   `jobId` or `msgID`, `ON CONFLICT` on an insert, or retry only the read
   (`nitpicker/no-retry-without-idempotency`).
+- Don't write to the database and publish a message in one function: write an outbox row in the same
+  transaction and let a relay publish it (`nitpicker/no-dual-write`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

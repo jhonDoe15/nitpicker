@@ -68,6 +68,7 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
     "import axios from 'axios'; for (const id of ids) { if (axios.isAxiosError(id)) { log(id); } }",
     "import axios from 'axios'; for (const id of ids) { const client = axios.create({ baseURL: id }); use(client); }",
     'for (let i = 0; i < ids.length; i += 100) { await repository.findByIds(ids.slice(i, i + 100)); }',
+    "import { producer } from 'kafkajs'; for (const row of await outboxRepository.find()) { await producer.send(row); await outboxRepository.update(row.id, { sent: true }); }",
   ]),
   invalid: [
     ...[

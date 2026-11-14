@@ -459,7 +459,10 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   reported: the loop condition reads a variable the body assigns from the call's result, and the
   call's inputs either stay the same (polling) or carry state across iterations through a variable
   assigned from another variable, as in
-  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`. Stepping an
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`. A `while (true)`
+  or `for (;;)` loop is a paging loop when a call input is assigned from another variable in it, a
+  call in the loop condition is polling, and a variable stepped by more than one
+  (`offset += 100`, in the body or the `for` update) and used by the call is an offset. Stepping an
   index with `i += 1`, `i++` or `i = i + 1` is not state, so a lookup per item that stops early is
   still reported. Retries (a `try` directly in the loop body that returns or breaks on success,
   with a `catch` that lets the loop go on) are not reported, and neither are file system calls
@@ -547,6 +550,27 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   an HTTP `POST` alone is not reported, and other writes are not judged. Give the write a stable
   idempotency key derived from the request, a provider deduplication id, an upsert, or retry only
   the read.
+- `nitpicker/no-dual-write`: a function that writes to the database (`save`, `insert`, `update`,
+  `upsert`, `delete`, `remove`, `destroy`, `create`, `persist`, DynamoDB `Put`/`Update`/`Delete`
+  commands, SQL `INSERT`, `UPDATE`, `DELETE`, `MERGE` or `UPSERT` text; a cache write such as Redis
+  `set` is not one, and neither is `createQueryBuilder`) at one call and publishes a broker message at another, each direct or through
+  helpers, is reported at the publish. A helper call that does both counts for neither, so only the
+  lowest function that does both is reported. A function is judged as a whole, not per branch: a
+  write in one `if` branch and a publish in the other are reported too. Each function is judged on its own, and so is the
+  module's top level, except a callback that runs during the call it is passed to (iteration
+  methods, `then`/`catch`/`finally`, `new Promise`, transaction and lock callbacks, retry wrappers,
+  `afterCommit`), which belongs to the function that passes it: a route handler or an event
+  listener is its own unit, so two handlers registered by one function, one writing and one
+  publishing, are not a dual write, and a handler that does both is. The outbox relay is not
+  reported: a publish inside a loop over rows read from the database, or one that uses a single row
+  read from the database, that uses the row, directly or through a helper
+  (`await publish(row.id)`), followed by a write that uses the same row (marking it sent); the
+  per-item I/O rule leaves that marking write alone too. A batch job that writes first and
+  publishes after is still a dual write. A publish inside a Sequelize `transaction.afterCommit(...)`
+  hook, or after an awaited transaction callback or a `commit` that every write is inside, gets its
+  own message: it no longer publishes a rolled-back change, but a crash after the commit still
+  loses the message. Write the message to an outbox table in the same transaction and let a relay
+  publish it, or use change data capture or a database-backed queue.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
