@@ -24,7 +24,7 @@ export function inBuild(plugins: string): string {
 
 export function reactorKit(): {
   readonly reactor: (files: Readonly<Record<string, string>>) => string;
-  readonly soloModule: (inner: string) => ModuleDescription | undefined;
+  readonly soloModule: (inner: string) => ModuleDescription;
   readonly removeReactors: () => void;
 } {
   const roots: string[] = [];
@@ -43,12 +43,15 @@ export function reactorKit(): {
     return root;
   }
 
-  function soloModule(inner: string): ModuleDescription | undefined {
+  function soloModule(inner: string): ModuleDescription {
     const root = reactor({ 'pom.xml': raw('solo') });
     const [module] = readReactor(
       root,
       `<project><groupId>demo</groupId><artifactId>solo</artifactId>${inner}</project>`,
     );
+    if (module === undefined) {
+      throw new Error('The solo reactor has no module');
+    }
     return module;
   }
 

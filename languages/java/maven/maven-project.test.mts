@@ -1,12 +1,14 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import type { ModuleDescription } from './typed/module-description.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { lifecycleArgs, readReactor } from './maven-project.mts';
 import { jacocoPlugin } from './maven-tools.mjs';
 import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mts';
 
 const { reactor, soloModule, removeReactors } = reactorKit();
 
-function effective(root) {
+function effective(root: string): string {
   return `<?xml version="1.0"?>
 <!-- Effective POMs -->
 <projects>
@@ -92,7 +94,14 @@ const NO_COMPILER_SETTINGS = {
 const CORE_LEVEL = { release: '17', source: '17', target: undefined };
 const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
-function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
+function defaultModule(
+  basedir: string,
+  {
+    coordinates,
+    packaging,
+    pomFile = 'pom.xml',
+  }: { coordinates: string; packaging: string; pomFile?: string },
+): ModuleDescription {
   const compiler = packaging === 'pom' ? undefined : NO_COMPILER_SETTINGS;
   const target = path.join(basedir, 'target');
   return {
@@ -116,6 +125,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
     compiler,
+    kotlin: undefined,
   };
 }
 
@@ -204,7 +214,7 @@ describe('readReactor', () => {
 
   it('reads no compiler settings of a pom module, so its unresolved processor paths do not matter', () => {
     const root = reactor({ 'pom.xml': raw('parent'), 'app/pom.xml': raw('app') });
-    const processor = (version) =>
+    const processor = (version: string): string =>
       inBuild(
         plugin(
           'maven-compiler-plugin',
@@ -212,7 +222,7 @@ describe('readReactor', () => {
             `<artifactId>lombok</artifactId>${version}</path></annotationProcessorPaths></configuration>`,
         ),
       );
-    const effectivePom = (appVersion) =>
+    const effectivePom = (appVersion: string): string =>
       [
         '<projects>',
         '<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging>' +
@@ -223,7 +233,7 @@ describe('readReactor', () => {
 
     const [parent, app] = readReactor(root, effectivePom('<version>1.18.42</version>'));
 
-    expect([parent.compiler, app.compiler.processorPaths]).toEqual([
+    expect([parent?.compiler, fieldOf(app?.compiler, 'processorPaths')]).toEqual([
       undefined,
       ['org.projectlombok:lombok:1.18.42'],
     ]);
@@ -237,21 +247,21 @@ describe('readReactor', () => {
       'a module missing from the effective POM',
       { 'pom.xml': raw('parent'), 'gone/pom.xml': raw('gone') },
       '<modules><module>gone</module></modules>',
-      (root) =>
+      (root: string) =>
         `Maven module ${path.join(root, 'gone/pom.xml')} is not in the effective POM; nitpicker cannot read it`,
     ],
     [
       'a module outside the project',
       { 'pom.xml': raw('parent') },
       '<modules><module>../elsewhere</module></modules>',
-      (root) =>
+      (root: string) =>
         `Maven module ${path.resolve(root, '../elsewhere')} lies outside ${root}; run nitpicker from a directory that holds every module`,
     ],
     [
       'two modules in one directory',
       { 'pom.xml': raw('parent'), 'b/pom.xml': raw('b'), 'b/pom-alt.xml': raw('b-alt') },
       '<modules><module>b/pom-alt.xml</module><module>b</module></modules>',
-      (root) =>
+      (root: string) =>
         `${path.join(root, 'b')} holds more than one Maven module; nitpicker reads one module per directory`,
     ],
   ])('fails on %s', (_, files, modules, message) => {
@@ -270,7 +280,7 @@ describe('readReactor', () => {
 
 const IT_GOAL = '<goals><goal>integration-test</goal></goals>';
 
-function failsafe(executions, configuration = '') {
+function failsafe(executions: string, configuration = ''): string {
   return plugin(
     'maven-failsafe-plugin',
     `<configuration>${configuration}</configuration><executions>${executions}</executions>`,
@@ -279,7 +289,7 @@ function failsafe(executions, configuration = '') {
 
 describe('testJvmArgs', () => {
   it('reads the surefire default-test execution, not another test execution', () => {
-    const execution = (id, value) =>
+    const execution = (id: string, value: string): string =>
       `<execution><id>${id}</id><goals><goal>test</goal></goals>` +
       `<configuration><argLine>-Dfrom=${value}</argLine></configuration></execution>`;
     const executions = `<executions>${execution('extra', 'extra')}${execution('default-test', 'default')}</executions>`;
@@ -431,7 +441,7 @@ describe('describeModule plugin configuration', () => {
   it('runs the JaCoCo agent at the version the project binds, since two agents cannot share a JVM', () => {
     const agent = (phase = '') =>
       `<executions><execution>${phase}<goals><goal>prepare-agent</goal></goals></execution></executions>`;
-    const versioned = (version, body) =>
+    const versioned = (version: string, body: string): ModuleDescription =>
       soloModule(
         inBuild(
           plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
