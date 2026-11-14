@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
-import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { reportingProgress } from './diff/execution/progress.mts';
+import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
 import { SUBCOMMANDS } from './command/subcommands/subcommands.mts';
@@ -24,9 +24,9 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mts';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
-import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mjs';
+import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
 import { selectComparisonAnalyzers } from './command/comparison/analyzers.mts';
-import { runQualityDiff } from './diff/comparison/run-diff.mjs';
+import { runQualityDiff } from './diff/comparison/run-diff.mts';
 import { fixIfRequested } from './command/fix-request.mts';
 import { applyRunProfile } from './quick/profile.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
@@ -59,8 +59,6 @@ import type {
 import type { NitpickerConfig } from './configuration/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
 
-const selectFrom: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {
     const { yamlDocuments } = await import('./tooling/yaml/yaml-documents.mjs');
@@ -181,7 +179,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
-  const selected = selectFrom(setup.analyzers, options.analyzerNames);
+  const selected = selectAnalyzers(setup.analyzers, options.analyzerNames);
   assertProjectPeers({
     projectRoot: currentProjectRoot,
     analyzers: selected,
@@ -244,7 +242,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   });
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const selection = selectComparisonAnalyzers(cli);
-  const analyzers: unknown = selection.analyzers;
+  const { analyzers } = selection;
   clearDiffReports(outputRoot);
   const headPolicy: unknown = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult: unknown = fixIfRequested(
@@ -254,7 +252,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   );
   const cacheStore = resolveRunCacheStore(cli);
   const requestedBaseRef: unknown = base.baseRef;
-  const report: unknown = runQualityDiff({
+  const report = runQualityDiff({
     repositoryRoot,
     projectRelativePath: path.relative(repositoryRoot, currentProjectRoot) || '.',
     headProjectRoot: currentProjectRoot,

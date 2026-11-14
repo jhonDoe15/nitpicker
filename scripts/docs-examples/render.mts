@@ -1,5 +1,6 @@
-import { renderConsoleSummary } from '../../core/diff/reporting/summary.mjs';
-import { renderRuleFilterSection } from '../../core/diff/reporting/text.mjs';
+import { renderConsoleSummary } from '../../core/diff/reporting/summary.mts';
+import { renderRuleFilterSection } from '../../core/diff/reporting/text.mts';
+import type { ReportData } from '../../shared/values/findings.mts';
 import { JAVA_FINDINGS, SAMPLE_FINDINGS, sampleReport } from './sample.mts';
 
 const CONSOLE = 'console';
@@ -10,7 +11,10 @@ const PARTIAL_RUN = {
   message: 'Ran only: eslint-errors. Run nitpicker without --analyzer before you finish.',
 };
 
-function console(report: object, options: object = {}): string {
+function console(
+  report: ReportData,
+  options: { readonly details: boolean } = { details: false },
+): string {
   return renderConsoleSummary(report, { color: false, ...options }).replace(/^\n/u, '');
 }
 

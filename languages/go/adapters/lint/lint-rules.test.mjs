@@ -211,6 +211,22 @@ describe('Go lint messages', () => {
     expect(lintMessage(entry)).toBe(message);
   });
 
+  it('words a copied constant with the shared message and the Go pinning form', () => {
+    const message = (names, kind, value) =>
+      lintMessage({
+        tool: 'go-rules',
+        rule: 'copied-constant-in-test',
+        message: JSON.stringify({ names, owner: 'example.com/shop', kind, value }),
+      });
+
+    expect(message(['Limit', 'Cap'], 'number', '50')).toBe(
+      'This literal copies Limit (and Cap, which hold the same value) from package example.com/shop: when Limit changes, the test keeps checking the old value or stops testing the case it was written for. Use Limit (or an expression on it, such as Limit + 1). If the value is a contract the test pins on purpose, assert it next to the constant: `if Limit != 50 { t.Fatalf(...) }`, or `assert.Equal(t, 50, Limit)`.',
+    );
+    expect(message(['paging.Label'], 'string', 'next page')).toBe(
+      'This literal copies paging.Label from package example.com/shop: when paging.Label changes, the test keeps checking the old value or stops testing the case it was written for. Use paging.Label (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: `if paging.Label != "next page" { t.Fatalf(...) }`, or `assert.Equal(t, "next page", paging.Label)`.',
+    );
+  });
+
   it('prints errcheck findings as unchecked and keeps other rule names', () => {
     expect(['errcheck', 'SA1000', 'nilness'].map(lintRule)).toEqual([
       'unchecked',

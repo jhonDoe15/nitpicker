@@ -138,6 +138,7 @@ function approvalNote(approval: PlacedFile): string[] {
   return approval.status === 'created'
     ? [
         'A person accepts a policy loosening with the accept-policy-change label; create it once: gh label create accept-policy-change',
+        'Public repo: allow pull_request_target in Settings > Actions > Policies',
       ]
     : [];
 }

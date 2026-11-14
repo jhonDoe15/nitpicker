@@ -2,9 +2,9 @@ import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { resolveProjectRoot as untypedResolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
 import {
-  renderConsoleSummary as untypedDiffConsole,
-  renderSnapshotConsole as untypedSnapshotConsole,
-} from '../../diff/reporting/summary.mjs';
+  renderConsoleSummary as diffConsole,
+  renderSnapshotConsole as snapshotConsole,
+} from '../../diff/reporting/summary.mts';
 import { workingTreeDigest as untypedDigest } from '../../diff/reporting/run-stamp/run-stamp.mjs';
 import {
   colorEnabled as untypedColorEnabled,
@@ -36,8 +36,6 @@ const digestOf: (
   projectRoot: string,
   outputRoot: string,
 ) => { readonly kind: string; readonly value?: string } = untypedDigest;
-const diffConsole: (report: object, options: object) => string = untypedDiffConsole;
-const snapshotConsole: (report: object, options: object) => string = untypedSnapshotConsole;
 
 const SHOW_HELP_TEXT =
   `${SHOW_USAGE}\n\n` +

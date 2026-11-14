@@ -5,14 +5,18 @@ import {
   removeSnapshotDependencies,
 } from '../../../languages/typescript/adapters/static-checks/dependencies.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
-import { createFindingsCache, isCacheable } from './findings-cache.mjs';
-import { withComparisonKeys } from './keys/comparison-keys.mjs';
+import { type FindingsCache, createFindingsCache, isCacheable } from './findings-cache.mts';
+import type { CacheStore } from './cache-stores.mts';
+import { withComparisonKeys } from './keys/comparison-keys.mts';
 import { runGit } from '../git/repository/command.mjs';
-import { analyzerName } from '../reporting/report-model.mjs';
-import { runAnalyzers } from '../execution/run-analyzers.mjs';
+import { analyzerName } from '../reporting/report-model.mts';
+import { type AnalyzerRun, runAnalyzers } from '../execution/run-analyzers.mts';
 import { withTemporaryWorktree } from '../git/repository/worktree.mjs';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
-import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+
+const withPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: unknown) => T) => T =
+  withHeadPolicyFile;
 
 export const WITHOUT_CHANGED_TESTS = ' (without changed tests)';
 
@@ -21,7 +25,7 @@ type PublishRequest = {
   readonly projectRelativePath: string;
   readonly liveProjectRoot: string;
   readonly analyzers: readonly Analyzer[];
-  readonly store: unknown;
+  readonly store: CacheStore | undefined;
   readonly configOverrides?: readonly unknown[];
   readonly headPolicy?: unknown;
   readonly runTasks: unknown;
@@ -35,8 +39,8 @@ export type PublishOutcome = {
 };
 
 type Publication = {
-  readonly run: unknown;
-  readonly cache: { write(analyzer: Analyzer, report: unknown): unknown };
+  readonly run: AnalyzerRun;
+  readonly cache: FindingsCache;
   readonly published: string[];
   readonly skipped: string[];
 };
@@ -97,8 +101,8 @@ function runBaseAnalyzers(
     readonly mutationScope?: readonly string[];
   },
   projectRoot: string,
-): unknown {
-  return withHeadPolicyFile(headPolicy, (headPolicyFile: unknown) =>
+): AnalyzerRun {
+  return withPolicyFile(headPolicy, (headPolicyFile: unknown) =>
     runAnalyzers({
       analyzers,
       projectRoot,
@@ -188,17 +192,16 @@ function publishAnalyzer(
   { run, cache, published, skipped }: Publication,
 ): void {
   const name = textOf(analyzerName(analyzer, index));
-  const found = fieldOf(run, 'reports');
-  const reports = found instanceof Map ? found : undefined;
-  const report: unknown = reports?.get(name);
+  const { reports } = run;
+  const report = reports.get(name);
   if (
     report === undefined ||
-    isCacheable(analyzer, report, { toolErrors: fieldOf(run, 'toolErrors'), reports }) !== true
+    !isCacheable(analyzer, report, { toolErrors: run.toolErrors, reports })
   ) {
     skipped.push(`${name} (analysis failed)`);
     return;
   }
-  if (cache.write(analyzer, report) === true) {
+  if (cache.write(analyzer, report)) {
     published.push(name);
     return;
   }

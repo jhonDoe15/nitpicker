@@ -1,26 +1,37 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
-import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
-import { clearLogs, clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { renderSnapshotSarifReport as sarifOf } from '../diff/reporting/sarif.mts';
+import {
+  type ReferenceLinks,
+  type ReportFile,
+  clearLogs,
+  clearReports,
+  json,
+  writeReports,
+} from '../diff/reporting/reporters.mts';
 import { quickLines, stagedLines } from '../quick/summary.mjs';
 import { junitRunProfile } from '../quick/report-formats.mjs';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
-import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
-import { ruleReferenceLines } from '../diff/reporting/text.mjs';
+import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
+import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
 import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
-  CODE_QUALITY_REPORT_FILE_NAME,
-  renderCodeQualityReport,
-} from '../diff/reporting/format/codequality.mjs';
+  CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
+  renderCodeQualityReport as codeQualityOf,
+} from '../diff/reporting/format/codequality.mts';
 
-import { appendFindingSection as untypedAppendFindingSection } from '../diff/reporting/console/finding-lines.mjs';
 import {
   cleanLine as untypedCleanLine,
   isActiveSnapshotTool as untypedIsActive,
   splitTools as untypedSplitTools,
-} from '../diff/reporting/console/tool-table.mjs';
-import { renderSnapshotConsole as untypedConsole } from '../diff/reporting/summary.mjs';
+} from '../diff/reporting/console/tool-table.mts';
+import { renderSnapshotConsole } from '../diff/reporting/summary.mts';
 
 import { textOf } from '../../shared/values/readers.mts';
+import {
+  findingSectionLines,
+  ruleFilterSection,
+  toolErrorSectionLines,
+} from '../diff/reporting/console/text-sections.mts';
 
 type ConsoleOptions = {
   readonly diagnosticsPath: string;
@@ -29,12 +40,6 @@ type ConsoleOptions = {
   readonly projectRoot: string;
 };
 
-const consoleOf: (report: SnapshotReport, options: ConsoleOptions) => unknown = untypedConsole;
-const appendSection: (
-  lines: string[],
-  heading: string,
-  findings: readonly ReportFinding[],
-) => void = untypedAppendFindingSection;
 const cleanLineOf: (clean: number) => string = untypedCleanLine;
 const isActiveTool: (tool: ToolCount) => boolean = untypedIsActive;
 const splitTools: (
@@ -71,18 +76,7 @@ export type SnapshotReport = {
   readonly toolErrors: readonly ReportFinding[];
 };
 
-type ReferenceLinks = { index(): unknown; root(): unknown };
-
-type RenderOptions = {
-  readonly reference: ReferenceLinks;
-  readonly projectPath?: string | undefined;
-  readonly repositoryRoot?: string | undefined;
-};
-
-type ReportFile = {
-  readonly name: string;
-  readonly render: (report: SnapshotReport, options: RenderOptions) => unknown;
-};
+type SnapshotFile = ReportFile<SnapshotReport>;
 
 type JunitProfile = {
   readonly skippedCases: readonly string[];
@@ -93,37 +87,21 @@ type JunitProfile = {
 const linesOf: (summary: unknown) => readonly string[] = stagedLines;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
-const partialLinesOf: (summary: unknown) => readonly string[] = partialRunLines;
-const referenceLinesOf: (findings: unknown, reference: ReferenceLinks) => readonly string[] =
-  ruleReferenceLines;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const profileOf: (
   summary: unknown,
   suite: string,
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
-const reportsWriter: (
-  outputRoot: string,
-  reports: readonly ReportFile[],
-  request: { readonly report: unknown; readonly options: object },
-) => ReadonlyMap<string, unknown> = writeReports;
-const clearReportFiles: (outputRoot: string, names: readonly string[]) => void = clearReports;
-const clearLogFiles: (outputRoot: string) => void = clearLogs;
-const jsonOf: (value: unknown) => unknown = json;
-const sarifOf: (report: SnapshotReport, options: RenderOptions) => unknown =
-  renderSnapshotSarifReport;
-const codeQualityOf: (findings: unknown, options: RenderOptions) => unknown =
-  renderCodeQualityReport;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
-const codeQualityFile: string = CODE_QUALITY_REPORT_FILE_NAME;
 
-const SNAPSHOT_REPORTS: readonly ReportFile[] = [
-  { name: 'summary.json', render: (report) => jsonOf(report.summary) },
+const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
+  { name: 'summary.json', render: (report) => json(report.summary) },
   {
     name: 'findings.json',
-    render: (report, { reference }) => jsonOf(helpUrisOf(report.findings, reference)),
+    render: (report, { reference }) => json(helpUrisOf(report.findings, reference)),
   },
-  { name: 'tool-errors.json', render: (report) => jsonOf(report.toolErrors) },
+  { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
   { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: sarifOf },
@@ -136,8 +114,8 @@ const SNAPSHOT_REPORTS: readonly ReportFile[] = [
 export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);
 
 export function clearSnapshotReports(outputRoot: string): void {
-  clearReportFiles(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
-  clearLogFiles(outputRoot);
+  clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
+  clearLogs(outputRoot);
 }
 
 export function writeSnapshotReports(
@@ -148,7 +126,7 @@ export function writeSnapshotReports(
     repositoryRoot,
   }: { readonly projectPath?: string; readonly repositoryRoot?: string } = {},
 ): unknown {
-  return reportsWriter(outputRoot, SNAPSHOT_REPORTS, {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
     report,
     options: { projectPath, repositoryRoot },
   }).get('report.txt');
@@ -158,7 +136,7 @@ export function renderSnapshotConsoleSummary(
   report: SnapshotReport,
   options: ConsoleOptions,
 ): string {
-  return textOf(consoleOf(report, options));
+  return renderSnapshotConsole(report, options);
 }
 
 function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): string {
@@ -177,10 +155,14 @@ function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): st
   ];
 
   appendToolCountSection(lines, report.summary.tools);
-  appendFindingSection(lines, 'Enforceable findings', enforceable);
-  appendFindingSection(lines, 'Descriptive findings', descriptive);
+  lines.push(...findingSectionLines('Enforceable findings', enforceable));
+  lines.push(...findingSectionLines('Descriptive findings', descriptive));
   lines.push(...referenceLinesOf(report.findings, reference));
-  appendToolErrorSection(lines, report.toolErrors);
+  lines.push(...toolErrorSectionLines(report.toolErrors));
+  const help = helpLineOf(report.toolErrors.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(help);
+  }
   return `${lines.join('\n')}\n`;
 }
 
@@ -188,17 +170,7 @@ export function renderRuleFilterSection(
   report: SnapshotReport,
   ruleFilters: readonly string[],
 ): string {
-  if (ruleFilters.length === 0) {
-    return '';
-  }
-  function matches(finding: ReportFinding): boolean {
-    return ruleFilters.some((filter) =>
-      `${textOf(finding.tool)}/${textOf(finding.rule)}`.includes(filter),
-    );
-  }
-  const lines = ['', `Findings matching --rule ${ruleFilters.join(', ')}:`];
-  appendFindingSection(lines, '  Matching', report.findings.filter(matches));
-  return `${lines.join('\n')}\n`;
+  return ruleFilterSection(ruleFilters, [['  Matching', report.findings]]);
 }
 
 function renderJunitReport(report: SnapshotReport): string {
@@ -247,28 +219,6 @@ function appendToolCountSection(lines: string[], tools: readonly ToolCount[]): v
   }
   if (clean > 0) {
     lines.push(cleanLineOf(clean));
-  }
-}
-
-function appendFindingSection(
-  lines: string[],
-  heading: string,
-  findings: readonly ReportFinding[],
-): void {
-  appendSection(lines, heading, findings);
-}
-
-function appendToolErrorSection(lines: string[], toolErrors: readonly ReportFinding[]): void {
-  if (toolErrors.length === 0) {
-    return;
-  }
-  lines.push('', 'Tool errors:');
-  for (const error of toolErrors) {
-    lines.push(`${textOf(error.tool)} (${textOf(error.snapshot)}): ${textOf(error.message)}`);
-  }
-  const help = helpLineOf(toolErrors.map(({ message }) => message));
-  if (help !== undefined) {
-    lines.push(help);
   }
 }
 

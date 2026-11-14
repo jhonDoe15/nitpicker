@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderTextReport } from '../text.mjs';
+import { renderTextReport } from '../text.mts';
 import {
   PRESETS,
   failingFinding,

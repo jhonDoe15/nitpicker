@@ -1,3 +1,4 @@
+import type { ReportData, ReportEntry } from '../../shared/values/findings.mts';
 const FILE = 'src/main/features/greeting/adapters/load-names.ts';
 
 function entry(rule: string): string {
@@ -72,19 +73,11 @@ export const JAVA_FINDINGS = [
   },
 ];
 
-export type SampleReport = {
-  readonly summary: object;
-  readonly newFindings: readonly object[];
-  readonly resolvedFindings: readonly object[];
-  readonly unchangedFindings: readonly object[];
-  readonly changedMetrics: readonly object[];
-  readonly toolErrors: readonly object[];
-  readonly notes: readonly object[];
-};
+export type SampleReport = ReportData;
 
 export function sampleReport(
-  newFindings: readonly object[] = SAMPLE_FINDINGS,
-  summary: object = {},
+  newFindings: readonly ReportEntry[] = SAMPLE_FINDINGS,
+  summary: Readonly<Record<string, unknown>> = {},
 ): SampleReport {
   return {
     summary: {

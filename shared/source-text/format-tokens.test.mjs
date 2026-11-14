@@ -40,6 +40,21 @@ describe('source text without what a formatter rewrites', () => {
     ['A.kt', lines('listOf(a, b,);', 'val x = 1;'), lines('listOf(a, b)', 'val x = 1')],
     ['A.kt', lines('foo().bar() ?: baz'), lines('foo()', '    .bar()', '    ?: baz')],
     ['A.kt', lines('list.map { it + 1 }'), lines('list.map {', '    it + 1', '}')],
+    ['a.go', 'if(x==3){', 'if x == 3 {'],
+    ['a.go', lines('if (a > b) { return a }'), lines('if a > b {', '\treturn a', '}')],
+    [
+      'a.go',
+      lines('for (i < n) {', '}', 'switch (v) {', '}'),
+      lines('for i < n {', '}', 'switch v {', '}'),
+    ],
+    ['a.go', lines('x := 1; y := 2'), lines('x := 1', 'y := 2')],
+    [
+      'a.go',
+      lines('f(a, b,)', 'x := []int{1, 2,}'),
+      lines('f(a, b)', 'x := []int{', '\t1,', '\t2,', '}'),
+    ],
+    ['a.go', lines('n := 0X1F + 1E3'), lines('n := 0x1F + 1e3')],
+    ['a.go', lines('x := 1 //note'), lines('x := 1 // note')],
   ])('reads %s the same before and after formatting', (filePath, before, after) => {
     expect(tokensOf(filePath, before)).toEqual(tokensOf(filePath, after));
   });
@@ -85,6 +100,13 @@ describe('source text without what a formatter rewrites', () => {
     ['A.kt', lines('foo()', '{ x }'), lines('foo() { x }')],
     ['A.kt', `val s = """a  \${b}"""`, `val s = """a \${b}"""`],
     ['A.kt', '1.toString()', '1.tostring()'],
+    ['a.go', lines('return', 'x'), lines('return x')],
+    ['a.go', lines('x := a', '-1'), lines('x := a - 1')],
+    ['a.go', 'if (a) || (b) {', 'if a || b {'],
+    ['a.go', 's := "a  b"', 's := "a b"'],
+    ['a.go', lines('s := `a', '  b`'), lines('s := `a', ' b`')],
+    ['a.go', "r := 'a'", 'r := "a"'],
+    ['a.go', 'f((a))', 'f(a)'],
   ])('tells a real edit of %s apart from formatting', (filePath, before, after) => {
     expect(tokensOf(filePath, before)).not.toEqual(tokensOf(filePath, after));
   });
@@ -110,9 +132,9 @@ describe('source text without what a formatter rewrites', () => {
 
   it('aligns only the source languages the presets analyze', () => {
     expect(
-      ['a.pyi', 'a.mts', 'a.jsx', 'A.java', 'b.kts', 'c.vue', 'd.yaml'].map(
+      ['a.pyi', 'a.mts', 'a.jsx', 'A.java', 'b.kts', 'e.go', 'c.vue', 'd.yaml'].map(
         (file) => sourceLanguage(file)?.name,
       ),
-    ).toEqual(['python', 'javascript', 'javascript', 'java', 'kotlin', undefined, undefined]);
+    ).toEqual(['python', 'javascript', 'javascript', 'java', 'kotlin', 'go', undefined, undefined]);
   });
 });

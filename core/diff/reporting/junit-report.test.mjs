@@ -1,6 +1,6 @@
 import { exactText } from './test-support/output-expectations.mjs';
 import { describe, expect, it } from 'vitest';
-import { renderJunitReport } from './junit.mjs';
+import { renderJunitReport } from './junit.mts';
 import { attributeOf, expectWellFormedXml } from './test-support/report-assertions.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
 

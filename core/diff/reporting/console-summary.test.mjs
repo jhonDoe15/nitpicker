@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderConsoleSummary } from './summary.mjs';
+import { renderConsoleSummary } from './summary.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,

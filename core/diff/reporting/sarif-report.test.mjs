@@ -4,7 +4,7 @@ import {
   renderBaselineSarifReport,
   renderSarifReport,
   renderSnapshotSarifReport,
-} from './sarif.mjs';
+} from './sarif.mts';
 import { expectValidSarif } from './test-support/report-assertions.mjs';
 import { sarifSchemaErrors } from './test-support/sarif-schema.mjs';
 import { finding, report } from './test-support/report-builders.mjs';

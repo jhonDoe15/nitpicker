@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { outputRootFor as untypedOutputRoot } from '../../diff/reporting/reporters.mjs';
-import { failingHeadTests as untypedFailingTests } from '../../diff/reporting/failing-tests/failing-tests.mjs';
+import { outputRootFor as untypedOutputRoot } from '../../diff/reporting/reporters.mts';
+import { failingHeadTests as untypedFailingTests } from '../../diff/reporting/failing-tests/failing-tests.mts';
 import { fieldOf, fieldsOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 
 type ReportKind = 'diff' | 'snapshot';
