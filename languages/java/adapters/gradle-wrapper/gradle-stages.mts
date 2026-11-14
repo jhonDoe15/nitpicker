@@ -6,7 +6,7 @@ import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mts';
 import { effectsProperties } from '../effects/effects-options.mjs';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
-import { textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';
 import type { GradleOptions } from './gradle-process.mts';
@@ -104,8 +104,8 @@ export function gradleStages(
     ...(policy['mutationOff'] === true ? ['-Pnitpicker.mutation=off'] : []),
   ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
-  const choices = toolConfigChoices(projectRoot, policy);
-  const layersCheckstyle = choices['checkstyle']?.project !== undefined;
+  const choices: unknown = toolConfigChoices(projectRoot, policy);
+  const layersCheckstyle = fieldOf(fieldOf(choices, 'checkstyle'), 'project') !== undefined;
   return [
     ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory, policy })] : []),
     () => [

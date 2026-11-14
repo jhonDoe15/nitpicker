@@ -35,6 +35,8 @@ import {
   type Classpaths,
   type Dependency,
   type MavenModule,
+  classpathsOf,
+  dependencyOf,
   mavenModuleOf,
 } from './typed/maven-values.mts';
 
@@ -93,8 +95,9 @@ function readClasspaths(
   module: MavenModule,
 ): Classpaths & { readonly dependencies: readonly Dependency[] } {
   const file = textOf(callUntyped(dependencyFile, work, module));
-  const dependencies = parseDependencyList(readFileSync(file, 'utf8'));
-  return { ...moduleClasspaths(module, dependencies), dependencies };
+  const listed: unknown = parseDependencyList(readFileSync(file, 'utf8'));
+  const dependencies = listOf(listed).map(dependencyOf);
+  return { ...classpathsOf(callUntyped(moduleClasspaths, module, dependencies)), dependencies };
 }
 
 function guardProject(
@@ -160,11 +163,9 @@ function analyzeAll({
   effectsOptions: moduleEffects,
   ...shared
 }: AnalyzeRequest): unknown[] {
-  const style = {
-    javaStyle: policy.javaStyle,
-    indentation: checkstyleIndentation(policy.conventions),
-    formatterFlags: javaFormatterFlags(policy.conventions),
-  };
+  const indentation: unknown = checkstyleIndentation(policy.conventions);
+  const formatterFlags: unknown = javaFormatterFlags(policy.conventions);
+  const style = { javaStyle: policy.javaStyle, indentation, formatterFlags };
   const springRoles: unknown = writeSpringRoles(policy['springRoles'], work);
   const springRules: unknown = writeSpringRuleset(shared.projectRoot, work);
   return analyzed

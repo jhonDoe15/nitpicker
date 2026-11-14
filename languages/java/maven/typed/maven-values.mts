@@ -1,4 +1,4 @@
-import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, fieldsOf, listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 export type MavenModule = Readonly<Record<string, unknown>> & {
   readonly coordinates: string;
@@ -27,5 +27,24 @@ export function mavenModuleOf(value: unknown): MavenModule {
     packaging: textOf(fieldOf(value, 'packaging')),
     basedir: textOf(fieldOf(value, 'basedir')),
     buildDirectory: textOf(fieldOf(value, 'buildDirectory')),
+  };
+}
+
+export function dependencyOf(value: unknown): Dependency {
+  return {
+    groupId: textOf(fieldOf(value, 'groupId')),
+    artifactId: textOf(fieldOf(value, 'artifactId')),
+    type: textOf(fieldOf(value, 'type')),
+    scope: textOf(fieldOf(value, 'scope')),
+    file: textOf(fieldOf(value, 'file')),
+  };
+}
+
+export function classpathsOf(value: unknown): Classpaths {
+  return {
+    mainCompile: textsOf(fieldOf(value, 'mainCompile')),
+    mainRuntime: textsOf(fieldOf(value, 'mainRuntime')),
+    testCompile: textsOf(fieldOf(value, 'testCompile')),
+    testRuntime: [...listOf(fieldOf(value, 'testRuntime'))],
   };
 }
