@@ -3,14 +3,15 @@ import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import path from 'node:path';
 import loggingConfig from '../../eslint-config/policies/logging.config.mjs';
 import { strictConfig, strictSyntaxConfig } from '../../eslint-config/strict.mjs';
-import { domainFailureMessageCases } from './domain-cases.mjs';
+import type { FailureMessageCase } from './case-types.mts';
+import { domainFailureMessageCases } from './domain-cases.mts';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
-import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mjs';
+import { adapterFailureMessageCases, adapterSyntaxFailureMessageCases } from './adapter-cases.mts';
 import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
 import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
-import { reactFailureMessageCases } from './react-cases.mjs';
-import { testFailureMessageCases } from './test-cases.mjs';
-import { signatureFailureMessageCases } from './signatures/signature-cases.mjs';
+import { reactFailureMessageCases } from './react-cases.mts';
+import { testFailureMessageCases } from './test-cases.mts';
+import { signatureFailureMessageCases } from './signatures/signature-cases.mts';
 
 const strictCompositionRootConfig = productionPolicyConfig({
   'nitpicker/no-branch-in-composition-root': 'error',
@@ -27,7 +28,12 @@ const cognitiveComplexityConfig = [
   },
 ];
 
-function strictCase([name, banned, allowed, filename = 'src/fixture.ts']) {
+function strictCase([
+  name = '',
+  banned = '',
+  allowed = '',
+  filename = 'src/fixture.ts',
+]: string[]): FailureMessageCase {
   return { name, config: strictSyntaxConfig, filename, banned, allowed };
 }
 
@@ -36,7 +42,7 @@ const typedStrictConfig = strictConfig({
   tsconfigRootDir: process.cwd(),
 });
 
-export const failureMessageCases = [
+export const failureMessageCases: FailureMessageCase[] = [
   {
     name: 'console call names the application logger',
     config: loggingConfig,
@@ -140,7 +146,7 @@ export const failureMessageCases = [
         ['finally chain', 'fetchOne().finally(() => done());', 'async/await'],
         ['loose equality', 'const same = a == b;', "'==='"],
         ['loose inequality', 'const differs = a != b;', "'!=='"],
-      ].map(([form, banned, allowed]) => [
+      ].map(([form = '', banned = '', allowed = '']) => [
         `${filename} ${form} names ${allowed}`,
         banned,
         allowed,
@@ -166,7 +172,7 @@ export const failureMessageCases = [
   ...[
     ['partial union test names the switch', 'switch'],
     ['partial union test names the Record lookup', 'Record<Union, boolean>'],
-  ].map(([name, allowed]) => ({
+  ].map(([name = '', allowed = '']) => ({
     name,
     config: typedStrictConfig,
     filename: path.resolve('src/fixture.ts'),
@@ -177,7 +183,7 @@ export const failureMessageCases = [
   ...[
     ['forwarding wrapper names the direct call', 'call `fetchOne` directly'],
     ['forwarding wrapper names the re-export', 'export { fetchOne as readOne }'],
-  ].map(([name, allowed]) => ({
+  ].map(([name = '', allowed = '']) => ({
     name,
     config: typedStrictConfig,
     filename: path.resolve('src/fixture.ts'),

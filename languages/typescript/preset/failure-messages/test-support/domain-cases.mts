@@ -1,13 +1,14 @@
+import type { FailureMessageCase } from './case-types.mts';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
-import { policyFailureMessageCases } from './policy/policy-cases.mjs';
+import { policyFailureMessageCases } from './policy/policy-cases.mts';
 
 const filename = 'src/main/features/billing/domain/invoice.ts';
 
-function domainCase(name, banned, allowed) {
+function domainCase(name: string, banned: string, allowed: string): FailureMessageCase {
   return { name: `domain: ${name}`, config: strictDomainConfig, filename, banned, allowed };
 }
 
-export const domainFailureMessageCases = [
+export const domainFailureMessageCases: FailureMessageCase[] = [
   domainCase('let names const', 'let total = 1;', 'const'),
   domainCase(
     'react import names adapters/',

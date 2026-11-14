@@ -89,6 +89,6 @@ const cases = [
     "export const P = () => <a href='/x'>click here</a>;",
     'context',
   ],
-];
+] as const;
 
 export const browserCases = cases;

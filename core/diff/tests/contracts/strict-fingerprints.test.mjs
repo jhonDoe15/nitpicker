@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
-import { failureMessageCases as baseCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mjs';
-import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mjs';
+import { failureMessageCases as baseCases } from '../../../../languages/typescript/preset/failure-messages/test-support/cases.mts';
+import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mts';
 import { compareFindings } from '../../comparison/compare.mjs';
-import { testHonestyFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mjs';
+import { testHonestyFailureMessageCases } from '../../../../languages/typescript/preset/failure-messages/test-support/honesty/test-honesty-cases.mts';
 
 const temporaryRoots = [];
 const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];

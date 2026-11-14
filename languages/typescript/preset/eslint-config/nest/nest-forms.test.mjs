@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mjs';
 import { nestClassMessage } from './nest-forms.mjs';

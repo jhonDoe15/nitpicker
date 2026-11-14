@@ -85,4 +85,4 @@ export const componentTestCases = [
     "await userEvent.click(screen.getByRole('button'));",
     "import { userEvent } from '@testing-library/user-event'",
   ],
-];
+] as const;

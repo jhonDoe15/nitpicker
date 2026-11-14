@@ -2,15 +2,19 @@ import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
-import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { docsUrl as untypedDocsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
+  createGitTemplate,
   git,
   readReport,
   runNitpicker,
-} from './test-support/clean-project.mjs';
+  viewFindings,
+} from './test-support/clean-project.mts';
+
+const docsUrl: (relativePath: string, anchor: undefined) => string | undefined = untypedDocsUrl;
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/strict-clean');
 const BANNED_FORM_OUTPUT = [
@@ -27,7 +31,7 @@ const BANNED_FORM_OUTPUT = [
   'Enforceable findings:',
   'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
   '',
-  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+  `Rule reference: ${String(docsUrl('docs/rules/README.md', undefined))} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -47,7 +51,7 @@ const REFUSED_CODE = [
   '',
 ].join('\n');
 
-const lines = (...text) => `${text.join('\n')}\n`;
+const lines = (...text: string[]) => `${text.join('\n')}\n`;
 const WIDENED = "export const widened = ['a'] as readonly string[];";
 const DOUBLED = 'const doubled = [1, 2].map((item) => item * 2);';
 const TOTAL = 'export const total = doubled.reduce((sum, item) => sum + item, 0);';
@@ -69,8 +73,8 @@ const LEGACY_FILES = {
 };
 
 describe('the strict-clean fixture project', () => {
-  const temporaryRoots = [];
-  let gitTemplateRoot;
+  const temporaryRoots: string[] = [];
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -82,13 +86,13 @@ describe('the strict-clean fixture project', () => {
     }
   });
 
-  function createProject() {
+  function createProject(): string {
     const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'strict-clean' });
     temporaryRoots.push(root);
     return root;
   }
 
-  function runSnapshot(root, extraArguments = []) {
+  function runSnapshot(root: string, extraArguments: string[] = []) {
     const result = runNitpicker(root, [
       '--all',
       '--output',
@@ -109,12 +113,14 @@ describe('the strict-clean fixture project', () => {
       const { exitCode, stderrText, summary, toolErrors, findings } = runSnapshot(createProject());
 
       expect(stderrText).toBe('');
-      expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
+      expect(
+        viewFindings(findings).filter(({ classification }) => classification === 'enforceable'),
+      ).toEqual([]);
       expect(toolErrors).toEqual([]);
       expect(findingsSchemaErrors(findings)).toEqual([]);
-      expect(summary.overallStatus).toBe('clean');
-      expect(summary.enforceableFindings).toBe(0);
-      expect(summary.tools.length).toBeGreaterThan(10);
+      expect(fieldOf(summary, 'overallStatus')).toBe('clean');
+      expect(fieldOf(summary, 'enforceableFindings')).toBe(0);
+      expect(listOf(fieldOf(summary, 'tools')).length).toBeGreaterThan(10);
       expect(exitCode).toBe(0);
     },
     FIXTURE_TIMEOUT_MS,
@@ -134,7 +140,7 @@ describe('the strict-clean fixture project', () => {
       );
       expect(stderrText).toBe('');
       expect(toolErrors).toEqual([]);
-      expect(summary.overallStatus).toBe('clean');
+      expect(fieldOf(summary, 'overallStatus')).toBe('clean');
       expect(exitCode).toBe(0);
     },
     FIXTURE_TIMEOUT_MS,
@@ -170,8 +176,9 @@ describe('the strict-clean fixture project', () => {
         path.join(root, 'reports/diff'),
       ]);
       const newFindings = readReport(root, 'reports/diff/new-findings.json');
-      const fields = new Set(newFindings.flatMap((finding) => Object.keys(finding)));
-      const located = new Set(newFindings.flatMap(({ location = {} }) => Object.keys(location)));
+      const views = viewFindings(newFindings);
+      const fields = new Set(views.flatMap((finding) => finding.fields));
+      const located = new Set(views.flatMap(({ location }) => Object.keys(location)));
 
       expect(findingsSchemaErrors(newFindings)).toEqual([]);
       expect(
@@ -185,7 +192,7 @@ describe('the strict-clean fixture project', () => {
   );
 
   describe('strict rules in touched code', () => {
-    let sharedRoot;
+    let sharedRoot: string;
 
     beforeAll(() => {
       sharedRoot = createCleanProject({
@@ -200,7 +207,7 @@ describe('the strict-clean fixture project', () => {
       rmSync(sharedRoot, { recursive: true, force: true });
     });
 
-    function runBranch(branch, files) {
+    function runBranch(branch: string, files: Record<string, string>) {
       git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
       for (const [file, text] of Object.entries(files)) {
         writeFileSync(path.join(sharedRoot, file), text);
@@ -216,15 +223,15 @@ describe('the strict-clean fixture project', () => {
       return { ...result, summary: readReport(sharedRoot, 'reports/diff/summary.json') };
     }
 
-    function runDifference(branch, edit) {
+    function runDifference(branch: string, edit: (text: string) => string) {
       return runBranch(branch, { 'src/main/legacy.ts': edit(LEGACY) });
     }
 
-    function newStrictLines(branch, files) {
+    function newStrictLines(branch: string, files: Record<string, string>): string[] {
       runBranch(branch, files);
-      return readReport(sharedRoot, 'reports/diff/new-findings.json')
+      return viewFindings(readReport(sharedRoot, 'reports/diff/new-findings.json'))
         .filter(({ rule }) => rule === 'no-restricted-syntax')
-        .map(({ path: file, location }) => `${file}:${String(location?.line)}`);
+        .map(({ path: file, location }) => `${file}:${String(location['line'])}`);
     }
 
     it(
@@ -234,7 +241,7 @@ describe('the strict-clean fixture project', () => {
           text.replace('first = 1', 'first = 2'),
         );
 
-        expect(summary.newEnforceableFindings).toBe(0);
+        expect(fieldOf(summary, 'newEnforceableFindings')).toBe(0);
         expect(exitCode).toBe(0);
       },
       FIXTURE_TIMEOUT_MS,

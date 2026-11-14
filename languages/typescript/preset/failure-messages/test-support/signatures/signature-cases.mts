@@ -1,10 +1,14 @@
+import type { FailureMessageCase, SignatureOptions } from '../case-types.mts';
 import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
 
-function syntaxCase([name, banned, allowed]) {
+function syntaxCase([name = '', banned = '', allowed = '']: string[]): FailureMessageCase {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };
 }
 
-export function signatureFailureMessageCases({ typedConfig, typedFile }) {
+export function signatureFailureMessageCases({
+  typedConfig,
+  typedFile,
+}: SignatureOptions): FailureMessageCase[] {
   return [
     ...[
       [
@@ -44,7 +48,7 @@ export function signatureFailureMessageCases({ typedConfig, typedFile }) {
         'export function pick(limit: number | undefined) { return limit || 10; }',
         '`limit ?? DEFAULT_LIMIT`',
       ],
-    ].map(([name, banned, allowed]) => ({
+    ].map(([name = '', banned = '', allowed = '']) => ({
       name,
       config: typedConfig,
       filename: typedFile,

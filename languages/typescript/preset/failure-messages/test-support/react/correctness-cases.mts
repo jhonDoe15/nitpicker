@@ -1,10 +1,10 @@
-import { panel } from './react-case.mjs';
+import { panel } from './react-case.mts';
 
-function listPanel(row) {
+function listPanel(row: string) {
   return `export const List = ({ items }) => <ul>{items.map((item) => ${row})}</ul>;`;
 }
 
-function stateful(body) {
+function stateful(body: string) {
   return panel(`const [list, setList] = useState([]); ${body}`);
 }
 
@@ -66,6 +66,6 @@ const cases = [
     "import { createContext } from 'react'; const ThemeContext = createContext(1); export const P = ({ children }) => <ThemeContext.Provider value={1}>{children}</ThemeContext.Provider>;",
     '<Context value={...}>',
   ],
-];
+] as const;
 
 export const correctnessCases = cases;

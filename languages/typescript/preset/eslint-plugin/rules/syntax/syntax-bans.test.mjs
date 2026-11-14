@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
 import { applyRuleExceptions } from '../../../eslint-config/exceptions.mjs';
 import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
 

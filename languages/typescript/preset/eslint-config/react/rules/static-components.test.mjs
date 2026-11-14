@@ -1,6 +1,6 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../../layout.mjs';
 import { reactSyntaxConfigFor } from '../react-scope.mjs';
 

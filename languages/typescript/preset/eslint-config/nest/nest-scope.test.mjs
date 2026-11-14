@@ -5,7 +5,7 @@ import tseslint from 'typescript-eslint';
 import { ESLint } from 'eslint';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { frameworkConventions } from '../scope-support.mjs';
 import { nestClassMessage } from './nest-forms.mjs';
 import { isNestProject, nestEntryPoints } from './nest-project.mjs';

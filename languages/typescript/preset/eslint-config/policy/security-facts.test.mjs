@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { productionPolicyConfigFor } from './production-policy.mjs';
 import { securityFactsFor, securityRules } from './security-facts.mjs';

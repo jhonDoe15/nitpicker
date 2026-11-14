@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureMessagesFor } from '../failure-messages/test-support/harness.mjs';
+import { failureMessagesFor } from '../failure-messages/test-support/harness.mts';
 import { restrictedSyntaxFor, strictSyntaxConfig } from './strict.mjs';
 
 function messages(code, filename = 'src/fixture.ts') {
