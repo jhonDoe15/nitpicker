@@ -1,13 +1,17 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import {
   MUTATION_SCOPE_OPTION,
-  mutationScopeArguments,
-  parseMutationScope,
+  mutationScopeArguments as untypedMutationScopeArguments,
+  parseMutationScope as untypedParseMutationScope,
 } from '../tooling/runner-arguments.mjs';
 import { isInMutationScope, outsideScopePatterns, scopedProjectFiles } from './mutation-scope.mjs';
+
+const parseMutationScope: (text: string | undefined) => unknown = untypedParseMutationScope;
+const mutationScopeArguments: (scope: string[] | undefined) => string[] =
+  untypedMutationScopeArguments;
 
 const { createGitRepository } = useGitFixtures();
 

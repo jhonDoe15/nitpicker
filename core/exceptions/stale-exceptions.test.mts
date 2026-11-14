@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mjs';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mts';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { staleExceptionLines } from './stale-exceptions.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { gitCheckout } = useGitCheckouts();
 
-function repository(files) {
+function repository(files: string[]) {
   return createGitRepository(Object.fromEntries(files.map((file) => [file, '']))).root;
 }
 
-const entry = (rule, paths) => ({ rule, paths, reason: 'A reviewed reason.' });
+const entry = (rule: string, paths: string[]) => ({ rule, paths, reason: 'A reviewed reason.' });
 
 describe('staleExceptionLines', () => {
   it('names each exception whose paths match no file of the project', () => {

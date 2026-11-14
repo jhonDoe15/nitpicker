@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../configuration/validate.mjs';
-import { exceptionFor } from '../../shared/reference/entry.mjs';
-import { presetsOf } from '../../shared/reference/facts.mjs';
-import { readReferenceEntries } from '../../shared/reference/store.mjs';
+import { validateConfig } from '../configuration/validate.mts';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import { exceptionFor, presetsOf, readReferenceEntries } from './reference-views.mts';
+import type { RuleEntry, RuleException } from './reference-views.mts';
 
 const PLACEHOLDER = /<[^>]+>/u;
 
-function concreteRule(entry, rule) {
+function concreteRule(entry: RuleEntry, rule: string) {
   if (!PLACEHOLDER.test(rule)) {
     return rule;
   }
@@ -17,7 +17,7 @@ function concreteRule(entry, rule) {
   return rule.startsWith(`${entry.tool}/`) ? sample : sample.slice(entry.tool.length + 1);
 }
 
-function exceptionEntry(entry, exception) {
+function exceptionEntry(entry: RuleEntry, exception: RuleException) {
   return {
     rule: concreteRule(entry, exception.rule),
     paths: ['src/main/module.file'],
@@ -30,7 +30,7 @@ function exceptionEntry(entry, exception) {
   };
 }
 
-function configOf(preset, key, exception) {
+function configOf(preset: string, key: string | undefined, exception: object) {
   return key === 'python.exceptions'
     ? { preset, python: { exceptions: [exception] } }
     : { preset, exceptions: [exception] };
@@ -45,12 +45,12 @@ function routes() {
   );
 }
 
-function rejection(config) {
+function rejection(config: object) {
   try {
     validateConfig(structuredClone(config));
     return undefined;
   } catch (error) {
-    return error.message;
+    return textOf(fieldOf(error, 'message'));
   }
 }
 

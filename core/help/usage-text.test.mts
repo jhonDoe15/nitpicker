@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { runCli } from '../cli.mts';
 import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mts';
 import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mts';
 import { INIT_OPTIONS } from '../init/init-arguments.mts';
 import { packageVersion } from './package-version.mts';
@@ -17,12 +17,17 @@ import {
   INIT_FLAGS,
   INIT_USAGE_TEXT,
 } from './usage-text.mts';
-import { docsUrl } from '../../shared/messages/docs-url.mjs';
+import { fieldOf, textOf } from '../../shared/values/readers.mts';
+import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mjs';
 
+const docsUrl: (page: string, anchor: undefined) => string | undefined = untypedDocsUrl;
 const { temporaryRoot, createGitRepository } = useGitFixtures();
 const MANIFEST = new URL('../../package.json', import.meta.url);
-const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
-const USAGE_LINK = docsUrl('docs/usage.md');
+const PAIRED: Readonly<Record<string, string[]>> = {
+  '--shard-count': ['--shard-index', '0'],
+  '--shard-index': ['--shard-count', '2'],
+};
+const USAGE_LINK = docsUrl('docs/usage.md', undefined);
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
@@ -69,7 +74,7 @@ const EXPECTED_USAGE_HEAD = [
   '',
 ];
 
-function exampleLines(analyzer) {
+function exampleLines(analyzer: string) {
   const rows = [
     ['nitpicker', 'check your change against the detected base'],
     ['nitpicker --base origin/release', 'check it against a given base'],
@@ -78,11 +83,11 @@ function exampleLines(analyzer) {
     ['nitpicker src/orders/order.ts', 'gate your change to one file'],
     ['nitpicker --all src/orders', 'show every finding in one folder'],
   ];
-  const width = Math.max(...rows.map(([command]) => command.length));
-  return rows.map(([command, text]) => `  ${command.padEnd(width)}  ${text}`);
+  const width = Math.max(...rows.map(([command = '']) => command.length));
+  return rows.map(([command = '', text]) => `  ${command.padEnd(width)}  ${text ?? ''}`);
 }
 
-function expectedUsage(analyzerLines, analyzer) {
+function expectedUsage(analyzerLines: string[], analyzer: string) {
   return [
     ...EXPECTED_USAGE_HEAD,
     ...analyzerLines,
@@ -95,7 +100,7 @@ function expectedUsage(analyzerLines, analyzer) {
     ...exampleLines(analyzer),
     'Paths limit the findings shown and gate the run; the analysis still covers the whole project.',
     '',
-    `Start a new project with nitpicker init. Reference: ${USAGE_LINK}`,
+    `Start a new project with nitpicker init. Reference: ${USAGE_LINK ?? ''}`,
     '',
   ].join('\n');
 }
@@ -152,32 +157,32 @@ const EXPECTED_CACHE_PUBLISH_USAGE = [
   '',
 ].join('\n');
 
-function runIn(currentProjectRoot, ...cliArguments) {
+function runIn(currentProjectRoot: string, ...cliArguments: string[]) {
   return runWith({ currentProjectRoot }, ...cliArguments);
 }
 
-function runWith(cli, ...cliArguments) {
+function runWith(cli: object, ...cliArguments: string[]) {
   let stdoutText = '';
   let stderrText = '';
   const exitCode = runCli({
     ...cli,
     arguments_: cliArguments,
-    stdout: { write: (text) => (stdoutText += text) },
-    stderr: { write: (text) => (stderrText += text) },
+    stdout: { write: (text: string) => (stdoutText += text) },
+    stderr: { write: (text: string) => (stderrText += text) },
   });
   return { exitCode, stdoutText, stderrText };
 }
 
-function parseError(text) {
+function parseError(text: string) {
   try {
     JSON.parse(text);
   } catch (error) {
-    return error.message;
+    return fieldOf(error, 'message');
   }
   throw new Error(`${text} parsed`);
 }
 
-function projectWith(config, projectFiles = {}) {
+function projectWith(config?: string, projectFiles: Record<string, string> = {}) {
   const root = temporaryRoot('nitpicker-help-');
   writeFiles(root, {
     ...projectFiles,
@@ -186,16 +191,20 @@ function projectWith(config, projectFiles = {}) {
   return root;
 }
 
-function run(...cliArguments) {
+function run(...cliArguments: string[]) {
   return runIn(projectWith(), ...cliArguments);
 }
 
-function flagNames(rows) {
-  return rows.map(([flag]) => flag.split(/[ =]/u)[0]).toSorted();
+function byCodeUnit(left: string, right: string) {
+  return Number(left > right) - Number(left < right);
 }
 
-function sampleArguments(flag) {
-  const [name, placeholder] = flag.split(/[ =]/u);
+function flagNames(rows: readonly (readonly string[])[]) {
+  return rows.map(([flag = '']) => flag.split(/[ =]/u)[0] ?? '').toSorted(byCodeUnit);
+}
+
+function sampleArguments(flag: string) {
+  const [name = '', placeholder] = flag.split(/[ =]/u);
   if (placeholder === undefined) {
     return name === '--dry-run' ? ['--fix', name] : [name];
   }
@@ -269,7 +278,7 @@ describe('nitpicker --help', () => {
     expect({ exitCode, stdoutText }).toEqual({
       exitCode: 0,
       stdoutText: expectedUsage(
-        [`Analyzers: not listed (nitpicker.config.json is not valid JSON: ${reason})`],
+        [`Analyzers: not listed (nitpicker.config.json is not valid JSON: ${textOf(reason)})`],
         '<name>',
       ),
     });
@@ -349,9 +358,13 @@ describe('the help of each command', () => {
 
 describe('nitpicker --version', () => {
   it('prints the version of package.json', () => {
-    const { version } = JSON.parse(readFileSync(MANIFEST, 'utf8'));
+    const version = fieldOf(JSON.parse(readFileSync(MANIFEST, 'utf8')), 'version');
 
-    expect(run('--version')).toEqual({ exitCode: 0, stdoutText: `${version}\n`, stderrText: '' });
+    expect(run('--version')).toEqual({
+      exitCode: 0,
+      stdoutText: `${textOf(version)}\n`,
+      stderrText: '',
+    });
     expect(packageVersion()).toBe(version);
   });
 

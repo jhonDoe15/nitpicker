@@ -2,19 +2,28 @@ import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } fro
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 import {
   crashingAnalyzer,
   fakeAnalyzer,
   useCliFixtures,
-} from '../command/test-support/cli-harness.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+} from '../command/test-support/cli-harness.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import type {
+  CliRunInput,
+  FixtureInvocationContext,
+  FixtureRepository,
+} from '../command/test-support/fixture-types.mts';
+import { fieldAt, listOf } from '../../scripts/json/fields.mts';
+import { parseJson, textOf } from '../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 
-function repositoryWithTwoFolders(extraFiles = {}) {
+type ScopedRun = CliRunInput & { repository: FixtureRepository; arguments_: string[] };
+
+function repositoryWithTwoFolders(extraFiles: Record<string, string> = {}) {
   const repository = createRepository({
     'quality-policy.json': policy(),
     'src/orders/clean.ts': 'export const clean = true;\n',
@@ -33,7 +42,7 @@ function runScoped({
   workingDirectory = repository.root,
   environment = {},
   ...overrides
-}) {
+}: ScopedRun) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const exitCode = runCli({
@@ -49,15 +58,18 @@ function runScoped({
   return { exitCode, output, outputRoot };
 }
 
-function readReport(outputRoot, name) {
+function readReport(outputRoot: string, name: string) {
   return readFileSync(path.join(outputRoot, name), 'utf8');
 }
 
-function readSummary(outputRoot) {
-  return JSON.parse(readReport(outputRoot, 'summary.json'));
+function readSummary(outputRoot: string): unknown {
+  return parseJson(readReport(outputRoot, 'summary.json'));
 }
 
-function comparisonOutput({ repository, outputRoot }, lines) {
+function comparisonOutput(
+  { repository, outputRoot }: { repository: FixtureRepository; outputRoot: string },
+  lines: string[],
+) {
   return [
     `Base: ${repository.baseRef} (argument)`,
     '',
@@ -91,26 +103,34 @@ describe('nitpicker with paths', () => {
       ]),
     );
     const summary = readSummary(outputRoot);
-    expect([summary.scope, summary.newEnforceableFindings]).toEqual([
+    expect([fieldAt(summary, 'scope'), fieldAt(summary, 'newEnforceableFindings')]).toEqual([
       { paths: ['src/orders'], outside: 1 },
       1,
     ]);
-    expect(summary.tools.map((tool) => [tool.name, tool.head, tool.new])).toEqual([
-      ['fake-quality-analyzer', 2, 1],
-    ]);
+    expect(
+      listOf(fieldAt(summary, 'tools')).map((tool) => [
+        fieldAt(tool, 'name'),
+        fieldAt(tool, 'head'),
+        fieldAt(tool, 'new'),
+      ]),
+    ).toEqual([['fake-quality-analyzer', 2, 1]]);
     expect(readReport(outputRoot, 'report.txt').split('\n').slice(4, 7)).toEqual([
       'Status: completed',
       'Scope: src/orders (1 finding outside it not shown)',
       'New enforceable findings: 1',
     ]);
-    const sarif = JSON.parse(readReport(outputRoot, 'report.sarif'));
+    const sarif = parseJson(readReport(outputRoot, 'report.sarif'));
     expect(
-      sarif.runs.flatMap((run) =>
-        run.results.map((result) => result.locations[0].physicalLocation.artifactLocation.uri),
+      listOf(fieldAt(sarif, 'runs')).flatMap((run) =>
+        listOf(fieldAt(run, 'results')).map((result) =>
+          fieldAt(result, 'locations', 0, 'physicalLocation', 'artifactLocation', 'uri'),
+        ),
       ),
     ).toEqual(['src/orders/order.ts']);
     expect(
-      JSON.parse(readReport(outputRoot, 'new-findings.json')).map((entry) => entry.path),
+      listOf(parseJson(readReport(outputRoot, 'new-findings.json'))).map((entry) =>
+        fieldAt(entry, 'path'),
+      ),
     ).toEqual(['src/orders/order.ts']);
     expect(output.stderrText).toBe('');
   });
@@ -142,7 +162,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(readSummary(outputRoot).scope).toEqual({
+    expect(fieldAt(readSummary(outputRoot), 'scope')).toEqual({
       paths: ['src/orders/order.ts'],
       outside: 1,
     });
@@ -158,7 +178,10 @@ describe('nitpicker with paths', () => {
 
     expect(exitCode).toBe(1);
     const summary = readSummary(outputRoot);
-    expect([summary.scope, summary.newEnforceableFindings]).toEqual([undefined, 2]);
+    expect([fieldAt(summary, 'scope'), fieldAt(summary, 'newEnforceableFindings')]).toEqual([
+      undefined,
+      2,
+    ]);
   });
 
   it('finds the project from the first path when run from the repository top', () => {
@@ -177,7 +200,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(readSummary(outputRoot).scope).toEqual({
+    expect(fieldAt(readSummary(outputRoot), 'scope')).toEqual({
       paths: ['src/order.ts'],
       outside: 1,
     });
@@ -209,7 +232,7 @@ describe('nitpicker with paths', () => {
         '',
       ].join('\n'),
     );
-    expect(readSummary(outputRoot).scope).toEqual({
+    expect(fieldAt(readSummary(outputRoot), 'scope')).toEqual({
       paths: ['src/billing'],
       outside: 1,
     });
@@ -230,17 +253,21 @@ describe('nitpicker with paths', () => {
       ['empty'],
       () => 'empty matches no file that nitpicker checks (none tracked or untracked)',
     ],
-    ['a path outside the repository', ['..'], (root) => `.. is outside the repository ${root}`],
+    [
+      'a path outside the repository',
+      ['..'],
+      (root: string) => `.. is outside the repository ${root}`,
+    ],
     [
       'a link that leads outside the repository',
       ['outlink'],
-      (root) =>
+      (root: string) =>
         `outlink leads to ${realpathSync(path.dirname(root))}, outside the files of ${root}`,
     ],
     [
       'the Git folder',
       ['.git'],
-      (root) => `.git leads to ${root}/.git, outside the files of ${root}`,
+      (root: string) => `.git leads to ${root}/.git, outside the files of ${root}`,
     ],
     ['an empty path', [''], () => 'A path argument is empty; give a file or folder'],
     [
@@ -251,13 +278,13 @@ describe('nitpicker with paths', () => {
     [
       'a path outside the project of the first path',
       ['services/orders/src', 'src/orders'],
-      (root) =>
+      (root: string) =>
         `src/orders is outside the project ${root}/services/orders; give paths in one project`,
     ],
     [
       'a path in another project',
       ['src/orders', 'services/orders/src'],
-      (root) =>
+      (root: string) =>
         `services/orders/src is in the project ${root}/services/orders, not in ${root}; give paths in one project`,
     ],
   ])('refuses %s', (_case, paths, message) => {
@@ -310,7 +337,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(readSummary(outputRoot).overallStatus).toBe('tool-error');
+    expect(fieldAt(readSummary(outputRoot), 'overallStatus')).toBe('tool-error');
   });
 
   it('still fails on a config loosening outside the paths', () => {
@@ -328,20 +355,20 @@ describe('nitpicker with paths', () => {
 
     expect(exitCode).toBe(1);
     expect(
-      JSON.parse(readReport(outputRoot, 'new-findings.json')).map(
-        (entry) => `${entry.tool}/${entry.rule}`,
+      listOf(parseJson(readReport(outputRoot, 'new-findings.json'))).map(
+        (entry) => `${textOf(fieldAt(entry, 'tool'))}/${textOf(fieldAt(entry, 'rule'))}`,
       ),
     ).toEqual(['nitpicker-config/policy-loosened']);
   });
 
   it('fixes only the changed files under the paths', () => {
     const repository = repositoryWithTwoFolders();
-    const fixed = [];
+    const fixed: string[] = [];
 
     runScoped({
       repository,
       arguments_: ['--fix', 'src/orders', '--base', repository.baseRef],
-      executeFixCommand({ operation, args }) {
+      executeFixCommand({ operation, args }: { operation: string; args: readonly string[] }) {
         if (operation === 'eslint-fix') {
           fixed.push(...args.slice(args.indexOf('--') + 1));
         }
@@ -385,10 +412,10 @@ describe('nitpicker with paths', () => {
 
   it('hands the paths to the head analyzers only, for mutation to narrow to', () => {
     const repository = repositoryWithTwoFolders();
-    const seen = [];
+    const seen: unknown[] = [];
     const recording = {
       ...fakeAnalyzer(),
-      createInvocation(context) {
+      createInvocation(context: FixtureInvocationContext & { mutationScope?: unknown }) {
         seen.push([context.snapshot, context.mutationScope]);
         return fakeAnalyzer().createInvocation(context);
       },

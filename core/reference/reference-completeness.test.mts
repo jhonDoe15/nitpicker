@@ -1,59 +1,86 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
-import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
+import { nitpickerRules as untypedNitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
+import { i18nRuleIds as untypedI18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import {
-  reactRuleIds,
-  reactTestRuleIds,
+  reactRuleIds as untypedReactRuleIds,
+  reactTestRuleIds as untypedReactTestRuleIds,
 } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
-import { SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mjs';
-import { KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
-import { KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mjs';
-import { leftOutPmdRules } from '../../languages/java/reference/pmd-rules.mjs';
-import { CATALOG_TOOLS, readCatalog } from '../../languages/java/messages/rule-messages.mjs';
+import { SPRING_ARCH_RULES as UNTYPED_SPRING_ARCH_RULES } from '../../languages/java/adapters/spring-arch/spring-arch.mjs';
+import { KOTLIN_EXCEPTION_RULES as UNTYPED_KOTLIN_EXCEPTION_RULES } from '../../languages/java/adapters/kotlin/kotlin-options.mjs';
+import { KOTLIN_SOURCE_MESSAGES as UNTYPED_KOTLIN_SOURCE_MESSAGES } from '../../languages/java/adapters/kotlin/scan/kotlin-scan.mjs';
+import { leftOutPmdRules as untypedLeftOutPmdRules } from '../../languages/java/reference/pmd-rules.mjs';
 import {
-  RUFF_IGNORE,
-  RUFF_SELECT,
+  CATALOG_TOOLS as UNTYPED_CATALOG_TOOLS,
+  readCatalog as untypedReadCatalog,
+} from '../../languages/java/messages/rule-messages.mjs';
+import {
+  RUFF_IGNORE as UNTYPED_RUFF_IGNORE,
+  RUFF_SELECT as UNTYPED_RUFF_SELECT,
 } from '../../languages/python/adapters/configuration/python-rule-ids.mjs';
-import { PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mjs';
-import { RULE_HINTS } from '../../languages/python/rules/rule-hints.mjs';
-import { RULES } from '../../shared/policy.mjs';
+import { PYTHON_TOP_LEVEL_EXCEPTION_RULES as UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { RULE_HINTS as UNTYPED_RULE_HINTS } from '../../languages/python/rules/rule-hints.mjs';
+import { RULES as UNTYPED_RULES } from '../../shared/policy.mjs';
 import {
-  CODING_STANDARDS_RULES,
-  DEPENDENCY_RULES,
-  toolsOf,
+  CODING_STANDARDS_RULES as UNTYPED_CODING_STANDARDS_RULES,
+  DEPENDENCY_RULES as UNTYPED_DEPENDENCY_RULES,
+  toolsOf as untypedToolsOf,
 } from '../../shared/exceptions/rule-tools.mjs';
-import { PRESETS } from '../../shared/reference/entry.mjs';
-import { PAGES } from '../../shared/reference/pages.mjs';
 import {
+  PAGES,
+  PRESETS,
   entryForFinding,
   indexEntries,
   lookupEntries,
   readReferenceEntries,
-} from '../../shared/reference/store.mjs';
+} from './reference-views.mts';
+import { fieldAt, fieldsOf } from '../../scripts/json/fields.mts';
+import { parseJson, textsOf } from '../../shared/values/readers.mts';
+
+type Hint = { tool: string; rules?: unknown; prefix?: unknown };
+
+const nitpickerRules: { rules: Readonly<Record<string, unknown>> } = untypedNitpickerRules;
+const i18nRuleIds: readonly string[] = untypedI18nRuleIds;
+const reactRuleIds: readonly string[] = untypedReactRuleIds;
+const reactTestRuleIds: readonly string[] = untypedReactTestRuleIds;
+const SPRING_ARCH_RULES: readonly string[] = UNTYPED_SPRING_ARCH_RULES;
+const KOTLIN_EXCEPTION_RULES: readonly string[] = UNTYPED_KOTLIN_EXCEPTION_RULES;
+const KOTLIN_SOURCE_MESSAGES: unknown = UNTYPED_KOTLIN_SOURCE_MESSAGES;
+const leftOutPmdRules: () => string[] = untypedLeftOutPmdRules;
+const CATALOG_TOOLS: readonly string[] = UNTYPED_CATALOG_TOOLS;
+const readCatalog: (tool: string) => Readonly<Record<string, unknown>> = untypedReadCatalog;
+const RUFF_IGNORE: readonly string[] = textsOf(UNTYPED_RUFF_IGNORE);
+const RUFF_SELECT: readonly string[] = textsOf(UNTYPED_RUFF_SELECT);
+const PYTHON_TOP_LEVEL_EXCEPTION_RULES: readonly string[] =
+  UNTYPED_PYTHON_TOP_LEVEL_EXCEPTION_RULES;
+const RULE_HINTS: readonly Hint[] = UNTYPED_RULE_HINTS;
+const RULES: readonly { id: string; check: string }[] = UNTYPED_RULES;
+const CODING_STANDARDS_RULES: readonly string[] = textsOf(UNTYPED_CODING_STANDARDS_RULES);
+const DEPENDENCY_RULES: readonly string[] = textsOf(UNTYPED_DEPENDENCY_RULES);
+const toolsOf: (rule: string) => string[] | undefined = untypedToolsOf;
 
 const entries = readReferenceEntries();
 const index = indexEntries(entries);
-const ERRORPRONE_CHECKS = JSON.parse(
+const ERRORPRONE_CHECKS: unknown = parseJson(
   readFileSync(
     new URL('../../languages/java/gradle/errorprone/checks.json', import.meta.url),
     'utf8',
   ),
 );
-const DETEKT_DEFAULTS = JSON.parse(
+const DETEKT_DEFAULTS: unknown = parseJson(
   readFileSync(
     new URL('../../languages/java/reference/kotlin/detekt-default-rules.json', import.meta.url),
     'utf8',
   ),
 );
 
-function missingFindings(findings) {
+function missingFindings(findings: { tool: string; rule: string }[]) {
   return findings
     .filter(({ tool, rule }) => entryForFinding(index, { tool, rule }) === undefined)
     .map(({ tool, rule }) => `${tool}/${rule}`);
 }
 
-function missingNames(names) {
+function missingNames(names: readonly string[]) {
   return names.filter((name) => lookupEntries(index, name).length === 0);
 }
 
@@ -93,9 +120,10 @@ describe('the rule reference', () => {
   });
 
   it('has an entry for each Error Prone check the preset turns on and each Spring and Kotlin rule', () => {
-    const turnedOn = ERRORPRONE_CHECKS.reviewedChecks.filter(
-      (name) =>
-        !ERRORPRONE_CHECKS.disable.includes(name) && !ERRORPRONE_CHECKS.defaultOff.includes(name),
+    const disabled = textsOf(fieldAt(ERRORPRONE_CHECKS, 'disable'));
+    const defaultOff = textsOf(fieldAt(ERRORPRONE_CHECKS, 'defaultOff'));
+    const turnedOn = textsOf(fieldAt(ERRORPRONE_CHECKS, 'reviewedChecks')).filter(
+      (name) => !(disabled.includes(name) || defaultOff.includes(name)),
     );
 
     expect(turnedOn.length).toBeGreaterThan(0);
@@ -103,7 +131,10 @@ describe('the rule reference', () => {
       missingFindings([
         ...turnedOn.map((rule) => ({ tool: 'errorprone', rule })),
         ...SPRING_ARCH_RULES.map((rule) => ({ tool: 'archunit', rule })),
-        ...Object.keys(KOTLIN_SOURCE_MESSAGES).map((rule) => ({ tool: 'kotlin-source', rule })),
+        ...Object.keys(fieldsOf(KOTLIN_SOURCE_MESSAGES) ?? {}).map((rule) => ({
+          tool: 'kotlin-source',
+          rule,
+        })),
       ]),
     ).toEqual([]);
   });
@@ -114,8 +145,9 @@ describe('the rule reference', () => {
   });
 
   it('has an entry for each default rule of the pinned detekt', () => {
-    const rules = Object.entries(DETEKT_DEFAULTS.active).flatMap(([ruleset, names]) =>
-      names.map((name) => ({ tool: 'detekt', rule: `detekt.${ruleset}.${name}` })),
+    const rules = Object.entries(fieldsOf(fieldAt(DETEKT_DEFAULTS, 'active')) ?? {}).flatMap(
+      ([ruleset, names]) =>
+        textsOf(names).map((name) => ({ tool: 'detekt', rule: `detekt.${ruleset}.${name}` })),
     );
 
     expect(rules.length).toBeGreaterThan(0);
@@ -136,7 +168,7 @@ describe('the rule reference', () => {
   it('has an entry for each rule or rule family of the Python hints', () => {
     const hinted = RULE_HINTS.filter(({ rules }) => rules !== undefined).flatMap(
       ({ tool, rules, prefix }) =>
-        [rules].flat().map((rule) => ({ tool, rule, prefix: prefix === true })),
+        textsOf([rules].flat()).map((rule) => ({ tool, rule, prefix: prefix === true })),
     );
     const exact = hinted.filter(({ prefix }) => !prefix).map(({ tool, rule }) => `${tool}/${rule}`);
     const families = hinted.filter(({ prefix }) => prefix);
@@ -164,10 +196,10 @@ describe('the rule reference', () => {
   it('sends the Python exception of a shared check to python.exceptions unless the top-level list takes it', () => {
     const checks = entries.filter(
       ({ analyzers, exception }) =>
-        analyzers.python !== undefined && exception.key === 'exceptions',
+        analyzers['python'] !== undefined && exception.key === 'exceptions',
     );
     const sent = checks.filter(
-      ({ exception }) => exception.presetKeys?.python === 'python.exceptions',
+      ({ exception }) => exception.presetKeys?.['python'] === 'python.exceptions',
     );
 
     expect(sent.length).toBeGreaterThan(0);

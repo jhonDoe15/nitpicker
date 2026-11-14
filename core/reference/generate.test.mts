@@ -3,21 +3,34 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { fieldAt, listOf } from '../../scripts/json/fields.mts';
+import { textOf } from '../../shared/values/readers.mts';
 import { entryProblems } from './build.mts';
+import type { ReferenceEntry } from './build.mts';
 import {
   formattedText,
   referenceDataFiles,
   referenceFiles,
   staleReferenceFiles,
 } from './generate.mts';
-import { ALL_RECIPES } from '../fix/engine/all-recipes.mjs';
-import { defineRecipes } from '../fix/engine/recipes.mjs';
-import { DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mjs';
-import { PAGES } from '../../shared/reference/pages.mjs';
-import { ruleEntry } from '../../shared/reference/entry.mjs';
+import { ALL_RECIPES as UNTYPED_RECIPES } from '../fix/engine/all-recipes.mts';
+import { defineRecipes as untypedDefineRecipes } from '../fix/engine/recipes.mjs';
+import { DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mts';
+import { PAGES as UNTYPED_PAGES } from '../../shared/reference/pages.mjs';
+import { ruleEntry as untypedRuleEntry } from '../../shared/reference/entry.mjs';
+
+const ALL_RECIPES: readonly unknown[] = UNTYPED_RECIPES;
+const PAGES: readonly { id: string }[] = UNTYPED_PAGES;
+const ruleEntry: (fields: {
+  tool: string;
+  rule: string;
+  [field: string]: unknown;
+}) => ReferenceEntry = untypedRuleEntry;
+const defineRecipes: (recipes: readonly unknown[]) => (typeof DEFAULT_FIX_SOURCES)['recipes'] =
+  untypedDefineRecipes;
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
-const roots = [];
+const roots: string[] = [];
 const PAGE_LIMIT = 512 * 1024;
 const RELEASE_WORKFLOW = '.github/workflows/github-release.yml';
 
@@ -27,7 +40,7 @@ afterEach(() => {
   }
 });
 
-function project(files) {
+function project(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-reference-'));
   roots.push(root);
   for (const [name, contents] of Object.entries(files)) {
@@ -37,8 +50,8 @@ function project(files) {
   return root;
 }
 
-function entry(rule, fields = {}) {
-  return ruleEntry({ tool: 'demo', rule, page: PAGES[0].id, ...fields });
+function entry(rule: string, fields: Record<string, unknown> = {}) {
+  return ruleEntry({ tool: 'demo', rule, page: PAGES[0]?.id, ...fields });
 }
 
 describe('the generated rule reference', () => {
@@ -77,8 +90,12 @@ describe('the generated rule reference', () => {
   });
 
   it('keeps the pages out of git, since the release workflow commits them only on the release commit', () => {
-    const workflow = parse(readFileSync(path.join(REPOSITORY_ROOT, RELEASE_WORKFLOW), 'utf8'));
-    const commitStep = workflow.jobs.release.steps.find(({ id }) => id === 'release-commit');
+    const workflow: unknown = parse(
+      readFileSync(path.join(REPOSITORY_ROOT, RELEASE_WORKFLOW), 'utf8'),
+    );
+    const commitStep = listOf(fieldAt(workflow, 'jobs', 'release', 'steps')).find(
+      (step) => fieldAt(step, 'id') === 'release-commit',
+    );
 
     expect(
       readFileSync(path.join(REPOSITORY_ROOT, '.gitignore'), 'utf8')
@@ -86,7 +103,9 @@ describe('the generated rule reference', () => {
         .filter((line) => line.startsWith('docs/')),
     ).toEqual(['docs/rules/']);
     expect(
-      commitStep.run.split('\n').filter((line) => /^(?:npm run gen:rules|git add)/u.test(line)),
+      textOf(fieldAt(commitStep, 'run'))
+        .split('\n')
+        .filter((line) => /^(?:npm run gen:rules|git add)/u.test(line)),
     ).toEqual(['npm run gen:rules', 'git add --force docs/rules']);
   });
 });
@@ -95,7 +114,7 @@ describe('the generated pages', () => {
   it.each(['docs/rules/README.md', 'docs/rules/python-nitpicker.md'])(
     'are already in the form Prettier gives %s',
     async (file) => {
-      const text = referenceFiles(REPOSITORY_ROOT).get(file);
+      const text = referenceFiles(REPOSITORY_ROOT).get(file) ?? '';
 
       expect(await formattedText(REPOSITORY_ROOT, file, text)).toBe(text);
     },
@@ -168,7 +187,7 @@ describe('entryProblems', () => {
 
   it('reports a guide link to a file or a heading that does not exist', () => {
     const root = project({ 'docs/guide.md': '# Guide\n\n## Error Prone and NullAway\n' });
-    const link = (docsPath, anchor) =>
+    const link = (docsPath: string, anchor?: string) =>
       entry('one', { docs: [{ label: 'Guide', path: docsPath, anchor }] });
 
     expect(entryProblems([link('docs/guide.md', 'error-prone-and-nullaway')], root)).toEqual([]);
@@ -183,8 +202,9 @@ describe('entryProblems', () => {
 
   it('checks a link to a rule page against the entries, since the pages are not on disk', () => {
     const root = project({});
-    const page = `docs/rules/${PAGES[0].id}.md`;
-    const link = (anchor) => entry('one', { docs: [{ label: 'Counterpart', path: page, anchor }] });
+    const page = `docs/rules/${PAGES[0]?.id ?? ''}.md`;
+    const link = (anchor?: string) =>
+      entry('one', { docs: [{ label: 'Counterpart', path: page, anchor }] });
 
     expect(entryProblems([link('demo-one')], root)).toEqual([]);
     expect(entryProblems([link()], root)).toEqual([]);
