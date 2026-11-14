@@ -95,8 +95,8 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
         'descriptive',
         'build-note',
         'The Android or Multiplatform project :shared gets the source checks, the format check, detekt, ' +
-          'the kotlinc lint, the tests of the JVM target, coverage and CRAP; mutation testing, the .java ' +
-          'files do not run on it.',
+          'the kotlinc lint, the tests of the JVM target, coverage, CRAP and mutation testing; ' +
+          'the .java files do not run on it.',
       ],
     ]);
   });
@@ -137,6 +137,32 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
     );
 
     expect(shared.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
-    expect(shared.filter(({ tool }) => tool === 'pit')).toEqual([]);
+  });
+
+  it('mutates the classes of the JVM target and maps the mutants to the common and JVM sources', () => {
+    const mutants = findings.filter(
+      ({ tool, rule, path: file }) =>
+        tool === 'pit' && rule === 'mutant-nocoverage' && file.startsWith('shared/'),
+    );
+
+    expect([...new Set(mutants.map(({ path: file }) => file))].toSorted(byText)).toEqual([
+      GRADES,
+      NAMES,
+      PRICES,
+      BUMP,
+    ]);
+    expect(
+      findings
+        .filter(
+          ({ tool, rule, identity }) =>
+            tool === 'pit' && rule === 'mutation-summary' && identity.endsWith('@:shared'),
+        )
+        .map(({ metric }) => [metric.name, metric.value > 0])
+        .toSorted(byText),
+    ).toEqual([
+      ['GeneratedCode', true],
+      ['Killed', true],
+      ['NoCoverage', true],
+    ]);
   });
 });
