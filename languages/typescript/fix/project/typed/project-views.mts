@@ -28,7 +28,7 @@ import type {
   ReplaceEdit,
 } from './project-types.mts';
 
-export type ModuleReference = {
+type ModuleReference = {
   readonly kind: 'import' | 'export' | 'dynamic' | 'require' | 'type-import';
   readonly node: TypeScript.Node;
   readonly specifier: string | undefined;

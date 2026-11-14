@@ -32,10 +32,7 @@ function offsetOf(text: string, line: number, column: number): number {
   return (starts[line - 1] ?? text.length) + column - 1;
 }
 
-function configFor(
-  project: Project,
-  { ruleId, options, typed }: LintConfig,
-): Linter.Config[] {
+function configFor(project: Project, { ruleId, options, typed }: LintConfig): Linter.Config[] {
   return [
     {
       files: ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],

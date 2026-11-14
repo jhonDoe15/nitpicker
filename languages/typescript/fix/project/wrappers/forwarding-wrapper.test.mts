@@ -1,25 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { lintRule } from '../model/lint-rule.mjs';
-import { withProject } from '../model/project-model.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { noForwardingWrapperRecipe as recipe } from './forwarding-wrapper.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { remainingFindings } from '../test-support/remaining-findings.mts';
+import { noForwardingWrapperRecipe as recipe } from './forwarding-wrapper.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/no-forwarding-wrapper';
 const TARGET = 'export function target(a: number) {\n  return a + 1;\n}\n';
 
-function remaining(result, name) {
-  const context = {
-    projectRoot: result.projectRoot,
-    files: Object.keys(result.tree)
-      .filter((file) => file.startsWith('src/'))
-      .map((path) => ({ path })),
-    read: (file) => result.tree[file],
-  };
-  return withProject(context, (project) =>
-    lintRule(project, name, { ruleId: 'no-forwarding-wrapper', typed: true }),
-  );
-}
+const LINT = { ruleId: 'no-forwarding-wrapper', typed: true } as const;
 
 describe('noForwardingWrapperRecipe', () => {
   it('is a review recipe of project scope', () => {
@@ -45,7 +33,8 @@ describe('noForwardingWrapperRecipe', () => {
     expect(result.tree['src/use.ts']).toBe(
       "import { target } from './target.js';\nimport { other } from './other.js';\nexport const x = target(1) + other;\n",
     );
-    expect(remaining(result, 'src/wrapper.ts')).toEqual([]);
+    const paths = Object.keys(result.tree).filter((file) => file.startsWith('src/'));
+    expect(remainingFindings(result, 'src/wrapper.ts', LINT, paths)).toEqual([]);
   });
 
   it('calls the target directly where a private wrapper was used', () => {

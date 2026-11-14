@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../../test-support/fixture-project.mts';
 import { copy, loader, pair, twoMethods } from '../test-support/sources.mjs';
 import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mjs';
 
