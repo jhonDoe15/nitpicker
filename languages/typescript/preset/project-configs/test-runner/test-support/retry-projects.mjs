@@ -6,7 +6,7 @@ import {
   createRunnerProjects,
   rulesOf,
   runArea,
-} from '../../../../adapters/test-runners/test-support/runner-project.mjs';
+} from '../../../../adapters/test-runners/test-support/runner-project.mts';
 import { resolveHeadPolicy } from '../../../head-policy.mjs';
 
 export const OPT_IN = ['project', 'nitpicker'];

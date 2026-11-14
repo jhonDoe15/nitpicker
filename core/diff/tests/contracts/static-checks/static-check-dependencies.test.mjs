@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { existsSync, symlinkSync } from 'node:fs';
-import { dependencyPreparationMode } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
+import { dependencyPreparationMode } from '../../../../../languages/typescript/adapters/static-checks/dependencies.mts';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
 import { runTypecheck } from '../../../../../languages/typescript/adapters/static-checks/typescript.mts';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';

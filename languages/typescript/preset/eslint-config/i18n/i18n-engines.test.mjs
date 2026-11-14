@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   createProject,
   lintProject,
-} from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
+} from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { i18nScopeConfigFor } from ${JSON.stringify(import.meta.resolve('./i18n-scope.mjs'))};

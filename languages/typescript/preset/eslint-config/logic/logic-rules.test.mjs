@@ -4,7 +4,7 @@ import { ESLint } from 'eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
-import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
+import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { logicRuleHints, logicRuleIds } from './logic-rules.mjs';
 
 const PATTERNS = ['src/**/*.{ts,mjs}', 'test/**/*.{ts,mjs}'];

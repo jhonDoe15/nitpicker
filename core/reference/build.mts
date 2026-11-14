@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { jvmRuleEntries } from '../../languages/java/reference/index.mjs';
 import { pythonRuleEntries } from '../../languages/python/reference/index.mjs';
-import { typescriptRuleEntries } from '../../languages/typescript/reference/index.mjs';
+import { typescriptRuleEntries } from '../../languages/typescript/reference/index.mts';
 import { sharedCheckEntries } from '../../shared/reference/checks/check-entries.mjs';
 import { typescriptCheckEntries } from '../../shared/reference/checks/other-entries.mjs';
 import { PAGE_IDS } from '../../shared/reference/pages.mjs';
