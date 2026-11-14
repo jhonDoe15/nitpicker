@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { withoutCoveredCasts } from './cast-precedence.mjs';
+import { withoutCoveredCasts as untypedWithoutCoveredCasts } from './cast-precedence.mjs';
 
-const at = (tool, rule, line, file = 'A.kt') => ({ tool, rule, path: file, location: { line } });
+type Cast = {
+  tool: string;
+  rule: string;
+  path: string;
+  location: { line: number };
+};
+
+const withoutCoveredCasts: (findings: Cast[]) => Cast[] = untypedWithoutCoveredCasts;
+
+function at(tool: string, rule: string, line: number, file = 'A.kt'): Cast {
+  return { tool, rule, path: file, location: { line } };
+}
 
 describe('withoutCoveredCasts', () => {
   it('keeps the more specific detekt finding and drops the cast operator finding on its line', () => {

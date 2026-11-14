@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { unsafeCasts } from './unsafe-casts.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { unsafeCasts as untypedUnsafeCasts } from './unsafe-casts.mjs';
 
-function found(source) {
+const unsafeCasts: Check<Ruled> = untypedUnsafeCasts;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return unsafeCasts(scanned).map(({ rule, offset }) => [rule, lineOf(scanned, offset)]);
 }

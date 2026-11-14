@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { configurationReads } from './configuration-reads.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { configurationReads as untypedConfigurationReads } from './configuration-reads.mjs';
 
-function found(source) {
+const configurationReads: Check<Ruled> = untypedConfigurationReads;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return configurationReads(scanned).map(({ rule, offset }) => [rule, lineOf(scanned, offset)]);
 }
 
-function inService(line) {
+function inService(line: string) {
   return found(`package demo\n\nclass Service {\n    ${line}\n}\n`);
 }
 

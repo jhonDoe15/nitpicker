@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { kotlinSourceRules } from './costly-collections.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { kotlinSourceRules as untypedKotlinSourceRules } from './costly-collections.mjs';
 
-function found(body) {
+const kotlinSourceRules: { main: Check<Ruled>[] } = untypedKotlinSourceRules;
+
+function found(body: string) {
   const source = `class Routes(private val routes: List<Route>) {\n${body}\n}\n`;
   const scanned = scanKotlinSource(source);
   return kotlinSourceRules.main
