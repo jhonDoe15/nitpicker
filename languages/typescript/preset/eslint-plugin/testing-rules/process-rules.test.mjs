@@ -6,6 +6,7 @@ import { rule as noNodeProcessPerTest } from '../rules/testing/processes/no-node
 import { rule as noGitRepositoryPerTest } from '../rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from '../rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noExternalExecutables } from '../rules/testing/processes/no-external-executables-in-unit-tests.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -134,7 +135,7 @@ ruleTester.run('no-git-repository-per-test', noGitRepositoryPerTest, {
     },
   ],
 });
-ruleTester.run('hermetic-git-in-tests', hermeticGitInTests, {
+ruleTester.run('hermetic-git-in-tests', withoutFixes(hermeticGitInTests), {
   valid: [
     {
       filename: testFile,

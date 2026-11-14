@@ -3,6 +3,7 @@ import path from 'node:path';
 import { readDuplicateFindings } from './analysis/python-duplicates.mjs';
 import { normalizeReportPath } from '../../../shared/ingest/common.mjs';
 import { ingestFormatCheck } from '../../../shared/ingest/format-check.mjs';
+import { formatAdvice } from '../../../shared/messages/format/format-advice.mjs';
 import { ingestSarif, prepareSarif } from '../../../shared/ingest/sarif.mjs';
 import { ingestCoverageBranches } from '../ingest/coverage-reports/coverage-branches.mjs';
 import { ingestCoverageJson } from '../ingest/coverage-reports/coverage-json.mjs';
@@ -257,7 +258,7 @@ function noTestsFinding() {
 function formatMessage({ formatter, formatterDetected }) {
   const base = `File is not formatted with ${formatter}`;
   const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
-  return `${base}${detected}. Run nitpicker --fix, or format it with the "Format with ${formatter}" command printed at the start of the run.`;
+  return `${base}${detected}. ${formatAdvice()}`;
 }
 
 function formatFindings(text, { roots, manifest }) {

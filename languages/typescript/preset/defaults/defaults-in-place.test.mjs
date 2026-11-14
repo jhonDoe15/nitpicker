@@ -62,6 +62,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules.generated.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
+  'languages/typescript/preset/eslint-plugin/fixes',
   'languages/typescript/preset/eslint-plugin/test-assertions',
   'languages/typescript/preset/eslint-plugin/test-isolation',
   'languages/typescript/preset/eslint-plugin/test-placement',

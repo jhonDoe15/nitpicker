@@ -41,6 +41,7 @@ export type ReportData = {
   readonly changedMetrics: readonly ReportEntry[];
   readonly toolErrors: readonly ReportEntry[];
   readonly notes?: readonly ReportEntry[] | undefined;
+  fixPlans?: readonly unknown[] | undefined;
 };
 
 function isEntry(value: unknown): value is ReportEntry {

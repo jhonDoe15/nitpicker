@@ -7,15 +7,31 @@ const projectRoot = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_ROOT'
 const projectConfigPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_CONFIG');
 const policyModule = await import(pathToFileURL(policyConfigPath).href);
 
-if (!Array.isArray(policyModule.default)) {
+const extraPolicyPath = optionalEnvironmentPath('NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG');
+const extraPolicyModule =
+  extraPolicyPath === undefined ? undefined : await import(pathToFileURL(extraPolicyPath).href);
+
+if (!(Array.isArray(policyModule.default) && Array.isArray(extraPolicyModule?.default ?? []))) {
   throw new TypeError(`ESLint policy ${policyConfigPath} must export a flat configuration array`);
 }
 
 const selectedRules = selectedRuleIds(process.env.NITPICKER_DIFF_ESLINT_ONLY_RULES);
 
-export default (await layeredPolicy(policyModule.default, process.env)).map((entry) =>
-  rebaseTypeScriptProject(entry, projectRoot, projectConfigPath),
-);
+export default (
+  await layeredPolicy([...policyModule.default, ...scopedEntries(extraPolicyModule)], process.env)
+).map((entry) => rebaseTypeScriptProject(entry, projectRoot, projectConfigPath));
+
+function isIgnoreOnly(entry) {
+  return Object.keys(entry).join() === 'ignores';
+}
+
+function scopedEntries(module) {
+  const entries = module?.default ?? [];
+  const ignores = entries.filter(isIgnoreOnly).flatMap((entry) => entry.ignores);
+  return entries
+    .filter((entry) => !isIgnoreOnly(entry))
+    .map((entry) => ({ ...entry, ignores: [...(entry.ignores ?? []), ...ignores] }));
+}
 
 function selectedRuleIds(selection) {
   return selection === undefined || selection.length === 0

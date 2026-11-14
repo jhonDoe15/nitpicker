@@ -49,7 +49,7 @@ const routeHandlerNames = {
   format: ['UPPER_CASE'],
 };
 
-function namingConvention({ react, routeHandlers }) {
+export function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',

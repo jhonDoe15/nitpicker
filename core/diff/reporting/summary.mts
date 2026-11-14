@@ -8,6 +8,7 @@ import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mts';
 import { reviewSummaryLines } from './review/notices.mts';
+import { planCountLines } from '../../../shared/fix-plans/render.mjs';
 import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
@@ -47,6 +48,8 @@ const isPolicyEntry: (finding: ReportEntry) => boolean = isPolicyFinding;
 const oneLine: (value: unknown) => string = singleLine;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+
+const countLinesOf: (plans: unknown, diagnosticsPath: string) => string[] = planCountLines;
 
 const SHORT_SHA_LENGTH = 12;
 
@@ -101,7 +104,10 @@ function renderGateSummary(
     ),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
-  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot: false }));
+  lines.push(
+    ...countLinesOf(report.fixPlans, diagnosticsPath),
+    ...designNoteLines(report.newFindings, diagnosticsPath, { snapshot: false }),
+  );
   appendNoteSummary(lines, report.notes, color);
   lines.push(...closingLines(report, { color, diagnosticsPath, otherErrors }));
   return `${lines.join('\n')}\n`;

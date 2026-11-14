@@ -7,6 +7,7 @@ import { quickLines, stagedLines } from '../../quick/summary.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
+import { planSection } from '../../../shared/fix-plans/render.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
@@ -26,6 +27,7 @@ const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 const docsUrl: (relativePath: string, anchor: undefined, root: unknown) => unknown = repositoryUrl;
 const helpUri: (links: ReferenceLinks, finding: ReportEntry) => unknown = helpUriFor;
 const links: () => ReferenceLinks = referenceLinks;
+const plansSection: (plans: unknown) => string[] = planSection;
 
 function field(value: unknown, key: string): string {
   return textOf(fieldOf(value, key));
@@ -44,6 +46,7 @@ export function renderTextReport(
   ];
   lines.push(...findingSectionLines('New findings', report.newFindings));
   lines.push(...ruleReferenceLines(report.newFindings, reference));
+  lines.push(...plansSection(report.fixPlans ?? []));
   appendHeldSection(lines, report.unchangedFindings);
   lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
   appendMetricSection(lines, report.changedMetrics);
