@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { featureLayoutChanges } from './feature-layout-changes.mjs';
+import { createPolicyScope } from '../policy-scope.mts';
+import type { LayoutConfig, PolicyConfig } from '../types/policy-types.mts';
+import { featureLayoutChanges } from './feature-layout-changes.mts';
 
-function layoutChanges(baseConfig, headConfig, files) {
-  const { loosened, changed } = featureLayoutChanges(baseConfig, headConfig, { code: files });
+function layoutChanges(baseConfig: PolicyConfig, headConfig: PolicyConfig, files: string[]) {
+  const { loosened, changed } = featureLayoutChanges(baseConfig, headConfig, {
+    ...createPolicyScope({ files, baseRoots: {}, headRoots: {}, headConfig }),
+    code: files,
+  });
   return { loosened: loosened.map(({ text }) => text), changed };
 }
 
 describe('featureLayoutChanges', () => {
   it('counts feature and shared roots that take files out of the folder role they had', () => {
-    const python = (layout) => ({ preset: 'python', layout });
+    const python = (layout: LayoutConfig) => ({ preset: 'python', layout });
     const files = [
       'src/app/features/billing/api.py',
       'src/app/features/billing/plugins/pdf/render.py',
@@ -28,8 +33,12 @@ describe('featureLayoutChanges', () => {
   });
 
   it('counts files that join a feature or a larger one, which stability direction exempts', () => {
-    const python = (layout) => ({ preset: 'python', layout });
-    const java = (layout) => ({ preset: 'java', layout, history: { coChange: true } });
+    const python = (layout: LayoutConfig) => ({ preset: 'python', layout });
+    const java = (layout: LayoutConfig) => ({
+      preset: 'java',
+      layout,
+      history: { coChange: true },
+    });
     const files = ['src/app/billing/api.py', 'src/app/billing/store/db.py', 'src/app/ids.py'];
     const javaFiles = ['src/main/java/shop/modules/billing/Api.java'];
 

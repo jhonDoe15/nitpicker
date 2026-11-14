@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { policyChangeFields } from '../describe-policy-changes.mjs';
-import { createPolicyScope } from '../policy-scope.mjs';
+import { policyChangeFields } from '../describe-policy-changes.mts';
+import { createPolicyScope } from '../policy-scope.mts';
+import type { PolicyConfig, ScopeInputs } from '../types/policy-types.mts';
 
 const CONFIG = 'nitpicker.config.json';
 
-function policy(config, folders) {
+function policy(config: PolicyConfig, folders: string[]) {
   return { ...config, duplicates: { skippedFolders: folders } };
 }
 
-function changes(base, head, { files, baseFiles = files, moves, content = 'code' }) {
+function changes(
+  base: PolicyConfig,
+  head: PolicyConfig,
+  {
+    files,
+    baseFiles = files,
+    moves,
+    content = 'code',
+  }: { files: string[]; baseFiles?: string[]; moves?: ScopeInputs['moves']; content?: string },
+) {
   return policyChangeFields(
     base,
     head,
@@ -32,6 +42,7 @@ describe.each([
   ['python', 'src/legacy/a.py', ['build', 'dist', 'tests', 'test', 'migrations']],
 ])('duplicate folder policy for %s', (preset, file, defaults) => {
   const base = { preset };
+  const [firstDefault = ''] = defaults;
 
   it('requires acceptance when a newly skipped folder hides existing code', () => {
     const head = policy(base, [...defaults, 'legacy']);
@@ -62,7 +73,7 @@ describe.each([
   });
 
   it('allows new code in folders that the preset already skipped by default', () => {
-    const fileInDefault = `${defaults[0]}/${file.split('/').at(-1)}`;
+    const fileInDefault = `${firstDefault}/${file.split('/').at(-1) ?? ''}`;
 
     expect(changes(base, base, { files: [fileInDefault], baseFiles: [] }).policyLoosenings).toEqual(
       [],
@@ -70,8 +81,8 @@ describe.each([
   });
 
   it('requires acceptance when removing an empty override restores a default skip', () => {
-    const underDefault = file.replace('/legacy/', `/${defaults[0]}/`);
-    const rootDefault = `${defaults[0]}/${file.split('/').at(-1)}`;
+    const underDefault = file.replace('/legacy/', `/${firstDefault}/`);
+    const rootDefault = `${firstDefault}/${file.split('/').at(-1) ?? ''}`;
     const hidden = ['typescript', 'javascript'].includes(preset) ? rootDefault : underDefault;
 
     expect(changes(policy(base, []), base, { files: [hidden] }).policyLoosenings).toHaveLength(1);

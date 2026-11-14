@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges } from '../describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from '../policy-scope.mjs';
+import { describePolicyChanges } from '../describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from '../policy-scope.mts';
+import type { PolicyConfig } from '../types/policy-types.mts';
 
-const runners = (names) => ({ conventions: { 'typescript.detachedWorkRunners': names } });
+const runners = (names: string[]) => ({ conventions: { 'typescript.detachedWorkRunners': names } });
 
-function changes(baseConfig, headConfig) {
+function changes(baseConfig: PolicyConfig, headConfig: PolicyConfig) {
   return describePolicyChanges(
     baseConfig,
     headConfig,
@@ -39,7 +40,7 @@ describe('detached-work runner pins', () => {
   });
 
   it('counts a newly named Kotlin runner as a loosening', () => {
-    const kotlin = (names) => ({ conventions: { 'kotlin.detachedWorkRunners': names } });
+    const kotlin = (names: string[]) => ({ conventions: { 'kotlin.detachedWorkRunners': names } });
     expect(changes({}, kotlin(['runDetached'])).loosened).toHaveLength(1);
   });
 });

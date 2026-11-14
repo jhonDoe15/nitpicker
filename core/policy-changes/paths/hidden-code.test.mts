@@ -1,11 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { createPolicyScope, rootSets } from '../policy-scope.mjs';
-import { hiddenCodeChanges } from './hidden-code.mjs';
+import { createPolicyScope, rootSets } from '../policy-scope.mts';
+import type { PolicyConfig, ScopeInputs } from '../types/policy-types.mts';
+import { hiddenCodeChanges } from './hidden-code.mts';
 
 const BASE_FILES = ['src/orders/total.ts', 'src/vendor/lib.ts', 'src/legacy/old.ts'];
 const vendor = { exclude: ['src/vendor/**'] };
 
-function hidden(baseConfig, headConfig, { files, baseFiles = BASE_FILES, imports = {}, moves }) {
+function hidden(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  {
+    files,
+    baseFiles = BASE_FILES,
+    imports = {},
+    moves,
+  }: {
+    files: string[];
+    baseFiles?: string[];
+    imports?: Record<string, string>;
+    moves?: ScopeInputs['moves'];
+  },
+) {
   const scope = createPolicyScope({
     files,
     baseFiles,
@@ -38,7 +53,7 @@ describe('hiddenCodeChanges', () => {
   });
 
   it('fails code under a glob that hid no base code, however it is spelled now', () => {
-    const later = (paths) => ({
+    const later = (paths: string[]) => ({
       exceptions: [{ rule: 'file-lines-limit', paths, reason: 'Generated' }],
     });
 
@@ -89,8 +104,8 @@ describe('hiddenCodeChanges', () => {
     });
     const [entry] = hiddenCodeChanges({}, { exclude: ['lib/**'] }, scope).loosened;
 
-    expect(entry.text.endsWith('lib/a.ts, lib/b.ts, lib/c.ts, and 1 more')).toBe(true);
-    expect(entry.key.endsWith('lib/a.ts, lib/b.ts, lib/c.ts, lib/d.ts')).toBe(true);
-    expect(entry.files).toEqual(files);
+    expect(entry?.text.endsWith('lib/a.ts, lib/b.ts, lib/c.ts, and 1 more')).toBe(true);
+    expect(entry?.key?.endsWith('lib/a.ts, lib/b.ts, lib/c.ts, lib/d.ts')).toBe(true);
+    expect(entry?.files).toEqual(files);
   });
 });

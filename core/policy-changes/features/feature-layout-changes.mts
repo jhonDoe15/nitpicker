@@ -1,51 +1,56 @@
-import { typescriptFeatureLayout } from '../../../languages/typescript/preset/coupling/feature-layout.mjs';
-import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { resolveLayoutFor } from '../types/typed-views.mts';
 import {
   acceptedFactSettings,
-  CONFIG_FILE_NAME,
+  factRuleSettings,
   FEATURE_LAYOUT_KEYS,
-} from '../../../shared/config.mjs';
-import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
-import { featureLayout, featureRoles } from '../../../shared/rules/features/feature-roles.mjs';
-import { listed } from '../paths/hidden-code.mjs';
+  featureLayout,
+  featureRoles,
+  typescriptFeatureLayout,
+} from '../types/config-views.mts';
+import type { FeatureRole } from '../types/config-views.mts';
+import type { ChangePart, PolicyConfig, PolicyScope } from '../types/policy-types.mts';
+import { listed } from '../paths/hidden-code.mts';
 
-const TYPESCRIPT_LAYOUTS = new Set([undefined, 'typescript', 'javascript']);
+const TYPESCRIPT_LAYOUTS = new Set<string | undefined>([undefined, 'typescript', 'javascript']);
 const DEFAULT_PRESET = 'typescript';
 const LISTED_FILES = 3;
-const NOTHING = { loosened: [], changed: [] };
+const NOTHING: ChangePart = { loosened: [], changed: [] };
 
-function effectiveLayout(config) {
+function effectiveLayout(config: PolicyConfig) {
   return TYPESCRIPT_LAYOUTS.has(config.preset)
     ? typescriptFeatureLayout(config.layout, resolveLayoutFor(config).sourceRoots)
     : featureLayout(config.layout);
 }
 
-function settingText(key, baseConfig, headConfig) {
+function settingText(key: string, baseConfig: PolicyConfig, headConfig: PolicyConfig): string {
   const [before, after] = [baseConfig, headConfig].map((config) => config.layout?.[key]);
   const shown = [before, after].map((value) =>
     value === undefined ? 'not set' : JSON.stringify(value),
   );
-  return `layout.${key}: ${shown[0]} -> ${shown[1]}`;
+  return `layout.${key}: ${shown.join(' -> ')}`;
 }
 
-function losesRole(before, after) {
+function losesRole(before: FeatureRole, after: FeatureRole): boolean {
   if (before.kind !== 'feature' && before.kind !== 'shared') {
     return false;
   }
   return (
     before.kind !== after.kind ||
-    (after.kind === 'feature' && after.directory.length < before.directory.length)
+    (after.kind === 'feature' &&
+      before.kind === 'feature' &&
+      after.directory.length < before.directory.length)
   );
 }
 
-function joinsLargerFeature(before, after) {
+function joinsLargerFeature(before: FeatureRole, after: FeatureRole): boolean {
   return (
     after.kind === 'feature' &&
     (before.kind !== 'feature' || after.directory.length < before.directory.length)
   );
 }
 
-function loosenings(headConfig) {
+function loosenings(headConfig: PolicyConfig) {
   const boundaries = factRuleSettings(headConfig.preset ?? DEFAULT_PRESET).includes(
     'layout.featureRoots',
   );
@@ -53,7 +58,11 @@ function loosenings(headConfig) {
   return [...(boundaries ? [losesRole] : []), ...(stability ? [joinsLargerFeature] : [])];
 }
 
-function filesLosingRoles(baseConfig, headConfig, scope) {
+function filesLosingRoles(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  scope: PolicyScope,
+): string[] {
   const checks = loosenings(headConfig);
   if (checks.length === 0) {
     return [];
@@ -65,7 +74,11 @@ function filesLosingRoles(baseConfig, headConfig, scope) {
     .toSorted();
 }
 
-export function featureLayoutChanges(baseConfig, headConfig, scope) {
+export function featureLayoutChanges(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  scope: PolicyScope,
+): ChangePart {
   const keys = FEATURE_LAYOUT_KEYS.filter(
     (key) => JSON.stringify(baseConfig.layout?.[key]) !== JSON.stringify(headConfig.layout?.[key]),
   );
@@ -77,7 +90,7 @@ export function featureLayoutChanges(baseConfig, headConfig, scope) {
   if (files.length === 0) {
     return { loosened: [], changed: [setting] };
   }
-  function describe(limit) {
+  function describe(limit: number): string {
     return `${setting} moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: ${listed(files, limit)}`;
   }
   return {

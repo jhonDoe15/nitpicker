@@ -1,4 +1,6 @@
-export function tsconfigChanges(scope) {
+import type { ChangePart, PolicyScope } from '../types/policy-types.mts';
+
+export function tsconfigChanges(scope: PolicyScope): ChangePart {
   if (scope.tsconfigs === undefined) {
     return { loosened: [], changed: [] };
   }

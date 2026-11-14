@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from '../build-files/test-support/policy-fixtures.mjs';
+import { between, changesOf } from '../build-files/test-support/policy-fixtures.mts';
 
 const TYPESCRIPT = {
   'package.json': '{"name":"shop","type":"module"}\n',
@@ -17,7 +17,7 @@ const PYTHON = {
     'from shop.jobs import TOTAL\n\n\ndef test_total():\n    assert TOTAL == 4\n',
 };
 
-function typescript(entryPoints) {
+function typescript(entryPoints: string[]) {
   return between({
     base: TYPESCRIPT,
     head: TYPESCRIPT,
@@ -26,7 +26,7 @@ function typescript(entryPoints) {
   });
 }
 
-function python(entryPoints) {
+function python(entryPoints: string[]) {
   const config = { preset: 'python', python: { sourceRoots: ['src'] } };
   return between({
     base: PYTHON,
