@@ -1,35 +1,61 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { hash } from '../../../shared/rules/finding-helpers.mjs';
-import { functionBlocks, ingestMutmut, statusOfExitCode } from './mutmut.mjs';
+import { parseJson } from '../../../shared/values/readers.mts';
+import { functionBlocks, hash, ingestMutmut, statusOfExitCode } from './typed/ingest-views.mts';
 
-const recorded = JSON.parse(
+const recorded = parseJson(
   readFileSync(path.join(import.meta.dirname, 'fixtures/mutmut-run.json'), 'utf8'),
 );
 
-function variants(name, original, mutated) {
-  const body = (suffix, text) => text.replace('def f', `def ${name}__mutmut_${suffix}`);
+const SUMMARY_COUNTS: [string, number][] = [
+  ['Survived', 5],
+  ['Killed', 12],
+  ['NoCoverage', 17],
+];
+function stringMatching(pattern: RegExp): unknown {
+  const matcher: unknown = expect.stringMatching(pattern);
+  return matcher;
+}
+
+function variants(name: string, original: string, mutated: readonly string[]): string {
+  const body = (suffix: string, text: string): string =>
+    text.replace('def f', `def ${name}__mutmut_${suffix}`);
   return [
     body('orig', original),
     ...mutated.map((text, index) => body(String(index + 1), text)),
   ].join('\n\n');
 }
 
-function fileOf({ source = 'def f(a, b):\n    return a + b\n', mutants = [], codes }) {
+type RunFile = {
+  path: string;
+  exitCodes: Record<string, unknown>;
+  mutated: string;
+  original: string;
+};
+
+function fileOf({
+  source = 'def f(a, b):\n    return a + b\n',
+  mutants = [],
+  codes,
+}: {
+  source?: string;
+  mutants?: string[];
+  codes: unknown[];
+}): RunFile {
   const name = 'x_f';
   const mutated = variants(name, source, mutants);
   return {
     path: 'src/m.py',
     exitCodes: Object.fromEntries(
-      codes.map((code, index) => [`m.${name}__mutmut_${index + 1}`, code]),
+      codes.map((code, index) => [`m.${name}__mutmut_${String(index + 1)}`, code]),
     ),
     mutated,
     original: source,
   };
 }
 
-function ingest(files) {
+function ingest(files: readonly unknown[]) {
   return ingestMutmut({ files }).findings.filter(({ rule }) => rule !== 'mutation-summary');
 }
 
@@ -56,7 +82,7 @@ describe('mutmut run data ingester', () => {
         'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       classification: 'enforceable',
       symbol: 'total',
-      anchor: { key: expect.stringMatching(/^mutant:0→1\|/u), requireUnchangedLine: true },
+      anchor: { key: stringMatching(/^mutant:0→1\|/u), requireUnchangedLine: true },
       location: { line: 6 },
     });
   });
@@ -78,7 +104,7 @@ describe('mutmut run data ingester', () => {
       allowedForm: 'Add a test that reaches it.',
       classification: 'enforceable',
       symbol: 'fetch',
-      anchor: { key: expect.stringMatching(/^mutant:1→2\|/u), requireUnchangedLine: true },
+      anchor: { key: stringMatching(/^mutant:1→2\|/u), requireUnchangedLine: true },
       location: { line: 39 },
     });
   });
@@ -86,9 +112,9 @@ describe('mutmut run data ingester', () => {
   it('does not report killed mutants', () => {
     const { findings } = ingestMutmut(recorded);
 
-    expect(findings.filter(({ symbol }) => ['Cart.add', 'Cart.helper'].includes(symbol))).toEqual(
-      [],
-    );
+    expect(
+      findings.filter(({ symbol }) => ['Cart.add', 'Cart.helper'].includes(symbol ?? '')),
+    ).toEqual([]);
   });
 
   it('names a mutation by its text so that adding code above does not change it', () => {
@@ -123,7 +149,7 @@ describe('mutmut run data ingester', () => {
     const findings = ingest([file]);
 
     expect(findings.map(({ identity }) => identity)).toEqual(['f|+→-#1', 'f|+→-#2']);
-    expect(findings.map(({ location }) => location.line)).toEqual([2, 2]);
+    expect(findings.map(({ location }) => location?.line)).toEqual([2, 2]);
   });
 
   it('numbers each status on its own, so a mutant that is now killed leaves the others in place', () => {
@@ -143,7 +169,7 @@ describe('mutmut run data ingester', () => {
   it('numbers same-named functions in different modules independently', () => {
     const mutants = ['def f(a, b):\n    return a - b\n'];
     const billing = { ...fileOf({ mutants, codes: [0] }), path: 'src/billing.py' };
-    const identities = (ordersCode) =>
+    const identities = (ordersCode: number) =>
       ingest([{ ...fileOf({ mutants, codes: [ordersCode] }), path: 'src/orders.py' }, billing])
         .filter(({ path: filePath }) => filePath === 'src/billing.py')
         .map(({ identity }) => identity);
@@ -259,19 +285,15 @@ describe('mutmut run data ingester', () => {
       },
     ]);
 
-    expect(finding.identity).toBe('f|+→-#1');
-    expect(finding.location).toEqual({ line: 9 });
+    expect(finding?.identity).toBe('f|+→-#1');
+    expect(finding?.location).toEqual({ line: 9 });
   });
 
   it('counts the mutants of every status, killed ones included, as descriptive metrics', () => {
     const { findings } = ingestMutmut(recorded);
 
     expect(findings.filter(({ rule }) => rule === 'mutation-summary')).toEqual([
-      ...[
-        ['Survived', 5],
-        ['Killed', 12],
-        ['NoCoverage', 17],
-      ].map(([status, value]) => ({
+      ...SUMMARY_COUNTS.map(([status, value]) => ({
         tool: 'mutmut',
         rule: 'mutation-summary',
         path: '.',
@@ -306,12 +328,12 @@ describe('mutmut run data ingester', () => {
   it('uses the tool name it is given', () => {
     const file = fileOf({ mutants: ['def f(a, b):\n    return a - b\n'], codes: [0] });
 
-    expect(ingestMutmut({ files: [file] }, { tool: 'custom' }).findings[0].tool).toBe('custom');
+    expect(ingestMutmut({ files: [file] }, { tool: 'custom' }).findings[0]?.tool).toBe('custom');
   });
 
   it('labels mutations by what changed', () => {
     const source = "def f(a):\n    return a + 1 if a else 'x'\n";
-    const change = (text) => `def f(a):\n    return ${text}\n`;
+    const change = (text: string) => `def f(a):\n    return ${text}\n`;
     const file = fileOf({
       source,
       mutants: [
@@ -332,7 +354,7 @@ describe('mutmut run data ingester', () => {
   });
 
   it('leaves out the mutants of an assert_never the type checker proves unreachable', () => {
-    const match = (...arms) =>
+    const match = (...arms: string[]) =>
       ['def f(a):', '    match a:', '        case 1:', '            return 1', ...arms, ''].join(
         '\n',
       );
@@ -377,7 +399,7 @@ describe('mutmut run data ingester', () => {
       2,
     ],
   ])('keeps the mutants of an assert_never in %s', (_, body, mutatedBody, line) => {
-    const lines = (rows) => ['def f(a):', ...rows, ''].join('\n');
+    const lines = (rows: string[]) => ['def f(a):', ...rows, ''].join('\n');
     const file = fileOf({ source: lines(body), mutants: [lines(mutatedBody)], codes: [0] });
 
     expect(ingest([file]).map(({ location }) => location)).toEqual([{ line }]);

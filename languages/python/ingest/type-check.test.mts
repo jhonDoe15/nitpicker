@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestMypy, ingestPyright } from './type-check.mjs';
+import { ingestMypy, ingestPyright } from './type-check.mts';
 
-const fixture = (name) => readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
+const fixture = (name: string): string =>
+  readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
 const roots = ['/work/project'];
 
 describe('mypy text report', () => {
@@ -81,7 +82,7 @@ describe('mypy text report', () => {
     const before = ingestMypy('a.py:1: error: Bad  [misc]\n', { roots });
     const after = ingestMypy('a.py:40: error: Bad  [misc]\n', { roots });
 
-    expect(after[0].identity).toBe(before[0].identity);
+    expect(after[0]?.identity).toBe(before[0]?.identity);
   });
 
   it('keeps the identity of a redefinition when the code above it moves', () => {
@@ -99,8 +100,8 @@ describe('mypy text report', () => {
         location: { line: 14 },
       },
     ]);
-    expect(ingestMypy(after, { roots })[0].identity).toBe(
-      ingestMypy(before, { roots })[0].identity,
+    expect(ingestMypy(after, { roots })[0]?.identity).toBe(
+      ingestMypy(before, { roots })[0]?.identity,
     );
   });
 
@@ -116,7 +117,7 @@ describe('mypy text report', () => {
   });
 
   it('treats a warning as enforceable', () => {
-    expect(ingestMypy('a.py:1: warning: Careful  [misc]\n', { roots })[0].classification).toBe(
+    expect(ingestMypy('a.py:1: warning: Careful  [misc]\n', { roots })[0]?.classification).toBe(
       'enforceable',
     );
   });
@@ -172,7 +173,7 @@ describe('pyright JSON report', () => {
   });
 
   it('keeps the identity of a message that names another line when the code above moves', () => {
-    const report = (line) =>
+    const report = (line: number) =>
       JSON.stringify({
         generalDiagnostics: [
           {
@@ -184,10 +185,10 @@ describe('pyright JSON report', () => {
         ],
       });
 
-    expect(ingestPyright(report(10), { roots })[0].identity).toBe(
-      ingestPyright(report(5), { roots })[0].identity,
+    expect(ingestPyright(report(10), { roots })[0]?.identity).toBe(
+      ingestPyright(report(5), { roots })[0]?.identity,
     );
-    expect(ingestPyright(report(10), { roots })[0].identity).toBe(
+    expect(ingestPyright(report(10), { roots })[0]?.identity).toBe(
       '"dup" is obscured by a declaration',
     );
   });

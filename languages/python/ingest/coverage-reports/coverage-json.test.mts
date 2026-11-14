@@ -1,16 +1,21 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { baseMoves, comparisonKey } from '../../../../core/diff/comparison/fingerprint.mjs';
-import { ingestCoverageJson } from './coverage-json.mjs';
+import { ingestCoverageJson } from './coverage-json.mts';
+import { baseMoves, comparisonKey } from './test-support/comparison-views.mts';
 
 const report = readFileSync(path.join(import.meta.dirname, '..', 'fixtures/coverage.json'), 'utf8');
 
-const file = (statements, covered, functions) => ({
+function closeTo(value: number, digits: number): unknown {
+  const matcher: unknown = expect.closeTo(value, digits);
+  return matcher;
+}
+
+const file = (statements: number, covered: number, functions?: object) => ({
   summary: { num_statements: statements, covered_lines: covered },
   functions,
 });
-const fn = (statements, covered) => ({
+const fn = (statements: number, covered: number) => ({
   summary: { num_statements: statements, covered_lines: covered },
 });
 
@@ -26,7 +31,7 @@ describe('coverage.py JSON ingester', () => {
         identity: 'line-coverage',
         message: 'line-coverage 81.82% (9/11)',
         classification: 'descriptive',
-        metric: { name: 'line-coverage', value: expect.closeTo(81.82, 10) },
+        metric: { name: 'line-coverage', value: closeTo(81.82, 10) },
       },
       {
         tool: 'coverage',
@@ -116,7 +121,7 @@ describe('coverage.py JSON ingester', () => {
       tool: 'cov',
     });
 
-    expect(findings[0].tool).toBe('cov');
+    expect(findings[0]?.tool).toBe('cov');
   });
 
   it.each(['{}', '[]', 'null', '{"files": 3}', '{"files": null}'])('rejects %s', (text) => {
@@ -126,7 +131,7 @@ describe('coverage.py JSON ingester', () => {
   });
 
   it('keeps the functions of a module moved to another package', () => {
-    const keysAt = (module, renames) =>
+    const keysAt = (module: string, renames?: Map<string, string>) =>
       ingestCoverageJson(
         JSON.stringify({ files: { [module]: file(4, 0, { audit: fn(4, 0) }) } }),
       ).findings.map((finding) => comparisonKey(finding, renames && baseMoves(renames)));

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { ingestRulesReport } from './rules-report.mjs';
+import { ingestRulesReport } from './rules-report.mts';
 
-const entry = (overrides) => ({
+const entry = (overrides?: object) => ({
   rule: 'frozen-dataclass',
   path: 'src/order.py',
   subject: 'Order',
@@ -62,7 +62,7 @@ describe('effect rules report', () => {
       '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
     ],
   ])('describes %s by its subject', (rule, subject, message) => {
-    expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
+    expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0]?.message).toBe(message);
   });
 });
 

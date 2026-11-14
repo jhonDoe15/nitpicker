@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ingestRulesReport } from './rules-report.mjs';
+import { ingestRulesReport } from './rules-report.mts';
 import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smell-advice.mjs';
-import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { applyRuleHints } from './typed/ingest-views.mts';
 
-const entry = (overrides) => ({
+const entry = (overrides?: object) => ({
   rule: 'frozen-dataclass',
   path: 'src/order.py',
   subject: 'Order',
@@ -60,7 +60,7 @@ describe('rules script report', () => {
   ])('words the %s helper chain', (rule, via, message) => {
     const [found] = ingestRulesReport(JSON.stringify([entry({ rule, subject: 'x', via })]));
 
-    expect(found.message).toBe(message);
+    expect(found?.message).toBe(message);
   });
 
   it('turns each entry into an enforceable finding identified by its subject', () => {
@@ -276,7 +276,7 @@ describe('rules script report', () => {
       '`yaml.full_load` can build arbitrary Python objects from the document',
     ],
   ])('describes %s by its subject', (rule, subject, message) => {
-    expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
+    expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0]?.message).toBe(message);
   });
 
   it('numbers repeats of one subject in a file and keeps the identity when lines move', () => {
@@ -319,7 +319,7 @@ describe('rules script report', () => {
 
     const [kept, failed] = ingestRulesReport(JSON.stringify(report));
 
-    expect([kept.rule, kept.classification]).toEqual(['frozen-dataclass', 'enforceable']);
+    expect([kept?.rule, kept?.classification]).toEqual(['frozen-dataclass', 'enforceable']);
     expect([failed]).toEqual([
       {
         tool: 'python-rules',

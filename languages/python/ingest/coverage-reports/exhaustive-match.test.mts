@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ASSERT_NEVER_ARM, assertNeverArmLines, javascriptPattern } from './exhaustive-match.mjs';
 
-const source = (...rows) => rows.join('\n');
+const source = (...rows: string[]) => rows.join('\n');
 
 describe('the assert_never arm that closes an exhaustive match', () => {
   it('finds each arm whose only statement is assert_never of a name', () => {
