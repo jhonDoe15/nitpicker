@@ -1,4 +1,11 @@
-function property(fields) {
+const SINK = 'demo.Sink';
+const FACTS_KT = 'demo.FactsKt';
+const MEASURED = 'measured';
+const REPEAT_ACTION = 'repeatAction';
+const COLLECT = 'collect';
+const COROUTINE_SCOPE = 'coroutineScope';
+
+function property(fields: Readonly<Record<string, unknown>>) {
   return {
     constructor: false,
     getter: false,
@@ -8,7 +15,7 @@ function property(fields) {
   };
 }
 
-function declared(fields) {
+function declared(fields: Readonly<Record<string, unknown>>) {
   return {
     init: false,
     serializable: false,
@@ -18,7 +25,7 @@ function declared(fields) {
   };
 }
 
-function written(fields) {
+function written(fields: Readonly<Record<string, unknown>>) {
   return {
     suspend: false,
     inline: false,
@@ -28,7 +35,7 @@ function written(fields) {
   };
 }
 
-function lambda(fields) {
+function lambda(fields: Readonly<Record<string, unknown>>) {
   return {
     returnLines: [],
     discarded: false,
@@ -91,7 +98,7 @@ export const FACTS_EXPECTED = {
       functions: ['create'],
     }),
     declared({
-      name: 'demo.Sink',
+      name: SINK,
       kind: 'class',
       start: 111,
       headerEnd: 111,
@@ -107,7 +114,7 @@ export const FACTS_EXPECTED = {
       properties: [property({ name: 'share', start: 123, end: 123, constructor: true })],
     }),
     declared({
-      name: 'demo.FactsKt',
+      name: FACTS_KT,
       kind: 'facade',
       start: 0,
       headerEnd: 0,
@@ -115,13 +122,13 @@ export const FACTS_EXPECTED = {
         'twice',
         'fetch',
         'narrow',
-        'measured',
+        MEASURED,
         'runMeasured',
         'narrowMany',
-        'repeatAction',
+        REPEAT_ACTION,
         'report',
         'combine',
-        'collect',
+        COLLECT,
         'viaCollect',
         'viaTry',
         'viaIf',
@@ -147,61 +154,61 @@ export const FACTS_EXPECTED = {
     written({
       name: 'original',
       jvmName: 'renamed',
-      class: 'demo.Sink',
+      class: SINK,
       start: 112,
       end: 116,
       suspend: true,
       returnsUnit: true,
     }),
-    written({ name: 'getTripled', class: 'demo.Sink', start: 119, end: 119, inline: true }),
-    written({ name: 'twice', class: 'demo.FactsKt', start: 32, end: 32, inline: true }),
-    written({ name: 'fetch', class: 'demo.FactsKt', start: 34, end: 41, suspend: true }),
-    written({ name: 'narrow', class: 'demo.FactsKt', start: 43, end: 43 }),
-    written({ name: 'measured', class: 'demo.FactsKt', start: 56, end: 56, inline: true }),
+    written({ name: 'getTripled', class: SINK, start: 119, end: 119, inline: true }),
+    written({ name: 'twice', class: FACTS_KT, start: 32, end: 32, inline: true }),
+    written({ name: 'fetch', class: FACTS_KT, start: 34, end: 41, suspend: true }),
+    written({ name: 'narrow', class: FACTS_KT, start: 43, end: 43 }),
+    written({ name: MEASURED, class: FACTS_KT, start: 56, end: 56, inline: true }),
     written({
       name: 'runMeasured',
-      class: 'demo.FactsKt',
+      class: FACTS_KT,
       start: 58,
       end: 63,
-      inlineCalls: ['measured'],
+      inlineCalls: [MEASURED],
     }),
-    written({ name: 'narrowMany', class: 'demo.FactsKt', start: 65, end: 68 }),
-    written({ name: 'repeatAction', class: 'demo.FactsKt', start: 70, end: 72, returnsUnit: true }),
+    written({ name: 'narrowMany', class: FACTS_KT, start: 65, end: 68 }),
+    written({ name: REPEAT_ACTION, class: FACTS_KT, start: 70, end: 72, returnsUnit: true }),
     written({
       name: 'report',
-      class: 'demo.FactsKt',
+      class: FACTS_KT,
       start: 74,
       end: 78,
       suspend: true,
       returnsUnit: true,
     }),
-    written({ name: 'combine', class: 'demo.FactsKt', start: 80, end: 86, suspend: true }),
-    written({ name: 'collect', class: 'demo.FactsKt', start: 88, end: 88, suspend: true }),
-    written({ name: 'viaCollect', class: 'demo.FactsKt', start: 90, end: 90, suspend: true }),
-    written({ name: 'viaTry', class: 'demo.FactsKt', start: 92, end: 97, suspend: true }),
-    written({ name: 'viaIf', class: 'demo.FactsKt', start: 99, end: 104, suspend: true }),
+    written({ name: 'combine', class: FACTS_KT, start: 80, end: 86, suspend: true }),
+    written({ name: COLLECT, class: FACTS_KT, start: 88, end: 88, suspend: true }),
+    written({ name: 'viaCollect', class: FACTS_KT, start: 90, end: 90, suspend: true }),
+    written({ name: 'viaTry', class: FACTS_KT, start: 92, end: 97, suspend: true }),
+    written({ name: 'viaIf', class: FACTS_KT, start: 99, end: 104, suspend: true }),
     written({
       name: 'discarded',
-      class: 'demo.FactsKt',
+      class: FACTS_KT,
       start: 106,
       end: 109,
       suspend: true,
       returnsUnit: true,
     }),
-    written({ name: 'word', class: 'demo.FactsKt', start: 127, end: 131 }),
-    written({ name: 'mixed', class: 'demo.FactsKt', start: 133, end: 137 }),
+    written({ name: 'word', class: FACTS_KT, start: 127, end: 131 }),
+    written({ name: 'mixed', class: FACTS_KT, start: 133, end: 137 }),
     written({
       name: 'statement',
-      class: 'demo.FactsKt',
+      class: FACTS_KT,
       start: 139,
       end: 144,
       returnsUnit: true,
     }),
-    written({ name: 'either', class: 'demo.FactsKt', start: 146, end: 151 }),
+    written({ name: 'either', class: FACTS_KT, start: 146, end: 151 }),
   ],
   lambdas: [
     lambda({ start: 14, end: 14, valueLines: [14, 14], callee: 'lazy' }),
-    lambda({ start: 36, end: 40, valueLines: [39, 39], callee: 'coroutineScope' }),
+    lambda({ start: 36, end: 40, valueLines: [39, 39], callee: COROUTINE_SCOPE }),
     lambda({ start: 37, end: 37, valueLines: [37, 37], callee: 'async' }),
     lambda({ start: 38, end: 38, valueLines: [38, 38], callee: 'launch', discarded: true }),
     lambda({ start: 45, end: 45, valueLines: [45, 45], callee: 'map' }),
@@ -209,14 +216,14 @@ export const FACTS_EXPECTED = {
       start: 59,
       end: 63,
       valueLines: [60, 62],
-      callee: 'measured',
+      callee: MEASURED,
       projectCallee: true,
     }),
     lambda({
       start: 76,
       end: 76,
       valueLines: [76, 76],
-      callee: 'repeatAction',
+      callee: REPEAT_ACTION,
       discarded: true,
       projectCallee: true,
       unitCallee: true,
@@ -226,17 +233,17 @@ export const FACTS_EXPECTED = {
       end: 86,
       valueLines: [85, 85],
       returnLines: [82],
-      callee: 'coroutineScope',
+      callee: COROUTINE_SCOPE,
     }),
     lambda({ start: 81, end: 84, valueLines: [83, 83], returnLines: [82], callee: 'async' }),
-    lambda({ start: 90, end: 90, valueLines: [90, 90], callee: 'collect', projectCallee: true }),
-    lambda({ start: 94, end: 94, valueLines: [94, 94], callee: 'coroutineScope' }),
-    lambda({ start: 101, end: 101, valueLines: [101, 101], callee: 'coroutineScope' }),
+    lambda({ start: 90, end: 90, valueLines: [90, 90], callee: COLLECT, projectCallee: true }),
+    lambda({ start: 94, end: 94, valueLines: [94, 94], callee: COROUTINE_SCOPE }),
+    lambda({ start: 101, end: 101, valueLines: [101, 101], callee: COROUTINE_SCOPE }),
     lambda({
       start: 107,
       end: 107,
       valueLines: [107, 107],
-      callee: 'coroutineScope',
+      callee: COROUTINE_SCOPE,
       discarded: true,
     }),
   ],

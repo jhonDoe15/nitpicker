@@ -8,30 +8,32 @@ import {
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from '../../test-support/kotlin/kotlin-psi-program.mjs';
-import { FACTS_EXPECTED } from './test-support/facts-expected.mjs';
-import { FACTS_SOURCE } from './test-support/facts-sources.mjs';
+} from '../test-support/views/kotlin-psi-views.mts';
+import { assigned } from '../test-support/views/assigned.mts';
+import { FACTS_EXPECTED } from './test-support/facts-expected.mts';
+import { FACTS_SOURCE } from './test-support/facts-sources.mts';
+import { fieldOf, listOf, parseJson } from '../../../../../shared/values/readers.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const fixtures = path.resolve(import.meta.dirname, '../../../ingest/fixtures');
 const MEASUREMENT_FACTS = path.resolve(
   import.meta.dirname,
   '../../../ingest/kotlin-mutants/test-support/kotlin-measurement-facts.json',
 );
 
-let workspace;
-let java;
-let classpath;
-let classes;
+let workspace: string;
+let java: string;
+let classpath: string;
+let classes: string;
 
-function mutationFactsOf(project, roots = ['src']) {
+function mutationFactsOf(project: string, roots = ['src']): unknown {
   const metrics = path.join(project, 'metrics.json');
   const facts = path.join(project, 'facts.json');
   const result = spawnSync(
     path.join(java, 'bin/java'),
     [
-      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler()}`,
+      `-Dnitpicker.kotlinCompiler=${assigned(pinnedKotlinCompiler(), 'pinned compiler')}`,
       '-cp',
       `${classpath}${path.delimiter}${classes}`,
       'nitpicker.kotlinpsi.KotlinPsi',
@@ -43,7 +45,7 @@ function mutationFactsOf(project, roots = ['src']) {
     { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   expect(result.status, result.stdout + result.stderr).toBe(0);
-  return JSON.parse(readFileSync(path.join(project, 'kotlin-mutation-facts.json'), 'utf8'));
+  return parseJson(readFileSync(path.join(project, 'kotlin-mutation-facts.json'), 'utf8'));
 }
 
 function measurementSources() {
@@ -86,7 +88,9 @@ describe.skipIf(!enabled)('the mutation facts of the kotlin-psi program', () => 
     });
 
     expect(
-      mutationFactsOf(project, ['src/main', 'test:src/test']).files.map(({ file }) => file),
+      listOf(fieldOf(mutationFactsOf(project, ['src/main', 'test:src/test']), 'files')).map(
+        (entry) => fieldOf(entry, 'file'),
+      ),
     ).toEqual(['src/main/Main.kt']);
   });
 
@@ -94,7 +98,7 @@ describe.skipIf(!enabled)('the mutation facts of the kotlin-psi program', () => 
     const project = writeSources(workspace, 'measurement', measurementSources());
 
     expect(mutationFactsOf(project, ['src/main/kotlin'])).toEqual(
-      JSON.parse(readFileSync(MEASUREMENT_FACTS, 'utf8')),
+      parseJson(readFileSync(MEASUREMENT_FACTS, 'utf8')),
     );
   });
 });

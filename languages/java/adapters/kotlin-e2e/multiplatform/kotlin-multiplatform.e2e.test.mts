@@ -2,10 +2,11 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
 import { pathsOutsideProject } from '../../java-e2e/test-support/project-paths.mjs';
-import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
+import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
 import { byText } from '../../../../../shared/text-order/by-text.mjs';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-multiplatform-project');
 const PRICES = 'shared/src/commonMain/kotlin/demo/shared/Prices.kt';
@@ -17,13 +18,14 @@ const EXCLUDED = [
   'app/src/main/kotlin/demo/app/GeneratedNames.kt',
 ];
 
-const summary = (found) => found.map(({ rule, path: file }) => `${rule} ${file}`);
-const withoutCoverage = (found) =>
+const summary = (found: readonly Finding[]) =>
+  found.map(({ rule, path: file }) => `${rule} ${file}`);
+const withoutCoverage = (found: readonly Finding[]) =>
   found.filter(({ tool }) => !['jacoco', 'crap', 'pit'].includes(tool));
 
 describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform project', () => {
-  let root;
-  let findings;
+  let root: string;
+  let findings: Finding[];
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-multiplatform-'));
@@ -35,7 +37,7 @@ describe.skipIf(!kotlinE2eEnabled)('a Gradle build with a Kotlin Multiplatform p
   });
 
   afterAll(() => {
-    if (root !== undefined) {
+    if (typeof root === 'string') {
       rmSync(root, { recursive: true, force: true });
     }
   });

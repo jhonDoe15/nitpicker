@@ -2,15 +2,15 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
 import { pitStatuses } from '../../java-e2e/test-support/pit/pit-statuses.mjs';
-import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
+import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-multi-project');
 const BRIDGE = 'lib/src/main/java/demo/lib/Bridge.java';
-const roots = [];
+const roots: string[] = [];
 
-function snapshot(change = (text) => text) {
+function snapshot(change = (text: string) => text) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-pit-history-'));
   roots.push(root);
   const project = path.join(root, 'project');
@@ -20,7 +20,10 @@ function snapshot(change = (text) => text) {
   return { project, reports: path.join(root, 'reports') };
 }
 
-function collect({ project, reports }, policy) {
+function collect(
+  { project, reports }: { project: string; reports: string },
+  policy: Readonly<Record<string, unknown>>,
+) {
   const findings = collectJavaFindings(project, {
     gradle,
     policy: { ...kotlinPolicy, ...policy },
@@ -34,7 +37,7 @@ function collect({ project, reports }, policy) {
 }
 
 describe.skipIf(!kotlinE2eEnabled)('PIT history between Kotlin base and head', () => {
-  let base;
+  let base: { project: string; reports: string };
 
   beforeAll(() => {
     base = snapshot();
@@ -48,7 +51,7 @@ describe.skipIf(!kotlinE2eEnabled)('PIT history between Kotlin base and head', (
   });
 
   it('reruns only the changed class on head, with the findings of a full run', () => {
-    const toHead = (text) => text.replace('return 2;', 'return 3;');
+    const toHead = (text: string) => text.replace('return 2;', 'return 3;');
     const recorded = path.join(base.project, 'lib/build/nitpicker-pit-history/test.history');
 
     expect(existsSync(recorded)).toBe(true);
