@@ -11,16 +11,19 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
+import { parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { runCpd, runPmd } from './maven-pmd.mts';
 
-const roots = [];
+type PmdConfig = { nitpicker?: boolean; project?: string; projectWins?: boolean };
+
+const roots: string[] = [];
 const RULESET = 'http://pmd.sourceforge.net/ruleset/2.0.0';
 const PMD_RULESET = path.join(GRADLE_DIRECTORY, 'pmd-ruleset.xml');
 const GUARDS_RULES = path.join(GRADLE_DIRECTORY, 'rules/guards-ruleset.xml');
 const HONESTY_RULES = path.join(GRADLE_DIRECTORY, 'rules/test-honesty-ruleset.xml');
 const SPRING_RULES = path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml');
 
-function workspace() {
+function workspace(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pmd-'));
   roots.push(root);
   const java = path.join(root, 'jdk/bin/java');
@@ -34,7 +37,20 @@ function workspace() {
   return root;
 }
 
-function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring = false }) {
+function pmd(
+  root: string,
+  {
+    release = '17',
+    tests: testDirectories,
+    pmdConfig,
+    spring = false,
+  }: {
+    release?: string;
+    tests: readonly (readonly [string, boolean])[];
+    pmdConfig: PmdConfig;
+    spring?: boolean;
+  },
+) {
   const basedir = path.join(root, 'app');
   const main = path.join(basedir, 'src/main/java');
   mkdirSync(main, { recursive: true });
@@ -50,7 +66,7 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
   if (pmdConfig.project !== undefined) {
     pmdConfig = { ...pmdConfig, project: path.join(root, 'project-pmd.xml') };
     writeFileSync(
-      pmdConfig.project,
+      textOf(pmdConfig.project),
       '<ruleset xmlns="http://pmd.sourceforge.net/ruleset/2.0.0" name="project"/>',
     );
   }
@@ -72,21 +88,33 @@ function pmd(root, { release = '17', tests: testDirectories, pmdConfig, spring =
   });
   const tokens = readFileSync(path.join(root, 'java-arguments'), 'utf8')
     .split('\n')
-    .map((line) => JSON.parse(line));
+    .map((line) => parseJson(line));
   return {
     basedir,
     reportDir,
     main,
     testSourceRoots,
-    option: (name) => tokens[tokens.indexOf(name) + 1],
-    text: (name) => readFileSync(path.join(reportDir, name), 'utf8'),
-    exists: (name) => existsSync(path.join(reportDir, name)),
+    option: (name: string) => tokens[tokens.indexOf(name) + 1],
+    text: (name: string) => readFileSync(path.join(reportDir, name), 'utf8'),
+    exists: (name: string) => existsSync(path.join(reportDir, name)),
   };
 }
 
-const TEST_DIRECTORY = [['src/test/java', true]];
+const TEST_DIRECTORY: [string, boolean][] = [['src/test/java', true]];
 
-function ruleset({ name, patterns, ref, skipped = [], after = [] }) {
+function ruleset({
+  name,
+  patterns,
+  ref,
+  skipped = [],
+  after = [],
+}: {
+  name: string;
+  patterns: readonly string[];
+  ref: string;
+  skipped?: readonly string[];
+  after?: readonly string[];
+}): string {
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     `<ruleset name="${name}" xmlns="${RULESET}">`,
@@ -122,27 +150,30 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
     ['15', ['InstanceofThenCast', 'CollectorsToList']],
     ['16', []],
     ['17', []],
-  ])('skips the pattern matching rules for release %s: %j', (release, pattern) => {
-    const beforeTen = Number(release) < 10;
-    const skipped = beforeTen ? [...pattern, 'OptionalGet'] : pattern;
-    const after = beforeTen
-      ? [
-          `  <rule ref="${GUARDS_RULES}/OptionalGet" message="Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent()."/>`,
-        ]
-      : [];
-    const root = workspace();
-    const run = pmd(root, { release, tests: TEST_DIRECTORY, pmdConfig: { nitpicker: true } });
+  ])(
+    'skips the pattern matching rules for release %s: %j',
+    (release: string, pattern: string[]) => {
+      const beforeTen = Number(release) < 10;
+      const skipped = beforeTen ? [...pattern, 'OptionalGet'] : pattern;
+      const after = beforeTen
+        ? [
+            `  <rule ref="${GUARDS_RULES}/OptionalGet" message="Use orElse(...), orElseThrow(Supplier), map or ifPresent instead of Optional.get(), also after isPresent()."/>`,
+          ]
+        : [];
+      const root = workspace();
+      const run = pmd(root, { release, tests: TEST_DIRECTORY, pmdConfig: { nitpicker: true } });
 
-    expect(run.text('pmd-guards-main.xml')).toBe(
-      ruleset({
-        name: 'nitpicker-guards-main',
-        patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
-        ref: GUARDS_RULES,
-        skipped,
-        after,
-      }),
-    );
-  });
+      expect(run.text('pmd-guards-main.xml')).toBe(
+        ruleset({
+          name: 'nitpicker-guards-main',
+          patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
+          ref: GUARDS_RULES,
+          skipped,
+          after,
+        }),
+      );
+    },
+  );
 
   it('passes the project ruleset, the guard wrappers, the test-class rule and the spring ruleset in order', () => {
     const root = workspace();
@@ -272,7 +303,15 @@ const CPD_XML =
 const CPD_CRASH =
   '[main] ERROR net.sourceforge.pmd.cli - Exception while running CPD: NullPointerException';
 
-function fakeCpdJava({ report, stderr, ending }) {
+function fakeCpdJava({
+  report,
+  stderr,
+  ending,
+}: {
+  report: string;
+  stderr: string;
+  ending: string;
+}): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
   const java = path.join(root, 'jdk/bin/java');
@@ -290,7 +329,7 @@ function fakeCpdJava({ report, stderr, ending }) {
   return root;
 }
 
-function reportFiles(reportDir) {
+function reportFiles(reportDir: string): (string | undefined)[] {
   return ['cpd.xml', 'cpd-failed.txt', 'cpd-skipped.txt'].map((name) =>
     existsSync(path.join(reportDir, name))
       ? readFileSync(path.join(reportDir, name), 'utf8')
@@ -298,7 +337,7 @@ function reportFiles(reportDir) {
   );
 }
 
-function cpd(run) {
+function cpd(run: { report: string; stderr: string; ending: string }) {
   const root = fakeCpdJava(run);
   const basedir = path.join(root, 'app');
   const reportDir = path.join(basedir, 'target/nitpicker');
@@ -315,7 +354,7 @@ function cpd(run) {
   const tokens = readFileSync(path.join(root, 'arguments'), 'utf8').split('\n');
   return {
     outputs: reportFiles(reportDir),
-    arguments: tokens.map((line) => JSON.parse(line)),
+    arguments: tokens.map((line) => parseJson(line)),
     basedir,
   };
 }
