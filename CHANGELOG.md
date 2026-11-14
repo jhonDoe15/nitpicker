@@ -85,6 +85,11 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 - Go: `nitpicker --fix` runs the formatters the check uses on the changed files, a line that only
   gofmt reformatted counts as unchanged, and Go gets the copied-constant, test-runtime,
   unused-option and public-alternative-bypass rules (#781, #951, #1045, #1046, #1200).
+- Java and Kotlin: `"java": { "buildTool": "maven" | "gradle" }` picks the build when a project has
+  both, and `init` says which one it chose and why (#1166).
+- Java and Kotlin: `"disable": ["mutation"]` turns PIT off on both sides of a comparison (#1051).
+- Java: Spring Java Format is detected as the project's formatter, and the layout checks it owns are
+  left out (#1175).
 
 ### Changed
 
@@ -336,6 +341,21 @@ Other changes:
   instead of a tool error, an ESLint plugin that does not support the running ESLint is named, and a
   TypeScript or JavaScript run with no files under its source roots says so (#1168, #1174, #1180,
   #1181).
+- A tool killed by a signal says so, and names the likely out-of-memory kill; a file PMD could not
+  process is reported as a `pmd/processing-error` notice instead of passing as clean (#1173, #1179).
+- Java: fewer false positives from `HardCodedCryptoKey` (keys from parameters, fields, calls or the
+  environment), `SpringValidRequestBody` (only bodies whose type has validation constraints) and
+  `StreamResourceLeak` (streams closed by `Flux.using` or `Mono.using`), and PMD messages no longer
+  show an unrendered `${...}` (#1170, #1171, #1176, #1177).
+- TypeScript: a project's `isolatedDeclarations` no longer breaks the type check or mutation run,
+  `vitest/expect-expect` is off in type-test files, a curried arrow counts once in the structure
+  limits, `no-copied-constant` reads only the imported modules' constants, and tests accept `_`
+  for unused parameters (#1182, #1183, #1184, #1185, #1187).
+- TypeScript: a test file that fails to load for what looks like missing configuration gets a hint
+  about ignored `.env` files, and a mutation run that executed no tests says what to check (#1186).
+- `init` names the supported range for an installed peer that is too old, and `committed-binary`
+  accepts tarballs used as local `file:`, `link:`, `portal:` or relative-path dependencies (#1165,
+  #1167).
 
 ### Upgrade notes
 
