@@ -90,7 +90,7 @@ function configFileNames(runner) {
   return runner === 'mocha' ? [...names, ...MOCHA_CONFIG_EXTRA] : names;
 }
 
-function hasProjectFile(projectRoot, name) {
+export function hasProjectFile(projectRoot, name) {
   const file = path.resolve(projectRoot, name);
   if (!file.startsWith(`${projectRoot}${path.sep}`)) {
     return false;
