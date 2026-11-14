@@ -59,6 +59,11 @@ export const STRUCTURE_NOTES = {
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
     'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
   ],
+  'result-slip': [
+    'A comparison that cannot test what it was written for: a sign-only result (`compareTo`, `localeCompare`) compared with a value other than 0, or an index search tested with `> 0`.',
+    'A comparator may return any positive or negative number, and `indexOf(x) > 0` skips a match at position 0; both pass most tests and fail on the first unlucky input.',
+    'Compare the result with 0, or test `>= 0` (or use a containment check).',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

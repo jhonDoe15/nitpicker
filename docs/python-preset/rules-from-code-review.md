@@ -78,7 +78,10 @@ members is not reported.
   `continue`, an `assert` (which only removes a redundant check), the arms of a `match` over literal patterns, the left side of `and` and `or`, the bounds of a `for i in range(...)` loop, the
   branches of a conditional expression, and facts about names a lambda or nested function captures
   when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
-  is a module name, forgets what was known, and arithmetic is an opaque value.
+  is a module name, forgets what was known, and arithmetic is an opaque value. `len(x)` is a whole
+  number that is never negative and `abs(x)` is not below 0.
+- `result-slip` (tool `facts`) reads the same trees: `text.find(x) > 0` (also `rfind`, and `>= 1`,
+  `<= 0`, `< 1`) misses a match at index 0; test `>= 0`, or use `in`.
 - `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
   conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
   adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The

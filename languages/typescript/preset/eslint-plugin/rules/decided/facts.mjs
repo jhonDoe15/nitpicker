@@ -11,6 +11,7 @@ import { foldTree } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 import { toTerm } from '../analysis/logic/estree-terms.mjs';
+import { withModels } from './models/value-models.mjs';
 import { inside, isFunction, syntaxChildren } from './syntax.mjs';
 
 const EFFECTS = new Set([
@@ -51,13 +52,14 @@ function untypedComparisons(node, services) {
  */
 export function conditionTerm(node, sourceCode) {
   const untyped = untypedComparisons(node, sourceCode.parserServices);
-  return foldTerm(toTerm(node, sourceCode), (current, children) => {
+  const built = foldTerm(toTerm(node, sourceCode), (current, children) => {
     const rebuilt = { ...current, children };
     if (!isComparison(current) || !untyped.has(rangeKey(current.range ?? [0, 0]))) {
       return rebuilt;
     }
     return withRange(term('name', `#compare ${key(rebuilt)}`), current.range);
   });
+  return withModels(built, node, sourceCode.parserServices);
 }
 
 function namesOf(root) {

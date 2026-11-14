@@ -3,6 +3,7 @@ import {
   relevantFacts,
   solveFacts,
 } from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import { hasModels } from '../../../../../../shared/logic/models/models.mjs';
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
@@ -28,7 +29,7 @@ function reasonFor(facts, query, verdict) {
 }
 
 function verdictOf(facts, condition) {
-  if (facts.length === 0) {
+  if (facts.length === 0 && !hasModels([condition.term])) {
     return undefined;
   }
   const result = solveFacts(

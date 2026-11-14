@@ -1102,7 +1102,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
   variable written elsewhere, an import or an unresolved global is dropped on such a call. The
   conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
-  values are compared. An order comparison counts as a number comparison only when both operands
+  values are compared; the type checker tells it that `.length` (of a string, array or typed array),
+  `.size` (of a `Map` or `Set`) and the result of `indexOf`, `lastIndexOf`, `findIndex` and
+  `search` are whole numbers (at least 0, and at least -1), that `Math.abs(x)` is not negative and
+  that `Math.random()` is in `[0, 1)`. An order comparison counts as a number comparison only when both operands
   are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and

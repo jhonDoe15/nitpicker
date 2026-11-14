@@ -1,4 +1,5 @@
 import { decidingFact, relevantFacts, solveFacts } from '../../logic/sync/solve-facts.mjs';
+import { hasModels } from '../../logic/models/models.mjs';
 import { key } from '../../logic/terms.mjs';
 import { isIntegerType } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
@@ -65,7 +66,7 @@ function check(scan, node, { facts, part = 'condition' }) {
     return false;
   }
   const known = relevantFacts(facts, namesOf(node));
-  if (known.length === 0) {
+  if (known.length === 0 && !hasModels([query])) {
     return false;
   }
   scan.checked.add(node);

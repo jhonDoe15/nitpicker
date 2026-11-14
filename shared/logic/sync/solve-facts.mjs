@@ -1,3 +1,4 @@
+import { hasModels, modelReason } from '../models/models.mjs';
 import { decideByTruthTable, needsValues } from '../propositional.mjs';
 import { decideSync } from './decide-sync.mjs';
 
@@ -41,13 +42,19 @@ export function solveFacts(conditions, query) {
   if (quick !== 'open' && quick !== undefined) {
     return quick;
   }
-  return quick === undefined || needsValues(conditions, query)
-    ? decideSync(conditions, query)
-    : 'open';
+  const linked = quick === undefined || needsValues(conditions, query);
+  return linked || hasModels([...conditions, query]) ? decideSync(conditions, query) : 'open';
 }
 
-/** The latest fact that alone gives `query` its `verdict`, if one of the last few does. */
+/**
+ * The latest fact that alone gives `query` its `verdict`, if one of the last few does; a value
+ * model that decides it alone comes first.
+ */
 export function decidingFact(facts, query, verdict) {
+  const modelled = modelReason([query]);
+  if (modelled !== undefined && solveFacts([], query) === verdict) {
+    return { reason: modelled };
+  }
   return facts
     .toReversed()
     .slice(0, REASON_TRIES)

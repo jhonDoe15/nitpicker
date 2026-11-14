@@ -156,7 +156,8 @@ function termOf(node, children, context) {
   if (convert === undefined || children.some((child) => child === undefined)) {
     return undefined;
   }
-  return convert(node, children, context);
+  const built = convert(node, children, context);
+  return node.model === undefined || built === undefined ? built : { ...built, model: node.model };
 }
 
 export function logicTerm(root, context) {
