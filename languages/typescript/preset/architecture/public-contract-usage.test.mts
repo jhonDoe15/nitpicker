@@ -1,9 +1,9 @@
 import path from 'node:path';
 import ts from 'typescript';
 import { expect, it } from 'vitest';
-import { findUnusedPublicContractMethods } from './public-contract-usage.mjs';
+import { findUnusedPublicContractMethods } from './public-contract-usage.mts';
 
-function analyzeFixture(consumer, testConsumer = '') {
+function analyzeFixture(consumer: string, testConsumer = '') {
   const sources = new Map([
     [
       '/contract.ts',
@@ -13,10 +13,12 @@ function analyzeFixture(consumer, testConsumer = '') {
     ['/consumer.test.ts', `import { Implementation } from "./contract"; ${testConsumer}`],
   ]);
   const host = ts.createCompilerHost({ noLib: true });
-  host.getSourceFile = (fileName, languageVersion) =>
-    sources.has(fileName)
-      ? ts.createSourceFile(fileName, sources.get(fileName), languageVersion, true)
-      : undefined;
+  host.getSourceFile = (fileName, languageVersion) => {
+    const source = sources.get(fileName);
+    return source === undefined
+      ? undefined
+      : ts.createSourceFile(fileName, source, languageVersion, true);
+  };
   host.fileExists = (fileName) => sources.has(fileName);
   host.readFile = (fileName) => sources.get(fileName);
   host.resolveModuleNameLiterals = (literals, containingFile) =>

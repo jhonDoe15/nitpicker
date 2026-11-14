@@ -1,19 +1,42 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { DEPENDENCY_RULES } from '../../../../shared/exceptions/rule-tools.mjs';
-import cruiserConfig from '../defaults/dependency-cruiser.config.mjs';
+import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mjs';
+import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mjs';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
-import { cruiseStrict } from './test-support/strict-cruise.mjs';
+import { cruiseStrict, outputText } from './test-support/strict-cruise.mts';
 import {
   REACH_THROUGH_SHARED_RULE,
-  sharedReachPath,
-  strictBoundaryRules,
-  strictBoundaryRulesFor,
+  sharedReachPath as untypedSharedReachPath,
+  strictBoundaryRules as untypedStrictBoundaryRules,
+  strictBoundaryRulesFor as untypedStrictBoundaryRulesFor,
 } from './strict-boundary-rules.mjs';
+
+type StrictRule = {
+  readonly name: string;
+  readonly comment: string;
+  readonly from: { readonly pathNot?: readonly string[] };
+  readonly to: { readonly path: string | readonly string[] };
+};
+
+type Exception = {
+  readonly rule: string;
+  readonly paths: readonly string[];
+  readonly reason: string;
+};
+
+const strictBoundaryRules: readonly StrictRule[] = untypedStrictBoundaryRules;
+const strictBoundaryRulesFor: (exceptions: readonly Exception[]) => readonly StrictRule[] =
+  untypedStrictBoundaryRulesFor;
+const sharedReachPath: (violation: unknown, modules: unknown) => string[] | undefined =
+  untypedSharedReachPath;
+const cruiserConfig: { readonly forbidden: readonly { readonly name: string }[] } =
+  untypedCruiserConfig;
+const DEPENDENCY_RULES: readonly string[] = untypedDependencyRules;
 
 const fixturesRoot = path.resolve(import.meta.dirname, 'fixtures/strict');
 
-function cruiseFixture(name, outputType = 'err-long') {
+function cruiseFixture(name: string, outputType: 'err-long' | 'json' = 'err-long') {
   return cruiseStrict({
     baseDir: path.join(fixturesRoot, name),
     paths: ['src'],
@@ -21,8 +44,7 @@ function cruiseFixture(name, outputType = 'err-long') {
   });
 }
 
-// Each violation: fixture directory, the rule that must fire, and the allowed form its message names.
-const violations = [
+const violations: [string, string, string | undefined][] = [
   [
     'internal-import-from-feature',
     'features-do-not-import-other-feature-internals',
@@ -50,7 +72,7 @@ const violations = [
     'domain-does-not-reach-io-through-shared',
     'Move that dependency out of the shared module',
   ],
-  ['import-cycle', 'no-production-cycles', null],
+  ['import-cycle', 'no-production-cycles', undefined],
 ];
 
 const exceptionRoute = 'An exception fits only when it is deliberate';
@@ -59,13 +81,13 @@ describe('strict boundary rules', () => {
   it('accepts the allowed layout', async () => {
     const result = await cruiseFixture('allowed');
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 
   it('accepts pure Node subpaths in domain/', async () => {
     const result = await cruiseFixture('domain-imports-pure-subpath');
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 
   it('names the exception route in every domain rule', () => {
@@ -76,17 +98,17 @@ describe('strict boundary rules', () => {
   });
 
   it('lifts a rule for the importing files an exception names', () => {
-    const rule = (exceptions) =>
+    const rule = (exceptions: readonly Exception[]) =>
       strictBoundaryRulesFor(exceptions).find(
         ({ name }) => name === 'domain-does-not-import-node-io',
       );
 
-    expect(rule([]).from.pathNot).toBeUndefined();
+    expect(rule([])?.from.pathNot).toBeUndefined();
     expect(
       rule([
         { rule: 'domain-does-not-import-node-io', paths: ['src/legacy/**'], reason: 'old' },
         { rule: 'other-rule', paths: ['src/other/**'], reason: 'unrelated' },
-      ]).from.pathNot,
+      ])?.from.pathNot,
     ).toEqual(['^(?:src/legacy/.*)$']);
   });
 
@@ -108,7 +130,7 @@ describe('strict boundary rules', () => {
 
   it.each(violations)('rejects %s', async (fixture, rule, allowedForm) => {
     const result = await cruiseFixture(fixture);
-    const output = result.output.replaceAll(/\s+/g, ' ');
+    const output = outputText(result).replaceAll(/\s+/g, ' ');
 
     expect(result.exitCode).not.toBe(0);
     expect(output).toContain(rule);
@@ -124,9 +146,9 @@ describe('npm package patterns in the domain rules', () => {
     ['domain-does-not-reach-io-through-shared', 'pg'],
   ];
 
-  function matches(ruleName, target) {
+  function matches(ruleName: string, target: string) {
     const rule = strictBoundaryRules.find(({ name }) => name === ruleName);
-    return [rule.to.path].flat().some((pattern) => new RegExp(pattern).test(target));
+    return [rule?.to.path ?? []].flat().some((pattern) => new RegExp(pattern).test(target));
   }
 
   it.each(packageRules)('%s matches %s unresolved, installed and under pnpm', (ruleName, name) => {
@@ -149,11 +171,16 @@ describe('npm package patterns in the domain rules', () => {
 });
 
 describe('the shared module a domain file reaches I/O through', () => {
-  async function reachPaths(name) {
-    const report = JSON.parse((await cruiseFixture(name, 'json')).output);
-    return report.summary.violations
-      .filter((violation) => violation.rule.name === REACH_THROUGH_SHARED_RULE)
-      .map((violation) => [violation.from, sharedReachPath(violation, report.modules)]);
+  async function reachPaths(name: string) {
+    const report: unknown = JSON.parse(outputText(await cruiseFixture(name, 'json')));
+    return listOf(fieldOf(fieldOf(report, 'summary'), 'violations'))
+      .filter(
+        (violation) => fieldOf(fieldOf(violation, 'rule'), 'name') === REACH_THROUGH_SHARED_RULE,
+      )
+      .map((violation) => [
+        fieldOf(violation, 'from'),
+        sharedReachPath(violation, fieldOf(report, 'modules')),
+      ]);
   }
 
   it('names the shared module and the I/O module it reaches', async () => {

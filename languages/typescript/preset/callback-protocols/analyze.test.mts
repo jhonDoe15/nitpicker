@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { analyzeCallbackProtocols, analyzeProductionCallbacks } from './analyze.mjs';
+import { analyzeCallbackProtocols, analyzeProductionCallbacks } from './analyze.mts';
 
 const contracts = [
   {
@@ -14,8 +14,9 @@ const contracts = [
     snapshotReadMethods: ['snapshot'],
   },
 ];
-const rules = (source) =>
-  analyzeCallbackProtocols(source, { contracts }).map((finding) => finding.rule);
+function rules(source: string): string[] {
+  return analyzeCallbackProtocols(source, { contracts }).map((finding) => finding.rule);
+}
 
 describe('callback protocol architecture rules', () => {
   it('applies configured callback roles independently of API or consumer names', () => {

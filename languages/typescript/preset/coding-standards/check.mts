@@ -2,23 +2,44 @@ import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ESLint } from 'eslint';
-import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mjs';
-import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mjs';
-import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { ESLint, type Linter } from 'eslint';
+import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
+import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mts';
+import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mts';
+import { readLayout, type ProjectLayout } from '../callback-protocols/typed/project-layout.mts';
 import {
   DEFAULT_LEGACY_INVENTORY,
-  compareSignals,
-  readOptionalInventory,
+  compareSignals as untypedCompareSignals,
+  readOptionalInventory as untypedReadOptionalInventory,
 } from '../../../../shared/legacy-inventory.mjs';
+
+type Signal = {
+  readonly file: string;
+  readonly rule: string;
+  readonly source: string;
+  readonly message?: string;
+};
+
+type Allowance = Signal & { readonly count: number };
+
+const compareSignals: (actual: readonly Signal[], allowed: readonly Allowance[]) => Allowance[] =
+  untypedCompareSignals;
+
+const readOptionalInventory: (
+  root: string,
+  relativePath: string,
+) => { readonly sites: Allowance[] } = untypedReadOptionalInventory;
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const defaultLegacyInventoryPath = path.join(projectRoot, DEFAULT_LEGACY_INVENTORY);
 
 export { compareSignals };
 
-export async function collectSignals(root = projectRoot, policyRoot = root, layout = readLayout()) {
+export async function collectSignals(
+  root = projectRoot,
+  policyRoot = root,
+  layout: ProjectLayout = readLayout(),
+): Promise<Signal[]> {
   const eslint = new ESLint({
     cwd: root,
     overrideConfigFile: path.join(
@@ -29,11 +50,11 @@ export async function collectSignals(root = projectRoot, policyRoot = root, layo
   });
   const files = layout.projectCodeFiles(root);
   if (files.length === 0) return [];
-  const results = await eslint.lintFiles(files);
+  const results = await eslint.lintFiles([...files]);
   return results.flatMap((result) => resultSignals(root, result));
 }
 
-function resultSignals(root, result) {
+function resultSignals(root: string, result: ESLint.LintResult): Signal[] {
   if (result.fatalErrorCount > 0)
     throw new Error(result.messages.map((item) => item.message).join('\n'));
   const lines = readFileSync(result.filePath, 'utf8').split('\n');
@@ -41,7 +62,11 @@ function resultSignals(root, result) {
   return result.messages.map((message) => messageSignal(file, lines, message));
 }
 
-function messageSignal(file, lines, message) {
+function messageSignal(
+  file: string,
+  lines: readonly string[],
+  message: Linter.LintMessage,
+): Signal {
   if (!message.ruleId) throw new Error(message.message);
   return {
     file,
@@ -51,21 +76,26 @@ function messageSignal(file, lines, message) {
   };
 }
 
-function messageSource(lines, message) {
-  const line = message.line ?? 1;
+function messageSource(lines: readonly string[], message: Linter.LintMessage): string {
+  const line = message.line;
   const last = message.endLine ?? line;
   const sourceLines = lines.slice(line - 1, last);
   if (message.endColumn)
-    sourceLines[sourceLines.length - 1] = sourceLines.at(-1).slice(0, message.endColumn - 1);
-  sourceLines[0] = sourceLines[0].slice((message.column ?? 1) - 1);
+    sourceLines[sourceLines.length - 1] = (sourceLines.at(-1) ?? '').slice(
+      0,
+      message.endColumn - 1,
+    );
+  sourceLines[0] = (sourceLines[0] ?? '').slice(message.column - 1);
   return sourceLines.join('\n').replace(/\s+/g, ' ').trim();
 }
 
-export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath) {
+export function readLegacyInventory(inventoryPath = defaultLegacyInventoryPath): {
+  readonly sites: Allowance[];
+} {
   return readOptionalInventory(path.dirname(inventoryPath), path.basename(inventoryPath));
 }
 
-async function check() {
+async function check(): Promise<number> {
   const baseline = readLegacyInventory();
   const signals = [...(await collectSignals()), ...collectArchitectureSignals()];
   const regressions = compareSignals(signals, baseline.sites);
@@ -85,14 +115,21 @@ async function check() {
   return 0;
 }
 
-export function collectArchitectureSignals(root = projectRoot, layout = readLayout()) {
-  const analyzedConfigs = new Set();
+export function collectArchitectureSignals(
+  root = projectRoot,
+  layout: ProjectLayout = readLayout(),
+): Signal[] {
+  const analyzedConfigs = new Set<string>();
   return layout.sourceRoots.flatMap((layoutSourceRoot) =>
     collectRootArchitectureSignals(root, layoutSourceRoot, { layout, analyzedConfigs }),
   );
 }
 
-function contractUsage(configPath, analyzedConfigs, root) {
+function contractUsage(
+  configPath: string,
+  analyzedConfigs: Set<string>,
+  root: string,
+): ReturnType<typeof analyzePublicContractUsage> {
   if (analyzedConfigs.has(configPath)) {
     return [];
   }
@@ -100,7 +137,14 @@ function contractUsage(configPath, analyzedConfigs, root) {
   return analyzePublicContractUsage(configPath, { displayRoot: root });
 }
 
-function collectRootArchitectureSignals(root, layoutSourceRoot, { layout, analyzedConfigs }) {
+function collectRootArchitectureSignals(
+  root: string,
+  layoutSourceRoot: string,
+  {
+    layout,
+    analyzedConfigs,
+  }: { readonly layout: ProjectLayout; readonly analyzedConfigs: Set<string> },
+): Signal[] {
   const sourceRoot = path.join(root, layoutSourceRoot);
   if (!existsSync(sourceRoot)) return [];
   const configPath = [

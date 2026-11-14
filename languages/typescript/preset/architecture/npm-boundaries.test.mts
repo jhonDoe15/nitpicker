@@ -2,15 +2,29 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
-import { configuredAnalyzers } from '../diff/configured-analyzers.mjs';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
+import { configuredAnalyzers as untypedConfiguredAnalyzers } from '../diff/configured-analyzers.mjs';
+import {
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadPolicyFile as untypedWithHeadPolicyFile,
+} from '../head-policy.mjs';
+
+type Files = Readonly<Record<string, string>>;
+type Dependencies = 'installed' | 'symlinked' | 'absent';
+type FindingView = { readonly rule: string; readonly path: string; readonly message: string };
+
+const withDefaultAnalyzerParallelism: <T>(run: () => T) => T = untypedParallelism;
+const configuredAnalyzers: () => readonly { readonly name: string }[] = untypedConfiguredAnalyzers;
+const resolveHeadPolicy: (config: object) => unknown = untypedResolveHeadPolicy;
+const withHeadPolicyFile: <T>(policy: unknown, operation: (headPolicyFile: string) => T) => T =
+  untypedWithHeadPolicyFile;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const roots = [];
+const roots: string[] = [];
+const dependencyModes: Dependencies[] = ['installed', 'symlinked', 'absent'];
 
-function installedPackage(name) {
+function installedPackage(name: string): Files {
   return {
     [`node_modules/${name}/package.json`]: JSON.stringify({
       name,
@@ -38,30 +52,35 @@ afterAll(() => {
   }
 });
 
-function describeFinding({ rule, path: file }) {
+function describeFinding({ rule, path: file }: FindingView): string {
   return `${rule} ${file}`;
 }
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Files): void {
   for (const [relativePath, contents] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     writeFileSync(path.join(root, relativePath), contents);
   }
 }
 
-function sourceFiles(files) {
+function sourceFiles(files: Files): Files {
   return Object.fromEntries(
     Object.entries(files).filter(([relativePath]) => !relativePath.startsWith('node_modules/')),
   );
 }
 
-function installedFiles(files) {
+function installedFiles(files: Files): Files {
   return Object.fromEntries(
     Object.entries(files).filter(([relativePath]) => relativePath.startsWith('node_modules/')),
   );
 }
 
-function prepareDependencies(temporaryRoot, projectRoot, files, dependencies) {
+function prepareDependencies(
+  temporaryRoot: string,
+  projectRoot: string,
+  files: Files,
+  dependencies: Dependencies,
+): void {
   if (dependencies === 'installed') {
     writeFiles(projectRoot, installedFiles(files));
   }
@@ -72,7 +91,11 @@ function prepareDependencies(temporaryRoot, projectRoot, files, dependencies) {
   }
 }
 
-function architectureFindings(files, dependencies = 'installed', describe = describeFinding) {
+function architectureFindings(
+  files: Files,
+  dependencies: Dependencies = 'installed',
+  describe: (finding: FindingView) => string = describeFinding,
+) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   roots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'head');
@@ -87,7 +110,12 @@ function architectureFindings(files, dependencies = 'installed', describe = desc
         toolRoot: packageRoot,
         liveProjectRoot: packageRoot,
         snapshot: 'head',
+        baselineRoot: undefined,
+        baselineMovesFile: undefined,
         headPolicyFile,
+        mutationScope: undefined,
+        logRoot: undefined,
+        runTasks: undefined,
       }),
     ),
   );
@@ -98,7 +126,7 @@ function architectureFindings(files, dependencies = 'installed', describe = desc
 }
 
 describe('domain rules on installed npm packages', () => {
-  it.each(['installed', 'symlinked', 'absent'])(
+  it.each(dependencyModes)(
     'reports an ID library and a client reached through shared/ with node_modules %s',
     (dependencies) => {
       expect(architectureFindings(project, dependencies)).toEqual({
@@ -116,7 +144,7 @@ describe('architecture findings', () => {
   it('name the allowed form, the exception route and the shared module on the way', () => {
     const guidance =
       ' An exception fits only when it is deliberate; its paths are the importing files.';
-    const route = (rule, file) =>
+    const route = (rule: string, file: string) =>
       ` If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
     const idLibraries = [
       'domain/ may not import ID or random-data libraries (uuid, nanoid, cuid, ulid, faker).',

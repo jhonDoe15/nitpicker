@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectSignals, compareSignals, readLegacyInventory } from './check.mjs';
+import { collectSignals, compareSignals, readLegacyInventory } from './check.mts';
 
 const legacy = { file: 'src/main/legacy.ts', rule: 'internal-mock', source: 'vi.mock(helper)' };
 describe('coding standards gate', () => {

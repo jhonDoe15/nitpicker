@@ -43,9 +43,9 @@
       "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
-      "languages/typescript/preset/architecture/public-contract-usage.mjs",
-      "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
-      "languages/typescript/preset/coding-standards/check.mjs",
+      "languages/typescript/preset/architecture/public-contract-usage.mts",
+      "languages/typescript/preset/architecture/runtime-dependency-boundaries.mts",
+      "languages/typescript/preset/coding-standards/check.mts",
       "languages/java/adapters/gradle-wrapper/gradle-supervisor.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]

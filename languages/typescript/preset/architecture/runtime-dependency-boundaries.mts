@@ -1,39 +1,58 @@
-import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
-import { depthFirst } from '../../../../shared/traversal.mjs';
-import { syntaxChildren } from '../syntax/children.mjs';
-import { chainOf } from '../../../../shared/traversal.mjs';
+import type TypeScript from 'typescript';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { chainOf, typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import type {
+  BoundaryFinding,
+  Configuration,
+  Context,
+  Layout,
+  Role,
+} from './typed/boundary-types.mts';
+import {
+  depthFirst,
+  isNode,
+  parseDiagnosticsOf,
+  projectFilesUnder,
+  syntaxChildren,
+} from './typed/syntax-views.mts';
 import { format as formatOutput } from 'node:util';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ts } from '../../typescript-api/typescript-api.mjs';
-import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mjs';
-import { defaultResolvedLayout } from '../layout.mjs';
+import { moduleRoleBoundaries } from './runtime-dependency-boundaries.config.mts';
+import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
 
-function requireStringList(value, label) {
+const ts = typescriptApi();
+
+const defaultResolvedLayout: Layout = untypedDefaultLayout;
+
+function requireStringList(value: unknown, label: string): asserts value is string[] {
   if (
     !Array.isArray(value) ||
-    value.some((entry) => typeof entry !== 'string' || entry.length === 0)
+    listOf(value).some((entry) => typeof entry !== 'string' || entry.length === 0)
   ) {
     throw new TypeError(`${label} must be an array of nonempty strings`);
   }
 }
 
-function validateRole(role) {
-  if (typeof role?.name !== 'string' || role.name.length === 0) {
+function validateRole(role: unknown): asserts role is Role {
+  const name = fieldOf(role, 'name');
+  if (typeof name !== 'string' || name.length === 0) {
     throw new TypeError('Each module role requires a name');
   }
   for (const field of ['modules', 'forbiddenDependencies', 'forbiddenCalls']) {
-    requireStringList(role[field], `${role.name}.${field}`);
+    requireStringList(fieldOf(role, field), `${name}.${field}`);
   }
-  if (role.modules.length === 0) throw new TypeError(`${role.name}.modules must select modules`);
+  if (listOf(fieldOf(role, 'modules')).length === 0) {
+    throw new TypeError(`${name}.modules must select modules`);
+  }
 }
 
-function matches(value, patterns) {
+function matches(value: string, patterns: readonly string[]): boolean {
   return patterns.some((pattern) => path.posix.matchesGlob(value, pattern));
 }
 
-function hasRuntimeImport(node) {
+function hasRuntimeImport(node: TypeScript.ImportDeclaration): boolean {
   const clause = node.importClause;
   if (clause === undefined) return true;
   if (clause.isTypeOnly) return false;
@@ -45,7 +64,7 @@ function hasRuntimeImport(node) {
   );
 }
 
-function hasRuntimeExport(node) {
+function hasRuntimeExport(node: TypeScript.ExportDeclaration): boolean {
   if (node.isTypeOnly) return false;
   return (
     node.exportClause === undefined ||
@@ -55,9 +74,11 @@ function hasRuntimeExport(node) {
   );
 }
 
-function staticCallName(expression) {
-  const parts = [];
-  for (const node of chainOf(expression, (current) => current.expression)) {
+function staticCallName(expression: TypeScript.Expression): string | undefined {
+  const parts: string[] = [];
+  for (const node of chainOf<TypeScript.Node>(expression, (current) =>
+    'expression' in current && isNode(current.expression) ? current.expression : undefined,
+  )) {
     if (ts.isIdentifier(node)) return [node.text, ...parts.toReversed()].join('.');
     if (ts.isParenthesizedExpression(node)) continue;
     if (ts.isPropertyAccessExpression(node)) {
@@ -73,16 +94,21 @@ function staticCallName(expression) {
   return undefined;
 }
 
-function parseSource(source, filename) {
+function parseSource(source: string, filename: string): TypeScript.SourceFile {
   const file = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
-  if (file.parseDiagnostics.length === 0) return file;
-  const messages = file.parseDiagnostics.map((diagnostic) =>
+  const diagnostics = parseDiagnosticsOf(file);
+  if (diagnostics.length === 0) return file;
+  const messages = diagnostics.map((diagnostic) =>
     ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'),
   );
   throw new SyntaxError(`Unable to parse ${filename}: ${messages.join('; ')}`);
 }
 
-function report(context, node, { rule, target }) {
+function report(
+  context: Context,
+  node: TypeScript.Node,
+  { rule, target }: { readonly rule: string; readonly target: string },
+): void {
   const location = context.file.getLineAndCharacterOfPosition(node.getStart(context.file));
   context.findings.push({
     source: context.filename,
@@ -94,14 +120,18 @@ function report(context, node, { rule, target }) {
   });
 }
 
-function normalizedSpecifier(filename, text) {
+function normalizedSpecifier(filename: string, text: string): string {
   if (!text.startsWith('.')) return text;
   return path.posix
     .normalize(path.posix.join(path.posix.dirname(filename), text))
     .replace(/^(\.\.\/)+/, '');
 }
 
-function recordDependency(context, node, { specifier, form }) {
+function recordDependency(
+  context: Context,
+  node: TypeScript.Node,
+  { specifier, form }: { readonly specifier: TypeScript.Node | undefined; readonly form: string },
+): void {
   if (specifier === undefined || !ts.isStringLiteralLike(specifier)) {
     report(context, node, { rule: 'unresolved-runtime-dependency', target: form });
     return;
@@ -116,7 +146,9 @@ function recordDependency(context, node, { specifier, form }) {
   }
 }
 
-function moduleDependencyOf(node) {
+function moduleDependencyOf(
+  node: TypeScript.Node,
+): { readonly specifier: TypeScript.Node | undefined; readonly form: string } | undefined {
   if (ts.isImportDeclaration(node) && hasRuntimeImport(node)) {
     return { specifier: node.moduleSpecifier, form: 'import' };
   }
@@ -137,7 +169,7 @@ function moduleDependencyOf(node) {
   return undefined;
 }
 
-function recordCall(context, node) {
+function recordCall(context: Context, node: TypeScript.CallExpression): void {
   if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
     recordDependency(context, node, { specifier: node.arguments[0], form: 'import' });
     return;
@@ -152,7 +184,7 @@ function recordCall(context, node) {
   }
 }
 
-function inspectNode(context, node) {
+function inspectNode(context: Context, node: TypeScript.Node): void {
   const dependency = moduleDependencyOf(node);
   if (dependency !== undefined) {
     recordDependency(context, node, dependency);
@@ -161,18 +193,26 @@ function inspectNode(context, node) {
   if (ts.isCallExpression(node)) recordCall(context, node);
 }
 
-export function inspectModuleBoundary(source, filename, role) {
+export function inspectModuleBoundary(
+  source: string,
+  filename: string,
+  role: unknown,
+): BoundaryFinding[] {
   validateRole(role);
-  const context = { file: parseSource(source, filename), filename, role, findings: [] };
+  const context: Context = { file: parseSource(source, filename), filename, role, findings: [] };
   for (const node of depthFirst(context.file, syntaxChildren)) inspectNode(context, node);
   return context.findings;
 }
 
-function sourceFiles(root, exclude, { layout, displayRoot }) {
-  function relative(absolute) {
+function sourceFiles(
+  root: string,
+  exclude: readonly string[],
+  { layout, displayRoot }: { readonly layout: Layout; readonly displayRoot: string },
+): string[] {
+  function relative(absolute: string): string {
     return path.relative(root, absolute).replaceAll('\\', '/');
   }
-  function skipDirectory(absolute) {
+  function skipDirectory(absolute: string): boolean {
     return matches(relative(absolute), exclude) || matches(relative(absolute) + '/', exclude);
   }
   return [...projectFilesUnder(root, { skipDirectory })]
@@ -186,28 +226,42 @@ function sourceFiles(root, exclude, { layout, displayRoot }) {
     .sort();
 }
 
-function validateConfiguration(configuration) {
-  if (!Array.isArray(configuration?.roles)) throw new TypeError('roles must be an array');
-  requireStringList(configuration.exclude, 'exclude');
-  for (const role of configuration.roles) {
+function validateConfiguration(configuration: unknown): asserts configuration is Configuration {
+  const roles = fieldOf(configuration, 'roles');
+  if (!Array.isArray(roles)) throw new TypeError('roles must be an array');
+  requireStringList(fieldOf(configuration, 'exclude'), 'exclude');
+  for (const role of listOf(roles)) {
     validateRole(role);
   }
-  const roleNames = configuration.roles.map((role) => role.name);
+  const roleNames = listOf(roles).map((role) => fieldOf(role, 'name'));
   if (new Set(roleNames).size !== roleNames.length)
     throw new TypeError('Module role names must be unique');
 }
 
+type BoundaryAnalysis = {
+  readonly summary: {
+    readonly discoveredModules: number;
+    readonly classifiedModules: number;
+    readonly findings: number;
+  };
+  readonly modules: { readonly source: string; readonly roles: string[] }[];
+  readonly findings: BoundaryFinding[];
+};
+
 export function analyzeRuntimeBoundaries(
-  root,
-  configuration = moduleRoleBoundaries,
-  { layout = defaultResolvedLayout, displayRoot = '' } = {},
-) {
+  root: string,
+  configuration: unknown = moduleRoleBoundaries,
+  {
+    layout = defaultResolvedLayout,
+    displayRoot = '',
+  }: { readonly layout?: Layout; readonly displayRoot?: string } = {},
+): BoundaryAnalysis {
   validateConfiguration(configuration);
   const sources = existsSync(root)
     ? sourceFiles(root, configuration.exclude, { layout, displayRoot })
     : [];
-  const modules = [];
-  const findings = [];
+  const modules: { readonly source: string; readonly roles: string[] }[] = [];
+  const findings: BoundaryFinding[] = [];
   for (const source of sources) {
     const roles = configuration.roles.filter((role) => matches(source, role.modules));
     if (roles.length === 0) continue;

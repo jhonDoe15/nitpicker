@@ -4,7 +4,7 @@ import { realpathSync, lstatSync } from 'node:fs';
 import { TRUSTED_TOOL_ROOT } from './runners/tooling.mts';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
+import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { parsePositiveNumber } from '../../preset/checks/numbers.mts';
 import { validatedSnapshotRoot } from '../static-checks/arguments.mts';

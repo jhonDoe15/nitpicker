@@ -5,9 +5,9 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   analyzeRuntimeBoundaries,
   inspectModuleBoundary,
-} from './runtime-dependency-boundaries.mjs';
+} from './runtime-dependency-boundaries.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -19,11 +19,11 @@ const role = {
   forbiddenCalls: ['setTimeout', 'globalThis.setTimeout', 'process.exit'],
 };
 
-function inspect(source, selectedRole = role) {
+function inspect(source: string, selectedRole = role) {
   return inspectModuleBoundary(source, 'domain/decision-policy.ts', selectedRole);
 }
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'module-role-boundaries-'));
   temporaryRoots.push(root);
   for (const [name, source] of Object.entries(files)) {

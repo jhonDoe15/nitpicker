@@ -2,14 +2,14 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { cruiseWithConfig } from './test-support/strict-cruise.mjs';
-import { outsideRootsRule } from './outside-roots/outside-roots.mjs';
+import { cruiseWithConfig, outputText } from './test-support/strict-cruise.mts';
+import { outsideRootsRule } from './test-support/outside-roots-view.mts';
 import config from './fixtures/dependency-cruiser.fixture.config.mjs';
 import productionConfig from '../defaults/dependency-cruiser.config.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..');
 
-function cruiseFixture(name) {
+function cruiseFixture(name: string) {
   const fixture = path.join(projectRoot, 'languages/typescript/preset/architecture/fixtures', name);
   return cruiseWithConfig(config, {
     baseDir: fixture,
@@ -39,7 +39,7 @@ describe('dependency architecture rules', () => {
       {
         name: 'no-import-outside-roots',
         severity: 'error',
-        comment: outsideRootsRule({ productionSource: '', roots: [] }).comment,
+        comment: outsideRootsRule('', []).comment,
         from: { path: '(?:^|/)(?:src)/(?!.*(?:__tests__|\\.test\\.|\\.spec\\.))' },
         to: {
           dependencyTypesNot: [
@@ -180,14 +180,14 @@ describe('dependency architecture rules', () => {
   it('accepts the allowed dependency direction', async () => {
     const result = await cruiseFixture('allowed-direction');
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 
   it('rejects the reverse dependency direction', async () => {
     const result = await cruiseFixture('reverse-direction');
 
     expect(result.exitCode).not.toBe(0);
-    expect(result.output).toEqual(
+    expect(outputText(result)).toEqual(
       '\n  error features-do-not-import-bootstrap: src/main/auth/logic.ts → src/main/server.ts\n    -\n\n\nx 1 dependency violations (1 errors, 0 warnings). 2 modules, 1 dependencies cruised.\n\n',
     );
   });

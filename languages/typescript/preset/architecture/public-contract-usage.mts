@@ -1,11 +1,35 @@
-import { depthFirst } from '../../../../shared/traversal.mjs';
-import { syntaxChildren } from '../syntax/children.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import { depthFirst, syntaxChildren } from './typed/syntax-views.mts';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { ts } from '../../typescript-api/typescript-api.mjs';
 
-function isProductionSource(source, sourceRoot) {
+const ts = typescriptApi();
+
+type Method = {
+  readonly declarations: Set<TypeScript.Declaration>;
+  readonly implementations: Set<TypeScript.Node | undefined>;
+  used: boolean;
+};
+
+type Contract = Map<string, Method>;
+
+type ContractEntry = {
+  readonly type: TypeScript.Type;
+  readonly declaration: TypeScript.InterfaceDeclaration;
+};
+
+type Context = { readonly checker: TypeScript.TypeChecker; readonly sourceRoot: string };
+
+type ClassCursor = {
+  readonly node: TypeScript.Node;
+  readonly containingClass: TypeScript.Node | undefined;
+};
+
+type UnusedMethod = { readonly file: string; readonly contract: string; readonly method: string };
+
+function isProductionSource(source: TypeScript.SourceFile, sourceRoot: string): boolean {
   const relative = path.relative(sourceRoot, source.fileName);
   return (
     !source.isDeclarationFile &&
@@ -15,12 +39,18 @@ function isProductionSource(source, sourceRoot) {
   );
 }
 
-function isExported(declaration) {
-  return declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword);
+function isExported(declaration: TypeScript.InterfaceDeclaration): boolean {
+  return (
+    declaration.modifiers?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword) ??
+    false
+  );
 }
 
-function accessedSymbol(checker, node) {
-  let symbol;
+function accessedSymbol(
+  checker: TypeScript.TypeChecker,
+  node: TypeScript.Node,
+): TypeScript.Symbol | undefined {
+  let symbol: TypeScript.Symbol | undefined;
   if (ts.isPropertyAccessExpression(node)) symbol = checker.getSymbolAtLocation(node.name);
   if (ts.isElementAccessExpression(node))
     symbol = checker.getSymbolAtLocation(node.argumentExpression);
@@ -37,26 +67,29 @@ function accessedSymbol(checker, node) {
   return symbol;
 }
 
-function implementedContracts(statement, { checker, sourceRoot }) {
+function implementedContracts(
+  statement: TypeScript.ClassDeclaration,
+  { checker, sourceRoot }: Context,
+): ContractEntry[] {
   const types = (statement.heritageClauses ?? [])
     .filter((clause) => clause.token === ts.SyntaxKind.ImplementsKeyword)
     .flatMap((clause) => [...clause.types])
     .map((heritage) => checker.getTypeAtLocation(heritage));
-  return types
-    .map((type) => ({
-      type,
-      declaration: type.symbol?.declarations?.find(ts.isInterfaceDeclaration),
-    }))
-    .filter(
-      ({ declaration }) =>
-        declaration &&
-        isExported(declaration) &&
-        isProductionSource(declaration.getSourceFile(), sourceRoot),
-    );
+  return types.flatMap((type) => {
+    const declaration = type.symbol?.declarations?.find(ts.isInterfaceDeclaration);
+    return declaration &&
+      isExported(declaration) &&
+      isProductionSource(declaration.getSourceFile(), sourceRoot)
+      ? [{ type, declaration }]
+      : [];
+  });
 }
 
-function contractMethods(type, checker) {
-  const declaration = type.symbol.declarations.find(ts.isInterfaceDeclaration);
+function contractMethods(type: TypeScript.Type, checker: TypeScript.TypeChecker): Contract {
+  const declaration = type.symbol.declarations?.find(ts.isInterfaceDeclaration);
+  if (declaration === undefined) {
+    return new Map();
+  }
   return new Map(
     type
       .getProperties()
@@ -71,7 +104,17 @@ function contractMethods(type, checker) {
   );
 }
 
-function registerImplementation(statement, contract, { contracts, checker }) {
+function registerImplementation(
+  statement: TypeScript.ClassDeclaration,
+  contract: ContractEntry,
+  {
+    contracts,
+    checker,
+  }: {
+    readonly contracts: Map<TypeScript.InterfaceDeclaration, Contract>;
+    readonly checker: TypeScript.TypeChecker;
+  },
+): void {
   const methods = contracts.get(contract.declaration) ?? contractMethods(contract.type, checker);
   contracts.set(contract.declaration, methods);
   const implementation = checker.getTypeAtLocation(statement);
@@ -82,8 +125,11 @@ function registerImplementation(statement, contract, { contracts, checker }) {
   }
 }
 
-function collectContracts(sources, context) {
-  const contracts = new Map();
+function collectContracts(
+  sources: readonly TypeScript.SourceFile[],
+  context: Context,
+): Map<TypeScript.InterfaceDeclaration, Contract> {
+  const contracts = new Map<TypeScript.InterfaceDeclaration, Contract>();
   const statements = sources
     .flatMap((source) => [...source.statements])
     .filter(ts.isClassDeclaration);
@@ -95,12 +141,14 @@ function collectContracts(sources, context) {
   return contracts;
 }
 
-function indexMethodDeclarations(contracts) {
-  const index = new Map();
+function indexMethodDeclarations(
+  contracts: ReadonlyMap<TypeScript.InterfaceDeclaration, Contract>,
+): Map<TypeScript.Declaration, Set<Method>> {
+  const index = new Map<TypeScript.Declaration, Set<Method>>();
   const methods = [...contracts.values()].flatMap((contract) => [...contract.values()]);
   for (const method of methods) {
     for (const declaration of method.declarations) {
-      const consumers = index.get(declaration) ?? new Set();
+      const consumers = index.get(declaration) ?? new Set<Method>();
       consumers.add(method);
       index.set(declaration, consumers);
     }
@@ -108,7 +156,11 @@ function indexMethodDeclarations(contracts) {
   return index;
 }
 
-function recordSymbolUse(symbol, currentClass, index) {
+function recordSymbolUse(
+  symbol: TypeScript.Symbol | undefined,
+  currentClass: TypeScript.Node | undefined,
+  index: ReadonlyMap<TypeScript.Declaration, ReadonlySet<Method>>,
+): void {
   const methods = (symbol?.declarations ?? []).flatMap((declaration) => [
     ...(index.get(declaration) ?? []),
   ]);
@@ -116,14 +168,18 @@ function recordSymbolUse(symbol, currentClass, index) {
     method.used = true;
 }
 
-function classChildren({ node, containingClass }) {
+function classChildren({ node, containingClass }: ClassCursor): ClassCursor[] {
   const currentClass = ts.isClassDeclaration(node) ? node : containingClass;
   return syntaxChildren(node).map((child) => ({ node: child, containingClass: currentClass }));
 }
 
-function recordUses(sources, checker, index) {
+function recordUses(
+  sources: readonly TypeScript.SourceFile[],
+  checker: TypeScript.TypeChecker,
+  index: ReadonlyMap<TypeScript.Declaration, ReadonlySet<Method>>,
+): void {
   for (const source of sources) {
-    for (const { node, containingClass } of depthFirst(
+    for (const { node, containingClass } of depthFirst<ClassCursor>(
       { node: source, containingClass: undefined },
       classChildren,
     )) {
@@ -133,7 +189,10 @@ function recordUses(sources, checker, index) {
   }
 }
 
-function unusedMethods(contracts, sourceRoot) {
+function unusedMethods(
+  contracts: ReadonlyMap<TypeScript.InterfaceDeclaration, Contract>,
+  sourceRoot: string,
+): UnusedMethod[] {
   return [...contracts].flatMap(([contract, methods]) =>
     [...methods]
       .filter(([, usage]) => !usage.used)
@@ -145,7 +204,10 @@ function unusedMethods(contracts, sourceRoot) {
   );
 }
 
-export function findUnusedPublicContractMethods(program, { sourceRoot }) {
+export function findUnusedPublicContractMethods(
+  program: TypeScript.Program,
+  { sourceRoot }: { readonly sourceRoot: string },
+): UnusedMethod[] {
   const checker = program.getTypeChecker();
   const sources = program
     .getSourceFiles()
@@ -157,7 +219,10 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
   );
 }
 
-export function analyzePublicContractUsage(configPath, { displayRoot } = {}) {
+export function analyzePublicContractUsage(
+  configPath: string,
+  { displayRoot }: { readonly displayRoot?: string } = {},
+): UnusedMethod[] {
   const absoluteConfig = path.resolve(configPath);
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
   if (config.error)
