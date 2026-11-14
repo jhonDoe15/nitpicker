@@ -1,4 +1,6 @@
 import { annotationIn, simpleTypeName, typeArguments } from '../spring-names.mjs';
+import { BODY_STATUS } from '../../validation/constraint-names.mjs';
+import { bodyConstraints } from './body-constraints.mjs';
 import { has, report, returnTypeOf } from '../spring-scopes.mjs';
 import {
   CONTROLLER,
@@ -154,7 +156,9 @@ function requestBodies(view) {
         if (untyped(view, parameter.type)) {
           return [report('SpringTypedRequestBody', parameter, symbol)];
         }
-        return has(view, parameter, VALID) || plainBody(parameter.type)
+        return has(view, parameter, VALID) ||
+          plainBody(parameter.type) ||
+          bodyConstraints(view, parameter.type) === BODY_STATUS.unconstrained
           ? []
           : [report('SpringValidRequestBody', parameter, symbol)];
       }),

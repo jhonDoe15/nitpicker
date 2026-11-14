@@ -7,6 +7,7 @@ const DEFAULTS = {
   details: false,
   json: false,
   fix: false,
+  dryRun: false,
   help: false,
   version: false,
   cache: true,

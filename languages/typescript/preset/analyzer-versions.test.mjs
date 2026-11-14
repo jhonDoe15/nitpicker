@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { describe, expect, it } from 'vitest';
-import { policyHash } from '../../../core/diff/reporting/report-model.mjs';
+import { policyHash } from '../../../core/diff/reporting/report-model.mts';
 import {
   ESLINT_PLUGIN_PACKAGES,
   resolveAnalyzerVersion,

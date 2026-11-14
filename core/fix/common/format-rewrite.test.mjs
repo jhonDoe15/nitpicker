@@ -1,4 +1,12 @@
-import { chmodSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
@@ -6,7 +14,7 @@ import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { formatNotes, linkNote } from './fix-notes.mjs';
 import { rewriteFormatted } from './format-rewrite.mjs';
 
-const { createGitRepository } = useGitFixtures();
+const { createGitRepository, temporaryRoot } = useGitFixtures();
 
 function trimmer(calls = []) {
   return (sources) => {
@@ -273,6 +281,27 @@ describe('formatNotes', () => {
     expect([linkNote([]), linkNote(['a.py', 'b.py'])]).toEqual([
       [],
       ['--fix left a.py, b.py as is: symbolic links are not followed'],
+    ]);
+  });
+  it('names a file it may not write, behind a link out of the project, and still writes the others', () => {
+    const repository = topic({}, { 'new.txt': 'x  \n' });
+    const elsewhere = temporaryRoot('nitpicker-format-elsewhere-');
+    mkdirSync(path.join(elsewhere, 'out'));
+    writeFileSync(path.join(elsewhere, 'out', 'f.txt'), 'y  \n');
+    symlinkSync(path.join(elsewhere, 'out'), path.join(repository.root, 'out'));
+
+    const outcome = run(repository, ['new.txt', 'out/f.txt'], trimmer());
+
+    expect(outcome).toEqual(
+      outcomeWith({
+        rewritten: ['new.txt'],
+        unwritable: [`out/f.txt: out/f.txt is outside ${repository.root} through a symbolic link`],
+      }),
+    );
+    expect(readFileSync(path.join(elsewhere, 'out', 'f.txt'), 'utf8')).toBe('y  \n');
+    expect(formatNotes('demo', outcome)).toEqual([
+      'demo rewrote new.txt',
+      `--fix could not write out/f.txt: out/f.txt is outside ${repository.root} through a symbolic link`,
     ]);
   });
 });

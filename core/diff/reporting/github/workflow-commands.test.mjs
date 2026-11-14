@@ -6,7 +6,7 @@ import {
   escapeProperty,
   MAX_ANNOTATIONS,
   workflowCommand,
-} from './workflow-commands.mjs';
+} from './workflow-commands.mts';
 
 describe('workflow command escaping', () => {
   it('escapes percent signs and line breaks in data', () => {

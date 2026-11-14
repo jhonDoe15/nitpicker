@@ -132,8 +132,13 @@ true, flushAutomatically = true)`, with `@Transactional` on the function or the 
 - Never `save` or `delete` one entity per iteration of a loop, `forEach` or `map`: call `saveAll`
   once, per chunk for large inputs. No `flush` or `saveAndFlush` except in the JPA batch loop: a
   `for` or `while` loop that calls `persist`, then `flush` and `clear` on the `EntityManager`.
-  Filter and count in the query, not after `findAll()`, a `Flux` or `Flow` one included
-  (`filter`, `count`, `firstOrNull`, `hasElements`, `take`, `toList().size`). Native SQL only when JPQL can't express it,
+  Filter, count, sort and total in the query, not on the rows a repository function returned
+  (`findAll()`, `findAllById`, a `@Query` function, a page's `content`), a `Flux` or `Flow` one
+  included: no `size`, `isEmpty()` or `count()` (a count or exists query), no `filter`, `any` or
+  `first { }` on stored properties (a where clause), no `sortedBy`/`sortedWith(compareBy(...))`
+  (order by or a `Sort` argument), no `sumOf`, `maxOf` or `groupingBy { }.eachCount()` (an
+  aggregate `@Query`). Mapping rows to DTOs is fine. A local holding the rows is not followed, but
+  write the same in the query there too. Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.
 - Index every foreign key in the Flyway or Liquibase migration that adds it:

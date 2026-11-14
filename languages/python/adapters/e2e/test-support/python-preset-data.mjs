@@ -127,6 +127,15 @@ export const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return
 export const BRANCH_CLAMP =
   'def clamp(x: int) -> int:\n    if x > 10:\n        return 10\n    return x\n';
 
+export function twice(result) {
+  return `def twice(x, flag):\n    if x:\n        x = flag\n    if x:\n        return 2\n    return ${result}\n`;
+}
+
+export function twiceTest(...calls) {
+  const asserts = calls.map((call) => `    assert twice.twice(${call}) in (0, 1, 2)\n`);
+  return `from demo import twice\n\n\ndef test_twice():\n${asserts.join('')}`;
+}
+
 export function signsTest(...assertions) {
   const tests = assertions.map(([name, body]) => `def test_${name}():\n    assert ${body}\n`);
   return `from demo import signs\n\n\n${tests.join('\n\n')}`;

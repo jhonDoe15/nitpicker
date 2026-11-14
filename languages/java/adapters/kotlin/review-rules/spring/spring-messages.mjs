@@ -65,7 +65,7 @@ const ALLOWED = {
     'Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on functions. @RequestMapping belongs only on the class, for the path prefix.',
   SpringRestController: 'Use @RestController for a JSON controller and drop @ResponseBody.',
   SpringValidRequestBody:
-    "Add @Valid to this @RequestBody; without it the data class's constraints are never checked.",
+    'Add @Valid to this @RequestBody; without it the constraints of its type are never checked.',
   SpringTypedResponse:
     'Return a data class or a specific type from this handler, never Any, JsonNode, Map<String, Any>, ResponseEntity<*>, a list or Mono of those, or null. For no body return Unit or ResponseEntity<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.',
   SpringTypedRequestBody:
@@ -131,7 +131,7 @@ const ALLOWED = {
   SpringDataSaveInLoopHelper:
     'Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.',
   SpringDataFilterInQuery:
-    'Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().',
+    'Move the filter, count, sort or total into the query instead of doing it on the loaded rows: a where clause or an exists query for a filter, a count or exists query for a size or emptiness check, order by or a Sort argument for a sort, and an aggregate @Query (sum, max, group by) for a total.',
 };
 
 export const SPRING_RULES = Object.keys(ALLOWED);
