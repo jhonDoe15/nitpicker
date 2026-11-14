@@ -5,37 +5,43 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
-  findPackageJSON,
-  findPackageJsonByWalking,
-  selectFindPackageJson,
+  findPackageJSON as untypedFindPackageJSON,
+  findPackageJsonByWalking as untypedFindPackageJsonByWalking,
+  selectFindPackageJson as untypedSelectFindPackageJson,
 } from './package-json.mjs';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { PACKAGE_ROOT } from '../tool-resolution.mjs';
 
-const nativeFindPackageJson = nodeModule.findPackageJSON;
+type Finder = (specifier: string, base: string | URL) => string | undefined;
 
-function outcome(find, specifier, base) {
+const findPackageJSON: unknown = untypedFindPackageJSON;
+const findPackageJsonByWalking: Finder = untypedFindPackageJsonByWalking;
+const selectFindPackageJson: (moduleApi: object) => Finder = untypedSelectFindPackageJson;
+const nativeFindPackageJson: Finder = nodeModule.findPackageJSON;
+
+function outcome(find: Finder, specifier: string, base: string | URL) {
   try {
     return { found: find(specifier, base) };
   } catch (error) {
-    return { code: error.code, message: error.message };
+    return { code: fieldOf(error, 'code'), message: fieldOf(error, 'message') };
   }
 }
 
-function bothOutcomes(specifier, base) {
+function bothOutcomes(specifier: string, base: string | URL) {
   return {
     walked: outcome(findPackageJsonByWalking, specifier, base),
     native: outcome(nativeFindPackageJson, specifier, base),
   };
 }
 
-function writeManifest(directory, manifest) {
+function writeManifest(directory: string, manifest: object) {
   mkdirSync(directory, { recursive: true });
   writeFileSync(path.join(directory, 'package.json'), JSON.stringify(manifest));
 }
 
 describe('the findPackageJSON fallback for runtimes without node:module findPackageJSON', () => {
   const packageBase = pathToFileURL(path.join(PACKAGE_ROOT, 'package.json')).href;
-  let linkedRoot;
+  let linkedRoot: string;
 
   beforeAll(() => {
     linkedRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-package-json-')));
@@ -74,7 +80,7 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
     const { walked, native } = bothOutcomes(specifier, packageBase);
 
     expect(walked).toEqual(native);
-    expect(path.basename(walked.found)).toBe('package.json');
+    expect(path.basename(textOf(walked.found))).toBe('package.json');
   });
 
   it('reports a missing package with the native error code and message', () => {
@@ -105,7 +111,7 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
   it('returns the symlinked path of a linked scoped package, which resolves to the store', () => {
     const base = pathToFileURL(path.join(linkedRoot, 'app/package.json'));
     const { walked, native } = bothOutcomes('@scope/linked', base);
-    const { found } = walked;
+    const found = textOf(walked.found);
 
     expect(walked).toEqual(native);
     expect(found).toBe(path.join(linkedRoot, 'node_modules/@scope/linked/package.json'));

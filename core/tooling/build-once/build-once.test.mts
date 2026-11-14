@@ -15,11 +15,12 @@ import {
   SHARED_BUILD_DIRECTORY_ENVIRONMENT,
   TransientBuildError,
   withSharedBuildDirectory,
-} from './build-once.mjs';
+} from './build-once.mts';
+import { textOf } from '../../../shared/values/readers.mts';
 import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
 
 const ABSENT_PROCESS_ID = 2_147_483_646;
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -34,7 +35,7 @@ function sharedDirectory() {
   return directory;
 }
 
-function countingBuild(text) {
+function countingBuild(text: string) {
   const build = vi.fn(() => text);
   return build;
 }
@@ -207,10 +208,10 @@ describe('buildOnce', () => {
 
 describe('withSharedBuildDirectory', () => {
   it('hands the operation a directory that exists only while it runs', () => {
-    let directory;
+    let directory = '';
 
     const result = withSharedBuildDirectory((environment) => {
-      directory = environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT];
+      directory = textOf(environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT]);
       expect(existsSync(directory)).toBe(true);
       return 'done';
     });
@@ -220,21 +221,21 @@ describe('withSharedBuildDirectory', () => {
   });
 
   it('removes the directory through the temporary path registry if the process is interrupted', () => {
-    let directory;
+    let directory = '';
 
     withSharedBuildDirectory((environment) => {
-      directory = environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT];
+      directory = textOf(environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT]);
       removeTrackedTemporaryPaths();
       expect(existsSync(directory)).toBe(false);
     });
   });
 
   it('removes the directory when the operation throws', () => {
-    let directory;
+    let directory = '';
 
     expect(() =>
       withSharedBuildDirectory((environment) => {
-        directory = environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT];
+        directory = textOf(environment[SHARED_BUILD_DIRECTORY_ENVIRONMENT]);
         writeFileSync(path.join(directory, 'key.result'), 'graph');
         throw new Error('scheduler crashed');
       }),

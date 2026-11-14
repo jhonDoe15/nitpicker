@@ -2,23 +2,51 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { validateConfig } from '../../configuration/validate.mjs';
-import { conventionStyle } from '../../conventions/definitions.mjs';
+import { validateConfig } from '../../configuration/validate.mts';
+import { conventionStyle } from '../../conventions/definitions.mts';
 import {
-  resolveHeadPolicy,
-  withHeadCheckoutFacts,
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
 } from '../../../languages/typescript/preset/head-policy.mjs';
-import { withHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { layeredJscpdConfig, resolveJscpdPolicy } from './config.mjs';
-import { runJscpd } from './run-jscpd.mjs';
+import { fieldAt, fieldsOf, listOf } from '../../../scripts/json/fields.mts';
+import {
+  HEAD_POLICY_ENV,
+  withHeadPolicyFile as untypedWithHeadPolicyFile,
+} from '../../../shared/head-policy.mjs';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
+import {
+  layeredJscpdConfig as untypedLayeredJscpdConfig,
+  resolveJscpdPolicy as untypedResolveJscpdPolicy,
+} from './config.mjs';
+import { DUPLICATES_REPORT, DUPLICATES_TOOL, runJscpd as untypedRunJscpd } from './run-jscpd.mjs';
 
-const roots = [];
+type JscpdRun = {
+  cwd: string;
+  roots: string[];
+  format: string;
+  ignore: string[];
+  reportRoot: string;
+  renamed: undefined;
+};
+
+const resolveJscpdPolicy: (settings: unknown, projectRoot: string) => unknown =
+  untypedResolveJscpdPolicy;
+const layeredJscpdConfig: (base: object, settings: unknown) => unknown = untypedLayeredJscpdConfig;
+const resolveHeadPolicy: (config: object, projectRoot: string) => object = untypedResolveHeadPolicy;
+const withHeadCheckoutFacts: (policy: object, headPolicy: object) => unknown =
+  untypedWithHeadCheckoutFacts;
+const NOT_OBJECTS: unknown[][] = [[[]], [null], [42]];
+const runJscpd: (run: JscpdRun) => void = untypedRunJscpd;
+const withHeadPolicyFile: (policy: unknown, operation: (policyFile: string) => void) => void =
+  untypedWithHeadPolicyFile;
+
+const roots: string[] = [];
 function temporaryRoot() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jscpd-config-'));
   roots.push(root);
   return root;
 }
-function projectConfig(root, config) {
+function projectConfig(root: string, config: unknown) {
   writeFileSync(path.join(root, '.jscpd.json'), JSON.stringify(config));
 }
 afterEach(() => {
@@ -26,7 +54,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-const ORDERINGS = [
+const ORDERINGS: [string[], number][] = [
   [['nitpicker'], 50],
   [['project'], 500],
   [['project', 'nitpicker'], 500],
@@ -46,7 +74,7 @@ describe('jscpd project config', () => {
         reporters: ['html'],
       });
       const settings = resolveJscpdPolicy({ precedence }, root);
-      expect(settings.projectConfig ?? {}).not.toHaveProperty('threshold');
+      expect(fieldAt(settings, 'projectConfig') ?? {}).not.toHaveProperty('threshold');
       const result = layeredJscpdConfig(
         { minTokens: 50, threshold: 100, ignore: ['build/**'] },
         settings,
@@ -93,7 +121,7 @@ describe('jscpd project config', () => {
     });
   });
 
-  it.each([[[]], [null], [42]])('rejects the project config %j that is not an object', (value) => {
+  it.each(NOT_OBJECTS)('rejects the project config %j that is not an object', (value) => {
     const root = temporaryRoot();
     projectConfig(root, value);
     expect(() => resolveJscpdPolicy({ precedence: ['project'] }, root)).toThrow(
@@ -137,10 +165,16 @@ describe('jscpd project config', () => {
     'tells a %s project without the opt-in that its .jscpd.json is ignored',
     (preset) => {
       const root = temporaryRoot();
-      const summary = (tools) =>
-        conventionStyle(preset, { config: { preset, tools }, projectRoot: root })
-          .summary({})
-          .filter((line) => line.includes('jscpd'));
+      const summary = (tools?: NitpickerConfig['tools']) =>
+        (
+          conventionStyle(preset, {
+            config: { preset, ...(tools === undefined ? {} : { tools }) },
+            projectRoot: root,
+            headPolicy: undefined,
+            source: { paths: () => [], readMany: () => new Map() },
+            configRoot: () => ({ path: root, snapshot: 'head', dispose: () => {}, notes: [] }),
+          }).summary?.({}) ?? []
+        ).filter((line) => line.includes('jscpd'));
       expect(summary()).toEqual([]);
       projectConfig(root, { minTokens: 500 });
       expect(summary()).toEqual([
@@ -154,18 +188,20 @@ describe('jscpd project config', () => {
     const root = temporaryRoot();
     const settings = { precedence: ['project'] };
     projectConfig(root, { skipComments: true });
-    expect(resolveJscpdPolicy(settings, root).projectConfig).toEqual({ mode: 'weak' });
+    expect(fieldAt(resolveJscpdPolicy(settings, root), 'projectConfig')).toEqual({ mode: 'weak' });
     projectConfig(root, { skipComments: true, mode: 'strict' });
-    expect(resolveJscpdPolicy(settings, root).projectConfig).toEqual({ mode: 'strict' });
+    expect(fieldAt(resolveJscpdPolicy(settings, root), 'projectConfig')).toEqual({
+      mode: 'strict',
+    });
   });
 
   it('keeps the digest when only key order or unapplied keys change', () => {
     const root = temporaryRoot();
     const settings = { precedence: ['project'] };
     projectConfig(root, { minTokens: 500, minLines: 9 });
-    const first = resolveJscpdPolicy(settings, root).projectConfigDigest;
+    const first = fieldAt(resolveJscpdPolicy(settings, root), 'projectConfigDigest');
     projectConfig(root, { reporters: ['html'], minLines: 9, minTokens: 500 });
-    expect(resolveJscpdPolicy(settings, root).projectConfigDigest).toBe(first);
+    expect(fieldAt(resolveJscpdPolicy(settings, root), 'projectConfigDigest')).toBe(first);
   });
 
   it('captures head config and its digest for both snapshots without replacing base precedence', () => {
@@ -175,14 +211,16 @@ describe('jscpd project config', () => {
     const first = resolveHeadPolicy(config, root);
     projectConfig(root, { minTokens: 600 });
     const second = resolveHeadPolicy(config, root);
-    expect(first.tools.jscpd.projectConfig).toEqual({ minTokens: 500 });
-    expect(second.tools.jscpd.projectConfigDigest).not.toBe(first.tools.jscpd.projectConfigDigest);
+    expect(fieldAt(first, 'tools', 'jscpd', 'projectConfig')).toEqual({ minTokens: 500 });
+    expect(fieldAt(second, 'tools', 'jscpd', 'projectConfigDigest')).not.toBe(
+      fieldAt(first, 'tools', 'jscpd', 'projectConfigDigest'),
+    );
     const base = { tools: { jscpd: { precedence: ['nitpicker', 'project'] } } };
-    expect(withHeadCheckoutFacts(base, second).tools.jscpd).toEqual({
-      ...second.tools.jscpd,
+    expect(fieldAt(withHeadCheckoutFacts(base, second), 'tools', 'jscpd')).toEqual({
+      ...fieldsOf(fieldAt(second, 'tools', 'jscpd')),
       precedence: ['nitpicker', 'project'],
     });
-    expect(withHeadCheckoutFacts({}, second).tools).toBeUndefined();
+    expect(fieldAt(withHeadCheckoutFacts({}, second), 'tools')).toBeUndefined();
   });
 
   it.each([[{}], [{ tools: { jscpd: { precedence: ['nitpicker'] } } }]])(
@@ -191,7 +229,7 @@ describe('jscpd project config', () => {
       const root = temporaryRoot();
       const head = resolveHeadPolicy({ preset: 'python', ...headConfig }, root);
       const base = { tools: { jscpd: { precedence: ['project'] } } };
-      const settings = withHeadCheckoutFacts(base, head).tools.jscpd;
+      const settings = fieldAt(withHeadCheckoutFacts(base, head), 'tools', 'jscpd');
       expect(settings).toEqual({ precedence: ['nitpicker'] });
       expect(layeredJscpdConfig({ minTokens: 50 }, settings)).toEqual({ minTokens: 50 });
     },
@@ -212,11 +250,20 @@ describe('jscpd project config', () => {
       root,
     );
     withHeadPolicyFile(policy, (policyFile) => {
-      vi.stubEnv('NITPICKER_POLICY', policyFile);
-      runJscpd({ cwd: root, roots: ['src'], format: 'python', ignore: [], reportRoot });
+      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+      runJscpd({
+        cwd: root,
+        roots: ['src'],
+        format: 'python',
+        ignore: [],
+        reportRoot,
+        renamed: undefined,
+      });
     });
-    const { runs } = JSON.parse(readFileSync(path.join(reportRoot, 'duplicates.json'), 'utf8'));
-    expect(runs[0].report.duplicates).toEqual([]);
+    const report: unknown = JSON.parse(
+      readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'),
+    );
+    expect(fieldAt(report, 'runs', 0, 'report', DUPLICATES_TOOL)).toEqual([]);
   });
 
   it.each(ORDERINGS)('runs the pinned tool with %j', (precedence, minTokens) => {
@@ -235,10 +282,21 @@ describe('jscpd project config', () => {
     });
     const policy = resolveHeadPolicy({ preset: 'python', tools: { jscpd: { precedence } } }, root);
     withHeadPolicyFile(policy, (policyFile) => {
-      vi.stubEnv('NITPICKER_POLICY', policyFile);
-      runJscpd({ cwd: root, roots: ['src'], format: 'python', ignore: [], reportRoot });
+      vi.stubEnv(HEAD_POLICY_ENV, policyFile);
+      runJscpd({
+        cwd: root,
+        roots: ['src'],
+        format: 'python',
+        ignore: [],
+        reportRoot,
+        renamed: undefined,
+      });
     });
-    const { runs } = JSON.parse(readFileSync(path.join(reportRoot, 'duplicates.json'), 'utf8'));
-    expect(runs[0].report.duplicates.length).toBe(minTokens === 500 ? 0 : 1);
+    const report: unknown = JSON.parse(
+      readFileSync(path.join(reportRoot, DUPLICATES_REPORT), 'utf8'),
+    );
+    expect(listOf(fieldAt(report, 'runs', 0, 'report', DUPLICATES_TOOL))).toHaveLength(
+      minTokens === 500 ? 0 : 1,
+    );
   });
 });

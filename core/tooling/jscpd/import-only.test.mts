@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { importsOnly, withoutImportOnlyClones } from './import-only.mjs';
+import {
+  importsOnly as untypedImportsOnly,
+  withoutImportOnlyClones as untypedWithoutImportOnlyClones,
+} from './import-only.mjs';
+
+type Clone = { fragment?: string };
+
+const importsOnly: (fragment: string, format: string) => boolean = untypedImportsOnly;
+const withoutImportOnlyClones: (clones: Clone[], format: string) => Clone[] =
+  untypedWithoutImportOnlyClones;
 
 describe('import-only fragments in Python', () => {
   it.each([
@@ -26,7 +35,7 @@ describe('import-only fragments in Python', () => {
     ['a statement on the import line', "import os; os.system('x')\nimport sys"],
     [
       'a table of numbers',
-      `${Array.from({ length: 40 }, (_, index) => `    ${1000 + index},`).join('\n')}\n)`,
+      `${Array.from({ length: 40 }, (_, index) => `    ${String(1000 + index)},`).join('\n')}\n)`,
     ],
     ['a name list with no import', '    alpha,\n    beta,\n)'],
   ])('treats %s as code', (_, fragment) => {

@@ -1,46 +1,41 @@
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
 const hooks = vi.hoisted(() => ({ beforeRename: () => {}, beforeLockCreate: () => {} }));
 
 vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,
-    renameSync(from, to) {
-      if (String(from).endsWith('.lock')) {
+    renameSync(from: string, to: string) {
+      if (from.endsWith('.lock')) {
         hooks.beforeRename();
       }
-      return actual.renameSync(from, to);
+      actual.renameSync(from, to);
     },
-    writeFileSync(file, data, options) {
-      if (String(file).endsWith('.lock') && options?.flag === 'wx') {
+    writeFileSync(file: string, data: string, options?: { flag?: string }) {
+      if (file.endsWith('.lock') && options?.flag === 'wx') {
         hooks.beforeLockCreate();
       }
-      return actual.writeFileSync(file, data, options);
+      actual.writeFileSync(file, data, options);
     },
   };
 });
 
-const { buildOnce } = await import('./build-once.mjs');
+const { buildOnce } = await import('./build-once.mts');
 
 const ABSENT_PROCESS_ID = 2_147_483_646;
-const temporaryRoots = [];
+const { temporaryRoot } = useGitFixtures();
 
 afterEach(() => {
   hooks.beforeRename = () => {};
   hooks.beforeLockCreate = () => {};
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
 });
 
 function sharedDirectory() {
-  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-build-once-races-'));
-  temporaryRoots.push(directory);
-  return directory;
+  return temporaryRoot('nitpicker-build-once-races-');
 }
 
 describe('buildOnce races', () => {
