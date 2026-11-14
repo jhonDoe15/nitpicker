@@ -10,6 +10,7 @@ export const PLAN_KINDS = Object.freeze([
   'strengthen-assertion',
   'kill-mutant',
   'remove-duplicate',
+  'extract-shared-function',
   'invert-dependency',
   'move-module',
   'parse-at-boundary',

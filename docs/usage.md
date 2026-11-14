@@ -2037,10 +2037,10 @@ runs only when `--fix --rule` names one of its rules.
 
 | Preset       | Rule                                                                                                                                                                                                                                                                                                                    | Recipe                                                                                                               | What it does                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| java         | `structure/near-duplicate` (copies in one class)                                                                                                                                                                                                                                                                        | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies                                                                       |
-| java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both                                                     |
+| java         | `structure/near-duplicate` (copies in one class)                                                                                                                                                                                                                                                                        | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                              |
+| java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review)                                            |
 | typescript   | `structure/near-duplicate` (copies in one file)                                                                                                                                                                                                                                                                         | `typescript-extract-near-duplicate`                                                                                  | extracts the shared function of a proved copy and calls it from both copies                                                                     |
-| typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both                                                   |
+| typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review)                                          |
 | java         | `checkstyle/UpperEll`                                                                                                                                                                                                                                                                                                   | `java-upper-ell`                                                                                                     | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments                                                    |
 | kotlin       | `detekt/detekt.style.NewLineAtEndOfFile`                                                                                                                                                                                                                                                                                | `kotlin-final-newline`                                                                                               | ends a file with a line break, CRLF when the file uses CRLF                                                                                     |
 | java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes)                                                                                                                                                                                                                                          | `java-error-prone-safe`, `java-error-prone-review`                                                                   | applies the fix Error Prone suggests, to the changed lines of `.java` files                                                                     |
@@ -2068,14 +2068,19 @@ Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `para
 whose copies sit in one file (TypeScript, JavaScript) or in one class (Java). The first copy becomes
 the shared function: a module-level function after the first copy, or a private method (static when
 it reads no instance state). Both bodies become one call, and each signature stays. Differing
-literals, and parameters that the function never writes, become parameters named after what they
-flow into. Any other differing value is passed as an arrow function (TypeScript and JavaScript) so
-it is evaluated where it was. A recipe leaves the finding for its fix plan, and prints why in a "Fix
-notes:" line, when: a differing value reads a variable the copies write, a copy reads `this` or a
-variable of an enclosing scope (TypeScript, JavaScript), the helper name is taken, the copies differ in
-types, exceptions or the comments one of them holds, a copy takes part in more than one pair, or
-the copies differ in a way a parameter cannot carry. A pair in two files or two classes is not
-looked at. The TypeScript recipe also checks the result with the compiler before it writes. Kotlin,
+literals become parameters named after what they flow into. Any other differing value is passed as
+an arrow function (TypeScript and JavaScript) so it is evaluated where it was. A recipe leaves the
+finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
+variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
+JavaScript), the helper name is taken, the copies differ in types, exceptions or the comments one of
+them holds, a copy takes part in more than one pair, a string or template literal spans lines
+(TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
+`final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
+name that a superclass may declare, a call with a static and an instance overload), or the copies
+differ in a way a parameter cannot carry. A pair in two files or two classes is not looked at. The
+TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
+not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
+whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
 Python and Go have no extraction recipe.
 
 Partial-run extraction. The `partial-run` recipes handle a pair that shares a run of three or more
@@ -2086,7 +2091,9 @@ The one value the code after the run uses is returned, and a run that ends with 
 returned call. A recipe leaves the finding for its fix plan when the run returns early on some paths,
 defines more than one value that the code after it uses, writes a variable declared before it, jumps
 out of itself, awaits or yields, declares a function, a class or a `var`, sits in a Java `try` with a
-`catch`, or throws other exceptions in the two copies. It also declines for the reasons of the
+`catch`, throws other exceptions in the two copies, calls code that may change a variable the run
+reads through a closure (TypeScript, JavaScript), or builds a closure over a `let` the run declares
+(TypeScript, JavaScript). It also declines for the reasons of the
 whole-copy recipes above (a name in use, comments, `this`, copies in more than one pair). Signatures,
 parameters and return types of the two functions may differ.
 
@@ -2338,14 +2345,16 @@ the project files and the allowed form of the rule. The schema is
 - `finding`: the `tool`, `rule`, `path` and `line` of the finding.
 - `kind`: the change asked for. It is one of `extract-function`, `split-file`,
   `add-test-for-branch`, `strengthen-assertion`, `kill-mutant`, `remove-duplicate`,
-  `invert-dependency`, `move-module`, `parse-at-boundary`, `reduce-complexity`, `group-parameters`,
-  `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
+  `extract-shared-function`, `invert-dependency`, `move-module`, `parse-at-boundary`,
+  `reduce-complexity`, `group-parameters`, `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
   whose only guidance is their allowed form.
 - `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`.
 - `context`: only what the kind needs. It holds the measured value and the limit with candidate
   blocks to move for a size rule, the branch and the nearest test file for coverage, the mutation
   (the mutator, the original and the replacement) for a surviving mutant, both copies for a
-  duplicate, and the import edge or cycle for an architecture rule. Where no test file exists, the
+  duplicate, the function to extract from a near-duplicate (its signature, the arguments each copy
+  passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
+  import edge or cycle for an architecture rule. Where no test file exists, the
   context names the path the project's test layout suggests.
 - `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
 - `doneWhen`: the finding that stops being reported.
