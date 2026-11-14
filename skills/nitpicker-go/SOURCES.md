@@ -107,6 +107,12 @@ than the others, and this skill teaches its rules before an agent writes Go.
   counts the package-level constants of the package under test and the exported constants of the
   module's packages a test file imports, resolved through type information. An `iota` group holds
   ordinals, not contract values, so its constants are left out.
+- **Tests that run production code, used options and entry points (#1046).** The shared
+  `no-production-runtime`, `unused-option` and `public-alternative-bypass` rules in Go's forms: test
+  files reach production code through imports and same-package names; Go's optional inputs are
+  options-struct fields and functional options (the pattern of the Go blog's "Self-referential
+  functions and the design of options" and Uber's style guide); and the only Go re-export is an
+  exported type alias, since `internal/` already closes a package to outside importers.
 - **Configuration read once in `main`; clocks, randomness and writers passed in.** Matches the
   composition-root rule of the other presets and makes tests deterministic.
 - **`context.Context` first, never stored.** From Go Code Review Comments and the Google guide.

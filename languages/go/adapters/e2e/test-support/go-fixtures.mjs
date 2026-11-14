@@ -140,7 +140,7 @@ ${guard}	if got := ${helper}(); got != 1 {
 
 func ${helper}() int {
 	time.Sleep(${String(seconds)} * time.Second)
-	return 1
+	return Total([]int{1})
 }
 `;
 }

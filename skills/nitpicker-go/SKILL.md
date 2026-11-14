@@ -101,6 +101,15 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   reaches (`deadcode/unreachable-func`): delete it, or call it from production code. A test helper
   lives in a `_test.go` file. The exported API of a package other modules can import (not under
   `internal/`, in a module whose path has a domain) counts as used.
+- A test runs the code it tests: a `_test.go` file that reaches no non-test file of the module,
+  directly or through its helpers, fails (`no-production-runtime`). Test the package's own code, or
+  move a pure stub check out of the suite.
+- Every optional input is used: an exported field of an `...Options` struct an exported function
+  takes, or an exported `With...` functional option, that no code of the module sets fails
+  (`unused-option`). Delete the option, or set it where a caller needs it.
+- When a package re-exports a subpackage's type (`type Order = orders.Order`), import it from that
+  package (`shop.Order`), not from `shop/orders` (`public-alternative-bypass`); `main` may import
+  either.
 - A package depends on packages more stable than itself (`stability-direction`): when a widely used
   package needs a detail from a narrower one, define an interface in the widely used package and
   let the narrower one implement it.

@@ -116,6 +116,9 @@ per source hash and toolchain into the nitpicker cache.
 | Feature layout         | metrics program            | `facts/shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle` |
 | Domain boundaries      | metrics program            | `coupling/domain-imports-adapter`, `domain-imports-io`, `-client`, `-logger`, `-random`                  |
 | Test-only code         | metrics program            | `facts/test-only-export`                                                                                 |
+| Tests without product  | metrics program            | `test-runtime/no-production-runtime`                                                                     |
+| Unset optional inputs  | lint program (go-rules)    | `structure/unused-option`                                                                                |
+| Entry-point bypass     | metrics program            | `entry-points/public-alternative-bypass`                                                                 |
 | Unreachable code       | `deadcode`                 | `deadcode/unreachable-func`                                                                              |
 | Module requirements    | `go mod tidy -diff`        | `dependencies/unused-dependency`, `dependencies/unlisted-dependency`                                     |
 | Repository hygiene     | shared                     | committed secrets, binaries, build output, large files                                                   |
@@ -817,6 +820,32 @@ and says more, so a comment with one is never reported as restating its name. `_
 generated files are not read, and neither is the package comment. The exception takes it as
 printed, `facts/doc-comment-content`.
 
+**`no-production-runtime`.** A `_test.go` file that runs no production code fails: neither it nor
+a test helper it reaches through the imports and same-package names above uses a non-test file of
+the module. The judge is the same one the other presets use (`shared/rules/test-runtime/`), so a
+test that only checks the standard library, a stub or another test helper is reported, and a test
+under an `e2e` or `contract` folder is left out. Every Go import links
+the package, so `type-only-production-dependency` does not apply.
+
+**`public-alternative-bypass`.** Go has no index file, but an exported type alias of a subpackage's
+type is a re-export: `type Order = orders.Order` in package `shop` makes `shop.Order` the public
+name. A file outside `shop` and its subpackages that imports `shop/orders` for `Order` goes around
+it, and fails with the import path to use instead. Package `main` is the composition root and may
+import any package. Packages under `internal/` are already closed to outside importers by the
+compiler, so only aliases add an entry point.
+
+**`unused-option`.** Go has no default parameter values; its optional inputs are the exported fields
+of an options struct (a struct whose name ends in `Options` or `Opts`; a field with a struct tag is
+data, not an option) that an exported function or
+method takes, and the functional options of a package (exported `With...` functions that return the
+element type of an exported function's variadic parameter). An option no code of the module sets
+fails: no composite literal names the field (an unkeyed literal sets every field), no assignment or
+`++`/`--` writes it, no code takes its address (`flag.IntVar(&options.Port, ...)`), and no code
+calls the `With...` function. Taking the address of a whole options value (`json.Unmarshal(data,
+&options)`) sets every field. Tests count as setters only for a published
+package, as for `test-only-export`. The lint program reads this with type information, so a field
+set through an alias or a variable of the options type counts.
+
 ## Design rules
 
 The shared deep-module design rules (listed in [`spec/checks.md`](../spec/checks.md)) read two more
@@ -1008,7 +1037,7 @@ tool error and, as with any step that fails, holds no other findings.
 The top-level `exceptions` take a finding as it is printed, `<tool>/<rule>` (`vet/printf`,
 `deadcode/unreachable-func`), as in the Java preset, plus the shared rules (the function, type, file
 and folder limits, `slow-test`, `duplicate-clone`, `stability-direction`, the fact rules,
-`unused-dependency`, `unlisted-dependency`, the repository checks, and `changed-branch-coverage`,
+`unused-dependency`, `unlisted-dependency`, `no-production-runtime`, `unused-option`, the repository checks, and `changed-branch-coverage`,
 `crap-score-limit`, `crap-coverage-unknown`, `mutant-survived` and `mutant-nocoverage` with the
 `function` they name). Every vet, staticcheck, errcheck, modernize, gosec, revive, deadcode, catalog linter,
 go-rules, limit, coverage, CRAP, mutation and slow-test message ends with its exception entry, for
