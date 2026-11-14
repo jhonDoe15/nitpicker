@@ -62,16 +62,20 @@ export function parenDepths(code) {
   return depthsOf(code, '(');
 }
 
-export function enclosingOpen(code, offset) {
+export function openBrackets(code, offset, opener = '{') {
   const open = [];
-  for (const { index, 0: brace } of code.slice(0, offset).matchAll(BRACKETS['{'])) {
-    if (brace === '{') {
+  for (const { index, 0: bracket } of code.slice(0, offset).matchAll(BRACKETS[opener])) {
+    if (bracket === opener) {
       open.push(index);
     } else {
       open.pop();
     }
   }
-  return open.at(-1) ?? -1;
+  return open;
+}
+
+export function enclosingOpen(code, offset, opener = '{') {
+  return openBrackets(code, offset, opener).at(-1) ?? -1;
 }
 
 function nextArgumentsEnd(code, from) {

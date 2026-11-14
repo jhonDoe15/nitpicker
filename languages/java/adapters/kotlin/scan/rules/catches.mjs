@@ -1,4 +1,4 @@
-import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mjs';
+import { closingIndex, enclosingOpen, openBrackets, splitArguments } from '../kotlin-source.mjs';
 import { reportingCalls, withoutCalls } from '../log-calls.mjs';
 import { leadingDeclaration } from '../parameters/declaration-header.mjs';
 import { isRetry } from '../loops.mjs';
@@ -27,7 +27,6 @@ const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
 const TYPE_KEYWORD = /(?<![\w.:])(?:class|object|interface)\b/g;
 const PACKAGE_OR_IMPORT = /^[ \t]*(?:package|import)\b.*$/gm;
 const CONTINUATION = /^\s*(?:[.?:&|+\-*/%]|else\b|as\b)/;
-const BRACE = /[{}]/g;
 const HEADER_START = /[;{}]/g;
 const BOOLEAN_PARAMETER =
   /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\s*(?:=.*)?$/s;
@@ -186,20 +185,8 @@ function hidesFunctions(code, open) {
   return anonymous || modifiers.some((modifier) => HIDING_MODIFIERS.has(modifier));
 }
 
-function openBraces(code, offset) {
-  const open = [];
-  for (const { index, 0: brace } of code.slice(0, offset).matchAll(BRACE)) {
-    if (brace === '{') {
-      open.push(index);
-    } else {
-      open.pop();
-    }
-  }
-  return open;
-}
-
 function isReachableFromOutside(code, offset) {
-  return !openBraces(code, offset).some((open) => hidesFunctions(code, open));
+  return !openBrackets(code, offset).some((open) => hidesFunctions(code, open));
 }
 
 function isHiddenFunction(code, offset) {

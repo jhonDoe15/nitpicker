@@ -1,3 +1,4 @@
+import { openBrackets } from '../../../scan/kotlin-brackets.mjs';
 import { chainName, classesOf } from '../discovery/declarations.mjs';
 import { functionAround } from '../global-state/state-restores.mjs';
 
@@ -8,15 +9,7 @@ export function reportOf(scanned, { rule, message }, hit) {
 }
 
 export function enclosingParens(code, offset) {
-  const open = [];
-  for (const { index, 0: mark } of code.slice(0, offset).matchAll(/[()]/gu)) {
-    if (mark === '(') {
-      open.push(index);
-    } else {
-      open.pop();
-    }
-  }
-  return open.toReversed();
+  return openBrackets(code, offset, '(').toReversed();
 }
 
 export function inRanges(ranges, offset) {
