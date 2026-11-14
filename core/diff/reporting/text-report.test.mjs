@@ -47,7 +47,7 @@ Tool errors: 0
 Per-tool counts:
 eslint: base=0 head=1 new=1 resolved=0 unchanged=0 changed-metrics=undefined elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
 
-New findings:
+New failing findings:
 eslint-lint/no-debugger src/a.js:12 Unexpected console statement
 
 Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)

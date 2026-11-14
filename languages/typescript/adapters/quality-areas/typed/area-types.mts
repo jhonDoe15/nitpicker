@@ -14,6 +14,7 @@ export type QualityAreaOptions = {
   readonly baselineRoot: string | undefined;
   readonly baselineMovesFile: string | undefined;
   readonly mutationScope: readonly string[] | undefined;
+  readonly keepCoverageReport?: string | undefined;
 };
 
 export type AreaReport = {

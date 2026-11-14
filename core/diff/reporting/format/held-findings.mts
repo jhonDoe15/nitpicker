@@ -1,10 +1,21 @@
 import { singleLine } from './text.mjs';
+import { withoutRoute } from './rule-groups/rule-groups.mts';
+import { ANSI, pluralize, style } from '../console/style.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 
 export type HeldGroups<T> = { readonly metrics: T[]; readonly lint: T[] };
 
+type HeldOptions = {
+  readonly color: boolean;
+  readonly details: boolean;
+  readonly diagnosticsPath: string;
+};
+
 const oneLine: (value: unknown) => string = singleLine;
+
+const MAX_HELD_LINES = 10;
+const FINDING = 'finding';
 
 function worseMessageOf(finding: ReportEntry): unknown {
   return fieldOf(finding['ratchet'], 'worseMessage');
@@ -38,4 +49,45 @@ export function heldLine(finding: ReportEntry): string {
       ? `${oneLine(finding.message)} (allowed because base was ${base}; any increase fails)`
       : textOf(heldMessage).replaceAll('{base}', base);
   return `${prefix} ${note}`;
+}
+
+function heldList(
+  findings: readonly ReportEntry[],
+  { details, diagnosticsPath }: Omit<HeldOptions, 'color'>,
+): string[] {
+  const shown = details ? findings : findings.slice(0, MAX_HELD_LINES);
+  const rest = findings.length - shown.length;
+  return [
+    ...shown.map((finding) => `  ${heldLine(details ? finding : withoutRoute(finding))}`),
+    ...(rest === 0 ? [] : [`  … ${String(rest)} more; see ${diagnosticsPath}`]),
+  ];
+}
+
+export function heldSummaryLines(
+  unchangedFindings: readonly ReportEntry[],
+  { color, details, diagnosticsPath }: HeldOptions,
+): string[] {
+  const { metrics, lint } = heldFindings(unchangedFindings);
+  return [
+    ...(metrics.length === 0
+      ? []
+      : [
+          style(
+            `Note: ${String(metrics.length)} ${pluralize(FINDING, metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
+            [ANSI.dim],
+            { color },
+          ),
+          ...heldList(metrics, { details, diagnosticsPath }),
+        ]),
+    ...(lint.length === 0
+      ? []
+      : [
+          style(
+            `Note: ${String(lint.length)} existing lint ${pluralize(FINDING, lint.length)} in edited code (not failing, no more than before):`,
+            [ANSI.dim],
+            { color },
+          ),
+          ...heldList(lint, { details, diagnosticsPath }),
+        ]),
+  ];
 }

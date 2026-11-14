@@ -275,6 +275,7 @@ function reportExitCode(
         color: colorEnabled(stdout, environment),
         details,
         diagnosticsPath: displayPath(absoluteTextReportPath(outputRoot)),
+        projectRoot: currentProjectRoot,
       }),
     ),
   );

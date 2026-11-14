@@ -28,6 +28,7 @@ import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
 import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
 import { knipReport, withProjectKnipConfig } from '../knip/knip-run.mts';
+import { wholeFileHash } from '../hashing/whole-file-hash.mjs';
 
 const CODING_STANDARDS = 'languages/typescript/preset/coding-standards/check.mjs';
 const TEST_RUNTIME = 'languages/typescript/preset/test-runtime/analyze.mjs';
@@ -133,7 +134,10 @@ export async function runTestRuntime(options: QualityAreaOptions): Promise<Findi
       ...fieldsOf(report),
       findings: listOf(fieldOf(report, 'findings')).map((finding) => ({
         ...fieldsOf(finding),
-        sourceHash: hash(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+        sourceHash: wholeFileHash(
+          textOf(sourceTextOf(sourceTexts, fieldOf(finding, 'test'))),
+          textOf(fieldOf(finding, 'test')),
+        ),
       })),
     },
     options.analyzerName,

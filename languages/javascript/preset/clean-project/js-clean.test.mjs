@@ -3,17 +3,13 @@ import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
-import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { maskedDiagnostics } from '../../../../core/diff/reporting/test-support/output-expectations.mjs';
 import {
   createCleanProject,
   git,
   readReport,
   runNitpicker,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingUrl,
-} from '../../../../shared/messages/troubleshooting.mjs';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/js-clean');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -22,87 +18,95 @@ const UNKNOWN_FOLDER_ADVICE =
   'Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), ' +
   'in shared/ when several features need it, or in the composition root. ' +
   'An exception fits only when this folder is deliberate.';
-const routed = (rule, file) =>
-  `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
-const unknownFolder = (file, line) =>
-  `eslint-lint/nitpicker/no-unknown-main-folder src/main/${file}:${String(line)} ` +
-  `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE} ` +
-  routed('nitpicker/no-unknown-main-folder', `src/main/${file}`);
-const unusedFile = (file) =>
-  `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
-  `Nothing imports it. Delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
+const UNKNOWN_FOLDER_FILES = [
+  ['billing/adapters/charge.js', 5],
+  ['billing/index.js', 1],
+  ['dup/a.js', 5],
+  ['dup/b.js', 5],
+  ['format/messy.cjs', 1],
+  ['format/messy.js', 1],
+  ['format/unformatted.ts', 1],
+  ['lint/banned.js', 6],
+  ['lint/mode.ts', 1],
+  ['orders/place.js', 1],
+];
+const UNUSED_FILES = [
+  'billing/adapters/charge.js',
+  'billing/index.js',
+  'dup/a.js',
+  'dup/b.js',
+  'features/greeting/domain/typed.js',
+  'format/messy.cjs',
+  'format/messy.js',
+  'format/unformatted.ts',
+  'lint/banned.js',
+  'lint/mode.ts',
+  'orders/place.js',
+];
+const routeTo = (rule, file) =>
+  `    If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 const PLANTED_OUTPUT = [
-  'Nitpicker quality snapshot',
-  'Status: violations',
-  'Enforceable findings: 31',
-  'Descriptive findings: 2',
-  'Tool errors: 0',
-  'Ran only: eslint-lint, entry-points, prettier-format, typescript-typecheck, duplicates, dead-code. ' +
-    'Run nitpicker without --analyzer before you finish.',
   '',
-  'Per-tool counts:',
-  'eslint-lint: total=14 enforceable=14 descriptive=0',
-  'entry-points: total=1 enforceable=1 descriptive=0',
-  'prettier-format: total=3 enforceable=3 descriptive=0',
-  'typescript-typecheck: total=1 enforceable=1 descriptive=0',
-  'duplicates: total=3 enforceable=1 descriptive=2',
-  'dead-code: total=11 enforceable=11 descriptive=0',
-  '',
-  'Enforceable findings:',
-  unusedFile('billing/adapters/charge.js'),
-  unusedFile('billing/index.js'),
-  unusedFile('dup/a.js'),
-  unusedFile('dup/b.js'),
-  unusedFile('features/greeting/domain/typed.js'),
-  unusedFile('format/messy.cjs'),
-  unusedFile('format/messy.js'),
-  unusedFile('format/unformatted.ts'),
-  unusedFile('lint/banned.js'),
-  unusedFile('lint/mode.ts'),
-  unusedFile('orders/place.js'),
-  'duplicates/duplicate-clone src/main/dup/a.js:5 This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/dup/a.js or src/main/dup/b.js to "exclude" in nitpicker.config.json.',
-  `entry-points/public-alternative-bypass src/main/orders/place.js Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime). ${routed('public-alternative-bypass', 'src/main/orders/place.js')}`,
-  unknownFolder('billing/adapters/charge.js', 5),
-  unknownFolder('billing/index.js', 1),
-  unknownFolder('dup/a.js', 5),
-  unknownFolder('dup/b.js', 5),
-  unknownFolder('format/messy.cjs', 1),
-  unknownFolder('format/messy.js', 1),
-  unknownFolder('format/unformatted.ts', 1),
-  'eslint-lint/@typescript-eslint/no-unsafe-return src/main/lint/banned.js:7 Unsafe return of a value of type `any`. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object. If this is intended, add {"rule":"@typescript-eslint/no-unsafe-return","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-  'eslint-lint/nitpicker/no-comments src/main/lint/banned.js:1 JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function. If this is intended, add {"rule":"nitpicker/no-comments","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-  unknownFolder('lint/banned.js', 6),
-  'eslint-lint/no-var src/main/lint/banned.js:10 Unexpected var, use let or const instead. If this is intended, add {"rule":"no-var","paths":["src/main/lint/banned.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-  unknownFolder('lint/mode.ts', 1),
-  'eslint-lint/no-restricted-syntax src/main/lint/mode.ts:1 Do not declare an `enum`. Use a union of string literals: `type Mode = \'read\' | \'write\'`. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/lint/mode.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-  unknownFolder('orders/place.js', 1),
-  'prettier-format/prettier/prettier src/main/format/messy.cjs:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-  'prettier-format/prettier/prettier src/main/format/messy.js:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-  'prettier-format/prettier/prettier src/main/format/unformatted.ts:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
-  "typescript-typecheck/TS2345 src/main/features/greeting/domain/typed.js:9 Argument of type 'number' is not assignable to parameter of type 'string'.",
-  '',
+  'Quality snapshot summary',
+  '✖ 31 enforceable findings',
+  '  by area: format 3 · types 1 · lint 26 · structure 1',
+  '  prettier-format/prettier/prettier: These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
+  '    src/main/format/messy.cjs:1',
+  '    src/main/format/messy.js:1',
+  '    src/main/format/unformatted.ts:1',
+  "  typescript-typecheck/TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.",
+  '    src/main/features/greeting/domain/typed.js:9:33',
+  `  eslint-lint/nitpicker/no-unknown-main-folder: ${UNKNOWN_FOLDER_ADVICE}`,
+  ...UNKNOWN_FOLDER_FILES.map(
+    ([file, line]) =>
+      `    src/main/${file}:${String(line)}:1 '${file.split('/')[0]}/' is not a layer of this layout.`,
+  ),
+  routeTo('nitpicker/no-unknown-main-folder', '<path>'),
+  '  dead-code/files: Nothing imports it. Delete it, or import it where it is needed.',
+  ...UNUSED_FILES.map((file) => `    src/main/${file} Unused file: src/main/${file}.`),
+  routeTo('files', '<path>'),
+  '  eslint-lint/nitpicker/no-comments: JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
+  '    src/main/lint/banned.js:1:1',
+  routeTo('nitpicker/no-comments', 'src/main/lint/banned.js'),
+  '  eslint-lint/@typescript-eslint/no-unsafe-member-access: Unsafe use of the `any` value `value` in keep: it affects 1 place. Give the value a JSDoc type at its source (`@param {string} name`, `@returns {Type}`, `@type {Type}`), or read fields of a legacy `any` value through one reader function whose parameter is `{unknown}` and that returns a typed object.',
+  '    src/main/lint/banned.js:6:22',
+  routeTo('@typescript-eslint/no-unsafe-member-access', 'src/main/lint/banned.js'),
+  '  eslint-lint/no-var: Unexpected var, use let or const instead.',
+  '    src/main/lint/banned.js:10:1',
+  routeTo('no-var', 'src/main/lint/banned.js'),
+  "  eslint-lint/no-restricted-syntax: Do not declare an `enum`. Use a union of string literals: `type Mode = 'read' | 'write'`.",
+  '    src/main/lint/mode.ts:1:8',
+  routeTo('no-restricted-syntax', 'src/main/lint/mode.ts'),
+  '  entry-points/public-alternative-bypass: Import src/main/billing/adapters/charge.js through src/main/billing/index.js (runtime).',
+  '    src/main/orders/place.js',
+  routeTo('public-alternative-bypass', 'src/main/orders/place.js'),
+  '  duplicates/duplicate-clone: This code repeats src/main/dup/b.js:5 (12 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/dup/a.js or src/main/dup/b.js to "exclude" in nitpicker.config.json.',
+  '    src/main/dup/a.js:5',
   'Design notes for review (not failing): 2 in the snapshot',
   '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (lines 12)',
   '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (tokens 126)',
-  '',
-  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+  'By analyzer:',
+  '  eslint-lint: 14 enforceable, 0 descriptive',
+  '  entry-points: 1 enforceable, 0 descriptive',
+  '  prettier-format: 3 enforceable, 0 descriptive',
+  '  typescript-typecheck: 1 enforceable, 0 descriptive',
+  '  duplicates: 1 enforceable, 2 descriptive',
+  '  dead-code: 11 enforceable, 0 descriptive',
+  'Ran only: eslint-lint, entry-points, prettier-format, typescript-typecheck, duplicates, dead-code. ' +
+    'Run nitpicker without --analyzer before you finish.',
+  'Full diagnostics: <path>',
   '',
 ].join('\n');
 const FAILING_COVERAGE_OUTPUT = [
-  'Nitpicker quality snapshot',
-  'Status: tool-error',
-  'Enforceable findings: 0',
-  'Descriptive findings: 0',
-  'Tool errors: 1',
-  'Ran only: coverage. Run nitpicker without --analyzer before you finish.',
   '',
-  'Per-tool counts:',
-  'coverage: total=0 enforceable=0 descriptive=0',
-  '',
-  'Tool errors:',
-  'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+  'Quality snapshot summary',
+  '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
   "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
-  `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
+  'No enforceable findings in the checks that ran.',
+  'By analyzer:',
+  '  1 analyzer ran clean',
+  'Ran only: coverage. Run nitpicker without --analyzer before you finish.',
+  'Full diagnostics: <path>',
   '',
 ].join('\n');
 
@@ -277,7 +281,7 @@ describe('the js-clean fixture project', () => {
         'prettier-format',
         'typescript-typecheck',
       ]);
-      expect(stdoutText).toBe(PLANTED_OUTPUT);
+      expect(maskedDiagnostics(stdoutText)).toBe(PLANTED_OUTPUT);
       expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(exitCode).toBe(1);
     });
@@ -320,7 +324,7 @@ it('fails on purpose', () => {
 
       const { exitCode, stdoutText } = runSnapshot(root, ['--analyzer', 'coverage']);
 
-      expect(stdoutText).toBe(FAILING_COVERAGE_OUTPUT);
+      expect(maskedDiagnostics(stdoutText)).toBe(FAILING_COVERAGE_OUTPUT);
       expect(exitCode).toBe(1);
     });
 

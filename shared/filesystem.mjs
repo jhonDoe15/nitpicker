@@ -11,6 +11,11 @@ export function pathInside(root, relative) {
   return full;
 }
 
+export function isStrictlyInside(parent, candidate) {
+  const relative = path.relative(parent, candidate);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 export function firstFileIn(root, names) {
   return names.map((name) => path.join(root, name)).find((file) => existsSync(file));
 }

@@ -300,7 +300,7 @@ ${acceptedPolicyHeading}
   analyzer disabled: second-analyzer
 
 Per-tool counts:
-fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metrics=0 elapsed=${/[0-9]+(?:\.[0-9]+)?/}s
+1 analyzer ran clean
 `),
     );
   });

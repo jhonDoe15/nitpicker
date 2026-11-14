@@ -8,7 +8,8 @@ import { metricGrowth } from '../../hints/eslint-routes.mts';
 export type Metric = { readonly value: number; readonly label: string };
 
 export type RatchetPlan = (
-  ({ readonly kind: 'metric' } & Metric) | { readonly kind: 'count'; readonly key: string }
+  | ({ readonly kind: 'metric' } & Metric)
+  | { readonly kind: 'count'; readonly key: string; readonly uses: number }
 ) & { readonly anchorHash?: string };
 
 const ts = typescriptApi();
@@ -62,7 +63,10 @@ export function withRatchets(
   for (const [index, finding] of findings.entries()) {
     const plan = plans[index];
     if (plan?.kind === 'count') {
-      counts.set(countGroupOf(finding, plan), (counts.get(countGroupOf(finding, plan)) ?? 0) + 1);
+      counts.set(
+        countGroupOf(finding, plan),
+        (counts.get(countGroupOf(finding, plan)) ?? 0) + plan.uses,
+      );
     }
   }
   return findings.map((finding, index) => {
@@ -103,17 +107,19 @@ export function ratchetPlan({
   symbol,
   reportedNode,
   messageIdentity,
+  uses = 1,
 }: {
   readonly metric: Metric | undefined;
   readonly symbol: string | undefined;
   readonly reportedNode: TypeScript.Node;
   readonly messageIdentity: string;
+  readonly uses?: number | undefined;
 }): RatchetPlan | undefined {
   if (metric !== undefined) {
     return { kind: 'metric', ...metric };
   }
   return symbol !== undefined && isInsideFunction(reportedNode)
-    ? { kind: 'count', key: messageIdentity }
+    ? { kind: 'count', key: messageIdentity, uses }
     : undefined;
 }
 

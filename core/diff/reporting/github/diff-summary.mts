@@ -16,10 +16,12 @@ import { partialRunLines as partialLinesOf } from '../partial-run/partial-run.mt
 import { failingHeadTests as failingTests } from '../failing-tests/failing-tests.mts';
 import type { ReportData } from '../../../../shared/values/findings.mts';
 import { listOf } from '../../../../shared/values/readers.mts';
+import { skippedLines } from '../../skipping/lines.mts';
 
 type Summary = ReportData['summary'];
 
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const skippedLinesOf: (summary: unknown) => readonly string[] = skippedLines;
 
 function failingTestsHeadline(report: ReportData): string | undefined {
   const [firstFailing, ...otherFailing] = failingTests(report.toolErrors);
@@ -33,6 +35,9 @@ function failingTestsHeadline(report: ReportData): string | undefined {
 }
 
 function headline(report: ReportData): string {
+  if (report.summary['skippedAll'] === true && report.toolErrors.length === 0) {
+    return '✓ No analyzer reads the changed files; nothing to check';
+  }
   if (report.summary['noChanges'] === true && report.toolErrors.length === 0) {
     return '✓ No changes since the merge base; nothing to check';
   }
@@ -119,7 +124,10 @@ export function renderDiffSummary(report: ReportData, context: LinkContext): str
     `**${headline(report)}**`,
     '',
     ...scopeLinesOf(report.summary).flatMap((line) => [line, '']),
-    ...partialLinesOf(report.summary).flatMap((line) => [`> ${line}`, '']),
+    ...[...partialLinesOf(report.summary), ...skippedLinesOf(report.summary)].flatMap((line) => [
+      `> ${line}`,
+      '',
+    ]),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),

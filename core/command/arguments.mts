@@ -41,7 +41,7 @@ const VALUES = new Map<string, ValueOption>([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
-const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init'];
+const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init', 'show'];
 
 export const COMPARISON_OPTIONS = [
   ...FLAGS.keys(),

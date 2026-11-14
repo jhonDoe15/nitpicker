@@ -11,8 +11,10 @@ import {
   type Moves,
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
+import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
+import { skippedSummary } from '../skipping/lines.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, objectOf } from '../../../shared/values/readers.mts';
@@ -39,12 +41,15 @@ export type ReportContext = {
   readonly scope?: unknown;
   readonly quick?: unknown;
   readonly staged?: unknown;
+  readonly policyAnalyzers?: readonly unknown[] | undefined;
+  readonly skippedAnalyzers?: readonly string[] | undefined;
 };
 
 export type CombineRequest = ReportContext & {
   readonly baseRun: unknown;
   readonly headRun: unknown;
   readonly baseToHeadDirectories?: Moves | undefined;
+  readonly baseToHeadPackages?: Moves | undefined;
   readonly touchedCode?: { readonly testsRemoved?: unknown } | undefined;
   readonly policies?: { readonly base?: unknown; readonly head?: unknown } | undefined;
 };
@@ -78,6 +83,13 @@ const loosenedFindings: (
   options: object,
 ) => Finding[] = policyFindings;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
+const withoutSharedOverlaps: (runs: { readonly baseRun: unknown; readonly headRun: unknown }) => {
+  readonly baseRun: unknown;
+  readonly headRun: unknown;
+} = withoutSharedCrossToolOverlaps;
+const skippedFields: (context: {
+  readonly skippedAnalyzers?: readonly string[] | undefined;
+}) => object = skippedSummary;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
 const scopedOutcomes: (
@@ -89,8 +101,9 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
-  const baseRun = withDependencies(context.baseRun, objectOf(policies.base));
-  const headRun = withDependencies(context.headRun, objectOf(policies.head));
+  const deduplicated = withoutSharedOverlaps(context);
+  const baseRun = withDependencies(deduplicated.baseRun, objectOf(policies.base));
+  const headRun = withDependencies(deduplicated.headRun, objectOf(policies.head));
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
@@ -116,6 +129,12 @@ export function noChangesReport(
     reportsPolicy: false,
   });
   return { ...report, summary: { ...report.summary, noChanges: true } };
+}
+
+export function allSkippedReport(context: Parameters<typeof noChangesReport>[0]): DiffReport {
+  const report = noChangesReport(context);
+  const { noChanges, ...summary } = report.summary;
+  return { ...report, summary: { ...summary, skippedAll: noChanges } };
 }
 
 const SKIPPED_CHECK_RULES = new Set(['race-not-checked', 'mutation-skipped']);
@@ -184,7 +203,7 @@ function buildReport(context: BuildContext): DiffReport {
       resolvedBaseSha: comparison['resolvedBaseSha'],
       mergeBaseSha: comparison['mergeBaseSha'],
       headSha: comparison['headSha'],
-      policyHash: hashOf(analyzers, configOverrides),
+      policyHash: hashOf(context.policyAnalyzers ?? analyzers, configOverrides),
       configOverrides,
       policyChanges,
       policyLoosenings,
@@ -195,8 +214,9 @@ function buildReport(context: BuildContext): DiffReport {
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices: [...notices, ...skippedCheckNotices(outcomes)],
       ...runAndScopeSummary(context, outcomes),
+      ...skippedFields(context),
       tools: outcomes.map(({ tool }) => tool),
-      exclusions: declaredExclusions(analyzers),
+      exclusions: declaredExclusions(context.policyAnalyzers ?? analyzers),
       renamedPaths: context.baseToHeadRenames.size,
       elapsedMs: Date.now() - startedAt,
       overallStatus: toolErrors.length === 0 ? 'completed' : 'tool-error',

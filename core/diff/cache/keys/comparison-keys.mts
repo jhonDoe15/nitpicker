@@ -4,6 +4,7 @@ import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 export type ComparisonScope = {
   readonly touchedPaths: readonly string[];
   readonly headRoot: string;
+  readonly mergeBaseSha?: string;
   readonly quick: boolean;
 };
 

@@ -6,21 +6,17 @@ const runnerPath = checkoutModulePath(
   path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs'),
 );
 
-export function createEslintAnalyzer({
-  name,
-  version,
-  configurationHash,
-  exclusions,
-  configRelativePath,
-  patterns,
-  policyFiles = [],
-  timeoutMs,
-  eslintTimeoutMs,
-  eslintCliPath,
-  environment = {},
-  shardWeight = 1,
-  policyFromPackage = false,
-}) {
+export function createEslintAnalyzer(options) {
+  const {
+    name,
+    version,
+    configurationHash,
+    exclusions,
+    timeoutMs,
+    shardWeight = 1,
+    policyFromPackage = false,
+    colocatedWith,
+  } = options;
   return {
     name,
     version,
@@ -28,32 +24,14 @@ export function createEslintAnalyzer({
     exclusions,
     timeoutMs,
     shardWeight,
+    ...(colocatedWith === undefined ? {} : { colocatedWith }),
     requiresDependencies: true,
     ...(policyFromPackage ? {} : { concurrencyGroup: 'eslint-snapshot-dependencies' }),
-    createInvocation({ projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
-      const args = [
-        runnerPath,
-        '--analyzer-name',
-        name,
-        '--project-root',
-        projectRoot,
-        '--policy-root',
-        policyRoot,
-        '--tool-root',
-        toolRoot,
-        '--config',
-        configRelativePath,
-        ...optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }),
-        ...environmentArguments(environment),
-        ...patterns.flatMap((pattern) => ['--pattern', pattern]),
-        ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
-      ];
-      return {
-        command: process.execPath,
-        args,
-        cwd: toolRoot,
-      };
-    },
+    createInvocation: (roots) => ({
+      command: process.execPath,
+      args: runnerArguments(options, roots),
+      cwd: roots.toolRoot,
+    }),
   };
 }
 
@@ -76,4 +54,26 @@ function environmentArguments(environment) {
     '--environment',
     `${environmentName}=${value}`,
   ]);
+}
+
+function runnerArguments(options, { projectRoot, policyRoot, toolRoot, liveProjectRoot }) {
+  const { name, configRelativePath, patterns, policyFiles = [], environment = {} } = options;
+  const { eslintTimeoutMs, eslintCliPath } = options;
+  return [
+    runnerPath,
+    '--analyzer-name',
+    name,
+    '--project-root',
+    projectRoot,
+    '--policy-root',
+    policyRoot,
+    '--tool-root',
+    toolRoot,
+    '--config',
+    configRelativePath,
+    ...optionalArguments({ liveProjectRoot, eslintTimeoutMs, eslintCliPath }),
+    ...environmentArguments(environment),
+    ...patterns.flatMap((pattern) => ['--pattern', pattern]),
+    ...policyFiles.flatMap((policyFile) => ['--policy-file', policyFile]),
+  ];
 }

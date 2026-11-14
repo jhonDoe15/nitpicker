@@ -1,5 +1,3 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import {
   testFailuresOf,
@@ -21,130 +19,27 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
-import { readJavaFindings } from './reporting/java-reports.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
-import { readReportModules } from './gradle-reports/report-modules.mjs';
+import { lintBaselineProperties, withGradleReports } from './reporting/gradle-run.mjs';
 import { runMavenPreset } from '../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
-import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
+import { detectJavaBuild } from '../builds/java-build.mjs';
 import { mergedRoots, readModuleReport } from '../builds/java-modules.mjs';
-import { resolveKotlinRun } from './kotlin/kotlin-run.mjs';
-import { runGradleStage } from './red-base/gradle-stage.mjs';
-import {
-  runOrNoteFailingTests,
-  withRootSourceRoots,
-  withTestsFailures,
-} from './red-base/tests-failed.mjs';
+import { withTestsFailures } from './red-base/tests-failed.mjs';
 import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectSourceRules } from './regexes/regex-defects.mjs';
-import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
-import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
-import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
+import { mavenDesignFindings } from './design/design-modules.mjs';
 import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mjs';
+import {
+  notAffectedFindings,
+  withChangedFiles,
+} from '../builds/change-scope/affected/changed-files.mjs';
 
-const CLOCK_SLACK_MS = 2000;
-const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache', '--continue'];
-
-export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
-  return snapshot === 'head' && baselineRoot !== undefined
-    ? [`-Pnitpicker.lintBaseline=${baselineRoot}`]
-    : [];
-}
-
-function runJavaPreset(
-  projectRoot,
-  {
-    gradle,
-    spawn,
-    initScript = INIT_SCRIPT,
-    policy = {},
-    reportBase,
-    kotlinRun,
-    budget = gradleBudget(),
-    testsFailedModules = [],
-    testsSkipped = false,
-  } = {},
-) {
-  const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
-  const since = Date.now() - CLOCK_SLACK_MS;
-  withKotlin((kotlinArguments) => {
-    const common = [
-      ...GRADLE_FLAGS,
-      `-Pnitpicker.reportDir=${reportBase}`,
-      `-Pnitpicker.node=${process.execPath}`,
-      ...lintBaselineProperties(policy),
-      ...kotlinArguments,
-    ];
-    const stages = gradleStages(common, {
-      projectRoot,
-      initScript,
-      policy,
-      directory: path.join(reportBase, 'tool-config'),
-      testsFailedModules,
-      testsSkipped,
-    });
-    const checkTests = testsFailedModules.length === 0 && !testsSkipped;
-    const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
-    for (const stage of stages) {
-      runGradleStage({ args: stage(), ...options });
-    }
-  });
-}
-
-function withoutReportBase(error, reportBase) {
-  return error instanceof Error && error.message.includes(reportBase)
-    ? new Error(error.message.replaceAll(reportBase, '<report directory>'), { cause: error })
-    : error;
-}
-
-function gradleFindings(projectRoot, options, reportBase) {
-  const preset = options.policy?.preset ?? 'java';
-  const kotlinRun = resolveKotlinRun(projectRoot, options.policy);
-  const testsFailures = runOrNoteFailingTests(runJavaPreset, projectRoot, {
-    ...options,
-    reportBase,
-    kotlinRun,
-  });
-  const report = readReportModules(reportBase, preset);
-  const duplicates = {
-    reportRoot: reportBase,
-    manifest: report.manifest,
-    skippedFolders: options.policy?.duplicateSkippedFolders,
-  };
-  runJavaDuplicates(projectRoot, duplicates);
-  if (preset === 'kotlin') {
-    runKotlinDuplicates(projectRoot, duplicates);
-  }
-  const { findings, imports } = readJavaFindings(projectRoot, {
-    ...readOptions(options.policy),
-    formatAdvice: kotlinRun?.advice,
-    reportBase,
-    report,
-  });
-  return {
-    findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
-    imports,
-    testsFailures: withRootSourceRoots(testsFailures, report.modules),
-  };
-}
-
-function withGradleReports(projectRoot, options) {
-  const reportBase =
-    options.reportDirectory ?? mkdtempSync(path.join(tmpdir(), 'nitpicker-java-reports-'));
-  try {
-    return gradleFindings(projectRoot, options, reportBase);
-  } catch (error) {
-    throw withoutReportBase(error, reportBase);
-  } finally {
-    if (options.reportDirectory === undefined) {
-      rmSync(reportBase, { recursive: true, force: true });
-    }
-  }
-}
+export { lintBaselineProperties };
 
 function mavenFindings(projectRoot, options) {
-  const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
+  const { moduleDirs, testsFailures, formatAdvice, notAffected } = runMavenPreset(projectRoot, {
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
     pitDeadline: options.budget?.pitDeadlineMs,
@@ -168,6 +63,7 @@ function mavenFindings(projectRoot, options) {
     findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
     imports,
     testsFailures,
+    notAffected,
   };
 }
 
@@ -177,15 +73,19 @@ export function collectJavaFindings(root, options = {}) {
 
 export function collectJavaReport(root, options = {}) {
   const projectRoot = path.resolve(root);
-  const plan = mutationPlanOf(projectRoot, options);
+  const plan = mutationPlanOf(projectRoot, withChangedFiles(options, projectRoot));
   const {
     findings: collected,
     imports,
     testsFailures,
+    notAffected,
   } = detectJavaBuild(projectRoot, options.policy?.buildTool) === 'maven'
     ? mavenFindings(projectRoot, plan.options)
     : withGradleReports(projectRoot, plan.options);
-  const findings = plan.findings(collected);
+  const findings = [
+    ...plan.findings(collected),
+    ...notAffectedFindings(notAffected, options.policy),
+  ];
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
   const columns = withJavaColumns(findings, { projectRoot, policy: options.policy, readSource });

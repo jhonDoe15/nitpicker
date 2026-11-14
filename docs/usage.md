@@ -217,6 +217,8 @@ as the [README](../README.md) describes.
 npx nitpicker
 ```
 
+[Worked examples](examples.md) shows this and the other common runs with what they print.
+
 Run it from anywhere inside your project. A TypeScript project needs no configuration; for any
 other language, `npx nitpicker init` writes the one line it needs (see
 [Set up with `nitpicker init`](#set-up-with-nitpicker-init)).
@@ -225,6 +227,16 @@ The project is the nearest directory, up to the repository root, that holds a `p
 `nitpicker.config.json`. A repository with several projects, for example a TypeScript `web/` and a
 Java `service/`, runs nitpicker once in each directory, and each reads its own
 `nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
+
+### The fix loop
+
+The loop is: run `npx nitpicker --fix` in the background and wait for its exit code, read the
+findings, fix them, and rerun until it exits 0. While you iterate, `--quick` or `--analyzer <name>`
+is faster, and the run you finish with is always a full one. If the console output is cut off, read
+`reports/quality/diff/report.txt`. The note about existing findings in edited code never fails a
+run. The steps for each language are in the `nitpicker-<preset>` skill (`npx nitpicker init` installs
+it), and the same loop for an `AGENTS.md` is in the [agent snippet](agents-snippet.md). Both are
+generated from one source, so they do not repeat or contradict this guide.
 
 ### One file or folder
 
@@ -271,6 +283,35 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   `git stash`, or after you undo a change), no finding can be new, so no analyzer runs. The run
   prints `No changes since <base> (<merge base>); nothing to check.`, exits 0, and writes the
   reports with zero counts and `"noChanges": true` in `summary.json`.
+- **Unaffected analyzers**: each built-in analyzer declares which changed files can change its
+  result, and an analyzer none of the changed files (head against base, untracked files included)
+  can affect is skipped on both sides. Its base findings are shown as unchanged when the
+  [findings cache](#findings-cache) holds them. The summary names the skipped analyzers in one line
+  (`Skipped <names>: no changed file is in their inputs.`) and `summary.json` lists them in
+  `skippedAnalyzers`. A change to a Markdown file or a `LICENSE`, `README`, `CHANGELOG` or
+  `NOTICE` file touches no analyzer, unless it sits under a source or test root of the layout, or in
+  a folder named `src`, `lib`, `main`, `test`, `tests`, `spec`, `fixtures`, `resources`, `e2e`,
+  `__snapshots__`, `__mocks__`, `assets`, `public`, `static`, `examples`, `samples`, `data` or
+  `templates`. A docs-only change therefore skips the test-running analyzers: a test that reads a
+  Markdown file outside those folders is not re-run. An image touches only the analyzers that run
+  tests, which may read it. The analyzers that build or test the project (`java`, `kotlin`,
+  `python`, `go`, every `mutation` run, `coverage`, `test-console`, `test-runtime` and `crap`) read
+  every other file, so they are skipped only for such documentation. The TypeScript and JavaScript
+  static analyzers (`eslint-*`, `prettier-format`, `entry-points`, `typescript-typecheck`,
+  `dependency-architecture`, `coding-standards`, `coupling`, `structure`, `duplicates` and
+  `dead-code`) read code, stylesheet, markup and configuration files and dotfiles, so a change to
+  a test data file such as a `.csv` runs only the analyzers that run tests. The repository checks
+  (`repository-hygiene`) run for a documentation file that is added, removed or renamed, grows
+  past 1 MB or holds a private key header. `change-history`, custom analyzers and an analyzer
+  without declared inputs always run. A change to `nitpicker.config.json`, a lockfile, a manifest
+  (`package.json`, `pyproject.toml`, `go.mod`), a build file (`build.gradle*`, `settings.gradle*`,
+  `pom.xml`, the Gradle and Maven wrappers), a `tsconfig*.json` or a tool configuration file
+  (ESLint, Prettier, Vitest, Jest, Stryker, ruff, mypy, checkstyle, PMD and the like) runs every
+  analyzer, and so does a removed or renamed file that is not documentation. Policy checks always
+  run: an unaffected run still compares the policy of both sides, and a policy change runs the
+  analyzers. When no analyzer is affected the run exits 0 after one line that begins "No analyzer
+  reads the files changed since", and writes `"skippedAll": true` next to `skippedAnalyzers` (not `noChanges`, which means the head
+  equals the base). A shard run and a run with config-file overrides skip nothing.
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
@@ -443,8 +484,7 @@ Full diagnostics: reports/quality/diff/report.txt
 Findings that are allowed because the base already had them ("still over a limit", "existing lint
 findings in edited code") are listed after the violations, at most 10 of each, without their
 exception entries. `--details` prints every finding with its full message instead, the layout
-`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
-`--details` changes nothing there.
+`report.txt`, the JSON reports and SARIF always keep. `--all` takes `--details` too.
 
 ### JSON output
 
@@ -511,7 +551,9 @@ line; here it is spread out:
   held findings are counts only; the files in `reports` list them.
 - `toolErrors` gives each error's `tool`, `snapshot` (`head` or `base`), `rule` when it has one
   (such as failing tests) and `headline`, its first line.
-- A comparison run has `base`, and `"noChanges": true` when nothing changed since the merge base.
+- A comparison run has `base`, `"noChanges": true` when nothing changed since the merge base, and
+  `"skippedAll": true` when no analyzer reads the changed files; `skippedAnalyzers` names the
+  analyzers a change could not affect.
   `--all` has no `base` and no `counts.held`. A run narrowed with `--analyzer` adds
   `partialRun: { ran, skipped }`.
 - A run that stops before it has a result, such as on an unknown argument, prints
@@ -527,7 +569,10 @@ the package as `nitpicker/spec/json-output.schema.json`.
 
 A comparison run writes these files to `reports/quality/diff/`:
 
-- `report.txt`: the readable report.
+- `report.txt`: the readable report. It lists the new findings that fail the run first, then the
+  report-only ones; a metric finding shows its value (and its limit, when it has one), and a metric
+  delta is rounded to the precision of the two values. The per-tool table lists the analyzers with
+  any count, then one line counts the ones that ran clean.
 - `summary.json`: totals, per-tool counts and the fields below.
 - `new-findings.json`: the new findings, the ones that count against the change.
 - `resolved-findings.json`: findings that were in the base and are gone.
@@ -546,7 +591,12 @@ A comparison run writes these files to `reports/quality/diff/`:
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
-`report.sarif` and `codequality.json`.
+`report.sarif` and `codequality.json`. Its `report.txt` has the same layout: enforceable findings
+first, then the descriptive ones with their metric values, and the same per-tool table. The console
+prints the same summary layout as a comparison
+run: findings grouped by rule, at most ten design notes, the tool errors, one line for each analyzer
+with findings and a count of the analyzers that ran clean, and the path of `report.txt`, which keeps
+the full list. The exit codes do not change.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run. Today there is
@@ -560,6 +610,14 @@ The console summary shortens mutation findings: the mutants that no test runs pr
 per function (with their count and lines), and a function prints at most three surviving mutants,
 then how many more there are. The headline still counts every mutant, and the reports above list
 each one.
+
+Tool errors that read the same once the project root is made relative print as one entry that names
+the analyzers and snapshots it covers, for example
+`coding-standards, coupling and 10 more (base and head): Cannot find package 'typescript' ...`. Paths
+under the project root print relative to it (`./node_modules/nitpicker/package.json`);
+`tool-errors.json` keeps the full messages. An analyzer skipped because another one failed shows as
+`crap skipped: coverage failed (see above)`, and folds into the failed analyzer's line when both are
+listed.
 
 The summary is colored only when standard output is a terminal, so a pipe, a file or an agent's
 shell tool gets plain text. `FORCE_COLOR` turns color on anywhere, for CI logs that render it
@@ -728,6 +786,7 @@ nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>] [--help]
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
+nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]
 nitpicker explain <tool/rule>...
 nitpicker rules [--preset <name>] [--tool <name>]
 ```
@@ -773,10 +832,9 @@ nitpicker rules [--preset <name>] [--tool <name>]
   `eslint-module-effects`) look only at the changed files on both sides, since their findings depend
   on one file alone; the typed rules (`eslint-lint`), the type check, the dependency, coupling,
   dead-code, duplicates, structure and coding-standards checks still read the whole project. Gradle
-  runs with `--build-cache` in a quick run, so tasks whose inputs did not change (an unchanged module,
-  the base after the head, a repeated run) are restored from the Gradle build cache (the local one
-  in the Gradle user home, and a remote one only as the build's own `settings.gradle` configures it);
-  Maven runs PMD, SpotBugs, Error Prone, the format check and Checkstyle of a module side by side.
+  runs with `--build-cache` in every run, quick or full (see
+  [Gradle build cache](java-preset/how-it-works.md#build-cache-and-side-by-side-tools)); Maven runs
+  the tools of a module side by side in every run too.
   The console summary, `report.txt`, `summary.json`, `report.junit.xml` and `report.sarif` name what
   was skipped, and exit codes keep their meaning, but a quick run is never a pass: run `nitpicker`
   without `--quick` before you finish. `--quick` works with `--base`, `--all`, `--analyzer` (a name
@@ -796,12 +854,14 @@ nitpicker rules [--preset <name>] [--tool <name>]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
-- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). It
+  filters what is listed, not what runs: every analyzer still runs, so use `--analyzer` to run less.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
   [JSON output](#json-output)).
-- `--output <dir>`: where reports go.
+- `--output <dir>`: where reports go. A relative `<dir>` is relative to the project (the directory
+  that holds `package.json` or `nitpicker.config.json`), not to the current folder.
 - `--shard-count <n>`, `--shard-index <i>` and `--defer-exit`: run one shard of a split run; see
   [Sharding in CI](#sharding-in-ci).
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
@@ -856,6 +916,17 @@ The other commands:
   full, and `--tool` keeps one tool.
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+- `nitpicker show [--all] [--rule <substring>]... [--path <path>] [--details] [--output <dir>]`:
+  print the console summary of the last run again, without running any analyzer. It reads the
+  reports of the last comparison in `reports/quality/diff/` (or in `--output`), and with `--all`, or
+  when there is no comparison report, those of the last `--all` run in `reports/quality/snapshot/`.
+  `--rule` (repeatable), `--path` (a file or folder, relative to the current folder) and `--details`
+  filter and expand the summary as they do for a run. The first line names the run it shows (the
+  base, the head commit and the time), and one line warns when the working tree changed since that
+  run, which `summary.json` records as `generatedAt` and `workingTree`. Exit codes: 0 when the run
+  passed; 1 when it had new enforceable findings, failing tests or a tool error; 2 when there is no
+  report to show, with a hint to run `nitpicker` first. Use it to read one rule or one folder of a
+  finished run instead of running it again.
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
@@ -2093,6 +2164,9 @@ unlisted requirements. Tools nitpicker pins (gofumpt, goimports, deadcode) are b
 Build tags for the tests go in `"go": { "buildTags": ["integration"] }`. Exceptions name a finding
 as printed, `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or a shared
 rule. Details and the remaining slices: [go-preset.md](go-preset.md).
+
+Troubleshooting: the failures this preset meets are listed in the
+[Go preset guide](go-preset/troubleshooting.md).
 
 ## JavaScript preset
 
@@ -3338,9 +3412,10 @@ of these is visible in the report. Remove them as the codebase improves.
 The repository's `Dockerfile` builds one image per preset family, so the gate runs in any CI without
 installing a toolchain on the host. Every image has Node 24, Git, nitpicker installed from source as
 `nitpicker` (the entrypoint), Corepack (pnpm and Yarn, downloaded on first use), Bun 1.4.2 for the
-base's dependency install, and `/work` as the working directory. The images are built for
-`linux/amd64` only; arm64 images are tracked in
-[#562](https://github.com/jhonDoe15/nitpicker/issues/562).
+base's dependency install, and `/work` as the working directory. The images are published for
+`linux/amd64` and `linux/arm64`: every tag is a multi-arch manifest, so Docker on Apple Silicon or
+on an arm64 CI runner pulls the native image without emulation. Each variant is built and
+smoke-tested on a native runner of both architectures before it is published.
 
 | Image (target) | Presets                | Adds to the base                                                          | Size         |
 | -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
@@ -3397,9 +3472,10 @@ What each project provides:
   # Bun:  --entrypoint bun nitpicker:typescript install --frozen-lockfile
   ```
 
-  A `node_modules` installed on the host works only on a Linux x86-64 host: on macOS, Windows or an
-  arm64 machine its native packages (esbuild, Rollup, SWC) are built for the host and fail in the
-  container. A project that pins another Bun than 1.4.2 needs its own image.
+  A `node_modules` installed on the host works only when the host and the image have the same
+  operating system and architecture (a Linux x86-64 host with the amd64 image, a Linux arm64 host
+  with the arm64 image): on macOS or Windows, or on another architecture, its native packages
+  (esbuild, Rollup, SWC) are built for the host and fail in the container. A project that pins another Bun than 1.4.2 needs its own image.
 
 - **Java and Kotlin.** A `nitpicker.config.json` with the preset. Gradle runs through the project's
   `gradlew` and Maven through its `mvnw` when it has them, else through the image's `gradle` and

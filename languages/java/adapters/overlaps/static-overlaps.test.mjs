@@ -101,6 +101,12 @@ const SCOPED = {
   catch: { primary: 25, covered: { line: 26 }, apart: { line: 30 } },
   file: { primary: 5, covered: { line: 13 }, apart: { line: 5, path: 'src/Other.java' } },
   field: { primary: 3, covered: { symbol: 'demo.A.f' }, apart: { symbol: 'demo.B.f' } },
+  variable: {
+    primary: 5,
+    primaryExtra: { message: "Avoid unused local variables such as 'x'." },
+    covered: { line: 5, message: "The initializer for variable 'x' is never used" },
+    apart: { line: 5, message: "The initializer for variable 'y' is never used" },
+  },
 };
 
 function secondaryAt(rule, { line, ...extra }) {
@@ -150,8 +156,8 @@ describe('overlap pairs', () => {
   it.each(cases)(
     'drops %s where %s is reported, in the same %s only',
     (secondary, primary, scope) => {
-      const { primary: line, covered, apart } = SCOPED[scope];
-      const reported = at(primary, line);
+      const { primary: line, primaryExtra, covered, apart } = SCOPED[scope];
+      const reported = at(primary, line, primaryExtra);
       const kept = secondaryAt(secondary, apart);
 
       expect(

@@ -1,16 +1,18 @@
 import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mts';
-import { heldFindings, heldLine } from './format/held-findings.mts';
+import { heldSummaryLines } from './format/held-findings.mts';
 import { foldMutants } from './format/mutants.mts';
 import { noteSummaryLines } from './format/notes.mts';
 import { singleLine } from './format/text.mjs';
 import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
-import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mts';
+import { byFixOrder, ruleGroupLines } from './format/rule-groups/rule-groups.mts';
 import { reviewSummaryLines } from './review/notices.mts';
 import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
+import { skippedLines, unaffectedLine } from '../skipping/lines.mts';
+import { snapshotToolLines } from './console/snapshot-tools.mts';
 import { failingTestLines } from './failing-tests/failing-tests.mts';
 import {
   ANSI,
@@ -28,12 +30,13 @@ type ConsoleOptions = {
   readonly color: boolean;
   readonly details: boolean;
   readonly diagnosticsPath?: unknown;
+  readonly projectRoot?: string | undefined;
 };
 
-type HeldOptions = {
+type GateOptions = {
   readonly color: boolean;
-  readonly details: boolean;
   readonly diagnosticsPath: string;
+  readonly snapshot: boolean;
 };
 
 type ViolationSummary = {
@@ -41,22 +44,78 @@ type ViolationSummary = {
   readonly incomplete: boolean;
   readonly testsFail: boolean;
   readonly policyCount: number;
+  readonly snapshot: boolean;
 };
 
 const isPolicyEntry: (finding: ReportEntry) => boolean = isPolicyFinding;
 const oneLine: (value: unknown) => string = singleLine;
 const quickLinesOf: (summary: unknown) => readonly string[] = quickLines;
 const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
+const skippedLinesOf: (summary: unknown) => readonly string[] = skippedLines;
+const unaffected: (summary: unknown, names: unknown) => string = unaffectedLine;
+const analyzerLines: (tools: unknown) => readonly string[] = snapshotToolLines;
 
 const SHORT_SHA_LENGTH = 12;
+const FINDING = 'finding';
+
+export function renderSnapshotConsole(
+  report: Pick<ReportData, 'summary' | 'toolErrors'> & {
+    readonly findings: readonly ReportEntry[];
+  },
+  options: ConsoleOptions,
+): string {
+  const { findings, summary, toolErrors } = report;
+  return renderGateSummary(
+    {
+      summary,
+      toolErrors,
+      newFindings: findings,
+      unchangedFindings: [],
+      resolvedFindings: [],
+      changedMetrics: [],
+      notes: [],
+    },
+    { ...options, snapshot: true },
+  );
+}
 
 export function renderConsoleSummary(report: ReportData, options: ConsoleOptions): string {
-  if (fieldOf(report.summary, 'noChanges') !== true) {
-    return renderGateSummary(report, options);
+  const skippedAll = fieldOf(report.summary, 'skippedAll') === true;
+  if (fieldOf(report.summary, 'noChanges') !== true && !skippedAll) {
+    return renderGateSummary(report, { ...options, snapshot: false });
   }
-  const { requestedBaseRef, mergeBaseSha } = report.summary;
-  const line = `No changes since ${textOf(requestedBaseRef)} (${textOf(mergeBaseSha).slice(0, SHORT_SHA_LENGTH)}); nothing to check.\n`;
-  return report.toolErrors.length === 0 ? line : `${line}${renderGateSummary(report, options)}`;
+  const { requestedBaseRef, mergeBaseSha, skippedAnalyzers } = report.summary;
+  const line = skippedAll
+    ? `${unaffected(report.summary, skippedAnalyzers)}\n`
+    : `No changes since ${textOf(requestedBaseRef)} (${textOf(mergeBaseSha).slice(0, SHORT_SHA_LENGTH)}); nothing to check.\n`;
+  return report.toolErrors.length === 0
+    ? line
+    : `${line}${renderGateSummary(report, { ...options, snapshot: false })}`;
+}
+
+function gateHead(
+  report: ReportData,
+  { color, diagnosticsPath, snapshot }: GateOptions,
+  failingTests: readonly ReportEntry[],
+): string[] {
+  const violations = report.newFindings.filter(
+    ({ classification }) => classification === 'enforceable',
+  );
+  const hasFailures = violations.length > 0 || report.toolErrors.length > 0;
+  return [
+    '',
+    style(
+      snapshot ? 'Quality snapshot summary' : 'Quality gate summary',
+      hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green],
+      { color },
+    ),
+    ...scopeLinesOf(report.summary),
+    ...failingTestLines(failingTests, {
+      headline: (text) => failing(text, color),
+      label: (tool) => style(textOf(tool), [ANSI.yellow], { color }),
+      diagnosticsPath,
+    }),
+  ];
 }
 
 function renderGateSummary(
@@ -65,26 +124,16 @@ function renderGateSummary(
     color,
     details,
     diagnosticsPath: givenPath = 'reports/quality/diff/combined/report.txt',
-  }: ConsoleOptions,
+    projectRoot,
+    snapshot,
+  }: ConsoleOptions & { readonly snapshot: boolean },
 ): string {
   const diagnosticsPath = textOf(givenPath);
   const violations = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
-  const hasFailures = violations.length > 0 || report.toolErrors.length > 0;
   const { failingTests, otherErrors } = splitToolErrors(report.toolErrors);
-  const lines = [
-    '',
-    style('Quality gate summary', hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green], {
-      color,
-    }),
-    ...scopeLinesOf(report.summary),
-    ...failingTestLines(failingTests, {
-      headline: (text) => failing(text, color),
-      label: (tool) => style(textOf(tool), [ANSI.yellow], { color }),
-      diagnosticsPath,
-    }),
-  ];
+  const lines = gateHead(report, { color, diagnosticsPath, snapshot }, failingTests);
   appendViolationSummary(
     lines,
     {
@@ -92,6 +141,7 @@ function renderGateSummary(
       incomplete: otherErrors.length > 0,
       testsFail: failingTests.length > 0,
       policyCount: violations.filter(isPolicyEntry).length,
+      snapshot,
     },
     { color, details },
   );
@@ -100,71 +150,27 @@ function renderGateSummary(
       style(text, [ANSI.bold, ANSI.yellow], { color }),
     ),
   );
-  appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
-  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot: false }));
+  lines.push(...heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }));
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
   appendNoteSummary(lines, report.notes, color);
-  lines.push(...closingLines(report, { color, diagnosticsPath, otherErrors }));
+  lines.push(...toolErrorSummaryLines(otherErrors, { color, projectRoot }));
+  lines.push(...closingLines(report, { color, diagnosticsPath, snapshot }));
   return `${lines.join('\n')}\n`;
 }
 
-type ClosingOptions = {
-  readonly color: boolean;
-  readonly diagnosticsPath: string;
-  readonly otherErrors: readonly ReportEntry[];
-};
-
 function closingLines(
   report: ReportData,
-  { color, diagnosticsPath, otherErrors }: ClosingOptions,
+  { color, diagnosticsPath, snapshot }: GateOptions,
 ): string[] {
-  return [
-    ...toolErrorSummaryLines(otherErrors, color),
-    ...[...partialRunLines(report.summary), ...quickLinesOf(report.summary)].map((line) =>
-      style(line, [ANSI.bold, ANSI.yellow], { color }),
-    ),
-    style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], { color }),
+  const footer = [
+    ...partialRunLines(report.summary),
+    ...skippedLinesOf(report.summary),
+    ...quickLinesOf(report.summary),
   ];
-}
-
-const MAX_HELD_LINES = 10;
-
-function appendHeldSummary(
-  lines: string[],
-  unchangedFindings: readonly ReportEntry[],
-  { color, details, diagnosticsPath }: HeldOptions,
-): void {
-  const { metrics, lint } = heldFindings(unchangedFindings);
-  if (metrics.length > 0) {
-    lines.push(
-      style(
-        `Note: ${String(metrics.length)} ${pluralize('finding', metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
-        [ANSI.dim],
-        { color },
-      ),
-      ...heldList(metrics, { details, diagnosticsPath }),
-    );
-  }
-  if (lint.length > 0) {
-    lines.push(
-      style(
-        `Note: ${String(lint.length)} existing lint ${pluralize('finding', lint.length)} in edited code (not failing, no more than before):`,
-        [ANSI.dim],
-        { color },
-      ),
-      ...heldList(lint, { details, diagnosticsPath }),
-    );
-  }
-}
-
-function heldList(
-  findings: readonly ReportEntry[],
-  { details, diagnosticsPath }: Omit<HeldOptions, 'color'>,
-): string[] {
-  const shown = details ? findings : findings.slice(0, MAX_HELD_LINES);
-  const rest = findings.length - shown.length;
   return [
-    ...shown.map((finding) => `  ${heldLine(details ? finding : withoutRoute(finding))}`),
-    ...(rest === 0 ? [] : [`  … ${String(rest)} more; see ${diagnosticsPath}`]),
+    ...(snapshot ? analyzerLines(report.summary['tools']) : []),
+    ...footer.map((line) => style(line, [ANSI.bold, ANSI.yellow], { color })),
+    style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], { color }),
   ];
 }
 
@@ -179,9 +185,11 @@ function appendNoteSummary(
 }
 
 function violationHeadline(
-  { violations, incomplete, testsFail, policyCount }: ViolationSummary,
+  { violations, incomplete, testsFail, policyCount, snapshot }: ViolationSummary,
   color: boolean,
 ): string {
+  const fresh = snapshot ? '' : 'new ';
+  const noun = snapshot ? FINDING : 'violation';
   const policy = `${String(policyCount)} unapproved policy ${pluralize('change', policyCount)}`;
   const code = `${String(violations.length)} code ${pluralize('violation', violations.length)}`;
   if (violations.length === 0 && policyCount > 0) {
@@ -190,18 +198,18 @@ function violationHeadline(
     return failing(`✖ No new code violations, but ${policy} ${verb} the gate${tail}`, color);
   }
   if (violations.length === 0 && incomplete) {
-    return 'No new enforceable violations, but the run is incomplete:';
+    return `No ${fresh}enforceable ${noun}s, but the run is incomplete:`;
   }
   if (violations.length === 0) {
     return testsFail
-      ? 'No new enforceable violations in the checks that ran.'
-      : style('✓ No new enforceable violations', [ANSI.green], { color });
+      ? `No ${fresh}enforceable ${noun}s in the checks that ran.`
+      : style(`✓ No ${fresh}enforceable ${noun}s`, [ANSI.green], { color });
   }
   const total = violations.length + policyCount;
   return failing(
     policyCount === 0
-      ? `✖ ${String(total)} new enforceable ${pluralize('violation', total)}`
-      : `✖ ${String(total)} new enforceable violations: ${code} and ${policy}`,
+      ? `✖ ${String(total)} ${fresh}enforceable ${pluralize(noun, total)}`
+      : `✖ ${String(total)} ${fresh}enforceable ${noun}s: ${code} and ${policy}`,
     color,
   );
 }

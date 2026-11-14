@@ -30,17 +30,26 @@ export async function loadNames(path: string): Promise<string[]> {
 
 nitpicker fails the change and says what to write instead:
 
+<!-- example:typescript-failing -->
+
 ```console
 $ npx nitpicker
+Quality gate summary
 ✖ 4 new enforceable violations
-  eslint-errors/nitpicker/no-silent-catch src/main/features/greeting/adapters/load-names.ts:8
-    This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
-  eslint-lint/nitpicker/no-handwritten-boundary-guard src/main/features/greeting/adapters/load-names.ts:6
-    Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. An exception fits only when the text is trusted and already typed. If this is intended, add {"rule":"nitpicker/no-handwritten-boundary-guard","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
-  eslint-lint/no-restricted-syntax src/main/features/greeting/adapters/load-names.ts:6
-    Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
-  mutation/mutant-survived src/main/features/greeting/adapters/load-names.ts:9
-    Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  by area: lint 3 · mutation 1
+  eslint-lint/nitpicker/no-handwritten-boundary-guard: Pass `JSON.parse(text)` straight into `schema.safeParse(...)` inside the same `try`. An exception fits only when the text is trusted and already typed.
+    src/main/features/greeting/adapters/load-names.ts:6:18
+    If this is intended, add {"rule":"nitpicker/no-handwritten-boundary-guard","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-lint/no-restricted-syntax: Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
+    src/main/features/greeting/adapters/load-names.ts:6:18
+    If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-errors/nitpicker/no-silent-catch: This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended.
+    src/main/features/greeting/adapters/load-names.ts:8:5
+    If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  mutation/mutant-survived: Survived ArrayDeclaration at column 12: replacing `[]` with `["Stryker was here"]` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.
+    src/main/features/greeting/adapters/load-names.ts:9
+    If this is intended, add {"rule":"mutant-survived","paths":["src/main/features/greeting/adapters/load-names.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+Full diagnostics: reports/quality/diff/combined/report.txt
 ```
 
 The messages name zod, the default validation library; in a project that depends on another one
@@ -73,6 +82,9 @@ to add. `--agents-md` also appends the [agent snippet](docs/agents-snippet.md) t
 npm install --save-dev nitpicker typescript @types/node
 npx nitpicker
 ```
+
+[Worked examples](docs/examples.md) shows the common runs and what they print, for TypeScript and
+for Java on Gradle and Maven.
 
 Tests run with the runner your project already uses: Vitest, Jest, `node:test` or Mocha. A Vitest
 project also needs `@vitest/coverage-v8` at its Vitest version.
@@ -129,6 +141,7 @@ with a link to the tool's own page for the rule where the reference has no allow
 ## Documentation
 
 - [Mindset](docs/mindset.md): what nitpicker enforces and why.
+- [Worked examples](docs/examples.md): the common runs, with the command and what it prints.
 - [Usage](docs/usage.md): the command line, reports, exit codes, configuration, caching and
   sharding in CI.
 - [nitpicker in CI](docs/ci.md): GitHub Actions (the action and plain steps), GitLab CI, Jenkins,

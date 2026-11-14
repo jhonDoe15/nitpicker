@@ -1,95 +1,35 @@
 import { writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
+import { runStamp } from '../reporting/run-stamp/run-stamp.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { withMovesFile } from '../git/patches/moves-file.mts';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
-import { type DiffReport, combineAnalyzerReports, noChangesReport } from './results.mts';
 import {
-  type RunSettings,
-  type SnapshotRoots,
-  quickScoped,
-  runCached,
-  runHeadAnalyzers,
-  toolRoot,
-} from './quick/head-run.mts';
-import {
-  type Comparison,
-  type SnapshotLayout,
-  readSnapshotLayout,
-  withSnapshotRoots,
-} from './snapshots/layout.mts';
+  type DiffReport,
+  allSkippedReport,
+  combineAnalyzerReports,
+  noChangesReport,
+} from './results.mts';
+import { quickScoped, runCached, runHeadAnalyzers, toolRoot } from './quick/head-run.mts';
+import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapshots/layout.mts';
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
+import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
+import type { CaptureHead } from './snapshots/run-types.mts';
+import type {
+  BaseSetup,
+  DiffOptions,
+  PolicyContext,
+  RunContext,
+  Settings,
+  SnapshotContext,
+} from './snapshots/diff-types.mts';
 import { fieldsOf, listOf, textOf } from '../../../shared/values/readers.mts';
-import { type ReportEntry, entriesOf } from '../../../shared/values/findings.mts';
+import { entriesOf } from '../../../shared/values/findings.mts';
 
-type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
-
-type NoticeContext = { readonly mergeBaseSha: string; readonly touchedPaths: readonly string[] };
-
-type BaseSnapshot = SnapshotRoots & {
-  readonly liveProjectRoot: string;
-  readonly moves: unknown;
-  readonly analyzers: RunSettings['analyzers'];
-};
-
-export type DiffOptions = Omit<
-  RunSettings,
-  'headProjectRoot' | 'configOverrides' | 'headPolicy'
-> & {
-  readonly outputRoot: string;
-  readonly headProjectRoot?: string | undefined;
-  readonly requestedBaseRef?: unknown;
-  readonly partialRun?: unknown;
-  readonly includeWorkingTree?: true | undefined;
-  readonly captureHead?: unknown;
-  readonly staged?: unknown;
-  readonly additionalToolErrors?: unknown;
-  readonly configOverrides?: unknown;
-  readonly headPolicy?: unknown;
-  readonly resolveBaseSetup?: ((snapshot: BaseSnapshot) => unknown) | undefined;
-  readonly describeNotices?:
-    ((changedFiles: readonly string[], context: NoticeContext) => unknown) | undefined;
-  readonly acceptPolicyChange?: unknown;
-  readonly policyAcceptanceSource?: unknown;
-  readonly reportsPolicy?: unknown;
-  readonly warn?: unknown;
-};
-
-type Settings = Omit<DiffOptions, 'includeWorkingTree'> &
-  RunSettings & {
-    readonly includeWorkingTree: boolean;
-    readonly captureHead: CaptureHead;
-    readonly additionalToolErrors: readonly ReportEntry[];
-    readonly configOverrides: readonly unknown[];
-  };
-
-type BaseSetup = {
-  readonly analyzers: unknown;
-  readonly headPolicy: unknown;
-  readonly configOverrides: unknown;
-  readonly policyChanges: unknown;
-  readonly policyLoosenings: unknown;
-  readonly policyKinds?: unknown;
-  readonly policyDigest?: unknown;
-};
-
-type SnapshotContext = {
-  readonly settings: Settings;
-  readonly comparison: Comparison;
-  readonly layout: SnapshotLayout;
-  readonly roots: SnapshotRoots;
-  readonly startedAt: number;
-};
-
-type PolicyContext = SnapshotContext & { readonly baseSetup: BaseSetup };
-
-type RunContext = PolicyContext & {
-  readonly headPolicyFile: unknown;
-  readonly basePolicyFile: unknown;
-};
+export type { DiffOptions } from './snapshots/diff-types.mts';
 
 const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Comparison =
   resolveComparison;
@@ -102,16 +42,20 @@ const writeReports: (
 ) => unknown = writeDiffReports;
 const withPolicyFile: <T>(policy: unknown, operation: (file: unknown) => T) => T =
   withHeadPolicyFile;
-
+const stampOf: (request: {
+  readonly projectRoot: string;
+  readonly outputRoot: string;
+}) => Readonly<Record<string, unknown>> = runStamp;
 export function runQualityDiff(options: DiffOptions): DiffReport {
   const settings = withDefaults(options);
   const startedAt = Date.now();
+  const stamp = stampOf({ ...settings, projectRoot: settings.headProjectRoot });
   const comparison = resolveSnapshots(settings);
   const report = sameTree(settings.repositoryRoot, comparison.mergeBaseSha, comparison.headSha)
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
-  Object.assign(report.summary, partialRunOf(settings.partialRun));
+  Object.assign(report.summary, stamp, partialRunOf(settings.partialRun));
   report.text = writeReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
     repositoryRoot: settings.repositoryRoot,
@@ -178,10 +122,20 @@ function resolvedBaseSetup({ settings, layout, roots }: SnapshotContext): BaseSe
 }
 
 function compareSnapshots(context: SnapshotContext): DiffReport {
-  const { settings, roots } = context;
-  const setupContext = { ...context, baseSetup: resolvedBaseSetup(context) };
+  const { settings, roots, comparison, startedAt } = context;
+  const skipPlan = planOf(settings, comparison);
+  const baseSetup = resolvedBaseSetup(context);
+  if (stopsEarly(skipPlan, baseSetup)) {
+    return allSkippedReport({
+      ...settings,
+      comparison,
+      startedAt,
+      skippedAnalyzers: skipPlan.skipped,
+    });
+  }
+  const setupContext = { ...context, baseSetup, skipPlan };
   return withPreparedDependencies(
-    settings.analyzers,
+    runnableOf(settings.analyzers, skipPlan),
     { ...roots, liveProjectRoot: settings.headProjectRoot, toolRoot },
     () => runWithPolicyFiles(setupContext),
   );
@@ -217,15 +171,24 @@ function withBasePolicyFile<T>(
 function runAndCombine(context: RunContext): DiffReport {
   const { settings, comparison, layout, startedAt, baseSetup } = context;
   const baseRun = runBaseSide(context);
-  const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
+  const ranHead = withMovesFile(layout.moves.files, (baselineMovesFile) =>
     runHeadAnalyzers(context, baselineMovesFile),
   );
-  return combineAnalyzerReports({
+  const { analyzers, headRun } = carried({
     analyzers: settings.analyzers,
+    baseRun,
+    headRun: ranHead,
+    skipPlan: context.skipPlan,
+  });
+  return combineAnalyzerReports({
+    analyzers,
+    policyAnalyzers: settings.analyzers,
+    skippedAnalyzers: context.skipPlan.skipped,
     baseRun,
     headRun,
     baseToHeadRenames: layout.moves.files,
     baseToHeadDirectories: layout.moves.directories,
+    baseToHeadPackages: layout.moves.packages,
     touchedCode: layout.touchedCode,
     comparison,
     startedAt,
@@ -253,19 +216,21 @@ function runAndCombine(context: RunContext): DiffReport {
 
 function runBaseAnalyzers(context: RunContext, baseAnalyzers: readonly unknown[]): AnalyzerRun {
   const { settings, roots, basePolicyFile } = context;
-  return runAnalyzers({
-    analyzers: baseAnalyzers,
-    projectRoot: roots.baseProjectRoot,
-    policyRoot: roots.headSnapshotRoot,
-    toolRoot,
-    liveProjectRoot: settings.headProjectRoot,
-    headPolicyFile: basePolicyFile,
-    snapshot: 'base',
-    baselineRoot: undefined,
-    baselineMovesFile: undefined,
-    mutationScope: undefined,
-    ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
-  });
+  return unlessSkipped(baseAnalyzers, context.skipPlan, (analyzersToRun) =>
+    runAnalyzers({
+      analyzers: analyzersToRun,
+      projectRoot: roots.baseProjectRoot,
+      policyRoot: roots.headSnapshotRoot,
+      toolRoot,
+      liveProjectRoot: settings.headProjectRoot,
+      headPolicyFile: basePolicyFile,
+      snapshot: 'base',
+      baselineRoot: undefined,
+      baselineMovesFile: undefined,
+      mutationScope: undefined,
+      ...analyzerRunOptions({ outputRoot: settings.outputRoot, runTasks: settings.runTasks }),
+    }),
+  );
 }
 
 function runBaseSide(context: RunContext): unknown {
@@ -284,6 +249,7 @@ function runBaseSide(context: RunContext): unknown {
     analyzers: withComparisonKeys(analyzers, {
       touchedPaths: [...layout.touchedPaths],
       headRoot: roots.headSnapshotRoot,
+      mergeBaseSha: comparison.mergeBaseSha,
       quick: settings.quick !== undefined,
     }),
     policyRoot: roots.headSnapshotRoot,

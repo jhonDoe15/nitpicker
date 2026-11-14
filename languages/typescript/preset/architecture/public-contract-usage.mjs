@@ -151,6 +151,9 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
     .getSourceFiles()
     .filter((source) => isProductionSource(source, sourceRoot));
   const contracts = collectContracts(sources, { checker, sourceRoot });
+  if (contracts.size === 0) {
+    return [];
+  }
   recordUses(sources, checker, indexMethodDeclarations(contracts));
   return unusedMethods(contracts, sourceRoot).sort((left, right) =>
     JSON.stringify(left).localeCompare(JSON.stringify(right)),

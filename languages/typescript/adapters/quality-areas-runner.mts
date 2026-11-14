@@ -55,7 +55,11 @@ export async function runQualityArea(options: QualityAreaOptions): Promise<reado
 if (isInvokedModule(import.meta.url)) {
   const exitCode = await writeAdapterReport(
     'Quality area adapter failed',
-    () => runQualityAreaReport(parseArguments(process.argv.slice(2))),
+    () =>
+      runQualityAreaReport({
+        ...parseArguments(process.argv.slice(2)),
+        keepCoverageReport: process.env['NITPICKER_KEEP_COVERAGE_REPORT'],
+      }),
     process,
   );
   if (exitCode !== 0) {

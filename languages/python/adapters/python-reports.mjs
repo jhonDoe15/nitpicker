@@ -14,6 +14,7 @@ import { applyRuleHints, RULES_TOOL } from '../rules/rule-hints.mjs';
 import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
+import { withoutShadowedFindings } from '../rules/filters/shadowed-findings.mjs';
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
 import {
   RULES_REPORT,
@@ -119,10 +120,17 @@ export function readPythonFindings({
     ],
     libraries,
   );
-  const findings = withUtf16Columns(withoutFrameworkForms(found, projectRoot, imports), {
-    units: COLUMN_UNITS,
-    readSource: (file) => readSource(projectRoot, file),
-  });
+  const findings = withUtf16Columns(
+    withoutFrameworkForms(
+      withoutShadowedFindings(found, { keepsOwner: ownerSurvives(exceptions) }),
+      projectRoot,
+      imports,
+    ),
+    {
+      units: COLUMN_UNITS,
+      readSource: (file) => readSource(projectRoot, file),
+    },
+  );
   return { findings, ...moduleImportsSection(readFactImports(reportRoot), policy.history) };
 }
 

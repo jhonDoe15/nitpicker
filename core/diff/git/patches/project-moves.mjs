@@ -86,3 +86,33 @@ export function readTouchedPaths({
 export function readRenameMap(options) {
   return readProjectMoves(options).files;
 }
+
+function readTreeFiles({ repositoryRoot, sha, scopePath }) {
+  const scope = repositoryPath(scopePath);
+  const prefix = scope === '' ? '' : `${scope}/`;
+  return runGit(repositoryRoot, [
+    'ls-tree',
+    '-r',
+    '--name-only',
+    '-z',
+    sha,
+    '--',
+    scope === '' ? '.' : scope,
+  ])
+    .split('\0')
+    .filter((file) => file.startsWith(prefix) && file !== prefix)
+    .map((file) => file.slice(prefix.length));
+}
+
+export function readBaseFiles({
+  repositoryRoot,
+  mergeBaseSha,
+  projectRelativePath,
+  baseProjectRelativePath = projectRelativePath,
+}) {
+  return readTreeFiles({ repositoryRoot, sha: mergeBaseSha, scopePath: baseProjectRelativePath });
+}
+
+export function readHeadFiles({ repositoryRoot, headSha, projectRelativePath }) {
+  return readTreeFiles({ repositoryRoot, sha: headSha, scopePath: projectRelativePath });
+}

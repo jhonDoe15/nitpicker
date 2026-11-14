@@ -1,4 +1,5 @@
 import { failingHeadTests } from '../failing-tests/failing-tests.mts';
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
 import {
   toolErrorHelpLine,
   troubleshootingLinkOf,
@@ -8,14 +9,32 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { singleLine } from '../format/text.mjs';
+import { ANSI, pluralize, style } from './style.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
+
+export { ANSI, pluralize, style };
+
+type ErrorGroup = {
+  readonly first: ReportEntry;
+  readonly members: ReportEntry[];
+  readonly skipped: Set<string>;
+};
+
+type SummaryOptions = { readonly color: boolean; readonly projectRoot?: string | undefined };
 
 const oneLine: (value: unknown) => string = singleLine;
 const helpLineOf: (messages: readonly unknown[]) => string | undefined = toolErrorHelpLine;
 const linkOf: (message: string) => string | undefined = troubleshootingLinkOf;
+const escapeRegExp: (text: string) => string = untypedEscape;
 const testsFailedRule: unknown = TESTS_FAILED_RULE;
 const testsSkippedRule: unknown = TESTS_FAILED_SKIPPED_RULE;
+
+const ERROR_HEADLINE_LIMIT = 300;
+const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
+const DEPENDENCY_SKIP = /^(?<skipped>\S+) skipped: (?<cause>\S+) failed \(see above\)$/u;
+const LISTED_NAMES = 3;
+const SNAPSHOT_ORDER = ['base', 'head'];
 
 export function splitToolErrors(toolErrors: readonly ReportEntry[]): {
   readonly failingTests: ReportEntry[];
@@ -28,37 +47,6 @@ export function splitToolErrors(toolErrors: readonly ReportEntry[]): {
   };
 }
 
-export function toolErrorSummaryLines(shown: readonly ReportEntry[], color: boolean): string[] {
-  if (shown.length === 0) {
-    return [];
-  }
-  const help = helpLineOf(shown.map(({ message }) => message));
-  return [
-    style(
-      `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}`,
-      [ANSI.bold, ANSI.red],
-      { color },
-    ),
-    ...shown.flatMap((error) => toolErrorLines(error, color)),
-    ...(help === undefined ? [] : [style(help, [ANSI.dim], { color })]),
-  ];
-}
-
-function toolErrorLines(error: ReportEntry, color: boolean): string[] {
-  const label =
-    error.snapshot === undefined
-      ? textOf(error.tool)
-      : `${textOf(error.tool)} (${textOf(error.snapshot)})`;
-  if (error.rule === undefined) {
-    return [`  ${style(label, [ANSI.yellow], { color })}: ${errorHeadline(error.message)}`];
-  }
-  const [first = '', ...rest] = String(error.message).split('\n');
-  return [
-    `  ${style(label, [ANSI.yellow], { color })}: ${first}`,
-    ...rest.map((line) => `  ${line}`),
-  ];
-}
-
 export function withoutSkipNotices<T extends ReportEntry>(toolErrors: readonly T[]): T[] {
   const listedSnapshots = new Set(
     toolErrors.filter(({ rule }) => rule === testsFailedRule).map(({ snapshot }) => snapshot),
@@ -67,10 +55,6 @@ export function withoutSkipNotices<T extends ReportEntry>(toolErrors: readonly T
     ({ rule, snapshot }) => rule !== testsSkippedRule || !listedSnapshots.has(snapshot),
   );
 }
-
-const ERROR_HEADLINE_LIMIT = 300;
-
-const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
 
 export function errorHeadline(message: unknown): string {
   const link = linkOf(String(message));
@@ -84,23 +68,138 @@ export function errorHeadline(message: unknown): string {
   return link === undefined ? shown : `${shown} ${link}`;
 }
 
-export function pluralize(noun: string, count: number): string {
-  return count === 1 ? noun : `${noun}s`;
+function relativeToRoot(text: string, projectRoot: string | undefined): string {
+  const root = projectRoot?.replace(/[\\/]+$/u, '');
+  if (root === undefined || root === '') {
+    return text;
+  }
+  return text.replaceAll(
+    new RegExp(`(?<![\\w.\\-/])${escapeRegExp(root)}(?![\\w-]|\\.\\w)`, 'gu'),
+    '.',
+  );
 }
 
-export function style(
-  value: string,
-  codes: readonly string[],
-  { color }: { readonly color: boolean },
+function listNames(names: readonly string[]): string {
+  if (names.length <= LISTED_NAMES) {
+    return names.length < 2
+      ? names.join('')
+      : `${names.slice(0, -1).join(', ')} and ${String(names.at(-1))}`;
+  }
+  return `${names.slice(0, 2).join(', ')} and ${String(names.length - 2)} more`;
+}
+
+function snapshotSuffix(snapshots: readonly string[]): string {
+  return snapshots.length === 0 ? '' : ` (${snapshots.join(' and ')})`;
+}
+
+function orderedSnapshots(snapshots: ReadonlySet<string>): string[] {
+  const known = SNAPSHOT_ORDER.filter((name) => snapshots.has(name));
+  const others = [...snapshots]
+    .filter((name) => !SNAPSHOT_ORDER.includes(name))
+    .toSorted((left, right) => left.localeCompare(right));
+  return [...known, ...others];
+}
+
+function groupLabel(members: readonly ReportEntry[]): string {
+  const byTool = new Map<string, Set<string>>();
+  for (const { tool, snapshot } of members) {
+    const snapshots = byTool.get(textOf(tool)) ?? new Set<string>();
+    if (snapshot !== undefined) {
+      snapshots.add(textOf(snapshot));
+    }
+    byTool.set(textOf(tool), snapshots);
+  }
+  const entries = [...byTool].map(([tool, snapshots]) => ({
+    tool,
+    snapshots: orderedSnapshots(snapshots),
+  }));
+  const spans = new Set(entries.map(({ snapshots }) => snapshots.join(' and ')));
+  if (spans.size === 1) {
+    const names = listNames(entries.map(({ tool }) => tool));
+    return `${names}${snapshotSuffix(entries[0]?.snapshots ?? [])}`;
+  }
+  return listNames(entries.map(({ tool, snapshots }) => `${tool}${snapshotSuffix(snapshots)}`));
+}
+
+function keyOf({ tool, snapshot }: ReportEntry): string {
+  return `${textOf(tool)}\0${String(snapshot)}`;
+}
+
+function foldDependencySkips(errors: readonly ReportEntry[]): {
+  readonly kept: ReportEntry[];
+  readonly folded: Map<string, string[]>;
+} {
+  const failed = new Set(
+    errors.filter(({ message }) => !DEPENDENCY_SKIP.test(textOf(message))).map(keyOf),
+  );
+  const folded = new Map<string, string[]>();
+  const kept: ReportEntry[] = [];
+  for (const error of errors) {
+    const groups = DEPENDENCY_SKIP.exec(textOf(error.message))?.groups;
+    const causeKey = groups === undefined ? undefined : keyOf({ ...error, tool: groups['cause'] });
+    if (causeKey === undefined || !failed.has(causeKey)) {
+      kept.push(error);
+      continue;
+    }
+    folded.set(causeKey, [...(folded.get(causeKey) ?? []), textOf(groups?.['skipped'])]);
+  }
+  return { kept, folded };
+}
+
+function groupErrors(errors: readonly ReportEntry[]): ErrorGroup[] {
+  const { kept, folded } = foldDependencySkips(errors);
+  const groups = new Map<string, ErrorGroup>();
+  for (const error of kept) {
+    const key = `${error.rule === undefined ? 'headline' : 'full'}\0${textOf(error.message)}`;
+    const group = groups.get(key) ?? { first: error, members: [], skipped: new Set<string>() };
+    group.members.push(error);
+    for (const name of folded.get(keyOf(error)) ?? []) {
+      group.skipped.add(name);
+    }
+    groups.set(key, group);
+  }
+  return [...groups.values()];
+}
+
+function toolErrorHeading(
+  shown: readonly ReportEntry[],
+  groups: readonly ErrorGroup[],
+  color: boolean,
 ): string {
-  return color ? `${codes.join('')}${value}${ANSI.reset}` : value;
+  const distinct = groups.length < shown.length ? ` (${String(groups.length)} distinct)` : '';
+  return style(
+    `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}${distinct}`,
+    [ANSI.bold, ANSI.red],
+    { color },
+  );
 }
 
-export const ANSI = {
-  reset: '\u001B[0m',
-  bold: '\u001B[1m',
-  dim: '\u001B[2m',
-  red: '\u001B[31m',
-  green: '\u001B[32m',
-  yellow: '\u001B[33m',
-};
+function groupLines({ first, members, skipped }: ErrorGroup, color: boolean): string[] {
+  const label = style(groupLabel(members), [ANSI.yellow], { color });
+  const suffix = skipped.size === 0 ? '' : ` (${[...skipped].join(', ')} skipped)`;
+  if (first.rule === undefined) {
+    return [`  ${label}: ${errorHeadline(first.message)}${suffix}`];
+  }
+  const [head = '', ...rest] = textOf(first.message).split('\n');
+  return [`  ${label}: ${head}${suffix}`, ...rest.map((line) => `  ${line}`)];
+}
+
+export function toolErrorSummaryLines(
+  shown: readonly ReportEntry[],
+  { color, projectRoot }: SummaryOptions,
+): string[] {
+  if (shown.length === 0) {
+    return [];
+  }
+  const relative = shown.map((error) => ({
+    ...error,
+    message: relativeToRoot(String(error.message), projectRoot),
+  }));
+  const groups = groupErrors(relative);
+  const help = helpLineOf(shown.map(({ message }) => message));
+  return [
+    toolErrorHeading(shown, groups, color),
+    ...groups.flatMap((group) => groupLines(group, color)),
+    ...(help === undefined ? [] : [style(help, [ANSI.dim], { color })]),
+  ];
+}

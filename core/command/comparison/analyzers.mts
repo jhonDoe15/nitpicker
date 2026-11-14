@@ -14,7 +14,7 @@ type AnalyzerSelection = {
 
 export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelection): {
   readonly analyzers: readonly ProfiledAnalyzer[];
-  readonly partialRun: unknown;
+  readonly runFields: object;
 } {
   const selectedAnalyzers =
     options.shardCount === undefined || options.shardIndex === undefined
@@ -27,6 +27,9 @@ export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelect
   }
   return {
     analyzers: selectedAnalyzers,
-    partialRun: partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers),
+    runFields: {
+      partialRun: partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers),
+      sharded: options.shardCount !== undefined,
+    },
   };
 }

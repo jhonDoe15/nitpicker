@@ -11,14 +11,20 @@ import {
 import { quickLines, stagedLines } from '../quick/summary.mjs';
 import { junitRunProfile } from '../quick/report-formats.mjs';
 import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
-import { designNoteLines as designNotesOf } from '../diff/reporting/format/design-notes.mts';
 import { partialRunLines as partialLinesOf } from '../diff/reporting/partial-run/partial-run.mts';
 import { ruleReferenceLines as referenceLinesOf } from '../diff/reporting/text.mts';
-import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
+import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as codeQualityFile,
   renderCodeQualityReport as codeQualityOf,
 } from '../diff/reporting/format/codequality.mts';
+
+import {
+  cleanLine as untypedCleanLine,
+  isActiveSnapshotTool as untypedIsActive,
+  splitTools as untypedSplitTools,
+} from '../diff/reporting/console/tool-table.mts';
+import { renderSnapshotConsole } from '../diff/reporting/summary.mts';
 
 import { textOf } from '../../shared/values/readers.mts';
 import {
@@ -26,6 +32,20 @@ import {
   ruleFilterSection,
   toolErrorSectionLines,
 } from '../diff/reporting/console/text-sections.mts';
+
+type ConsoleOptions = {
+  readonly diagnosticsPath: string;
+  readonly color: boolean;
+  readonly details: boolean;
+  readonly projectRoot: string;
+};
+
+const cleanLineOf: (clean: number) => string = untypedCleanLine;
+const isActiveTool: (tool: ToolCount) => boolean = untypedIsActive;
+const splitTools: (
+  tools: readonly ToolCount[],
+  isActive: (tool: ToolCount) => boolean,
+) => { readonly active: readonly ToolCount[]; readonly clean: number } = untypedSplitTools;
 
 type ReportFinding = {
   readonly tool?: unknown;
@@ -74,7 +94,6 @@ const profileOf: (
   escape: (value: unknown) => string,
 ) => JunitProfile = junitRunProfile;
 const helpUrisOf: (findings: unknown, reference: ReferenceLinks) => unknown = withHelpUris;
-const linksOf: () => ReferenceLinks = referenceLinks;
 
 const SNAPSHOT_REPORTS: readonly SnapshotFile[] = [
   { name: 'summary.json', render: (report) => json(report.summary) },
@@ -115,20 +134,12 @@ export function writeSnapshotReports(
 
 export function renderSnapshotConsoleSummary(
   report: SnapshotReport,
-  diagnosticsPath: string,
+  options: ConsoleOptions,
 ): string {
-  return renderTextReport(
-    report,
-    linksOf(),
-    designNotesOf(report.findings, diagnosticsPath, { snapshot: true }),
-  );
+  return renderSnapshotConsole(report, options);
 }
 
-function renderTextReport(
-  report: SnapshotReport,
-  reference: ReferenceLinks,
-  descriptiveLines?: readonly string[],
-): string {
+function renderTextReport(report: SnapshotReport, reference: ReferenceLinks): string {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -145,11 +156,7 @@ function renderTextReport(
 
   appendToolCountSection(lines, report.summary.tools);
   lines.push(...findingSectionLines('Enforceable findings', enforceable));
-  if (descriptiveLines === undefined) {
-    lines.push(...findingSectionLines('Descriptive findings', descriptive));
-  } else if (descriptiveLines.length > 0) {
-    lines.push('', ...descriptiveLines);
-  }
+  lines.push(...findingSectionLines('Descriptive findings', descriptive));
   lines.push(...referenceLinesOf(report.findings, reference));
   lines.push(...toolErrorSectionLines(report.toolErrors));
   const help = helpLineOf(report.toolErrors.map(({ message }) => message));
@@ -202,12 +209,16 @@ function appendToolCountSection(lines: string[], tools: readonly ToolCount[]): v
     lines.push('Analyzers: none configured');
     return;
   }
+  const { active, clean } = splitTools(tools, isActiveTool);
   lines.push('', 'Per-tool counts:');
-  for (const tool of tools) {
+  for (const tool of active) {
     lines.push(
       `${textOf(tool.name)}: total=${textOf(tool.total)} enforceable=${String(tool.enforceable)} ` +
         `descriptive=${textOf(tool.descriptive)}`,
     );
+  }
+  if (clean > 0) {
+    lines.push(cleanLineOf(clean));
   }
 }
 

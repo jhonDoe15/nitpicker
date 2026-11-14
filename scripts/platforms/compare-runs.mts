@@ -12,6 +12,7 @@ import { parseArgs } from 'node:util';
 import { requiredFields, requiredText } from '../json/fields.mts';
 import { sampleNamed } from './samples.mts';
 import { containedPath } from '../../core/fix/common/contained-path.mjs';
+import { coverageEvidenceNotes } from './coverage-evidence.mts';
 import type { NormalizedRun, PlatformRun } from './smoke.mts';
 
 export type ExpectedDifference = {
@@ -250,7 +251,11 @@ function compareWithReference(reference: PlatformRun, directory: string): Compar
   const { problems, allowed } = compareRuns(reference, run);
   return {
     problems,
-    notes: [...allowed.map((line) => `expected: ${line}`), ...toolErrorNotes(run)],
+    notes: [
+      ...allowed.map((line) => `expected: ${line}`),
+      ...toolErrorNotes(run),
+      ...(problems.length > 0 ? coverageEvidenceNotes(directory, reference, run) : []),
+    ],
   };
 }
 

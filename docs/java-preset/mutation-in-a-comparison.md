@@ -30,12 +30,23 @@ Kotlin preset gets the same, on Gradle and Maven.
   touches no test runs no mutation on base at all. A reached file that the change renamed is mutated
   at its base path on base. Because that depends on the change, the base findings cache of a
   comparison is keyed by the changed test files, their head contents and the files they reach on
-  head; comparisons without changed tests share one entry per base. A base entry from
-  `nitpicker cache publish`, which mutates every class, is therefore not used by a Java or Kotlin
-  comparison.
+  head; comparisons without changed tests share one entry per base. `nitpicker cache publish` writes that
+  shared entry too, for the Java and Kotlin analyzers: the same analysis with no mutation, besides
+  the entry that mutates every class (which a Java or Kotlin comparison does not use). So a pull
+  request without changed tests in a single-module build reads the base from the cache. A comparison
+  with changed tests, or in a multi-module build (whose key also lists the changed files, so
+  `cache publish` writes no such entry there), still runs its base. If the unmutated run fails,
+  `cache publish` warns and keeps the full entry.
 - Paths given to the run (`nitpicker src/orders --base main`) narrow the head side further.
 - The `mutation-summary` counts are left out of a comparison, since the two sides mutate different
   classes.
+
+**Multi-module builds.** In a Maven reactor or a Gradle multi-project build the scope is per class, so
+a one-class change runs PIT in time that tracks the change, not the size of the build. Only the
+modules [affected](multi-module-scope.md) by the change run PIT at all, and within them head mutates
+just the changed classes (or the classes a changed test reaches, in the module that owns them): a
+change to a class in a library module does not mutate its dependents' classes, and base mutates
+nothing when no test changed. Kotlin builds follow the same rules on Gradle and Maven.
 
 **PIT history.** When both sides mutate the classes reached by changed tests, head also starts from
 the PIT results of the base run (PIT's own incremental analysis). On the base side, every PIT run

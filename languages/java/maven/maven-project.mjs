@@ -6,6 +6,8 @@ import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-eleme
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
+import { isStrictlyInside } from '../../../shared/filesystem.mjs';
+import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mjs';
 
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -33,10 +35,7 @@ const VERIFY_BUILD = [
   '-Djapicmp.skip=true',
 ];
 
-function coordinates(project) {
-  const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
-  return `${groupId}:${textAt(project, 'artifactId')}`;
-}
+const DIRECTORY = 'directory';
 
 function configured(execution, plugin, name) {
   return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
@@ -58,7 +57,9 @@ function runsFailsafe(project, plugin) {
 
 function rootsInside(basedir, roots) {
   const resolved = roots.map((root) => path.resolve(basedir, root));
-  return [...new Set(resolved.filter((root) => root === basedir || insideOf(basedir, root)))];
+  return [
+    ...new Set(resolved.filter((root) => root === basedir || isStrictlyInside(basedir, root))),
+  ];
 }
 
 function helperRoots(plugin, goal, basedir) {
@@ -78,7 +79,7 @@ function groovyTestRoots(plugin, basedir) {
     plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
   )
     .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
-    .map((source) => textAt(source, 'directory'))
+    .map((source) => textAt(source, DIRECTORY))
     .filter((directory) => directory !== undefined);
   const pluginDefault = plugin !== undefined && configured.length === 0;
   const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
@@ -130,6 +131,13 @@ function jacocoSettings(plugin, basedir) {
   };
 }
 
+function resourceRootsOf(build, basedir) {
+  return childrenAt(build, 'resources', 'resource')
+    .map((resource) => textAt(resource, DIRECTORY))
+    .filter((directory) => directory !== undefined)
+    .map((directory) => path.resolve(basedir, directory));
+}
+
 function packagingOf(project) {
   return textAt(project, 'packaging') ?? 'jar';
 }
@@ -148,7 +156,7 @@ function moduleCompiler(project) {
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
-  const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
+  const buildDirectory = resolvedText(build, basedir, DIRECTORY) ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
   const failsafe = plugins.get(FAILSAFE);
   const reports = setting(surefire, 'test', 'reportsDirectory');
@@ -175,10 +183,7 @@ function describeModule(project, { basedir, pomFile }) {
       ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
       ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
     ],
-    resourceRoots: childrenAt(build, 'resources', 'resource')
-      .map((resource) => textAt(resource, 'directory'))
-      .filter((directory) => directory !== undefined)
-      .map((directory) => path.resolve(basedir, directory)),
+    resourceRoots: resourceRootsOf(build, basedir),
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
@@ -193,6 +198,7 @@ function describeModule(project, { basedir, pomFile }) {
     ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
     compiler: moduleCompiler(project),
+    requires: [...new Set(requiredCoordinates(project, plugins, pomFile))],
   };
 }
 
@@ -213,11 +219,6 @@ function depth(relative) {
   return relative.split(path.sep).length;
 }
 
-function insideOf(directory, file) {
-  const relative = path.relative(directory, file);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
-}
-
 function matchProject(pomFile, candidates) {
   const wanted = rawCoordinates(pomFile);
   const exact = candidates.find((project) => coordinates(project) === wanted);
@@ -226,8 +227,8 @@ function matchProject(pomFile, candidates) {
   }
   const basedir = path.dirname(pomFile);
   const [nearest] = candidates
-    .map((project) => ({ project, build: textAt(project, 'build', 'directory') }))
-    .filter(({ build }) => build !== undefined && insideOf(basedir, build))
+    .map((project) => ({ project, build: textAt(project, 'build', DIRECTORY) }))
+    .filter(({ build }) => build !== undefined && isStrictlyInside(basedir, build))
     .sort(
       (left, right) =>
         depth(path.relative(basedir, left.build)) - depth(path.relative(basedir, right.build)),
@@ -242,7 +243,7 @@ function matchProject(pomFile, candidates) {
 
 function moduleDirectory(projectRoot, pomFile, modules) {
   const basedir = path.dirname(pomFile);
-  if (basedir !== projectRoot && !insideOf(projectRoot, basedir)) {
+  if (basedir !== projectRoot && !isStrictlyInside(projectRoot, basedir)) {
     throw new Error(
       `Maven module ${basedir} lies outside ${projectRoot}; run nitpicker from a directory that holds every module`,
     );

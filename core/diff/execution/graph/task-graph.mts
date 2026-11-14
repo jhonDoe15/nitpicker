@@ -118,7 +118,7 @@ function scheduleTasks(
         taskPromises.get(name) ??
         Promise.resolve<Outcome>({
           name,
-          error: `Analyzer dependency ${name} is missing for ${task.name}`,
+          error: `${task.name} skipped: ${name} failed (see above)`,
           missing: true,
         }),
     );

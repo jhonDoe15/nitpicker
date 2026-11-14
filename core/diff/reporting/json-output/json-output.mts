@@ -56,6 +56,8 @@ export function comparisonJson({
     modeFields: {
       base: { ref: base.baseRef, source: base.source },
       ...(report.summary['noChanges'] === true ? { noChanges: true } : {}),
+      ...(report.summary['skippedAll'] === true ? { skippedAll: true } : {}),
+      ...skippedField(report.summary['skippedAnalyzers']),
     },
     findings: report.newFindings,
     held: heldFindings(report).length,
@@ -64,6 +66,10 @@ export function comparisonJson({
     gateExitCode,
     exitCode,
   });
+}
+
+function skippedField(skippedAnalyzers: unknown): object {
+  return Array.isArray(skippedAnalyzers) && skippedAnalyzers.length > 0 ? { skippedAnalyzers } : {};
 }
 
 export function snapshotJson({ report, outputRoot, exitCode }: SnapshotJson): string {

@@ -5,6 +5,7 @@ import { TEMPORARY_WORKTREE_PREFIX } from '../../../../core/diff/git/repository/
 import { containedPath } from './package-managers/contained-path.mjs';
 import { manifestDirectories } from './package-managers/members.mjs';
 import { GIT_TIMEOUT_MS } from '../../../../shared/processes/deadlines.mjs';
+import { isStrictlyInside } from '../../../../shared/filesystem.mjs';
 
 const LOCAL_SPEC = /^(?:file|link|portal):(?<target>.+)$/u;
 const DEPENDENCY_FIELDS = [
@@ -22,11 +23,6 @@ function repositoryRoot(directory) {
     timeout: GIT_TIMEOUT_MS,
   });
   return result.status === 0 ? realpathSync(result.stdout.trim()) : undefined;
-}
-
-function isInside(parent, candidate) {
-  const relative = path.relative(parent, candidate);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
 function parsedManifest(file) {
@@ -76,7 +72,7 @@ function livePath(target, source) {
 }
 
 function copyFromLive(target, source) {
-  if (existsSync(target) || !isInside(source.scratchRoot, target)) {
+  if (existsSync(target) || !isStrictlyInside(source.scratchRoot, target)) {
     return false;
   }
   const copy = containedPath(source.scratchRoot, path.relative(source.scratchRoot, target));

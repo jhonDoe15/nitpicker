@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { createCheckAnalyzer } from '../hygiene/analyzers.mjs';
 import { git } from '../hygiene/tracked-files.mjs';
 import { CHANGE_HISTORY_TOOL } from '../project-rules/hygiene-rules.mjs';
+import { EVERYTHING_INPUTS } from '../input-sets/inputs.mjs';
 import { cloneDepth } from './co-change/evidence/git-history.mjs';
 
 const HISTORY_RUNNER = 'history/runner.mjs';
@@ -20,6 +21,7 @@ export function createHistoryAnalyzers(entryPath) {
       runner: HISTORY_RUNNER,
       entryPath,
       extraArguments: comparedHistory,
+      inputs: EVERYTHING_INPUTS,
       environmentToken: cloneDepth,
     }),
   ];

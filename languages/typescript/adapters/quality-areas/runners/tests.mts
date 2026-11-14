@@ -2,7 +2,7 @@ import type { Finding } from '../../static-checks/shared.mts';
 import type { QualityAreaOptions } from '../typed/area-types.mts';
 import { runNodeTool, parseReportJson } from '../typed/tooling.mts';
 import path from 'node:path';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import {
   COVERAGE_REPORT_PATH,
   coverageFailureFindings,
@@ -45,10 +45,25 @@ export async function runCoverage(options: QualityAreaOptions): Promise<Finding[
     rmSync(path.join(options.projectRoot, COVERAGE_REPORT_PATH), { force: true });
     return [noTestsRanFinding(options, run.runnerName)];
   }
+  keepCoverageReport(options);
   return [
     ...readCoverageFindings(options, run.report),
     ...(await readSlowTestFindings(options, run.report)),
   ];
+}
+
+function keepCoverageReport(options: QualityAreaOptions): void {
+  const directory = options.keepCoverageReport;
+  const source = path.join(options.projectRoot, COVERAGE_REPORT_PATH);
+  if (directory === undefined || directory === '' || !existsSync(source)) {
+    return;
+  }
+  const target = path.resolve(directory, `${options.snapshot}-coverage-final.json`);
+  if (path.relative(directory, target).startsWith('..')) {
+    return;
+  }
+  mkdirSync(directory, { recursive: true });
+  copyFileSync(source, target);
 }
 
 function noTestsRanFinding(options: QualityAreaOptions, runnerName: string): Finding {

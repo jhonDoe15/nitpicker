@@ -5,12 +5,16 @@ import { noticeSection } from './review/notices.mts';
 import { policyChangeSection } from './review/policy-changes.mts';
 import { quickLines, stagedLines } from '../../quick/summary.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
+import { skippedLines } from '../skipping/lines.mts';
+import { metricChange } from './console/metric-values.mts';
+import { cleanLine, isActiveDiffTool, splitTools } from './console/tool-table.mts';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import type { ReferenceLinks, ReportData, ReportEntry } from '../../../shared/values/findings.mts';
 import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import {
+  failingFirstLines,
   findingSectionLines,
   ruleFilterSection,
   toolErrorSectionLines,
@@ -26,6 +30,14 @@ const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 const docsUrl: (relativePath: string, anchor: undefined, root: unknown) => unknown = repositoryUrl;
 const helpUri: (links: ReferenceLinks, finding: ReportEntry) => unknown = helpUriFor;
 const links: () => ReferenceLinks = referenceLinks;
+const skippedLinesOf: (summary: unknown) => readonly string[] = skippedLines;
+const changeOf: (metric: ReportEntry) => string = metricChange;
+const activeAndClean: (
+  tools: readonly unknown[],
+  isActive: (tool: unknown) => boolean,
+) => { readonly active: unknown[]; readonly clean: number } = splitTools;
+const isActive: (tool: unknown) => boolean = isActiveDiffTool;
+const cleanLineOf: (clean: number) => string = cleanLine;
 
 function field(value: unknown, key: string): string {
   return textOf(fieldOf(value, key));
@@ -42,7 +54,7 @@ export function renderTextReport(
     ...noticeSection(listOf(report.summary['notices'])),
     ...toolCountLines(report.summary),
   ];
-  lines.push(...findingSectionLines('New findings', report.newFindings));
+  lines.push(...failingFirstLines('New', report.newFindings));
   lines.push(...ruleReferenceLines(report.newFindings, reference));
   appendHeldSection(lines, report.unchangedFindings);
   lines.push(...findingSectionLines('Resolved findings', report.resolvedFindings));
@@ -69,6 +81,7 @@ function summaryLines(report: ReportData): unknown[] {
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
     ...partialRunLines(summary),
+    ...skippedLinesOf(summary),
     ...quickLinesOf(summary),
   ];
 }
@@ -82,13 +95,22 @@ function configOverrideLines(configOverrides: readonly unknown[]): string[] {
 
 function toolCountLines(summary: Summary): string[] {
   const tools = listOf(summary['tools']);
+  if (summary['skippedAll'] === true) {
+    return ['Analyzers: none ran, no changed file is in their inputs'];
+  }
   if (summary['noChanges'] === true) {
     return ['Analyzers: none ran, the head has the same files as the merge base'];
   }
   if (tools.length === 0) {
     return ['Analyzers: none configured'];
   }
-  return ['', 'Per-tool counts:', ...tools.map(toolCountLine)];
+  const { active, clean } = activeAndClean(tools, isActive);
+  return [
+    '',
+    'Per-tool counts:',
+    ...active.map(toolCountLine),
+    ...(clean === 0 ? [] : [cleanLineOf(clean)]),
+  ];
 }
 
 function toolCountLine(tool: unknown): string {
@@ -144,13 +166,8 @@ function appendMetricSection(lines: unknown[], metrics: readonly ReportEntry[]):
   }
   lines.push('', 'Changed metrics:');
   for (const metric of metrics) {
-    const change = `${field(metric, 'baseValue')} -> ${field(metric, 'headValue')} (${formatDelta(metric['delta'])})`;
     lines.push(
-      `${textOf(metric.tool)}/${textOf(metric.rule)} ${textOf(metric.path)} ${field(metric, 'metric')}: ${change}`,
+      `${textOf(metric.tool)}/${textOf(metric.rule)} ${textOf(metric.path)} ${field(metric, 'metric')}: ${changeOf(metric)}`,
     );
   }
-}
-
-function formatDelta(delta: unknown): string {
-  return Number(delta) > 0 ? `+${String(delta)}` : String(delta);
 }

@@ -31,6 +31,8 @@ import {
   withRatchets,
 } from './ratchets/ratchets.mts';
 import { requiredString } from '../static-checks/arguments.mts';
+import { collapseAnyChains } from './chains/any-chain.mts';
+import { withCatchParameterWording } from './messages/catch-parameter.mts';
 
 type NormalizedMessage = {
   readonly finding: EslintFinding;
@@ -103,8 +105,8 @@ function normalizeResult({
     throw new TypeError(`ESLint result ${String(resultIndex)} must contain messages`);
   }
   const projectFile = validatedProjectFile(projectRoot, result.filePath);
-  const messages = withoutFatalDirectives(withoutSupersededMessages(result.messages));
-  if (messages.length === 0) {
+  const unsuperseded = withoutFatalDirectives(withoutSupersededMessages(result.messages));
+  if (unsuperseded.length === 0) {
     return [];
   }
   const relativePath = projectFile.relativePath;
@@ -116,6 +118,7 @@ function normalizeResult({
     true,
     scriptKind(relativePath),
   );
+  const messages = collapseAnyChains(unsuperseded, sourceFile);
   return messages.map((message, messageIndex) =>
     normalizeMessage({
       message,
@@ -136,10 +139,7 @@ function normalizeMessage({
 }: MessageContext): NormalizedMessage {
   assertMessageRecord(message, context);
   const messageText = validatedMessageText(message, context);
-  const ruleId =
-    typeof message.ruleId === 'string' && message.ruleId.length > 0
-      ? message.ruleId
-      : nonRuleDiagnosticId(messageText, context);
+  const ruleId = ruleIdOf(message, messageText, context);
   const positions = reportedPositions(message, context, sourceFile);
   const report = locateReport(sourceFile, positions);
   const messageIdentity = messageIdentityOf(message, messageText);
@@ -149,12 +149,7 @@ function normalizeMessage({
     tool: analyzerName,
     rule: ruleId,
     path: relativePath,
-    identity: [
-      `message:${messageIdentity}`,
-      `node:${report.nodeType}`,
-      `syntax:${report.syntax}`,
-      ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
-    ].join('|'),
+    identity: findingIdentity({ messageIdentity, report, metric, uses: message.chainUses }),
     ...hintedMessage({
       ruleId,
       messageText,
@@ -169,12 +164,44 @@ function normalizeMessage({
   if (symbol !== undefined) {
     finding.symbol = symbol;
   }
-  const plan = ratchetPlan({ metric, symbol, reportedNode: report.reportedNode, messageIdentity });
+  const plan = ratchetPlan({
+    metric,
+    symbol,
+    reportedNode: report.reportedNode,
+    messageIdentity,
+    uses: message.chainUses,
+  });
   const anchorHash = plan && enclosingFunctionHash(report.reportedNode, symbol);
   return {
     finding,
     plan: plan === undefined || anchorHash === undefined ? plan : { ...plan, anchorHash },
   };
+}
+
+function ruleIdOf(message: EslintMessage, messageText: string, context: string): string {
+  return typeof message.ruleId === 'string' && message.ruleId.length > 0
+    ? message.ruleId
+    : nonRuleDiagnosticId(messageText, context);
+}
+
+function findingIdentity({
+  messageIdentity,
+  report,
+  metric,
+  uses,
+}: {
+  readonly messageIdentity: string;
+  readonly report: LocatedReport;
+  readonly metric: { readonly value: number } | undefined;
+  readonly uses: number | undefined;
+}): string {
+  return [
+    `message:${messageIdentity}`,
+    `node:${report.nodeType}`,
+    `syntax:${report.syntax}`,
+    ...(metric === undefined ? [] : [`value:${String(metric.value)}`]),
+    ...(uses === undefined ? [] : [`uses:${String(uses)}`]),
+  ].join('|');
 }
 
 function assertMessageRecord(message: unknown, context: string): asserts message is EslintMessage {
@@ -222,13 +249,14 @@ function hintedMessage({
   readonly locatedNode: TypeScript.Node;
   readonly sourceFile: TypeScript.SourceFile;
 }): { readonly message: string; readonly allowedForm?: string } {
-  return routedEslintFields({
+  const fields = routedEslintFields({
     ruleId,
     text: messageText,
     relativePath,
     node: comment === undefined ? locatedNode : undefined,
     sourceFile,
   });
+  return withCatchParameterWording(fields, { ruleId, comment, locatedNode });
 }
 
 function reportedPositions(
