@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldOf, numberOr, textOf } from '../../../../shared/values/readers.mts';
 import { ingestJacocoBranches } from './jacoco-branches.mts';
 import {
   isCompilerGeneratedBranchLine,
@@ -12,7 +13,7 @@ import {
 const fixtures = path.resolve(import.meta.dirname, '..', 'fixtures');
 const report = readFileSync(path.join(fixtures, 'jacoco-kotlin.xml'), 'utf8');
 
-const sourceText = (file) => {
+const sourceText = (file: string): string | undefined => {
   try {
     return readFileSync(path.join(fixtures, 'kotlin-measurement', file), 'utf8');
   } catch {
@@ -20,10 +21,16 @@ const sourceText = (file) => {
   }
 };
 
-const ingest = (xml) =>
-  ingestJacocoBranches(xml, { sourceRoot: 'src/main/kotlin', sourceText }).findings.map(
-    (finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`,
-  );
+function lineOf(finding: unknown): number {
+  return numberOr(fieldOf(fieldOf(finding, 'location'), 'line'), 0);
+}
+
+function located(finding: unknown): string {
+  return `${path.basename(textOf(fieldOf(finding, 'path')))}:${String(lineOf(finding))}`;
+}
+
+const ingest = (xml: string) =>
+  ingestJacocoBranches(xml, { sourceRoot: 'src/main/kotlin', sourceText }).findings.map(located);
 
 describe('isCompilerGeneratedBranchLine', () => {
   it.each([
@@ -118,7 +125,7 @@ describe('changed-branch-coverage on Kotlin sources', () => {
     const everyLine = ingestJacocoBranches(asJava, {
       sourceRoot: 'src/main/kotlin',
       sourceText: (file) => sourceText(file.replace(/\.java$/, '.kt')),
-    }).findings.map((finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`);
+    }).findings.map(located);
 
     expect(everyLine).toEqual([
       'More.java:10',
@@ -145,7 +152,7 @@ describe('changed-branch-coverage on Kotlin sources', () => {
 });
 
 describe('changed-branch-coverage on Kotlin lines that call an inlined library function', () => {
-  const measured = [
+  const measured: [string, number][] = [
     ['fun a(t: String?): String = t.orEmpty()', 2],
     ['fun b(t: List<Int>?): Boolean = t.isNullOrEmpty()', 4],
     ['fun c(t: String?): Boolean = t.isNullOrBlank()', 4],
@@ -181,22 +188,22 @@ describe('changed-branch-coverage on Kotlin lines that call an inlined library f
   ).findings;
 
   it('drops a line whose branch count is that of its library calls and keeps every other line', () => {
-    expect(findings.map(({ location }) => measured[location.line - 3][0])).toEqual(
+    expect(findings.map((finding) => measured[lineOf(finding) - 3]?.[0])).toEqual(
       measured.slice(6).map(([line]) => line),
     );
   });
 
   it('says how to take the null arm of the library call on a line it keeps', () => {
-    expect(findings[0].message).toBe(
+    expect(fieldOf(findings[0], 'message')).toBe(
       'Branch coverage is 83.33%; minimum is 95%. Not taken: a branch of this line or of isNullOrBlank, which is inlined from the standard library (pass null to take its null arm). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
-    expect(findings.at(-1).message).not.toContain('inlined');
+    expect(fieldOf(findings.at(-1), 'message')).not.toContain('inlined');
   });
 });
 
 describe('changed-branch-coverage on Kotlin statements that span lines', () => {
   const multilineReport = readFileSync(path.join(fixtures, 'jacoco-kotlin-multiline.xml'), 'utf8');
-  const multilineSource = (file) => {
+  const multilineSource = (file: string): string | undefined => {
     try {
       return readFileSync(path.join(fixtures, 'kotlin-multiline', file), 'utf8');
     } catch {
@@ -211,8 +218,8 @@ describe('changed-branch-coverage on Kotlin statements that span lines', () => {
   it('keeps every line a statement spans and drops only the suspension lines', () => {
     expect(
       findings
-        .filter((finding) => finding.rule === 'changed-branch-coverage')
-        .map((finding) => `${path.basename(finding.path)}:${String(finding.location.line)}`),
+        .filter((finding) => fieldOf(finding, 'rule') === 'changed-branch-coverage')
+        .map(located),
     ).toEqual([
       'Legacy.kt:4',
       'Legacy.kt:11',
@@ -240,16 +247,23 @@ describe('changed-branch-coverage on Kotlin statements that span lines', () => {
   });
 
   it('says which outcome a line that branches and suspends misses', () => {
-    expect(findings.find((finding) => finding.location?.line === 39).message).toBe(
+    expect(
+      fieldOf(
+        findings.find((finding) => lineOf(finding) === 39),
+        'message',
+      ),
+    ).toBe(
       'Branch coverage is 75.00%; minimum is 95%. Not taken: emit suspending (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
   });
 
   it('reports a Kotlin file it cannot find without failing on it', () => {
-    const notFound = findings.filter((finding) => finding.rule === 'branch-source-not-found');
+    const notFound = findings.filter(
+      (finding) => fieldOf(finding, 'rule') === 'branch-source-not-found',
+    );
 
-    expect(notFound.map(({ path: file, classification }) => [file, classification])).toEqual([
-      ['demo/flat/Flat.kt', 'descriptive'],
-    ]);
+    expect(
+      notFound.map((finding) => [fieldOf(finding, 'path'), fieldOf(finding, 'classification')]),
+    ).toEqual([['demo/flat/Flat.kt', 'descriptive']]);
   });
 });
