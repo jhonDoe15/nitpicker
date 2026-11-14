@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PRETTIER_CONVENTIONS } from './prettier-conventions.mjs';
+import { measureOf } from './typed/convention-views.mts';
 
-const measures = Object.fromEntries(PRETTIER_CONVENTIONS.map(({ id, measure }) => [id, measure]));
 const statements = Array.from({ length: 12 }, (_, index) => `const value${String(index)} = read()`);
 const shortLines = Array.from(
   { length: 6 },
@@ -40,6 +40,6 @@ describe('per-file measures on code that gives no evidence or misleading evidenc
     ['prettier.arrowParens', '/** source.map(x => x) */\nconst f = (a: A): B => a;\n', undefined],
     ['prettier.endOfLine', 'a;\r\nb;\r\nc;\n', 'crlf'],
   ])('%s on %j', (id, text, expected) => {
-    expect(measures[id](text)).toBe(expected);
+    expect(measureOf(PRETTIER_CONVENTIONS, id)(text)).toBe(expected);
   });
 });

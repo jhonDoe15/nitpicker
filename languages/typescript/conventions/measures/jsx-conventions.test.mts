@@ -1,9 +1,8 @@
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
 import { JSX_CONVENTIONS } from './jsx-conventions.mjs';
-import { prettierConventionOptions } from '../prettier-conventions.mjs';
+import { measureOf, prettierConventionOptions } from '../typed/convention-views.mts';
 
-const measures = Object.fromEntries(JSX_CONVENTIONS.map(({ id, measure }) => [id, measure]));
 const source = `export function Card({ item, onSelect }) {
   return (
     <section className="card" data-kind="primary">
@@ -19,8 +18,14 @@ const source = `export function Card({ item, onSelect }) {
 }
 `;
 
-const formatted = (options) =>
-  prettier.format(source, { parser: 'babel', singleQuote: true, printWidth: 80, ...options });
+function formatted(options: prettier.Options): Promise<string> {
+  return prettier.format(source, {
+    parser: 'babel',
+    singleQuote: true,
+    printWidth: 80,
+    ...options,
+  });
+}
 
 describe('JSX conventions', () => {
   for (const convention of JSX_CONVENTIONS) {
@@ -84,6 +89,6 @@ describe('JSX conventions', () => {
     ['prettier.bracketSameLine', 'f(\n  a=1,\n  b,\n);\nx = y =>\n  y;\n', undefined],
     ['prettier.bracketSameLine', '<A\n  b="1"\n  onClick={() => run()}>\n  x\n</A>;\n', 'sameLine'],
   ])('%s on %j', (id, text, expected) => {
-    expect(measures[id](text, 'a.tsx')).toBe(expected);
+    expect(measureOf(JSX_CONVENTIONS, id)(text, 'a.tsx')).toBe(expected);
   });
 });

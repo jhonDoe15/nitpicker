@@ -2,13 +2,18 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { describe, expect, it } from 'vitest';
-import { validateConventions } from '../../../shared/conventions/settings.mjs';
-import { layeredPrettierOptions } from '../adapters/prettier/prettier-layers.mjs';
+import { describe, expect, it, vi } from 'vitest';
 import { usesLayeredPrettier } from '../preset/head-policy.mjs';
-import { PRETTIER_CONVENTIONS, prettierConventionOptions } from './prettier-conventions.mjs';
+import { validateConventions } from '../../../shared/conventions/settings.mjs';
+import {
+  layeredPrettierOptions,
+  measureOf,
+  PRETTIER_CONVENTIONS,
+  prettierConventionOptions,
+} from './typed/convention-views.mts';
 
-const helper = (index) => `
+function helper(index: number): string {
+  return `
 export function describeOrder${String(index)}(order, customer, warehouse) {
   const lines = order.items.map((item) => formatLine(item.sku, item.quantity, item.unitPrice, customer.currency));
   const summary = { id: order.id, customer: customer.name, warehouse: warehouse.code, total: totalOf(lines) };
@@ -20,18 +25,20 @@ export function describeOrder${String(index)}(order, customer, warehouse) {
   return [summary, shipping, notice, lines.filter((line) => line.quantity > 0).map((line) => line.text)];
 }
 `;
+}
 const source = `import { formatLine, totalOf } from './lines.mjs';
 import { buildNotice, reportOverLimit, selectShippingOption } from "./shipping.mjs";
 ${Array.from({ length: 6 }, (_, index) => helper(index)).join('')}`;
 
-const formatted = (options) =>
-  prettier.format(source, {
+function formatted(options: prettier.Options): Promise<string> {
+  return prettier.format(source, {
     parser: 'babel',
     singleQuote: true,
     trailingComma: 'all',
     printWidth: 100,
     ...options,
   });
+}
 
 describe('Prettier conventions', () => {
   for (const convention of PRETTIER_CONVENTIONS) {
@@ -39,7 +46,7 @@ describe('Prettier conventions', () => {
       it(`reads ${convention.id} = ${option} from code Prettier formatted that way`, async () => {
         const text = await formatted(prettierConventionOptions({ [convention.id]: option }));
 
-        expect(convention.measure(text)).toBe(option);
+        expect(measureOf(PRETTIER_CONVENTIONS, convention.id)(text)).toBe(option);
       });
     }
   }
@@ -73,12 +80,11 @@ describe('Prettier conventions', () => {
   });
 
   it('reads an annotated return type as no evidence about arrow parameters', () => {
-    const arrowParens = PRETTIER_CONVENTIONS.find(({ id }) => id === 'prettier.arrowParens');
-
     expect(
-      arrowParens.measure(
-        'const a = (a: A): Result => a;\nconst b = (): void => b;\nf((item) => item);\n',
-      ),
+      measureOf(
+        PRETTIER_CONVENTIONS,
+        'prettier.arrowParens',
+      )('const a = (a: A): Result => a;\nconst b = (): void => b;\nf((item) => item);\n'),
     ).toBe('always');
   });
 
@@ -105,9 +111,11 @@ describe('Prettier conventions', () => {
   });
 
   it('accepts a pinned print width of any number of columns', () => {
-    const validate = (width) => () => {
-      validateConventions({ 'prettier.printWidth': width }, PRETTIER_CONVENTIONS);
-    };
+    function validate(width: string): () => void {
+      return () => {
+        validateConventions({ 'prettier.printWidth': width }, PRETTIER_CONVENTIONS);
+      };
+    }
 
     expect(validate('110')).not.toThrow();
     expect(validate('wide')).toThrow(
@@ -169,7 +177,7 @@ describe('Prettier conventions', () => {
   });
 });
 
-function optionsFor(directory, relativePath, precedence) {
+function optionsFor(directory: string, relativePath: string, precedence: readonly string[]) {
   return layeredPrettierOptions(prettier, {
     precedence,
     policyOptions: { singleQuote: true, semi: true, printWidth: 100 },
@@ -178,18 +186,17 @@ function optionsFor(directory, relativePath, precedence) {
   });
 }
 
-async function withConventions(directory, conventions, run) {
+async function withConventions(
+  directory: string,
+  conventions: Readonly<Record<string, string>>,
+  run: () => Promise<void>,
+) {
   const policyFile = path.join(directory, 'policy.json');
   writeFileSync(policyFile, JSON.stringify({ conventions }));
-  const previous = process.env.NITPICKER_POLICY;
-  process.env.NITPICKER_POLICY = policyFile;
+  vi.stubEnv('NITPICKER_POLICY', policyFile);
   try {
     await run();
   } finally {
-    if (previous === undefined) {
-      delete process.env.NITPICKER_POLICY;
-    } else {
-      process.env.NITPICKER_POLICY = previous;
-    }
+    vi.unstubAllEnvs();
   }
 }

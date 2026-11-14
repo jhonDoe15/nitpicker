@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { TYPE_IMPORT_CONVENTION, typeImportFixStyle } from './type-import-style.mjs';
 
-const style = (text) => TYPE_IMPORT_CONVENTION.measure(text, 'src/a.ts');
+function style(text: string): string | undefined {
+  return TYPE_IMPORT_CONVENTION.measure(text);
+}
 
 describe('type import style votes', () => {
   it.each([

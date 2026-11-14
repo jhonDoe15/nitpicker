@@ -2,11 +2,10 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { describe, expect, it } from 'vitest';
-import { layeredPrettierOptions } from '../../adapters/prettier/prettier-layers.mjs';
+import { describe, expect, it, vi } from 'vitest';
+import { layeredPrettierOptions, measureOf } from '../typed/convention-views.mts';
 import { dataConventionOptions, dataFileKind, DATA_CONVENTIONS } from './data-conventions.mjs';
 
-const measures = Object.fromEntries(DATA_CONVENTIONS.map(({ id, measure }) => [id, measure]));
 const json = '{"name":"demo","scripts":{"build":"tsc","test":"vitest"},"files":["dist",{"a":1}]}';
 const yaml = `name: ci
 on:
@@ -22,7 +21,7 @@ jobs:
       - run: npm test
 `;
 
-const parsers = {
+const parsers: Readonly<Record<string, readonly [prettier.BuiltInParserName, string]>> = {
   'prettier.jsonIndentation': ['json', json],
   'prettier.yamlIndentation': ['yaml', yaml],
 };
@@ -31,7 +30,7 @@ describe('data conventions', () => {
   for (const convention of DATA_CONVENTIONS) {
     for (const option of convention.options) {
       it(`reads ${convention.id} = ${option} from a file Prettier formatted that way`, async () => {
-        const [parser, text] = parsers[convention.id];
+        const [parser, text] = parsers[convention.id] ?? ['json', json];
         const options = option === 'tab' ? { useTabs: true } : { tabWidth: Number(option) };
 
         expect(convention.measure(await prettier.format(text, { parser, ...options }))).toBe(
@@ -53,7 +52,7 @@ describe('data conventions', () => {
     ['prettier.yamlIndentation', 'key:\n   odd: 1\n', undefined],
     ['prettier.yamlIndentation', '- items:\n      - x\n', undefined],
   ])('%s on %j', (id, text, expected) => {
-    expect(measures[id](text)).toBe(expected);
+    expect(measureOf(DATA_CONVENTIONS, id)(text)).toBe(expected);
   });
 
   it('maps the choices to Prettier options per file kind', () => {
@@ -67,7 +66,7 @@ describe('data conventions', () => {
       useTabs: false,
       tabWidth: 4,
     });
-    expect(dataConventionOptions('yaml', {})).toEqual({});
+    expect(dataConventionOptions('yaml', {}, undefined)).toEqual({});
     expect(dataConventionOptions('yaml', {}, { followed: true })).toEqual({
       useTabs: false,
       tabWidth: 2,
@@ -76,7 +75,11 @@ describe('data conventions', () => {
 });
 
 describe('data conventions in the Prettier layers', () => {
-  async function optionsFor(relativePath, precedence, projectConfig) {
+  async function optionsFor(
+    relativePath: string,
+    precedence: readonly string[],
+    projectConfig?: Readonly<Record<string, unknown>>,
+  ) {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-data-conventions-'));
     if (projectConfig !== undefined) {
       writeFileSync(path.join(directory, '.prettierrc.json'), JSON.stringify(projectConfig));
@@ -88,8 +91,7 @@ describe('data conventions in the Prettier layers', () => {
         conventions: { 'prettier.jsonIndentation': '4', 'prettier.yamlIndentation': '4' },
       }),
     );
-    const previous = process.env.NITPICKER_POLICY;
-    process.env.NITPICKER_POLICY = policyFile;
+    vi.stubEnv('NITPICKER_POLICY', policyFile);
     try {
       return await layeredPrettierOptions(prettier, {
         precedence,
@@ -98,11 +100,7 @@ describe('data conventions in the Prettier layers', () => {
         relativePath,
       });
     } finally {
-      if (previous === undefined) {
-        delete process.env.NITPICKER_POLICY;
-      } else {
-        process.env.NITPICKER_POLICY = previous;
-      }
+      vi.unstubAllEnvs();
       rmSync(directory, { recursive: true, force: true });
     }
   }
