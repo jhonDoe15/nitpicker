@@ -108,7 +108,7 @@ public class Notifications {
     }
   }
 
-  public void repeat(boolean twice) { // violation: BooleanFlagParameter
+  public void repeatTwice(boolean twice) { // violation: BooleanFlagParameter
     for (int i = 0; twice && i < 2; i++) {
       sent.add("again");
     }
