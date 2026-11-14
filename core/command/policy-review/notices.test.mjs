@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { historyAvailabilityNotes, noticeDescriber } from './notices.mts';
-import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mjs';
+import { outsideRootsNotices } from '../../../languages/typescript/preset/notices/outside-roots-notice.mts';
 import {
   SOURCE_FILES,
   useHistoryRepositories,
