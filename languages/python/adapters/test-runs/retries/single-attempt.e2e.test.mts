@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   installPackages,
   write,
@@ -52,8 +52,6 @@ function preparedRepository(): string {
   return prepared;
 }
 
-const root = pythonE2eEnabled ? preparedRepository() : '';
-
 afterAll(removeRepositories);
 
 function unescaped(text: string): string {
@@ -83,7 +81,12 @@ function failuresIn(report: string) {
   });
 }
 
-function run(plugins: readonly string[], code: string, extra: readonly string[] = []) {
+function run(
+  root: string,
+  plugins: readonly string[],
+  code: string,
+  extra: readonly string[] = [],
+) {
   write(root, { 'tests/test_orders.py': code });
   const report = path.join(root, 'report.xml');
   const loaded = plugins.flatMap((plugin) => ['-p', plugin]);
@@ -110,6 +113,12 @@ function run(plugins: readonly string[], code: string, extra: readonly string[] 
 }
 
 describe.skipIf(!pythonE2eEnabled)('a test that passes only on a retry', () => {
+  let root: string;
+
+  beforeAll(() => {
+    root = preparedRepository();
+  });
+
   it.each<[string, string[], string[], string, boolean]>([
     ['pytest-rerunfailures', ['pytest_rerunfailures'], [], '@pytest.mark.flaky(reruns=2)', true],
     ['flaky', ['flaky.flaky_pytest_plugin'], [], '@flaky(max_runs=3)', false],
@@ -122,7 +131,7 @@ describe.skipIf(!pythonE2eEnabled)('a test that passes only on a retry', () => {
       true,
     ],
   ])('counts as failed under %s', (_name, plugins, extra, decorator, firstFailureShown) => {
-    const outcome = run(plugins, FAILS_ONCE(decorator, 2), extra);
+    const outcome = run(root, plugins, FAILS_ONCE(decorator, 2), extra);
 
     expect(outcome).toEqual({
       status: 1,
@@ -131,17 +140,25 @@ describe.skipIf(!pythonE2eEnabled)('a test that passes only on a retry', () => {
   });
 
   it('passes a test that passes on its first attempt', () => {
-    const outcome = run(['pytest_rerunfailures'], FAILS_ONCE('@pytest.mark.flaky(reruns=2)', 1));
+    const outcome = run(
+      root,
+      ['pytest_rerunfailures'],
+      FAILS_ONCE('@pytest.mark.flaky(reruns=2)', 1),
+    );
 
     expect(outcome).toEqual({ status: 0, failures: [] });
   });
 
   it('passes subtests, which report several times for one test', () => {
-    expect(run(['pytest_rerunfailures'], SUBTESTS)).toEqual({ status: 0, failures: [] });
+    expect(run(root, ['pytest_rerunfailures'], SUBTESTS)).toEqual({ status: 0, failures: [] });
   });
 
   it('reports a failure without a retry as it is', () => {
-    const outcome = run(['pytest_rerunfailures'], FAILS_ONCE('@pytest.mark.flaky(reruns=0)', 2));
+    const outcome = run(
+      root,
+      ['pytest_rerunfailures'],
+      FAILS_ONCE('@pytest.mark.flaky(reruns=0)', 2),
+    );
 
     expect(outcome).toEqual({
       status: 1,
