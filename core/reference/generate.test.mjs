@@ -3,13 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { entryProblems } from './build.mjs';
+import { entryProblems } from './build.mts';
 import {
   formattedText,
   referenceDataFiles,
   referenceFiles,
   staleReferenceFiles,
-} from './generate.mjs';
+} from './generate.mts';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { ruleEntry } from '../../shared/reference/entry.mjs';
 

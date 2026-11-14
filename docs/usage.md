@@ -86,7 +86,7 @@ left for you:
    missing: `nitpicker` (pinned to the version that runs init), `typescript`, `@types/node` and the test runner's packages (`vitest` and
    `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
    A peer that is installed but older than nitpicker supports is listed as `too old (have 4.0.5,
-   need ...)` and gets the lowest supported range in the command (`'vitest@^4.1.11'`), so the
+need ...)` and gets the lowest supported range in the command (`'vitest@^4.1.11'`), so the
    command changes the declared range or the lock; a bare name would leave a satisfied range as it is.
    At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
    project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
@@ -739,8 +739,9 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
   gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
   `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
-  google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
-  Kotlin and Python sections). The TypeScript and JavaScript fixers touch only the changed files
+  google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin; gofmt, gofumpt
+  or goimports for Go (see the Java, Kotlin and Python sections and the
+  [Go preset](go-preset.md#format-check-following-the-project)). The TypeScript and JavaScript fixers touch only the changed files
   their check covers: ESLint the files `eslint-lint` lints, Prettier the files `prettier-format`
   checks, so a changed `src/README.md` or a script outside the source and test roots is left as it
   is. Only files whose bytes changed are listed under "Fixed files:", and a

@@ -15,7 +15,7 @@ import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
 import {
   entryPointsCheck,
   eslintChecks,

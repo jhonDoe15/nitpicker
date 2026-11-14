@@ -185,6 +185,7 @@ const REPEATED = [
   ['Java branch coverage', 'jacoco', 'src/main/java/demo/Mod.java', '        if (x) {'],
   ['Kotlin branch coverage', 'jacoco', 'src/main/kotlin/demo/Mod.kt', '        if (x) {'],
   ['an ESLint finding', 'eslint', 'src/mod.ts', '  if (x) {'],
+  ['Go branch coverage', 'coverage', 'shop/mod.go', '\tif x {'],
 ];
 const [PYTHON] = REPEATED;
 

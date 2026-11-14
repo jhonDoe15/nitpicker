@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mjs';
+import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
