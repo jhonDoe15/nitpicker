@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-export function containedPath(base, relative) {
+export function containedPath(base: string, relative: string): string {
   const root = path.resolve(base);
   const full = path.resolve(root, relative);
   const fromRoot = path.relative(root, full);

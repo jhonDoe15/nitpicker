@@ -1,17 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
+  type ResolvedHeadPolicy,
   resolveHeadPolicy,
   withHeadCheckoutFacts,
   withHeadPolicyFile,
-} from '../../../preset/head-policy.mjs';
+} from '../typed/head-policy-views.mts';
 import { normalizeArchitectureViolations } from '../../static-checks-runner.mts';
 import { loadDependencyGraph } from '../project-dependency-graph.mts';
+import { writeFileTree } from '../../test-support/file-tree.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -45,18 +47,19 @@ const PROJECT_CONFIG = [
   '',
 ].join('\n');
 
-function createProject(files) {
+function createProject(files: Record<string, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-depcruise-precedence-'));
   roots.push(root);
   symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'));
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  writeFileTree(root, files);
   return root;
 }
 
-function architecture(root, policy, { reportsConfigErrors = true } = {}) {
+function architecture(
+  root: string,
+  policy: ResolvedHeadPolicy,
+  { reportsConfigErrors = true }: { reportsConfigErrors?: boolean } = {},
+): string[] {
   return withHeadPolicyFile(policy, (policyFile) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
     const report = loadDependencyGraph({
@@ -64,6 +67,7 @@ function architecture(root, policy, { reportsConfigErrors = true } = {}) {
       policyRoot: PACKAGE_ROOT,
       liveProjectRoot: PACKAGE_ROOT,
       patterns: ['src'],
+      exclude: undefined,
       reportsConfigErrors,
     });
     return normalizeArchitectureViolations(report, 'dependency-architecture')
@@ -72,7 +76,7 @@ function architecture(root, policy, { reportsConfigErrors = true } = {}) {
   });
 }
 
-function cruiserConfig(precedence, preset) {
+function cruiserConfig(precedence: string[], preset?: string) {
   return {
     ...(preset === undefined ? {} : { preset }),
     tools: { 'dependency-cruiser': { precedence } },
@@ -119,7 +123,7 @@ describe('dependency-cruiser project config precedence', () => {
         ],
       }),
     });
-    const run = (precedence) =>
+    const run = (precedence: string[]) =>
       architecture(root, resolveHeadPolicy(cruiserConfig(precedence, 'javascript'), root));
     const nitpicker = [
       'no-production-cycles src/c/x.js enforceable',
@@ -155,6 +159,7 @@ describe('dependency-cruiser project config precedence', () => {
         policyRoot: PACKAGE_ROOT,
         liveProjectRoot: PACKAGE_ROOT,
         patterns: ['src'],
+        exclude: undefined,
       });
       return normalizeArchitectureViolations(report, 'dependency-architecture').map(
         ({ message, classification }) => `${classification}: ${message}`,

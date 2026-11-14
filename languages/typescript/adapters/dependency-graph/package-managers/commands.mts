@@ -2,7 +2,23 @@ const COREPACK_HINT = 'npm install --global corepack && corepack enable';
 
 const YARN_INSTALL_HINT = `Run \`${COREPACK_HINT} yarn\` or \`npm install --global yarn\`.`;
 
-const MANAGERS = {
+export type ManagerVersion = {
+  name: string;
+  major?: number;
+};
+
+export type ManagerAtRoot = ManagerVersion & {
+  root: string;
+};
+
+type ManagerCommand = {
+  binary: string;
+  args: string[];
+  ignoreYarnPath?: true;
+  installHint: string;
+};
+
+const MANAGERS: Record<string, ManagerCommand> = {
   npm: {
     binary: 'npm',
     args: ['ci', '--ignore-scripts', '--no-audit', '--no-fund', '--prefer-offline'],
@@ -50,7 +66,7 @@ const MANAGERS = {
   },
 };
 
-function managerKey({ name, major }) {
+function managerKey({ name, major }: ManagerVersion): string {
   if (name !== 'yarn') {
     return name;
   }
@@ -60,17 +76,20 @@ function managerKey({ name, major }) {
   return major === 2 ? 'yarnBerry2' : 'yarnBerry';
 }
 
-export function isBerry({ name, major }) {
+export function isBerry({ name, major = 0 }: ManagerVersion): boolean {
   return name === 'yarn' && major > 1;
 }
 
-export function installInvocation(packageManager) {
-  const {
-    binary,
-    args,
-    ignoreYarnPath = false,
-    installHint,
-  } = MANAGERS[managerKey(packageManager)];
+export function installInvocation(packageManager: ManagerVersion): {
+  command: string;
+  args: string[];
+  installHint: string;
+} {
+  const manager = MANAGERS[managerKey(packageManager)];
+  if (manager === undefined) {
+    throw new Error(`Unknown package manager: ${packageManager.name}`);
+  }
+  const { binary, args, ignoreYarnPath = false, installHint } = manager;
   const environment = [
     'COREPACK_ENABLE_AUTO_PIN=0',
     ...(ignoreYarnPath ? ['YARN_IGNORE_PATH=1'] : []),

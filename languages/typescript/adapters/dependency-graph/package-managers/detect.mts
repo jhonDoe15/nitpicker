@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { containedPath } from './contained-path.mjs';
+import { containedPath } from './contained-path.mts';
+import type { ManagerAtRoot } from './commands.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 const LOCKFILE_ORDER = [
   { name: 'pnpm', files: ['pnpm-lock.yaml'] },
@@ -28,12 +30,12 @@ const BERRY_LOCKFILE_VERSION_BY_YARN_2 = 4;
 const FIRST_BERRY_MAJOR = 2;
 const DEFAULT_BERRY_MAJOR = 3;
 
-function readProjectText(root, name) {
+function readProjectText(root: string, name: string): string {
   const file = containedPath(root, name);
   return existsSync(file) ? readFileSync(file, 'utf8') : '';
 }
 
-function ancestorsToRepository(start) {
+function ancestorsToRepository(start: string): string[] {
   const directories = [path.resolve(start)];
   for (const directory of directories) {
     const parent = path.dirname(directory);
@@ -45,17 +47,17 @@ function ancestorsToRepository(start) {
       directories.push(parent);
     }
   }
-  return [directories[0]];
+  return [path.resolve(start)];
 }
 
-export function managerRoot(projectRoot) {
+export function managerRoot(projectRoot: string): string {
   const holder = ancestorsToRepository(projectRoot).find((directory) =>
     LOCKFILE_NAMES.some((file) => existsSync(containedPath(directory, file))),
   );
   return holder ?? path.resolve(projectRoot);
 }
 
-function parsedManifest(text) {
+function parsedManifest(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {
@@ -63,27 +65,27 @@ function parsedManifest(text) {
   }
 }
 
-function declaredPackageManager(root) {
+function declaredPackageManager(root: string): { name?: string; version?: string } | undefined {
   const text = readProjectText(root, 'package.json');
   const manifest = parsedManifest(text);
   const field =
-    manifest.kind === 'malformed-json'
-      ? PACKAGE_MANAGER_IN_TEXT.exec(text)?.groups.field
-      : manifest.packageManager;
+    fieldOf(manifest, 'kind') === 'malformed-json'
+      ? PACKAGE_MANAGER_IN_TEXT.exec(text)?.groups?.['field']
+      : fieldOf(manifest, 'packageManager');
   return PACKAGE_MANAGER_FIELD.exec(typeof field === 'string' ? field : '')?.groups;
 }
 
-function managerFromLockfile(root) {
+function managerFromLockfile(root: string): string | undefined {
   return LOCKFILE_ORDER.find(({ files }) =>
     files.some((file) => existsSync(containedPath(root, file))),
   )?.name;
 }
 
-function majorFromVersion(version) {
+function majorFromVersion(version: string): number {
   return /^\d+$/u.test(version) ? Number(version) : DEFAULT_BERRY_MAJOR;
 }
 
-function yarnMajor(root, declaredVersion) {
+function yarnMajor(root: string, declaredVersion: string | undefined): number {
   if (declaredVersion !== undefined) {
     return majorFromVersion(declaredVersion);
   }
@@ -92,7 +94,7 @@ function yarnMajor(root, declaredVersion) {
     lockfile,
   )?.groups;
   if (metadata !== undefined) {
-    return Number(metadata.version) <= BERRY_LOCKFILE_VERSION_BY_YARN_2
+    return Number(metadata['version']) <= BERRY_LOCKFILE_VERSION_BY_YARN_2
       ? FIRST_BERRY_MAJOR
       : DEFAULT_BERRY_MAJOR;
   }
@@ -102,13 +104,17 @@ function yarnMajor(root, declaredVersion) {
   return existsSync(containedPath(root, '.yarnrc.yml')) ? DEFAULT_BERRY_MAJOR : 1;
 }
 
-export function detectPackageManager(projectRoot) {
+export function detectPackageManager(projectRoot: string): ManagerAtRoot {
   const root = managerRoot(projectRoot);
   const declared = declaredPackageManager(root);
-  const name = KNOWN_MANAGERS.has(declared?.name) ? declared.name : managerFromLockfile(root);
+  const declaredName = declared?.name;
+  const name =
+    declaredName !== undefined && KNOWN_MANAGERS.has(declaredName)
+      ? declaredName
+      : managerFromLockfile(root);
   if (name === undefined) {
     return { name: 'npm', root };
   }
-  const declaredVersion = declared?.name === 'yarn' ? declared.version : undefined;
+  const declaredVersion = declaredName === 'yarn' ? declared?.version : undefined;
   return name === 'yarn' ? { name, root, major: yarnMajor(root, declaredVersion) } : { name, root };
 }

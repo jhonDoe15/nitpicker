@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { installInvocation, isBerry } from './commands.mjs';
+import { installInvocation, isBerry } from './commands.mts';
 
 const YARN_HINT =
   'Run `npm install --global corepack && corepack enable yarn` or `npm install --global yarn`.';

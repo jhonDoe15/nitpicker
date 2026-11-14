@@ -6,12 +6,19 @@ import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from '../../../../core/tooling/bui
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { analyzeCoupling } from '../../preset/coupling/analyze.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../../preset/dependency-graph/cruise.mjs';
-import { analyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
+import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../preset/entry-points/analyze.mjs';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
-import { loadDependencyGraph } from './project-dependency-graph.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { type CruiseReport, loadDependencyGraph } from './project-dependency-graph.mts';
+
+const analyzeEntryPoints: (
+  graph: CruiseReport,
+  sourceRoot: string,
+  options: { readonly layout: typeof defaultResolvedLayout },
+) => { readonly summary: Readonly<Record<string, number>> } = untypedAnalyzeEntryPoints;
 
 const ALL_SOURCES = ['src/a.ts', 'src/b.ts', 'src/leaky.ts', 'test/a.test.ts', 'test/fixture.ts'];
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -20,13 +27,13 @@ afterEach(() => {
   }
 });
 
-function temporaryDirectory(prefix) {
+function temporaryDirectory(prefix: string): string {
   const directory = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   temporaryRoots.push(directory);
   return directory;
 }
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>): string {
   const root = temporaryDirectory('nitpicker-project-graph-');
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
@@ -59,7 +66,10 @@ function componentProject() {
   });
 }
 
-function requestFor(root, overrides = {}) {
+function requestFor(
+  root: string,
+  overrides: { patterns?: string[]; includeOnly?: string; configRelativePath?: string } = {},
+) {
   return {
     projectRoot: root,
     policyRoot: PACKAGE_ROOT,
@@ -70,8 +80,10 @@ function requestFor(root, overrides = {}) {
   };
 }
 
-function sources(graph) {
-  return graph.modules.map((module) => module.source).sort();
+function sources(graph: CruiseReport): string[] {
+  return listOf(graph.modules)
+    .map((module) => textOf(fieldOf(module, 'source')))
+    .sort();
 }
 
 describe('loadDependencyGraph', () => {
@@ -81,9 +93,11 @@ describe('loadDependencyGraph', () => {
     const graph = loadDependencyGraph(requestFor(root));
 
     expect(sources(graph)).toEqual(ALL_SOURCES);
-    expect(graph.summary.violations.map((violation) => violation.rule.name)).toEqual([
-      'no-production-to-test',
-    ]);
+    expect(
+      listOf(graph.summary?.violations).map((violation) =>
+        fieldOf(fieldOf(violation, 'rule'), 'name'),
+      ),
+    ).toEqual(['no-production-to-test']);
     expect(readdirSync(root).filter((name) => name.startsWith('.nitpicker-'))).toEqual([]);
   });
 
@@ -179,7 +193,7 @@ describe('loadDependencyGraph', () => {
     );
     expect(analyzeCoupling(withTests, 'src', { layout }).summary.dependencies).toBeGreaterThan(0);
     expect(
-      analyzeEntryPoints(withTests, 'src', { layout }).summary.publicAlternativeBypasses,
+      analyzeEntryPoints(withTests, 'src', { layout }).summary['publicAlternativeBypasses'],
     ).toBeGreaterThan(0);
   });
 });

@@ -5,7 +5,7 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../../core/diff/git/test-support/git-checkout.mjs';
-import { memberDependencyDirectories } from './members.mjs';
+import { memberDependencyDirectories } from './members.mts';
 
 const { gitCheckout } = useGitCheckouts();
 
