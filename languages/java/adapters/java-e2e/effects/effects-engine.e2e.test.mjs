@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 11,
+      classes: 12,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -131,5 +131,9 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       '111 message concurrent',
       '113 message loop',
     ]);
+  });
+
+  it('reports copies on every step', () => {
+    expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
   });
 });

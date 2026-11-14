@@ -15,6 +15,9 @@ export const JAVA_EFFECTS = [
   'IoCallInLoop 59 LoopImports.savedFromHelper loop OrderLoader.load()>OrderRepository.findById()',
   'IoCallInLoop 59 LoopImports.savedFromHelper loop OrderRepository.save()',
   'IoCallInLoop 67 LoopImports.chainedLookup loop OrderRepository.findById()',
+  'AccumulatorCopyInLoop 16 Accumulators.concatenated loop all',
+  'AccumulatorCopyInLoop 23 Accumulators.reduced reduce acc',
+  'AccumulatorCopyInLoop 32 Accumulators.copiedMap loop byId',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -44,6 +47,9 @@ export const KOTLIN_EFFECTS = [
   'IoCallInLoop 21 LoopImports.throughHelper loop OrderLoader.load()>CrudRepository.findByIdOrNull()',
   'IoCallInLoop 24 LoopImports.remote loop OrderLoader.price()>RestClient.get()',
   'IoCallInLoop 27 LoopImports.concurrent concurrent OrderLoader.load()>CrudRepository.findByIdOrNull()',
+  'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
+  'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
+  'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
 ];
 
 function summaryOf(violation) {

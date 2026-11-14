@@ -70,7 +70,11 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
     });
 
     expect(new Set(findings.map((finding) => finding.path))).toEqual(
-      new Set(['src/main/kotlin/shop/reports/LoopImports.kt', JAVA_LOOP]),
+      new Set([
+        'src/main/kotlin/shop/reports/LoopImports.kt',
+        'src/main/kotlin/shop/reports/Accumulators.kt',
+        JAVA_LOOP,
+      ]),
     );
   });
 });
