@@ -1358,7 +1358,8 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
-  `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
+  `integration`, `e2e` and the like. The Java and Kotlin presets have the same three checks as `RealClockInTest`,
+  `RandomInTest` and `NetworkInTest`. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
   reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an

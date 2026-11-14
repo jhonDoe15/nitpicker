@@ -8,6 +8,7 @@ import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
+import { dropNetworkInIntegrationTests } from '../../../messages/isolation/unit-tests.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
 import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
@@ -67,6 +68,20 @@ function withOneAliasRule(log) {
   };
 }
 
+function filteredPmdFindings(pmd, context) {
+  const { allSourceRoots, projectRoot } = context;
+  return withJpaFilters(
+    withGeneratedMembers(
+      withSpringTransactionFilters(
+        withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+        context,
+      ),
+      { projectRoot },
+    ),
+    { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+  );
+}
+
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
   const pmd = withOneAliasRule(
@@ -86,28 +101,24 @@ export function sarifFindings(context) {
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
+  const testRoots = [
+    ...(context.manifest?.testSourceRoots ?? []),
+    ...(context.manifest?.kotlinTestSourceRoots ?? []),
+  ];
+  const ownFindings = dropNetworkInIntegrationTests(
+    withProjectTypeMocks(
+      dropInheritedVersions(filteredPmdFindings(pmd, context), {
+        projectRoot,
+        sourceRoots: allSourceRoots,
+      }),
+      { projectRoot, mainRoots },
+    ),
+    { projectRoot, testRoots },
+  );
   return [
     ...withFanOutDetails(
       withWaitAdvice(
-        dropSleepsInFakes(
-          withProjectTypeMocks(
-            dropInheritedVersions(
-              withJpaFilters(
-                withGeneratedMembers(
-                  withSpringTransactionFilters(
-                    withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
-                    context,
-                  ),
-                  { projectRoot },
-                ),
-                { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
-              ),
-              { projectRoot, sourceRoots: allSourceRoots },
-            ),
-            { projectRoot, mainRoots },
-          ),
-          { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
-        ),
+        dropSleepsInFakes(ownFindings, { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots }),
         { manifest: context.manifest, projectRoot },
       ),
       { projectRoot },

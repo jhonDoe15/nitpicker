@@ -4,6 +4,7 @@ export {
   braceDepths,
   closingIndex,
   enclosingOpen,
+  openBrackets,
   parenDepths,
   splitArguments,
 } from './kotlin-brackets.mjs';

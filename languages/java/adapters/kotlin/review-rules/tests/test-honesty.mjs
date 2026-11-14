@@ -1,3 +1,4 @@
+import { integrationTestFiles } from '../../../../messages/isolation/unit-tests.mjs';
 import { readInside } from '../../../../../../shared/conventions/read-inside.mjs';
 import { lineOf } from '../../scan/kotlin-source.mjs';
 import { kotlinFiles } from '../../rules/kotlin-suppressions.mjs';
@@ -12,6 +13,7 @@ import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
+import { ISOLATION_RULES, isolationReports } from './isolation/isolation.mjs';
 import { FLOAT_EQUALITY_RULE, floatEqualityReports } from './floats/float-equality.mjs';
 import { WEAK_RULE } from './honesty/weak/weak-reports.mjs';
 import { projectFlags } from './project-flags.mjs';
@@ -34,6 +36,7 @@ export const HONESTY_RULES = [
   DROPPED_RULE,
   MESSAGE_RULE,
   GLOBAL_STATE_RULE,
+  ...ISOLATION_RULES,
   SHARED_STATE_RULE,
 ];
 
@@ -58,13 +61,14 @@ function scannedFiles(projectRoot, files, { keep, assertionNames = [] } = {}) {
   });
 }
 
-export function fileReports(scanned, project) {
+export function fileReports(scanned, project, options = {}) {
   const suites = discoverSuites(scanned);
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
     ...floatEqualityReports(scanned, suites),
     ...globalStateReports(scanned, suites),
+    ...isolationReports(scanned, options),
     ...sharedStateReports(scanned, suites, project),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,
@@ -87,8 +91,9 @@ export function testHonestyFindings({
   const others = filesUnder(projectRoot, contextRoots).filter((file) => !own.has(file));
   const context = scannedFiles(projectRoot, others, { keep: (text) => CONTEXT_MARKERS.test(text) });
   const project = projectFlags([...files, ...context]);
+  const isIntegration = integrationTestFiles(projectRoot, testRoots);
   return files.flatMap(({ file, scanned }) =>
-    fileReports(scanned, project).map((report) =>
+    fileReports(scanned, project, { network: !isIntegration(file) }).map((report) =>
       finding({
         rule: report.rule,
         file,

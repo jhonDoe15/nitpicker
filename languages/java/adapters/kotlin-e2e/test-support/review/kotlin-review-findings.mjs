@@ -1,3 +1,4 @@
+import { ISOLATION_FILES, ISOLATION_FINDINGS } from './isolation/kotlin-isolation-data.mjs';
 import {
   GLOBAL_STATE_FILES,
   GLOBAL_STATE_FINDINGS,
@@ -25,6 +26,7 @@ export const ALL_FINDINGS = [
   ...EXPECTED_LOOKUP_FINDINGS,
   ...MAP_UPDATE_FINDINGS,
   ...GLOBAL_STATE_FINDINGS,
+  ...ISOLATION_FINDINGS,
   ...GENERATED_MEMBER_FINDINGS,
 ].sort();
 
@@ -39,6 +41,7 @@ export function reviewBranchFiles(projectRoot) {
     ...mapUpdateFiles(),
     ...GLOBAL_STATE_FILES,
     ...GENERATED_MEMBER_FILES,
+    ...ISOLATION_FILES,
   };
 }
 
