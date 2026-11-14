@@ -4,6 +4,7 @@ import { clearSnapshotReports } from '../../../snapshot/reporters.mts';
 import { reportFolder } from '../../plan/project-entry.mjs';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf, writeFailureReport } from '../../report/outcome.mjs';
+import type { SharedWorktree } from '../../../diff/comparison/quick/head-run.mts';
 import type {
   Comparison,
   MonorepoCli,
@@ -14,12 +15,17 @@ import type {
   RunProject,
 } from '../../project-types.mts';
 
+export type SharedBase = {
+  readonly worktree: SharedWorktree;
+  readonly sharers: ReadonlySet<string>;
+};
 export type RunContext = {
   readonly cli: MonorepoCli;
   readonly runProject: RunProject;
   readonly outputRoot: string;
   readonly comparison: Comparison;
   readonly analyzers: ReadonlyMap<string, readonly string[]>;
+  readonly sharedBase?: SharedBase | undefined;
 };
 export type Extras = { readonly options: object; readonly cli: ProjectCli };
 export type SelectedRun = { readonly reportRoot: string; readonly extras: Extras };
@@ -59,7 +65,11 @@ function runSelected(
 
 export function extrasOf(
   project: PlanProject,
-  { comparison, analyzers }: Pick<RunContext, 'comparison' | 'analyzers'>,
+  {
+    comparison,
+    analyzers,
+    sharedBase,
+  }: Pick<RunContext, 'comparison' | 'analyzers' | 'sharedBase'>,
 ): Extras {
   const baseProject = comparison.basePlan?.projects.find(
     ({ path: folder }) => folder === project.path,
@@ -74,6 +84,8 @@ export function extrasOf(
       sharedBase: comparison.base,
       baseConfigOverlay: baseProject?.overlay,
       projectKey: project.folder === project.path ? undefined : project.path,
+      sharedBaseWorktree:
+        sharedBase?.sharers.has(project.path) === true ? sharedBase.worktree : undefined,
     },
   };
 }

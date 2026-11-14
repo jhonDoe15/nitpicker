@@ -6,6 +6,7 @@ export function runnerOptions(cli: ComparisonCli): Record<string, unknown> {
     scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
+    sharedBaseWorktree: cli.sharedBaseWorktree,
     fixRecipes: FIX_RECIPES,
     warn: (message: string) => cli.stderr.write(`nitpicker: ${message}\n`),
   };

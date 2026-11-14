@@ -1,10 +1,14 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
+import { writeFiles } from '../../../../diff/git/test-support/fixture-files.mjs';
+import {
+  projectFiles,
+  useMonorepoFixtures,
+  violation,
+} from '../../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();
-const WORKER = path.join(import.meta.dirname, '../execution/test-support/project-worker.mjs');
+const WORKER = path.join(import.meta.dirname, '../../execution/test-support/project-worker.mjs');
 
 function monorepo() {
   return repository({
@@ -56,7 +60,10 @@ describe('projects run at once', () => {
     writeFiles(root, { 'web/src/a.ts': 'export const a = 2;\n', 'api/src/b.py': 'B = 2\n' });
 
     const result = await run(root, ['--jobs', '2'], {
-      projectWorker: path.join(import.meta.dirname, '../execution/test-support/missing-worker.mjs'),
+      projectWorker: path.join(
+        import.meta.dirname,
+        '../../execution/test-support/missing-worker.mjs',
+      ),
     });
 
     expect(result.exitCode).toBe(2);

@@ -72,7 +72,9 @@ export function prepareSnapshotDependencies(options) {
     dependencyHook.directory,
   );
   if (existsSync(dependencyPath)) {
-    validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, dependencyHook });
+    if (options.reuseExisting !== true) {
+      validatePreparedDependencies({ mode, dependencyPath, liveProjectRoot, dependencyHook });
+    }
     return undefined;
   }
   switch (mode) {

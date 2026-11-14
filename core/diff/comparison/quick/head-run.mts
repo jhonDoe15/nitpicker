@@ -12,6 +12,12 @@ import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 import { scopeToTouchedFiles } from './scope.mts';
 
+export type SharedWorktree = {
+  readonly root: string;
+  readonly commitSha: string;
+  readonly lockPath: string;
+};
+
 export type RunSettings = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
@@ -25,11 +31,13 @@ export type RunSettings = {
   readonly scope?: unknown;
   readonly outputRoot: string;
   readonly runTasks?: unknown;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
 };
 
 export type SnapshotRoots = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
+  readonly sharedBase?: SharedWorktree | undefined;
 };
 
 export type CachedRunRequest = {

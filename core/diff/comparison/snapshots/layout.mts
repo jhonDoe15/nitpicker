@@ -15,7 +15,7 @@ import {
   withTemporaryWorktree,
   withNamedTemporaryWorktree,
 } from '../../git/repository/worktree.mjs';
-import type { SnapshotRoots } from '../quick/head-run.mts';
+import type { SharedWorktree, SnapshotRoots } from '../quick/head-run.mts';
 
 export type Comparison = {
   readonly mergeBaseSha: string;
@@ -56,6 +56,7 @@ type Project = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;
   readonly warn?: unknown;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
 };
 
 type Worktree = { readonly commitSha: string; readonly warn: unknown };
@@ -115,8 +116,11 @@ export function withSnapshotRoots<T>(
   operation: (roots: SnapshotRoots) => T,
 ): T {
   const { repositoryRoot, projectRelativePath, warn } = settings;
-  const base = { commitSha: comparison.mergeBaseSha, warn };
-  return inWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
+  const shared =
+    settings.sharedBaseWorktree?.commitSha === comparison.mergeBaseSha
+      ? settings.sharedBaseWorktree
+      : undefined;
+  const withHead = (baseWorktreeRoot: string): T =>
     inNamedWorktree(
       repositoryRoot,
       { commitSha: comparison.headSha, directoryName: 'head', warn },
@@ -124,7 +128,10 @@ export function withSnapshotRoots<T>(
         operation({
           baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
           headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
+          sharedBase: shared,
         }),
-    ),
-  );
+    );
+  return shared === undefined
+    ? inWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
+    : withHead(shared.root);
 }

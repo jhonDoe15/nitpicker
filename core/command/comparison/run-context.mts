@@ -6,6 +6,7 @@ import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
 import type { Cli, CliOptions, RunSetup, TextOutput } from '../../cli-context.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { SharedWorktree } from '../../diff/comparison/quick/head-run.mts';
 
 export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
@@ -17,6 +18,7 @@ export type ConfiguredCli = Cli & {
   readonly baseConfigOverlay?: unknown;
   readonly repositoryLoosenings?: readonly unknown[];
   readonly sharedBase?: ReturnType<typeof resolveBase>;
+  readonly sharedBaseWorktree?: SharedWorktree | undefined;
   readonly repositoryToolErrors?: readonly object[];
 };
 
