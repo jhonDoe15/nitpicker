@@ -9,14 +9,14 @@ import {
   PICK_SOURCE,
   createRunnerProjects,
   runArea,
-} from '../test-runners/test-support/runner-project.mjs';
+} from '../test-runners/test-support/runner-project.mts';
 
 const projects = createRunnerProjects();
 const WAIT = 'await new Promise((resolve) => setTimeout(resolve, 1500));';
 const TSCONFIG = {
   compilerOptions: { strict: true, esModuleInterop: true, types: ['jest', 'node'] },
 };
-let policyDirectory;
+let policyDirectory: string;
 
 const RUNNERS = [
   {
@@ -94,7 +94,7 @@ const NAMED_RERUNS = [
   },
 ];
 
-function coverageOptions(root) {
+function coverageOptions(root: string) {
   return parseArguments([
     ...['--analyzer-name', 'coverage', '--kind', 'coverage'],
     ...['--project-root', root, '--policy-root', PACKAGE_ROOT],

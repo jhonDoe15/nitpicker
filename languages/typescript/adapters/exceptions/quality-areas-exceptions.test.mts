@@ -5,12 +5,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { applyFindingExceptions } from '../../../../shared/exceptions/finding-exceptions.mjs';
+import type { Finding } from '../static-checks/shared.mts';
 import { parseArguments } from '../quality-areas/arguments.mts';
 import { normalizeCoverage, normalizeCrap } from '../quality-areas/reporting/tests.mts';
 import { normalizeStructure } from '../quality-areas/reporting/repository.mts';
 import { runQualityArea } from '../quality-areas-runner.mts';
 
-const roots = [];
+const roots: string[] = [];
 const originalPolicy = process.env[HEAD_POLICY_ENV];
 
 afterEach(() => {
@@ -28,7 +29,7 @@ const WIDE =
   'export function wide(a: number, b: number, c: number, d: number): number {\n  return a + b + c + d;\n}\n';
 const NARROW = 'export function narrow(a: number): number {\n  return a;\n}\n';
 
-function project(source) {
+function project(source: string) {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   roots.push(parent);
   const root = path.join(parent, 'head');
@@ -38,7 +39,13 @@ function project(source) {
   return { root, parent };
 }
 
-function areaFindings({ root, parent }, exceptions, kind = 'structure') {
+type Files = { root: string; parent: string };
+
+function areaFindings(
+  { root, parent }: Files,
+  exceptions: readonly Record<string, unknown>[],
+  kind = 'structure',
+) {
   const policyFile = path.join(parent, 'policy.json');
   writeFileSync(policyFile, JSON.stringify({ exceptions }));
   process.env[HEAD_POLICY_ENV] = policyFile;
@@ -72,8 +79,9 @@ const SAME_NAMES = [
   '',
 ].join('\n');
 
-const failures = (findings) =>
-  findings.filter(({ classification }) => classification === 'enforceable');
+function failures(findings: readonly Finding[]): Finding[] {
+  return findings.filter(({ classification }) => classification === 'enforceable');
+}
 
 const ROUTE =
   'If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/a.ts"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.';
@@ -101,7 +109,7 @@ describe('exceptions for structure findings in the TypeScript analyzers', () => 
   it('lifts a path-wide entry without a function, and nothing for another function or path', async () => {
     const files = project(WIDE);
     const kept = [['function-parameters-limit', `wide has 4 parameters; limit is 3. ${ROUTE}`]];
-    const summary = (found) => found.map(({ rule, message }) => [rule, message]);
+    const summary = (found: Finding[]) => found.map(({ rule, message }) => [rule, message]);
 
     expect(failures(await areaFindings(files, [{ ...entry, function: undefined }]))).toEqual([]);
     expect(summary(failures(await areaFindings(files, [{ ...entry, function: 'other' }])))).toEqual(
@@ -115,7 +123,7 @@ describe('exceptions for structure findings in the TypeScript analyzers', () => 
 
   it('lifts a function by the qualified name its message prints and no other function of the file', async () => {
     const files = project(SAME_NAMES);
-    const lifts = async (functionName) =>
+    const lifts = async (functionName: string) =>
       failures(await areaFindings(files, [{ ...entry, function: functionName }])).map(
         ({ symbol }) => symbol,
       );
@@ -156,8 +164,9 @@ const DUPLICATE_BODY = Array.from(
   { length: 12 },
   (_, index) => `  total += value * ${String(index + 2)} + ${String(index)};\n`,
 ).join('');
-const duplicateSource = (name) =>
-  `export function ${name}(value: number): number {\n  let total = 0;\n${DUPLICATE_BODY}  return total;\n}\n`;
+function duplicateSource(name: string): string {
+  return `export function ${name}(value: number): number {\n  let total = 0;\n${DUPLICATE_BODY}  return total;\n}\n`;
+}
 
 function duplicateProject() {
   const files = project(duplicateSource('first'));
@@ -176,7 +185,11 @@ function deadCodeProject() {
 }
 
 describe('exceptions for duplicate and dead-code findings in the TypeScript analyzers', () => {
-  const lift = (rule, file) => ({ rule, paths: [file], reason: 'A reviewed reason.' });
+  const lift = (rule: string, file: string) => ({
+    rule,
+    paths: [file],
+    reason: 'A reviewed reason.',
+  });
 
   it('names the exclude route of a duplicate and drops it once the exception is configured', async () => {
     const files = duplicateProject();
@@ -230,8 +243,8 @@ describe('exceptions for duplicate and dead-code findings in the TypeScript anal
 
   it('lifts an unused export by its name and no other declaration of the file', async () => {
     const files = deadCodeProject();
-    const named = (name) => ({ ...lift('exports', 'src/main/a.ts'), name });
-    const exportsOf = async (name) =>
+    const named = (name: string) => ({ ...lift('exports', 'src/main/a.ts'), name });
+    const exportsOf = async (name: string) =>
       failures(await areaFindings(files, [named(name)], 'dead-code'))
         .filter(({ rule }) => rule === 'exports')
         .map(({ symbol }) => symbol);
@@ -278,7 +291,9 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
   });
 
   it('names the enclosing named function of an uncovered branch and lifts it by that name', () => {
-    const findings = failures(normalizeCoverage(coverage, 'coverage', { projectRoot: '/p' }));
+    const findings = failures(
+      normalizeCoverage(coverage, 'coverage', { projectRoot: '/p', testCount: undefined }),
+    );
     const entry = { rule: 'changed-branch-coverage', paths: ['src/main/a.ts'], function: 'risky' };
 
     expect(findings.map(({ symbol, message }) => [symbol, message])).toEqual([
@@ -297,9 +312,9 @@ describe('exceptions for CRAP and coverage findings in the TypeScript analyzers'
     };
 
     expect(
-      failures(normalizeCoverage(outside, 'coverage', { projectRoot: '/p' })).map(
-        ({ message }) => message,
-      ),
+      failures(
+        normalizeCoverage(outside, 'coverage', { projectRoot: '/p', testCount: undefined }),
+      ).map(({ message }) => message),
     ).toEqual([
       'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
     ]);

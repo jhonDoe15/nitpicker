@@ -3,14 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../eslint/normalize.mts';
-import {
-  eslintMessageWithHint,
-  routedEslintFields,
-  withoutFatalDirectives,
-} from './eslint-hints.mts';
+import { withoutFatalDirectives } from './eslint-hints.mts';
+import { eslintMessageWithHint, routedEslintFields } from './test-support/hint-input.mts';
 import { growthAdviceFor } from './growth-advice.mts';
 
-const IMMUTABLE = (kind) =>
+const IMMUTABLE = (kind: string) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
 const REJECT = 'Expected the Promise rejection reason to be an Error.';
 
@@ -306,7 +303,7 @@ describe('eslintMessageWithHint', () => {
 });
 
 describe('routedEslintFields', () => {
-  const route = (rule) =>
+  const route = (rule: string) =>
     `If this is intended, add {"rule":"${rule}","paths":["src/a.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
   it('ends the message of any rule with the entry that turns it off for the path', () => {
@@ -376,7 +373,8 @@ describe('withoutFatalDirectives', () => {
 });
 
 describe('hints for the production policy rules', () => {
-  const hint = (ruleId, text) => eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
+  const hint = (ruleId: string, text: string) =>
+    eslintMessageWithHint({ ruleId, text, relativePath: 'src/a.ts' });
 
   it('names the awaited form instead of the rule wording that recommends .catch', () => {
     const message = hint(
