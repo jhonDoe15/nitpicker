@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
 import { useProjects, withPeers } from '../test-support/projects.mjs';
+import { quotedTypescriptPin } from '../test-support/typescript-pin.mjs';
 import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mts';
+import { javascriptApiPin } from '../test-support/typescript-pin.mjs';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';
@@ -54,6 +56,7 @@ describe('peer plan for Node projects', () => {
         '@vitest/coverage-v8 too old (have 3.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)',
       ],
       command: "pnpm add --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
+      blockers: [],
     });
   });
 
@@ -68,6 +71,7 @@ describe('peer plan for Node projects', () => {
       absent: ['@vitest/coverage-v8@^3.2.0'],
       outdated: ['vitest too old (have 3.1.4, need ^3.2.0 || ^4.1.11 || ^5.0.0)'],
       command: "npm install --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
+      blockers: [],
     });
   });
 
@@ -75,7 +79,7 @@ describe('peer plan for Node projects', () => {
     const root = project({ 'package.json': '{}' });
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'jest')).command).toBe(
-      `npm install --save-dev ${NITPICKER} typescript @types/node jest`,
+      `npm install --save-dev ${NITPICKER} ${quotedTypescriptPin()} @types/node jest`,
     );
   });
 
@@ -100,7 +104,7 @@ describe('peer plan for Node projects', () => {
     const root = project({ 'package.json': '{}' });
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'node'), '22.18.1').command).toBe(
-      `npm install --save-dev ${NITPICKER} 'typescript@^6' @types/node`,
+      `npm install --save-dev ${NITPICKER} '${javascriptApiPin()}' @types/node`,
     );
   });
 

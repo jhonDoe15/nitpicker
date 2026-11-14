@@ -20,9 +20,37 @@ project.ext.nitpickerSourceJava = {
         : launcherOf(wanted).get().executablePath.asFile.absolutePath]
 }
 
+def noLauncher = { String tool, int wanted, Exception cause ->
+    ("${tool} needs JDK ${wanted} or newer to run, and Gradle runs on JDK ${currentJdk}. Gradle found no " +
+        "JDK ${wanted}: run Gradle on JDK ${wanted} or newer, install one where Gradle looks for toolchains, " +
+        "or let Gradle download it (the org.gradle.toolchains.foojay-resolver-convention plugin). The " +
+        "project keeps compiling for its own release. ${cause.message ?: ''}").replaceAll(/\s+/, ' ').trim()
+}
+def skipWithoutLauncher = { Task task, String tool, Provider<Integer> wanted, String skipFile, Closure placeholder ->
+    task.javaLauncher.set(wanted.flatMap { launcherOf(it) })
+    task.onlyIf {
+        try {
+            launcherOf(wanted.get()).get()
+            return true
+        } catch (Exception e) {
+            def directory = project.ext.nitpickerReportDir.get().asFile
+            directory.mkdirs()
+            new File(directory, skipFile).text = noLauncher(tool, wanted.get(), e) + '\n'
+            placeholder(directory)
+            return false
+        }
+    }
+}
+
 tasks.withType(Checkstyle).configureEach { task ->
-    task.javaLauncher.set(launcherOf(checkstyleJdk))
+    skipWithoutLauncher(task, 'Checkstyle', project.provider { checkstyleJdk }, 'checkstyle-skipped.txt') { directory ->
+        def report = task.reports.xml.outputLocation.get().asFile
+        report.parentFile.mkdirs()
+        report.text = "<checkstyle version=\"${project.extensions.checkstyle.toolVersion}\"></checkstyle>"
+    }
 }
 tasks.matching { it.name == 'nitpickerFormat' }.configureEach { task ->
-    task.javaLauncher.set(formatterJdk.flatMap { launcherOf(it) })
+    skipWithoutLauncher(task, 'The formatter', formatterJdk, 'format-skipped.txt') { directory ->
+        new File(directory, 'format.txt').text = ''
+    }
 }

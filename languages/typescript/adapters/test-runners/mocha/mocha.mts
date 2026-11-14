@@ -84,7 +84,7 @@ export async function runMocha(options: TestOptions, command: RunnerCommand): Pr
         textOf(retries),
         '--no-bail',
         '--no-forbid-only',
-        ...(options.rerun === undefined ? [] : ['--grep', options.rerun.namePattern]),
+        ...(options.rerun?.namePattern === undefined ? [] : ['--grep', options.rerun.namePattern]),
         ...testFiles,
       ],
     });
