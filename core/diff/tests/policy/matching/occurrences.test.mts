@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { fieldOf, numberOr } from '../../../../../shared/values/readers.mts';
+import {
+  type Comparison,
+  compareFindings,
+} from '../../../comparison/test-support/typed-compare.mts';
 
-function finding(tool, identity, line) {
+type Hunk = {
+  readonly oldStart: number;
+  readonly oldCount: number;
+  readonly newStart: number;
+  readonly newCount: number;
+};
+
+function finding(tool: string, identity: string, line: number) {
   return {
     tool,
     rule: tool === 'javac' ? 'rawtypes' : 'legacy-date-time',
@@ -13,15 +24,19 @@ function finding(tool, identity, line) {
   };
 }
 
-function lines(result) {
+function lineOf(entry: unknown): number {
+  return numberOr(fieldOf(fieldOf(entry, 'location'), 'line'), 0);
+}
+
+function lines(result: Comparison) {
   return {
-    added: result.newFindings.map((entry) => entry.location.line),
-    kept: result.unchangedFindings.map((entry) => entry.location.line).sort((a, b) => a - b),
-    resolved: result.resolvedFindings.map((entry) => entry.location.line),
+    added: result.newFindings.map((entry) => lineOf(entry)),
+    kept: result.unchangedFindings.map((entry) => lineOf(entry)).sort((a, b) => a - b),
+    resolved: result.resolvedFindings.map((entry) => lineOf(entry)),
   };
 }
 
-function touchedBy(hunks) {
+function touchedBy(hunks: readonly Hunk[]) {
   return {
     changedLines: new Map([
       [

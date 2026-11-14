@@ -2,15 +2,26 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../../../cli.mts';
-import { useCliFixtures, fakeAnalyzer } from '../../../../command/test-support/cli-harness.mjs';
+import type {
+  FixtureAnalyzer,
+  FixtureRepository,
+} from '../../../../command/test-support/fixture-types.mts';
+import {
+  fieldOf,
+  listOf,
+  objectOf,
+  parseJson,
+  textOf,
+} from '../../../../../shared/values/readers.mts';
+import { useCliFixtures, fakeAnalyzer } from '../../../../command/test-support/cli-harness.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
-import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
+import { captureOutput } from '../../../reporting/test-support/output-capture.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -26,7 +37,13 @@ function repositoryWithNewFinding() {
   return repository;
 }
 
-function issuesAfter(arguments_, analyzers) {
+function issuesAfter(
+  arguments_: (repository: FixtureRepository) => readonly string[],
+  analyzers: {
+    readonly analyzers?: readonly FixtureAnalyzer[];
+    readonly snapshotAnalyzers?: readonly FixtureAnalyzer[];
+  },
+) {
   const repository = repositoryWithNewFinding();
   const outputRoot = makeOutputRoot();
   const output = captureOutput();
@@ -37,12 +54,12 @@ function issuesAfter(arguments_, analyzers) {
     stdout: output.stdout,
     stderr: output.stderr,
   });
-  const issues = JSON.parse(readFileSync(path.join(outputRoot, 'codequality.json'), 'utf8'));
+  const issues = listOf(parseJson(readFileSync(path.join(outputRoot, 'codequality.json'), 'utf8')));
   return {
     exitCode,
-    issues: issues.map(({ fingerprint, ...issue }) => ({
-      ...issue,
-      fingerprint: /^[0-9a-f]{64}$/u.test(fingerprint),
+    issues: issues.map((issue) => ({
+      ...objectOf(issue),
+      fingerprint: /^[0-9a-f]{64}$/u.test(textOf(fieldOf(issue, 'fingerprint'))),
     })),
   };
 }

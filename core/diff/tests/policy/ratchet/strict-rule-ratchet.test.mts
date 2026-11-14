@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 import { withEditedLineReason } from '../../../comparison/positions/touched-lines.mjs';
 
 describe('strict rules on an edited line of a legacy function', () => {
-  function pushFinding(identity, line, count, rule = 'no-restricted-syntax') {
+  function pushFinding(
+    identity: string,
+    line: number,
+    count: number,
+    rule = 'no-restricted-syntax',
+  ) {
     return {
       tool: 'eslint',
       rule,
@@ -16,10 +21,10 @@ describe('strict rules on an edited line of a legacy function', () => {
       ratchet: { key: 'count:push', value: count, existingCodeOnly: true },
     };
   }
-  const strictTouched = (ranges, inserted = []) => ({
+  const strictTouched = (ranges: readonly number[][], inserted: readonly number[][] = []) => ({
     changedLines: new Map([['src/f.ts', { added: false, ranges, inserted }]]),
     isStrictRule: () => true,
-    mustMeetOnEditedLines: (rule) => rule === 'prettier/prettier',
+    mustMeetOnEditedLines: (rule: string) => rule === 'prettier/prettier',
   });
   it('keeps an edited line baselined when the function has no more of the violation', () => {
     const result = compareFindings({

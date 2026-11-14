@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 
-function clone(identity, value, { pair = 'a.java|b.java', divisible = true, kept } = {}) {
+type Kept = readonly (readonly [string, number, number])[];
+type Edits = { readonly pair?: string; readonly divisible?: boolean; readonly kept?: Kept };
+type ChangedFile = {
+  readonly added: boolean;
+  readonly ranges: readonly number[][];
+  readonly inserted?: readonly number[][];
+};
+type Touched = {
+  readonly changedLines: Map<string, ChangedFile>;
+  readonly isStrictRule: () => boolean;
+};
+
+function clone(
+  identity: string,
+  value: number,
+  { pair = 'a.java|b.java', divisible = true, kept }: Edits = {},
+) {
   const mustKeepUnchangedLines = kept?.map(([path, startLine, endLine]) => ({
     path,
     startLine,
@@ -24,16 +40,20 @@ function clone(identity, value, { pair = 'a.java|b.java', divisible = true, kept
   };
 }
 
-const touched = {
+const touched: Touched = {
   changedLines: new Map([['a.java', { added: false, ranges: [[3, 9]], inserted: [[5, 5]] }]]),
   isStrictRule: () => false,
 };
 
-function compared(baseFindings, headFindings, touchedCode = touched) {
+function compared(
+  baseFindings: readonly unknown[],
+  headFindings: readonly unknown[],
+  touchedCode: Touched = touched,
+) {
   const result = compareFindings({ baseFindings, headFindings, touchedCode });
   return {
     newIdentities: result.newFindings.map((finding) => finding.identity),
-    held: result.unchangedFindings.map((finding) => [finding.identity, finding.heldAtBase]),
+    held: result.unchangedFindings.map((finding) => [finding.identity, finding['heldAtBase']]),
     resolved: result.resolvedFindings.map((finding) => finding.identity),
   };
 }
@@ -73,7 +93,7 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
         ['b.java', 40, 50],
       ],
     });
-    const replaced = (bSide) => ({
+    const replaced = (bSide: ChangedFile): Touched => ({
       ...touched,
       changedLines: new Map([...touched.changedLines, ['b.java', bSide]]),
     });
@@ -94,7 +114,7 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
         ['b.java', 3, 12],
       ],
     });
-    const editedB = (ranges) => ({
+    const editedB = (ranges: readonly number[][]): Touched => ({
       isStrictRule: () => false,
       changedLines: new Map([['b.java', { added: false, ranges }]]),
     });
@@ -108,7 +128,7 @@ describe('duplicate clones held at the size of a legacy clone of the same files'
   });
 
   it('holds only one finding per base finding when the value is not divisible', () => {
-    const plain = (identity, value) => clone(identity, value, { divisible: false });
+    const plain = (identity: string, value: number) => clone(identity, value, { divisible: false });
 
     expect(compared([plain('old', 100)], [plain('left', 60), plain('right', 30)])).toEqual({
       newIdentities: ['right'],

@@ -6,19 +6,20 @@ import {
   COMMON_EXCLUSIONS,
   comparisonOptions,
   useQualityDiffRepositories,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { commit, fixtureGit } from '../../../git/test-support/git-repository.mjs';
+import { commit, fixtureGit } from '../../../git/test-support/git-repository.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { renameFile, writeFiles } from '../../../git/test-support/fixture-files.mts';
 
 const { createRepository } = useQualityDiffRepositories();
 
-function removeWorkingTreeFiles(repositoryRoot) {
+function removeWorkingTreeFiles(repositoryRoot: string) {
   for (const entry of readdirSync(repositoryRoot)) {
     if (entry !== '.git') {
       rmSync(path.join(repositoryRoot, entry), {
@@ -43,7 +44,7 @@ describe('quality diff Git comparison', () => {
 
     const report = runQualityDiff(comparisonOptions(repository, 'upstream'));
 
-    expect(report.summary.mergeBaseSha).toBe(mergeBaseSha);
+    expect(fieldAt(report.summary, 'mergeBaseSha')).toBe(mergeBaseSha);
     expect(report.unchangedFindings).toHaveLength(1);
     expect(report.newFindings).toEqual([]);
   });
@@ -90,7 +91,7 @@ describe('quality diff Git comparison', () => {
     const report = runQualityDiff(comparisonOptions(repository));
 
     expect(report.unchangedFindings).toHaveLength(1);
-    expect(report.unchangedFindings[0].location.line).toBe(3);
+    expect(fieldAt(report.unchangedFindings, 0, 'location', 'line')).toBe(3);
     expect(report.newFindings).toEqual([]);
     expect(report.resolvedFindings).toEqual([]);
   });
@@ -104,10 +105,10 @@ describe('quality diff Git comparison', () => {
 
     const report = runQualityDiff(comparisonOptions(repository));
 
-    expect(report.summary.renamedPaths).toBe(1);
+    expect(fieldAt(report.summary, 'renamedPaths')).toBe(1);
     expect(report.unchangedFindings).toHaveLength(1);
-    expect(report.unchangedFindings[0].path).toBe('src/main/new-name.ts');
-    expect(report.unchangedFindings[0].identity).toBe('path:src/main/new-name.ts');
+    expect(fieldAt(report.unchangedFindings, 0, 'path')).toBe('src/main/new-name.ts');
+    expect(fieldAt(report.unchangedFindings, 0, 'identity')).toBe('path:src/main/new-name.ts');
     expect(report.newFindings).toEqual([]);
     expect(report.resolvedFindings).toEqual([]);
   });
@@ -215,7 +216,7 @@ describe('quality diff Git comparison', () => {
     expect(report.newFindings).toEqual([]);
     expect(report.resolvedFindings).toEqual([]);
     expect(report.unchangedFindings).toEqual([]);
-    expect(report.summary.exclusions).toEqual(COMMON_EXCLUSIONS.slice().sort());
+    expect(fieldAt(report.summary, 'exclusions')).toEqual(COMMON_EXCLUSIONS.slice().sort());
   });
   it('fails for an invalid base ref', () => {
     const repository = createRepository({
@@ -266,7 +267,7 @@ describe('quality diff Git comparison', () => {
 
     const report = runQualityDiff(comparisonOptions(repository));
 
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(fieldAt(report.summary, 'overallStatus')).toBe('completed');
     expect(report.newFindings).toHaveLength(1);
     expect(report.toolErrors).toEqual([]);
   });

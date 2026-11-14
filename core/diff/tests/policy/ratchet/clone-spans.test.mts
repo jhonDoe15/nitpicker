@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 
-function clone(identity, value, [[aStart, aEnd], [bStart, bEnd]]) {
+type Span = readonly [number, number];
+type Hunk = {
+  readonly oldStart: number;
+  readonly oldCount: number;
+  readonly newStart: number;
+  readonly newCount: number;
+};
+
+function clone(
+  identity: string,
+  value: number,
+  [[aStart, aEnd], [bStart, bEnd]]: readonly [Span, Span],
+) {
   return {
     tool: 'duplicates',
     rule: 'duplicate-clone',
@@ -22,11 +34,11 @@ function clone(identity, value, [[aStart, aEnd], [bStart, bEnd]]) {
   };
 }
 
-function hunk(oldStart, oldCount, newStart, newCount) {
+function hunk(oldStart: number, oldCount: number, newStart: number, newCount: number): Hunk {
   return { oldStart, oldCount, newStart, newCount };
 }
 
-function changedFile(hunks) {
+function changedFile(hunks: readonly Hunk[]) {
   const ranges = hunks
     .filter(({ newCount }) => newCount > 0)
     .map(({ newStart, newCount }) => [newStart, newStart + newCount - 1]);
@@ -44,7 +56,11 @@ function changedFile(hunks) {
   };
 }
 
-function compared(baseFindings, headFindings, files) {
+function compared(
+  baseFindings: readonly unknown[],
+  headFindings: readonly unknown[],
+  files: Readonly<Record<string, readonly Hunk[]>>,
+) {
   const result = compareFindings({
     baseFindings,
     headFindings,
@@ -57,7 +73,7 @@ function compared(baseFindings, headFindings, files) {
   });
   return {
     newIdentities: result.newFindings.map((finding) => finding.identity),
-    held: result.unchangedFindings.map((finding) => [finding.identity, finding.heldAtBase]),
+    held: result.unchangedFindings.map((finding) => [finding.identity, finding['heldAtBase']]),
   };
 }
 

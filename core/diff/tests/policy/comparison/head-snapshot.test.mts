@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import {
   commitFiles,
   comparisonOptions,
   useQualityDiffRepositories,
-} from '../test-support/quality-diff-harness.mjs';
+} from '../test-support/quality-diff-harness.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../../execution/test-support/analyzer-findings.mjs';
-import { fixtureGit } from '../../../git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+} from '../../../execution/test-support/analyzer-findings.mts';
+import { fixtureGit } from '../../../git/test-support/git-repository.mts';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
 
 const { createRepository } = useQualityDiffRepositories();
 
@@ -70,6 +71,8 @@ describe('quality diff head snapshot', () => {
     const report = runQualityDiff(comparisonOptions(repository));
 
     expect(report.newFindings).toEqual([]);
-    expect(report.summary.headSha).toBe(fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim());
+    expect(fieldAt(report.summary, 'headSha')).toBe(
+      fixtureGit(repository.root, ['rev-parse', 'HEAD']).trim(),
+    );
   });
 });

@@ -2,13 +2,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runQualityDiff } from '../../../comparison/run-diff.mts';
-import { runTasksInProcess } from '../../../execution/test-support/in-process-analyzers.mjs';
-import { fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
+import { type DiffOptions, runQualityDiff } from '../../../comparison/run-diff.mts';
+import { runTasksInProcess } from '../../../execution/test-support/in-process-analyzers.mts';
+import { fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import { renderConsoleSummary } from '../../../reporting/summary.mts';
 
 const specAnalyzerPath = path.join(import.meta.dirname, '../../../fixtures/spec-analyzer.mjs');
-const outputs = [];
+const outputs: string[] = [];
 const { createGitRepository } = useGitFixtures();
 
 afterEach(() => {
@@ -17,7 +18,7 @@ afterEach(() => {
   }
 });
 
-function analyzer(name, dependencies = []) {
+function analyzer(name: string, dependencies: readonly string[] = []) {
   return {
     name,
     version: '1.0.0',
@@ -25,15 +26,15 @@ function analyzer(name, dependencies = []) {
     exclusions: [],
     reportedTools: ['ruff', 'crap'],
     dependencies,
-    createInvocation: ({ projectRoot }) => ({
+    createInvocation: (context: unknown) => ({
       command: process.execPath,
-      args: [specAnalyzerPath, '--root', projectRoot, '--name', name],
-      cwd: projectRoot,
+      args: [specAnalyzerPath, '--root', textOf(fieldOf(context, 'projectRoot')), '--name', name],
+      cwd: textOf(fieldOf(context, 'projectRoot')),
     }),
   };
 }
 
-function testsFailed(tool, rule = 'tests-failed') {
+function testsFailed(tool: string, rule = 'tests-failed') {
   return {
     tool,
     rule,
@@ -44,7 +45,7 @@ function testsFailed(tool, rule = 'tests-failed') {
   };
 }
 
-function crap(identity, filePath, location) {
+function crap(identity: string, filePath: string, location: object) {
   return {
     tool: 'crap',
     rule: 'crap-score-limit',
@@ -56,7 +57,7 @@ function crap(identity, filePath, location) {
   };
 }
 
-function lint(identity) {
+function lint(identity: string) {
   return {
     tool: 'ruff',
     rule: 'F401',
@@ -67,15 +68,35 @@ function lint(identity) {
   };
 }
 
+function labelOf(entry: unknown, ...keys: readonly string[]): string {
+  return keys.map((key) => textOf(fieldOf(entry, key))).join('/');
+}
+
 const LEGACY = Array.from({ length: 12 }, (_, index) => `line ${String(index + 1)}\n`).join('');
 
-function compare({ base, head, analyzers, baseFiles = {} }) {
+type Head = {
+  readonly specs: unknown;
+  readonly files?: Readonly<Record<string, string>>;
+  readonly remove?: readonly string[];
+};
+
+function compare({
+  base,
+  head,
+  analyzers,
+  baseFiles = {},
+}: {
+  readonly base: unknown;
+  readonly head: Head;
+  readonly analyzers: DiffOptions['analyzers'];
+  readonly baseFiles?: Readonly<Record<string, string>>;
+}) {
   const repository = createGitRepository({
     'analyzer.json': `${JSON.stringify(base)}\n`,
     'src/legacy.py': LEGACY,
     ...baseFiles,
   });
-  const write = (relativePath, contents) => {
+  const write = (relativePath: string, contents: string) => {
     mkdirSync(path.dirname(path.join(repository.root, relativePath)), { recursive: true });
     writeFileSync(path.join(repository.root, relativePath), contents);
   };
@@ -125,8 +146,8 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
-      newEnforceable: report.summary.newEnforceableFindings,
+      status: fieldOf(report.summary, 'overallStatus'),
+      newEnforceable: fieldOf(report.summary, 'newEnforceableFindings'),
       new: report.newFindings.map(({ identity }) => identity),
       unchanged: report.unchangedFindings.map(({ identity }) => identity),
       toolErrors: report.toolErrors,
@@ -157,9 +178,13 @@ describe('a base whose tests fail', () => {
     ];
     expect({
       notes: report.notes,
-      notesFile: JSON.parse(readFileSync(path.join(outputRoot, 'notes.json'), 'utf8')),
-      skipped: report.summary.tools.map(({ skippedBecause }) => skippedBecause),
-      text: report.text.includes('Notes:\ncoverage (base): tests/test_a.py::test_a fails\n'),
+      notesFile: parseJson(readFileSync(path.join(outputRoot, 'notes.json'), 'utf8')),
+      skipped: listOf(fieldOf(report.summary, 'tools')).map((tool) =>
+        fieldOf(tool, 'skippedBecause'),
+      ),
+      text: textOf(report.text).includes(
+        'Notes:\ncoverage (base): tests/test_a.py::test_a fails\n',
+      ),
     }).toEqual({ notes, notesFile: notes, skipped: [undefined, undefined], text: true });
   });
 
@@ -170,7 +195,7 @@ describe('a base whose tests fail', () => {
       head: { specs: { coverage: [], crap: [] } },
     });
 
-    expect(renderConsoleSummary(report, { color: false })).toBe(
+    expect(renderConsoleSummary(report, { color: false, details: false })).toBe(
       [
         '',
         'Quality gate summary',
@@ -200,10 +225,10 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
+      status: fieldOf(report.summary, 'overallStatus'),
       new: report.newFindings.map(({ identity }) => identity),
       unchanged: report.unchangedFindings.map(({ identity }) => identity),
-      notes: report.notes.map(({ tool, rule }) => `${tool}/${rule}`),
+      notes: report.notes.map((note) => labelOf(note, 'tool', 'rule')),
     }).toEqual({
       status: 'completed',
       new: ['added'],
@@ -238,10 +263,10 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
+      status: fieldOf(report.summary, 'overallStatus'),
       new: report.newFindings.length,
       unchanged: report.unchangedFindings.map(({ identity }) => identity),
-      notes: report.notes.map(({ tool, rule }) => `${tool}/${rule}`),
+      notes: report.notes.map((note) => labelOf(note, 'tool', 'rule')),
     }).toEqual({
       status: 'completed',
       new: 0,
@@ -258,10 +283,8 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
-      toolErrors: report.toolErrors.map(
-        ({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`,
-      ),
+      status: fieldOf(report.summary, 'overallStatus'),
+      toolErrors: report.toolErrors.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
       notes: report.notes,
     }).toEqual({ status: 'tool-error', toolErrors: ['coverage/base/tests-not-run'], notes: [] });
   });
@@ -303,7 +326,7 @@ describe('a base whose tests fail', () => {
 
     expect({
       new: report.newFindings.map(({ identity }) => identity),
-      notes: report.notes.map(({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`),
+      notes: report.notes.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
     }).toEqual({
       new: ['legacy-untouched'],
       notes: ['coverage/base/tests-failed', 'nitpicker/head/tests-removed'],
@@ -340,10 +363,8 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
-      toolErrors: report.toolErrors.map(
-        ({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`,
-      ),
+      status: fieldOf(report.summary, 'overallStatus'),
+      toolErrors: report.toolErrors.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
       notes: report.notes,
     }).toEqual({ status: 'tool-error', toolErrors: ['coverage/head/tests-failed'], notes: [] });
   });
@@ -356,10 +377,8 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
-      toolErrors: report.toolErrors.map(
-        ({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`,
-      ),
+      status: fieldOf(report.summary, 'overallStatus'),
+      toolErrors: report.toolErrors.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
       notes: report.notes,
     }).toEqual({
       status: 'tool-error',
@@ -381,10 +400,8 @@ describe('a base whose tests fail', () => {
     });
 
     expect({
-      status: report.summary.overallStatus,
-      toolErrors: report.toolErrors.map(
-        ({ tool, snapshot, rule }) => `${tool}/${snapshot}/${rule}`,
-      ),
+      status: fieldOf(report.summary, 'overallStatus'),
+      toolErrors: report.toolErrors.map((note) => labelOf(note, 'tool', 'snapshot', 'rule')),
       notes: report.notes,
     }).toEqual({
       status: 'tool-error',

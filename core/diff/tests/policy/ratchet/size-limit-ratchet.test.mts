@@ -5,20 +5,29 @@ import {
   HELD_MESSAGES,
 } from '../../../../../shared/policy.mjs';
 import { evaluateStructure } from '../../../../../shared/rules/structure.mjs';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import {
+  type Comparison,
+  compareFindings,
+} from '../../../comparison/test-support/typed-compare.mts';
+import { fieldOf, numberOr } from '../../../../../shared/values/readers.mts';
 import { parseFinding } from '../../../comparison/finding-schema.mjs';
 
-function limitFindings(functions) {
-  return evaluateStructure({ functions }, 'structure')
-    .filter((finding) => finding.classification === 'enforceable')
+const evaluateFunctions: (
+  report: { readonly functions: readonly object[] },
+  analyzerName: string,
+) => readonly Readonly<Record<string, unknown>>[] = evaluateStructure;
+
+function limitFindings(functions: readonly object[]) {
+  return evaluateFunctions({ functions }, 'structure')
+    .filter((finding) => finding['classification'] === 'enforceable')
     .map((finding) => parseFinding(finding));
 }
 
-function legacy(statements, sourceHash, file = 'src/big.ts') {
+function legacy(statements: number, sourceHash: string, file = 'src/big.ts') {
   return { file, name: 'big', start: 1, end: 200, statements, sourceHash };
 }
 
-function compare(base, head, renames) {
+function compare(base: readonly object[], head: readonly object[], renames?: Map<string, string>) {
   return compareFindings({
     baseFindings: limitFindings(base),
     headFindings: limitFindings(head),
@@ -116,8 +125,13 @@ describe('size limits on edited legacy functions', () => {
 });
 
 describe('the message of a function that got worse', () => {
-  const METRIC_START = { lines: 68, statements: 16, maxControlNesting: 3, parameters: 4 };
-  function computeInvoice(metric, value, sourceHash) {
+  const METRIC_START: Readonly<Record<string, number>> = {
+    lines: 68,
+    statements: 16,
+    maxControlNesting: 3,
+    parameters: 4,
+  };
+  function computeInvoice(metric: string, value: number, sourceHash: string) {
     return {
       file: 'src/invoice.ts',
       name: 'computeInvoice',
@@ -127,7 +141,7 @@ describe('the message of a function that got worse', () => {
       sourceHash,
     };
   }
-  function messages(result) {
+  function messages(result: Comparison) {
     return result.newFindings.map(({ message }) => message);
   }
   it.each([
@@ -148,7 +162,7 @@ describe('the message of a function that got worse', () => {
       'computeInvoice grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/invoice.ts"],"function":"computeInvoice","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ],
   ])('shows the base value and the fix for %s', (metric, expected) => {
-    const start = METRIC_START[metric];
+    const start = numberOr(METRIC_START[metric], 0);
 
     const result = compare(
       [computeInvoice(metric, start, 'before')],
@@ -175,14 +189,16 @@ describe('the message of a function that got worse', () => {
       'computeInvoice: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     ],
   ])('carries the held note for %s on the held finding', (metric, expected) => {
-    const start = METRIC_START[metric];
+    const start = numberOr(METRIC_START[metric], 0);
 
     const result = compare(
       [computeInvoice(metric, start, 'before')],
       [computeInvoice(metric, start, 'after')],
     );
 
-    expect(result.unchangedFindings.map(({ ratchet }) => ratchet.heldMessage)).toEqual([expected]);
+    expect(result.unchangedFindings.map(({ ratchet }) => fieldOf(ratchet, 'heldMessage'))).toEqual([
+      expected,
+    ]);
   });
   it('has a held note for every limited metric', () => {
     expect(Object.keys(HELD_MESSAGES).sort()).toEqual(Object.keys(GREW_MESSAGES).sort());

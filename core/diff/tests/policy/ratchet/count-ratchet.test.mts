@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
 
 describe('count ratchet on findings inside an edited function', () => {
-  function anyFinding(identity, line, count) {
+  function anyFinding(identity: string, line: number, count: number) {
     return {
       tool: 'eslint',
       rule: '@typescript-eslint/no-explicit-any',
@@ -15,7 +15,7 @@ describe('count ratchet on findings inside an edited function', () => {
       ratchet: { key: 'count:any', value: count, existingCodeOnly: true },
     };
   }
-  const touched = (inserted, ranges = inserted) => ({
+  const touched = (inserted: readonly number[][], ranges: readonly number[][] = inserted) => ({
     changedLines: new Map([['src/f.ts', { added: false, ranges, inserted }]]),
     isStrictRule: () => false,
   });
@@ -84,7 +84,8 @@ describe('count ratchet on findings inside an edited function', () => {
     expect(result.newFindings.map(({ identity }) => identity)).toEqual(['swapped-in']);
   });
   it('does not match a finding on an added line to a base finding by identity', () => {
-    const callback = (occurrence, line) => anyFinding(`callback|occurrence:${occurrence}`, line, 2);
+    const callback = (occurrence: number, line: number) =>
+      anyFinding(`callback|occurrence:${String(occurrence)}`, line, 2);
 
     const result = compareFindings({
       baseFindings: [callback(1, 3), callback(2, 9)],
@@ -111,7 +112,12 @@ describe('count ratchet on findings inside an edited function', () => {
 describe('growth advice on a finding that is new in a function with findings at base', () => {
   const FORM = 'Keep to it.';
   const ADVICE = `${FORM} The base had {base}.`;
-  function throwFinding(identity, line, count, ratchet = {}) {
+  function throwFinding(
+    identity: string,
+    line: number,
+    count: number,
+    ratchet: Readonly<Record<string, unknown>> = {},
+  ) {
     return {
       tool: 'eslint',
       rule: 'nitpicker/no-throw',
@@ -131,7 +137,7 @@ describe('growth advice on a finding that is new in a function with findings at 
       },
     };
   }
-  const inserted = (lines) => ({
+  const inserted = (lines: readonly number[][]) => ({
     changedLines: new Map([['src/f.ts', { added: false, ranges: lines, inserted: lines }]]),
     isStrictRule: () => true,
     mustMeetOnEditedLines: () => false,
@@ -153,17 +159,17 @@ describe('growth advice on a finding that is new in a function with findings at 
   });
   it('adds the allowed form of the advice to the allowed form, or tells it alone when there was none', () => {
     const base = [throwFinding('first', 4, 2), throwFinding('second', 9, 2)];
-    const head = (allowedForm) => [
+    const head = (allowedForm: Readonly<Record<string, unknown>>) => [
       throwFinding('first', 4, 3),
       throwFinding('second', 9, 3),
       { ...throwFinding('added', 12, 3), ...allowedForm },
     ];
-    const allowedForms = (headFindings) =>
+    const allowedForms = (headFindings: readonly unknown[]) =>
       compareFindings({
         baseFindings: base,
         headFindings,
         touchedCode: inserted([[12, 12]]),
-      }).newFindings.map((finding) => finding.allowedForm);
+      }).newFindings.map((finding) => finding['allowedForm']);
 
     expect(allowedForms(head({ allowedForm: 'Return a union.' }))).toEqual([
       'Return a union. Keep to it.',
@@ -171,7 +177,7 @@ describe('growth advice on a finding that is new in a function with findings at 
     expect(allowedForms(head({}))).toEqual(['Keep to it.']);
   });
   it('keeps the allowed form as it was when the advice states none', () => {
-    const plain = (identity, line, count, extra = {}) => ({
+    const plain = (identity: string, line: number, count: number, extra: object = {}) => ({
       ...throwFinding(identity, line, count, { growthAllowedForm: undefined }),
       ...extra,
     });
@@ -192,7 +198,7 @@ describe('growth advice on a finding that is new in a function with findings at 
   it('puts the advice before the exception sentence, which stays last', () => {
     const route =
       'If this is intended, add {"rule":"nitpicker/no-throw","paths":["src/f.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
-    const routed = (identity, line, count) => ({
+    const routed = (identity: string, line: number, count: number) => ({
       ...throwFinding(identity, line, count),
       message: `Do not throw. ${route}`,
     });
