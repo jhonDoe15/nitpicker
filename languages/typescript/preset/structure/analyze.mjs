@@ -6,7 +6,12 @@ import path from 'node:path';
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { isExcludedPath, normalizePath } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
-import { curriedChain, functionUnits, isCurriedInner, isFunctionLike } from './units/function-units.mjs';
+import {
+  curriedChain,
+  functionUnits,
+  isCurriedInner,
+  isFunctionLike,
+} from './units/function-units.mjs';
 
 function parseSource(source, filename) {
   const sourceFile = ts.createSourceFile(filename, source, ts.ScriptTarget.Latest, true);
