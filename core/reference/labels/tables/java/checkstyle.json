@@ -1,0 +1,19 @@
+{
+  "checkstyle/BoxComments": ["style"],
+  "checkstyle/ConstructorsDeclarationGrouping": ["style"],
+  "checkstyle/EmptyCatchBlock": ["reliability"],
+  "checkstyle/FallThrough": ["bug"],
+  "checkstyle/IllegalTokenText": ["style"],
+  "checkstyle/LineLength": ["style"],
+  "checkstyle/MissingSwitchDefault": ["bug"],
+  "checkstyle/MultipleVariableDeclarations": ["style"],
+  "checkstyle/NoFinalizer": ["reliability"],
+  "checkstyle/OneStatementPerLine": ["style"],
+  "checkstyle/OneTopLevelClass": ["style"],
+  "checkstyle/OverloadMethodsDeclarationOrder": ["style"],
+  "checkstyle/TextBlockGoogleStyleFormatting": ["style"],
+  "checkstyle/TodoFormat": ["style"],
+  "checkstyle/UnusedImports": ["simplification"],
+  "checkstyle/VariableDeclarationUsageDistance": ["style"],
+  "checkstyle/singleLineCommentStartWithSpace": ["style"]
+}
