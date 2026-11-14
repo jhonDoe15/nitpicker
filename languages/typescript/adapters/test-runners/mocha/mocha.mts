@@ -21,6 +21,9 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 
+const REQUIRE_OPTION = '--require';
+
+export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
 const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 
 function mochaReport({
@@ -66,9 +69,11 @@ export async function runMocha(options: TestOptions, command: RunnerCommand): Pr
       environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [
         ...withoutOptions(command.arguments_, MOCHA_OPTIONS_NITPICKER_SETS),
-        '--require',
+        REQUIRE_OPTION,
+        RESTORE_SINON_PLUGIN,
+        REQUIRE_OPTION,
         UNIQUE_FILES,
-        ...(testConsole.enabled ? ['--require', consoleProducerPath(options, 'mocha')] : []),
+        ...(testConsole.enabled ? [REQUIRE_OPTION, consoleProducerPath(options, 'mocha')] : []),
         '--reporter',
         'json',
         '--reporter-option',

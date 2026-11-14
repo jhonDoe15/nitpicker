@@ -83,6 +83,7 @@ function eslintInvocation({
         scopes: testEnvironments?.scopes ?? [],
         aliases: testEnvironments?.aliases ?? [],
         setupFiles: testEnvironments?.setupFiles ?? [],
+        globalDom: testEnvironments?.globalDom,
       }),
     },
   };

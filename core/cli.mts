@@ -14,12 +14,11 @@ import {
   describeDisableCascade,
   loadConfig,
 } from './configuration/config.mjs';
-import { resolveProjectHeadPolicy } from './conventions/project-head-policy.mjs';
-import { configureAll, presetAnalyzers } from './configuration/preset-analyzers.mts';
+import { configuredWithTestFiles } from './command/comparison/test-file-policy.mts';
 import { assertProjectPeers } from './init/preflight/project-peers.mts';
 import { withRunLock } from './command/run-lock.mts';
 import { runSnapshotCli } from './command/snapshot.mts';
-import { historyAvailabilityNotes, noticeDescriber } from './command/policy-review/notices.mts';
+import { noticeDescriber, snapshotNotes } from './command/policy-review/notices.mts';
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
@@ -180,11 +179,11 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
   const currentProjectRoot = textOf(target.currentProjectRoot);
   const config: NitpickerConfig = loadConfig(currentProjectRoot);
   writePresetHint(cli.stderr, config, currentProjectRoot);
-  const headPolicy: unknown = resolveProjectHeadPolicy(config, currentProjectRoot, {
-    maven: cli.environment['NITPICKER_MAVEN'],
+  const { presetSet, headPolicy, analyzers } = configuredWithTestFiles(cli, {
+    config,
+    currentProjectRoot,
   });
-  const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const profiled = applyRunProfile(configureAll(presetSet, config, headPolicy), options);
+  const profiled = applyRunProfile(analyzers, options);
   const setup: RunSetup = {
     analyzers: profiled.analyzers,
     quick: profiled.quick,
@@ -208,7 +207,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
 
 function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
   const { config, currentProjectRoot, headPolicy } = run;
-  writeNotes(cli.stderr, historyAvailabilityNotes(config, headPolicy, currentProjectRoot));
+  writeNotes(cli.stderr, snapshotNotes(config, headPolicy, currentProjectRoot));
   const snapshotHeadPolicy: unknown = snapshotPolicy({
     config,
     currentProjectRoot,

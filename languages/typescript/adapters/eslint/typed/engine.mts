@@ -16,6 +16,7 @@ export type TestEnvironments = {
   readonly scopes?: unknown;
   readonly aliases?: unknown;
   readonly setupFiles?: unknown;
+  readonly globalDom?: unknown;
   readonly notice?: { readonly path: string; readonly message: string };
 };
 

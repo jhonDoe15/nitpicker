@@ -30,9 +30,9 @@ from a real caller) and the `exceptions` entry that lifts it.
   judged either.
 - **Exports and modules only tests import** (`test-only-export`). Reported by the `dead-code` check
   from knip itself: a second knip run with the normal config minus test and story files, test
-  entries and test-runner plugins (scripts in `package.json`, tool configs such as
-  `vite.config.ts`, `bin` and `exports` stay entries) lists what production code does not use, and
-  what the normal run does not list is used only by tests. That covers whole modules too: a module
+  entries and test-runner plugins, the Node.js plugin's `node --test` patterns among them (scripts
+  in `package.json`, tool configs such as `vite.config.ts`, `bin` and `exports` stay entries) lists
+  what production code does not use, and what the normal run does not list is used only by tests. That covers whole modules too: a module
   that only tests import should move to a `test-support/` folder, and modules under `test-support/`
   are not reported. A re-export (`export { x } from`, `export * from`, `export * as ns from`, an import that is only
   exported again, or `export const y = x` for an import the file does not otherwise read, which

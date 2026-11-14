@@ -2,7 +2,8 @@ import { fieldOf } from '../../../../shared/values/readers.mts';
 import { readLayout } from '../typed/head-policy.mts';
 import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
 import { immutableTypesParts } from './immutable-types-hint.mts';
-import { withStatedForm } from './stated-form.mts';
+import { directive, hinted, withStatedForm } from './stated-form.mts';
+import { runnerWord, testRunnerRewriters } from './test-runner/test-runner-hints.mts';
 import { logicRuleHints } from '../../preset/eslint-config/logic/logic-rules.mjs';
 import {
   type HintInput,
@@ -10,7 +11,6 @@ import {
   type Rewriter,
   definedField,
   regexpRuleHints,
-  restrictedMatcherText,
   withEslintRoute,
 } from './eslint-routes.mts';
 
@@ -19,9 +19,6 @@ type RewriteInput = Parameters<Rewriter>[0];
 const IMMUTABLE_TYPES_PREFIX =
   /^(Variable|Parameter|Return type|Property) should have an immutability of at least/u;
 
-const REJECT_ERRORS_TEST_HINT =
-  ' In tests, reject with `vi.fn().mockRejectedValue(value)` to use a non-Error reason.';
-
 const FIX_TYPE_ERROR_FIRST = 'fix any TypeScript error on the line first';
 
 const UNRESOLVED_TYPE =
@@ -29,8 +26,6 @@ const UNRESOLVED_TYPE =
 
 const UNRESOLVED_TYPE_HINT =
   ' The type is unresolved because of a TypeScript error, often a failed import: fix that error first.';
-
-const ASYMMETRIC_MATCHER_HINT = ` In tests the \`any\` usually comes from an asymmetric matcher (\`expect.any\`, \`expect.stringContaining\`, \`expect.objectContaining\`): assert the whole value with \`toEqual\`, and ${FIX_TYPE_ERROR_FIRST}.`;
 
 const LEGACY_ANY_HINT = ` If the value is a legacy \`any\`, read it through one reader function whose parameter is \`unknown\` and that returns a typed object, kept in adapters/; ${FIX_TYPE_ERROR_FIRST}.`;
 
@@ -54,10 +49,6 @@ const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw
 const ATOMIC_UPDATE_HINT =
   ' Another call can change it during the `await`, and this write then overwrites that change. Await the new value into a local first and then read and write the shared state in one step with no `await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue around the update is not recognized: when the state is already serialized or confined to one task, add a reviewed exception.';
 
-const NO_ASSERTIONS_TEXT = 'Test has no assertions';
-
-const NO_ASSERTIONS_HINT = `. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
-
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
 
@@ -69,28 +60,8 @@ const SWITCH_NOT_EXHAUSTIVE_TEXT = 'Switch is not exhaustive';
 const SWITCH_NOT_EXHAUSTIVE_HINT =
   '. If this function is already over a size limit, adding cases will fail the size check: extract an exhaustive helper instead (e.g. a `Record<Union, number>` lookup).';
 
-const DISABLED_TEST_TAIL =
-  /\s*-\s*if you want to skip a test(?: suite)? temporarily, use \.todo\(\) instead$/u;
-
-const DISABLED_TEST_HINT =
-  '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
-
 const UNUSED_PARAMETER_TAIL =
   /\s*(?:Allowed unused args must match [^\s]+|Unused parameters should start with a '_')\.$/u;
-
-const BACKTICKED_MATCHER = /`([\w.]+)`/u;
-
-const PREFER_CALLED_WITH_TEXT =
-  'A bare `toHaveBeenCalled()` passes for a call with any arguments. Assert them with `toHaveBeenCalledWith(...)`. An exception fits only when the arguments cannot be pinned.';
-
-const THROW_MESSAGE_TEXT =
-  "A bare `toThrow()` passes for any error. Pass the expected message: `toThrow('the message')`. An exception fits only when the message cannot be pinned.";
-const EXPECT_THROWS_HINT =
-  ' In a test, assert a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)` instead of asserting inside a `catch`.';
-
-const NODE_TEST_HINT =
-  ' nitpicker runs node:test files, but lints every test file with the Vitest rules. An exception fits only a file that must stay on node:test.';
-
 const FLOATING_PROMISE_TEXT = /^Promises must be awaited/u;
 
 const FLOATING_PROMISE_MESSAGE = `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`, and in production code \`job\` is an async function whose whole body is a \`try\` with a \`catch\` that does not rethrow.`;
@@ -116,21 +87,9 @@ const UNUSED_VARIABLE_HINT = ' Remove it, or use it.';
 
 const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
-function hinted(text: string, hint: string): HintedFields {
-  return { message: `${text}${hint}`, allowedForm: hint.replace(/^[.\s]+/u, '') };
-}
-
-function directive(message: string): HintedFields {
-  return { message, allowedForm: message };
-}
-
 function immutableTypesRewrite({ text, node, sourceFile }: RewriteInput): string | HintedFields {
   const kind = IMMUTABLE_TYPES_PREFIX.exec(text)?.[1];
   return kind === undefined ? text : immutableTypesParts({ kind, node, sourceFile });
-}
-
-function rejectErrorsMessage({ text, relativePath }: RewriteInput): string | HintedFields {
-  return readLayout().isTestFile(relativePath) ? hinted(text, REJECT_ERRORS_TEST_HINT) : text;
 }
 
 function legacyAnyHint(relativePath: string): string {
@@ -146,7 +105,10 @@ function unsafeAnyMessage({ text, relativePath }: RewriteInput): string | Hinted
     return hinted(text, UNRESOLVED_TYPE_HINT);
   }
   if (readLayout().isTestFile(relativePath)) {
-    return hinted(text, ASYMMETRIC_MATCHER_HINT);
+    return hinted(
+      text,
+      ` In tests the \`any\` usually comes from ${runnerWord('anyInTests')}, and ${FIX_TYPE_ERROR_FIRST}.`,
+    );
   }
   return hinted(text, legacyAnyHint(relativePath));
 }
@@ -158,10 +120,6 @@ function onlyThrowErrorMessage({ text, relativePath }: RewriteInput): string | H
   return directive(
     readLayout().isTestFile(relativePath) ? THROW_ERROR_TEST_HINT : THROW_ERROR_HINT,
   );
-}
-
-function expectExpectMessage({ text }: RewriteInput): string | HintedFields {
-  return text === NO_ASSERTIONS_TEXT ? hinted(NO_ASSERTIONS_TEXT, NO_ASSERTIONS_HINT) : text;
 }
 
 function duplicateConstituentsMessage({ text }: RewriteInput): string | HintedFields {
@@ -176,16 +134,6 @@ function switchExhaustivenessMessage({ text }: RewriteInput): string | HintedFie
   return text.startsWith(SWITCH_NOT_EXHAUSTIVE_TEXT)
     ? hinted(text, SWITCH_NOT_EXHAUSTIVE_HINT)
     : text;
-}
-
-function disabledTestMessage({ text }: RewriteInput): string | HintedFields {
-  return hinted(text.replace(DISABLED_TEST_TAIL, '').replace(/\.$/u, ''), DISABLED_TEST_HINT);
-}
-
-function restrictedMatcherMessage({ text }: RewriteInput): string | HintedFields {
-  const matcher = BACKTICKED_MATCHER.exec(text)?.[1];
-  const replacement = matcher === undefined ? undefined : restrictedMatcherText(matcher);
-  return replacement === undefined ? text : directive(replacement);
 }
 
 function floatingPromiseMessage({ text }: RewriteInput): string | HintedFields {
@@ -212,26 +160,15 @@ function sentenceHint(hint: string): Rewriter {
   return ({ text }) => hinted(text.trimEnd().replace(/(?<![.!?])$/u, '.'), hint);
 }
 
-function nodeTestMessage({ text }: RewriteInput): string | HintedFields {
-  return hinted(text, NODE_TEST_HINT);
-}
-
 const MESSAGE_REWRITERS = new Map<string, Rewriter>([
-  ['vitest/no-import-node-test', nodeTestMessage],
-  ['vitest/no-disabled-tests', disabledTestMessage],
-  ['vitest/no-restricted-matchers', restrictedMatcherMessage],
-  ['vitest/prefer-called-with', (): HintedFields => directive(PREFER_CALLED_WITH_TEXT)],
-  ['vitest/require-to-throw-message', (): HintedFields => directive(THROW_MESSAGE_TEXT)],
+  ...testRunnerRewriters(appendHint),
   ['functional/prefer-immutable-types', immutableTypesRewrite],
-  ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
   ['@typescript-eslint/no-unsafe-argument', unsafeAnyMessage],
   ['@typescript-eslint/no-unsafe-assignment', unsafeAnyMessage],
   ['@typescript-eslint/no-unsafe-call', unsafeAnyMessage],
   ['@typescript-eslint/no-unsafe-return', unsafeAnyMessage],
   ['@typescript-eslint/only-throw-error', onlyThrowErrorMessage],
-  ['vitest/expect-expect', expectExpectMessage],
-  ['vitest/no-conditional-expect', appendHint(EXPECT_THROWS_HINT)],
   ['@typescript-eslint/no-duplicate-type-constituents', duplicateConstituentsMessage],
   ['@typescript-eslint/switch-exhaustiveness-check', switchExhaustivenessMessage],
   ['@typescript-eslint/no-invalid-void-type', invalidVoidMessage],

@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { vi } from 'vitest';
 import {
@@ -8,9 +8,12 @@ import {
   runArea,
 } from '../../../../adapters/test-runners/test-support/runner-project.mjs';
 import { resolveHeadPolicy } from '../../../head-policy.mjs';
+import { withProjectTestFiles } from '../../../test-runner/test-files/project-test-files.mjs';
 
 export const OPT_IN = ['project', 'nitpicker'];
+const MOCHA_TESTS = "mocha 'test/**/*.test.ts'";
 export const TESTS_FAILED = ['tool-error:tests-failed'];
+const COVERAGE_ANALYZER = { name: 'coverage', policyFromPackage: true };
 const TEST_RUN_FAILURE = /:tests-(?:failed|not-run)$/u;
 const SECOND_ATTEMPT = 'let attempts = 0;\nconst secondAttempt = () => (attempts += 1) === 2;\n';
 
@@ -42,7 +45,7 @@ export function createRetryProjects() {
         ...files,
       });
     },
-    mochaProject(files, test = 'mocha') {
+    mochaProject(files, test = MOCHA_TESTS) {
       return projects.project({
         'package.json': packageFile(test),
         'src/main/pick.ts': PICK_SOURCE,
@@ -70,10 +73,11 @@ export function createRetryProjects() {
     },
     async coverageWith(root, precedence) {
       const policyFile = path.join(path.dirname(root), 'policy.json');
-      writeFileSync(
-        policyFile,
-        JSON.stringify(resolveHeadPolicy({ tools: { tests: { precedence } } }, root)),
+      const policy = withProjectTestFiles(
+        resolveHeadPolicy({ tools: { tests: { precedence } } }, root),
+        { projectRoot: root, liveProjectRoot: root, analyzers: [COVERAGE_ANALYZER] },
       );
+      await writeFile(policyFile, JSON.stringify(policy));
       vi.stubEnv('NITPICKER_POLICY', policyFile);
       return rulesOf(await runArea('coverage', root)).filter((rule) => TEST_RUN_FAILURE.test(rule));
     },

@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseJson } from '../../../../shared/values/readers.mts';
+import { objectOf, parseJson } from '../../../../shared/values/readers.mts';
 import { mochaMutationOptions, projectMocha } from './typed/runner-tools.mts';
 import type { RunnerCommand, RunnerName, TestOptions } from './typed/runner-types.mts';
 import type { StrykerConfig } from '../quality-areas/typed/mutation.mts';
+import { RESTORE_SINON_PLUGIN } from './mocha/mocha.mts';
 import { nodeTestSelection } from './node-test/node-test.mts';
 import { TEST_TIMEOUT_MS } from './test-run.mts';
 
@@ -74,12 +75,14 @@ export function cracoJestConfigText(): string {
   return CRACO_JEST_CONFIG_LINES.join('\n');
 }
 
+const CREATE_REACT_APP_LAUNCHERS = new Set(['react-scripts', 'react-app-rewired', 'rescripts']);
+
 function jestConfigSource(command: RunnerCommand): {
   readonly projectType: string;
   readonly configFile?: string;
   readonly config?: unknown;
 } {
-  if (command.launcher === 'react-scripts') {
+  if (CREATE_REACT_APP_LAUNCHERS.has(command.launcher ?? '')) {
     return { projectType: 'create-react-app' };
   }
   if (command.launcher === 'craco') {
@@ -99,8 +102,13 @@ function jestConfigSource(command: RunnerCommand): {
 }
 
 function jestOptions(command: RunnerCommand): StrykerConfig {
-  const { projectType, ...source } = jestConfigSource(command);
-  return { projectType, enableFindRelatedTests: false, ...source };
+  const { projectType, config, ...source } = jestConfigSource(command);
+  return {
+    projectType,
+    enableFindRelatedTests: false,
+    ...source,
+    config: { ...objectOf(config), restoreMocks: true },
+  };
 }
 
 function mochaConfig(
@@ -113,7 +121,13 @@ function mochaConfig(
     tokens: command.arguments_,
     testFiles: relativeFiles(options, testFiles),
   });
-  return { testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments], mochaOptions };
+  return {
+    testRunnerNodeArgs: [...command.nodeArguments, ...nodeArguments],
+    mochaOptions: {
+      ...mochaOptions,
+      require: [...(mochaOptions.require ?? []), RESTORE_SINON_PLUGIN],
+    },
+  };
 }
 
 type RunnerRequest = {

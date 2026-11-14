@@ -1,3 +1,4 @@
+import { verifyRunnerFixtureDependencies } from './runner-fixture-dependencies.mjs';
 import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,6 +27,7 @@ function writeFiles(root, files) {
 
 export function createCleanProject({ fixtureRoot, gitTemplateRoot, name, files = {} }) {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-`));
+  verifyRunnerFixtureDependencies(fixtureRoot);
   cpSync(fixtureRoot, root, { recursive: true });
   writeFileSync(path.join(root, '.gitignore'), 'node_modules/\nreports/\n');
   symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
@@ -54,4 +56,24 @@ export function runNitpicker(root, argumentsList) {
 
 export function readReport(root, ...segments) {
   return JSON.parse(readFileSync(path.join(root, ...segments), 'utf8'));
+}
+
+export function runSnapshot(root, extraArguments = []) {
+  const result = runNitpicker(root, [
+    '--all',
+    '--output',
+    path.join(root, 'reports/snapshot'),
+    ...extraArguments,
+  ]);
+  return {
+    ...result,
+    summary: readReport(root, 'reports/snapshot/summary.json'),
+    toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
+    findings: readReport(root, 'reports/snapshot/findings.json'),
+  };
+}
+
+export function metricValue(findings, tool, identity) {
+  return findings.find((finding) => finding.tool === tool && finding.identity === identity)?.metric
+    .value;
 }

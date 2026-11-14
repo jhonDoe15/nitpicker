@@ -28,7 +28,7 @@ function project(files) {
 async function cruise(files, options = {}) {
   const baseDir = project(files);
   const rule = outsideRootsRule({
-    productionSource: '^src/',
+    productionSource: { path: '^src/' },
     roots: ['src'],
     ...options,
   });
@@ -78,7 +78,7 @@ describe('outsideRootsRule', () => {
       ({ name }) => name === 'dependency-architecture',
     );
     const rule = outsideRootsRule({
-      productionSource: '^src/',
+      productionSource: { path: '^src/' },
       roots: ['src'],
       generatedFilePattern: '^(?:generated/marked\\.ts)$',
     });
@@ -119,7 +119,7 @@ describe('outsideRootsRule', () => {
     });
     const result = await cruiseWithConfig(
       {
-        forbidden: [outsideRootsRule({ productionSource: '^src/', roots: ['src'] })],
+        forbidden: [outsideRootsRule({ productionSource: { path: '^src/' }, roots: ['src'] })],
         options: { tsConfig: { fileName: tsConfig } },
       },
       { baseDir, paths: ['tests'], outputType: 'err-long' },
@@ -131,7 +131,7 @@ describe('outsideRootsRule', () => {
 
 describe('the outside-roots message', () => {
   it('names moving the code under a source root first and the loosening route second', () => {
-    expect(outsideRootsRule({ productionSource: '^src/', roots: ['src'] }).comment).toBe(
+    expect(outsideRootsRule({ productionSource: { path: '^src/' }, roots: ['src'] }).comment).toBe(
       'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.',
     );
   });

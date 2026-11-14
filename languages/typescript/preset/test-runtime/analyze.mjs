@@ -14,12 +14,6 @@ import {
 } from '../dependency-graph/cruise.mjs';
 import { defaultResolvedLayout } from '../layout.mjs';
 
-const TEST_FILE = /(?:^|\/).+\.(?:test|spec)\.[cm]?[jt]sx?$/;
-
-function isTest(source) {
-  return TEST_FILE.test(source);
-}
-
 function sourceEvidence(source, sourceText) {
   const sourceFile = ts.createSourceFile(source, sourceText, ts.ScriptTarget.Latest, true);
   const dynamicImports = new Set();
@@ -94,14 +88,14 @@ function referencedBridges(runtimeModules, sourceText, bridges) {
   });
 }
 
-export async function loadModuleSources(graph, rootDirectory) {
+export async function loadModuleSources(graph, rootDirectory, layout = defaultResolvedLayout) {
   if (!Array.isArray(graph?.modules)) {
     throw new TypeError('Expected a dependency-cruiser graph with a modules array');
   }
   const entries = await Promise.all(
     graph.modules
       .map((module) => normalizePath(module.source))
-      .filter((source) => isTest(source) && !isExcludedPath(source))
+      .filter((source) => layout.isRunnerTestFile(source) && !isExcludedPath(source))
       .map(async (source) => [source, await readFile(path.join(rootDirectory, source), 'utf8')]),
   );
   return new Map(entries);
@@ -136,7 +130,7 @@ export function analyzeTestRuntime(
   };
   const allTests = graph.modules
     .map((module) => normalizePath(module.source))
-    .filter(isTest)
+    .filter((source) => layout.isRunnerTestFile(source))
     .sort();
   function isProductionModule(source) {
     return isProduction(source, context.productionRoots, layout);

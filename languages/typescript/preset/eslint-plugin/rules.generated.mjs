@@ -100,6 +100,7 @@ import { rule as ruleNoUnknownMainFolder } from './rules/guards/no-unknown-main-
 import { rule as ruleNoUnmappedException } from './rules/errors/unmapped/no-unmapped-exception.mjs';
 import { rule as ruleNoUnorderedQuery } from './rules/queries/order/no-unordered-query.mjs';
 import { rule as ruleNoUnownedAsyncAssertion } from './test-assertions/unowned-async/no-unowned-async-assertion.mjs';
+import { rule as ruleNoUnpinnedAssertion } from './test-assertions/no-unpinned-assertion.mjs';
 import { rule as ruleNoUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as ruleNoUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as ruleNoUnusedDomEnvironment } from './rules/testing/environment/no-unused-dom-environment.mjs';
@@ -246,6 +247,7 @@ export const directoryRules = {
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
   'no-unowned-async-assertion': ruleNoUnownedAsyncAssertion,
+  'no-unpinned-assertion': ruleNoUnpinnedAssertion,
   'no-unsafe-deserialization': ruleNoUnsafeDeserialization,
   'no-unsafe-path-join': ruleNoUnsafePathJoin,
   'no-unused-dom-environment': ruleNoUnusedDomEnvironment,

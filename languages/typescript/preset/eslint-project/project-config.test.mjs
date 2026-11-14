@@ -134,13 +134,15 @@ describe('the head policy for the ESLint project config', () => {
       const root = project(FILES);
       const tools = (precedence) => ({ eslint: { engine: 'eslint', precedence } });
       const facts = eslintProjectFacts(root);
+      const tests = { detectedRunner: 'vitest' };
 
-      expect(resolveHeadPolicy({ preset, tools: tools(['nitpicker']) }, root).tools).toEqual(
-        tools(['nitpicker']),
-      );
+      expect(resolveHeadPolicy({ preset, tools: tools(['nitpicker']) }, root).tools).toEqual({
+        ...tools(['nitpicker']),
+        tests,
+      });
       expect(
         resolveHeadPolicy({ preset, tools: tools(['nitpicker', 'project']) }, root).tools,
-      ).toEqual({ eslint: { ...tools(['nitpicker', 'project']).eslint, ...facts } });
+      ).toEqual({ eslint: { ...tools(['nitpicker', 'project']).eslint, ...facts }, tests });
     },
   );
 

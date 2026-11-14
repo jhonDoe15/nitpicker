@@ -149,15 +149,38 @@ describe('tool precedence', () => {
     expect(accepted).not.toContain(undefined);
   });
 
-  it.each(['ava', ''])('rejects the test runner %j', (runner) => {
+  it.each(['ava', '', 'node:test', 7])('rejects the test runner %j', (runner) => {
     expect(() => validateConfig({ tools: { tests: { runner } } })).toThrow(
-      '"tools.tests.runner" must be "vitest", "jest", "node" or "mocha"',
+      new Error(
+        'nitpicker.config.json: "tools.tests.runner" must be "vitest", "jest", "node" or "mocha". ' +
+          "It names the runner that runs the project's tests; without it nitpicker follows the " +
+          "project's test scripts, runner config files, test-file imports and runner dependencies, " +
+          'and stops when they name several runners',
+      ),
     );
   });
 
   it('rejects unknown keys of the tests tool', () => {
     expect(() => validateConfig({ tools: { tests: { engine: 'jest' } } })).toThrow(
       '"tools.tests" has unknown key "engine"',
+    );
+  });
+
+  it.each(['java', 'kotlin'])('rejects the test runner tool under the %s preset', (preset) => {
+    expect(() => validateConfig({ preset, tools: { tests: { runner: 'jest' } } })).toThrow(
+      new Error(
+        `nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
+      ),
+    );
+  });
+
+  it('rejects the test runner tool under the Python preset', () => {
+    expect(() =>
+      validateConfig({ preset: 'python', tools: { tests: { runner: 'jest' } } }),
+    ).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
+      ),
     );
   });
 });

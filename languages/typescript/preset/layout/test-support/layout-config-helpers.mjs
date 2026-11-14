@@ -11,6 +11,7 @@ export const defaults = path.join(fileURLToPath(new URL('../../', import.meta.ur
 export const customPolicy = {
   exclude: ['lib/legacy/**'],
   layout: { sourceRoots: ['lib'], testRoots: ['spec'] },
+  react: { enabled: false },
 };
 
 export const customLayout = resolveLayout({ sourceRoots: ['lib'], testRoots: ['spec'] }, [

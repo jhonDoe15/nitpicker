@@ -2,7 +2,7 @@ import { existsSync, rmSync } from 'node:fs';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import path from 'node:path';
 import { trackTemporaryPath } from '../typed/tooling.mts';
-import { type Layout, readLayout } from '../typed/head-policy.mts';
+import { type Layout, readHeadPolicy, readLayout } from '../typed/head-policy.mts';
 import { TEST_TIMEOUT_CEILING_MS } from '../../../../shared/test-timeouts/resolve.mjs';
 import { projectTestRunner, readHeadPolicyFile, readTestReport } from './typed/runner-tools.mts';
 import { resolveTestTimeouts } from './typed/timeouts.mts';
@@ -116,13 +116,19 @@ export function runnableTestFiles(options: TestOptions): string[] {
   );
 }
 
+function knowsRunnableTests(options: TestOptions): boolean {
+  return (
+    fieldOf(fieldOf(readHeadPolicy().tools, 'tests'), 'testFiles') !== undefined ||
+    projectTestRunner(options).runner === 'vitest'
+  );
+}
+
 export function projectTestFiles(
   options: TestOptions,
   layout: Layout,
   files: readonly string[],
 ): string[] {
-  const isTest =
-    projectTestRunner(options).runner === 'vitest' ? layout.isRunnableTestFile : layout.isTestFile;
+  const isTest = knowsRunnableTests(options) ? layout.isRunnableTestFile : layout.isTestFile;
   return files.filter(isTest);
 }
 
@@ -152,6 +158,7 @@ export function coverageGlobs(): {
     exclude: [
       ...layout.sourceTestDirectoryGlobs,
       ...layout.sourceRoots.map((root) => `${root}/**/*.{test,spec}.*`),
+      ...layout.runnerSourceTestGlobs,
       '**/*.d.ts',
       ...layout.excludedGlobs,
     ],

@@ -14,14 +14,13 @@ import { vitestRetryArguments as untypedVitestRetryArguments } from '../../../pr
 import {
   mochaMutationOptions as untypedMochaMutationOptions,
   projectMocha as untypedProjectMocha,
-} from '../../../preset/test-runner/mocha-options.mjs';
+} from '../../../preset/test-runner/test-files/mocha-options.mjs';
 import { readHeadPolicyFile as untypedReadHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
 import { readTestReport as readTestReportJson } from '../../quality-areas/reporting/test-report.mts';
 import {
   consoleEntry as untypedConsoleEntry,
   writeReportFile as untypedWriteReportFile,
 } from '../../../preset/test-console/console-report.mjs';
-import { findPackageJSON as untypedFindPackageJson } from '../../../../../core/tooling/package-lookup/package-json.mjs';
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 
 type OptionSets = {
@@ -82,8 +81,13 @@ export const mochaMutationOptions: (request: {
   readonly projectRoot: string;
   readonly tokens: readonly string[];
   readonly testFiles: readonly string[];
-}) => { readonly mochaOptions: unknown; readonly nodeArguments: readonly string[] } =
-  untypedMochaMutationOptions;
+}) => {
+  readonly mochaOptions: {
+    readonly require?: readonly string[];
+    readonly [option: string]: unknown;
+  };
+  readonly nodeArguments: readonly string[];
+} = untypedMochaMutationOptions;
 
 export const readHeadPolicyFile: () => TimeoutPolicy = untypedReadHeadPolicyFile;
 
@@ -109,8 +113,3 @@ export function consoleEntry(call: ConsoleCall): unknown {
 
 export const writeReportFile: (reportPath: string, entries: readonly unknown[]) => void =
   untypedWriteReportFile;
-
-export function findPackageJson(specifier: string, base: string): string | undefined {
-  const found = called(untypedFindPackageJson, [specifier, base]);
-  return typeof found === 'string' ? found : undefined;
-}

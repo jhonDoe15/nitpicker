@@ -35,7 +35,6 @@ const exclude: string[] = policy.exclude ?? [];
 const testSupportDirectories = policy.layout?.colocatedTests === true ? ['test-support'] : [];
 const codeExtensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const nitpickerExclude = [...configDefaults.exclude, ...exclude];
-
 function testFiles(root: string) {
   return [`${root}/**/*.test.${codeExtensions}`, `${root}/**/*.spec.${codeExtensions}`];
 }
@@ -159,6 +158,7 @@ function pinnedProjects(entries: readonly TestProjectConfiguration[]): TestProje
 
 const coverage = {
   provider: 'v8' as const,
+  experimentalAstAwareRemapping: true,
   include: sourceRoots.map((root) => `${root}/**/*.${codeExtensions}`),
   exclude: [
     ...sourceRoots.flatMap((root) => [

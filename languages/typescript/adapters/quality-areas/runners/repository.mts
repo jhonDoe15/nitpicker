@@ -122,7 +122,7 @@ export async function runTestRuntime(options: QualityAreaOptions): Promise<Findi
   const graph = runDependencyCruiser(options, layout);
   const loadModuleSources = await policyExport(options, TEST_RUNTIME, 'loadModuleSources');
   const analyzeTestRuntime = await policyExport(options, TEST_RUNTIME, 'analyzeTestRuntime');
-  const sourceTexts: unknown = await loadModuleSources(graph, options.projectRoot);
+  const sourceTexts: unknown = await loadModuleSources(graph, options.projectRoot, layout);
   const report = analyzeTestRuntime(graph, {
     layout,
     productionRoots: layout.sourceRoots,

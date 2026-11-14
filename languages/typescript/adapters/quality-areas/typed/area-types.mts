@@ -8,6 +8,7 @@ export type QualityAreaOptions = {
   readonly policyRoot: string;
   readonly toolRoot: string;
   readonly liveProjectRoot: string;
+  readonly runnerProjectRoot?: string;
   readonly snapshot: 'base' | 'head';
   readonly legacyInventory: string;
   readonly crapScoreLimit: number;

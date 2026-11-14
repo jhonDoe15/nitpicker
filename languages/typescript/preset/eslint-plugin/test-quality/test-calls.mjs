@@ -5,7 +5,10 @@ import {
   resolveFunction,
 } from '../rules/analysis/constant-resolution.mjs';
 
-const SUITE_NAMES = new Set(['describe', 'suite']);
+const DESCRIBE = 'describe';
+const SUITE = 'suite';
+
+const SUITE_NAMES = new Set([DESCRIBE, SUITE, 'context']);
 const CASE_NAMES = new Set(['it', 'test', 'specify', 'xit', 'fit', 'xtest']);
 const TEST_MODULES = new Set([
   'vitest',
@@ -15,10 +18,27 @@ const TEST_MODULES = new Set([
   '@jest/globals',
   '@playwright/test',
 ]);
+const MODIFIERS = new Set([
+  'only',
+  'skip',
+  'todo',
+  'concurrent',
+  'sequential',
+  'shuffle',
+  'each',
+  'for',
+  'fails',
+  'failing',
+  'runIf',
+  'skipIf',
+  'serial',
+  'parallel',
+  'fixme',
+]);
 const MAX_EXTENSION_DEPTH = 4;
 const NOT_TESTS = [
   'step',
-  'describe',
+  DESCRIBE,
   'beforeEach',
   'afterEach',
   'beforeAll',
@@ -44,6 +64,30 @@ function rootIdentifierOf(callee) {
 
 function rootNameOf(callee) {
   return rootIdentifierOf(callee)?.name;
+}
+
+function memberNames(callee) {
+  return chainOf(callee, linkOf)
+    .filter((link) => link.type === 'MemberExpression')
+    .map((link) => (link.computed ? undefined : link.property.name))
+    .toReversed();
+}
+
+function testCallShape(node) {
+  if (node.type !== 'CallExpression') {
+    return undefined;
+  }
+  const root = rootNameOf(node.callee);
+  const names = memberNames(node.callee);
+  const isPlaywrightSuite = CASE_NAMES.has(root) && names[0] === DESCRIBE;
+  const modifiers = isPlaywrightSuite ? names.slice(1) : names;
+  if (!modifiers.every((name) => MODIFIERS.has(name))) {
+    return undefined;
+  }
+  if (isPlaywrightSuite || SUITE_NAMES.has(root)) {
+    return SUITE;
+  }
+  return CASE_NAMES.has(root) ? 'case' : undefined;
 }
 
 function isRequireOfTestModule(init) {
@@ -105,11 +149,11 @@ export function chainHasProperty(callee, name) {
 }
 
 export function isSuiteCall(node) {
-  return node.type === 'CallExpression' && SUITE_NAMES.has(rootNameOf(node.callee));
+  return testCallShape(node) === SUITE;
 }
 
 export function isCaseCall(node) {
-  return node.type === 'CallExpression' && CASE_NAMES.has(rootNameOf(node.callee));
+  return testCallShape(node) === 'case';
 }
 
 function isInlineFunction(node) {

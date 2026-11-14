@@ -1,5 +1,6 @@
 import { depthFirst, objectChildren } from '../../../../../../../shared/traversal.mjs';
 import { readLayout } from '../../../../head-policy.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 import {
   constantNumber,
   findVariable,
@@ -151,16 +152,17 @@ function isPromiseExecutorSleep(argument, timerPromises) {
 export const rule = {
   meta: {
     type: 'problem',
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
-      fixedSleep: `Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. ${EXCEPTION_HINT}`,
-      negativeTimeoutAssertion: `Do not assert absence by letting a wait time out: \`.rejects\` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (\`vi.advanceTimersByTime\`) and assert absence at once, such as \`expect(screen.queryByRole('tooltip')).toBeNull()\`. ${EXCEPTION_HINT}`,
+      fixedSleep: `Fixed sleeps are non-deterministic; wait on a condition with {{waitOnCondition}}. ${EXCEPTION_HINT}`,
+      negativeTimeoutAssertion: `Do not assert absence by letting a wait time out: \`.rejects\` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (\`{{advanceFakeTime}}\`) and assert absence at once, such as \`expect(screen.queryByRole('tooltip')).toBeNull()\`. ${EXCEPTION_HINT}`,
       playwrightTimeout: `\`waitForTimeout\` sleeps on wall-clock time. Wait on a condition instead, such as \`await expect(locator).toBeVisible()\`. ${EXCEPTION_HINT}`,
       cypressWait: `\`cy.wait(<number>)\` sleeps on wall-clock time. Wait on a request alias (\`cy.wait('@request')\`) or retry an assertion (\`cy.get(selector).should('be.visible')\`). ${EXCEPTION_HINT}`,
     },
   },
   create(context) {
     if (isTestFixture(context.filename)) return {};
+    const data = vocabularyOf(context);
     let timerPromises = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
@@ -168,7 +170,7 @@ export const rule = {
       },
       AwaitExpression(node) {
         if (isPromiseExecutorSleep(node.argument, timerPromises)) {
-          context.report({ node, messageId: 'fixedSleep' });
+          context.report({ node, messageId: 'fixedSleep', data });
         }
       },
       CallExpression(node) {
@@ -182,7 +184,7 @@ export const rule = {
           isExpectCall(expectCall) &&
           isUiWait(context, resolveConstant(context, expectCall.arguments[0]))
         ) {
-          context.report({ node: expectCall, messageId: 'negativeTimeoutAssertion' });
+          context.report({ node: expectCall, messageId: 'negativeTimeoutAssertion', data });
         }
       },
     };

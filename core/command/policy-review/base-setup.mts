@@ -12,6 +12,7 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
+import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
 import { applyRunProfile } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
@@ -24,6 +25,7 @@ type ResolverOptions = {
   readonly headConfig: NitpickerConfig;
   readonly headPolicy?: unknown;
   readonly injectedAnalyzers?: readonly Analyzer[] | undefined;
+  readonly liveProjectRoot?: string | undefined;
   readonly profile?: object;
   readonly warn?: Warn;
 };
@@ -31,22 +33,37 @@ type ResolverOptions = {
 type BaseSnapshot = {
   readonly baseProjectRoot: string;
   readonly headSnapshotRoot: string;
-  readonly liveProjectRoot: string;
+  readonly liveProjectRoot?: string | undefined;
   readonly moves: unknown;
   readonly analyzers: readonly Analyzer[];
 };
 
-type MeasuredBase = Omit<Required<ResolverOptions>, 'warn' | 'injectedAnalyzers'> & {
+type MeasuredBase = Omit<
+  Required<ResolverOptions>,
+  'warn' | 'injectedAnalyzers' | 'liveProjectRoot'
+> & {
   readonly baseConfig: NitpickerConfig;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
   readonly analyzers: readonly Analyzer[];
 };
 
 type BaseSetupCli = {
+  readonly currentProjectRoot?: string | undefined;
   readonly injectedAnalyzers: readonly Analyzer[] | undefined;
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
+
+const withBaseTestRunner: (
+  setup: object,
+  context: {
+    readonly headPolicy: unknown;
+    readonly baseProjectRoot: string;
+    readonly liveProjectRoot: string | undefined;
+    readonly analyzers: readonly Analyzer[];
+    readonly warn: Warn;
+  },
+) => object = untypedWithBaseTestRunner;
 
 const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => Analyzer =
   withConfiguredTimeout;
@@ -76,19 +93,38 @@ export function baseSetupResolver(
   return createBaseSetupResolver({
     headConfig,
     headPolicy,
+    liveProjectRoot: cli.currentProjectRoot,
     injectedAnalyzers: cli.injectedAnalyzers,
     profile: cli.options,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
 
-export function createBaseSetupResolver({
+export function createBaseSetupResolver(
+  options: ResolverOptions,
+): (snapshot: BaseSnapshot) => object {
+  const headPolicy: unknown = options.headPolicy ?? {};
+  const warn: Warn = options.warn ?? (() => undefined);
+  const configured = configuredBaseSetup({ ...options, headPolicy, warn });
+  return (snapshot) =>
+    withBaseTestRunner(configured(snapshot), {
+      headPolicy,
+      baseProjectRoot: snapshot.baseProjectRoot,
+      liveProjectRoot: snapshot.liveProjectRoot ?? options.liveProjectRoot,
+      analyzers: snapshot.analyzers,
+      warn,
+    });
+}
+
+function configuredBaseSetup({
   headConfig,
-  headPolicy = {},
+  headPolicy,
   injectedAnalyzers,
   profile = {},
-  warn = () => undefined,
-}: ResolverOptions): (snapshot: BaseSnapshot) => object {
+  warn,
+}: ResolverOptions & { readonly headPolicy: unknown; readonly warn: Warn }): (
+  snapshot: BaseSnapshot,
+) => object {
   return ({ baseProjectRoot, headSnapshotRoot, liveProjectRoot, moves, analyzers }) => {
     const baseConfig = readBaseConfig(baseProjectRoot, warn);
     const compared = baseConfig ?? {};

@@ -45,8 +45,8 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 A full run takes minutes and prints a progress line to stderr for each slow, failed or skipped analyzer. Wait for it: do
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
 
-Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
-`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. When the message links to
+Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `typescript`, or
+the project's test runner `vitest`, `jest` or `mocha`; a bad `nitpicker.config.json`; a wrong `--base`) and rerun. When the message links to
 [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 `npx nitpicker init` lists the missing peers with the install command for the project's package
 manager; it never overwrites an existing file.

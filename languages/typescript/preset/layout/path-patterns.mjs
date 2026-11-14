@@ -1,4 +1,5 @@
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { rootScopedGlobs, sourceRootGlobs } from '../test-runner/test-files/test-file-patterns.mjs';
 
 const TEST_SUPPORT_DIRECTORY = 'test-support';
 
@@ -17,12 +18,7 @@ export function filePatterns({ sourceRoots, testRoots, extensions, colocatedTest
       .join('|'),
   );
   const sourcePattern = new RegExp(`^(?:${sourceAlternatives})/.*\\.${suffix}`);
-  return {
-    testPattern,
-    sourcePattern,
-    codePattern: new RegExp(`\\.${suffix}`),
-    runnableTestPattern: new RegExp(`\\.(?:test|spec)\\.${suffix}`),
-  };
+  return { testPattern, sourcePattern, codePattern: new RegExp(`\\.${suffix}`) };
 }
 
 function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }) {
@@ -33,7 +29,14 @@ function unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob })
   ];
 }
 
-export function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, colocatedTests }) {
+export function globsFor({
+  sourceRoots,
+  testRoots,
+  javascript,
+  extensionGlob,
+  colocatedTests,
+  testFiles,
+}) {
   return {
     testSupportGlobs: colocatedTests
       ? sourceRoots.map((root) => `${root}/**/${TEST_SUPPORT_DIRECTORY}/**`)
@@ -42,7 +45,10 @@ export function globsFor({ sourceRoots, testRoots, javascript, extensionGlob, co
     testGlobs: [
       ...testRoots.map((root) => `${root}/**/*.${extensionGlob}`),
       ...sourceRoots.map((root) => `${root}/**/*.{test,spec}.${extensionGlob}`),
+      ...sourceRootGlobs(sourceRoots, testFiles),
     ],
+    runnerSourceTestGlobs: sourceRootGlobs(sourceRoots, testFiles),
+    runnableTestGlobs: rootScopedGlobs([...sourceRoots, ...testRoots], testFiles.include),
     sourceTestDirectoryGlobs: sourceRoots.map((root) => `${root}/**/__tests__/**`),
     unitTestGlobs: unitTestGlobsFor({ sourceRoots, testRoots, javascript, extensionGlob }),
     graphRoots: [...sourceRoots, ...testRoots],

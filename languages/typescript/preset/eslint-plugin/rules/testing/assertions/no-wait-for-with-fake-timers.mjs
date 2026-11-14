@@ -1,4 +1,9 @@
 import { ancestorsOf, chainOf } from '../../analysis/ancestry.mjs';
+import { createRunnerApis, runnerApiVisitors } from '../../runner-apis/runner-apis.mjs';
+import { fakeTimerChange, waitKind } from '../../runner-apis/runner-doubles.mjs';
+
+const TEARDOWN_HOOKS = ['afterEach', 'afterAll', 'after'];
+const WAIT_MESSAGES = { node: 'mockedWait', sinon: 'clockWait' };
 function callName(node) {
   if (node?.type !== 'CallExpression') return undefined;
   const callee = node.callee;
@@ -21,20 +26,8 @@ function owner(node) {
   return undefined;
 }
 
-function recordVitestAliases(aliases, node) {
-  if (node.source.value !== 'vitest') return;
-  for (const specifier of node.specifiers) {
-    if (
-      specifier.type === 'ImportSpecifier' &&
-      ['vi', 'vitest'].includes(specifier.imported.name)
-    ) {
-      aliases.add(specifier.local.name);
-    }
-  }
-}
-
 function isInTeardown(node) {
-  return ancestorsOf(node).some((current) => ['afterEach', 'afterAll'].includes(callName(current)));
+  return ancestorsOf(node).some((current) => TEARDOWN_HOOKS.includes(callName(current)));
 }
 
 function governingChange(changes, wait) {
@@ -51,6 +44,13 @@ function governingChange(changes, wait) {
   return undefined;
 }
 
+function isFakeWait(wait, change) {
+  if (!change?.fake) {
+    return false;
+  }
+  return wait.kind === 'vitest' ? change.kind === 'vitest' : change.kind !== 'vitest';
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -58,34 +58,37 @@ export const rule = {
     messages: {
       fakeWait:
         'Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.',
+      mockedWait:
+        'Use an explicit completion signal or mock.timers.tick and a direct assertion; waitFor polls on timers that mock.timers has replaced, so it never settles.',
+      clockWait:
+        'Use an explicit completion signal or `await clock.tickAsync(ms)` and a direct assertion; waitFor polls on timers that the sinon fake clock has replaced, so it never settles.',
     },
   },
   create(context) {
-    const aliases = new Set(['vi', 'vitest']);
+    const apis = createRunnerApis();
     const changes = [];
     const waits = [];
     return {
-      ImportDeclaration(node) {
-        recordVitestAliases(aliases, node);
-      },
+      ...runnerApiVisitors(apis),
       CallExpression(node) {
-        const callee = node.callee;
-        if (
-          callee.type !== 'MemberExpression' ||
-          callee.computed ||
-          !aliases.has(callee.object.name)
-        )
+        const kind = waitKind(apis, node);
+        if (kind !== undefined) {
+          waits.push({ node, kind });
+        }
+        const change = fakeTimerChange(apis, node);
+        if (change === undefined || isInTeardown(node)) {
           return;
-        const method = callee.property.name;
-        if (method === 'waitFor') waits.push(node);
-        if (!['useFakeTimers', 'useRealTimers'].includes(method)) return;
-        if (isInTeardown(node)) return;
-        changes.push({ node, owner: owner(node), fake: method === 'useFakeTimers' });
+        }
+        changes.push({ node, owner: owner(node), ...change });
       },
       'Program:exit'() {
         for (const wait of waits) {
-          if (governingChange(changes, wait)?.fake) {
-            context.report({ node: wait, messageId: 'fakeWait' });
+          const change = governingChange(changes, wait.node);
+          if (isFakeWait(wait, change)) {
+            context.report({
+              node: wait.node,
+              messageId: WAIT_MESSAGES[change.kind] ?? 'fakeWait',
+            });
           }
         }
       },

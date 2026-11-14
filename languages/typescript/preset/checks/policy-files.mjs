@@ -136,6 +136,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/react/theme/color-text.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react/react-single-styling-approach.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-partial-output-assertion.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/runner-apis/runner-assertions.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/react-test-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-tests/react-test-no-implementation-details.mjs',
   'languages/typescript/preset/modules/module-sources.mjs',
@@ -287,7 +288,7 @@ export const TEST_RUNNER_CONFIGURATION_FILES = [
   'languages/typescript/preset/test-environment/read-environment.mjs',
   'languages/typescript/preset/test-runner/detect-runner.mjs',
   'languages/typescript/preset/test-runner/mocha-config-files.mjs',
-  'languages/typescript/preset/test-runner/mocha-options.mjs',
+  'languages/typescript/preset/test-runner/test-files/mocha-options.mjs',
   'languages/typescript/preset/test-runner/runners.mjs',
   'languages/typescript/preset/test-runner/script-command.mjs',
 ];

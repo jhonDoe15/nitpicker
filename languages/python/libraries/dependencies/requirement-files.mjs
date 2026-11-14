@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { isFile } from '../../../../shared/filesystem.mjs';
 import { readProjectText } from '../project-files.mjs';
 import { isDevelopmentGroup } from './requirement-names.mjs';
 
@@ -10,10 +11,6 @@ const INCLUDE = /^(?:-r\s*|--requirement[\s=]+)(\S+)/u;
 const COMPILED_HEADER = /^#.*\b(?:pip-compile|uv pip compile)\b/mu;
 const VIA = /#\s*via\b/u;
 const DIRECT = /(?:^|\s)-r\s*\S/u;
-
-function isFile(file) {
-  return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
-}
 
 function listed(directory, pattern) {
   return readdirSync(directory)

@@ -1,5 +1,6 @@
 import { findVariable, perTestVisitors } from '../../analysis/test-code-analysis.mjs';
 import { chainOf } from '../../analysis/ancestry.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const CHEAP_CALL_ROOTS = new Set([
   'path',
@@ -118,17 +119,18 @@ export const rule = {
     type: 'problem',
     schema: [],
     messages: {
-      chargedSetup: `"{{name}}" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.`,
+      chargedSetup: `"{{name}}" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in {{sharedSetupHook}} and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.`,
     },
   },
   create(context) {
+    const { sharedSetupHook } = vocabularyOf(context);
     return perTestVisitors(context, (node) => {
       if (node.type !== 'CallExpression' || CHEAP_CALL_ROOTS.has(calleeRoot(node.callee))) {
         return undefined;
       }
       const target = memoTarget(storedValue(node));
       if (!target || !isModuleLevelMutable(context, target)) return undefined;
-      return { messageId: 'chargedSetup', data: { name: target.name } };
+      return { messageId: 'chargedSetup', data: { name: target.name, sharedSetupHook } };
     });
   },
 };

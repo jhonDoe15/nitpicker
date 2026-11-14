@@ -73,7 +73,9 @@ function reportsOf({ root, results }, relativePath) {
 }
 
 const projectMessage = (environment) =>
-  rule.meta.messages.unusedProjectEnvironment.replaceAll('{{environment}}', environment);
+  rule.meta.messages.unusedProjectEnvironment
+    .replaceAll('{{environment}}', environment)
+    .replaceAll('{{directive}}', directive);
 const directiveMessage = (environment) =>
   rule.meta.messages.unusedDirectiveOverDomProject
     .replace('{{environment}}', environment)

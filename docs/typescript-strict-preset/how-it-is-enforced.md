@@ -56,7 +56,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   unfollowed but visible. Generated code is commonly imported from `generated/`, so that folder stays
   allowed. Its message names the ways out: move the file under a source root or add its folder to
   `layout.sourceRoots`; to leave it unchecked, list it in `exclude`.
-- `src/main/composition-root.{ts,mts,js,mjs}` and `src/main/composition-root/index.*` are knip entry
+- `src/main/composition-root.{ts,tsx,mts,js,jsx,mjs}` and `src/main/composition-root/index.*` are knip entry
   points, since nothing imports the composition root.
 - Touched code is enforced by the diff engine (see "How touched code is detected").
 - Exceptions go through `exceptions` in `nitpicker.config.json`. An exception names one rule id and
@@ -117,5 +117,5 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `page.evaluate` compile (the lib then applies to every file in that check). The default quality
   test run does not run `e2e`, since end-to-end runners start those tests themselves; a `testRoots`
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
-- A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
-  like every other test file (see [Test runners](../usage.md#test-runners)).
+- A Jest project with tests in a root `__tests__/` gets them run by Jest, with the project's Jest
+  config, like every other test root (see [Test runners](../usage.md#test-runners)).

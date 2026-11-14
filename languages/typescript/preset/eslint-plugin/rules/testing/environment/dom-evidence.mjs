@@ -15,7 +15,16 @@ const DOM_PACKAGES = [
 ];
 const COMPONENT_FILE = /\.(?:vue|svelte|astro)$/u;
 const STORYBOOK_RENDERERS = new Set(['composeStories', 'composeStory']);
-const MODULE_MOCKS = new Set(['mock', 'doMock', 'importActual', 'importMock']);
+const MODULE_MOCKS = new Set([
+  'mock',
+  'doMock',
+  'importActual',
+  'importMock',
+  'requireActual',
+  'requireMock',
+  'unstable_mockModule',
+  'setMock',
+]);
 const GLOBAL_OBJECTS = new Set(['globalThis', 'global', 'self']);
 const NODE_NAVIGATOR_MEMBERS = new Set([
   'hardwareConcurrency',
@@ -24,7 +33,7 @@ const NODE_NAVIGATOR_MEMBERS = new Set([
   'platform',
   'userAgent',
 ]);
-const TEST_API_OBJECTS = new Set(['vi', 'vitest']);
+const TEST_API_OBJECTS = new Set(['vi', 'vitest', 'jest']);
 const NAME_POSITIONS = [
   ['name', ts.isPropertyAccessExpression],
   ['right', ts.isQualifiedName],
@@ -110,16 +119,32 @@ function stringArgument(node) {
   return argument !== undefined && ts.isStringLiteralLike(argument) ? argument.text : undefined;
 }
 
+function isNodeTestModuleMock(callee) {
+  if (!ts.isPropertyAccessExpression(callee) || callee.name.text !== 'module') {
+    return false;
+  }
+  const receiver = callee.expression;
+  return ts.isIdentifier(receiver)
+    ? receiver.text === 'mock'
+    : ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'mock';
+}
+
+function isTestApiModuleCall(callee) {
+  return (
+    ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    TEST_API_OBJECTS.has(callee.expression.text) &&
+    MODULE_MOCKS.has(callee.name.text)
+  );
+}
+
 function moduleCallSpecifier(node) {
   const callee = node.expression;
   if (callee.kind === ts.SyntaxKind.ImportKeyword) return stringArgument(node);
   if (ts.isIdentifier(callee)) return callee.text === 'require' ? stringArgument(node) : undefined;
-  const isMock =
-    ts.isPropertyAccessExpression(callee) &&
-    ts.isIdentifier(callee.expression) &&
-    TEST_API_OBJECTS.has(callee.expression.text) &&
-    MODULE_MOCKS.has(callee.name.text);
-  return isMock ? stringArgument(node) : undefined;
+  return isTestApiModuleCall(callee) || isNodeTestModuleMock(callee)
+    ? stringArgument(node)
+    : undefined;
 }
 
 function isOpaqueModuleCall(node) {

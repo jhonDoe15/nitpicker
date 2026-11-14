@@ -1,0 +1,9 @@
+{
+  "name": "node-test-fixture",
+  "private": true,
+  "type": "module",
+  "exports": "./src/main/features/greeting/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}

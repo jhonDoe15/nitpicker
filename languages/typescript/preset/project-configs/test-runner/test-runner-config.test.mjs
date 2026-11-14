@@ -43,12 +43,18 @@ describe('the test runner retries a project opts into', () => {
   );
 
   it.each([
-    ['the mocha key of package.json', { 'package.json': { name: 'p', mocha: { retries: 1 } } }],
+    [
+      'the mocha key of package.json',
+      { 'package.json': { name: 'p', mocha: { retries: 1, spec: 'test/**/*.test.ts' } } },
+    ],
     ['a .mocharc.mjs', { '.mocharc.mjs': 'export default { retries: 1 };\n' }],
     [
       'the config the test script names',
       {
-        'package.json': { name: 'p', scripts: { test: 'mocha --config config/mocha.json' } },
+        'package.json': {
+          name: 'p',
+          scripts: { test: "mocha --config config/mocha.json 'test/**/*.test.ts'" },
+        },
         'config/mocha.json': '{ "retries": 1 }',
         '.mocharc.json': '{ "retries": 0 }',
       },
@@ -161,9 +167,13 @@ describe('the retry captured from the head checkout', () => {
   it('never reads the config without the opt-in or while nitpicker wins', () => {
     const root = projects.vitestProject({ 'vitest.config.mjs': 'throw new Error("read");\n' });
 
-    expect(projects.headTests(root, ['nitpicker'])).toEqual({ precedence: ['nitpicker'] });
+    expect(projects.headTests(root, ['nitpicker'])).toEqual({
+      precedence: ['nitpicker'],
+      detectedRunner: 'vitest',
+    });
     expect(projects.headTests(root, ['nitpicker', 'project'])).toEqual({
       precedence: ['nitpicker', 'project'],
+      detectedRunner: 'vitest',
     });
     expect(projectTestRetry('vitest', { precedence: ['nitpicker'] })).toBe(undefined);
     expect(

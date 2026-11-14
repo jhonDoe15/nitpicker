@@ -5,7 +5,17 @@ import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
 } from '../typed/static-checks.mts';
-import { layoutTransformFor, readLayout, typecheckEngine } from '../typed/head-policy.mts';
+import {
+  layoutTransformFor,
+  readHeadPolicy,
+  readLayout,
+  typecheckEngine,
+} from '../typed/head-policy.mts';
+import { policyTestRunner } from '../../preset/test-runner/project-runner.mjs';
+import {
+  isUntypedRunnerGlobal,
+  missingRunnerTypes,
+} from '../../preset/test-runner/vocabulary/runner-types.mjs';
 import type { StaticCheckOptions } from './arguments.mts';
 import { type Finding, projectFile, hash, policyFile } from './shared.mts';
 import { type LinkedPolicyFile, linkPolicyFile } from '../typed/tooling.mts';
@@ -42,16 +52,12 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectRoot: options.projectRoot,
       projectNative: native,
     });
-    const layout = readLayout();
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: diagnostics
-        .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter(
-          (diagnostic) =>
-            diagnostic.file === undefined ||
-            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
-        ),
+      diagnostics: gatedDiagnostics(
+        diagnostics.map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options)),
+        options.projectRoot,
+      ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath,
@@ -63,6 +69,24 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       removeSnapshotDependencies(preparedDependencies);
     }
   }
+}
+
+function gatedDiagnostics(
+  diagnostics: readonly TypeScript.Diagnostic[],
+  projectRoot: string,
+): TypeScript.Diagnostic[] {
+  const layout = readLayout();
+  const runner: unknown = policyTestRunner(readHeadPolicy(), projectRoot);
+  const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
+  return diagnostics.filter((diagnostic) => {
+    if (diagnostic.file === undefined) {
+      return true;
+    }
+    const file = projectFile(projectRoot, diagnostic.file.fileName);
+    const untypedGlobal =
+      untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner);
+    return !(layout.isExcluded(file) || untypedGlobal);
+  });
 }
 
 export function normalizeTypeScriptDiagnostics({

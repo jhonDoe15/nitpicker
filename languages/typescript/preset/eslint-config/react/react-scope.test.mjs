@@ -12,7 +12,7 @@ import {
   accessibilityRuleNames,
   reactRuleIds,
   reactTestRuleIds,
-  testingLibraryHints,
+  testingLibraryHintsFor,
 } from './react-rules.mjs';
 import {
   analyzedProjectRoot,
@@ -21,6 +21,7 @@ import {
   reactSyntaxConfigFor,
 } from './react-scope.mjs';
 import { fileURLToPath } from 'node:url';
+import { runnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
 
 const layout = resolveLayout();
 const { projectWith, removeProjects } = temporaryProjects();
@@ -150,6 +151,8 @@ describe('the React scope config', () => {
 
   it('gives every Testing Library rule a hint naming the allowed form', async () => {
     const { testingLibraryPlugin } = await import('./react-plugins.mjs');
+
+    const testingLibraryHints = testingLibraryHintsFor(runnerVocabulary());
 
     expect(Object.keys(testingLibraryPlugin.rules).toSorted()).toEqual(
       Object.keys(testingLibraryHints).toSorted(),

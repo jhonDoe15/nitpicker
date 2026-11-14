@@ -3,6 +3,7 @@ import {
   moduleBindings,
   perTestVisitors,
 } from '../../analysis/test-code-analysis.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const SERVER_MODULES = new Set(
   ['http', 'https', 'http2', 'net', 'tls'].flatMap((name) => [name, `node:${name}`]),
@@ -16,10 +17,11 @@ export const rule = {
     schema: [],
     messages: {
       serverPerTest:
-        'Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.',
+        'Do not start a server or worker thread in each test or beforeEach. Start it once in {{sharedSetupHook}} and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.',
     },
   },
   create(context) {
+    const data = { sharedSetupHook: vocabularyOf(context).sharedSetupHook };
     let servers = { named: new Map(), namespaces: new Set() };
     let workers = { named: new Map(), namespaces: new Set() };
     return {
@@ -33,16 +35,16 @@ export const rule = {
           node.type === 'NewExpression' ? workers : servers,
         );
         if (node.type === 'CallExpression' && SERVER_FACTORIES.has(name ?? '')) {
-          return { messageId: 'serverPerTest' };
+          return { messageId: 'serverPerTest', data };
         }
         if (node.type === 'NewExpression' && name === 'Worker') {
-          return { messageId: 'serverPerTest' };
+          return { messageId: 'serverPerTest', data };
         }
         if (
           node.type === 'NewExpression' &&
           importedCalleeName(node.callee, servers) === 'Server'
         ) {
-          return { messageId: 'serverPerTest' };
+          return { messageId: 'serverPerTest', data };
         }
         return undefined;
       }),

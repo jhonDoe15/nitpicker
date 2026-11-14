@@ -1,0 +1,13 @@
+{
+  "name": "mocha-dom-clean-fixture",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "global-jsdom": "30.0.0",
+    "jsdom": "30.1.0",
+    "mocha": "12.0.3"
+  }
+}

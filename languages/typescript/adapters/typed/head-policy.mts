@@ -29,6 +29,7 @@ export type Layout = {
   readonly testRoots: readonly string[];
   readonly sourceGlobs: readonly string[];
   readonly sourceTestDirectoryGlobs: readonly string[];
+  readonly runnerSourceTestGlobs: readonly string[];
   readonly excludedGlobs: readonly string[];
   readonly isEndToEndTest: (relativePath: string) => boolean;
   projectCodeFiles(projectRoot: string, roots?: readonly string[]): readonly string[];
