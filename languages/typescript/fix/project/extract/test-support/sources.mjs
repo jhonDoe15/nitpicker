@@ -67,3 +67,45 @@ export function dates(name, time) {
 }
 `;
 }
+
+export function typed(name, element, { cast = '', guard = '' } = {}) {
+  return `export function ${name}(items: ${element}[], limit: number): ${element}[] {
+  const picked: ${element}[] = [];
+  for (const item of items) {
+    if (picked.length < limit${guard}) {
+      picked.push(item${cast});
+    }
+  }
+  picked.reverse();
+  return picked;
+}
+`;
+}
+
+export function boxed(name, key, value) {
+  return `export function ${name}(rows: Map<${key}, ${value}>, limit: number): Promise<${value}[]> {
+  const kept: ${value}[] = [];
+  for (const row of rows.values()) {
+    if (kept.length < limit) {
+      kept.push(row);
+    }
+  }
+  kept.reverse();
+  return Promise.resolve(kept);
+}
+`;
+}
+
+export function built(name, constructor) {
+  return `export function ${name}(items: string[], limit: number): object[] {
+  const picked: object[] = [];
+  for (const item of items) {
+    if (picked.length < limit) {
+      picked.push(new ${constructor}(item));
+    }
+  }
+  picked.reverse();
+  return picked;
+}
+`;
+}

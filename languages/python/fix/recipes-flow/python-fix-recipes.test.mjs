@@ -108,4 +108,22 @@ describe('--fix for Python source recipes', () => {
       ['--stdin-filename=tests/test_check_math.py'],
     ]);
   });
+
+  it('retargets the callers of a forwarding wrapper that sits in a changed file', () => {
+    const { result, read } = fixTopic(
+      {
+        'app/__init__.py': '',
+        'app/api.py':
+          'def _load(path: str) -> str:\n    return path\n\n\ndef load(path: str) -> str:\n    return _load(path)\n',
+        'app/use.py': 'from app.api import load\n\n\ndef run() -> str:\n    return load("x")\n',
+      },
+      ['python-rules/forwarding-wrapper'],
+    );
+
+    expect([read('app/api.py'), read('app/use.py'), result.fixedFindings]).toEqual([
+      squeezed('def _load(path: str) -> str:\n    return path\n'),
+      squeezed('from app.api import _load\n\n\ndef run() -> str:\n    return _load("x")\n'),
+      ['app/api.py:5 python-rules/forwarding-wrapper (python-forwarding-wrapper)'],
+    ]);
+  });
 });
