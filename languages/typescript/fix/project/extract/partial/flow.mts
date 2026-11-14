@@ -1,9 +1,22 @@
-import { chainOf } from '../../../../../../shared/traversal.mjs';
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { declarationsOf, isInRegion, isLocalSymbol, isWithin } from '../scope.mjs';
-import { childrenOf, descendants, symbolAt } from '../syntax.mjs';
-import { writesOf } from '../writes.mjs';
-import { isFunctionLike } from './runs.mjs';
+import type TypeScript from 'typescript';
+import { chainOf, typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
+import { declarationsOf, isInRegion, isLocalSymbol, isWithin } from '../scope.mts';
+import { childrenOf, descendants, symbolAt } from '../syntax.mts';
+import type { Region, RunOutput, RunSide, SymbolSet } from '../typed/extract-types.mts';
+import { writesOf } from '../writes.mts';
+import { isFunctionLike, lastStatement } from './runs.mts';
+
+type Analysis =
+  | { readonly problem: string; readonly output?: undefined }
+  | { readonly output: RunOutput; readonly problem?: undefined };
+
+type Used = {
+  readonly declaration: TypeScript.VariableDeclaration;
+  readonly where: string;
+  readonly name: TypeScript.Identifier;
+};
+
+const ts = typescriptApi();
 
 const LOOPS = [
   ts.isForStatement,
@@ -29,8 +42,8 @@ const SUSPENDING = [ts.SyntaxKind.AwaitExpression, ts.SyntaxKind.YieldExpression
 const BOTH = 'the run returns a value and also defines one that the code after it uses';
 const EARLY = 'the run returns early on some paths';
 
-export function ownNodes(statements) {
-  const found = [];
+export function ownNodes(statements: readonly TypeScript.Node[]): TypeScript.Node[] {
+  const found: TypeScript.Node[] = [];
   const pending = [...statements];
   for (const node of pending) {
     found.push(node);
@@ -41,11 +54,14 @@ export function ownNodes(statements) {
   return found;
 }
 
-function enclosingWithin(node, statements) {
+function enclosingWithin(
+  node: TypeScript.Node,
+  statements: readonly TypeScript.Node[],
+): TypeScript.Node[] {
   if (statements.includes(node)) {
     return [];
   }
-  const found = [];
+  const found: TypeScript.Node[] = [];
   const pending = [node.parent];
   for (const current of pending) {
     found.push(current);
@@ -56,19 +72,22 @@ function enclosingWithin(node, statements) {
   return found;
 }
 
-function hasTarget(node, statements) {
+function hasTarget(node: TypeScript.Node, statements: readonly TypeScript.Node[]): boolean {
   const wanted = ts.isBreakStatement(node) ? [...LOOPS, ts.isSwitchStatement] : LOOPS;
   return enclosingWithin(node, statements).some((ancestor) =>
     wanted.some((test) => test(ancestor)),
   );
 }
 
-function isSuspending(node) {
+function isSuspending(node: TypeScript.Node): boolean {
   const awaitsLoop = ts.isForOfStatement(node) && node.awaitModifier !== undefined;
   return awaitsLoop || SUSPENDING.includes(node.kind);
 }
 
-function jumpProblem(node, statements) {
+function jumpProblem(
+  node: TypeScript.Node,
+  statements: readonly TypeScript.Node[],
+): string | undefined {
   if (ts.isReturnStatement(node)) {
     const final = node === statements.at(-1) && node.expression !== undefined;
     return final ? undefined : EARLY;
@@ -80,11 +99,11 @@ function jumpProblem(node, statements) {
   return isSuspending(node) ? 'the run awaits or yields' : undefined;
 }
 
-function isVar(node) {
+function isVar(node: TypeScript.Node): boolean {
   return ts.isVariableDeclarationList(node) && (node.flags & ts.NodeFlags.BlockScoped) === 0;
 }
 
-function shapeProblem(statements) {
+function shapeProblem(statements: readonly TypeScript.Node[]): string | undefined {
   if (!statements.every((statement) => ALLOWED_STATEMENTS.some((test) => test(statement)))) {
     return 'the run declares a function, class or type, or has a statement of another kind';
   }
@@ -93,7 +112,7 @@ function shapeProblem(statements) {
   return jump ?? (nodes.some(isVar) ? 'the run declares a var' : undefined);
 }
 
-function writeProblem({ unit, checker, region }) {
+function writeProblem({ unit, checker, region }: RunSide): string | undefined {
   const outside = writesOf(unit, checker).some(
     ({ node, symbol }) =>
       isWithin(node, region) && isLocalSymbol(symbol, unit) && !isInRegion(symbol, region),
@@ -101,7 +120,10 @@ function writeProblem({ unit, checker, region }) {
   return outside ? 'the run writes a variable declared before it' : undefined;
 }
 
-function capturedProblem({ statements, unit, checker, region }, written) {
+function capturedProblem(
+  { statements, unit, checker, region }: RunSide,
+  written: SymbolSet,
+): string | undefined {
   const closures = statements.flatMap((statement) => descendants(statement)).filter(isFunctionLike);
   const captured = closures
     .flatMap((closure) => descendants(closure))
@@ -115,13 +137,15 @@ function capturedProblem({ statements, unit, checker, region }, written) {
 
 const CALLS = [ts.isCallExpression, ts.isNewExpression, ts.isTaggedTemplateExpression];
 
-function insideClosure(node, root) {
-  return chainOf(node, (current) => (current.parent === root ? undefined : current.parent))
+function insideClosure(node: TypeScript.Node, root: TypeScript.Node): boolean {
+  return chainOf<TypeScript.Node>(node, (current) =>
+    current.parent === root ? undefined : current.parent,
+  )
     .slice(1)
     .some(isFunctionLike);
 }
 
-function changedByClosure({ unit, checker }) {
+function changedByClosure({ unit, checker }: RunSide): SymbolSet {
   return new Set(
     writesOf(unit, checker)
       .filter(({ node }) => insideClosure(node, unit))
@@ -129,7 +153,7 @@ function changedByClosure({ unit, checker }) {
   );
 }
 
-function callProblem(side) {
+function callProblem(side: RunSide): string | undefined {
   const nodes = side.statements.flatMap((statement) => descendants(statement));
   const calls = nodes.some((node) => CALLS.some((test) => test(node)));
   const changing = changedByClosure(side);
@@ -145,19 +169,20 @@ function callProblem(side) {
   return calls && reads ? 'a call in the run can change a variable that the run reads' : undefined;
 }
 
-function isConstDeclaration(declaration) {
-  const node = chainOf(declaration, (current) =>
-    ts.isBindingElement(current) ||
-    ts.isObjectBindingPattern(current) ||
-    ts.isArrayBindingPattern(current)
-      ? current.parent
-      : undefined,
-  ).at(-1);
+function isConstDeclaration(declaration: TypeScript.Node): boolean {
+  const node =
+    chainOf<TypeScript.Node>(declaration, (current) =>
+      ts.isBindingElement(current) ||
+      ts.isObjectBindingPattern(current) ||
+      ts.isArrayBindingPattern(current)
+        ? current.parent
+        : undefined,
+    ).at(-1) ?? declaration;
   return ts.isVariableDeclaration(node) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
 }
 
-function declaredByRunBody(declaration, region) {
-  const enclosing = chainOf(declaration.parent, (current) =>
+function declaredByRunBody(declaration: TypeScript.Node, region: Region): boolean {
+  const enclosing = chainOf<TypeScript.Node>(declaration.parent, (current) =>
     isWithin(current, region) ? current.parent : undefined,
   );
   return (
@@ -166,7 +191,7 @@ function declaredByRunBody(declaration, region) {
   );
 }
 
-function closureProblem({ statements, checker, region }) {
+function closureProblem({ statements, checker, region }: RunSide): string | undefined {
   const closures = statements.flatMap((statement) => descendants(statement)).filter(isFunctionLike);
   const escaping = closures
     .flatMap((closure) => descendants(closure))
@@ -178,30 +203,32 @@ function closureProblem({ statements, checker, region }) {
   return escaping ? 'a closure in the run uses a variable that the run declares' : undefined;
 }
 
-function bindingNames(declaration) {
+function bindingNames(declaration: TypeScript.VariableDeclaration): TypeScript.Identifier[] {
   const { name } = declaration;
   if (ts.isIdentifier(name)) {
     return [name];
   }
   return descendants(name).filter(
-    (node) =>
+    (node): node is TypeScript.Identifier =>
       ts.isIdentifier(node) && ts.isBindingElement(node.parent) && node.parent.name === node,
   );
 }
 
-function declaredByRun(statements) {
+function declaredByRun(
+  statements: readonly TypeScript.Statement[],
+): { declaration: TypeScript.VariableDeclaration; where: string }[] {
   return statements.flatMap((statement, index) =>
     ts.isVariableStatement(statement)
       ? statement.declarationList.declarations.map((declaration, position) => ({
           declaration,
-          where: `${index}:${position}`,
+          where: `${String(index)}:${String(position)}`,
         }))
       : [],
   );
 }
 
-function usedAfter({ statements, unit, checker, region }) {
-  const references = descendants(unit.body).filter(
+function usedAfter({ statements, unit, checker, region }: RunSide): Used[] {
+  const references = descendants(unit.body ?? unit).filter(
     (node) => ts.isIdentifier(node) && !isWithin(node, region),
   );
   const symbols = new Set(references.map((node) => symbolAt(node, checker)));
@@ -212,7 +239,7 @@ function usedAfter({ statements, unit, checker, region }) {
   );
 }
 
-function valueOutput([{ declaration, where, name }]) {
+function valueOutput({ declaration, where, name }: Used): Analysis {
   if (!ts.isIdentifier(declaration.name)) {
     return { problem: 'the run defines a destructured value that the code after it uses' };
   }
@@ -228,19 +255,20 @@ function valueOutput([{ declaration, where, name }]) {
   };
 }
 
-function outputOf(side) {
-  const endsWithReturn = ts.isReturnStatement(side.statements.at(-1));
+function outputOf(side: RunSide): Analysis {
+  const endsWithReturn = ts.isReturnStatement(lastStatement(side.statements));
   const used = usedAfter(side);
+  const [only] = used;
   if (used.length > 1) {
     return { problem: 'the run defines more than one value that the code after it uses' };
   }
-  if (used.length === 1) {
-    return endsWithReturn ? { problem: BOTH } : valueOutput(used);
+  if (only !== undefined) {
+    return endsWithReturn ? { problem: BOTH } : valueOutput(only);
   }
   return { output: { kind: endsWithReturn ? 'return' : 'none' } };
 }
 
-export function runAnalysis(side, written) {
+export function runAnalysis(side: RunSide, written: SymbolSet): Analysis {
   const problem =
     shapeProblem(side.statements) ??
     writeProblem(side) ??
