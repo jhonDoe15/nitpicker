@@ -139,6 +139,29 @@ function writeOutcome({
   return result.skipped.length === 0 ? 0 : 2;
 }
 
+type PublishTarget = {
+  readonly config: NitpickerConfig;
+  readonly projectRoot: string;
+  readonly options: ShardOptions;
+};
+
+function publishedAnalyzers(
+  cli: CacheCli,
+  { config, projectRoot, options }: PublishTarget,
+): { readonly headPolicy: unknown; readonly selected: Analyzer[] } {
+  const configure = (policy: unknown): readonly ProfiledAnalyzer[] =>
+    configureAll(presetAnalyzers(config, cli.analyzers), config, policy);
+  const detectedPolicy: unknown = publishHeadPolicy(config, projectRoot, {
+    maven: cli.environment?.['NITPICKER_MAVEN'],
+  });
+  const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {
+    projectRoot,
+    liveProjectRoot: projectRoot,
+    analyzers: selectedAnalyzers(configure(detectedPolicy), options),
+  });
+  return { headPolicy, selected: selectedAnalyzers(configure(headPolicy), options) };
+}
+
 export function runCacheCommand(cli: CacheCli): number {
   rejectUnsupportedOptions(cli.arguments_);
   const options = parseDrillDownOptions(cli.arguments_);
@@ -154,17 +177,7 @@ export function runCacheCommand(cli: CacheCli): number {
       : realpathSync(cli.currentProjectRoot),
   );
   const config: NitpickerConfig = loadConfig(projectRoot);
-  const configure = (policy: unknown): readonly ProfiledAnalyzer[] =>
-    configureAll(presetAnalyzers(config, cli.analyzers), config, policy);
-  const detectedPolicy: unknown = publishHeadPolicy(config, projectRoot, {
-    maven: cli.environment?.['NITPICKER_MAVEN'],
-  });
-  const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {
-    projectRoot,
-    liveProjectRoot: projectRoot,
-    analyzers: selectedAnalyzers(configure(detectedPolicy), options),
-  });
-  const selected = selectedAnalyzers(configure(headPolicy), options);
+  const { headPolicy, selected } = publishedAnalyzers(cli, { config, projectRoot, options });
   const store = writableStore(projectRoot, cli);
   const repositoryRoot = realpathSync(runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim());
   const published = publishBaseSnapshot({

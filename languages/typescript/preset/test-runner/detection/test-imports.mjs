@@ -1,6 +1,5 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { TEST_RUNNERS } from '../runners.mjs';
+import { projectText } from '../../test-environment/dom-code/dom-tests.mjs';
 import {
   defaultTestFiles,
   mergedTestFiles,
@@ -23,14 +22,6 @@ function importedRunner(source) {
   return [...RUNNER_MODULES].find(([, specifier]) => specifiers.has(specifier))?.[0];
 }
 
-function readTestFile(projectRoot, file) {
-  const target = path.resolve(projectRoot, file);
-  if (!target.startsWith(`${projectRoot}${path.sep}`)) {
-    return '';
-  }
-  return readFileSync(target, 'utf8');
-}
-
 const isAnyRunnerDefault = testFileMatcher(mergedTestFiles(TEST_RUNNERS.map(defaultTestFiles)));
 
 function structuralTestFiles(projectRoot, layout) {
@@ -42,7 +33,7 @@ function structuralTestFiles(projectRoot, layout) {
 function importCounts(projectRoot, layout) {
   const counts = new Map();
   for (const file of structuralTestFiles(projectRoot, layout)) {
-    const runner = importedRunner(readTestFile(projectRoot, file));
+    const runner = importedRunner(projectText(projectRoot, file));
     if (runner !== undefined) {
       counts.set(runner, (counts.get(runner) ?? 0) + 1);
     }

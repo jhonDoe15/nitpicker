@@ -1,4 +1,5 @@
 import { chainOf } from '../analysis/ancestry.mjs';
+import { memberName } from '../analysis/test-code-analysis.mjs';
 
 const GLOBAL_KINDS = [
   ['vi', 'vitest'],
@@ -161,28 +162,17 @@ export function calledMethod(apis, callee) {
   if (callee.type !== 'MemberExpression') {
     return undefined;
   }
-  return { kind: kindOfObject(apis, callee.object), method: propertyName(callee) };
+  return { kind: kindOfObject(apis, callee.object), method: memberName(callee) };
 }
 
-export function propertyName(callee) {
-  if (callee.type !== 'MemberExpression') {
-    return undefined;
-  }
-  const { property } = callee;
-  if (!callee.computed) {
-    return property.type === 'Identifier' ? property.name : undefined;
-  }
-  return property.type === 'Literal' && typeof property.value === 'string'
-    ? property.value
-    : undefined;
-}
+export { memberName as propertyName };
 
 function bindingKey(node) {
   if (node?.type === 'Identifier') {
     return node.name;
   }
   const isThisMember = node?.type === 'MemberExpression' && node.object.type === 'ThisExpression';
-  const name = isThisMember ? propertyName(node) : undefined;
+  const name = isThisMember ? memberName(node) : undefined;
   return name === undefined ? undefined : `this.${name}`;
 }
 
@@ -190,7 +180,7 @@ function producedObjectKind(apis, { callee }) {
   const imported = importedFunction(apis, callee);
   const isWithGlobal =
     imported === undefined
-      ? propertyName(callee) === 'withGlobal' &&
+      ? memberName(callee) === 'withGlobal' &&
         apis.kinds.get(bindingKey(callee.object) ?? '') === 'fakeTimers'
       : imported.kind === 'fakeTimers' && imported.method === 'withGlobal';
   return isWithGlobal ? 'fakeTimers' : undefined;
@@ -204,7 +194,7 @@ export function kindOfObject(apis, node) {
   if (kind !== undefined || node.type === 'Identifier') {
     return kind;
   }
-  return propertyName(node) === 'mock' ? 'node' : undefined;
+  return memberName(node) === 'mock' ? 'node' : undefined;
 }
 
 function producedKind(apis, value) {

@@ -101,7 +101,7 @@ function coChangeDescriber(
     : undefined;
 }
 
-export function policyNotices(headPolicy: unknown): readonly string[] {
+function policyNotices(headPolicy: unknown): readonly string[] {
   return textsOf(fieldOf(fieldOf(fieldOf(headPolicy, 'tools'), 'tests'), 'notices'));
 }
 
@@ -131,4 +131,15 @@ export function historyAvailabilityNotes(
     return [];
   }
   return textsOf(availabilityNotices({ projectRoot, policy: objectOf(headPolicy) }));
+}
+
+export function snapshotNotes(
+  config: NitpickerConfig,
+  headPolicy: unknown,
+  projectRoot: string,
+): readonly string[] {
+  return [
+    ...policyNotices(headPolicy),
+    ...historyAvailabilityNotes(config, headPolicy, projectRoot),
+  ];
 }
