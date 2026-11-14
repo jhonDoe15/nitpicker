@@ -8,10 +8,10 @@ import {
   withFeatureFolders,
 } from './arch-rules-gate.mts';
 
-const jarsOn = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+const jarsOn = (...jars: string[]) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
 describe('usesSpring', () => {
-  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+  const classpaths = (...jars: string[]) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
   it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
     expect([
@@ -29,7 +29,7 @@ describe('usesSpring', () => {
 });
 
 describe('runsArchRules', () => {
-  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
+  const classpaths = (...jars: string[]) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
   it('is true for Spring and for jmolecules-ddd on the main compile classpath', () => {
     expect([
