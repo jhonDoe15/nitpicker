@@ -2361,13 +2361,15 @@ under the nearest rule. Which rules have a check, and why the others do not, is 
 
 Most of what is left after formatting needs judgment: a function that is too long, a mutant that
 survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
-can rewrite these, but an agent still spends most of its work finding the code, its context and the
-form the rule allows. A comparison run writes that down in `fix-plans.json`, beside
+can rewrite these. A comparison run writes down the code, its context and the form the rule allows
+in `fix-plans.json`, beside
 `new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The surviving
 mutants, the mutants no test runs and the uncovered branches of one function share one plan (see
 `findings` below), so a function with twenty mutants gets one plan, not twenty. The rule
 reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
-on) keeps its message and its help link and gets no plan.
+on) keeps its message and its help link and gets no plan. Plans are for tools and for looking up
+one finding: in two measurements with two agents, they did not reliably lower what an agent spent
+to reach green (see [evaluations](evaluations.md#fix-plans-measured-effect)).
 
 A plan changes no file, and nitpicker calls no language model for it: it is built from the finding,
 the project files and the allowed form of the rule. The schema is
@@ -2393,8 +2395,12 @@ the project files and the allowed form of the rule. The schema is
   passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
   import edge or cycle for an architecture rule. The test file is one beside the source, else an
   existing test that imports the file (or a module that re-exports it, such as a feature `index`),
-  else a new path that follows where the project keeps its tests (for example a top-level `test/`
-  folder).
+  else the nearest TypeScript or JavaScript test that reaches it through other modules (such as a
+  test of the composition root; a module that re-exports names passes on only those names, and a
+  helper under a test folder ends the chain), else a new path that follows where the project keeps
+  its tests (for example a top-level `test/` folder, in its folder named like the first folder of
+  the source path that has one). Of several tests, one that calls the function wins, then one that
+  shares the most folder names with the source, then the first by path.
 - `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
 - `doneWhen`: the finding that stops being reported.
 
