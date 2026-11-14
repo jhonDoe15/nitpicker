@@ -108,7 +108,7 @@ export function normalizeArchitectureViolations(
     const severity = requiredString(severityOf(violation.rule), `${context}.rule.severity`);
     const from = normalizedRelativePath(requiredString(violation.from, `${context}.from`), context);
     const to = displayedPath(requiredString(violation.to, `${context}.to`));
-    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle, context) : undefined;
+    const cycle = violation.type === 'cycle' ? canonicalCycle(violation.cycle) : undefined;
     const semanticIdentity = cycle === undefined ? `target:${to}` : `cycle:${cycle.join('>')}`;
     const first = cycle?.[0];
     const canonicalPath = first !== undefined && isInSnapshot(first) ? first : from;
@@ -143,15 +143,17 @@ function isInSnapshot(value: string): boolean {
   return !value.startsWith('../') && !path.posix.isAbsolute(value) && !/^[A-Za-z]:\//.test(value);
 }
 
-function canonicalCycle(value: unknown, context: string): string[] | undefined {
-  if (!Array.isArray(value) || value.length < 2) {
-    throw new TypeError(`${context}.cycle must contain at least two modules`);
+function canonicalCycle(value: unknown): string[] | undefined {
+  if (!Array.isArray(value) || value.length === 0) {
+    return undefined;
   }
   const items: unknown[] = value;
-  const names = items.map((item, index) =>
-    displayedPath(requiredString(nameOf(item), `${context}.cycle[${String(index)}].name`)),
-  );
-  const rotations = names.map((_, index) => [...names.slice(index), ...names.slice(0, index)]);
+  const names = items.map(nameOf);
+  if (!names.every((name): name is string => typeof name === 'string' && name.length > 0)) {
+    return undefined;
+  }
+  const paths = names.map(displayedPath);
+  const rotations = paths.map((_, index) => [...paths.slice(index), ...paths.slice(0, index)]);
   const inSnapshot = rotations.filter(([first]) => first !== undefined && isInSnapshot(first));
   return (inSnapshot.length > 0 ? inSnapshot : rotations).sort((left, right) =>
     left.join('\0').localeCompare(right.join('\0')),
