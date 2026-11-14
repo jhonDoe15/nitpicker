@@ -61,6 +61,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Async methods: do not return `immediateFuture`/`completedFuture` of a database or HTTP call made on the calling thread
   (submit it to an executor or make the method synchronous), and do not wait with `.get()`/`.join()` on `fooAsync()` when
   `foo()` exists (`effects/AsyncMethodDoesBlockingWork`, `effects/WaitOnAsyncTwin`).
+- Jobs: in a `@Scheduled` function, a batch `@KafkaListener`, a `@SqsListener` or a Quartz `execute`, catch the failure
+  of each item inside the loop (`try`/`catch` or `runCatching`) or enqueue one job per item, so one failing item does
+  not skip the rest (`effects/JobLoopWithoutItemIsolation`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

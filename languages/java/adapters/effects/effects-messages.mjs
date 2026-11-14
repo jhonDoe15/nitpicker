@@ -1,4 +1,8 @@
+import { JOB_MESSAGES } from './messages/jobs.mjs';
 import { RACE_MESSAGES } from './messages/races.mjs';
+import { callPath, code } from './messages/text.mjs';
+
+export { callPath };
 
 const BOUNDED = {
   java: [
@@ -20,15 +24,6 @@ const COLLECTING = {
 const ONE_QUERY = '`findAllById`, `saveAll`, `WHERE id IN (...)`';
 const LOOPS_FINE =
   'Paging, polling and retry loops are fine; a loop the rule misjudges (a cursor kept in an object or array, a page count read first) goes in `exceptions`.';
-
-function code(text) {
-  return `\`${text}\``;
-}
-
-export function callPath(path) {
-  const [first, ...rest] = path.map(code);
-  return rest.length === 0 ? `calls ${first}` : `calls ${[first, ...rest].join(', which calls ')}`;
-}
 
 const REDIS_BATCH = '`MGET` (`opsForValue().multiGet(keys)`) or a pipeline (`executePipelined`)';
 
@@ -271,6 +266,7 @@ export const EFFECTS_MESSAGES = {
   ...RACE_MESSAGES,
   AsyncMethodDoesBlockingWork: asyncBlocking,
   WaitOnAsyncTwin: asyncTwin,
+  ...JOB_MESSAGES,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

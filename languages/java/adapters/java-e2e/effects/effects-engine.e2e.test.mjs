@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 45,
+      classes: 46,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -247,6 +247,20 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Waits.waits',
       'Waits.joins',
       'Waits.unchecked',
+    ]);
+  });
+
+  it('reports a job that loops over items without isolating each one, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'JobLoopWithoutItemIsolation')
+        .map((violation) => `${violation.method} ${violation.job}`),
+    ).toEqual([
+      'Jobs.closeAll @Scheduled',
+      'Jobs.closeUntilFailure @Scheduled',
+      'Jobs.onBatch @KafkaListener',
+      'Jobs.onMessages @SqsListener',
+      'Jobs.execute Quartz Job',
     ]);
   });
 

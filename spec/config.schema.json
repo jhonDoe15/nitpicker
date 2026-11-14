@@ -2316,6 +2316,7 @@
                             "effects/CheckThenWriteWithoutLock",
                             "effects/AsyncMethodDoesBlockingWork",
                             "effects/WaitOnAsyncTwin",
+                            "effects/JobLoopWithoutItemIsolation",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

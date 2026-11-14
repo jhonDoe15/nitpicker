@@ -1,6 +1,4 @@
-function code(text) {
-  return `\`${text}\``;
-}
+import { code } from './text.mjs';
 
 function checkThenWrite({ method, read, write }) {
   return [

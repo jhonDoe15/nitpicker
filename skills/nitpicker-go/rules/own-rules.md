@@ -93,6 +93,10 @@ the allowed form and ends with its exception entry.
   `db.BeginTx` (gorm `db.Transaction`) with every write on the `tx`, or in the caller's transaction
   passed in. A write through the outer `db` while a `tx` is open runs outside the transaction. A
   write that must survive a rollback (an audit row) is the exception.
+- One failing item does not stop a scheduled or queue job (`go-rules/failing-item-stops-job`): in a
+  robfig/cron, gocron, asynq or machinery job, a loop over tenants or accounts that calls the database
+  or a remote service records the error per item and continues (`errors.Join`, a failed-items slice),
+  or enqueues one task per item. A job that must be retried as a whole is the exception.
 
 ## Literals, comments and methods
 

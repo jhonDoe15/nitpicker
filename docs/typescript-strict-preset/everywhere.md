@@ -633,6 +633,19 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `pessimistic`) and no atomic form (`upsert`, `on conflict`, a `version` or `updatedAt` condition) in the write; it is
   classified report-only until measured on more projects. Both name the allowed forms: one transaction with
   its manager passed down, an atomic statement, or a row lock inside the transaction.
+- One failing item must not stop the rest of a job (`nitpicker/no-unisolated-job-loop`, needing the type
+  checker to see the I/O inside helpers): in a NestJS `@Cron`, `@Interval` or `@Timeout` method (imported from
+  `@nestjs/schedule`), a `@Process` method or the `process` method of a `@Processor` class or a
+  `WorkerHost` subclass (`@nestjs/bull`, `@nestjs/bullmq`), a BullMQ `new Worker(name, fn)` callback, an
+  Agenda `define(name, fn)` callback and a `node-cron` `schedule(expression, fn)` callback, a `for...of` or
+  `for await` loop whose body awaits a database or remote call (direct or through helpers) that is not inside a
+  `try` with a `catch` that does not throw, or followed by `.catch(handler)` (or `.then(ok, handler)`) on that
+  call, is reported. A loop that only enqueues (a message effect), a loop body that uses `Promise.allSettled`, a
+  loop over a literal list and a loop outside such a handler stay quiet; a `try` whose `catch` rethrows, or a
+  `try`/`finally` with no `catch`, does not isolate the item and is reported. Plain `for`, `while` and `forEach`
+  loops are not checked. The message names the allowed forms: a `try`/`catch` or `.catch(...)` per item that
+  records the failure, one queued job per item, or `allSettled` with the failures reported; a job that must fail
+  as a whole so the run is retried takes the exception.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

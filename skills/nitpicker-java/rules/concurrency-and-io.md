@@ -52,6 +52,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Async methods: do not return `immediateFuture`/`completedFuture` of a database or HTTP call made on the calling thread
   (submit it to an executor or make the method synchronous), and do not wait with `.get()`/`.join()` on `fooAsync()` when
   `foo()` exists (`effects/AsyncMethodDoesBlockingWork`, `effects/WaitOnAsyncTwin`).
+- Jobs: in a `@Scheduled` method, a batch `@KafkaListener`, a `@SqsListener` or a Quartz `execute`, catch the failure of
+  each item inside the loop and record it (or enqueue one job per item), so one failing item does not skip the rest
+  (`effects/JobLoopWithoutItemIsolation`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

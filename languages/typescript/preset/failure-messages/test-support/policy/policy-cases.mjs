@@ -147,6 +147,11 @@ export const policyFailureMessageCases = [
     'findOneByOrFail',
   ),
   adapterCase(
+    'a job loop names catching the failure per item',
+    "import { Cron } from '@nestjs/schedule'; export class Job { @Cron('* * * * *') async run(items) { for (const item of items) { await this.itemRepository.save(item); } } }",
+    'per item',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

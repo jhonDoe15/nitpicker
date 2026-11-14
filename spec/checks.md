@@ -153,6 +153,10 @@ committed separately, with no `transaction.atomic()` or `session.begin()` around
 `check-then-write-race` (a read of a model that decides a create of the same model, without a lock, an atomic form
 or a transaction). They live in `languages/python/rules/related_writes/`.
 
+Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APScheduler job or a Django management
+command that does database or remote I/O per item with no `try` around one item, so the first failing item
+stops the rest). It lives in `languages/python/rules/jobs/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
@@ -246,6 +250,9 @@ Related writes: the Go preset reports two writes on different tables in one func
 (`go-rules/writes-without-transaction`, `database/sql`, sqlx, pgx and gorm) and a write through the outer
 handle inside a function that has an open transaction (`go-rules/write-outside-transaction`).
 
+Scheduled and queue jobs: the Go preset reports a loop in a robfig/cron, gocron, asynq or machinery job that returns,
+panics or exits on the first failing database or HTTP call of an item (`go-rules/failing-item-stops-job`).
+
 Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
 accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
@@ -310,6 +317,12 @@ somewhere, a function that awaits writes to two different tables with no transac
 writes and the allowed forms (one transaction with its manager passed down, an atomic statement).
 `nitpicker/no-check-then-write` is the report-only form: a read of a table that decides a write to it with
 no transaction, lock or atomic statement.
+
+Job loops: `nitpicker/no-unisolated-job-loop` (production source, in `eslint-lint`, type-aware) reports a `for...of`
+loop in a scheduled or queue job (NestJS `@Cron`/`@Interval`/`@Timeout`/`@Process`/`@Processor`, BullMQ
+`WorkerHost.process` and `Worker`, Agenda `define`, node-cron `schedule`) whose body awaits a database or remote
+call with no `try`/`catch` around it, so one failing item stops the rest. A `try`/`catch` per item, one queued
+job per item and `Promise.allSettled` are the allowed forms.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

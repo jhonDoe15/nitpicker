@@ -99,6 +99,11 @@ describe('effect rules report', () => {
       'start|Project.objects.filter(...).exists()|Project.objects.create()',
       '`start` reads with `Project.objects.filter(...).exists()` and decides on `Project.objects.create()` outside a transaction and without a lock: two callers can both pass the check before either writes',
     ],
+    [
+      'job-item-failure-stops-run',
+      'sync_all|requests.post()|Celery task',
+      '`sync_all` is a Celery task whose loop calls `requests.post()` for each item with no `try` around the work of one item: the first item that raises stops every item after it until the next run, and an item that keeps failing blocks the rest for good',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

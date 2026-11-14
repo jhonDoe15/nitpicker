@@ -95,6 +95,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   table from the statement text or the gorm model and stay quiet when either is unknown, so
   independent or dynamic writes are not guessed at; a gorm `*DB` passed in or kept in a local
   variable may already be the transaction and is not counted.
+- **Jobs (#804).** `failing-item-stops-job` follows the error of the call that the loop makes (the
+  same database and HTTP calls as `io-in-loop`), so a loop that returns on a parse error or enqueues
+  through a project helper is not read; only functions a scheduler or queue registers count.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,

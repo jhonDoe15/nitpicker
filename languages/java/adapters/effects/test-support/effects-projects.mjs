@@ -9,15 +9,31 @@ const JAVA_REMOTE = 'PriceSource.priceOf()>RestClient.get()';
 const KOTLIN_REMOTE = 'OrderLoader.price()>RestClient.get()';
 const JAVA_SEND = 'OrderEvents.placed()>KafkaTemplate.send()';
 const KOTLIN_SEND = 'OrderLoader.placed()>KafkaTemplate.send()';
+const KOTLIN_LOAD = 'OrderLoader.load()>CrudRepository.findByIdOrNull()';
 const PUBLISH = 'ApplicationEventPublisher.publishEvent()';
 const EXISTS = 'MemberRepository.existsByEmail()';
 const COUNT = 'MemberRepository.countByTeam()';
 const BY_EMAIL = 'MemberRepository.findByEmail()';
 const BY_ID = 'MemberRepository.findById()';
 const SAVE = 'MemberRepository.save()';
+const LOAD = 'OrderLoader.load()>OrderRepository.findById()';
 
 export const JAVA_EFFECTS = [
   'IoCallInLoop 33 DualAllowed.relay loop OrderRepository.delete()',
+  `IoCallInLoop 29 JobsAllowed.isolated loop ${LOAD}`,
+  `IoCallInLoop 41 JobsAllowed.isolatedInCallback loop ${LOAD}`,
+  `IoCallInLoop 59 JobsAllowed.oneTaskPerItem concurrent ${LOAD}`,
+  `IoCallInLoop 67 JobsAllowed.isolatedByHelper loop SafeLoader.load()>${LOAD}`,
+  `IoCallInLoop 87 JobsAllowed.notAJob loop ${LOAD}`,
+  `IoCallInLoop 30 NightlyJobs.closeOrders loop ${LOAD}`,
+  `IoCallInLoop 37 NightlyJobs.refreshPrices loop ${JAVA_REMOTE}`,
+  `IoCallInLoop 43 NightlyJobs.reloadEach loop ${LOAD}`,
+  'IoCallInLoop 53 NightlyJobs.sweep loop OrderRepository.deleteById()',
+  `IoCallInLoop 61 NightlyJobs.rethrown loop ${LOAD}`,
+  `IoCallInLoop 72 NightlyJobs.wholeLoop loop ${LOAD}`,
+  'IoCallInLoop 82 NightlyJobs.onBatch loop OrderRepository.deleteById()',
+  `IoCallInLoop 89 NightlyJobs.onMessages loop ${LOAD}`,
+  `IoCallInLoop 96 NightlyJobs.execute loop ${LOAD}`,
   'IoCallInLoop 26 LoopImports.eachInLoop loop OrderLoader.load()>OrderRepository.findById()',
   'IoCallInLoop 32 LoopImports.eachInCallback loop OrderLoader.load()>OrderRepository.findById()',
   'IoCallInLoop 36 LoopImports.pricesByReference loop PriceSource.priceOf()>RestClient.get()',
@@ -71,6 +87,19 @@ export const JAVA_EFFECTS = [
   'RetryWithStaleObject 41 OrderSaves.annotated @Retryable order OrderRepository.save()',
   'AsyncMethodDoesBlockingWork 20 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
   'WaitOnAsyncTwin 32 OrderFutures.waits OrderFutures.findAsync()',
+  `CheckThenWriteWithoutLock 19 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 27 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 31 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 40 Registrations.rename ${BY_ID} ${SAVE}`,
+  `JobLoopWithoutItemIsolation 30 NightlyJobs.closeOrders @Scheduled ${LOAD}`,
+  `JobLoopWithoutItemIsolation 37 NightlyJobs.refreshPrices @Scheduled ${JAVA_REMOTE}`,
+  `JobLoopWithoutItemIsolation 43 NightlyJobs.reloadEach @Scheduled ${LOAD}`,
+  'JobLoopWithoutItemIsolation 53 NightlyJobs.sweep @Scheduled OrderRepository.deleteById()',
+  `JobLoopWithoutItemIsolation 61 NightlyJobs.rethrown @Scheduled ${LOAD}`,
+  `JobLoopWithoutItemIsolation 72 NightlyJobs.wholeLoop @Scheduled ${LOAD}`,
+  'JobLoopWithoutItemIsolation 82 NightlyJobs.onBatch @KafkaListener OrderRepository.deleteById()',
+  `JobLoopWithoutItemIsolation 89 NightlyJobs.onMessages @SqsListener ${LOAD}`,
+  `JobLoopWithoutItemIsolation 96 NightlyJobs.execute Quartz Job ${LOAD}`,
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -94,6 +123,16 @@ export const JAVA_BATCHED_EFFECTS = JAVA_EFFECTS.filter(
 );
 
 export const KOTLIN_EFFECTS = [
+  `IoCallInLoop 16 JobsAllowed.isolated loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 26 JobsAllowed.isolatedByRunCatching loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 53 JobsAllowed.notAJob loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 17 NightlyJobs.closeOrders loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 24 NightlyJobs.refreshPrices loop ${KOTLIN_REMOTE}`,
+  `IoCallInLoop 30 NightlyJobs.reloadEach loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 37 NightlyJobs.rethrown loop ${KOTLIN_LOAD}`,
+  'IoCallInLoop 47 NightlyJobs.onBatch loop OrderRepository.deleteById()',
+  `IoCallInLoop 54 NightlyJobs.onMessages loop ${KOTLIN_LOAD}`,
+  `IoCallInLoop 60 NightlyJobs.execute loop ${KOTLIN_LOAD}`,
   'IoCallInLoop 16 JavaImports.saveEach loop OrderRepository.save()',
   'IoCallInLoop 14 LoopImports.direct loop OrderRepository.deleteById()',
   'IoCallInLoop 18 LoopImports.inlined loop CrudRepository.findByIdOrNull()',
@@ -139,6 +178,17 @@ export const KOTLIN_EFFECTS = [
   'RetryWithStaleObject 28 OrderSaves.annotated @Retryable order OrderRepository.save()',
   'AsyncMethodDoesBlockingWork 11 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
   'WaitOnAsyncTwin 18 OrderFutures.waits OrderFutures.findAsync()',
+  `CheckThenWriteWithoutLock 16 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 24 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 28 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 36 Registrations.rename CrudRepository.findByIdOrNull() ${SAVE}`,
+  `JobLoopWithoutItemIsolation 17 NightlyJobs.closeOrders @Scheduled ${KOTLIN_LOAD}`,
+  `JobLoopWithoutItemIsolation 24 NightlyJobs.refreshPrices @Scheduled ${KOTLIN_REMOTE}`,
+  `JobLoopWithoutItemIsolation 30 NightlyJobs.reloadEach @Scheduled ${KOTLIN_LOAD}`,
+  `JobLoopWithoutItemIsolation 37 NightlyJobs.rethrown @Scheduled ${KOTLIN_LOAD}`,
+  'JobLoopWithoutItemIsolation 47 NightlyJobs.onBatch @KafkaListener OrderRepository.deleteById()',
+  `JobLoopWithoutItemIsolation 54 NightlyJobs.onMessages @SqsListener ${KOTLIN_LOAD}`,
+  `JobLoopWithoutItemIsolation 60 NightlyJobs.execute Quartz Job ${KOTLIN_LOAD}`,
 ];
 
 function summaryOf(violation) {
@@ -160,7 +210,11 @@ function summaryOf(violation) {
     read,
     wrapper,
     async,
+    job,
   } = violation;
+  if (job !== undefined) {
+    return [rule, line, method, job, calls.join('>')].join(' ');
+  }
   if (read !== undefined) {
     return [rule, line, method, read, write].join(' ');
   }
