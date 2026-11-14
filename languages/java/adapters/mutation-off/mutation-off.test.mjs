@@ -1,5 +1,7 @@
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { applyDisable, describeDisableCascade } from '../../../../core/configuration/config.mjs';
 import { parseRunnerArguments } from '../../../../core/tooling/runner-arguments.mjs';
 import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
@@ -10,6 +12,13 @@ import { comparisonMutationPlan } from '../../builds/change-scope/mutation-plan.
 import { withoutPitTools } from '../../maven/quick/maven-quick.mjs';
 
 const HYGIENE = { name: 'hygiene' };
+const roots = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 describe('"disable": ["mutation"] with the java and kotlin presets', () => {
   it.each([false, true])('keeps the analyzer and accepts the name (kotlin: %s)', (kotlin) => {
@@ -54,11 +63,13 @@ describe('"disable": ["mutation"] with the java and kotlin presets', () => {
   });
 
   it('reaches Gradle as a property and Maven as a tool set without PIT', () => {
+    const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-off-'));
+    roots.push(projectRoot);
     const [stage] = gradleStages([], {
-      projectRoot: '/p',
+      projectRoot,
       initScript: 'init.gradle',
       policy: { mutationOff: true },
-      directory: path.join('/p', 'gradle'),
+      directory: path.join(projectRoot, 'gradle'),
     });
     const tools = {
       jacoco: [],
