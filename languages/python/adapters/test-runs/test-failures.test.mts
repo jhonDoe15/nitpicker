@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { testFailureFindings, unittestFailures } from './test-failures.mjs';
+import { unittestFailures } from './test-failures.mjs';
+import { testFailureFindings } from '../typed/report/report-views.mts';
 
 describe('failing tests', () => {
   it('reads the failing unittest tests from the runner output', () => {
@@ -37,7 +38,7 @@ describe('failing tests', () => {
       },
     ]);
     expect(
-      testFailureFindings({ testRunner: 'unittest', testFailures: failures })[0].message.split(
+      testFailureFindings({ testRunner: 'unittest', testFailures: failures })[0]?.message.split(
         '\n',
       )[1],
     ).toBe('  tests/test_cart.py:7 > tests.test_cart.CartTest.test_total: AssertionError: 3 != 4');
@@ -107,7 +108,8 @@ describe('failing tests', () => {
       id: `t.T.test_${String(index)}`,
     }));
 
-    const [{ message }] = testFailureFindings({ testRunner: 'unittest', testFailures });
+    const [finding] = testFailureFindings({ testRunner: 'unittest', testFailures });
+    const message = finding?.message ?? '';
 
     expect(message.split('\n')).toEqual([
       '53 tests fail; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
@@ -125,8 +127,8 @@ describe('failing tests', () => {
       'base',
     );
 
-    expect(finding.message).toBe('Tests fail on the base:\n  tests/test_a.py::test_x');
-    expect(finding.rule).toBe('tests-failed');
+    expect(finding?.message).toBe('Tests fail on the base:\n  tests/test_a.py::test_x');
+    expect(finding?.rule).toBe('tests-failed');
   });
   it('is a tests-not-run tool error when no test could load', () => {
     const [finding] = testFailureFindings(

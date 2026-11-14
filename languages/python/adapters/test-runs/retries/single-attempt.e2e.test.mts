@@ -1,20 +1,22 @@
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import {
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from '../../e2e/test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../../e2e/test-support/python-e2e-support.mts';
 import { PYTEST_SCRIPT } from '../../execution/python-test-runner.mjs';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const PLUGINS = ['pytest', 'pytest-rerunfailures', 'flaky', 'pytest-retry', 'pytest-xdist'];
 const RETRIED =
   'Passed only on a later attempt, so it counts as failed: a retry (a flaky mark, a retry plugin or a retry decorator) hides a flaky or racy test. Remove the retry and fix the cause.';
-const FAILS_ONCE = (decorator, needed) => `import pytest
+const FAILS_ONCE = (decorator: string, needed: number) => `import pytest
 from flaky import flaky
 
 attempts = []
@@ -44,18 +46,17 @@ const TEST_CASE = /<testcase classname="([^"]+)" name="([^"]+)"[^>]*>([\s\S]*?)<
 const FAILURE = /<failure message="([^"]*)"/u;
 const FIRST_FAILURE = '\n\nFirst failure:\n';
 
-let root;
+function preparedRepository(): string {
+  const prepared = repository();
+  installPackages(prepared, PLUGINS);
+  return prepared;
+}
 
-beforeAll(() => {
-  if (pythonE2eEnabled) {
-    root = repository();
-    installPackages(root, PLUGINS);
-  }
-});
+const root = pythonE2eEnabled ? preparedRepository() : '';
 
 afterAll(removeRepositories);
 
-function unescaped(text) {
+function unescaped(text: string): string {
   return text
     .replaceAll('&#10;', '\n')
     .replaceAll('&quot;', '"')
@@ -64,9 +65,9 @@ function unescaped(text) {
     .replaceAll('&amp;', '&');
 }
 
-function failuresIn(report) {
+function failuresIn(report: string) {
   const cases = [...readFileSync(report, 'utf8').matchAll(TEST_CASE)];
-  return cases.flatMap(([, classname, name, body]) => {
+  return cases.flatMap(([, classname = '', name = '', body = '']) => {
     const text = FAILURE.exec(body)?.[1];
     if (text === undefined) {
       return [];
@@ -82,7 +83,7 @@ function failuresIn(report) {
   });
 }
 
-function run(plugins, code, extra = []) {
+function run(plugins: readonly string[], code: string, extra: readonly string[] = []) {
   write(root, { 'tests/test_orders.py': code });
   const report = path.join(root, 'report.xml');
   const loaded = plugins.flatMap((plugin) => ['-p', plugin]);
@@ -109,7 +110,7 @@ function run(plugins, code, extra = []) {
 }
 
 describe.skipIf(!pythonE2eEnabled)('a test that passes only on a retry', () => {
-  it.each([
+  it.each<[string, string[], string[], string, boolean]>([
     ['pytest-rerunfailures', ['pytest_rerunfailures'], [], '@pytest.mark.flaky(reruns=2)', true],
     ['flaky', ['flaky.flaky_pytest_plugin'], [], '@flaky(max_runs=3)', false],
     ['pytest-retry', ['pytest_retry.retry_plugin'], [], '@pytest.mark.flaky(retries=2)', true],

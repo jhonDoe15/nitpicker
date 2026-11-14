@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../../test-support/fake-project.mjs';
-import { pyrightConfig } from './pyright-config.mjs';
+import { createFakeProjects } from '../../test-support/fake-project.mts';
+import { fieldsOf } from '../../../../../shared/values/readers.mts';
+import { PYRIGHT_TOOL, pyrightConfig } from './pyright-config.mjs';
 
 const fakes = createFakeProjects();
 afterEach(fakes.cleanup);
@@ -26,16 +27,27 @@ const PROJECT_CONFIG = JSON.stringify({
   ],
 });
 
-function configOf(files, { precedence, settings = {}, exclude = [] } = {}, checker = 'pyright') {
+type ConfigOptions = {
+  precedence?: Readonly<Record<string, readonly string[]>>;
+  settings?: Readonly<Record<string, unknown>>;
+  exclude?: readonly string[];
+};
+
+function configOf(
+  files: Readonly<Record<string, string>>,
+  { precedence, settings = {}, exclude = [] }: ConfigOptions = {},
+  checker = PYRIGHT_TOOL,
+) {
   const root = fakes.project(files);
-  const { context, reportRoot } = fakes.contextFor(root, settings, {
-    exclude,
-    ...(precedence === undefined ? {} : { toolPrecedence: precedence, policyRoot: root }),
-  });
-  return { root, reportRoot, config: pyrightConfig(context, checker) };
+  const { context, reportRoot } = fakes.contextFor(
+    root,
+    settings,
+    precedence === undefined ? {} : { toolPrecedence: precedence, policyRoot: root },
+  );
+  return { root, reportRoot, config: fieldsOf(pyrightConfig({ ...context, exclude }, checker)) };
 }
 
-function strictBase(root, reportRoot) {
+function strictBase(root: string, reportRoot: string) {
   return {
     typeCheckingMode: 'strict',
     reportDeprecated: 'error',
@@ -92,8 +104,8 @@ describe('pyright configuration without the opt-in', () => {
         '[tool.pyright]\npythonVersion = "3.10"\n[tool.basedpyright]\npythonVersion = "3.13"\n',
     };
 
-    expect(configOf(files, {}, 'basedpyright').config.pythonVersion).toBe('3.13');
-    expect(configOf(files).config.pythonVersion).toBe('3.10');
+    expect(configOf(files, {}, 'basedpyright').config['pythonVersion']).toBe('3.13');
+    expect(configOf(files).config['pythonVersion']).toBe('3.10');
     expect(
       configOf({ 'pyproject.toml': '[tool.basedpyright]\npythonVersion = "3.13"\n' }).config,
     ).not.toHaveProperty('pythonVersion');
@@ -107,9 +119,9 @@ describe('pyright configuration without the opt-in', () => {
         '{ "pythonVersion": "3.8", "reportAny": false, "extraPaths": ["lib"] }',
     });
 
-    expect(config.pythonVersion).toBe('3.8');
-    expect(config.pythonPlatform).toBe('Darwin');
-    expect(config.extraPaths).toEqual([path.join(root, 'base/lib'), path.join(root, 'src')]);
+    expect(config['pythonVersion']).toBe('3.8');
+    expect(config['pythonPlatform']).toBe('Darwin');
+    expect(config['extraPaths']).toEqual([path.join(root, 'base/lib'), path.join(root, 'src')]);
     expect(config).not.toHaveProperty('reportAny');
     expect(config).not.toHaveProperty('extends');
   });
@@ -117,7 +129,7 @@ describe('pyright configuration without the opt-in', () => {
   it('points at the typings directory the project has', () => {
     const { root, config } = configOf({ 'typings/a.pyi': '' });
 
-    expect(config.stubPath).toBe(path.join(root, 'typings'));
+    expect(config['stubPath']).toBe(path.join(root, 'typings'));
   });
 
   it('survives a config it cannot read', () => {

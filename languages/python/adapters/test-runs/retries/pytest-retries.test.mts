@@ -1,18 +1,14 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { pinnedPytestArguments } from '../pytest-pins.mjs';
 import { projectRetries, readPytestRetries, retriesNotices } from './pytest-retries.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pytest-retries-'));
-  roots.push(root);
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-pytest-retries-');
   for (const [file, text] of Object.entries(files)) writeFileSync(path.join(root, file), text);
   return root;
 }
@@ -20,6 +16,8 @@ function project(files) {
 const OPT_IN = { toolPrecedence: { tests: ['project', 'nitpicker'] } };
 const OPT_IN_NOTICE =
   'Ignoring reruns in pytest.ini; opt in with "tools": { "tests": { "precedence": ["project", "nitpicker"] } }';
+
+const HALF: unknown = expect.closeTo(0.5);
 
 describe('the retries a pytest config sets', () => {
   it('reads the ini options of pytest-rerunfailures and pytest-retry', () => {
@@ -29,7 +27,7 @@ describe('the retries a pytest config sets', () => {
 
     expect(readPytestRetries(root)).toEqual({
       file: 'pytest.ini',
-      values: { reruns: 3, reruns_delay: expect.closeTo(0.5), retries: 2, retry_delay: 1 },
+      values: { reruns: 3, reruns_delay: HALF, retries: 2, retry_delay: 1 },
     });
   });
 
@@ -97,7 +95,9 @@ describe('opting into the retries of the project', () => {
   it('is a tool error to name the project without a retry to read', () => {
     const root = project({ 'pytest.ini': '[pytest]\naddopts = -ra\n' });
 
-    expect(() => projectRetries({ projectRoot: root, ...OPT_IN })).toThrow(
+    expect(() => {
+      projectRetries({ projectRoot: root, ...OPT_IN });
+    }).toThrow(
       '"tools.tests.precedence" lists "project" but reruns, reruns_delay, retries or retry_delay in a pytest config',
     );
   });

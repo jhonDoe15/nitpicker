@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createConsoleProjects } from './test-support/console-project.mjs';
+import { createConsoleProjects } from './test-support/console-project.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const { consoleReport, cleanup } = createConsoleProjects();
 

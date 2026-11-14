@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../../e2e/test-support/python-e2e-support.mjs';
-import { realTypeFindings } from '../test-support/real-type-check.mjs';
+import { realTypeFindings } from '../test-support/real-type-check.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const TYPE_ERROR = 'def double(value: int) -> str:\n    return value\n';
 const WEAKENING = {

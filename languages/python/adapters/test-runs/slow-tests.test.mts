@@ -1,24 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import { PYTEST_SCRIPT, UNITTEST_SCRIPT } from '../execution/python-test-runner.mjs';
-import { pythonUsable } from '../../metrics/python-helpers.mjs';
-import { readSlowTestFindings } from './slow-tests.mjs';
+import { pythonUsable } from '../../metrics/python-helpers.mts';
+import { readSlowTestFindings } from '../typed/report/report-views.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function directory(files = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+function directory(files: Readonly<Record<string, string>> = {}): string {
+  const root = temporaryRoot('nitpicker-slow-tests-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -27,7 +20,7 @@ const UNIT =
 const MARKED =
   'import pytest\n\n\n@pytest.mark.integration\ndef test_wait():\n    pass\n\n\nclass TestApi:\n    def test_call(self):\n        pass\n';
 
-function junit(cases) {
+function junit(cases: readonly (readonly [string, string, string, number, number])[]): string {
   const body = cases
     .map(
       ([file, classname, name, seconds, line]) =>
@@ -118,7 +111,7 @@ describe('slow pytest tests', () => {
     ).toHaveLength(1);
   });
   it('reads an edit to the body of a test whose signature the formatter wrapped', () => {
-    const wrapped = (body) =>
+    const wrapped = (body: string) =>
       `import time\n\n\ndef test_pages(\n    first=10,\n    second=20,\n):\n${body}    assert first < second\n`;
     const projectRoot = directory({ 'tests/test_api.py': wrapped('    time.sleep(6)\n') });
     const reportRoot = junit([['tests/test_api.py', 'tests.test_api', 'test_pages', 6, 3]]);
@@ -160,17 +153,17 @@ describe('slow pytest tests', () => {
       readSlowTestFindings({
         ...moved,
         baselineRoot: directory({ 'tests/test_other.py': '' }),
-      }).map(({ message }) => message.split(' access')[1].split('. If this')[0]),
+      }).map(({ message }) => message.split(' access')[1]?.split('. If this')[0]),
     ).toEqual([', or move it to an integration test (an integration or e2e folder) if it is one']);
   });
 });
 
 const ROUNDTRIP =
   'def test_roundtrip(codec):\n    assert codec.decompress(codec.compress(b"x")) == b"x"\n';
-const EXPORTS = (classes) =>
+const EXPORTS = (classes: readonly string[]) =>
   classes
     .map(
-      (name) =>
+      (name: string) =>
         `class ${name}:\n    def test_exports_all_rows(self, exporter):\n        assert exporter.rows() == 3\n`,
     )
     .join('\n\n');
@@ -221,15 +214,15 @@ describe('tests the change copied or moved', () => {
 
 const MIXIN =
   'import time\n\n\nclass SyncMixin:\n    def test_full_sync(self):\n        time.sleep(6)\n';
-const SHAPE_TEST = (classes) =>
+const SHAPE_TEST = (classes: readonly string[]) =>
   [
     'import unittest\n\nfrom tests.mixins import SyncMixin\n',
-    ...classes.map((name) => `\nclass ${name}(SyncMixin, unittest.TestCase):\n    pass\n`),
+    ...classes.map((name: string) => `\nclass ${name}(SyncMixin, unittest.TestCase):\n    pass\n`),
   ].join('\n');
-const FACTORY = (cases) =>
+const FACTORY = (cases: readonly string[]) =>
   [
     'import time\n\n\ndef make_case(seconds):\n    def case():\n        time.sleep(seconds)\n\n    return case\n',
-    ...cases.map((name) => `\n${name} = make_case(6)\n`),
+    ...cases.map((name: string) => `\n${name} = make_case(6)\n`),
   ].join('\n');
 
 describe('tests defined somewhere other than the test name says', () => {
@@ -331,19 +324,23 @@ const UNITTEST_CASES = [
   '',
 ].join('\n');
 
-function timed(projectRoot, script, args) {
+function timed(projectRoot: string, script: string, args: readonly string[]) {
   const reportRoot = directory();
   const report = path.join(reportRoot, 'pytest-junit.xml');
   const reportArgument = script === UNITTEST_SCRIPT ? report : `--junitxml=${report}`;
   const result = spawnSync('python3', [script, reportArgument, ...args], {
     cwd: projectRoot,
     encoding: 'utf8',
+    timeout: 120_000,
   });
   return { reportRoot, output: `${result.stdout}${result.stderr}` };
 }
 
 function pytestUsable() {
-  return spawnSync('python3', ['-c', 'import pytest'], { encoding: 'utf8' }).status === 0;
+  return (
+    spawnSync('python3', ['-c', 'import pytest'], { encoding: 'utf8', timeout: 120_000 }).status ===
+    0
+  );
 }
 
 const SLOW_MIXIN =
@@ -363,7 +360,7 @@ describe.skipIf(!pythonUsable())('slow unittest tests', () => {
       '.',
     ]);
 
-    expect(output).toMatch(/Ran 2 tests/u);
+    expect(output).toMatch(/^[\s\S]*Ran 2 tests[\s\S]*$/u);
     expect(
       readSlowTestFindings({
         reportRoot,
@@ -457,7 +454,7 @@ describe.skipIf(!pytestUsable())('slow pytest tests through the timing plugin', 
       projectRoot,
       limits: { unitTestSeconds: 0.1 },
     });
-    const [name, seconds] = findings.map(({ message }) => message.split(' took '))[0];
+    const [name, seconds = ''] = findings.map(({ message }) => message.split(' took '))[0] ?? [];
 
     expect(findings).toHaveLength(1);
     expect(name).toBe('test_order');

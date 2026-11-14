@@ -1,46 +1,34 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { writeMutmutConfig } from './mutmut-config.mjs';
-import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mjs';
+import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mts';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+type Context = { readonly projectRoot: string; readonly [field: string]: unknown };
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-mutmut-config-')));
-  roots.push(root);
-  return root;
-}
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function write(root, files) {
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-}
-
-function configurationContext(files = {}, overrides = {}) {
+function configurationContext(
+  files: Readonly<Record<string, string>> = {},
+  overrides: Readonly<Record<string, unknown>> = {},
+): Context {
   const projectRoot = temporaryRoot();
-  write(projectRoot, files);
+  writeFiles(projectRoot, files);
   return { projectRoot, project: { sourceRoots: ['src'] }, exclude: [], ...overrides };
 }
 
-const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
+const read = (root: string, file: string) => readFileSync(path.join(root, file), 'utf8');
 
-const failure = (message) => new Error(message);
-const ensureMutmutConfiguration = (context) => {
+const failure = (message: string) => new Error(message);
+const ensureMutmutConfiguration = (context: Context) => {
   writeMutmutConfig({ context, fail: failure });
 };
 const LISTED = { mutmut: ['project', 'nitpicker'] };
-const { createGitRepository } = useGitFixtures();
+const { createGitRepository, temporaryRoot: scratchRoot } = useGitFixtures();
+
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-mutmut-config-');
+}
 
 describe('the mutmut configuration', () => {
   it('adds the source roots and the test patterns when the project has no mutmut configuration', () => {
@@ -180,7 +168,10 @@ describe('the mutmut configuration', () => {
 });
 
 describe('the mutmut configuration with tools.mutmut listing the project', () => {
-  const policy = (context) => ({ toolPrecedence: LISTED, policyRoot: context.projectRoot });
+  const policy = (context: Context) => ({
+    toolPrecedence: LISTED,
+    policyRoot: context.projectRoot,
+  });
 
   it('lets the project override the keys it sets and keeps the test patterns', () => {
     const own = [
@@ -230,7 +221,7 @@ describe('the mutmut configuration with tools.mutmut listing the project', () =>
 
   it('reads the config of the head and writes it into the snapshot', () => {
     const head = temporaryRoot();
-    write(head, {
+    writeFiles(head, {
       'pyproject.toml': '[tool.mutmut]\nsource_paths = ["app"]\nmutate_only_covered_lines = true\n',
     });
     const context = configurationContext({ 'pyproject.toml': '[project]\nname = "base"\n' });

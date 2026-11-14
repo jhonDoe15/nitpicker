@@ -1,19 +1,36 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   consoleFacts,
   consoleOutputFindings,
   consoleReportEnvironment,
   projectRelative,
   readConsoleReport,
+  TEST_CONSOLE_TOOL,
 } from './console-output.mjs';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+
+const { temporaryRoot } = useGitFixtures();
 
 const ROOT = '/work/shop';
+const CONSOLE_IDENTITY: unknown = expect.stringMatching(/^console:/);
 
-function findingsFor(entries, headPolicy = {}) {
-  return consoleOutputFindings({ entries }, { projectRoot: ROOT, headPolicy });
+type ConsoleFinding = {
+  readonly path: string;
+  readonly message: string;
+  readonly identity: string;
+};
+
+function isConsoleFinding(value: unknown): value is ConsoleFinding {
+  return (
+    typeof fieldOf(value, 'path') === 'string' && typeof fieldOf(value, 'message') === 'string'
+  );
+}
+
+function findingsFor(entries: readonly object[], headPolicy = {}): ConsoleFinding[] {
+  const findings: unknown = consoleOutputFindings({ entries }, { projectRoot: ROOT, headPolicy });
+  return listOf(findings).filter(isConsoleFinding);
 }
 
 describe('Python console output', () => {
@@ -33,10 +50,10 @@ describe('Python console output', () => {
 
     expect(findings).toEqual([
       {
-        tool: 'test-console',
+        tool: TEST_CONSOLE_TOOL,
         rule: 'test-console-output',
         path: 'tests/test_cart.py',
-        identity: expect.stringMatching(/^console:/),
+        identity: CONSOLE_IDENTITY,
         message:
           'Tests print new console output: "WARNING shop.cart: cart <n> has no owner at cart.py" (test "TestCart::test_add"). Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. If this is intended, add {"rule":"test-console-output","paths":["tests/test_cart.py"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
@@ -88,27 +105,19 @@ describe('Python console output', () => {
   });
 
   it('gives a temporary directory the same message whatever its random name', () => {
-    const identityOf = (name) =>
+    const identityOf = (name: string) =>
       findingsFor([
         { file: `${ROOT}/tests/test_io.py`, test: 'test_io', messages: [`saved to /tmp/${name}`] },
-      ])[0].identity;
+      ])[0]?.identity;
     const names = ['tmpaeiouaei', 'tmp_x8y2k3j', 'tmpk2j_8xq1', 'tmp4kq9zw2r'];
 
     expect(new Set(names.map(identityOf)).size).toBe(1);
   });
 });
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 describe('the console report', () => {
   it('reads a missing report as empty, and a tool error when pytest ran tests', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-console-'));
-    roots.push(root);
+    const root = temporaryRoot('nitpicker-console-');
 
     expect(readConsoleReport(root, { testRunner: 'unittest', testsRan: true })).toEqual({
       report: { entries: [] },
@@ -117,7 +126,7 @@ describe('the console report', () => {
     expect(readConsoleReport(root, { testRunner: 'pytest', testsRan: false }).findings).toEqual([]);
     expect(readConsoleReport(root, { testRunner: 'pytest', testsRan: true }).findings).toEqual([
       {
-        tool: 'test-console',
+        tool: TEST_CONSOLE_TOOL,
         rule: 'test-console-report-missing',
         path: '.',
         identity: 'test-console-report-missing',

@@ -1,45 +1,39 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { rerunCommand, retimeSlowTests } from './slow-retime.mjs';
-import { readSlowTestFindings } from '../slow-tests.mjs';
+import { readSlowTestFindings } from '../../typed/report/report-views.mts';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 const SLOW =
   'import time\n\n\ndef test_wait():\n    time.sleep(6)\n\n\ndef test_other():\n    pass\n';
 
-function directory(files = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-retime-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+function directory(files: Readonly<Record<string, string>> = {}): string {
+  const root = temporaryRoot('nitpicker-slow-retime-');
+  writeFiles(root, files);
   return root;
 }
 
-function testcase([file, name, seconds, children = '']) {
+type Case = readonly [string, string, number, string?];
+
+function testcase([file, name, seconds, children = '']: Case): string {
   const classname = file.replace(/\.py$/u, '').replaceAll('/', '.');
   const attributes = `classname="${classname}" name="${name}" file="${file}" line="3"`;
   return `<testcase ${attributes} time="${String(seconds)}">${children}</testcase>`;
 }
 
-function junit(cases) {
+function junit(cases: readonly Case[]): string {
   const body = cases.map(testcase).join('');
   return `<testsuites><testsuite>${body}</testsuite></testsuites>`;
 }
 
-function launcher(calls, rerunXml) {
+function launcher(calls: string[][], rerunXml: { file: string; text: string } | undefined) {
   return {
     description: 'test',
-    launch(tool, args) {
+    launch(tool: string, args: readonly string[]) {
       calls.push([tool, ...args]);
       const write =
         rerunXml === undefined
@@ -54,10 +48,18 @@ function launcher(calls, rerunXml) {
   };
 }
 
-function setup({ report, rerun, runner = 'pytest' }) {
+function setup({
+  report,
+  rerun,
+  runner = 'pytest',
+}: {
+  report: string;
+  rerun?: string;
+  runner?: string;
+}) {
   const projectRoot = directory({ 'tests/test_a.py': SLOW });
   const reportRoot = directory({ 'pytest-junit.xml': report });
-  const calls = [];
+  const calls: string[][] = [];
   const rerunFile = path.join(reportRoot, 'rerun-junit.xml');
   const context = {
     projectRoot,
@@ -76,12 +78,12 @@ describe('timing slow tests again without coverage', () => {
 
     retimeSlowTests(context, { testsRan: true });
 
-    expect(calls.at(-1).slice(0, 1)).toEqual(['python']);
-    expect(calls.at(-1).filter((argument) => argument.includes('rerun-junit.xml'))).toEqual([
+    expect(calls.at(-1)?.slice(0, 1)).toEqual(['python']);
+    expect(calls.at(-1)?.filter((argument) => argument.includes('rerun-junit.xml'))).toEqual([
       `--junitxml=${path.join(context.reportRoot, 'rerun-junit.xml')}`,
     ]);
-    expect(calls.at(-1).at(-1)).toBe('tests/test_a.py::test_wait');
-    expect(calls.at(-1).includes('coverage')).toBe(false);
+    expect(calls.at(-1)?.at(-1)).toBe('tests/test_a.py::test_wait');
+    expect(calls.at(-1)?.includes('coverage')).toBe(false);
   });
 
   it('selects unittest tests by their dotted id', () => {
