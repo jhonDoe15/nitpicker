@@ -17,6 +17,7 @@ type Errors = { messageId: string; data: Record<string, string> }[];
 const { tester, typed } = typedCaseProject<Errors>({
   prefix: 'nitpicker-promise-reject-',
   lib: ['ES2022'],
+  defaultResolution: true,
   header: `${PRELUDE}\n`,
 });
 

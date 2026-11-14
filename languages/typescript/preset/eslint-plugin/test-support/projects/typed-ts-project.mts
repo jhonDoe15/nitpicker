@@ -7,6 +7,8 @@ import { typescriptRuleTester, type TypedRuleTester } from '../rule-tester.mts';
 
 type TypedTsOptions = {
   lib?: string[];
+  typeScriptOnly?: true;
+  defaultResolution?: true;
   prepare?: (root: string) => void;
 };
 
@@ -38,10 +40,9 @@ export function typedTsProject(prefix: string, options: TypedTsOptions = {}): Ty
     JSON.stringify({
       compilerOptions: {
         strict: true,
-        allowJs: true,
-        checkJs: true,
+        ...(options.typeScriptOnly ? {} : { allowJs: true, checkJs: true }),
         module: 'esnext',
-        moduleResolution: 'bundler',
+        ...(options.defaultResolution ? {} : { moduleResolution: 'bundler' }),
         noEmit: true,
         types: [],
         lib: options.lib ?? ['ES2022'],
@@ -100,7 +101,10 @@ type TypedCaseProject<Errors> = {
 export function typedCaseProject<Errors>(
   options: TypedTsOptions & { prefix: string; header?: string },
 ): TypedCaseProject<Errors> {
-  const { root, tester, write } = typedTsProject(options.prefix, options);
+  const { root, tester, write } = typedTsProject(options.prefix, {
+    ...options,
+    typeScriptOnly: true,
+  });
   function typed(body: string): TypedCase;
   function typed(body: string, errors: Errors): TypedCase & { errors: Errors };
   function typed(body: string, errors?: Errors): TypedCase & { errors?: Errors } {

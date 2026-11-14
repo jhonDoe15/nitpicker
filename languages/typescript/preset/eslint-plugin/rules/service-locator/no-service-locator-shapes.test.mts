@@ -237,7 +237,10 @@ function pythonEntryStems() {
     path.resolve(import.meta.dirname, '../../../../../python/rules/environment/roots.py'),
     'utf8',
   );
-  const block = /ENTRY_STEMS = \{([^}]*)\}/u.exec(roots)?.at(1) ?? '';
+  const block = /ENTRY_STEMS = \{([^}]*)\}/u.exec(roots)?.at(1);
+  if (block === undefined) {
+    throw new Error('ENTRY_STEMS is missing from roots.py');
+  }
   return [...block.matchAll(/"([^"]+)"/gu)].map(([, stem]) => stem ?? '');
 }
 

@@ -17,11 +17,15 @@ function typesOf(program: ts.Program) {
   if (source === undefined) {
     throw new Error('grid.ts is not in the program');
   }
-  return source.statements.flatMap((statement) =>
-    ts.isVariableStatement(statement)
-      ? statement.declarationList.declarations.map(({ name }) => checker.getTypeAtLocation(name))
-      : [],
-  );
+  return source.statements.map((statement) => {
+    const declaration = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations.at(0)
+      : undefined;
+    if (declaration === undefined) {
+      throw new Error('grid.ts holds a statement that declares no variable');
+    }
+    return checker.getTypeAtLocation(declaration.name);
+  });
 }
 
 function identityOf(checker: ts.TypeChecker, type: ts.Type | undefined): unknown {
