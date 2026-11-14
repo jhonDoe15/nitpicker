@@ -45,6 +45,7 @@ import { rule as ruleNoInMemoryQuery } from '../rules/queries/no-in-memory-query
 import { rule as ruleNoInternalModuleMocks } from '../rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as ruleNoIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mjs';
+import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mjs';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mjs';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mjs';
 import { rule as ruleNoManagedResourceConstructionOutsideCompositionRoots } from '../rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-u
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mjs';
 import { rule as ruleNoUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
-import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -147,6 +147,7 @@ export const partRules = {
   'no-internal-module-mocks': ruleNoInternalModuleMocks,
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
+  'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-magic-numbers': ruleNoMagicNumbers,
   'no-managed-resource-construction-outside-composition-roots':
@@ -200,5 +201,4 @@ export const partRules = {
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
-  'no-unknown-in-domain': ruleNoUnknownInDomain,
 };

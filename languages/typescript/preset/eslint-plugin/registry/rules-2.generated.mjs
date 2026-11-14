@@ -1,3 +1,4 @@
+import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mjs';
 import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mjs';
 import { rule as ruleNoUnmappedException } from '../rules/errors/unmapped/no-unmapped-exception.mjs';
 import { rule as ruleNoUnorderedQuery } from '../rules/queries/order/no-unordered-query.mjs';
@@ -45,6 +46,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mjs';
 
 export const partRules = {
+  'no-unknown-in-domain': ruleNoUnknownInDomain,
   'no-unknown-main-folder': ruleNoUnknownMainFolder,
   'no-unmapped-exception': ruleNoUnmappedException,
   'no-unordered-query': ruleNoUnorderedQuery,
