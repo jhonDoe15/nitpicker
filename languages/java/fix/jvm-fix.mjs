@@ -23,6 +23,8 @@ const JAVA_FILE = /\.java$/u;
 const KOTLIN_FILE = /\.kt$/u;
 const NO_JAVA_FORMATTER =
   'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten';
+const BUILD_JAVA_FORMATTER =
+  'The build enforces Spring Java Format (conventions "java.formatter" is "spring"), which nitpicker does not run, so Java files were not rewritten: run its apply goal or format task';
 const NO_KOTLIN_FORMATTER =
   'No Kotlin formatter found, so Kotlin files were not rewritten: set "kotlin.formatter" to "ktlint" or "ktfmt" in nitpicker.config.json to format them';
 
@@ -31,7 +33,7 @@ function javaStep(settings, files, pinned) {
   const style = javaStyle(headPolicy.conventions);
   const plan = javaFormatterPlan(style, pinned);
   return plan === undefined
-    ? { notes: [NO_JAVA_FORMATTER] }
+    ? { notes: [style === 'spring' ? BUILD_JAVA_FORMATTER : NO_JAVA_FORMATTER] }
     : {
         files,
         plan,

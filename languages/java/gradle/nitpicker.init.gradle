@@ -464,6 +464,7 @@ allprojects {
         def testsFailed = nitpickerArgument('nitpicker.testsSkipped') == 'true' ||
             testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
+        def javaFormatterRuns = !(javaStyle in ['none', 'spring'])
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
         configurations {
@@ -485,7 +486,7 @@ allprojects {
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             if (javaStyle == 'palantir') {
                 nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"
-            } else if (javaStyle != 'none') {
+            } else if (javaFormatterRuns) {
                 nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
             }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
@@ -735,7 +736,7 @@ allprojects {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
             mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'
-            enabled = javaStyle != 'none'
+            enabled = javaFormatterRuns
             onlyIf {
                 if (!javaFiles().isEmpty()) {
                     return true
@@ -1267,7 +1268,7 @@ allprojects {
             }
             doLast {
                 def formatReport = reportDir.get().file('format.txt').asFile
-                if (javaStyle == 'none' || !formatReport.exists()) {
+                if (!javaFormatterRuns || !formatReport.exists()) {
                     formatReport.text = ''
                 }
                 ranTestTasks().findAll { gradle.taskGraph.hasTask(it) }.each { testTask ->

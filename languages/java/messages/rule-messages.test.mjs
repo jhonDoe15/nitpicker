@@ -24,7 +24,7 @@ const hint = (rule) =>
   `If this is intended, add {"rule":"${rule}","paths":["${FILE}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
 
 const NOT_YOUR_FORMATTER =
-  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
+  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir", "spring" or "none" in nitpicker.config.json.';
 
 describe('checkstyleRuleName', () => {
   it('shortens check classes to the module name and keeps configured ids', () => {
@@ -121,6 +121,9 @@ describe('withRuleMessage', () => {
     );
     expect(fix({ javaStyle: 'none' })).toBe(
       `${message} Fix this layout by hand; no Java formatter runs.`,
+    );
+    expect(fix({ javaStyle: 'spring' })).toBe(
+      `${message} Format this file with Spring Java Format, the build's apply goal or format task; nitpicker does not run it.`,
     );
     expect(fix({})).toBe(
       `${message} Run nitpicker --fix or your Java formatter on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,

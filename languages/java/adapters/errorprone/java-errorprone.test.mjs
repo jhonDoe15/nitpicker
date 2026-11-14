@@ -322,4 +322,26 @@ describe('readErrorProneFindings', () => {
       ['StreamResourceLeak', 4],
     ]);
   });
+
+  it('leaves out AnnotationPosition when the build enforces Spring Java Format', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      {
+        file: path.join(root, 'src/main/java/demo/A.java'),
+        line: 4,
+        message:
+          "[AnnotationPosition] Annotations should be positioned before modifiers\n  Did you mean 'public @Nullable X f()'?",
+      },
+      diagnostic(path.join(root, 'src/main/java/demo/A.java')),
+    ]);
+    const read = (javaStyle) =>
+      readErrorProneFindings({
+        reportRoot,
+        roots: [projectRoot],
+        lintedRoots: ['src/main/java'],
+        javaStyle,
+      }).map(({ rule }) => rule);
+
+    expect(read('spring')).toEqual(['DeadException']);
+    expect(read('google')).toEqual(['AnnotationPosition', 'DeadException']);
+  });
 });
