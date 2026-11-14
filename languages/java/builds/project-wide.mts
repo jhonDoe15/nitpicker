@@ -206,7 +206,10 @@ function couplingFindings(
   });
 }
 
-export function reportModuleProjects(modules: readonly ModuleReport[], rootKey: string) {
+export function reportModuleProjects(
+  modules: readonly ModuleReport[],
+  rootKey: string,
+): ReportProject[] {
   return modules.map((module) => ({
     reportRoot: module.reportRoot,
     qualifier: module.key === rootKey ? '' : module.dir,

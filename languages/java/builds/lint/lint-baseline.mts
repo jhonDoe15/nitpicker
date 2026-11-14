@@ -3,13 +3,17 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mts';
-import { languageLevelOf, lintCompatibleOf, lintCompilerOf } from '../typed/javac-views.mts';
+import {
+  languageLevelOf,
+  lintCompatibleOf,
+  lintCompilerOf,
+  posixOf as posix,
+} from '../typed/javac-views.mts';
 import { lombokPath } from './lint-arguments.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { type LintPlan } from '../typed/lint-plan.mts';
 import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
-import { posixOf as posix } from '../typed/javac-views.mts';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
@@ -92,7 +96,7 @@ export function lintFingerprint(plan: LintPlan): string {
 
 function ownerKey({ name, sourceFile }: Summary): string {
   const slash = name.lastIndexOf('/');
-  const file = sourceFile ?? `${name.slice(slash + 1).split('$')[0]}.java`;
+  const file = sourceFile ?? `${String(name.slice(slash + 1).split('$')[0])}.java`;
   return slash < 0 ? file : `${name.slice(0, slash)}/${file}`;
 }
 

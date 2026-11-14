@@ -54,10 +54,13 @@ export function unmutatedFailures(output: unknown): UnmutatedTest[] {
 
 export function unmutatedSummary(tests: readonly UnmutatedTest[]): string {
   const classes = new Set(tests.map(({ testClass }) => simpleName(testClass)));
-  const where = classes.size === 1 ? `in ${[...classes][0]}` : `in ${classes.size} test classes`;
+  const where =
+    classes.size === 1
+      ? `in ${String([...classes][0])}`
+      : `in ${String(classes.size)} test classes`;
   const [noun, verb] = tests.length === 1 ? ['test', 'it passes'] : ['tests', 'they pass'];
   return (
-    `${tests.length} ${noun} ${where} did not pass without mutation under PIT; ` +
+    `${String(tests.length)} ${noun} ${where} did not pass without mutation under PIT; ` +
     `${verb} under the build's test task`
   );
 }
@@ -81,7 +84,7 @@ function skippedNotice(
 ): JavaFinding {
   const shown = tests.slice(0, LISTED_TESTS).map(({ label }) => label);
   const rest = tests.length - shown.length;
-  const named = rest > 0 ? `${shown.join(', ')} and ${rest} more` : shown.join(', ');
+  const named = rest > 0 ? `${shown.join(', ')} and ${String(rest)} more` : shown.join(', ');
   return {
     tool: 'pit',
     rule: SKIPPED_RULE,
