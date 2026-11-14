@@ -21,6 +21,11 @@ describe('effect rules report', () => {
       'load_order() > repo.find_by_id()|database|concurrent',
       '`load_order()` (which calls `repo.find_by_id()`) sends a database query once per item of a loop, started concurrently',
     ],
+    [
+      'accumulator-copy',
+      'acc|acc + [...]|reduce',
+      '`acc` is replaced by a copy of itself (`acc + [...]`) on every step of the `reduce`, so the work grows with the square of the list',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });
@@ -50,6 +55,18 @@ describe('io-in-loop identity', () => {
       'requests.get.json()',
       'clients.get()',
       'Client.fetch_all()',
+    ]);
+  });
+});
+
+describe('accumulator-copy identity', () => {
+  it('keeps a subject that is not a call as it is', () => {
+    const report = [
+      { rule: 'accumulator-copy', path: 'a.py', subject: 'acc|acc + [...]|loop', line: 3 },
+    ];
+
+    expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
+      'acc',
     ]);
   });
 });
