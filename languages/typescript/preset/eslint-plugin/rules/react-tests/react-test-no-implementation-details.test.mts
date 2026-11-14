@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './react-test-no-implementation-details.mjs';
 
 const tester = typescriptRuleTester();
@@ -7,11 +7,11 @@ const plainTestFilename = '/repo/test/domain/store.test.ts';
 const reactTestingImport = "import { render } from '@testing-library/react'; ";
 const enzymeWrapper = "import { mount } from 'enzyme'; const wrapper = mount(Panel); ";
 
-function componentInternalsError(name) {
+function componentInternalsError(name: string) {
   return { messageId: 'componentInternals', data: { name } };
 }
 
-function fiberInternalsError(name) {
+function fiberInternalsError(name: string) {
   return { messageId: 'fiberInternals', data: { name } };
 }
 
@@ -133,27 +133,29 @@ tester.run('react-test-no-implementation-details', rule, {
       code,
       errors: [{ messageId: 'hookSpy' }],
     })),
-    ...[
+    ...(
       [
-        "vi.mock('react', async (importOriginal) => ({ ...(await importOriginal()), useState: vi.fn(() => ['x', vi.fn()]) }));",
-        'useState',
-      ],
-      [
-        "jest.mock('react', () => ({ ...jest.requireActual('react'), useEffect: (f) => f() }));",
-        'useEffect',
-      ],
-      [
-        "vi.doMock('react', () => ({ useId: () => 'id', 'useMemo': (f) => f() }));",
-        'useId`, `useMemo',
-      ],
-      ["vi.mock(import('react'), () => ({ useState: vi.fn() }));", 'useState'],
-      [
-        "vi.mock('react-dom', () => ({ useFormStatus: () => ({ pending: true }) }));",
-        'useFormStatus',
-      ],
-      ["vi.mock('react');", 'react'],
-      ["vi.mock('react', () => ({ createElement: vi.fn() }));", 'react'],
-    ].map(([code, name]) => ({ code, errors: [{ messageId: 'reactMock', data: { name } }] })),
+        [
+          "vi.mock('react', async (importOriginal) => ({ ...(await importOriginal()), useState: vi.fn(() => ['x', vi.fn()]) }));",
+          'useState',
+        ],
+        [
+          "jest.mock('react', () => ({ ...jest.requireActual('react'), useEffect: (f) => f() }));",
+          'useEffect',
+        ],
+        [
+          "vi.doMock('react', () => ({ useId: () => 'id', 'useMemo': (f) => f() }));",
+          'useId`, `useMemo',
+        ],
+        ["vi.mock(import('react'), () => ({ useState: vi.fn() }));", 'useState'],
+        [
+          "vi.mock('react-dom', () => ({ useFormStatus: () => ({ pending: true }) }));",
+          'useFormStatus',
+        ],
+        ["vi.mock('react');", 'react'],
+        ["vi.mock('react', () => ({ createElement: vi.fn() }));", 'react'],
+      ] satisfies [string, string][]
+    ).map(([code, name]) => ({ code, errors: [{ messageId: 'reactMock', data: { name } }] })),
     {
       code: `${enzymeWrapper}vi.spyOn(React, "useState"); wrapper.state();`,
       errors: [{ messageId: 'hookSpy' }, componentInternalsError('state()')],
@@ -191,15 +193,17 @@ tester.run('react-test-no-implementation-details', rule, {
       })),
     )
     .concat(
-      [
-        ["import * as R from 'react';", 'R', 'useState'],
-        ["import MyReact from 'react';", 'MyReact', 'useReducer'],
-        ["import * as R from 'react';", 'R', 'useLayoutEffect'],
-        ["import R = require('react');", 'R', 'useEffect'],
-        ["const R = require('react');", 'R', 'useContext'],
-        ["import React, * as Namespace from 'react';", 'Namespace', 'useMemo'],
-        ["import { default as R } from 'react';", 'R', 'useRef'],
-      ].map(([importLine, target, hook]) => ({
+      (
+        [
+          ["import * as R from 'react';", 'R', 'useState'],
+          ["import MyReact from 'react';", 'MyReact', 'useReducer'],
+          ["import * as R from 'react';", 'R', 'useLayoutEffect'],
+          ["import R = require('react');", 'R', 'useEffect'],
+          ["const R = require('react');", 'R', 'useContext'],
+          ["import React, * as Namespace from 'react';", 'Namespace', 'useMemo'],
+          ["import { default as R } from 'react';", 'R', 'useRef'],
+        ] satisfies [string, string, string][]
+      ).map(([importLine, target, hook]) => ({
         filename: testFilename,
         code: `${importLine} jest.spyOn(${target}, '${hook}');`,
         errors: [{ messageId: 'hookSpy', data: { name: hook } }],

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
 import { rule } from './react-no-random-key.mjs';
-import { createReactRuleTester } from '../test-support/tester.mjs';
+import { createReactRuleTester } from '../test-support/tester.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-key-helpers-'));
 mkdirSync(path.join(root, 'src/shared'), { recursive: true });
@@ -27,7 +27,7 @@ afterAll(() => {
 
 const filename = path.join(root, 'src/ui/rows.tsx');
 
-function row(prefix, key) {
+function row(prefix: string, key: string) {
   return `${prefix}\nexport function Rows({ items }) { return items.map((item) => <li key={${key}}>{item.name}</li>); }`;
 }
 
@@ -48,20 +48,22 @@ tester.run('react-no-random-key through helpers', rule, {
     row('function makeKey(item) { track(Math.random()); return item.id; }', 'makeKey(item)'),
     row('function makeKey() { const next = () => Math.random(); return 1; }', 'makeKey()'),
   ].map((code) => ({ filename, code })),
-  invalid: [
-    [row('function makeKey() { return Math.random(); }', 'makeKey()'), 'makeKey'],
+  invalid: (
     [
-      row("import { nanoid } from 'nanoid'; const makeKey = () => `k-${nanoid()}`;", 'makeKey()'),
-      'makeKey',
-    ],
-    [row("import { genId } from '../shared/ids';", 'genId()'), 'genId'],
-    [row("import { timeId as next } from '../shared/ids';", 'next()'), 'next'],
-    [row("import { genId } from '../shared/ids';", '`${item.id}-${genId()}`'), 'genId'],
-    [
-      "import { genId } from '../shared/ids';\nexport function Row() { const id = genId(); return <li key={id} />; }",
-      'genId',
-    ],
-  ].map(([code, call]) => ({
+      [row('function makeKey() { return Math.random(); }', 'makeKey()'), 'makeKey'],
+      [
+        row("import { nanoid } from 'nanoid'; const makeKey = () => `k-${nanoid()}`;", 'makeKey()'),
+        'makeKey',
+      ],
+      [row("import { genId } from '../shared/ids';", 'genId()'), 'genId'],
+      [row("import { timeId as next } from '../shared/ids';", 'next()'), 'next'],
+      [row("import { genId } from '../shared/ids';", '`${item.id}-${genId()}`'), 'genId'],
+      [
+        "import { genId } from '../shared/ids';\nexport function Row() { const id = genId(); return <li key={id} />; }",
+        'genId',
+      ],
+    ] satisfies [string, string][]
+  ).map(([code, call]) => ({
     filename,
     code,
     errors: [{ messageId: 'randomKey', data: { call } }],

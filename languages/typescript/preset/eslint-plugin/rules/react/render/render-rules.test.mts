@@ -1,19 +1,21 @@
 import { rule as reactNoDirectDom } from './react-no-direct-dom.mjs';
 import { rule as reactNoEffectEventHandling } from './react-no-effect-event-handling.mjs';
 import { rule as reactNoRandomKey } from './react-no-random-key.mjs';
-import { createReactRuleTester, filename } from '../test-support/tester.mjs';
+import { createReactRuleTester, filename } from '../test-support/tester.mts';
 
 const tester = createReactRuleTester();
 
-function valid(code) {
+function valid(code: string) {
   return { filename, code };
 }
 
-function invalid(code, ...errors) {
+type RenderError = { messageId: string; data?: Record<string, string> };
+
+function invalid(code: string, ...errors: RenderError[]) {
   return { filename, code, errors };
 }
 
-function inPanel(body) {
+function inPanel(body: string) {
   return `export function Panel({ items, onSave, onClose }) { ${body} return <div />; }`;
 }
 

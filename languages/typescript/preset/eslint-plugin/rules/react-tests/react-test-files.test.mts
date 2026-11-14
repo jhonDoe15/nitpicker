@@ -1,12 +1,15 @@
-import { Linter } from 'eslint';
+import { Linter, type ESLint, type Rule } from 'eslint';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { inReactTestFilesOnly } from './react-test-files.mjs';
+import { inReactTestFilesOnly as untypedInReactTestFilesOnly } from './react-test-files.mjs';
 
-const temporaryRoots = [];
+type Create = (context: Rule.RuleContext) => Rule.RuleListener;
+const inReactTestFilesOnly: (create: Create) => Create = untypedInReactTestFilesOnly;
+
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -14,7 +17,7 @@ afterEach(() => {
   }
 });
 
-const probe = {
+const probe: Rule.RuleModule = {
   meta: { type: 'problem', schema: [], messages: { seen: 'Seen.' } },
   create: inReactTestFilesOnly((context) => ({
     Program(node) {
@@ -23,7 +26,7 @@ const probe = {
   })),
 };
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-react-test-files-'));
   temporaryRoots.push(root);
   const tsconfig = {
@@ -39,7 +42,7 @@ function projectWith(files) {
   return root;
 }
 
-const settingsProbe = {
+const settingsProbe: Rule.RuleModule = {
   meta: { type: 'problem', schema: [], messages: { seen: '{{module}}' } },
   create: inReactTestFilesOnly((context) => ({
     Program(node) {
@@ -49,9 +52,9 @@ const settingsProbe = {
   })),
 };
 
-function lintIn(root, code, plugin, rules) {
+function lintIn(root: string, code: string, plugin: ESLint.Plugin, rules: Linter.RulesRecord) {
   const linter = new Linter({ cwd: root });
-  const config = [
+  const config: Linter.Config[] = [
     {
       files: ['**/*.{ts,tsx}'],
       languageOptions: { parser: tseslint.parser },
@@ -63,7 +66,7 @@ function lintIn(root, code, plugin, rules) {
   return linter.verify(code, config, path.join(root, 'test/ui/a.test.ts'));
 }
 
-function runsIn(root, code) {
+function runsIn(root: string, code: string) {
   const messages = lintIn(root, code, { rules: { probe } }, { 'demo/probe': 'error' });
   return messages.some(({ ruleId }) => ruleId === 'demo/probe');
 }
@@ -126,7 +129,7 @@ describe('the React test file detection', () => {
   ])('skips the rule for %s', (_name, file, code) => {
     const root = projectWith({});
     const linter = new Linter({ cwd: root });
-    const config = [
+    const config: Linter.Config[] = [
       {
         files: ['**/*.{ts,tsx}'],
         languageOptions: { parser: tseslint.parser },
@@ -141,7 +144,7 @@ describe('the React test file detection', () => {
   it('runs the rule for a component test outside the e2e root', () => {
     const root = projectWith({});
     const linter = new Linter({ cwd: root });
-    const config = [
+    const config: Linter.Config[] = [
       {
         files: ['**/*.{ts,tsx}'],
         languageOptions: { parser: tseslint.parser },
@@ -161,8 +164,9 @@ describe('the React test file detection', () => {
     const code =
       "import { renderPage } from '@/test/render';\nrenderPage(null).getByTestId('a');\n";
     const direct = "import { render } from '@testing-library/react';\n";
-    const settingOf = (text) =>
-      lintIn(root, text, { rules: { probe: settingsProbe } }, { 'demo/probe': 'error' })[0].message;
+    const settingOf = (text: string) =>
+      lintIn(root, text, { rules: { probe: settingsProbe } }, { 'demo/probe': 'error' })[0]
+        ?.message;
     const queries = lintIn(root, code, testingLibraryPlugin, {
       'demo/no-test-id-queries': 'error',
     });

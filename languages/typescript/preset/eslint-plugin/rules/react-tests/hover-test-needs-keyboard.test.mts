@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './hover-test-needs-keyboard.mjs';
 
 const tester = typescriptRuleTester();
@@ -6,7 +6,7 @@ const filename = '/repo/test/ui/tooltip.test.tsx';
 const imports =
   "import { render, screen, fireEvent } from '@testing-library/react';\nimport userEvent from '@testing-library/user-event';\n";
 
-function spec(...tests) {
+function spec(...tests: string[]) {
   return `${imports}${tests.map((body) => `it('works', async () => { ${body} });`).join('\n')}`;
 }
 
