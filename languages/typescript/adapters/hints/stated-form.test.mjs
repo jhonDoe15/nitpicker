@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
-import { strictPresetConfig } from '../../preset/eslint-config/strict.mjs';
+import { strictPresetConfig } from '../../preset/eslint-config/strict.mts';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
 import { routedEslintFields } from './eslint-hints.mts';
 import { statedAllowedForm, withStatedForm } from './stated-form.mts';

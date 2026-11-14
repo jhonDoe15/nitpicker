@@ -6,7 +6,7 @@ import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import {
   collectArchitectureSignals,
   collectSignals,
-} from '../../../../languages/typescript/preset/coding-standards/check.mjs';
+} from '../../../../languages/typescript/preset/coding-standards/check.mts';
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
   resolveHeadPolicy,

@@ -43,7 +43,14 @@ describe('labelHunks', () => {
   it('drops the hunks it cannot name', () => {
     expect(labelHunks([hunkAt(5)], [], ['A', 'B'])).toEqual([]);
     expect(labelHunks([hunkAt(10)], DIAGNOSTICS, ['MissingOverride'])).toEqual([
-      { label: 'MissingOverride', hunk: hunkAt(10) },
+      { label: 'MissingOverride', hunk: hunkAt(10), line: 10 },
     ]);
+  });
+});
+
+describe('labelHunks lines', () => {
+  it('carry the line of the nearest diagnostic, not the line of the hunk', () => {
+    expect(labelHunks([hunkAt(25)], DIAGNOSTICS, ['UnusedMethod'])[0].line).toBe(30);
+    expect(labelHunks([hunkAt(5)], [], ['A'])[0]).not.toHaveProperty('line');
   });
 });

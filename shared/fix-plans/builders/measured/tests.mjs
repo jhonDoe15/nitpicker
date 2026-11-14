@@ -1,7 +1,7 @@
-import { nearestTestFile } from '../../plan-parts/files.mjs';
+import { findTestFile } from '../../plan-parts/test-files/index.mjs';
 
 export function testFileContext(finding, env) {
-  const found = nearestTestFile(finding.path, (candidate) => env.exists(candidate));
+  const found = findTestFile(finding.path, env);
   return found === undefined ? undefined : { testFile: found };
 }
 

@@ -61,11 +61,16 @@ ones.
   import) or `private`, and the code does not say which one the author meant.
 - `kotlin-source/HttpWithoutTimeout` and `ShellCommand` (review): the timeout value and the
   argument list are decisions, not rewrites.
-- `kotlinc/USELESS_CAST` and `DEPRECATION` with `ReplaceWith`: they need the compiler's position and
-  type facts. The recipes see only the text, so a Kotlin text edit would have to guess the cast or
-  inline the replacement. They wait for findings to reach the fixer.
-- The Kotlin column of `unused-option`: it comes from the PSI facts tool with resolved callers, so a
-  text edit cannot prove that no caller passes the option.
+- `kotlinc/USELESS_CAST`: the finding carries only a line (the report parser drops the column), and
+  findings do not reach a recipe: a recipe gets the project files and the hygiene inputs, not the
+  compiler output, and the fix runs before any compile. Without the exact range a text edit cannot tell
+  which `as T` on the line to drop, and dropping a cast that is not useless changes overload choice.
+- `kotlinc/DEPRECATION` with `ReplaceWith`: the compiler message names the deprecated symbol, not the
+  `ReplaceWith` expression, which sits in the declaration (often in another module or a library). The
+  replacement needs imports and the receiver and argument mapping, which need symbol resolution.
+- The Kotlin column of `unused-option`: callers come from the PSI facts tool matched by name, not
+  resolved, and findings do not reach a recipe. A text edit cannot prove that no caller passes the
+  option, and removing it breaks the build of a caller it missed.
 - `detekt.style.UseRequire` and `UseCheckOrError` with a message that is not a string literal, a
   cause, or a custom exception class: `error()` and the lambda form change what a `null` message
   does.
@@ -78,11 +83,12 @@ It gives the signature of the function to extract (the parameters of the first c
 parameter for each value that differs), the arguments each copy passes, the nearest shared folder
 that the layout allows (`layout.sharedRoots`, else a `shared` folder), or the nearest common folder when both files are in one feature and why no recipe made the change. The plan is the Java one over the Kotlin trees. Kotlin has no extraction recipe, and the plan says so for a pair in one file. The names it picks avoid every name in the two copies.
 
-## Not run here
+## End-to-end samples
 
-The Gradle and Maven Kotlin end-to-end samples were not run in this environment. The recipes have
-unit tests, and `languages/java/fix/recipes/jvm-recipes.test.mjs` runs the fix on a Gradle and a
-Maven Kotlin project with a stubbed formatter.
+`languages/java/adapters/kotlin-e2e/fix/kotlin-fix.e2e.test.mjs` runs the source recipes
+(`UseRequire`, `VarCouldBeVal`) through `--fix` on a Gradle and a Maven sample, with the real
+analyzers on Gradle. A file that declares or imports its own `require`, `check` or `error` is left
+alone by the precondition recipes, because the rewritten call would resolve to that function.
 
 ## Near-duplicate extraction
 
