@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type TypeScript from 'typescript';
 import type { Layout } from '../../typed/head-policy.mts';
-import { loadTypeScript } from '../../typed/typescript-program.mts';
+import { loadTypeScript } from '../typescript-program.mts';
 
 type ProgramContext = {
   readonly ts: typeof TypeScript;
