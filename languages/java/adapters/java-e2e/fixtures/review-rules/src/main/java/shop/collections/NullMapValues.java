@@ -42,7 +42,7 @@ public final class NullMapValues {
     return Collectors.toMap(keyFunction, valueFunction, (first, second) -> second, LinkedHashMap::new);
   }
 
-  public Map<String, String> fromInfo(Map<String, ?> info) {
+  public Map<String, Object> fromInfo(Map<String, ?> info) {
     return info.entrySet().stream()
         .collect(toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue)); // violation: NullMapValue
   }
@@ -52,24 +52,19 @@ public final class NullMapValues {
         .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue())); // violation: NullMapValue
   }
 
-  public Map<String, @Nullable String> fromNullableValues(Map<String, @Nullable String> values) {
-    return values.entrySet().stream()
-        .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue)); // violation: NullMapValue
-  }
-
-  public Map<String, String> keyFiltered(Map<String, ?> info) {
+  public Map<String, Object> keyFiltered(Map<String, ?> info) {
     return info.entrySet().stream()
         .filter(entry -> entry.getKey() != null)
         .collect(toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue)); // violation: NullMapValue
   }
 
-  public Map<String, String> identityStep(Map<String, ?> info) {
+  public Map<String, Object> identityStep(Map<String, ?> info) {
     return info.entrySet().stream()
         .map(entry -> entry)
         .collect(toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue)); // violation: NullMapValue
   }
 
-  public Map<String, String> aliased(Map<String, ?> info) {
+  public Map<String, Object> aliased(Map<String, ?> info) {
     var copy = info;
     return copy.entrySet().stream()
         .collect(toLinkedHashMap(Map.Entry::getKey, Map.Entry::getValue)); // violation: NullMapValue
