@@ -10,21 +10,23 @@ def is_number(annotation):
     return bool(set(members_of(annotation)) & NUMBER_TYPES)
 
 
-def class_number_fields(node):
+def class_number_fields(node, is_kind=is_number):
     return {
         item.target.id
         for item in node.body
         if isinstance(item, ast.AnnAssign)
         and isinstance(item.target, ast.Name)
-        and is_number(item.annotation)
+        and is_kind(item.annotation)
     }
 
 
-def number_fields(tree):
+def number_fields(tree, is_kind=is_number):
     fields = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef):
-            fields.setdefault(node.name, set()).update(class_number_fields(node))
+            fields.setdefault(node.name, set()).update(
+                class_number_fields(node, is_kind)
+            )
     return {name: found for name, found in fields.items() if found}
 
 
@@ -49,9 +51,10 @@ def receiver_owner(function, context, fields):
     return {positional[0].arg: parent.name}
 
 
-def field_owners(function, context, parameters):
+def field_owners(function, context, parameters, is_kind=is_number):
     fields = context.project.memo(
-        f"number-fields:{context.path}", lambda _project: number_fields(context.tree)
+        f"{is_kind.__name__}-fields:{context.path}",
+        lambda _project: number_fields(context.tree, is_kind),
     )
     owners = receiver_owner(function, context, fields)
     for argument in parameters:

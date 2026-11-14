@@ -1103,7 +1103,10 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   variable written elsewhere, an import or an unresolved global is dropped on such a call. The
   conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
   values are compared. An order comparison counts as a number comparison only when both operands
-  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. The same facts decide a
+  coercion of the tested value: `x ? Boolean(x) : d`, `x ? !!x : d`, `if (x) return Boolean(x)` and
+  `x && Boolean(x)` are always `true` (in the other branch, always `false`), so either the coercion
+  or the test is wrong; the message says to use the value itself or fix the test. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
   `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
@@ -1336,9 +1339,9 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   comparison: `count > 0`, `index !== -1`, `items.length > 0`, `id !== undefined` for an optional
   number, and `value ?? fallback` for a default. A union that mixes a number with another type
   (`string | number`) is reported too. Strings, objects, `any`/`unknown` and nullable booleans and
-  strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
-  `allowNullableBoolean`, `allowAny`): a nullable boolean is only wrong when `false` carries a
-  meaning of its own, so it is left out for now rather than reported everywhere. Not reported: a
+  strings stay allowed here (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`): `nitpicker/no-presence-truthiness` reports the part of those
+  that is a presence test, as notes. Not reported: a
   link of a sort comparator chain (`a.rank - b.rank || a.name.localeCompare(b.name)`, a `compare...`
   call), when the chain ends in another comparison rather than a literal; a bit test
   (`flags & MASK`); an operand whose `||` chain falls back to `0` (`count || 0`, `(ready && count) ||
@@ -1348,6 +1351,19 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   same. When `0` must take the same path as a missing value, add an exception for the rule. In the
   JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
   and is not reported.
+- `nitpicker/no-presence-truthiness` (type-aware, production code and tests; report-only: its
+  findings print as design notes and never fail the change): an optional string
+  (`string | undefined | null`), an optional boolean or an unconstrained type parameter tested for
+  truthiness as a presence check, where `''` or `false` reads as missing. Reported: a conditional
+  or `if` whose test is the value and whose true branch uses it (`x ? f(x) : d`,
+  `if (x) out.k = x`, `serverState ? () => serverState : undefined`), `x || d`, and
+  `.filter(Boolean)`, `.filter((v) => v)` or `.filter(([, v]) => v)` over elements of such a type.
+  Write `x !== undefined`, `x != null`, `typeof x === 'string'`, or `x ?? d` for a default. Not
+  reported: a plain `string` or `boolean`, a string union of non-empty literals, `x || ''` and
+  `x || false` (where `??` gives the same result), and a parameter tested as `x ? x : d` or `x || d`,
+  which `nitpicker/no-falsy-default` reports. When an empty string or `false` must take the same
+  path as a missing value, add an exception for the rule. In the JavaScript preset the type comes
+  from JSDoc and inference (`checkJs`).
 - `nitpicker/no-shared-stateful-regex`: a regex with the `g` or `y` flag keeps `lastIndex` between
   calls, so `test()` and `exec()` on one that is reused start where the previous call stopped and
   return order-dependent results. Reported: `test()` or `exec()` (and, for a `y` regex without `g`,

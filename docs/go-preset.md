@@ -13,7 +13,8 @@ and fail only on new enforceable findings.
 Go already settles more than most languages: gofmt fixes the layout, the compiler rejects unused
 imports and variables, and `go vet` ships with the toolchain. A condition must be a `bool`, so
 `if count {` cannot hide a zero; the TypeScript and Python presets report that slip as
-`nitpicker/strict-boolean-expressions` and `number-truthiness`. What is left open is how a function
+`nitpicker/strict-boolean-expressions` and `number-truthiness`, and the same for an optional string
+or boolean (`nitpicker/no-presence-truthiness`, `presence-truthiness`), which Go cannot write. What is left open is how a function
 is shaped, how errors are handled, which of several equivalent forms to write, how tests are
 written, and the mistakes `go vet` does not look for. The preset is smaller than the others, and
 its later slices add the linters and one-way rules for that remaining room.

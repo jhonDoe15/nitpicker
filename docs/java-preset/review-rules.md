@@ -499,7 +499,10 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   has no alias declaration, so the TypeScript `export const Old = New` form has no counterpart.
 - A number tested for truth (`if (count)`), which the TypeScript preset reports as
   `nitpicker/strict-boolean-expressions` and the Python preset as `number-truthiness`, has no
-  counterpart: a Java condition must be a `boolean`, so the compiler rejects it.
+  counterpart: a Java condition must be a `boolean`, so the compiler rejects it. The same holds for an
+  optional string or boolean tested as a presence check (`nitpicker/no-presence-truthiness`,
+  `presence-truthiness`): `String` is not a condition and `Boolean` must be unboxed, which a null
+  check has to precede.
 - `UnclosedInlineResource` covers the closeables that have no variable, which PMD's `CloseResource`
   (it tracks locals) never sees and SpotBugs reports only for some types. Run by hand on the
   rule's review-rules fixture (`shop/resources/Leaks.java`), SpotBugs 4.9.3 (`OS_OPEN_STREAM`,

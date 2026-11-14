@@ -76,7 +76,9 @@ whose first comment says it is generated (`@generated`, "generated ... do not ed
 A number tested for truth (`if (count)`), which the TypeScript preset reports as
 `nitpicker/strict-boolean-expressions` and the Python preset as `number-truthiness`, has no rule here:
 an `if` or `while` condition and a `when` branch without a subject must be a `Boolean`, so the compiler
-rejects it.
+rejects it. An optional string or boolean tested as a presence check
+(`nitpicker/no-presence-truthiness`, `presence-truthiness`) cannot be written either: `String?` is
+not a condition, and `Boolean?` has to be compared (`x == true`) first.
 
 `CommentedOutCode` skips KDoc, fenced samples, IDE directives (`// language=JSON`, `// noinspection ...`),
 assignments that read as prose (`timeout = 30 seconds in production`) and the lines under an `Example:`,

@@ -30,6 +30,14 @@ describe('rules script report', () => {
     ]);
   });
 
+  it('classifies presence-truthiness findings as descriptive', () => {
+    const report = [entry({ rule: 'presence-truthiness', subject: 'label(title)' })];
+
+    expect(
+      ingestRulesReport(JSON.stringify(report)).map(({ classification }) => classification),
+    ).toEqual(['descriptive']);
+  });
+
   it('keeps two helpers with the same name apart by their qualified names', () => {
     const report = ['shop.shared.a.fetch', 'shop.shared.c.fetch'].map((subject) =>
       entry({ rule: 'io-in-domain', subject, via: `quote -> ${subject} -> requests.get` }),

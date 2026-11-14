@@ -36,6 +36,10 @@ const GROUPS = [
     go: 'go-rules/copied-constant-in-test',
   },
   {
+    typescript: 'nitpicker/no-presence-truthiness',
+    python: 'presence-truthiness',
+  },
+  {
     jvm: 'MaxValueOverflow',
     go: 'go-rules/max-value-overflow',
   },

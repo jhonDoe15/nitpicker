@@ -39,3 +39,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
   `items.toSorted()`). When code moves, change every caller and delete the old name: no
   `@deprecated` declaration and no `export const Old = New` alias.
+- A missing value is `undefined`, not falsy: test `count !== undefined`, `name !== undefined`, default with
+  `value ?? fallback`, and filter with `(v) => v !== undefined`, never `if (count)`, `name || d` or
+  `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
+  `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
+  `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).

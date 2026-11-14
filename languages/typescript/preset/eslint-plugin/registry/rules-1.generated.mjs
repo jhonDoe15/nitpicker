@@ -63,6 +63,7 @@ import { rule as ruleNoOrmQueryLogging } from '../rules/database/no-orm-query-lo
 import { rule as ruleNoOrmSchemaSync } from '../rules/database/no-orm-schema-sync.mjs';
 import { rule as ruleNoParameterMutation } from '../rules/signatures/no-parameter-mutation.mjs';
 import { rule as ruleNoPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
+import { rule as ruleNoPresenceTruthiness } from '../rules/truthiness/no-presence-truthiness.mjs';
 import { rule as ruleNoProcessAccessOutsideCompositionRoot } from '../rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as ruleNoProcessGlobalsOutsideMainGuard } from '../rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-console.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framewo
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
-import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -166,6 +166,7 @@ export const partRules = {
   'no-orm-schema-sync': ruleNoOrmSchemaSync,
   'no-parameter-mutation': ruleNoParameterMutation,
   'no-partial-output-assertion': ruleNoPartialOutputAssertion,
+  'no-presence-truthiness': ruleNoPresenceTruthiness,
   'no-process-access-outside-composition-root': ruleNoProcessAccessOutsideCompositionRoot,
   'no-process-globals-outside-main-guard': ruleNoProcessGlobalsOutsideMainGuard,
   'no-production-console': ruleNoProductionConsole,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
-  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
 };

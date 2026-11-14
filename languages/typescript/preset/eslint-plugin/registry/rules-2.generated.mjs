@@ -1,3 +1,4 @@
+import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mjs';
@@ -50,6 +51,7 @@ import { rule as ruleUnboundedReactiveFanOut } from '../rules/concurrency/reacti
 import { rule as ruleUntestedRoundTrip } from '../rules/round-trips/untested-round-trip.mjs';
 
 export const partRules = {
+  'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,

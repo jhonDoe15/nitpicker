@@ -152,3 +152,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   form is converted in its schema, since the value arrives as text: `z.coerce.number()`, `z.stringbool()`,
   valibot `v.pipe(v.string(), v.toNumber(), v.number())`. Never `z.coerce.boolean()`: it turns `"false"`
   into true (`nitpicker/no-uncoerced-request-input`).
+- A missing value is `undefined`, not falsy: test `count !== undefined`, `name !== undefined`, default with
+  `value ?? fallback`, and filter with `(v) => v !== undefined`, never `if (count)`, `name || d` or
+  `.filter(Boolean)` on a number, an optional string or an optional boolean (`nitpicker/strict-boolean-expressions`,
+  `nitpicker/no-presence-truthiness`, the latter report-only). Once `if (x)` has decided `x`, do not write
+  `Boolean(x)` or `!!x` in that branch (`nitpicker/no-decided-condition`).
