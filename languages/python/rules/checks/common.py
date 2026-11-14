@@ -36,7 +36,19 @@ def shown(value, length=SHOWN_LENGTH):
 
 def finding(path, rule, subject, node):
     end = getattr(node, "end_lineno", None) or node.lineno
-    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno, "end": end}
+    return {
+        "rule": rule,
+        "path": path,
+        "subject": subject,
+        "line": node.lineno,
+        "end": end,
+        "at": (
+            node.lineno,
+            node.col_offset,
+            end,
+            getattr(node, "end_col_offset", None),
+        ),
+    }
 
 
 def overlap_sites(found, overlaps):
@@ -228,7 +240,11 @@ def root_name(node, through_calls=False):
 
 
 def own_nodes(root):
-    pending = list(ast.iter_child_nodes(root))
+    return walk_statements(ast.iter_child_nodes(root))
+
+
+def walk_statements(statements):
+    pending = list(statements)
     while pending:
         node = pending.pop()
         yield node

@@ -1,6 +1,7 @@
 import { GOSEC_HINTS, gosecMessage } from './gosec-hints.mjs';
 import { GOCRITIC_HINTS, GOCRITIC_MESSAGE_HINTS } from './gocritic-hints.mjs';
 import { reviveHint, reviveVaryingPart } from './revive-hints.mjs';
+import { copiedConstantMessage } from '../../../../shared/rules/copied-constants/copied-constants.mjs';
 
 function deferredClose(value) {
   return `\`defer func() { err = errors.Join(err, ${value}.Close()) }()\``;
@@ -201,7 +202,23 @@ function hintOf(tool, rule, message) {
   return hint === undefined ? GO_FIX : `${hint} ${GO_FIX}`;
 }
 
+const COPIED_CONSTANT_PIN =
+  '`if {name} != {value} { t.Fatalf(...) }`, or `assert.Equal(t, {value}, {name})`';
+
+function copiedConstant(message) {
+  const { names, owner, kind, value } = JSON.parse(message);
+  return copiedConstantMessage({
+    names,
+    owner: `package ${owner}`,
+    literal: { kind, value },
+    pin: COPIED_CONSTANT_PIN,
+  });
+}
+
 export function lintMessage({ tool, rule, message }) {
+  if (tool === 'go-rules' && rule === 'copied-constant-in-test') {
+    return copiedConstant(message);
+  }
   const hint = hintOf(tool, rule, message);
   const own = tool === 'gosec' ? gosecMessage(rule, message) : message;
   const text = sentence(stable(tool, rule, own));

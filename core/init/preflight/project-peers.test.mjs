@@ -76,7 +76,7 @@ describe('the project peers a run needs', () => {
     const root = project(withPeers({ typescript: '5.6.3', ...VITEST }));
 
     expect(check(root)).toThrow(
-      'typescript 5.6.3 is installed and nitpicker needs >=5.7. Run npm install --save-dev typescript.',
+      "typescript 5.6.3 is installed and nitpicker needs >=5.7. Run npm install --save-dev 'typescript@^5.7'.",
     );
   });
 
@@ -126,4 +126,27 @@ describe('the project peers a run needs', () => {
       `nitpicker failed: vitest and @vitest/coverage-v8 are not installed in ${repository.root}. Run npm install --save-dev vitest @vitest/coverage-v8.\n`,
     );
   });
+
+  it.each([
+    [
+      'npm',
+      'package-lock.json',
+      "npm install --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'",
+    ],
+    ['pnpm', 'pnpm-lock.yaml', "pnpm add --save-dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
+    ['yarn', 'yarn.lock', "yarn add --dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
+    ['bun', 'bun.lock', "bun add --dev 'vitest@^3.2.0' '@vitest/coverage-v8@^3.2.0'"],
+  ])(
+    'asks for the supported range of an outdated Vitest under %s',
+    (_manager, lockfile, command) => {
+      const root = project({
+        ...withPeers({ typescript: '6.0.3', vitest: '3.1.4', '@vitest/coverage-v8': '3.1.4' }),
+        [lockfile]: '',
+      });
+
+      expect(check(root)).toThrow(
+        `vitest 3.1.4 is installed and nitpicker needs ^3.2.0 || ^4.1.11 || ^5.0.0; @vitest/coverage-v8 3.1.4 is installed and nitpicker needs ^3.2.0 || ^4.1.11 || ^5.0.0. Run ${command}.`,
+      );
+    },
+  );
 });

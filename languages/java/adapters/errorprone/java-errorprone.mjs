@@ -4,8 +4,10 @@ import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
+import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
+import { isClosedByUsing } from './reactive/closed-supplier.mjs';
 import { sourceReader } from './lombok/source-text.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
@@ -22,7 +24,13 @@ const KNOWN_CRASHES = new Map([
   ],
 ]);
 
-export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifest = {} }) {
+export function readErrorProneFindings({
+  reportRoot,
+  roots,
+  lintedRoots,
+  manifest = {},
+  javaStyle,
+}) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
   if (!existsSync(reportPath)) {
     return [toolError('missing-report', `Error Prone wrote no report at ${reportPath}.`)];
@@ -35,7 +43,9 @@ export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifes
     guava: (file) => (inRoots(file, testRoots) ? manifest.testGuava : manifest.guava) !== false,
   });
   return [
-    ...findings.map((finding) => withExceptionRoute(finding, testRoots)),
+    ...findings
+      .filter((finding) => !isFormatterOwned(finding, javaStyle))
+      .map((finding) => withExceptionRoute(finding, testRoots)),
     ...(outside.size === 0 ? [] : [unmappedError(outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];
@@ -114,7 +124,8 @@ function withoutExemptCode(diagnostics, readSource) {
       (diagnostic) =>
         !isClassExempt(diagnostic, CHECKS.classExemptions) &&
         !isIntegrationTestName(diagnostic) &&
-        !isLombokGenerated(diagnostic, textOf(diagnostic.file)),
+        !isLombokGenerated(diagnostic, textOf(diagnostic.file)) &&
+        !isClosedByUsing(diagnostic, textOf(diagnostic.file)),
     ),
   );
 }

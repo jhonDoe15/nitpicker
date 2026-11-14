@@ -53,6 +53,9 @@ function layoutFix(javaStyle) {
   if (javaStyle === 'none') {
     return 'Fix this layout by hand; no Java formatter runs.';
   }
+  if (javaStyle === 'spring') {
+    return "Format this file with Spring Java Format, the build's apply goal or format task; nitpicker does not run it.";
+  }
   const formatter = JAVA_FORMATTER_TOOLS[javaStyle]?.label ?? 'your Java formatter';
   return `Run nitpicker --fix or ${formatter} on the file; either fixes this layout. ${NOT_YOUR_JAVA_FORMATTER}`;
 }

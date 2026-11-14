@@ -5,7 +5,7 @@ import {
   BLACK_DEFAULT_EXCLUDES,
   blackForceExclude,
   formatStdinCommand,
-  lintFixCommand,
+  lintFixCommands,
 } from './python-fix-commands.mjs';
 import { withPythonFixContext } from './python-fix-session.mjs';
 
@@ -55,26 +55,26 @@ const RUFF_FORMAT_OPTIONS = [
   'indent-width = 4',
 ];
 
-describe('lintFixCommand', () => {
-  it('applies only safe fixes with the lint options of the gate, to the given files', () => {
+describe('lintFixCommands', () => {
+  it('applies only safe fixes with the lint options of the gate, to one file over stdin', () => {
     const command = inContext({ 'pyproject.toml': PYPROJECT }, {}, (context) =>
-      lintFixCommand(context, ['a.py', 'b.py']),
+      lintFixCommands(context)('a.py'),
     );
 
     expect(command).toEqual([
       ...RUFF_LINT_OPTIONS,
       '--force-exclude',
-      '--fix',
-      '--',
-      'a.py',
-      'b.py',
+      '--fix-only',
+      '--exit-non-zero-on-fix',
+      '--stdin-filename=a.py',
+      '-',
     ]);
   });
   it('excludes what the policy excludes', () => {
     const command = inContext(
       { 'pyproject.toml': PYPROJECT },
       { headPolicy: { exclude: ['gen/**'] } },
-      (context) => lintFixCommand(context, ['a.py']),
+      (context) => lintFixCommands(context)('a.py'),
     );
 
     expect(command).toEqual([
@@ -82,9 +82,10 @@ describe('lintFixCommand', () => {
       '--extend-exclude',
       'gen/**',
       '--force-exclude',
-      '--fix',
-      '--',
-      'a.py',
+      '--fix-only',
+      '--exit-non-zero-on-fix',
+      '--stdin-filename=a.py',
+      '-',
     ]);
   });
 });
@@ -132,18 +133,18 @@ describe('a file name that starts with a dash', () => {
   it('stays a file name for ruff and for Black', () => {
     const [ruff, black] = [PYPROJECT, BLACK].map((pyproject) =>
       inContext({ 'pyproject.toml': pyproject }, {}, (context) => [
-        lintFixCommand(context, ['-a.py']).slice(-2),
+        lintFixCommands(context)('-a.py').slice(-2),
         formatStdinCommand(context, '-a.py').slice(-2),
       ]),
     );
 
     expect([ruff, black]).toEqual([
       [
-        ['--', '-a.py'],
+        ['--stdin-filename=-a.py', '-'],
         ['--stdin-filename=-a.py', '-'],
       ],
       [
-        ['--', '-a.py'],
+        ['--stdin-filename=-a.py', '-'],
         ['--stdin-filename=-a.py', '-'],
       ],
     ]);

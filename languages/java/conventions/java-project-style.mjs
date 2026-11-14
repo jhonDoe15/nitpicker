@@ -9,6 +9,7 @@ import { declaredToolNotices } from '../adapters/tool-config/declared/declared-c
 const FORMATTER_NAMES = {
   google: 'google-java-format',
   palantir: 'palantir-java-format',
+  spring: 'Spring Java Format',
 };
 const PINNED_FORMATTER = 'pinned in nitpicker.config.json';
 const DECLARED_FORMATTER = 'declared in your build file';
@@ -45,6 +46,9 @@ function formatterName({ formatter, aosp }) {
 function fixedChoices({ formatter, declared, aosp }) {
   if (formatter === 'palantir') {
     return { [JAVA_INDENTATION_ID]: '4', [JAVA_LINE_LENGTH_ID]: '120' };
+  }
+  if (formatter === 'spring') {
+    return { [JAVA_INDENTATION_ID]: 'tab', [JAVA_LINE_LENGTH_ID]: '120' };
   }
   if (formatter !== 'google') {
     return {};

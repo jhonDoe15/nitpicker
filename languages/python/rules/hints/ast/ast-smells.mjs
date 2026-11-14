@@ -111,13 +111,6 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['io-in-loop'],
-    describe: (subject) => `\`${subject}\` runs once per item of a loop`,
-    allowed:
-      'Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.',
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['reusable-object-per-call'],
     describe: (subject) =>
       `\`${subject}\` is built on every call, though it is safe to share once built and costly to build`,

@@ -2,6 +2,7 @@ import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
+import { withoutFixes } from '../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 RuleTester.afterEach = afterEach;
@@ -19,7 +20,7 @@ const ruleTester = new RuleTester({
   },
 });
 
-ruleTester.run('no-comments', noComments, {
+ruleTester.run('no-comments', withoutFixes(noComments), {
   valid: [
     { code: '/** Parses a date. */\nexport function parse(text: string) { return text; }' },
     { code: '/** The default port. */\nexport const port = 80;' },
@@ -165,7 +166,7 @@ ruleTester.run('no-comments', noComments, {
 
 const suppressionsOnly = [{ suppressionsOnly: true }];
 
-ruleTester.run('no-comments, suppression comments only', noComments, {
+ruleTester.run('no-comments, suppression comments only', withoutFixes(noComments), {
   valid: [
     { code: "// the order matters here\nit('x', () => {});", options: suppressionsOnly },
     { code: '/** Builds a user. */\nfunction build() { return 1; }', options: suppressionsOnly },

@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule } from '../rules/testing/environment/no-unused-dom-environment.mjs';
 import { createProject, docblock, lines, logic } from './test-support/environment-project.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 RuleTester.afterEach = afterEach;
@@ -94,7 +95,7 @@ const support = (name) => path.join(root, 'src/support', name);
 const withSetup = (environment, ...setupFiles) => [{ environment, setupFiles }];
 const unusedInJsdom = (...parts) => ({ ...inJsdom(...parts), errors: projectReport() });
 
-ruleTester.run('no-unused-dom-environment', rule, {
+ruleTester.run('no-unused-dom-environment', withoutFixes(rule), {
   valid: [
     { filename, code: lines(docblock('jsdom'), rendered), options: [node] },
     { filename, code: lines(docblock('happy-dom'), rendered) },

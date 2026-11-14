@@ -1,3 +1,5 @@
+import { fixable } from '../../../fixes/support/descriptors.mjs';
+import { replacing } from '../../../fixes/support/ranges.mjs';
 import { readLayout } from '../../../../head-policy.mjs';
 import { scanDomEvidence } from './dom-evidence.mjs';
 import { closureUsesDom, setupUsesDom } from './module-closure.mjs';
@@ -68,11 +70,13 @@ function declaredEnvironment(sourceCode, runner) {
   const comment = sourceCode
     .getAllComments()
     .find((candidate) => candidate.range[0] <= match.index && match.index < candidate.range[1]);
+  const nameEnd = match.index + match[0].length;
   return {
     directive: `@${match[1]}-environment`,
     name: match[2],
     loc: comment?.loc,
     isDirective: true,
+    nameRange: [nameEnd - match[2].length, nameEnd],
   };
 }
 
@@ -138,6 +142,7 @@ function reportFor(declared, options, runner) {
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     schema: [
       {
         type: 'object',
@@ -181,7 +186,11 @@ export const rule = {
         const aliases = bundlerAliases(options);
         if (mayUseDom(filename, sourceCode.text, aliases)) return;
         if (projectSetupUsesDom(options, context.cwd, aliases)) return;
-        context.report({ node: program, ...reportFor(declared, options, runner) });
+        const plan =
+          declared?.loc === undefined || declared.nameRange === undefined
+            ? undefined
+            : replacing(declared.nameRange, 'node');
+        context.report(fixable({ node: program, ...reportFor(declared, options, runner) }, plan));
       },
     };
   },

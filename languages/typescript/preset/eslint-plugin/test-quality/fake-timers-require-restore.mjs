@@ -6,6 +6,8 @@ import {
   runnerApiVisitors,
 } from '../rules/runner-apis/runner-apis.mjs';
 import { fakeTimerChange } from '../rules/runner-apis/runner-doubles.mjs';
+import { fixable } from '../fixes/support/descriptors.mjs';
+import { restoreHookFix } from '../fixes/tests/restore-hook-fix.mjs';
 import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
 const STUB_GLOBAL = 'stubGlobal';
@@ -14,6 +16,7 @@ const STUB_ENV = 'stubEnv';
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'after', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
 const NODE_TEST_MODULE = 'node:test';
+const HOOK_FIXED_CLOCKS = new Set(['vitest']);
 const STUB_RESTORES = new Map([
   [STUB_GLOBAL, 'unstubAllGlobals'],
   [STUB_ENV, 'unstubAllEnvs'],
@@ -105,21 +108,54 @@ function trackedCall(apis, node, { checkedStubs, testModules }) {
   return checkedStubs.has(stub) ? { node, stub, restoredBy: STUB_RESTORES.get(stub) } : undefined;
 }
 
-function report(context, tracked, usesUserEvent) {
+function report(context, tracked, { usesUserEvent, plan }) {
   if (tracked.stub !== undefined) {
-    context.report({ node: tracked.node, messageId: STUB_MESSAGES.get(tracked.stub) });
+    context.report(
+      fixable({ node: tracked.node, messageId: STUB_MESSAGES.get(tracked.stub) }, plan),
+    );
     return;
   }
-  context.report({
-    node: tracked.node,
-    messageId: usesUserEvent ? 'unrestoredWithUserEvent' : 'unrestored',
-    data: CLOCK_RESTORES[tracked.kind],
-  });
+  context.report(
+    fixable(
+      {
+        node: tracked.node,
+        messageId: usesUserEvent ? 'unrestoredWithUserEvent' : 'unrestored',
+        data: CLOCK_RESTORES[tracked.kind],
+      },
+      plan,
+    ),
+  );
+}
+
+function fixedMethod(tracked) {
+  if (tracked.node.callee.type !== 'MemberExpression') {
+    return undefined;
+  }
+  if (tracked.stub !== undefined) {
+    return tracked.stub;
+  }
+  return HOOK_FIXED_CLOCKS.has(tracked.kind) ? propertyName(tracked.node.callee) : undefined;
+}
+
+function reportUnrestored(context, unrestored, usesUserEvent) {
+  const planned = new Set();
+  for (const tracked of unrestored) {
+    const method = fixedMethod(tracked);
+    const plan =
+      method === undefined || planned.has(method)
+        ? undefined
+        : restoreHookFix(context.sourceCode, tracked.node, method);
+    if (plan !== undefined) {
+      planned.add(method);
+    }
+    report(context, tracked, { usesUserEvent, plan });
+  }
 }
 
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description:
         'Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored',
@@ -183,9 +219,11 @@ export const rule = {
         }
       },
       'Program:exit'() {
-        for (const tracked of calls.filter(({ restoredBy }) => !restored.has(restoredBy))) {
-          report(context, tracked, state.usesUserEvent);
-        }
+        reportUnrestored(
+          context,
+          calls.filter(({ restoredBy }) => !restored.has(restoredBy)),
+          state.usesUserEvent,
+        );
         for (const { node, messageId } of writes.unrestored()) {
           context.report({ node, messageId });
         }
