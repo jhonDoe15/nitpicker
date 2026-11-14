@@ -692,6 +692,15 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
   `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
   contradicting-constant forms. Kotlin has no counterpart yet.
+- `nitpicker/shorter-boolean-logic` (production and test files of both presets): an `&&`/`||`
+  condition with at most 6 distinct operands, none with an effect or able to fail, that a truth
+  table or the solver proves equal to a condition with fewer operands. It prints the shorter form
+  from the original operands in their order: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)`
+  is `a`, `(x >= 0 && x < 10) || (x >= 10 && x < 20)` is `x >= 0 && x < 20`. An operand that guards a
+  later one (a null check before a member read, bounds before an index) or that TypeScript narrows
+  on stays, a float comparison is never negated into another, a value that is not a boolean counts
+  only as the test of an `if`, loop or ternary, and an operand that the operands before it decide is
+  left to `nitpicker/no-decided-condition`.
 - Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
   and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
   `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and

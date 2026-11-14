@@ -5,6 +5,7 @@ import { escapingNames } from '../../near-duplicates/canonical/effects.mjs';
 import { logicTerm } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { foldTree } from '../../traversal.mjs';
+import { isOpaqueComparison } from './flow/values/opaque.mjs';
 
 const NAMES = new Set(['name']);
 const MEMBER_KINDS = new Set(['member', 'index', 'call', 'new']);
@@ -39,6 +40,7 @@ export function conditionTerm(node, scope) {
     strictEquality: true,
     looseBooleans: scope.looseBooleans,
     exactIntegers: scope.unbounded,
+    isOpaque: (node) => isOpaqueComparison(node, scope),
   };
   return logicTerm(node, context);
 }

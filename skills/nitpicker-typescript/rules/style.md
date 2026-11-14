@@ -15,6 +15,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   over unions, with no `default`.
 - No method that only passes its parameters, in order, to another method of the same class
   (`total(items) { return this.sum(items); }`): call that method directly (or, when it is less visible, rename it to the alias's name and delete the alias).
+- A condition in its shortest exact form (`nitpicker/shorter-boolean-logic`): `n > 5`, not `n > 3 && n > 5`;
+  `a`, not `(a && b) || (a && !b)`; `x >= 0 && x < 20`, not two adjacent ranges joined by `||`.
 - Boolean logic in its simplest exact form (`nitpicker/simpler-boolean-logic`): `return a < b;`, not an `if`
   that returns `true` and `false`; one `if (a && b)`, not an `if` that only holds another `if`; `if (c) {B} else {A}`,
   not `if (!c) {A} else {B}` (and `c ? b : a`, not `!c ? a : b`); `a !== b`, not `!(a === b)`; `!(a || b)`,

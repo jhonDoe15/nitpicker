@@ -207,6 +207,7 @@ describe('the shared fact rules', () => {
       'decided-condition',
       'duplicate-branch',
       'result-slip',
+      'shorter-condition',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       PERSISTENCE,

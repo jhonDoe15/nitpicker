@@ -35,6 +35,14 @@ const ARITHMETIC = new Set(['+', '-', '*', '/', '%']);
 const EXACT = new Set(['+', '-', '*']);
 const COMPARISONS = new Set(['==', '!=', '<', '<=', '>', '>=']);
 const LOOSE_EQUALITY = new Set(['==', '!=']);
+const POSITIVE = new Map([
+  ['!=', '=='],
+  ['!==', '==='],
+  ['is not', 'is'],
+]);
+const SYMMETRIC = new Set(['==', '===', 'is']);
+const SINGLETONS = new Set(['null']);
+const COMPARES = new Set(['==', '!=', '===', '!==', 'is', 'is not', '<', '<=', '>', '>=']);
 
 export function isIntegerType(type) {
   return type?.kind === 'type' && INTEGER_TYPES.has(type.value);
@@ -128,6 +136,29 @@ function isLooseBoolean(node, context) {
   );
 }
 
+function isIdentityTest(node) {
+  return (
+    (node.value === 'is' || node.value === 'is not') &&
+    !node.children.some((child) => SINGLETONS.has(child.literal))
+  );
+}
+
+function isOpaque(node, context) {
+  return COMPARES.has(node.value) && (isIdentityTest(node) || context.isOpaque?.(node) === true);
+}
+
+function printedOperand(operand, source) {
+  return source.kind === LITERAL_KIND ? `${source.literal}:${source.value}` : print(operand);
+}
+
+function opaqueTerm(node, operands) {
+  const relation = POSITIVE.get(node.value) ?? node.value;
+  const printed = operands.map((operand, index) => printedOperand(operand, node.children[index]));
+  const sides = SYMMETRIC.has(relation) ? printed.toSorted() : printed;
+  const atom = term('name', `#opaque ${relation} ${sides.join(' ')}`);
+  return POSITIVE.has(node.value) ? term('unary', '!', [atom]) : atom;
+}
+
 function binaryTerm(node, operands, context) {
   if (LOGICAL.has(node.value)) {
     return term('logical', node.value, operands);
@@ -140,6 +171,9 @@ function binaryTerm(node, operands, context) {
     : operands;
   if (node.bits !== undefined) {
     return term(BINARY_KIND, node.value, [left, right]);
+  }
+  if (isOpaque(node, context)) {
+    return opaqueTerm(node, [left, right]);
   }
   if (isArithmetic(node.value, [left, right])) {
     return valueAtom(term(BINARY_KIND, node.value, [left, right]), context);
@@ -196,7 +230,8 @@ function termOf(node, children, context) {
     return built;
   }
   const fields = ['model', 'helper', 'bits', 'signed'].map((field) => pick(node, field));
-  return Object.assign({}, built, ...fields);
+  const result = Object.assign({}, built, ...fields);
+  return node.unstable === true ? term('call', undefined, [result]) : result;
 }
 
 export function logicTerm(root, context) {

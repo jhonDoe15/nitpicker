@@ -24,6 +24,7 @@ const REUSE_RULES = [
   'duplicate-branch',
   'result-slip',
   'integer-slip',
+  'shorter-condition',
 ];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };

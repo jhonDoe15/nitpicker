@@ -7,6 +7,7 @@ export const SOURCE_RULE_IDS = {
   duplicateBranch: 'duplicate-branch',
   resultSlip: 'result-slip',
   integerSlip: 'integer-slip',
+  shorterCondition: 'shorter-condition',
 };
 
 export function sourceRuleMessages(exceptionHint, allowed) {
@@ -17,6 +18,7 @@ export function sourceRuleMessages(exceptionHint, allowed) {
     duplicateBranch: `{subject}. ${allowed('{fix}')} ${exceptionHint}`,
     resultSlip: `{subject}. ${allowed('{fix}')} ${exceptionHint}`,
     integerSlip: `{subject}. ${allowed('{fix}')} ${exceptionHint}`,
+    shorterCondition: `\`{condition}\` can be written as \`{form}\`: {reason}. ${allowed('Write {form}.')} ${exceptionHint}`,
     javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. ${allowed('Write it as a .ts or .tsx file: {typescript}.')} ${exceptionHint}`,
   };
 }
@@ -60,6 +62,12 @@ export function sourceRules(ids, enforcedBy) {
       check: STRUCTURE_TOOL,
       limit:
         'Java and Kotlin integer arithmetic that a solver shows wrong for some input, with the guards before it known (`int`/`long` are fixed-width and overflow, sizes are bounded): a difference compared with 0 or returned from `compareTo`/`compare` (it overflows, use `Integer.compare`), `Math.abs` of an `int` or `long` used as an index or a `%` bucket (the smallest value stays negative), and in Kotlin a `%` result compared with a positive value for a parameter that can be negative (Java keeps SpotBugs `IM_BAD_CHECK_FOR_ODD`); the message names the inputs; TypeScript numbers are doubles and Python integers are unbounded, so neither has these slips',
+    },
+    {
+      id: ids.shorterCondition,
+      check: STRUCTURE_TOOL,
+      limit:
+        'an `&&`/`||` condition in a production function with at most 6 distinct operands, all without effects and unable to fail, that has an equivalent form with fewer operands, proved by a truth table or a solver (Z3, fixed resource limit): an operand that a later operand of the same `&&` implies (or that implies a later one of an `||`), two operands that merge (complement, absorption, adjacent or overlapping ranges on one value); printed from the original operands in their order; an operand that guards a later one (a null check before a member read, bounds before an index), a float comparison is never rewritten into its opposite, an operand that the operands before it decide (`decided-condition`) and a non-boolean operand outside a condition are left alone; TypeScript and JavaScript report it as `nitpicker/shorter-boolean-logic`. PMD, detekt and Ruff have no equivalent: PMD `SimplifyBooleanExpressions` and Ruff `SIM222`/`SIM223` only see boolean literals, Ruff `PLR1714` merges repeated equality tests',
     },
   ];
 }

@@ -31,7 +31,9 @@ function importsOf(program) {
     const [path, alias] = codeChildren(declaration);
     const text = qualifiedText(path);
     if (!declaration.children.some((child) => child.type === '*')) {
-      imported.set(alias?.text ?? text.slice(text.lastIndexOf('.') + 1), text);
+      const name = alias?.text ?? text.slice(text.lastIndexOf('.') + 1);
+      imported.set(name, text);
+      imported.set(`#${name}()`, text);
     }
   }
   return imported;
@@ -59,11 +61,20 @@ function isPropertyParameter(parameter) {
   return parameter.children.some((child) => child.type === 'val' || child.type === 'var');
 }
 
+function isUnstableProperty(member) {
+  const parts = codeChildren(member);
+  const delegate = parts.find((part) => part.type === 'property_delegate');
+  return (
+    parts.some((part) => part.type === 'getter') ||
+    parts.some((part) => part.type === 'modifiers' && /@Volatile\b/u.test(part.text)) ||
+    (delegate !== undefined && !/^by\s+lazy\b/u.test(delegate.text))
+  );
+}
+
 function memberNames(members) {
-  const properties = members
-    .filter((member) => member.type === 'property_declaration')
-    .map(nameOf)
-    .filter(Boolean);
+  const declared = members.filter((member) => member.type === 'property_declaration');
+  const properties = declared.map(nameOf).filter(Boolean);
+  const unstable = declared.filter(isUnstableProperty).map(nameOf).filter(Boolean);
   const entries = members
     .filter((member) => member.type === 'enum_entry')
     .map((member) => codeChildren(member)[0].text);
@@ -71,7 +82,7 @@ function memberNames(members) {
     .filter((member) => member.type === 'function_declaration')
     .map(nameOf)
     .filter(Boolean);
-  return { properties: [...properties, ...entries], functions };
+  return { properties: [...properties, ...entries], functions, unstable };
 }
 
 function companionMembers(body) {
@@ -97,12 +108,17 @@ export function classMembers(declaration) {
     .filter(isPropertyParameter)
     .map((parameter) => codeChildren(parameter).find((child) => child.type === 'identifier').text);
   const members = body === undefined ? [] : [...codeChildren(body), ...companionMembers(body)];
-  const { properties, functions } = memberNames(members);
-  return { properties: [...constructorParameters, ...properties], functions };
+  const { properties, functions, unstable } = memberNames(members);
+  return { properties: [...constructorParameters, ...properties], functions, unstable };
 }
 
 export function memberScope(outer, { qualifier, members }) {
+  const own = new Set(members.properties);
   return {
+    unstable: new Set([
+      ...[...(outer.unstable ?? [])].filter((name) => !own.has(name)),
+      ...members.unstable,
+    ]),
     fields: new Map([
       ...outer.fields,
       ...members.properties.map((name) => [name, `${qualifier}#${name}`]),
@@ -115,9 +131,9 @@ export function memberScope(outer, { qualifier, members }) {
 }
 
 export function topLevelScope(program, { packageName }) {
-  const { properties, functions } = memberNames(codeChildren(program));
+  const members = memberNames(codeChildren(program));
   return memberScope(
-    { fields: new Map(), methods: new Map() },
-    { qualifier: packageName, members: { properties, functions } },
+    { fields: new Map(), methods: new Map(), unstable: new Set() },
+    { qualifier: packageName, members },
   );
 }

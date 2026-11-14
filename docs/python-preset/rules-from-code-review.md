@@ -84,6 +84,13 @@ members is not reported.
   and the message names the helper; methods stay opaque.
 - `result-slip` (tool `facts`) reads the same trees: `text.find(x) > 0` (also `rfind`, and `>= 1`,
   `<= 0`, `< 1`) misses a match at index 0; test `>= 0`, or use `in`.
+- `shorter-condition` (tool `facts`) reads the same trees: an `and`/`or` condition with at most 6
+  distinct operands, none with an effect or able to fail, that a truth table or a solver proves equal
+  to a condition with fewer operands fails, and the message prints it from the original operands in
+  their order: `n > 3 and n > 5` is `n > 5`, `(a and b) or (a and not b)` is `a`. A condition whose
+  operands are not all booleans counts only as the test of an `if`, `while` or conditional
+  expression, because `and` and `or` return an operand. Ruff `SIM222` and `SIM223` only see boolean
+  literals and `PLR1714` merges repeated `==` tests, so the rules do not overlap.
 - `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
   conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
   adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The

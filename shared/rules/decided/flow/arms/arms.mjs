@@ -1,6 +1,6 @@
 import { nodesOf } from '../../../../near-duplicates/tree/nodes.mjs';
 import { fact } from '../../facts.mjs';
-import { binaryOf, exitOf, sourceOf, statementsOf } from '../exits.mjs';
+import { binaryOf, exitOf, sourceOf, statementsOf, valueEqualOf } from '../exits.mjs';
 
 const SWITCHES = new Set(['switch', 'when', 'match']);
 const ARMS = new Set(['case', 'rule', 'else']);
@@ -142,7 +142,7 @@ function excluding(labels, context) {
   const { node, subject, flow } = context;
   return labels.flatMap((label) => {
     const reason = `it is not \`case ${sourceOf(label)}\` of the \`${node.value}\` on line ${String(node.start)}`;
-    return factOf(binaryOf('==', subject, label), flow, { holds: false, reason });
+    return factOf(valueEqualOf(subject, label), flow, { holds: false, reason });
   });
 }
 
@@ -160,7 +160,7 @@ function takingFacts(group, context) {
   }
   const taken = labels.flat();
   const condition = taken
-    .map((label) => binaryOf('==', subject, label))
+    .map((label) => valueEqualOf(subject, label))
     .reduce((left, right) => binaryOf('||', left, right));
   const reason = `it is in the \`case ${taken.map(sourceOf).join(', ')}\` arm of the \`${node.value}\` on line ${String(node.start)}`;
   return factOf(condition, flow, { holds: true, reason });
@@ -182,7 +182,7 @@ function subjectArms(node, facts, flow) {
     }
     const before = [...facts, ...excluding(earlier, context)];
     checks.push(
-      ...own.map((label) => ({ condition: binaryOf('==', subject, label), facts: before })),
+      ...own.map((label) => ({ condition: valueEqualOf(subject, label), facts: before })),
     );
     earlier.push(...own);
   }

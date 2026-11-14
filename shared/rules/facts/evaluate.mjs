@@ -23,6 +23,7 @@ import { decidedConditionFindings } from '../decided/decided-conditions.mjs';
 import { resultSlipFindings } from '../slips/slip-findings.mjs';
 import { integerSlipFindings } from '../decided/slips/integer-slips.mjs';
 import { duplicateBranchFindings } from '../branches/duplicate-branches.mjs';
+import { shorterConditionFindings } from '../shorter/shorter-conditions.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
@@ -65,6 +66,8 @@ const EVALUATORS = {
     duplicateBranchFindings(facts.nearDuplicateUnits, context),
   'result-slip': ({ facts, context }) => resultSlipFindings(facts.nearDuplicateUnits, context),
   'integer-slip': ({ facts, context }) => integerSlipFindings(facts.nearDuplicateUnits, context),
+  'shorter-condition': ({ facts, context }) =>
+    shorterConditionFindings(facts.nearDuplicateUnits, context),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),

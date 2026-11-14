@@ -12,6 +12,7 @@ import { isIntegerLoop } from './flow/loops.mjs';
 import { lambdaStatements } from './flow/nested.mjs';
 import { isChain, sitesIn } from './flow/sites.mjs';
 import { declaredTypes, stableNames } from './flow/stability.mjs';
+import { shadowedNames } from './helpers/shadowing.mjs';
 import { helperNote } from '../../logic/models/helper-note.mjs';
 import { probeSlips } from './slips/probe.mjs';
 
@@ -154,13 +155,18 @@ function parametersOf(tree) {
   );
 }
 
-function scopeOf(source, { looseBooleans = false, unbounded = false, kotlin = false }) {
+function scopeOf(
+  source,
+  { looseBooleans = false, unbounded = false, kotlin = false, references = false, defined },
+) {
   const types = declaredTypes(source);
   return {
     integers: integerNames(source),
     looseBooleans,
     unbounded,
     kotlin,
+    references,
+    shadowed: new Set([...shadowedNames(source), ...(defined ?? [])]),
     types,
     enums: enumConstants(source, types),
   };

@@ -54,6 +54,14 @@ fixed-width arithmetic, so `n + 1 > 0` is decided only where `n` cannot reach th
 sign is defined, and so does `indexOf(x) > 0`, which misses a match at position 0; compare with 0
 or test `>= 0`.
 
+`shorter-condition` (tool `structure`) reads them as well: an `&&`/`||` condition with at most 6
+distinct operands, none with an effect or able to fail, that a truth table or a solver proves equal to
+a condition with fewer operands fails, and the message prints it from the original operands in their
+order: `n > 3 && n > 5` is `n > 5`, `(a && b) || (a && !b)` is `a`, `(x >= 0 && x < 10) || (x >= 10 && x < 20)`
+is `x >= 0 && x < 20`. A null check before a member read stays, a float comparison is not negated into
+another, and an operand that the operands before it decide is left to `decided-condition`. detekt has
+no rule for this.
+
 `duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
 bodies have the same canonical tree (locals declared in the arm may have other names) fail, except
 arms picked by an `is` test, where the same call can resolve differently for each type; merge

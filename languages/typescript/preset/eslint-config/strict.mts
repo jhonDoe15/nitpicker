@@ -234,7 +234,11 @@ function strictTypedConfigFor(
       ignores: layout.excludedGlobs,
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
-      rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
+      rules: {
+        ...truthinessRules,
+        'nitpicker/simpler-boolean-logic': 'error',
+        'nitpicker/shorter-boolean-logic': 'error',
+      },
     },
     {
       files: testAreaGlobsFor(layout),

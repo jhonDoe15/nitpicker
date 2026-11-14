@@ -44,3 +44,7 @@ export function binaryOf(operator, left, right) {
     text: `${sourceOf(left)} ${operator} ${sourceOf(right)}`,
   };
 }
+
+export function valueEqualOf(left, right) {
+  return { ...binaryOf('==', left, right), equal: true };
+}
