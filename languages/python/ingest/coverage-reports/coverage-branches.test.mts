@@ -1,25 +1,28 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
-import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
-import { ingestCoverageBranches } from './coverage-branches.mjs';
+import { ingestCoverageBranches } from './coverage-branches.mts';
+import {
+  compareFindings,
+  isStrictRule,
+  parseAnalyzerReport,
+  parseChangedLines,
+} from './test-support/comparison-views.mts';
+import type { IngestOptions } from '../typed/ingest-types.mts';
 
-const fixture = (name) =>
+const fixture = (name: string): string =>
   readFileSync(path.join(import.meta.dirname, '..', 'fixtures', name), 'utf8');
 const report = fixture('coverage-branches.json');
 const SOURCE = fixture('branches.py');
 const FILE = 'src/demo/branches.py';
 
-const ingest = (options = {}, text = report) =>
+const ingest = (options: IngestOptions = {}, text = report) =>
   ingestCoverageBranches(text, {
-    sourceText: (file) => (file === FILE ? SOURCE : undefined),
+    sourceText: (file: string) => (file === FILE ? SOURCE : undefined),
     ...options,
   }).findings;
 
-const reportOf = (executed, missing, file = FILE) =>
+const reportOf = (executed: unknown[], missing: unknown[], file = FILE) =>
   JSON.stringify({
     files: { [file]: { executed_branches: executed, missing_branches: missing } },
   });
@@ -28,7 +31,7 @@ describe('ingestCoverageBranches', () => {
   it('reports every line with branch coverage below 95%, and only those', () => {
     const findings = ingest();
 
-    expect(findings.map((finding) => [finding.location.line, finding.message])).toEqual([
+    expect(findings.map((finding) => [finding.location?.line, finding.message])).toEqual([
       [
         2,
         'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 3. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
@@ -66,26 +69,26 @@ describe('ingestCoverageBranches', () => {
 
     const findings = ingest({ functions });
 
-    expect(findings.map(({ location, symbol }) => [location.line, symbol])).toEqual([
+    expect(findings.map(({ location, symbol }) => [location?.line, symbol])).toEqual([
       [2, 'pick'],
       [5, 'pick'],
       [7, 'pick'],
       [13, 'lonely'],
     ]);
-    expect(findings[3].message).toBe(
+    expect(findings[3]?.message).toBe(
       'Branch coverage is 0.00%; minimum is 95%. Not taken: the branch to line 14; the branch to line 15. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/branches.py"],"function":"lonely","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
   it('honors the minimum and tool options', () => {
-    expect(ingest({ minimum: 40 }).map((finding) => finding.location.line)).toEqual([13]);
-    expect(ingest({ tool: 'cov' })[0].tool).toBe('cov');
+    expect(ingest({ minimum: 40 }).map((finding) => finding.location?.line)).toEqual([13]);
+    expect(ingest({ tool: 'cov' })[0]?.tool).toBe('cov');
   });
 
   it('describes a jump out of the enclosing scope', () => {
     const [finding] = ingest({}, reportOf([[2, 3]], [[2, -1]]));
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit from the enclosing scope. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
   });
@@ -117,7 +120,7 @@ describe('ingestCoverageBranches', () => {
     const source = 'match color:\n    case Color.RED:\n        x = 1\n    case _:\n        x = 2\n';
     const [finding] = ingest({ sourceText: () => source }, reportOf([[2, 3]], [[2, 4]]));
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 4. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
     );
   });
@@ -129,7 +132,7 @@ describe('ingestCoverageBranches', () => {
     expect(ingest({}, JSON.stringify({ files: { [FILE]: {} } }))).toEqual([]);
     expect(
       ingest({}, reportOf([[2, 3], 'x', [4], [null, 5]], [['a', 1], 7, [2, 4], [2, 6]])).map(
-        (finding) => finding.location.line,
+        (finding) => finding.location?.line,
       ),
     ).toEqual([2]);
     expect(ingest({ sourceText: () => '\n\n' })).toEqual([]);
@@ -205,7 +208,7 @@ describe('ingestCoverageBranches', () => {
     expect(after.map((finding) => finding.identity)).toEqual(
       before.map((finding) => finding.identity),
     );
-    expect(after[0].location.line).toBe(before[0].location.line + 2);
+    expect(after[0]?.location?.line).toBe((before[0]?.location?.line ?? 0) + 2);
     expect(
       before.filter((finding) => !/^branch-source:[0-9a-f]{16}(#\d+)?$/.test(finding.identity)),
     ).toEqual([]);
@@ -265,9 +268,9 @@ describe('ingestCoverageBranches', () => {
 
   it('keeps the identity when the formatter changes quotes and spacing on the line', () => {
     const text = reportOf([], [[1, 2]]);
-    const identity = (line) =>
+    const identity = (line: string) =>
       ingestCoverageBranches(text, { sourceText: () => `${line}\n    pass\n` }).findings[0]
-        .identity;
+        ?.identity;
 
     expect(identity("if name=='a' :")).toBe(identity('if name == "a":'));
     expect(identity('if name == "b":')).not.toBe(identity('if name == "a":'));
@@ -275,8 +278,8 @@ describe('ingestCoverageBranches', () => {
 
   it('keeps the identity when ruff format moves a one-line body to its own line', () => {
     const text = reportOf([], [[1, 2]]);
-    const identity = (source) =>
-      ingestCoverageBranches(text, { sourceText: () => source }).findings[0].identity;
+    const identity = (source: string) =>
+      ingestCoverageBranches(text, { sourceText: () => source }).findings[0]?.identity;
 
     expect(identity("if x == 1: print('v1')\n")).toBe(identity('if x == 1:\n    print("v1")\n'));
     expect(identity('if name == "a  b":\n    pass\n')).not.toBe(
@@ -286,8 +289,8 @@ describe('ingestCoverageBranches', () => {
 });
 
 describe('changed-branch-coverage in the differential comparison', () => {
-  const touched = (diff) => ({ changedLines: parseChangedLines(diff), isStrictRule });
-  const diffFor = (hunk) =>
+  const touched = (diff: string) => ({ changedLines: parseChangedLines(diff), isStrictRule });
+  const diffFor = (hunk: string) =>
     [`diff --git a/${FILE} b/${FILE}`, `--- a/${FILE}`, `+++ b/${FILE}`, hunk].join('\n');
 
   const base = ingest();
@@ -310,9 +313,11 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -13 +13 @@')),
     });
 
-    expect(result.newFindings.map((finding) => finding.location.line)).toEqual([13]);
+    expect(result.newFindings.map((finding) => finding.location?.line)).toEqual([13]);
     expect(
-      result.unchangedFindings.map((finding) => finding.location.line).sort((a, b) => a - b),
+      result.unchangedFindings
+        .map((finding) => finding.location?.line)
+        .sort((a = 0, b = 0) => a - b),
     ).toEqual([2, 5, 7]);
   });
 
@@ -323,13 +328,13 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -12,0 +13,3 @@')),
     });
 
-    expect(added.newFindings.map((finding) => finding.location.line)).toEqual([13]);
+    expect(added.newFindings.map((finding) => finding.location?.line)).toEqual([13]);
   });
 
   it('keeps a legacy gap baselined when an identical line is added above it in another function', () => {
     const legacy = 'def legacy(a):\n    if a:\n        return 1\n    return 2\n';
     const fresh = 'def fresh(a):\n    if a:\n        return 1\n    return 2\n';
-    const gaps = (...lines) =>
+    const gaps = (...lines: number[]) =>
       reportOf(
         [],
         lines.flatMap((line) => [
@@ -344,12 +349,12 @@ describe('changed-branch-coverage in the differential comparison', () => {
       touchedCode: touched(diffFor('@@ -0,0 +1,6 @@')),
     });
 
-    expect(result.newFindings.map((finding) => finding.location.line)).toEqual([2]);
-    expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([8]);
+    expect(result.newFindings.map((finding) => finding.location?.line)).toEqual([2]);
+    expect(result.unchangedFindings.map((finding) => finding.location?.line)).toEqual([8]);
   });
 
   it('keeps a legacy gap baselined when its function is renamed', () => {
-    const named = (name) => `def ${name}(a):\n    if a:\n        return 1\n    return 2\n`;
+    const named = (name: string) => `def ${name}(a):\n    if a:\n        return 1\n    return 2\n`;
     const gap = reportOf(
       [],
       [
@@ -365,7 +370,7 @@ describe('changed-branch-coverage in the differential comparison', () => {
     });
 
     expect(result.newFindings).toEqual([]);
-    expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([2]);
+    expect(result.unchangedFindings.map((finding) => finding.location?.line)).toEqual([2]);
   });
 
   it('applies to the Python tool only, not to the TypeScript coverage check of the same rule', () => {

@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { importLinterCompleted, ingestImportLinter } from './import-linter.mjs';
+import { importLinterCompleted, ingestImportLinter } from './typed/ingest-views.mts';
 
-const fixture = (name) => readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
+const fixture = (name: string): string =>
+  readFileSync(path.join(import.meta.dirname, 'fixtures', name), 'utf8');
 const FILES = new Map([
   ['app.domain.model', 'src/app/domain/model.py'],
   ['app.web.views', 'src/app/web/views.py'],
@@ -24,7 +25,8 @@ describe('import-linter findings', () => {
 
   it('reports each import chain of a broken contract at its first module', () => {
     const { findings } = ingestImportLinter(fixture('import-linter-broken.txt'), { files: FILES });
-    const byIdentity = (identity) => findings.find((finding) => finding.identity === identity);
+    const byIdentity = (identity: string) =>
+      findings.find((finding) => finding.identity === identity);
 
     expect(findings.map(({ identity }) => identity).sort()).toEqual([
       'contract:Domain is pure:app.domain.model -> app.infra.db',
@@ -99,7 +101,7 @@ describe('import-linter findings', () => {
     const after = ingestImportLinter(moved).findings;
 
     expect(after.map(({ identity }) => identity)).toEqual(before.map(({ identity }) => identity));
-    expect(after[0].location).toEqual({ line: 7 });
+    expect(after[0]?.location).toEqual({ line: 7 });
   });
 
   it('reports the items of contract types that do not list import chains', () => {
@@ -111,7 +113,7 @@ describe('import-linter findings', () => {
       ['contract:Protected:app.web.views -> app.infra.db', 'src/app/web/views.py'],
       ['contract:Acyclic:.web -> .domain (1 import)', '.'],
     ]);
-    expect(findings[1].message).toBe(
+    expect(findings[1]?.message).toBe(
       'Import contract "Acyclic" is broken: .web -> .domain (1 import). Remove the import.',
     );
     expect(findings[1]).not.toHaveProperty('location');

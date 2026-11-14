@@ -2,13 +2,21 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
-import { hash } from '../../../shared/rules/finding-helpers.mjs';
-import { ingestPythonCrap } from './crap.mjs';
+import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES } from '../../../shared/policy.mjs';
+import { ingestPythonCrap } from './crap.mts';
+import { parseFunctionEntries } from './typed/coverage-types.mts';
+import { hash, renderMessage } from './typed/ingest-views.mts';
+import type { CrapOptions, PythonFunctionEntry } from './typed/coverage-types.mts';
 
-const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
-const functionEntries = () => JSON.parse(fixture('crap-functions.json'));
-const entry = (file, name, [definition, end], complexity = 1) => ({
+const fixture = (name: string): string =>
+  readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
+const functionEntries = () => parseFunctionEntries(fixture('crap-functions.json'));
+const entry = (
+  file: string,
+  name: string,
+  [definition, end]: [number, number],
+  complexity = 1,
+): PythonFunctionEntry => ({
   file,
   name,
   start: definition,
@@ -17,13 +25,13 @@ const entry = (file, name, [definition, end], complexity = 1) => ({
   end,
   complexity,
 });
-const ingest = (options = {}, functions = functionEntries()) =>
+const ingest = (options: CrapOptions = {}, functions = functionEntries()) =>
   ingestPythonCrap(functions, fixture('crap-coverage.json'), options).findings;
 
-const scores = (options) =>
+const scores = (options: CrapOptions) =>
   ingest(options).map((finding) => {
     const crap = /CRAP (\d+\.\d+)/.exec(finding.message)?.[1] ?? 'unknown';
-    return `${finding.symbol} ${crap}`;
+    return `${String(finding.symbol)} ${crap}`;
   });
 
 const ROUTE =
@@ -33,7 +41,7 @@ describe('ingestPythonCrap', () => {
   it('flags the uncovered methods over the limit, nothing else', () => {
     const findings = ingest({ limit: 4 });
 
-    expect(findings.map((finding) => `${finding.rule} ${finding.symbol}`)).toEqual([
+    expect(findings.map((finding) => `${finding.rule} ${String(finding.symbol)}`)).toEqual([
       'crap-score-limit top',
       'crap-score-limit B.go',
     ]);
@@ -81,7 +89,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('counts a function without statements or branches as covered', () => {
-    const stubs = (limit) => scores({ limit }).filter((score) => score.startsWith('stub'));
+    const stubs = (limit: number) => scores({ limit }).filter((score) => score.startsWith('stub'));
 
     expect(stubs(1)).toEqual(['stub 1.00']);
     expect(stubs(1.01)).toEqual([]);
@@ -141,7 +149,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {
-    const shifted = functionEntries().map(({ start, definition, bodyStart, end, ...rest }) => ({
+    const shifted = functionEntries().map(({ start = 0, definition, bodyStart, end, ...rest }) => ({
       ...rest,
       start: start + 40,
       definition: definition + 40,
@@ -158,16 +166,16 @@ describe('ingestPythonCrap', () => {
       (finding) => finding.symbol !== 'top',
     );
 
-    expect(known.identity).toBe(`function:B.go:source:${hash('abc')}`);
-    expect(unknown.identity).toBe('function:f');
+    expect(known?.identity).toBe(`function:B.go:source:${hash('abc')}`);
+    expect(unknown?.identity).toBe('function:f');
   });
 
   it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
-    const sourceText = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const sourceText = ({ start }: { start: number }) => (start === 30 ? 'setter' : 'getter');
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
     });
-    const identities = (starts) =>
+    const identities = (starts: number[]) =>
       ingestPythonCrap(
         starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
         coverage,
@@ -231,11 +239,11 @@ describe('ingestPythonCrap', () => {
 
     const findings = ingestPythonCrap(functions, coverage, { limit: 2 }).findings;
 
-    expect(findings.map(({ rule, symbol, location }) => [rule, symbol, location.line])).toEqual([
+    expect(findings.map(({ rule, symbol, location }) => [rule, symbol, location?.line])).toEqual([
       ['crap-score-limit', 'A.x', 10],
       ['crap-score-limit', '_', 28],
     ]);
-    expect(findings.map(({ message }) => /CRAP (\d+\.\d+)/.exec(message)[1])).toEqual([
+    expect(findings.map(({ message }) => /CRAP (\d+\.\d+)/.exec(message)?.[1])).toEqual([
       '2.50',
       '2.00',
     ]);
@@ -261,7 +269,12 @@ describe('ingestPythonCrap', () => {
   });
 
   it('scores a lambda by whether the statement that creates it ran, however it is spread over lines, and numbers repeated lambdas by their source', () => {
-    const lambda = (name, line, complexity, statementLine) => ({
+    const lambda = (
+      name: string,
+      line: number,
+      complexity: number,
+      statementLine: number,
+    ): PythonFunctionEntry => ({
       ...entry('m.py', name, [line, line], complexity),
       bodyStart: line,
       lambda: true,
@@ -283,8 +296,8 @@ describe('ingestPythonCrap', () => {
       findings.map(({ symbol, identity, location, message }) => [
         symbol,
         identity,
-        location.line,
-        /CRAP (\d+\.\d+)/.exec(message)[1],
+        location?.line,
+        /CRAP (\d+\.\d+)/.exec(message)?.[1],
       ]),
     ).toEqual([
       ['run.<lambda>', 'function:run.<lambda>', 5, '4.00'],
@@ -294,7 +307,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('does not score an overload stub, whatever the shape of its signature', () => {
-    const stub = { ...entry('m.py', 'A.get', [6, 9], 3), overload: true };
+    const stub: PythonFunctionEntry = { ...entry('m.py', 'A.get', [6, 9], 3), overload: true };
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [1], missing_lines: [], functions: {} } },
     });
@@ -332,8 +345,8 @@ describe('ingestPythonCrap', () => {
 
     const findings = ingestPythonCrap(functions, coverage, { limit: 9 }).findings;
 
-    expect(findings.map(({ symbol, location }) => [symbol, location.line])).toEqual([['A.x', 6]]);
-    expect(findings[0].message).toMatch(/CRAP 30\.00/);
+    expect(findings.map(({ symbol, location }) => [symbol, location?.line])).toEqual([['A.x', 6]]);
+    expect(findings[0]?.message).toMatch(/CRAP 30\.00/);
   });
 
   it('does not score a function whose body starts on its def line', () => {
