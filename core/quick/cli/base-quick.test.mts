@@ -1,11 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 import { applyRunProfile } from '../profile.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-function languageAnalyzer(name) {
+function isProfiled(value: unknown): value is ProfiledAnalyzer {
+  return (
+    typeof fieldOf(value, 'name') === 'string' &&
+    typeof fieldOf(value, 'createInvocation') === 'function'
+  );
+}
+
+function languageAnalyzer(name: string): ProfiledAnalyzer & { readonly version: string } {
   return {
     name,
     version: '1',
@@ -14,7 +23,10 @@ function languageAnalyzer(name) {
   };
 }
 
-function baseSetup(profile) {
+function baseSetup(profile: {
+  readonly quick: boolean;
+  readonly analyzerNames?: readonly string[];
+}) {
   const { root } = createGitRepository({
     'nitpicker.config.json': '{ "preset": "java", "thresholds": { "fileLines": 500 } }\n',
   });
@@ -25,7 +37,18 @@ function baseSetup(profile) {
     injectedAnalyzers,
     profile,
   });
-  return resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers }).analyzers;
+  return listOf(
+    fieldOf(
+      resolve({
+        baseProjectRoot: root,
+        headSnapshotRoot: root,
+        liveProjectRoot: root,
+        moves: undefined,
+        analyzers,
+      }),
+      'analyzers',
+    ),
+  ).filter(isProfiled);
 }
 
 describe('base analyzers rebuilt for a changed base config', () => {
@@ -33,8 +56,8 @@ describe('base analyzers rebuilt for a changed base config', () => {
     const analyzers = baseSetup({ quick: true, analyzerNames: [] });
 
     expect(analyzers.map(({ name }) => name)).toEqual(['java']);
-    expect(analyzers[0].quick).toBe(true);
-    expect(analyzers[0].createInvocation({ snapshot: 'base' }).args.slice(-2)).toEqual([
+    expect(analyzers[0]?.quick).toBe(true);
+    expect(analyzers[0]?.createInvocation({ snapshot: 'base' }).args.slice(-2)).toEqual([
       '--mode',
       'quick',
     ]);
@@ -44,6 +67,6 @@ describe('base analyzers rebuilt for a changed base config', () => {
     const analyzers = baseSetup({ quick: false });
 
     expect(analyzers.map(({ name }) => name)).toEqual(['java', 'coverage']);
-    expect(analyzers[0].quick).toBeUndefined();
+    expect(analyzers[0]?.quick).toBeUndefined();
   });
 });

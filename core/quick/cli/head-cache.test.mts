@@ -6,10 +6,11 @@ import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import { writeFiles, type FileMap } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -23,7 +24,7 @@ function setup() {
     'src/main/added.ts': findingLine(finding({ identity: 'added-finding' })),
   });
   const cacheDirectory = makeTemporaryRoot('nitpicker-quick-head-cache-');
-  return (flags) => {
+  return (flags: readonly string[]) => {
     const output = captureOutput();
     const outputRoot = makeOutputRoot();
     const exitCode = runCli({
@@ -35,8 +36,8 @@ function setup() {
       stderr: output.stderr,
       progress: output.stderr,
     });
-    const newFindings = JSON.parse(
-      readFileSync(path.join(outputRoot, 'new-findings.json'), 'utf8'),
+    const newFindings = listOf(
+      parseJson(readFileSync(path.join(outputRoot, 'new-findings.json'), 'utf8')),
     );
     return {
       exitCode,
@@ -44,8 +45,8 @@ function setup() {
         .split('\n')
         .filter(Boolean)
         .map((line) => line.replace(` (${cacheDirectory}; use --no-cache to rerun)`, '')),
-      newFindings: newFindings.map(({ identity }) => identity),
-      writeHead: (files) => {
+      newFindings: newFindings.map((entry) => textOf(fieldOf(entry, 'identity'))),
+      writeHead: (files: FileMap) => {
         writeFiles(repository.root, files);
       },
     };
@@ -72,7 +73,10 @@ describe('the head side of a quick run in the findings cache', () => {
       'nitpicker: base 1 analyzer cached',
       'nitpicker: head: running 1 analyzer',
     ]);
-    expect(changed.newFindings.sort()).toEqual(['added-finding', 'other-finding']);
+    expect(changed.newFindings.toSorted((a, b) => a.localeCompare(b))).toEqual([
+      'added-finding',
+      'other-finding',
+    ]);
   });
 
   it('never caches the head of a full run', () => {

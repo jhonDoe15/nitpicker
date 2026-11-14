@@ -3,9 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { cacheKey, createFindingsCache } from '../../diff/cache/findings-cache.mts';
+import type { AnalyzerReport } from '../../../shared/values/findings.mts';
+import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
+import { analyzerAt } from '../../configuration/test-support/analyzer-access.mts';
 import { applyRunProfile } from '../profile.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -13,7 +16,7 @@ afterEach(() => {
   }
 });
 
-function languageAnalyzer(name) {
+function languageAnalyzer(name: string): ProfiledAnalyzer & { readonly version: string } {
   return {
     name,
     version: '1',
@@ -22,12 +25,12 @@ function languageAnalyzer(name) {
   };
 }
 
-function quickOf(analyzer) {
-  return applyRunProfile([analyzer], { quick: true, analyzerNames: [] }).analyzers[0];
+function quickOf(analyzer: ProfiledAnalyzer): ProfiledAnalyzer {
+  return analyzerAt(applyRunProfile([analyzer], { quick: true, analyzerNames: [] }).analyzers, 0);
 }
 
 const key = { mergeBaseSha: 'abc', projectRelativePath: '.' };
-const report = {
+const report: AnalyzerReport = {
   findings: [
     {
       tool: 'java',
@@ -54,17 +57,17 @@ describe('quick mode in the findings cache key', () => {
   it('never serves a quick entry to a full run or a full entry to a quick run', () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-quick-cache-'));
     temporaryRoots.push(directory);
-    const cache = createFindingsCache({ directory, ...key });
+    const cache = createFindingsCache({ store: undefined, directory, ...key });
     const full = languageAnalyzer('java');
     const quick = quickOf(full);
 
     cache.write(quick, report);
     expect(cache.read(full)).toBeUndefined();
-    expect(cache.read(quick).findings).toEqual(report.findings);
+    expect(cache.read(quick)?.findings).toEqual(report.findings);
 
     cache.write(full, { findings: [] });
-    expect(cache.read(full).findings).toEqual([]);
-    expect(cache.read(quick).findings).toEqual(report.findings);
+    expect(cache.read(full)?.findings).toEqual([]);
+    expect(cache.read(quick)?.findings).toEqual(report.findings);
   });
 
   it('reuses a full base entry for an analyzer whose quick output is identical', () => {
