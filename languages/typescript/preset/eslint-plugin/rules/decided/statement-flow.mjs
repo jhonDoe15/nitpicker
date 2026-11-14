@@ -1,6 +1,7 @@
 import { afterEffects, effectsOf, fact, patternNames } from './facts.mjs';
 import { assignedFacts } from './flow/assignments.mjs';
 import { recordCaptures } from './flow/closures.mjs';
+import { switchFlow } from './flow/switch.mjs';
 
 const JUMPS = new Map([
   ['ReturnStatement', 'returns'],
@@ -181,10 +182,11 @@ function otherFlow(node, facts, context) {
   recordCaptures(own, facts, context);
   const checks = own.map((expression) => ({ expression, facts: after }));
   const entry = KEPT_ENTRY.has(node.type) ? facts : after;
+  const cases = node.type === 'SwitchStatement' ? switchFlow(node, after, context) : undefined;
   const { sourceCode } = context;
   return {
-    checks,
-    children: lists.map((statements) => ({ statements, facts: entry })),
+    checks: [...checks, ...(cases?.checks ?? [])],
+    children: cases?.children ?? lists.map((statements) => ({ statements, facts: entry })),
     after: [...after, ...assignedFacts(node, sourceCode)],
   };
 }

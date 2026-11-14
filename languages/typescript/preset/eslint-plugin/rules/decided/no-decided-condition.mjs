@@ -8,6 +8,7 @@ import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
 import { recordCaptures } from './flow/closures.mjs';
 import { sitesIn } from './flow/sites.mjs';
+import { checkLabel } from './flow/switch.mjs';
 import { conditionChecks } from './statement-flow.mjs';
 import { isNarrowingTest, outsideFunctions } from './syntax.mjs';
 
@@ -118,6 +119,10 @@ function sitesOf(scan, found) {
 
 function analyze(scan, statements, initial = []) {
   for (const found of conditionChecks(statements, scan.flow)) {
+    if (found.label !== undefined) {
+      checkLabel(scan, found.label, [...initial, ...found.facts]);
+      continue;
+    }
     for (const site of sitesOf(scan, found)) {
       checkChain(scan, site.node, [...initial, ...found.facts, ...site.extra]);
     }
