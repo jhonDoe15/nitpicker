@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mjs';
-import { file, fn, klass } from '../../test-support/facts.mjs';
-import { springFindings } from '../spring-findings.mjs';
+import {
+  file,
+  findingFactory,
+  fn,
+  klass,
+  springFindings,
+  type Loose,
+} from '../spring-test-facts.mts';
 
 const IMPORTS = [
   'org.springframework.transaction.annotation.Transactional',
@@ -9,15 +14,15 @@ const IMPORTS = [
   'org.springframework.scheduling.annotation.Async',
 ].map((path) => ({ path, all: false }));
 
-function transactional(...args) {
+function transactional(...args: Loose[]): Loose {
   return { name: 'Transactional', type: 'Transactional', arguments: args };
 }
 
-function arg(name, text) {
+function arg(name: string, text: string): Loose {
   return { name, text };
 }
 
-function member(name, line, entry, overrides = {}) {
+function member(name: string, line: number, entry?: Loose, overrides: Loose = {}): Loose {
   return fn(name, {
     owner: 'Ledger',
     line,
@@ -26,7 +31,17 @@ function member(name, line, entry, overrides = {}) {
   });
 }
 
-function selfCalls({ caller, classEntry, target, visibility = 'public' }) {
+function selfCalls({
+  caller,
+  classEntry,
+  target,
+  visibility = 'public',
+}: {
+  caller?: Loose;
+  classEntry?: Loose;
+  target?: Loose;
+  visibility?: string;
+}): number[] {
   const facts = file({
     imports: IMPORTS,
     classes: [
@@ -62,7 +77,9 @@ function selfCalls({ caller, classEntry, target, visibility = 'public' }) {
     .map(({ location }) => location.line);
 }
 
-const JOIN = (...args) => ({ caller: transactional(), target: transactional(...args) });
+function JOIN(...args: Loose[]): { caller: Loose; target: Loose } {
+  return { caller: transactional(), target: transactional(...args) };
+}
 
 describe('SpringProxySelfCall in Kotlin for a call that would only join the transaction', () => {
   it.each([

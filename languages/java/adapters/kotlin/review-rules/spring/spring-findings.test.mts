@@ -1,19 +1,19 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../review-finding.mjs';
-import { routed } from '../test-support/facts.mjs';
+import { routed, type RuleFinding } from '../test-support/facts.mts';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../review-rules.mjs';
-import { springFindings } from './spring-findings.mjs';
+import { findingFactory, fixtureFacts, springFindings, type Loose } from './spring-test-facts.mts';
 import { ALLOWED_FORM_FIRST } from '../../../spring/test-support/allowed-form.mjs';
-import { SPRING_RULES, springMessage } from './spring-messages.mjs';
-import { EXPECTED } from '../test-support/spring-expected.mjs';
+import { SPRING_RULES, springMessage as untypedSpringMessage } from './spring-messages.mjs';
+import { EXPECTED } from '../test-support/spring-expected.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../fixtures');
 const FIXTURE = path.join(FIXTURES, 'kotlin-spring-facts.json');
 const PROJECT = path.join(FIXTURES, 'kotlin-spring-project');
 const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/spring-ruleset.xml');
-const { files } = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+const springMessage: (rule: string) => string = untypedSpringMessage;
+const files = fixtureFacts(FIXTURE);
 const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
   (name) => `jakarta.persistence.${name}`,
 );
@@ -23,7 +23,10 @@ const SKIPPED = {
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };
 
-function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/java'] } = {}) {
+function findingsWith(
+  manifest: Loose,
+  { projectRoot = PROJECT, javaRoots = ['src/main/java'] } = {},
+): RuleFinding[] {
   return springFindings(files, {
     finding: findingFactory(),
     manifest,
@@ -33,7 +36,7 @@ function findingsWith(manifest, { projectRoot = PROJECT, javaRoots = ['src/main/
   });
 }
 
-function summary(findings) {
+function summary(findings: RuleFinding[]): string[] {
   return findings
     .filter(({ path: file }) => !file.endsWith('/Ledger.kt'))
     .map(
@@ -57,7 +60,9 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
 
   it('uses the Java rule ids, so one exception entry lifts the rule in both languages', () => {
     const javaRules = new Set(
-      [...readFileSync(RULESET, 'utf8').matchAll(/<rule name="(\w+)"/gu)].map(([, name]) => name),
+      [...readFileSync(RULESET, 'utf8').matchAll(/<rule name="(\w+)"/gu)].map(
+        ([, name]) => name ?? '',
+      ),
     );
 
     expect(SPRING_RULES.filter((rule) => !javaRules.has(rule))).toEqual([]);
@@ -165,7 +170,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
 });
 
 describe('Kotlin Spring Data loop rules on grouped and partitioned locals', () => {
-  const rowWrites = (owner) =>
+  const rowWrites = (owner: string) =>
     summary(findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })).filter(
       (line) => line.includes('SpringDataRowWriteInLoop') && line.includes(` ${owner}.`),
     );

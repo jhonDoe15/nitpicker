@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mjs';
-import { file, fn, importOf, klass, parameter } from '../../test-support/facts.mjs';
-import { springFindings } from '../spring-findings.mjs';
+import {
+  file,
+  findingFactory,
+  fn,
+  importOf,
+  klass,
+  parameter,
+  springFindings,
+  type Loose,
+} from '../spring-test-facts.mts';
 
 const IMPORTS = [
   importOf('org.springframework.web.bind.annotation', { all: true }),
@@ -9,11 +16,11 @@ const IMPORTS = [
   importOf('jakarta.validation.Valid'),
 ];
 
-function entry(name) {
+function entry(name: string): Loose {
   return { name, type: name, arguments: [] };
 }
 
-function member(name, type, annotations = []) {
+function member(name: string, type: string, annotations: string[] = []): Loose {
   return parameter(name, type, {
     property: 'val',
     annotations,
@@ -21,11 +28,11 @@ function member(name, type, annotations = []) {
   });
 }
 
-function dto(name, members, overrides = {}) {
+function dto(name: string, members: Loose[], overrides: Loose = {}): Loose {
   return klass(name, { primaryParameters: members, ...overrides });
 }
 
-function sourceFile(classes, bodyType) {
+function sourceFile(classes: Loose[], bodyType: string): Loose {
   return file({
     imports: IMPORTS,
     classes: [...classes, klass('Api')],
@@ -54,7 +61,7 @@ function sourceFile(classes, bodyType) {
   });
 }
 
-function reported(classes, bodyType) {
+function reported(classes: Loose[], bodyType: string): boolean {
   const files = [sourceFile(classes, bodyType)];
   return springFindings(files, {
     finding: findingFactory(),
