@@ -549,6 +549,13 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `codequality.json`: the new findings as a GitLab Code Quality report (see
   [GitLab CI](ci.md#gitlab-ci)).
 
+`summary.json` records `projectPath`, the folder of the project the run checked, from the top of
+the repository (`.` for the top itself). The project is the nearest folder with a `package.json` or
+`nitpicker.config.json`, so a run started inside a nested package (an `e2e/` package, a fixture
+with its own `package.json`) checks that package. When it is not the top, `report.txt` names it
+in its header (`Project: e2e`), and when it is not the folder the run started in, the console
+prints `Project: <path from the current folder>` first, in comparison, `--all` and `--fix` runs.
+
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
 `findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
 `report.sarif` and `codequality.json`.

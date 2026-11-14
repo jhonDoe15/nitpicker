@@ -115,7 +115,8 @@ function runRow(row: ProjectRow, context: RunContext): ProjectRow {
     clearReports(reportRoot);
     return row;
   }
-  const extras = extrasOf(row.project, context);
+  const own = extrasOf(row.project, context);
+  const extras = { ...own, cli: { ...own.cli, currentFolder: undefined } };
   return { ...row, outcome: runSelected(row.project, context, { reportRoot, extras }) };
 }
 

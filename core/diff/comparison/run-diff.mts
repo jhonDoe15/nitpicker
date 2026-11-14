@@ -111,7 +111,9 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     ? noChangesReport({ ...settings, comparison, startedAt })
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
-  Object.assign(report.summary, partialRunOf(settings.partialRun));
+  Object.assign(report.summary, partialRunOf(settings.partialRun), {
+    projectPath: settings.projectRelativePath.split(path.sep).join('/'),
+  });
   const location = {
     projectPath: settings.projectRelativePath,
     repositoryRoot: settings.repositoryRoot,
