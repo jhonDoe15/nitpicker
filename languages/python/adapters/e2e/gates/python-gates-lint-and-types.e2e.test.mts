@@ -1,34 +1,39 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { RUFF_FORMAT_ADVICE } from '../../test-support/ruff-format-advice.mjs';
+import { RUFF_FORMAT_ADVICE } from '../../test-support/ruff-format-advice.mts';
 import {
   GREETER_HI,
   GREETER_HI_TEST,
   LEGACY_MOVED,
   TYPE_ERROR,
   VIOLATION,
-} from '../test-support/python-preset-data.mjs';
+} from '../test-support/python-preset-data.mts';
 import {
   commitBranch,
-  fixtureRepository,
   gate,
-  pythonE2eEnabled,
-  removeRepositories,
   summarize,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult } from '../test-support/python-e2e-types.mts';
 import {
   GATE_PACKAGES,
+  parseSarif,
+  anyString,
   enforceable,
   pythonExceptionRoute,
   reportedGroups,
   withoutMutants,
-} from '../test-support/python-gate-support.mjs';
+} from '../test-support/python-gate-support.mts';
 import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+
 describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end', () => {
-  let project;
-  let violation;
+  let project: string;
+  let violation: GateResult;
   beforeAll(() => {
     project = fixtureRepository(GATE_PACKAGES);
     commitBranch(project, 'clean', {
@@ -76,7 +81,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
       'ruff-format format bad.py',
     ]);
     expect(helpUriProblems(violation.json('new-findings.json'))).toEqual([]);
-    const sarif = JSON.parse(readFileSync(path.join(violation.reports, 'report.sarif'), 'utf8'));
+    const sarif = parseSarif(readFileSync(path.join(violation.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',
       'coupling/module-coupling',
@@ -148,7 +153,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
         tool: 'coverage',
         rule: 'uncovered-function',
         path: 'src/demo/bad.py',
-        identity: expect.any(String),
+        identity: anyString(),
         message: 'Function f is not covered',
         classification: 'descriptive',
         symbol: 'f',

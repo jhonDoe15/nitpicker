@@ -1,4 +1,4 @@
-function lines(...rows) {
+function lines(...rows: readonly string[]): string {
   return `${rows.join('\n')}\n`;
 }
 

@@ -2,22 +2,20 @@ import path from 'node:path';
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
-import { ONE_WAY_VIOLATIONS } from '../test-support/python-preset-data.mjs';
-import {
-  commitBranch,
-  fixtureRepository,
-  gate,
-  git,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
+import { ONE_WAY_VIOLATIONS } from '../test-support/python-preset-data.mts';
+import { commitBranch, gate, git, useRepositories } from '../test-support/python-e2e-support.mts';
 import {
   GATE_PACKAGES,
   enforceable,
   pythonExceptionRoute,
   reportedGroups,
   withoutMutants,
-} from '../test-support/python-gate-support.mjs';
+} from '../test-support/python-gate-support.mts';
+import type {} from '../test-support/python-e2e-types.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const EXCEPTING_CONFIG = JSON.stringify({
   preset: 'python',
@@ -40,14 +38,14 @@ const EXCEPTION_LOOSENINGS = [
   'python.exceptions for no-inline-suppression hide code this change adds or moves where the base config checked it: src/demo/rules.py',
 ];
 
-function sourcePython(root) {
-  return readdirSync(path.join(root, 'src'), { recursive: true })
+function sourcePython(root: string) {
+  return readdirSync(path.join(root, 'src'), { recursive: true, encoding: 'utf8' })
     .filter((file) => file.endsWith('.py') && !file.includes('__pycache__'))
     .map((file) => `src/${file}`);
 }
 
 describe.skipIf(!pythonE2eEnabled)('Python preset one-way rules and exceptions end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(GATE_PACKAGES);
     commitBranch(project, 'one-way', { 'src/demo/rules.py': ONE_WAY_VIOLATIONS });

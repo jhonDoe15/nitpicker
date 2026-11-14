@@ -1,12 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
-import {
-  commitBranch,
-  fixtureRepository,
-  gate,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const RULES = new Set(['ruff/F821', 'mypy/name-defined']);
 const LINE = 'LABEL = "é😀"; VALUE: int = undefined_name';
@@ -23,7 +21,7 @@ const MUTATION_DISABLED = {
 };
 
 describe.skipIf(!pythonE2eEnabled)('Python finding columns end to end', () => {
-  let project;
+  let project: string;
 
   beforeAll(() => {
     project = fixtureRepository(['coverage', 'pytest', 'mypy']);

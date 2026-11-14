@@ -5,11 +5,14 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { GateResult } from '../test-support/python-e2e-types.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const CONFIG = JSON.stringify({
   preset: 'python',
@@ -40,7 +43,7 @@ const CHAIN_AND_LEAK = {
     'from shop import api\nfrom shop.model import Order\nfrom shop.session import Session\n\n\ndef test_handle():\n    assert api.handle(Order(2)).total == 4\n\n\ndef test_save():\n    assert api.save(Session()) == 1\n',
 };
 
-const designFindings = (result) =>
+const designFindings = (result: GateResult) =>
   result
     .json('new-findings.json')
     .filter(({ rule }) => DESIGN_RULES.includes(rule))
@@ -53,7 +56,7 @@ const designFindings = (result) =>
     }));
 
 describe.skipIf(!pythonE2eEnabled)('Python design rules end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = repository();
     write(project, BASE_FILES);

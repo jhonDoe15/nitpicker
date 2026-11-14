@@ -12,9 +12,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { openSnapshotEnvironment } from '../../execution/python-environment.mjs';
-import { pythonE2eEnabled } from '../test-support/python-e2e-support.mjs';
+import type { Files } from '../test-support/python-e2e-types.mts';
 
-const roots = [];
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+
+const roots: string[] = [];
 
 function temporaryRoot() {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-base-env-e2e-')));
@@ -22,14 +24,14 @@ function temporaryRoot() {
   return root;
 }
 
-function write(root, files) {
+function write(root: string, files: Files) {
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
   }
 }
 
-function lock(root, program, args, lockFile) {
+function lock(root: string, program: string, args: readonly string[], lockFile: string) {
   const scratch = temporaryRoot();
   copyFileSync(path.join(root, 'pyproject.toml'), path.join(scratch, 'pyproject.toml'));
   const result = spawnSync(program, args, { cwd: scratch, encoding: 'utf8' });
@@ -44,12 +46,31 @@ const SETUP_MARKER = 'open("SETUP_EXECUTED", "w").close()\n';
 const BUILD_SYSTEM =
   '[build-system]\nrequires = ["setuptools"]\nbuild-backend = "setuptools.build_meta"\n';
 
-function pyproject(pythonRange, extra = '') {
+function pyproject(pythonRange: string, extra = '') {
   return `[project]\nname = "demo"\nversion = "0.1.0"\nrequires-python = "${pythonRange}"\ndependencies = ["${DEPENDENCY}"]\n${extra}`;
 }
 
-function environmentOf(projectRoot, liveRoot) {
-  const launcher = openSnapshotEnvironment({ projectRoot, liveRoot });
+type Launcher = {
+  readonly description: string;
+  readonly launch: (
+    program: string,
+    args: readonly string[],
+  ) => { readonly command: string; readonly args: string[]; readonly env: NodeJS.ProcessEnv };
+};
+const openEnvironment: (options: {
+  projectRoot: string;
+  liveRoot: string;
+  setting: undefined;
+  spawn: undefined;
+}) => Launcher = openSnapshotEnvironment;
+
+function environmentOf(projectRoot: string, liveRoot: string) {
+  const launcher = openEnvironment({
+    projectRoot,
+    liveRoot,
+    setting: undefined,
+    spawn: undefined,
+  });
   const launch = launcher.launch('python', [
     '-c',
     'import sys, importlib.util; print(sys.prefix); print(importlib.util.find_spec("iniconfig") is not None)',

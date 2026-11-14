@@ -1,18 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { VIOLATION } from '../test-support/python-preset-data.mjs';
-import {
-  commitBranch,
-  fixtureRepository,
-  gate,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
+import { VIOLATION } from '../test-support/python-preset-data.mts';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const QUICK_LINE =
   'Quick run: skipped mutation, tests, coverage, crap, test-runtime. Run nitpicker without --quick before you finish.';
 
 describe.skipIf(!pythonE2eEnabled)('Python preset quick run end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(['coverage', 'mutmut', 'pytest', 'mypy']);
     commitBranch(project, 'failing-test', {

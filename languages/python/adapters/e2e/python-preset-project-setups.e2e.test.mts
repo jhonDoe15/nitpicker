@@ -1,7 +1,7 @@
 import { cpSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import { GREETER_HI, GREETER_HI_TEST, VIOLATION } from './test-support/python-preset-data.mjs';
+import { GREETER_HI, GREETER_HI_TEST, VIOLATION } from './test-support/python-preset-data.mts';
 import {
   command,
   commitBranch,
@@ -10,17 +10,20 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   summarize,
   write,
-} from './test-support/python-e2e-support.mjs';
+  useRepositories,
+} from './test-support/python-e2e-support.mts';
+import { anyString } from './test-support/python-gate-support.mts';
+
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset on a unittest project formatted with black, using tools from the PATH',
   () => {
-    let plain;
+    let plain: string;
     afterAll(removeRepositories);
     beforeAll(() => {
       plain = repository();
@@ -84,7 +87,7 @@ const EXCLUDING_CONFIG = '{ "preset": "python", "exclude": ["legacy/**"] }\n';
 describe.skipIf(!pythonE2eEnabled)(
   'Python preset on a pytest project with coverage and xdist in its addopts and a legacy python 2 file',
   () => {
-    let configured;
+    let configured: string;
     afterAll(removeRepositories);
     beforeAll(() => {
       configured = repository();
@@ -175,8 +178,8 @@ describe.skipIf(!pythonE2eEnabled)(
           tool: 'ruff',
           rule: 'invalid-syntax',
           path: 'legacy/old.py',
-          identity: expect.any(String),
-          message: expect.any(String),
+          identity: anyString(),
+          message: anyString(),
           exception: { rule: 'invalid-syntax', paths: ['legacy/old.py'], reason: '...' },
           exceptionList: 'python.exceptions',
           classification: 'enforceable',
@@ -199,7 +202,7 @@ describe.skipIf(!pythonE2eEnabled)(
   },
 );
 describe.skipIf(!pythonE2eEnabled)('Python preset on a uv project', () => {
-  let locked;
+  let locked: string;
   afterAll(removeRepositories);
   beforeAll(() => {
     locked = repository();

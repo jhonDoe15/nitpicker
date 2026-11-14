@@ -9,16 +9,19 @@ import {
   gate,
   initializeRepository,
   installPackages,
-  pythonE2eEnabled,
-  removeRepositories,
-  repository,
   write,
-} from '../test-support/python-e2e-support.mjs';
+  useRepositories,
+} from '../test-support/python-e2e-support.mts';
+import type { Finding } from '../test-support/python-e2e-types.mts';
 
-const lines = (...text) => `${text.join('\n')}\n`;
+const { removeRepositories, repository } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+
+const lines = (...text: readonly string[]) => `${text.join('\n')}\n`;
 const SUM = ['    total = 0', '    for item in items:', '        total += item'];
 const PROCESS = ['def process(items):', '    print("start")'];
-const MAGIC = (name) => [`def ${name}(n):`, '    return n == 3'];
+const MAGIC = (name: string) => [`def ${name}(n):`, '    return n == 3'];
 const PRINTS = [
   'def one():',
   '    print("a")',
@@ -27,12 +30,12 @@ const PRINTS = [
   '',
   'def two():',
   '    print("b")',
-];
+] as const;
 
 const LEGACY = 'src/demo/legacy.py';
 const HANDLERS = 80;
 const EDITED_HANDLER = 40;
-const legacyHandler = (index) => [
+const legacyHandler = (index: number) => [
   `def handler_${String(index)}(value,flag = False):`,
   `    if value == ${String(index + 3)}: print( 'hit ${String(index)}' )`,
   `    if flag and value > ${String(index + 300)}:`,
@@ -84,7 +87,7 @@ const HEAD = {
   ),
 };
 
-function commitFormatted(project) {
+function commitFormatted(project: string): { formatted: string[]; editedLine: number } {
   git(project, 'checkout', '-q', '-b', 'touches', 'main');
   write(project, HEAD);
   command(project, 'ruff', ['format', '--quiet', LEGACY]);
@@ -92,6 +95,9 @@ function commitFormatted(project) {
   const edited = formatted
     .map((line, index) => (line === '    print("items", items)' ? index : undefined))
     .filter((index) => index !== undefined)[EDITED_HANDLER];
+  if (edited === undefined) {
+    throw new Error('no handler line to edit');
+  }
   write(project, {
     [LEGACY]: formatted.with(edited, '    print("items", items, value)').join('\n'),
   });
@@ -101,8 +107,8 @@ function commitFormatted(project) {
 }
 
 describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touches', () => {
-  let ruffFindings;
-  let legacy;
+  let ruffFindings: Finding[];
+  let legacy: { formatted: string[]; editedLine: number };
 
   beforeAll(() => {
     const project = repository();
@@ -142,8 +148,8 @@ describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touche
     );
 
     expect(rest).toEqual([]);
-    expect({ rule: edited.rule, line: edited.location.line }).toEqual({ rule: 'T201', line: 2 });
-    expect(edited.message).toContain(EDITED_LINE_SENTENCE);
+    expect({ rule: edited?.rule, line: edited?.location.line }).toEqual({ rule: 'T201', line: 2 });
+    expect(edited?.message).toContain(EDITED_LINE_SENTENCE);
   });
 
   it('keeps 400 legacy findings baselined through a real ruff format run and holds the one edited line', () => {
@@ -153,6 +159,6 @@ describe.skipIf(!pythonE2eEnabled)('Python strict rules on lines a change touche
     expect(legacyFindings.map(({ rule, location }) => `${rule}:${String(location.line)}`)).toEqual([
       `T201:${String(legacy.editedLine)}`,
     ]);
-    expect(legacyFindings[0].message).toContain(EDITED_LINE_SENTENCE);
+    expect(legacyFindings[0]?.message).toContain(EDITED_LINE_SENTENCE);
   });
 });

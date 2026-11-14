@@ -4,24 +4,22 @@ import {
   TYPE_ERROR,
   WEAKENED_MYPY,
   WEAKENED_PYRIGHT,
-} from '../test-support/python-preset-data.mjs';
-import {
-  commitBranch,
-  fixtureRepository,
-  gate,
-  pythonE2eEnabled,
-  removeRepositories,
-} from '../test-support/python-e2e-support.mjs';
+} from '../test-support/python-preset-data.mts';
+import { commitBranch, gate, useRepositories } from '../test-support/python-e2e-support.mts';
 import {
   GATE_PACKAGES,
   enforceable,
   pythonExceptionRoute,
   reportedGroups,
   withoutMutants,
-} from '../test-support/python-gate-support.mjs';
+} from '../test-support/python-gate-support.mts';
+
+const { fixtureRepository, removeRepositories } = useRepositories();
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 describe.skipIf(!pythonE2eEnabled)('Python preset type checker configuration end to end', () => {
-  let project;
+  let project: string;
   beforeAll(() => {
     project = fixtureRepository(GATE_PACKAGES);
     commitBranch(project, 'pyright', {

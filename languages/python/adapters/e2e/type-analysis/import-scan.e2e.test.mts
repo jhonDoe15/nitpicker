@@ -1,49 +1,41 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { readImportsReport, scanImports } from '../../analysis/python-coupling.mjs';
-import { run } from '../../execution/python-process.mjs';
-import { createToolContext } from '../../python-tools.mjs';
-import { pythonE2eEnabled } from '../test-support/python-e2e-support.mjs';
+import { describe, expect, it } from 'vitest';
+import { readImportsReport as untypedReadImportsReport } from '../../analysis/python-coupling.mjs';
+import { useScannedProjects } from '../test-support/scanned-projects.mts';
 
-const roots = [];
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+type ImportEntry = {
+  readonly module?: string;
+  readonly names: readonly string[];
+  readonly typeOnly: boolean;
+  readonly guarded: boolean;
+  readonly line: number;
+  readonly local: boolean;
+};
+const readImportsReport: (reportRoot: string) => {
+  readonly imports: Readonly<Record<string, readonly ImportEntry[]>>;
+} = untypedReadImportsReport;
 
-function scanReport(code) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-import-scan-')));
-  const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-import-report-')));
-  roots.push(root, reportRoot);
-  mkdirSync(path.join(root, 'src'));
-  writeFileSync(path.join(root, 'src/mod.py'), code);
-  const context = createToolContext({
-    projectRoot: root,
-    liveRoot: root,
-    settings: { environment: 'path', sourceRoots: ['src'] },
-    reportRoot,
-  });
-  scanImports(context, run);
-  return readImportsReport(reportRoot).imports['src/mod.py'];
+const scannedProject = useScannedProjects();
+
+function scanReport(code: string): readonly ImportEntry[] {
+  const { reportRoot } = scannedProject({ 'src/mod.py': code });
+  return readImportsReport(reportRoot).imports['src/mod.py'] ?? [];
 }
 
-function scan(code) {
+function scan(code: string): string[] {
   return scanReport(code).map(
     ({ module, names, typeOnly }) => `${module ?? '-'} ${names.join(',')} ${String(typeOnly)}`,
   );
 }
 
-function guards(code) {
+function guards(code: string): string[] {
   return scanReport(code).map(
     ({ names, guarded, line }) => `${names.join(',')} ${String(guarded)} ${String(line)}`,
   );
 }
 
-function locals(code) {
+function locals(code: string): string[] {
   return scanReport(code).map(({ names, local }) => `${names.join(',')} ${String(local)}`);
 }
 
