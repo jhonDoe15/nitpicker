@@ -6,9 +6,12 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import presetConfig from './defaults/eslint.config.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import presetConfig from './defaults/eslint.config.mts';
 
-const presetConfigUrl = pathToFileURL(path.join(import.meta.dirname, 'defaults/eslint.config.mjs'));
+const presetConfigUrl = pathToFileURL(
+  checkoutModulePath(path.join(import.meta.dirname, 'defaults/eslint.config.mjs')),
+);
 const temporaryRoots = [];
 let importCount = 0;
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
-import { analyzeCoupling } from './analyze.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mts';
+import { analyzeCoupling, type CouplingModule } from './test-support/analyze-view.mts';
 
 const fixtureRoot = 'languages/typescript/preset/coupling/fixtures';
 
@@ -21,10 +21,10 @@ describe('coupling report', () => {
       fanIn: 3,
       fanOut: 1,
       totalCoupling: 4,
-      instability: expect.closeTo(0.25, 10),
+      instability: 1 / 4,
       runtimeFanIn: 3,
       runtimeFanOut: 1,
-      runtimeInstability: expect.closeTo(0.25, 10),
+      runtimeInstability: 1 / 4,
     });
     expect(alpha).toEqual({
       name: 'alpha',
@@ -36,7 +36,7 @@ describe('coupling report', () => {
         internalEdges: 0,
         edgeDensity: 0,
         connectedComponents: 2,
-        largestComponentShare: expect.closeTo(0.5, 10),
+        largestComponentShare: 1 / 2,
       },
     });
     expect(shared).toEqual({
@@ -47,7 +47,7 @@ describe('coupling report', () => {
       instability: 0,
       cohesion: {
         internalEdges: 1,
-        edgeDensity: expect.closeTo(0.5, 10),
+        edgeDensity: 1 / 2,
         connectedComponents: 1,
         largestComponentShare: 1,
       },
@@ -71,9 +71,9 @@ describe('coupling report', () => {
       packages: 2,
     });
     expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
-    expect(cohesive.cohesion).toEqual({
+    expect(cohesive?.cohesion).toEqual({
       internalEdges: 1,
-      edgeDensity: expect.closeTo(0.5, 10),
+      edgeDensity: 1 / 2,
       connectedComponents: 1,
       largestComponentShare: 1,
     });
@@ -81,14 +81,17 @@ describe('coupling report', () => {
   });
 
   it('does not report a type-only import as a stability inversion but counts it in instability', () => {
-    const module = (name, ...dependencies) => ({
+    const module = (
+      name: string,
+      ...dependencies: readonly (readonly [string, readonly string[]])[]
+    ): CouplingModule => ({
       source: `src/main/${name}.ts`,
       dependencies: dependencies.map(([target, dependencyTypes]) => ({
         resolved: `src/main/${target}.ts`,
         dependencyTypes,
       })),
     });
-    const graphWith = (types) => ({
+    const graphWith = (types: readonly string[]) => ({
       modules: [
         module('p1/a', ['stable/s', ['local']]),
         module('p2/a', ['stable/s', ['local']]),
@@ -125,6 +128,6 @@ describe('coupling report', () => {
   });
 
   it('fails visibly for a malformed analyzer graph', () => {
-    expect(() => analyzeCoupling({ modules: null }, 'src/main')).toThrow(/modules array/);
+    expect(() => analyzeCoupling({ modules: undefined }, 'src/main')).toThrow(/modules array/);
   });
 });

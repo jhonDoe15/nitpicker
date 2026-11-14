@@ -10,12 +10,14 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { createEntryPointAnalyzer } from '../../adapters/entry-points.mjs';
 import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
+import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { runAnalyzers, type AnalyzerRun } from '../../../../core/diff/execution/run-analyzers.mts';
 import {
   entryPointsCheck,
   eslintChecks,
@@ -81,7 +83,23 @@ const POLICY_PATHS = [
   'languages/typescript/typescript-api',
   'shared',
 ];
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
+const withDefaultAnalyzerParallelism: <T>(run: () => T) => T = untypedParallelism;
+
+type Run = AnalyzerRun & { temporaryPolicyLinks?: string[] };
+
+function analyzerFrom(create: (options: never) => unknown, options: object): unknown {
+  return Reflect.apply(create, undefined, [options]);
+}
+
+function checkNamed<T extends { readonly name: string }>(checks: readonly T[], name: string): T {
+  const check = checks.find((entry) => entry.name === name);
+  if (check === undefined) {
+    throw new RangeError(`No check named ${name}`);
+  }
+  return check;
+}
+const packagedPath: (file: string) => string = checkoutModulePath;
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -95,12 +113,12 @@ describe('default configs used in place', () => {
       'src/service.ts': 'export const service = 1;\n',
       'test/service.test.ts': "import { service } from '../src/service.js';\nvoid service;\n",
     });
-    const check = staticChecks.find(({ name }) => name === 'dependency-architecture');
-    const runtime = qualityAreaChecks.find(({ name }) => name === 'test-runtime');
+    const check = checkNamed(staticChecks, 'dependency-architecture');
+    const runtime = checkNamed(qualityAreaChecks, 'test-runtime');
     const run = runInPlace(
       [
-        createStaticCheckAnalyzer({ ...check, configurationHash: 'fixture' }),
-        createQualityAreaAnalyzer({ ...runtime, configurationHash: 'fixture' }),
+        analyzerFrom(createStaticCheckAnalyzer, { ...check, configurationHash: 'fixture' }),
+        analyzerFrom(createQualityAreaAnalyzer, { ...runtime, configurationHash: 'fixture' }),
       ],
       projectRoot,
     );
@@ -119,8 +137,8 @@ describe('default configs used in place', () => {
     const names = ['test-runtime', 'coverage', 'mutation'];
     const run = runInPlace(
       names.map((name) =>
-        createQualityAreaAnalyzer({
-          ...qualityAreaChecks.find((entry) => entry.name === name),
+        analyzerFrom(createQualityAreaAnalyzer, {
+          ...checkNamed(qualityAreaChecks, name),
           configurationHash: 'fixture',
         }),
       ),
@@ -130,30 +148,32 @@ describe('default configs used in place', () => {
     expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
   });
 
-  // Tests that look at the same project share one run of all their analyzers, side by side, so the
-  // slowest tool sets the time instead of the sum, and the project is copied once.
   describe('with no source or tests', () => {
-    let shared;
+    let shared: Run | undefined;
     const fileDrivenChecks = qualityAreaChecks.filter(({ kind }) => kind !== 'policy-tests');
     const staticNames = ['prettier-format', 'typescript-typecheck', 'dependency-architecture'];
-    const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const lintCheck = checkNamed(eslintChecks, 'eslint-lint');
 
     function runEmptyProject() {
       shared ??= runInPlace(
         [
           ...fileDrivenChecks.map((check) =>
-            createQualityAreaAnalyzer({ ...check, configurationHash: 'fixture' }),
+            analyzerFrom(createQualityAreaAnalyzer, { ...check, configurationHash: 'fixture' }),
           ),
-          createEntryPointAnalyzer({
+          analyzerFrom(createEntryPointAnalyzer, {
             version: 'fixture',
             configurationHash: 'fixture',
-            exclusions: entryPointsCheck.exclusions,
-            sourceRoot: entryPointsCheck.sourceRoot,
+            exclusions: fieldOf(entryPointsCheck, 'exclusions'),
+            sourceRoot: fieldOf(entryPointsCheck, 'sourceRoot'),
           }),
-          createEslintAnalyzer({ ...lintCheck, version: 'fixture', configurationHash: 'fixture' }),
+          analyzerFrom(createEslintAnalyzer, {
+            ...lintCheck,
+            version: 'fixture',
+            configurationHash: 'fixture',
+          }),
           ...staticNames.map((name) =>
-            createStaticCheckAnalyzer({
-              ...staticChecks.find((entry) => entry.name === name),
+            analyzerFrom(createStaticCheckAnalyzer, {
+              ...checkNamed(staticChecks, name),
               configurationHash: 'fixture',
             }),
           ),
@@ -163,7 +183,8 @@ describe('default configs used in place', () => {
       return shared;
     }
 
-    const toolErrorsFor = (run, names) => run.toolErrors.filter(({ tool }) => names.includes(tool));
+    const toolErrorsFor = (run: Run, names: readonly string[]) =>
+      run.toolErrors.filter(({ tool }) => names.includes(textOf(tool)));
 
     it('reports no error for every file-driven quality analyzer with no source or tests', () => {
       const run = runEmptyProject();
@@ -189,10 +210,8 @@ describe('default configs used in place', () => {
     });
   });
 
-  // The old layout plus a JavaScript source and test: the files the ESLint test needs. The
-  // dependency-cruiser and entry-point tests look at the same project (more files, same claim).
   describe('with the old layout', () => {
-    let shared;
+    let shared: Run | undefined;
 
     function runOldLayoutProject() {
       if (shared === undefined) {
@@ -201,30 +220,32 @@ describe('default configs used in place', () => {
           'src/service.js': 'export const service = 1;\n',
           'test/service.test.js': "import { service } from '../src/service.js';\nvoid service;\n",
         });
-        const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
-        const cruiseCheck = staticChecks.find(({ name }) => name === 'dependency-architecture');
+        const lintCheck = checkNamed(eslintChecks, 'eslint-lint');
+        const cruiseCheck = checkNamed(staticChecks, 'dependency-architecture');
         shared = runInPlace(
           [
-            createEslintAnalyzer({
-              name: lintCheck.name,
+            analyzerFrom(createEslintAnalyzer, {
+              name: fieldOf(lintCheck, 'name'),
               version: 'fixture',
               configurationHash: 'fixture',
-              exclusions: lintCheck.exclusions,
-              configRelativePath: lintCheck.configRelativePath,
-              patterns: lintCheck.patterns,
-              policyFiles: lintCheck.policyFiles,
+              exclusions: fieldOf(lintCheck, 'exclusions'),
+              configRelativePath: fieldOf(lintCheck, 'configRelativePath'),
+              patterns: fieldOf(lintCheck, 'patterns'),
+              policyFiles: fieldOf(lintCheck, 'policyFiles'),
             }),
-            createStaticCheckAnalyzer({ ...cruiseCheck, configurationHash: 'fixture' }),
-            createEntryPointAnalyzer({
+            analyzerFrom(createStaticCheckAnalyzer, {
+              ...cruiseCheck,
+              configurationHash: 'fixture',
+            }),
+            analyzerFrom(createEntryPointAnalyzer, {
               version: 'fixture',
               configurationHash: 'fixture',
-              exclusions: entryPointsCheck.exclusions,
-              sourceRoot: entryPointsCheck.sourceRoot,
+              exclusions: fieldOf(entryPointsCheck, 'exclusions'),
+              sourceRoot: fieldOf(entryPointsCheck, 'sourceRoot'),
             }),
           ],
           projectRoot,
         );
-        // Read now: the per-test cleanup removes the project after the first test.
         shared.temporaryPolicyLinks = temporaryPolicyLinks(projectRoot);
       }
       return shared;
@@ -267,7 +288,7 @@ describe('with a noisy jsdom project config', () => {
   ].join('\n');
 
   it('lints without tool errors and reports only the test that never uses the DOM', () => {
-    const lintCheck = eslintChecks.find(({ name }) => name === 'eslint-lint');
+    const lintCheck = checkNamed(eslintChecks, 'eslint-lint');
     const projectRoot = createProject({
       ...oldLayoutFiles(),
       'vitest.config.mjs': noisyConfig,
@@ -281,7 +302,11 @@ describe('with a noisy jsdom project config', () => {
       ].join('\n'),
     });
     const run = runInPlace(
-      createEslintAnalyzer({ ...lintCheck, version: 'fixture', configurationHash: 'fixture' }),
+      analyzerFrom(createEslintAnalyzer, {
+        ...lintCheck,
+        version: 'fixture',
+        configurationHash: 'fixture',
+      }),
       projectRoot,
     );
     expect(run.toolErrors).toEqual([]);
@@ -294,7 +319,7 @@ describe('with a noisy jsdom project config', () => {
   });
 });
 
-function runInPlace(analyzers, projectRoot) {
+function runInPlace(analyzers: unknown, projectRoot: string): Run {
   return withDefaultAnalyzerParallelism(() =>
     runAnalyzers({
       analyzers: Array.isArray(analyzers) ? analyzers : [analyzers],
@@ -303,16 +328,23 @@ function runInPlace(analyzers, projectRoot) {
       toolRoot: packageRoot,
       liveProjectRoot: packageRoot,
       snapshot: 'head',
+      baselineRoot: undefined,
+      baselineMovesFile: undefined,
+      headPolicyFile: undefined,
+      mutationScope: undefined,
+      logRoot: undefined,
+      runTasks: undefined,
     }),
   );
 }
 
-function createProject(files = oldLayoutFiles()) {
+function createProject(files: Readonly<Record<string, string>> = oldLayoutFiles()) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'base');
   for (const relativePath of POLICY_PATHS) {
-    cpSync(path.join(packageRoot, relativePath), path.join(projectRoot, relativePath), {
+    const source = packagedPath(path.join(packageRoot, relativePath));
+    cpSync(source, path.join(projectRoot, path.relative(packageRoot, source)), {
       recursive: true,
     });
   }
@@ -325,7 +357,7 @@ function createProject(files = oldLayoutFiles()) {
   return projectRoot;
 }
 
-function oldLayoutFiles() {
+function oldLayoutFiles(): Record<string, string> {
   return {
     'src/main/shared/greeting.ts': [
       'export function greeting(name: string): string {',
@@ -353,11 +385,11 @@ function oldLayoutFiles() {
   };
 }
 
-function temporaryPolicyLinks(projectRoot) {
+function temporaryPolicyLinks(projectRoot: string) {
   return readdirSync(projectRoot).filter((entry) => entry.startsWith('.nitpicker-'));
 }
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Readonly<Record<string, string>>) {
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(root, relativePath);
     mkdirSync(path.dirname(filePath), { recursive: true });

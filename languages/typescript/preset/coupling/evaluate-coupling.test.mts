@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evaluateCoupling } from './evaluate-coupling.mjs';
+import { evaluateCoupling } from './evaluate-coupling.mts';
 
 const entry = {
   source: 'src/main/shared/format-price.ts',

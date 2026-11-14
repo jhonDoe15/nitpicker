@@ -5,12 +5,15 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { failureMessagesFor } from '../../failure-messages/test-support/harness.mts';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { reactRuleIds, reactTestRuleIds, restrictedBrowserGlobals } from './react-rules.mjs';
 import { restrictedSyntaxFor, strictSyntaxConfig, strictSyntaxConfigFor } from '../strict.mjs';
 
 const presetConfigUrl = pathToFileURL(
-  path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),
+  checkoutModulePath(
+    path.join(fileURLToPath(new URL('../', import.meta.url)), '../defaults/eslint.config.mjs'),
+  ),
 );
 const reactConfig = strictSyntaxConfigFor(defaultResolvedLayout, { react: true });
 const classBanMessage = restrictedSyntaxFor().source.find(({ selector }) =>

@@ -1,5 +1,15 @@
 import { fileURLToPath } from 'node:url';
-import { readLayout } from '../head-policy.mjs';
+import { readLayout as readUntypedLayout } from '../head-policy.mjs';
+
+const readLayout: () => {
+  readonly sourceGlobs: readonly string[];
+  readonly testGlobs: readonly string[];
+  readonly runtimeExcludedGlobs: readonly string[];
+  readonly testRoots: readonly string[];
+  readonly sourceRoots: readonly string[];
+  readonly sourceTestDirectoryGlobs: readonly string[];
+  readonly testSupportGlobs: readonly string[];
+} = readUntypedLayout;
 
 const {
   sourceGlobs,

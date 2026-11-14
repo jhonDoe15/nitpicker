@@ -6,9 +6,26 @@ import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
 import { parseArguments } from '../../adapters/quality-areas/arguments.mts';
 import { runQualityAreaReport } from '../../adapters/quality-areas-runner.mts';
-import { projectImports } from './cruise.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { projectImports as untypedProjectImports } from './cruise.mjs';
 
-const roots = [];
+type ImportGraph = {
+  readonly modules: readonly {
+    readonly source: string;
+    readonly dependencies: readonly {
+      readonly resolved?: string;
+      readonly module?: string;
+      readonly coreModule?: boolean;
+    }[];
+  }[];
+};
+
+const projectImports: (
+  graph: ImportGraph,
+  isProduction: (file: string) => boolean,
+) => { readonly from: string; readonly to: string }[] = untypedProjectImports;
+
+const roots: string[] = [];
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -17,7 +34,7 @@ afterEach(() => {
   }
 });
 
-function projectWith(files) {
+function projectWith(files: Readonly<Record<string, string>>): string {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   roots.push(parent);
   const root = path.join(parent, 'head');
@@ -28,7 +45,7 @@ function projectWith(files) {
   return root;
 }
 
-function coupling(projectRoot) {
+function coupling(projectRoot: string) {
   return runQualityAreaReport(
     parseArguments([
       ...['--analyzer-name', 'coupling', '--kind', 'coupling'],
@@ -76,7 +93,7 @@ describe('project imports from the dependency graph', () => {
     writeFileSync(policyFile, JSON.stringify({}));
     const disabled = await coupling(projectRoot);
 
-    expect(enabled.moduleImports).toEqual([
+    expect(fieldOf(enabled, 'moduleImports')).toEqual([
       { from: 'src/billing/invoice.ts', to: 'src/invoicing' },
     ]);
     expect(disabled).not.toHaveProperty('moduleImports');
@@ -107,11 +124,12 @@ describe('project imports from the dependency graph', () => {
 
     const { findings } = await coupling(projectRoot);
 
-    expect(
-      findings.find(
-        ({ path: file, metric }) =>
-          file === 'src/invoicing/ledger.ts' && metric.name === 'runtimeFanIn',
-      )?.metric.value,
-    ).toBe(1);
+    const fanIn = findings.find(
+      (finding) =>
+        finding.path === 'src/invoicing/ledger.ts' &&
+        fieldOf(fieldOf(finding, 'metric'), 'name') === 'runtimeFanIn',
+    );
+
+    expect(fieldOf(fieldOf(fanIn, 'metric'), 'value')).toBe(1);
   });
 });

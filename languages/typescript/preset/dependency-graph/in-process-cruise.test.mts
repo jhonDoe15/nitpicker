@@ -1,9 +1,17 @@
 import { cruise as runDependencyCruiser } from 'dependency-cruiser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { withHeadPolicyFile } from '../head-policy.mjs';
+import { withHeadPolicyFile as untypedWithHeadPolicyFile } from '../head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN, resolveLayout } from '../layout.mjs';
-import { cruise } from './cruise.mjs';
-import { cruiseInProcess } from './test-support/in-process-cruise.mjs';
+import { cruise as untypedCruise } from './cruise.mjs';
+import { cruiseInProcess } from './test-support/in-process-cruise.mts';
+
+const cruise: (
+  paths: readonly string[],
+  options: { readonly typeScriptRoot: string },
+) => { readonly modules: readonly { readonly source: string }[] } = untypedCruise;
+
+const withHeadPolicyFile: (policy: object, run: (policyFile: string) => void) => void =
+  untypedWithHeadPolicyFile;
 
 describe('in-process dependency graph fixture', () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -16,9 +24,10 @@ describe('in-process dependency graph fixture', () => {
   ])('accepts %s in the combined dependency-cruiser exclusion', async (glob) => {
     const { excludePattern } = resolveLayout({}, [glob]);
     const exclusion = { path: [EXCLUDED_PATH_PATTERN, excludePattern].join('|') };
+    const ruleSet = { forbidden: [], options: { doNotFollow: exclusion } };
     const report = await runDependencyCruiser([], {
       exclude: exclusion,
-      ruleSet: { options: { doNotFollow: exclusion } },
+      ruleSet,
       outputType: 'json',
     });
 
@@ -39,7 +48,6 @@ describe('in-process dependency graph fixture', () => {
     });
   });
 
-  // Policy tests use `cruiseInProcess` for speed; compare it with the production CLI call here.
   it('returns the same modules as the production cruise() run', async () => {
     const paths = ['languages/typescript/preset/coupling/fixtures/signal/src/main'];
     const options = { typeScriptRoot: 'languages/typescript/preset/coupling/fixtures/signal' };

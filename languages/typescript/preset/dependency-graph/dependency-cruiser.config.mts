@@ -2,7 +2,9 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { TYPESCRIPT_CONFIG_ENVIRONMENT } from './cruise.mjs';
 import { EXCLUDED_PATH_PATTERN, codeExtensionNames } from '../layout.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { readLayout as untypedReadLayout } from '../head-policy.mjs';
+
+const readLayout: () => { readonly excludePattern: string | undefined } = untypedReadLayout;
 
 const { excludePattern } = readLayout();
 

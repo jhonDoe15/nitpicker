@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { cruiseInProcess as untypedCruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
+import { cruiseInProcess as untypedCruise } from '../dependency-graph/test-support/in-process-cruise.mts';
 import type { AnalyzeOptions, Graph } from './analysis-types.mts';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mts';
 
