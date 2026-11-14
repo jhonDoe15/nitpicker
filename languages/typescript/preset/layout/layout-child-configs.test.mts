@@ -1,12 +1,35 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
 import {
-  selectFilesAndIgnores,
   customPolicy as policy,
   loadConfig,
   removeTemporaryRoots,
   temporaryProject,
-} from './test-support/layout-config-helpers.mjs';
+} from './test-support/layout-config-helpers.mts';
+import { loadDefaultConfig, selectFilesAndIgnores } from './test-support/layout-readers.mts';
+import { type ConfigEntry, sortedUnique } from './test-support/layout-views.mts';
+
+type ForbiddenRule = {
+  readonly from: { readonly path: string };
+  readonly to: { readonly path: string };
+};
+
+type ToolConfig = {
+  readonly sourcePaths: string[];
+  readonly excludes: string[];
+  readonly mutate: string[];
+  readonly ignorePatterns: string[];
+  readonly forbidden: [ForbiddenRule, ...ForbiddenRule[]];
+  readonly options: { readonly doNotFollow: { readonly path: string } };
+};
+
+type PolicyConfigs = {
+  productionPolicyConfig(options: object): ConfigEntry[];
+};
+
+function buildProduction(module: PolicyConfigs): ConfigEntry[] {
+  return module.productionPolicyConfig({});
+}
 
 afterAll(removeTemporaryRoots);
 afterEach(() => {
@@ -20,7 +43,7 @@ describe('package-owned child configs', () => {
     const ignores = config.flatMap((entry) =>
       entry.files === undefined ? (entry.ignores ?? []) : [],
     );
-    expect([...new Set(ignores)].sort()).toEqual([
+    expect(sortedUnique(ignores)).toEqual([
       '**/node_modules/**',
       '.stryker-tmp/**',
       'build/**',
@@ -32,7 +55,7 @@ describe('package-owned child configs', () => {
       'target/**',
     ]);
     const files = config.flatMap((entry) => entry.files ?? []).flat();
-    expect([...new Set(files)].sort()).toEqual(
+    expect(sortedUnique(files)).toEqual(
       [
         '**/*.cts',
         '**/*.mts',
@@ -56,7 +79,7 @@ describe('package-owned child configs', () => {
     expect(files.filter((glob) => glob.startsWith('src/') || glob.startsWith('test'))).toEqual([]);
   });
   it('eslint.config.mjs turns on the script rules typescript-eslint leaves off for .js files', async () => {
-    const config = await loadConfig('defaults/eslint.config.mjs', policy);
+    const config = await loadDefaultConfig<ConfigEntry[]>('defaults/eslint.config.mjs', policy);
     const scriptEntry = config.find(
       (entry) =>
         entry.rules?.['no-var'] === 'error' &&
@@ -76,7 +99,7 @@ describe('package-owned child configs', () => {
       policy,
       selectFilesAndIgnores,
     );
-    expect([...new Set(config[0].ignores)].sort()).toEqual([
+    expect(sortedUnique(config[0]?.ignores ?? [])).toEqual([
       '**/node_modules/**',
       'build/**',
       'coverage/**',
@@ -93,8 +116,11 @@ describe('package-owned child configs', () => {
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'spec/unit/**/*.ts',
     ]);
-    const production = await loadConfig('eslint-config/policies/base.mjs', policy, (module) =>
-      module.productionPolicyConfig({}).map(({ ignores }) => ({ ignores })),
+    const production = await loadConfig(
+      'eslint-config/policies/base.mjs',
+      policy,
+      (module: PolicyConfigs) =>
+        module.productionPolicyConfig({}).map(({ ignores }) => ({ ignores })),
     );
     expect([...new Set(production.flatMap((entry) => entry.ignores ?? []))].sort()).toEqual([
       '**/node_modules/**',
@@ -116,9 +142,12 @@ describe('package-owned child configs', () => {
       ...policy,
       layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
     };
-    const build = (module) => module.productionPolicyConfig({});
-    const plain = await loadConfig('eslint-config/policies/base.mjs', policy, build);
-    const withEntries = await loadConfig('eslint-config/policies/base.mjs', entryPolicy, build);
+    const plain = await loadConfig('eslint-config/policies/base.mjs', policy, buildProduction);
+    const withEntries = await loadConfig(
+      'eslint-config/policies/base.mjs',
+      entryPolicy,
+      buildProduction,
+    );
 
     expect(plain.some((entry) => entry.files?.includes('lib/tools/run.mjs'))).toBe(false);
     expect(withEntries.at(-1)).toEqual({
@@ -131,7 +160,10 @@ describe('package-owned child configs', () => {
       ...policy,
       layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
     };
-    const config = await loadConfig('eslint-config/policies/logging.config.mjs', entryPolicy);
+    const config = await loadDefaultConfig<ConfigEntry[]>(
+      'eslint-config/policies/logging.config.mjs',
+      entryPolicy,
+    );
 
     expect(config.at(-1)).toEqual({
       files: ['lib/tools/run.mjs'],
@@ -147,8 +179,11 @@ describe('package-owned child configs', () => {
       layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
       frameworks: { defaultExports: [], entryPoints: ['src/main.tsx'] },
     };
-    const build = (module) => module.productionPolicyConfig({});
-    const config = await loadConfig('eslint-config/policies/base.mjs', entryPolicy, build);
+    const config = await loadConfig(
+      'eslint-config/policies/base.mjs',
+      entryPolicy,
+      buildProduction,
+    );
 
     expect(config.at(-1)).toEqual({
       files: ['lib/tools/run.mjs', 'src/main.tsx'],
@@ -156,9 +191,9 @@ describe('package-owned child configs', () => {
     });
   });
   it('crap.config.mjs measures the custom source roots and skips excluded paths', async () => {
-    const config = await loadConfig('defaults/crap.config.mjs', policy);
+    const config = await loadDefaultConfig<ToolConfig>('defaults/crap.config.mjs', policy);
     expect(config.sourcePaths).toEqual(['lib']);
-    expect([...new Set(config.excludes)].sort()).toEqual([
+    expect(sortedUnique(config.excludes)).toEqual([
       '**/*.d.ts',
       '**/node_modules/**',
       'build/**',
@@ -173,8 +208,8 @@ describe('package-owned child configs', () => {
     ]);
   });
   it('stryker.config.mjs mutates the custom source roots and skips excluded paths', async () => {
-    const config = await loadConfig('defaults/stryker.config.mjs', policy);
-    expect([...new Set(config.mutate)].sort()).toEqual([
+    const config = await loadDefaultConfig<ToolConfig>('defaults/stryker.config.mjs', policy);
+    expect(sortedUnique(config.mutate)).toEqual([
       '!**/*.d.ts',
       '!**/node_modules/**',
       '!build/**',
@@ -200,20 +235,26 @@ describe('package-owned child configs', () => {
     ]);
   });
   it('crap.config.mjs and stryker.config.mjs skip test-support/ in a colocated layout', async () => {
-    const colocated = { ...policy, layout: { ...policy.layout, colocatedTests: true } };
-    const crap = await loadConfig('defaults/crap.config.mjs', colocated);
-    const separateCrap = await loadConfig('defaults/crap.config.mjs', policy);
+    const colocated = { ...policy, layout: { ...policy.layout, colocatedTests: true as const } };
+    const crap = await loadDefaultConfig<ToolConfig>('defaults/crap.config.mjs', colocated);
+    const separateCrap = await loadDefaultConfig<ToolConfig>('defaults/crap.config.mjs', policy);
     expect(crap.excludes.filter((glob) => !separateCrap.excludes.includes(glob))).toEqual([
       'lib/**/test-support/**',
     ]);
-    const stryker = await loadConfig('defaults/stryker.config.mjs', colocated);
-    const separateStryker = await loadConfig('defaults/stryker.config.mjs', policy);
+    const stryker = await loadDefaultConfig<ToolConfig>('defaults/stryker.config.mjs', colocated);
+    const separateStryker = await loadDefaultConfig<ToolConfig>(
+      'defaults/stryker.config.mjs',
+      policy,
+    );
     expect(stryker.mutate.filter((glob) => !separateStryker.mutate.includes(glob))).toEqual([
       '!lib/**/test-support/**',
     ]);
   });
   it('dependency-cruiser.config.mjs rules and exclusions use the custom roots', async () => {
-    const config = await loadConfig('defaults/dependency-cruiser.config.mjs', policy);
+    const config = await loadDefaultConfig<ToolConfig>(
+      'defaults/dependency-cruiser.config.mjs',
+      policy,
+    );
     const [productionToTest] = config.forbidden;
     expect(new RegExp(productionToTest.from.path).test('lib/live/a.ts')).toBe(true);
     expect(new RegExp(productionToTest.from.path).test('src/a.ts')).toBe(false);

@@ -2,16 +2,52 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { packageNameOf, reachableModules, resolveModuleSpecifier } from './module-resolution.mjs';
+import { functionOf } from './test-support/untyped-function.mts';
+import {
+  packageNameOf,
+  reachableModules as untypedReachableModules,
+  resolveModuleSpecifier as untypedResolveModuleSpecifier,
+} from './module-resolution.mjs';
 
-const roots = [];
+type Alias = { readonly find: string | RegExp; readonly replacement: string };
+
+type Resolution = { readonly kind: string; readonly name?: string; readonly path?: string };
+
+type Step = {
+  readonly file: string;
+  readonly depth: number;
+  readonly from: string;
+  readonly truncated?: true;
+};
+
+type Walk = {
+  walk(
+    entries: string | readonly string[],
+    specifiersOf: (file: string) => readonly string[],
+    limits: {
+      readonly maxDepth: number;
+      readonly maxFiles: number;
+      readonly aliases?: readonly Alias[];
+    },
+  ): Generator<Step>;
+  resolve(
+    written: string,
+    containingFile: string,
+    options: { readonly aliases?: readonly Alias[] },
+  ): Resolution;
+};
+
+const resolveModuleSpecifier = functionOf<Walk['resolve']>(untypedResolveModuleSpecifier);
+const reachableModules = functionOf<Walk['walk']>(untypedReachableModules);
+
+const roots: string[] = [];
 const PINNED = { types: [], lib: ['ES2022'] };
 
-function compilerOptions(options) {
+function compilerOptions(options: Readonly<Record<string, unknown>>) {
   return { ...PINNED, ...options };
 }
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-module-resolution-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -21,7 +57,12 @@ function project(files) {
   return root;
 }
 
-function resolved(root, specifier, from = 'src/app/main.ts', options = {}) {
+function resolved(
+  root: string,
+  specifier: string,
+  from = 'src/app/main.ts',
+  options: { readonly aliases?: readonly Alias[] } = {},
+): Resolution {
   const result = resolveModuleSpecifier(specifier, path.join(root, from), options);
   return result.path === undefined ? result : { ...result, path: path.relative(root, result.path) };
 }
@@ -241,8 +282,10 @@ describe('reachableModules', () => {
     ['src/b.ts', ['./c']],
     ['src/c.ts', ['./a']],
   ]);
-  const specifiersOf = (file) => graph.get(path.relative(root, file)) ?? [];
-  const walk = (limits) =>
+  function specifiersOf(file: string): readonly string[] {
+    return graph.get(path.relative(root, file)) ?? [];
+  }
+  const walk = (limits: { readonly maxDepth: number; readonly maxFiles: number }) =>
     [...reachableModules(path.join(root, 'src/entry.ts'), specifiersOf, limits)].map((step) =>
       step.truncated === true
         ? 'truncated'

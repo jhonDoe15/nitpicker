@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { firstFileIn } from '../../../../../shared/filesystem.mjs';
 import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
-import { propertyName } from '../../syntax/property-names.mjs';
+import { propertyName } from '../../syntax/property-names.mts';
 import { VITEST_CONFIG_NAMES } from './setup-files.mjs';
 
 const RESTORE_FLAGS = { unstubGlobals: 'globals', unstubEnvs: 'envs' };

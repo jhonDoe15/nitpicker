@@ -5,7 +5,7 @@ import { firstFileIn } from '../../../../shared/filesystem.mjs';
 import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
-import { propertyName } from '../syntax/property-names.mjs';
+import { propertyName } from '../syntax/property-names.mts';
 
 const RULE = 'nitpicker/no-uncollected-tests';
 const TEST_FILES = '**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}';

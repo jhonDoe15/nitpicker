@@ -1,14 +1,17 @@
+import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
-import { resolveLayoutFor } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
 import {
   readDefault,
   removeTemporaryRoots,
   temporaryProject,
-} from '../layout/test-support/layout-config-helpers.mjs';
+} from '../layout/test-support/layout-config-helpers.mts';
+import {
+  resolveLayoutFor,
+  tsconfigTransform as layoutTransformFor,
+} from '../layout/test-support/layout-views.mts';
 
 afterAll(removeTemporaryRoots);
 
@@ -64,19 +67,19 @@ describe('explicit TypeScript project config', () => {
           onUnRecoverableConfigFileDiagnostic: () => undefined,
         },
       );
-      expect(parsed.errors).toEqual([]);
-      expect(parsed.fileNames).toEqual([path.join(root, 'src/email.ts')]);
-      expect(parsed.options.strict).toBe(true);
-      expect(parsed.options.noUncheckedIndexedAccess).toBeUndefined();
-      expect(parsed.options.allowJs).toBeUndefined();
-      expect(parsed.options.noEmit).toBe(true);
-      expect(ts.getPreEmitDiagnostics(ts.createProgram(parsed.fileNames, parsed.options))).toEqual(
-        [],
-      );
+      expect(parsed?.errors).toEqual([]);
+      expect(parsed?.fileNames).toEqual([path.join(root, 'src/email.ts')]);
+      expect(parsed?.options.strict).toBe(true);
+      expect(parsed?.options.noUncheckedIndexedAccess).toBeUndefined();
+      expect(parsed?.options.allowJs).toBeUndefined();
+      expect(parsed?.options.noEmit).toBe(true);
+      expect(
+        ts.getPreEmitDiagnostics(ts.createProgram(parsed?.fileNames ?? [], parsed?.options ?? {})),
+      ).toEqual([]);
       writeFileSync(path.join(root, 'src/email.ts'), 'export const invalid: string = 1;');
       expect(
         ts
-          .getPreEmitDiagnostics(ts.createProgram(parsed.fileNames, parsed.options))
+          .getPreEmitDiagnostics(ts.createProgram(parsed?.fileNames ?? [], parsed?.options ?? {}))
           .map(({ code }) => code),
       ).toEqual([2322]);
     },
@@ -118,19 +121,19 @@ describe('explicit TypeScript project config', () => {
       tools: { typescript: { project: 'config/types.json' } },
       exclude: ['legacy/**'],
     });
-    const config = JSON.parse(
+    const config = parseJson(
       layoutTransformFor('tsconfig.quality.json', layout)(
         '{}',
         path.join(root, '.nitpicker-config.json'),
       ),
     );
-    expect(config.exclude).toEqual([
+    expect(fieldOf(config, 'exclude')).toEqual([
       'config/node_modules',
       'config/bower_components',
       'config/jspm_packages',
       'output',
       'legacy/**',
     ]);
-    expect(config.references).toEqual([{ path: 'app', prepend: false }]);
+    expect(fieldOf(config, 'references')).toEqual([{ path: 'app', prepend: false }]);
   });
 });
