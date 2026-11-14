@@ -1,18 +1,26 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as noTaskOutlivingResource } from './no-task-outliving-resource.mjs';
+
+type Build = (body: string) => { filename: string; code: string };
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/a/adapters/x.ts';
-const using = (body) => ({
+const using = (body: string) => ({
   filename,
   code: `async function f() { await using db = open(); ${body} }`,
 });
-const closed = (body) => ({
+const closed = (body: string) => ({
   filename,
   code: `async function f() { const db = open(); try { ${body} } finally { await db.close(); } }`,
 });
-const invalid = (build, body, messageId) => ({ ...build(body), errors: [{ messageId }] });
-const worded = (build, body, message) => ({ ...build(body), errors: [{ message }] });
+const invalid = (build: Build, body: string, messageId: string) => ({
+  ...build(body),
+  errors: [{ messageId }],
+});
+const worded = (build: Build, body: string, message: string) => ({
+  ...build(body),
+  errors: [{ message }],
+});
 const ROUTE =
   ' An exception fits only when the task owns the resource or the resource lives as long as the process.';
 const AWAIT =
@@ -81,7 +89,7 @@ tester.run('no-task-outliving-resource', noTaskOutlivingResource, {
       'deferred',
     ),
     worded(
-      (body) => ({
+      (body: string) => ({
         filename,
         code: `async function run(d) {} async function f() { await using db = open(); ${body} }`,
       }),
@@ -90,7 +98,7 @@ tester.run('no-task-outliving-resource', noTaskOutlivingResource, {
     ),
     invalid(using, 'const task = (async () => { await db.query(); })();', 'unawaited'),
     invalid(
-      (body) => ({
+      (body: string) => ({
         filename,
         code: `const run = async (d) => {}; async function f() { using db = open(); ${body} }`,
       }),

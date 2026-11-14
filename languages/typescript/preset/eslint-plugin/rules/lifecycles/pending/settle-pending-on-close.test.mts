@@ -1,11 +1,12 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './settle-pending-on-close.mjs';
+import { type Build, factory, inClass, filename } from '../../../test-support/lifecycle-cases.mts';
 
 const tester = typescriptRuleTester();
-const filename = '/repo/src/main/features/a/adapters/x.ts';
-const inClass = (body) => ({ filename, code: `class Client { ${body} }` });
-const factory = (body) => ({ filename, code: `function createClient() { ${body} }` });
-const bad = (build, body) => ({ ...build(body), errors: [{ messageId: 'unsettled' }] });
+const bad = (build: Build, body: string) => ({
+  ...build(body),
+  errors: [{ messageId: 'unsettled' }],
+});
 
 const SEND =
   'send(id: string) { return new Promise((resolve, reject) => { this.pending.set(id, { resolve, reject }); }); }';

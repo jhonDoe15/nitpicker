@@ -1,13 +1,18 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-cleanup-skipped-on-failure.mjs';
+
+type Build = (body: string) => { filename: string; code: string };
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/a/adapters/x.ts';
-const inClass = (body, name = 'close') => ({
+const inClass = (body: string, name = 'close') => ({
   filename,
   code: `class Client { async ${name}() { ${body} } }`,
 });
-const invalid = (build, body, errors) => ({ ...build(body), errors });
+const invalid = (build: Build, body: string, errors: { messageId: string }[]) => ({
+  ...build(body),
+  errors,
+});
 const ROUTE = ' An exception fits only when a failed release should abort the remaining ones.';
 
 tester.run('no-cleanup-skipped-on-failure', rule, {
@@ -45,7 +50,7 @@ tester.run('no-cleanup-skipped-on-failure', rule, {
     ]),
     invalid(inClass, 'await this.a.close(); return this.b.close();', [{ messageId: 'sequential' }]),
     invalid(
-      (body) => ({ filename, code: `app.addHook('onClose', async () => { ${body} });` }),
+      (body: string) => ({ filename, code: `app.addHook('onClose', async () => { ${body} });` }),
       'await a.close(); await b.close();',
       [{ messageId: 'sequential' }],
     ),
@@ -63,12 +68,12 @@ tester.run('no-cleanup-skipped-on-failure', rule, {
     invalid(inClass, 'await this.a.close(); this.client = null;', [{ messageId: 'sequential' }]),
     invalid(inClass, 'await this.a?.close(); this.items.clear();', [{ messageId: 'sequential' }]),
     invalid(
-      (body) => inClass(body, 'onModuleDestroy'),
+      (body: string) => inClass(body, 'onModuleDestroy'),
       'await this.a.close(); await this.b.quit();',
       [{ messageId: 'sequential' }],
     ),
     invalid(
-      (body) => inClass(body, 'shutdown'),
+      (body: string) => inClass(body, 'shutdown'),
       'try { await a.close(); await b.destroy(); } finally { done(); }',
       [{ messageId: 'sequential' }],
     ),
