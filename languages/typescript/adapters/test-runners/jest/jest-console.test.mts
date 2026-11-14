@@ -7,7 +7,8 @@ import {
   createRunnerProjects,
   newConsoleOutput,
   runArea,
-} from '../test-support/runner-project.mjs';
+} from '../test-support/runner-project.mts';
+import type { PickLanguage } from '../area-options.mts';
 
 const projects = createRunnerProjects();
 
@@ -15,7 +16,12 @@ const COMMON_JS_PICK = PICK_JS_SOURCE.replace('export function', 'function').con
   'module.exports = { pick };\n',
 );
 
-const TYPESCRIPT = {
+type Language = PickLanguage & {
+  readonly jest: object;
+  readonly import: string;
+};
+
+const TYPESCRIPT: Language = {
   extension: 'ts',
   source: PICK_SOURCE,
   jest: { preset: 'ts-jest', testEnvironment: 'node', verbose: true, silent: true },
@@ -23,7 +29,7 @@ const TYPESCRIPT = {
   config: {},
 };
 
-const JAVASCRIPT = {
+const JAVASCRIPT: Language = {
   extension: 'js',
   source: COMMON_JS_PICK,
   jest: { testEnvironment: 'node', verbose: true, silent: true },
@@ -31,7 +37,11 @@ const JAVASCRIPT = {
   config: { 'nitpicker.config.json': JAVASCRIPT_PRESET },
 };
 
-function jestProject(language, tests, script = 'jest') {
+function jestProject(
+  language: Language,
+  tests: Readonly<Record<string, string>>,
+  script = 'jest',
+): string {
   return projects.project({
     'package.json': { name: 'p', private: true, scripts: { test: script }, jest: language.jest },
     'tsconfig.json': { compilerOptions: { strict: true, types: ['jest', 'node'] } },
@@ -46,7 +56,7 @@ function jestProject(language, tests, script = 'jest') {
   });
 }
 
-function pickTest(language, [first, second]) {
+function pickTest(language: Language, [first, second]: readonly [string, string]): string {
   return jestProject(language, {
     pick: [
       `it('one', () => {\n${first}  expect(pick(true)).toBe('yes');\n});`,

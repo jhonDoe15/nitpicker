@@ -1,7 +1,9 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createRunnerProjects } from '../test-support/runner-project.mjs';
+import { createRunnerProjects } from '../test-support/runner-project.mts';
 import { startV8Coverage } from './v8-coverage-run.mts';
+import { testOptions } from '../typed/test-options.mts';
+import type { Environment } from '../typed/runner-types.mts';
 
 const projects = createRunnerProjects();
 
@@ -9,16 +11,23 @@ afterEach(() => {
   projects.remove();
 });
 
-function coverageEnvironment(target, environment) {
+function coverageEnvironment(
+  target: string,
+  environment: Environment,
+): { readonly nodeArguments: readonly string[]; readonly compilerOptions: string | undefined } {
   const projectRoot = projects.project({
     'package.json': { name: 'p' },
     'tsconfig.json': { compilerOptions: { target } },
   });
-  const coverage = startV8Coverage({ projectRoot }, { environment });
+  const coverage = startV8Coverage(testOptions({ projectRoot }), {
+    environment,
+    arguments_: [],
+    nodeArguments: [],
+  });
   coverage.remove();
   return {
     nodeArguments: coverage.nodeArguments,
-    compilerOptions: coverage.environment.TS_NODE_COMPILER_OPTIONS,
+    compilerOptions: coverage.environment['TS_NODE_COMPILER_OPTIONS'],
   };
 }
 

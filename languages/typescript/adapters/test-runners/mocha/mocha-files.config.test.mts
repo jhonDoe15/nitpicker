@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { runEachFileOnce } from './mocha-files.config.mjs';
 
-function fakeMocha() {
-  const runs = [];
+function fakeMocha(): {
+  readonly FakeMocha: new (files: readonly string[]) => { run: (done: string) => string };
+  readonly runs: (readonly string[])[];
+} {
+  const runs: (readonly string[])[] = [];
   class FakeMocha {
-    constructor(files) {
+    files: readonly string[];
+
+    constructor(files: readonly string[]) {
       this.files = files;
     }
 
-    run(done) {
+    run(done: string): string {
       runs.push(this.files);
       return done;
     }

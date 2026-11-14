@@ -12,18 +12,77 @@ import {
   LINES_VARIABLE,
   MAX_CONTENT_LENGTH,
   RUNNER_VARIABLE,
-  captureNodeTest,
-  recordConsole,
+  captureNodeTest as untypedCaptureNodeTest,
+  recordConsole as untypedRecordConsole,
 } from './loaded-sources.cjs';
+import { fieldOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 
-const PLACE = { file: '/p/test/a.test.js', test: 'works' };
+type Place = { readonly file: string; readonly test: string };
+type WrittenLine = { readonly file: string; readonly test: string; readonly content: string };
+type HookContext = {
+  readonly fullName: string;
+  readonly after?: (step: () => void) => unknown;
+};
+type Hook = (context?: HookContext) => unknown;
+type Hooks = { after: Hook[]; afterEach: Hook[]; beforeEach: Hook[] };
+type CaptureOptions = {
+  readonly environment?: Record<string, string>;
+  readonly script?: string;
+  readonly testRunner?: true;
+  readonly processId?: number;
+  readonly parentId?: number;
+  readonly inProcess?: true;
+  readonly testApi?: () => unknown;
+  readonly target?: Console;
+  readonly events?: EventEmitter;
+};
+type NodeTestResource = AsyncResource & {
+  name?: string;
+  entryFile?: string | undefined;
+  parent?: AsyncResource;
+  hookType?: string;
+  loc?: { readonly file: string };
+};
+
+function recordConsole(
+  linesPath: string,
+  locate: () => Place,
+  options: { readonly target: Console; readonly events: EventEmitter; readonly files?: object },
+): void {
+  Reflect.apply(untypedRecordConsole, undefined, [linesPath, locate, options]);
+}
+
+function captureNodeTest(options: CaptureOptions): { readonly capturing: boolean } {
+  const result: unknown = Reflect.apply(untypedCaptureNodeTest, undefined, [options]);
+  return { capturing: fieldOf(result, 'capturing') === true };
+}
+
+function resource(fields: Partial<NodeTestResource>): NodeTestResource {
+  return Object.assign(new AsyncResource('Test'), fields);
+}
+
+const PLACE: Place = { file: '/p/test/a.test.js', test: 'works' };
+
+function linesIn(linesPath: string): WrittenLine[] {
+  return readFileSync(linesPath, 'utf8')
+    .split('\n')
+    .filter((line) => line !== '')
+    .map((line) => {
+      const parsed = parseJson(line);
+      return {
+        file: textOf(fieldOf(parsed, 'file')),
+        test: textOf(fieldOf(parsed, 'test')),
+        content: textOf(fieldOf(parsed, 'content')),
+      };
+    });
+}
 
 describe('recording console calls in a test process', () => {
-  let directory;
-  let linesPath;
-  let printed;
-  let target;
-  let events;
+  let directory: string;
+  let linesPath: string;
+  let printed: PassThrough;
+  let target: Console;
+  let events: EventEmitter;
 
   beforeEach(() => {
     directory = mkdtempSync(path.join(tmpdir(), 'console-lines-'));
@@ -38,15 +97,12 @@ describe('recording console calls in a test process', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  function record(locate = () => PLACE) {
+  function record(locate: () => Place = () => PLACE): void {
     recordConsole(linesPath, locate, { target, events });
   }
 
-  function linesWritten() {
-    return readFileSync(linesPath, 'utf8')
-      .split('\n')
-      .filter((line) => line !== '')
-      .map((line) => JSON.parse(line));
+  function linesWritten(): WrittenLine[] {
+    return linesIn(linesPath);
   }
 
   it('records error, warn, trace and a failed assert once each, as Node prints them', () => {
@@ -91,7 +147,7 @@ describe('recording console calls in a test process', () => {
 
     target.warn('a'.repeat(5000));
 
-    expect(linesWritten()[0].content).toHaveLength(MAX_CONTENT_LENGTH);
+    expect(linesWritten()[0]?.content).toHaveLength(MAX_CONTENT_LENGTH);
   });
 
   it('writes its line past a test that replaces the public fs functions', () => {
@@ -106,13 +162,16 @@ describe('recording console calls in a test process', () => {
     expect(linesWritten().map(({ content }) => content)).toEqual(['careful']);
   });
 
-  function mockedFiles(identity) {
-    const appended = [];
+  function mockedFiles(identity: { mocked: boolean }): {
+    readonly appended: [string, string][];
+    readonly files: object;
+  } {
+    const appended: [string, string][] = [];
     const files = {
       ...fs,
-      fstatSync: (descriptor) =>
+      fstatSync: (descriptor: number) =>
         identity.mocked ? { dev: 8675309, ino: 3 } : fs.fstatSync(descriptor),
-      appendInChild: (file, text) => appended.push([file, text]),
+      appendInChild: (file: string, text: string) => appended.push([file, text]),
     };
     return { appended, files };
   }
@@ -142,7 +201,7 @@ describe('recording console calls in a test process', () => {
     target.warn('mocked until exit');
     events.emit('exit');
 
-    expect(appended.map(([file, text]) => [file, JSON.parse(text).content])).toEqual([
+    expect(appended.map(([file, text]) => [file, fieldOf(parseJson(text), 'content')])).toEqual([
       [linesPath, 'mocked until exit'],
     ]);
   });
@@ -170,23 +229,26 @@ describe('recording console calls in a test process', () => {
   });
 });
 
-function fakeTestApi() {
-  const hooks = { after: [], afterEach: [], beforeEach: [] };
+function fakeTestApi(): {
+  readonly hooks: Hooks;
+  readonly api: Record<keyof Hooks, (hook: Hook) => unknown>;
+} {
+  const hooks: Hooks = { after: [], afterEach: [], beforeEach: [] };
   return {
     hooks,
     api: {
-      after: (hook) => hooks.after.push(hook),
-      afterEach: (hook) => hooks.afterEach.push(hook),
-      beforeEach: (hook) => hooks.beforeEach.push(hook),
+      after: (hook: Hook) => hooks.after.push(hook),
+      afterEach: (hook: Hook) => hooks.afterEach.push(hook),
+      beforeEach: (hook: Hook) => hooks.beforeEach.push(hook),
     },
   };
 }
 
 describe('the node:test console capture', () => {
-  let directory;
-  let linesPath;
-  let target;
-  let testApi;
+  let directory: string;
+  let linesPath: string;
+  let target: Console;
+  let testApi: ReturnType<typeof fakeTestApi>;
 
   beforeEach(() => {
     directory = mkdtempSync(path.join(tmpdir(), 'node-test-capture-'));
@@ -199,7 +261,10 @@ describe('the node:test console capture', () => {
     rmSync(directory, { recursive: true, force: true });
   });
 
-  function capture(environment, processIds = { processId: 7, parentId: 5 }) {
+  function capture(
+    environment: Record<string, string>,
+    processIds = { processId: 7, parentId: 5 },
+  ): { readonly capturing: boolean } {
     return captureNodeTest({
       environment: { [LINES_VARIABLE]: linesPath, ...environment },
       script: 'test/a.test.js',
@@ -210,12 +275,12 @@ describe('the node:test console capture', () => {
     });
   }
 
-  function placesWritten() {
-    return readFileSync(linesPath, 'utf8')
-      .split('\n')
-      .filter((line) => line !== '')
-      .map((line) => JSON.parse(line))
-      .map(({ file, test, content }) => [path.relative(process.cwd(), file), test, content]);
+  function placesWritten(): string[][] {
+    return linesIn(linesPath).map(({ file, test, content }) => [
+      path.relative(process.cwd(), file),
+      test,
+      content,
+    ]);
   }
 
   it('names the runner process to its test files and records nothing in it', () => {
@@ -234,10 +299,10 @@ describe('the node:test console capture', () => {
     });
 
     target.warn('while loading');
-    testApi.hooks.beforeEach[0]({ fullName: 'pick > answers' });
+    testApi.hooks.beforeEach[0]?.({ fullName: 'pick > answers' });
     target.error('inside');
-    testApi.hooks.afterEach[0]({ fullName: 'pick > answers' });
-    testApi.hooks.after[0]();
+    testApi.hooks.afterEach[0]?.({ fullName: 'pick > answers' });
+    testApi.hooks.after[0]?.();
     target.warn('in a later after hook');
     await new Promise((resolve) => {
       setImmediate(resolve);
@@ -253,19 +318,22 @@ describe('the node:test console capture', () => {
 
   it('keeps the test name through later afterEach hooks and records until the last root after hook', async () => {
     capture({ NODE_TEST_CONTEXT: 'child-v8', [RUNNER_VARIABLE]: '5' });
-    const steps = [];
-    const context = { fullName: 'pick > answers', after: (step) => steps.push(step) };
+    const steps: (() => void)[] = [];
+    const context = {
+      fullName: 'pick > answers',
+      after: (step: () => void) => steps.push(step),
+    };
 
-    testApi.hooks.beforeEach[0](context);
-    testApi.hooks.afterEach[0](context);
+    testApi.hooks.beforeEach[0]?.(context);
+    testApi.hooks.afterEach[0]?.(context);
     target.warn('in the project afterEach');
-    steps.shift()();
-    testApi.hooks.after[0](context);
+    steps.shift()?.();
+    testApi.hooks.after[0]?.(context);
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
     target.warn('in an async root after hook');
-    steps.shift()();
+    steps.shift()?.();
     await new Promise((resolve) => {
       setImmediate(resolve);
     });
@@ -280,9 +348,6 @@ describe('the node:test console capture', () => {
   it('records under the node:test resource a call runs in when every file runs in the runner', async () => {
     const environment = { [LINES_VARIABLE]: linesPath };
     const file = path.resolve('test/a.test.js');
-    function resource(fields) {
-      return Object.assign(new AsyncResource('Test'), fields);
-    }
     expect(
       captureNodeTest({
         environment,
@@ -336,7 +401,7 @@ describe('the node:test console capture', () => {
 
   it('records the loading of each file when the runner loads the preload inside its root test', async () => {
     const environment = { [LINES_VARIABLE]: linesPath };
-    const root = Object.assign(new AsyncResource('Test'), { name: '<root>', entryFile: null });
+    const root = resource({ name: '<root>', entryFile: undefined });
     const loadTimeTimer = root.runInAsyncScope(() => {
       captureNodeTest({
         environment,
@@ -348,7 +413,7 @@ describe('the node:test console capture', () => {
       });
       root.entryFile = path.resolve('test/a.test.js');
       target.warn('while loading a');
-      const timer = new Promise((resolve) => {
+      const timer = new Promise<void>((resolve) => {
         setTimeout(() => {
           target.warn('timer from loading a');
           resolve();
@@ -367,7 +432,7 @@ describe('the node:test console capture', () => {
     ]);
   });
 
-  it.each([
+  it.each<[string, boolean]>([
     ['--test --experimental-test-isolation=none ', true],
     ['--test --test-isolation none ', true],
     ['--test --max-old-space-size=100 --experimental-test-isolation=none', true],
@@ -393,10 +458,10 @@ describe('the node:test console capture', () => {
   ])(
     'leaves a process a test started alone, and every process without the lines file or a runner',
     (environment) => {
-      const { warn } = target;
+      const warn: unknown = Reflect.get(target, 'warn');
 
       expect(capture(environment)).toEqual({ capturing: false });
-      expect(target.warn).toBe(warn);
+      expect(Reflect.get(target, 'warn')).toBe(warn);
       expect(testApi.hooks.beforeEach).toEqual([]);
     },
   );

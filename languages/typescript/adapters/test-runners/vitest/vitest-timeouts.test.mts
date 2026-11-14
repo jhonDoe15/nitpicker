@@ -2,8 +2,10 @@ import { existsSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { createRunnerProjects } from '../test-support/runner-project.mjs';
+import { createRunnerProjects } from '../test-support/runner-project.mts';
 import { runVitest } from './vitest.mts';
+import { testOptions } from '../typed/test-options.mts';
+import type { TestRun } from '../typed/runner-types.mts';
 
 const projects = createRunnerProjects();
 
@@ -12,14 +14,19 @@ afterEach(() => {
   projects.remove();
 });
 
-function runProject(files, timeouts) {
+function runProject(
+  files: Readonly<Record<string, unknown>>,
+  timeouts?: object,
+): { readonly root: string; readonly run: TestRun } {
   const root = projects.project({ 'package.json': { type: 'module' }, ...files });
   const policy = path.join(root, 'policy.json');
   writeFileSync(policy, JSON.stringify({ tools: { tests: { timeouts } } }));
   vi.stubEnv('NITPICKER_POLICY', policy);
   return {
     root,
-    run: runVitest({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT, policyRoot: PACKAGE_ROOT }),
+    run: runVitest(
+      testOptions({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT, policyRoot: PACKAGE_ROOT }),
+    ),
   };
 }
 
@@ -54,8 +61,8 @@ expect(task.timeout).toBe(6000); });`,
       },
     );
     expect(
-      run.report.testResults.flatMap((result) =>
-        result.assertionResults.flatMap((assertion) => assertion.failureMessages),
+      (run.report.testResults ?? []).flatMap((result) =>
+        (result.assertionResults ?? []).flatMap((assertion) => assertion.failureMessages ?? []),
       ),
     ).toEqual([]);
     expect([run.failed, run.report.numTotalTests]).toEqual([false, 2]);

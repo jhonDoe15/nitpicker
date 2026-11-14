@@ -1,75 +1,27 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  JAVASCRIPT_PRESET,
-  PICK_JS_SOURCE,
-  PICK_SOURCE,
-  consoleOutput,
-  createRunnerProjects,
-  newConsoleOutput,
-} from '../test-support/runner-project.mjs';
+import { describe, expect, it } from 'vitest';
+import { consoleOutput } from '../test-support/runner-project.mts';
+import { LANGUAGES, createConsoleSuite } from '../test-support/console-suite.mts';
 
-const projects = createRunnerProjects();
-
-const LANGUAGES = [
-  { extension: 'ts', source: PICK_SOURCE, config: {} },
-  {
-    extension: 'js',
-    source: PICK_JS_SOURCE,
-    config: { 'nitpicker.config.json': JAVASCRIPT_PRESET },
-  },
-];
-
-const HEADER = [
-  "import { after, afterEach, before, describe, it, mock } from 'node:test';",
-  "import assert from 'node:assert/strict';",
-];
-
-function nodeTestProject(files, script = 'node --test') {
-  return projects.project({
-    'package.json': { name: 'p', type: 'module', scripts: { test: script } },
-    'src/main/pick.js': PICK_JS_SOURCE,
-    ...files,
-  });
-}
-
-function pickTest({ extension, source, config }, [first, second]) {
-  return projects.project({
-    'package.json': { name: 'p', type: 'module', scripts: { test: 'node --test' } },
-    [`src/main/pick.${extension}`]: source,
-    ...config,
-    [`test/pick.test.${extension}`]: [
-      ...HEADER,
-      `import { pick } from '../src/main/pick.${extension}';`,
-      `it('one', () => {\n${first}  assert.equal(pick(true), 'yes');\n});`,
-      `it('two', () => {\n${second}  assert.equal(pick(false), 'no');\n});`,
-      '',
-    ].join('\n'),
-  });
-}
-
-function testFile(lines) {
-  return [...HEADER, "import { pick } from '../src/main/pick.js';", ...lines, ''].join('\n');
-}
-
-afterEach(() => {
-  projects.remove();
+const suite = createConsoleSuite({
+  header: [
+    "import { after, afterEach, before, describe, it, mock } from 'node:test';",
+    "import assert from 'node:assert/strict';",
+  ],
+  defaultScript: 'node --test',
+  pickTestLines: (first, second) => [
+    `it('one', () => {\n${first}  assert.equal(pick(true), 'yes');\n});`,
+    `it('two', () => {\n${second}  assert.equal(pick(false), 'no');\n});`,
+  ],
 });
+const { testFile, project: nodeTestProject } = suite;
 
 describe('test console output on a node:test project', () => {
   it.each(LANGUAGES)(
     'reports only the $extension output the head prints and the base does not',
     async (language) => {
-      const old = "  console.warn('old warning about the cart');\n";
-      const base = pickTest(language, [old, '']);
-      const head = pickTest(language, ['', `${old}  console.error('brand new error');\n`]);
-
-      expect(await newConsoleOutput({ base, head })).toEqual([
-        [
-          'test-console-output',
-          `test/pick.test.${language.extension}`,
-          '"brand new error" (test "two")',
-        ],
-      ]);
+      expect(await suite.newHeadOutput(language, '  ')).toEqual(
+        suite.brandNewError(language, 'two'),
+      );
     },
   );
 

@@ -21,8 +21,8 @@ it('writes valid setup imports when the install directory contains an apostrophe
 });
 
 it('passes configured project timers to the Vitest worker and omits native hooks', () => {
-  const configured = [];
-  const configure = (settings) => {
+  const configured: unknown[] = [];
+  const configure = (settings: unknown) => {
     configured.push(settings);
   };
   applyVitestTimeouts({}, { file: '/repo/test/a.test.mjs', root: '/repo' }, configure);

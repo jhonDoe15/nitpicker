@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { formatTestFailures } from '../../quality-areas/reporting/test-report.mts';
 import { loadFailureReport, reportFromMocha } from './mocha-report.mts';
+import type { TestFileResult, TestReport } from '../typed/runner-types.mts';
+
+function resultsOf(report: TestReport | undefined): readonly TestFileResult[] {
+  return report?.testResults ?? [];
+}
 
 const passed = {
   title: 'adds',
@@ -36,25 +41,25 @@ describe('the Mocha report', () => {
 
     expect(report.numTotalTests).toBe(3);
     expect(report.numFailedTests).toBe(2);
-    expect(report.testResults.map(({ name, status }) => [name, status])).toEqual([
+    expect(resultsOf(report).map(({ name, status }) => [name, status])).toEqual([
       ['/p/test/a.js', 'failed'],
       ['/p/test/b.js', 'failed'],
     ]);
-    expect(report.testResults[0].assertionResults[1]).toEqual({
+    expect(resultsOf(report)[0]?.assertionResults?.[1]).toEqual({
       fullName: 'math subtracts',
       title: 'subtracts',
       status: 'failed',
       failureMessages: ['AssertionError: expected 1\n    at x'],
       duration: 1,
     });
-    expect(report.testResults[1].assertionResults[0].failureMessages).toEqual(['no db']);
+    expect(resultsOf(report)[1]?.assertionResults?.[0]?.failureMessages).toEqual(['no db']);
   });
 
   it('marks pending tests as neither passed nor failed', () => {
     const skipped = { ...passed, title: 'later', fullTitle: 'math later' };
     const report = reportFromMocha({ tests: [skipped], failures: [], pending: [skipped] }, '/p');
 
-    expect(report.testResults[0].assertionResults[0].status).toBe('pending');
+    expect(resultsOf(report)[0]?.assertionResults?.[0]?.status).toBe('pending');
     expect(report.numFailedTests).toBe(0);
   });
 
@@ -71,10 +76,10 @@ describe('the Mocha report', () => {
 
     expect(report.numFailedTests).toBe(2);
     expect(
-      report.testResults.map(({ name, status, assertionResults }) => [
+      resultsOf(report).map(({ name, status, assertionResults }) => [
         name,
         status,
-        assertionResults.map((assertion) => assertion.status),
+        assertionResults?.map((assertion) => assertion.status),
       ]),
     ).toEqual([
       ['/p/test/a.js', 'passed', ['passed', 'pending']],
@@ -135,7 +140,7 @@ describe('the report of a Mocha run that stopped while loading the test files', 
   });
 
   it('fails the first test file when the error names none', () => {
-    expect(loadFailureReport('Exception during run: Error: boom', files)?.testResults[0].name).toBe(
+    expect(resultsOf(loadFailureReport('Exception during run: Error: boom', files))[0]?.name).toBe(
       '/p/test/a.test.ts',
     );
   });

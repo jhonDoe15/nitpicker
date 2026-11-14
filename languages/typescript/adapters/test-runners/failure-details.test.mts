@@ -1,16 +1,18 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { PICK_SOURCE, runArea, createRunnerProjects } from './test-support/runner-project.mjs';
+import { PICK_SOURCE, runArea, createRunnerProjects } from './test-support/runner-project.mts';
 
 const projects = createRunnerProjects();
 
-const ASSERTIONS = {
+const RUNNER_NAMES = ['vitest', 'jest', 'mocha', 'node --test'] as const;
+
+const ASSERTIONS: Record<(typeof RUNNER_NAMES)[number], string> = {
   vitest: "import { expect, it } from 'vitest';\n",
   jest: '',
   mocha: "import assert from 'node:assert/strict';\n",
   'node --test': "import { it } from 'node:test';\nimport assert from 'node:assert/strict';\n",
 };
 
-function failingProject(runner) {
+function failingProject(runner: (typeof RUNNER_NAMES)[number]): string {
   const usesExpect = runner === 'vitest' || runner === 'jest';
   const check = usesExpect
     ? "  expect({ kind: pick(true) }).toEqual({ kind: 'no' });"
@@ -41,7 +43,7 @@ afterEach(() => {
   projects.remove();
 });
 
-const EXPECTED_LINES = {
+const EXPECTED_LINES: Record<(typeof RUNNER_NAMES)[number], string[]> = {
   vitest: [
     "  test/pick.test.ts:5 > picks: AssertionError: expected { kind: 'yes' } to deeply equal { kind: 'no' }",
     '    expected: { "kind": "no", }',
@@ -65,7 +67,7 @@ const EXPECTED_LINES = {
 };
 
 describe('a failing equality assertion', () => {
-  it.each(Object.keys(ASSERTIONS))(
+  it.each(RUNNER_NAMES)(
     'names the line of the assertion, expected and received with %s',
     async (runner) => {
       const findings = await runArea('coverage', failingProject(runner));
@@ -102,9 +104,9 @@ describe('vitest tests that share a name', () => {
       ].join('\n'),
     });
 
-    const [{ message }] = await runArea('coverage', project);
+    const [finding] = await runArea('coverage', project);
 
-    expect(message.split('\n')).toEqual([
+    expect(finding?.message.split('\n')).toEqual([
       '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
       '  test/pick.test.ts:4 > picks: Error: boom',
       ...EXPECTED_LINES.vitest.map((line) => line.replace(':5 >', ':7 >')),

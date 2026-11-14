@@ -5,10 +5,14 @@ import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { testTimeoutMs } from '../test-run.mts';
 import { TEST_CONSOLE_REPORT_PATH } from '../../quality-areas/reporting/test-report.mts';
 import { consoleProducerPath } from '../test-console-run.mts';
-import { createRunnerProjects } from '../test-support/runner-project.mjs';
+import { createRunnerProjects } from '../test-support/runner-project.mts';
+import { areaOptions } from '../area-options.mts';
 import { coverageArguments } from './jest-coverage.mts';
 import { jestArguments, runJest } from './jest.mts';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import type { RunnerCommand } from '../typed/runner-types.mts';
+import type { QualityAreaOptions } from '../../quality-areas/typed/area-types.mts';
+import { parseJson, fieldOf } from '../../../../../shared/values/readers.mts';
+import { linkSentence } from '../typed/link-sentence.mts';
 
 const projects = createRunnerProjects();
 
@@ -36,7 +40,7 @@ const PICK_JS = [
   '',
 ].join('\n');
 
-function launchedProject(files) {
+function launchedProject(files: Readonly<Record<string, unknown>>): string {
   return projects.project(
     {
       'package.json': { name: 'p', private: true, scripts: { test: 'react-scripts test' } },
@@ -52,17 +56,11 @@ function launchedProject(files) {
   );
 }
 
-function optionsFor(root) {
-  return {
-    projectRoot: root,
-    liveProjectRoot: root,
-    policyRoot: PACKAGE_ROOT,
-    kind: 'coverage',
-    analyzerName: 'coverage',
-  };
+function optionsFor(root: string): QualityAreaOptions {
+  return { ...areaOptions('coverage', root), liveProjectRoot: root };
 }
 
-function command(launcher, tokens) {
+function command(launcher: string | undefined, tokens: readonly string[]): RunnerCommand {
   return { environment: {}, nodeArguments: [], arguments_: tokens, launcher };
 }
 
@@ -85,7 +83,7 @@ describe('the Jest command line', () => {
       },
       'reporter.js': [
         'module.exports = class {',
-        "  onRunComplete() { require('node:fs').writeFileSync(`${__dirname}/reported`, ''); }",
+        "  onRunComplete() { require('node:fs').writeFileSync(require('node:path').join(__dirname, 'reported'), ''); }",
         '};',
       ].join('\n'),
       'src/value.js': 'exports.value = () => 42;',
@@ -143,7 +141,10 @@ describe('a Jest run that a Create React App script starts', () => {
 
     expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
     expect(
-      JSON.parse(readFileSync(path.join(root, TEST_CONSOLE_REPORT_PATH), 'utf8')).entries,
+      fieldOf(
+        parseJson(readFileSync(path.join(root, TEST_CONSOLE_REPORT_PATH), 'utf8')),
+        'entries',
+      ),
     ).toEqual([
       {
         file: path.join(root, 'test/pick.test.js'),
@@ -155,7 +156,7 @@ describe('a Jest run that a Create React App script starts', () => {
       readFileSync(path.join(root, ARGV_FILE), 'utf8')
         .trim()
         .split('\n')
-        .map((line) => JSON.parse(line)),
+        .map((line) => parseJson(line)),
     ).toEqual([
       ['test', '--runInBand', '--showConfig', '--watchAll=false'],
       [
@@ -164,7 +165,7 @@ describe('a Jest run that a Create React App script starts', () => {
         ...['--json', `--outputFile=${path.join(root, '.nitpicker-diff-jest-report.json')}`],
         ...[
           '--testLocationInResults',
-          `--testTimeout=${String(testTimeoutMs())}`,
+          `--testTimeout=${String(testTimeoutMs(undefined))}`,
           '--restoreMocks',
         ],
         ...['--reporters=default', '--silent=false', '--verbose=false'],

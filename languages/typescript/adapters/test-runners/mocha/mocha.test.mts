@@ -7,11 +7,13 @@ import {
   rulesOf,
   runArea,
   createRunnerProjects,
-} from '../test-support/runner-project.mjs';
+} from '../test-support/runner-project.mts';
+
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 
 const projects = createRunnerProjects();
 
-function mochaProject(files, test = 'mocha') {
+function mochaProject(files: Readonly<Record<string, unknown>>, test = 'mocha'): string {
   return projects.project({
     'package.json': { name: 'p', type: 'module', scripts: { test } },
     'src/main/pick.ts': PICK_SOURCE,
@@ -19,7 +21,7 @@ function mochaProject(files, test = 'mocha') {
   });
 }
 
-const testFile = (expected) =>
+const testFile = (expected: string) =>
   `import assert from 'node:assert/strict';\nimport { pick } from '../src/main/pick.ts';\ndescribe('pick', () => {\n  it('answers', () => {\n    assert.equal(pick(true), '${expected}');\n  });\n});\n`;
 
 afterEach(() => {
@@ -45,7 +47,9 @@ describe('coverage on a Mocha project', () => {
     );
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts:5 > pick answers: AssertionError/u);
+    expect(findings[0]?.message).toMatch(
+      /^.*test\/pick\.test\.ts:5 > pick answers: AssertionError.*$/su,
+    );
   });
 
   it('names the test file that Mocha could not load', async () => {
@@ -83,11 +87,17 @@ describe('coverage on a Mocha project', () => {
       ),
     );
 
-    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(1);
+    expect(
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
+    ).toBe(1);
   });
 
   it('loads each test file once in a parallel run whose config also lists the specs', async () => {
-    const loads = (name) =>
+    const loads = (name: string) =>
       [
         "import { appendFileSync } from 'node:fs';",
         `appendFileSync(new URL('../loads.log', import.meta.url), '${name}\\n');`,
@@ -107,7 +117,11 @@ describe('coverage on a Mocha project', () => {
 
     expect([
       readFileSync(path.join(root, 'loads.log'), 'utf8').split('\n').sort(),
-      findings.find(({ identity }) => identity === 'test-count')?.metric.value,
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
     ]).toEqual([['', 'a', 'b'], 2]);
   });
 

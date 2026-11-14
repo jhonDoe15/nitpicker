@@ -1,9 +1,22 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { writeV8Coverage } from './v8-coverage.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { fieldOf, fieldsOf, parseJson } from '../../../../../shared/values/readers.mts';
+import type { FunctionCoverage } from './executed-script.mts';
+import { temporaryRoots } from '../../test-support/temporary-roots.mts';
+
+type ScriptCoverage = { readonly url: string; readonly functions: readonly FunctionCoverage[] };
+type Project = {
+  readonly root: string;
+  readonly covered: string;
+  readonly untouched: string;
+  readonly view: string;
+  readonly kinds: string;
+};
 
 const SOURCE = [
   'export function pick(flag: boolean): number {',
@@ -15,15 +28,9 @@ const SOURCE = [
   '',
 ].join('\n');
 
-const roots = [];
+const roots = temporaryRoots();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function scriptCoverage(file, count) {
+function scriptCoverage(file: string, count: number): ScriptCoverage {
   const start = SOURCE.indexOf('function');
   const end = SOURCE.lastIndexOf('}') + 1;
   const elseStart = SOURCE.indexOf('  return 2');
@@ -57,18 +64,23 @@ const KINDS = [
   '',
 ].join('\n');
 
-const mockedScript = (file) => ({
-  url: `${pathToFileURL(file).href}?node-test-mock=0`,
-  functions: [
-    {
-      functionName: '',
-      isBlockCoverage: true,
-      ranges: [{ startOffset: 0, endOffset: 1, count: 1 }],
-    },
-  ],
-});
+function mockedScript(file: string): ScriptCoverage {
+  return {
+    url: `${pathToFileURL(file).href}?node-test-mock=0`,
+    functions: [
+      {
+        functionName: '',
+        isBlockCoverage: true,
+        ranges: [{ startOffset: 0, endOffset: 1, count: 1 }],
+      },
+    ],
+  };
+}
 
-function projectWith(processes, extraScripts = () => []) {
+function projectWith(
+  processes: readonly number[],
+  extraScripts: (covered: string) => readonly ScriptCoverage[] = () => [],
+): Project {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-v8-'));
   roots.push(root);
   mkdirSync(path.join(root, 'src'));
@@ -100,14 +112,15 @@ function projectWith(processes, extraScripts = () => []) {
   };
 }
 
-async function coverageOf(project) {
+async function coverageOf(project: Project): Promise<unknown> {
   const outputFile = path.join(project.root, 'reports/coverage-final.json');
   await writeV8Coverage({
     coverageDirectory: path.join(project.root, 'v8'),
     sourceFiles: [project.covered, project.untouched, project.view, project.kinds],
     outputFile,
+    sourcesDirectory: undefined,
   });
-  return JSON.parse(readFileSync(outputFile, 'utf8'));
+  return parseJson(readFileSync(outputFile, 'utf8'));
 }
 
 describe('V8 coverage as istanbul coverage', () => {
@@ -116,8 +129,8 @@ describe('V8 coverage as istanbul coverage', () => {
 
     const coverage = await coverageOf(project);
 
-    expect(coverage[project.covered].b).toEqual({ 0: [1, 0] });
-    expect(coverage[project.covered].branchMap[0]).toEqual({
+    expect(fieldAt(coverage, project.covered, 'b')).toEqual({ 0: [1, 0] });
+    expect(fieldAt(coverage, project.covered, 'branchMap', '0')).toEqual({
       loc: { start: { line: 2, column: 2 }, end: { line: 4, column: null } },
       type: 'if',
       locations: [
@@ -133,8 +146,8 @@ describe('V8 coverage as istanbul coverage', () => {
 
     const coverage = await coverageOf(project);
 
-    expect(coverage[project.covered].b).toEqual({ 0: [3, 0] });
-    expect(coverage[project.covered].f).toEqual({ 0: 3 });
+    expect(fieldAt(coverage, project.covered, 'b')).toEqual({ 0: [3, 0] });
+    expect(fieldAt(coverage, project.covered, 'f')).toEqual({ 0: 3 });
   });
 
   it('reports a source file no test loaded as uncovered and skips files node cannot run', async () => {
@@ -142,8 +155,8 @@ describe('V8 coverage as istanbul coverage', () => {
 
     const coverage = await coverageOf(project);
 
-    expect(coverage[project.untouched].b).toEqual({ 0: [0, 0] });
-    expect(Object.keys(coverage)).not.toContain(project.view);
+    expect(fieldAt(coverage, project.untouched, 'b')).toEqual({ 0: [0, 0] });
+    expect(Object.keys(fieldsOf(coverage))).not.toContain(project.view);
   });
 
   it('maps a source file no test loaded back through the transform when it has an enum', async () => {
@@ -152,15 +165,21 @@ describe('V8 coverage as istanbul coverage', () => {
     const coverage = await coverageOf(project);
 
     expect(
-      Object.values(coverage[project.kinds].fnMap).map(({ name, line }) => [name, line]),
+      Object.values(fieldsOf(fieldAt(coverage, project.kinds, 'fnMap'))).map((entry) => [
+        fieldOf(entry, 'name'),
+        fieldOf(entry, 'line'),
+      ]),
     ).toEqual([
       ['(anonymous_0)', 1],
       ['kindName', 4],
     ]);
     expect(
-      Object.values(coverage[project.kinds].branchMap).map(({ type, line }) => [type, line]),
+      Object.values(fieldsOf(fieldAt(coverage, project.kinds, 'branchMap'))).map((entry) => [
+        fieldOf(entry, 'type'),
+        fieldOf(entry, 'line'),
+      ]),
     ).toEqual([['cond-expr', 5]]);
-    expect(coverage[project.kinds].b).toEqual({ 0: [0, 0] });
+    expect(fieldAt(coverage, project.kinds, 'b')).toEqual({ 0: [0, 0] });
   });
 
   it('skips the script node:test generates for a mocked module', async () => {
@@ -168,7 +187,7 @@ describe('V8 coverage as istanbul coverage', () => {
 
     const coverage = await coverageOf(project);
 
-    expect(coverage[project.covered].b).toEqual({ 0: [1, 0] });
-    expect(coverage[project.covered].f).toEqual({ 0: 1 });
+    expect(fieldAt(coverage, project.covered, 'b')).toEqual({ 0: [1, 0] });
+    expect(fieldAt(coverage, project.covered, 'f')).toEqual({ 0: 1 });
   });
 });

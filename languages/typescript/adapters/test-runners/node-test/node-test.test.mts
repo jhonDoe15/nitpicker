@@ -5,7 +5,9 @@ import {
   rulesOf,
   runArea,
   createRunnerProjects,
-} from '../test-support/runner-project.mjs';
+} from '../test-support/runner-project.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 
 const projects = createRunnerProjects();
 
@@ -63,10 +65,13 @@ const CODES_JS = [
   '',
 ].join('\n');
 
-const changedBranchMessages = (findings) =>
-  findings.filter(({ rule }) => rule === 'changed-branch-coverage').map(({ message }) => message);
+function changedBranchMessages(findings: readonly Finding[]): string[] {
+  return findings
+    .filter(({ rule }) => rule === 'changed-branch-coverage')
+    .map(({ message }) => message);
+}
 
-function nodeTestProject(files, test = 'node --test') {
+function nodeTestProject(files: Readonly<Record<string, unknown>>, test = 'node --test'): string {
   return projects.project({
     'package.json': { name: 'p', type: 'module', scripts: { test } },
     'src/main/pick.ts': PICK_SOURCE,
@@ -90,9 +95,13 @@ describe('coverage on a node:test project', () => {
     expect(coverage.find(({ rule }) => rule === 'changed-branch-coverage')?.message).toMatch(
       UNCOVERED_ELSE,
     );
-    expect(crap.find(({ identity }) => identity.endsWith(':branchCoverage'))?.metric.value).toBe(
-      50,
-    );
+    expect(
+      fieldAt(
+        crap.find(({ identity }) => identity.endsWith(':branchCoverage')),
+        'metric',
+        'value',
+      ),
+    ).toBe(50);
   });
 
   it('names the failing test and the file that could not load', async () => {
@@ -104,9 +113,9 @@ describe('coverage on a node:test project', () => {
     const findings = await runArea('coverage', root);
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts:5 > says no: /u);
-    expect(findings[0].message).toMatch(
-      /test\/broken\.test\.ts > could not run: Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package 'not-installed'/u,
+    expect(findings[0]?.message).toMatch(/^.*test\/pick\.test\.ts:5 > says no: .*$/su);
+    expect(findings[0]?.message).toMatch(
+      /^.*test\/broken\.test\.ts > could not run: Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package 'not-installed'.*$/su,
     );
   });
 
@@ -122,7 +131,13 @@ describe('coverage on a node:test project', () => {
     const findings = await runArea('coverage', root);
 
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
-    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(2);
+    expect(
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
+    ).toBe(2);
   });
 
   it('maps the coverage of code tsx rewrote back to the TypeScript file', async () => {
@@ -147,7 +162,13 @@ describe('coverage on a node:test project', () => {
 
     const findings = await runArea('coverage', root);
 
-    expect(findings.find(({ identity }) => identity === 'test-count')?.metric.value).toBe(1);
+    expect(
+      fieldAt(
+        findings.find(({ identity }) => identity === 'test-count'),
+        'metric',
+        'value',
+      ),
+    ).toBe(1);
   });
 
   it('loads the tests through a require hook and maps what ts-node compiled for an old target', async () => {
@@ -190,11 +211,17 @@ describe('coverage on a node:test project', () => {
       const coverage = await runArea('coverage', root);
       const crap = await runArea('crap', root);
 
-      expect(coverage.find(({ identity }) => identity === 'branches')?.metric.value).toBe(50);
+      expect(
+        fieldAt(
+          coverage.find(({ identity }) => identity === 'branches'),
+          'metric',
+          'value',
+        ),
+      ).toBe(50);
       expect(
         crap
           .filter(({ identity }) => identity.endsWith(':branchCoverage'))
-          .map(({ identity, metric }) => [identity, metric.value]),
+          .map((finding) => [finding.identity, fieldAt(finding, 'metric', 'value')]),
       ).toEqual([['function:pick:occurrence:1:branchCoverage', 50]]);
     },
   );

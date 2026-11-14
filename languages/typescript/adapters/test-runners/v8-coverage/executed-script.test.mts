@@ -1,24 +1,26 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { pathToFileURL } from 'node:url';
+import type { EncodedSourceMap } from '@jridgewell/trace-mapping';
 import { executedScript, scriptFile } from './executed-script.mts';
+import type { FunctionCoverage } from './executed-script.mts';
+import { temporaryRoots } from '../../test-support/temporary-roots.mts';
 
 const SOURCE = 'export const sign = (value: number): number => (value > 0 ? 1 : -1);\n';
 const STRIPPED = 'export const sign = (value        )         => (value > 0 ? 1 : -1);\n';
 const REWRITTEN = 'export const sign=value=>value>0?1:-1;\n';
-const SOURCE_MAP = { version: 3, sources: ['sign.ts'], names: [], mappings: 'AAAA' };
+const SOURCE_MAP: EncodedSourceMap = {
+  version: 3,
+  sources: ['sign.ts'],
+  names: [],
+  mappings: 'AAAA',
+};
 
-const roots = [];
+const roots = temporaryRoots();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function sourceFile(name = 'sign.ts', text = SOURCE) {
+function sourceFile(name = 'sign.ts', text = SOURCE): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-executed-'));
   roots.push(root);
   const file = path.join(root, name);
@@ -26,16 +28,19 @@ function sourceFile(name = 'sign.ts', text = SOURCE) {
   return file;
 }
 
-const withInlineMap = (code, sourceMap) =>
-  `${code}//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(sourceMap)).toString('base64')}\n`;
+function withInlineMap(code: string, sourceMap: EncodedSourceMap): string {
+  return `${code}//# sourceMappingURL=data:application/json;base64,${Buffer.from(JSON.stringify(sourceMap)).toString('base64')}\n`;
+}
 
-const ranThrough = (code) => [
-  {
-    functionName: '',
-    isBlockCoverage: true,
-    ranges: [{ startOffset: 0, endOffset: code.length, count: 1 }],
-  },
-];
+function ranThrough(code: string): FunctionCoverage[] {
+  return [
+    {
+      functionName: '',
+      isBlockCoverage: true,
+      ranges: [{ startOffset: 0, endOffset: code.length, count: 1 }],
+    },
+  ];
+}
 
 describe('the code a test process ran', () => {
   it('is the file with its types stripped when node ran it, even with a sourceURL comment', () => {
@@ -95,10 +100,10 @@ describe('the code a test process ran', () => {
   it('transforms a file no test loaded that type stripping cannot handle and maps it back', () => {
     const file = sourceFile('kind.ts', 'export enum Kind {\n  A,\n}\n');
 
-    const { code, sourceMap } = executedScript({ file });
+    const { code, sourceMap } = executedScript({ file, functions: undefined });
 
     expect(code.includes('enum')).toBe(false);
-    expect(sourceMap.sources).toEqual([pathToFileURL(file).href]);
+    expect(sourceMap?.sources).toEqual([pathToFileURL(file).href]);
   });
 
   it('drops the byte order mark that node drops before it compiles the file', () => {
@@ -107,7 +112,9 @@ describe('the code a test process ran', () => {
     expect(executedScript({ file, functions: ranThrough('export const one = 1;\n') })).toEqual({
       code: 'export const one = 1;\n',
     });
-    expect(executedScript({ file })).toEqual({ code: 'export const one = 1;\n' });
+    expect(executedScript({ file, functions: undefined })).toEqual({
+      code: 'export const one = 1;\n',
+    });
   });
 });
 
