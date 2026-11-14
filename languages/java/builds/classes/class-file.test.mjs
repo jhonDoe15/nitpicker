@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { classFiles, constantPoolStrings } from './class-file.mjs';
-import { classWithStrings } from './test-support/class-bytes.mjs';
+import { classWithStrings } from './test-support/class-bytes.mts';
 
 const roots = [];
 afterEach(() => {

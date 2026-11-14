@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { classSummaries } from '../classes/class-summary.mjs';
+import { classSummaries } from '../classes/class-summary.mts';
 import { languageLevelOf, lintCompatibleOf, lintCompilerOf } from '../typed/javac-views.mts';
 import { lombokPath } from './lint-arguments.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';

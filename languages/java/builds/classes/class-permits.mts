@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { classSummaries, classSummary } from './class-summary.mjs';
+import { classSummaries, classSummary } from './class-summary.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 type PermitsRun = { readonly classDirectories: unknown; readonly reportDir: string };
@@ -18,7 +18,7 @@ export function permittedSubclasses(buffer: Buffer): string[] {
 }
 
 export function runPermits({ classDirectories, reportDir }: PermitsRun): void {
-  const summaries: unknown = classSummaries(classDirectories);
+  const summaries: unknown = classSummaries(textsOf(classDirectories));
   const lines = (Array.isArray(summaries) ? summaries : []).flatMap((summary: unknown) =>
     permitsLines(summary),
   );
