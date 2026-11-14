@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseTestEvents } from './test-events.mjs';
-import { testRunFindings } from './go-test.mjs';
+import { parseTestEvents, testRunFindings } from '../typed/go-readers.mts';
 
-const event = (fields) => JSON.stringify({ Time: '2026-10-22T20:10:48Z', ...fields });
+const event = (fields: object) => JSON.stringify({ Time: '2026-10-22T20:10:48Z', ...fields });
 
 const RUN = [
   event({ Action: 'start', Package: 'example.com/shop' }),
@@ -45,10 +44,16 @@ const RUN = [
 
 describe('parseTestEvents', () => {
   const parsed = parseTestEvents(RUN);
+  const aboutTwoTenths: unknown = expect.closeTo(0.2);
 
   it('lists every finished test with its time and outcome', () => {
     expect(parsed.tests).toEqual([
-      { package: 'example.com/shop', name: 'TestTotal', seconds: 0.2, outcome: 'passed' },
+      {
+        package: 'example.com/shop',
+        name: 'TestTotal',
+        seconds: aboutTwoTenths,
+        outcome: 'passed',
+      },
       { package: 'example.com/shop', name: 'TestPrice/zero', seconds: 0, outcome: 'failed' },
       { package: 'example.com/shop', name: 'TestPrice', seconds: 0, outcome: 'failed' },
       { package: 'example.com/shop', name: 'TestLater', seconds: 0, outcome: 'skipped' },
@@ -99,7 +104,7 @@ describe('parseTestEvents', () => {
       '==================\n',
       '    testing.go:1490: race detected during execution of test\n',
     ];
-    const output = (Test, lines) =>
+    const output = (Test: string, lines: readonly string[]) =>
       lines.map((Output) => event({ Action: 'output', Package: 'example.com/shop', Test, Output }));
     const raced = parseTestEvents(
       [
@@ -171,7 +176,7 @@ describe('parseTestEvents', () => {
   it('leads the head failure with the count and what still ran', () => {
     const [finding] = testRunFindings(parsed, 'head');
 
-    expect(finding.message.split('\n')).toEqual([
+    expect(finding?.message.split('\n')).toEqual([
       '2 tests fail; the static analyzers ran, and coverage comes from the tests that ran. ' +
         'Fix the tests and rerun:',
       '  price_test.go:12 > example.com/shop.TestPrice/zero: got 1, want 0',
@@ -192,7 +197,7 @@ describe('parseTestEvents', () => {
     const failures = [{ id: 'example.com/shop.TestTotal', package: 'example.com/shop', output }];
     const [finding] = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head');
 
-    expect(finding.message.split('\n').slice(1)).toEqual([
+    expect(finding?.message.split('\n').slice(1)).toEqual([
       '  cart_test.go:9 > example.com/shop.TestTotal: Not equal',
       '    expected: 4',
       '    received: 3',
@@ -204,7 +209,7 @@ describe('parseTestEvents', () => {
     const failures = [{ id: 'example.com/shop.TestTotal', package: 'example.com/shop', output }];
     const [finding] = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head');
 
-    expect(finding.message.split('\n').slice(1)).toEqual([
+    expect(finding?.message.split('\n').slice(1)).toEqual([
       '  cart_test.go:9 > example.com/shop.TestTotal: boom',
     ]);
   });
@@ -216,7 +221,7 @@ describe('parseTestEvents', () => {
       output: 'cart_test.go:9: boom\n',
     }));
     const lines = testRunFindings({ failures, testsRan: true, buildFailures: [] }, 'head')[0]
-      .message.split('\n')
+      ?.message.split('\n')
       .slice(1);
 
     expect(lines).toEqual([

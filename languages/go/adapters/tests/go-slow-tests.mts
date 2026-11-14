@@ -1,13 +1,28 @@
 import path from 'node:path';
 import {
-  slowTestBudget,
-  slowTestFindings,
-} from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { moduleFileText, readGoModule } from '../execution/go-module.mjs';
-import { execute } from '../execution/go-process.mjs';
-import { buildFlags } from '../build/go-vet.mjs';
-import { inspectBaseline } from '../structure/go-inspect.mjs';
-import { parseTestEvents } from './test-events.mjs';
+  buildFlags,
+  execute,
+  inspectBaseline,
+  moduleFileText,
+  parseTestEvents,
+  readGoModule,
+} from '../typed/go-readers.mts';
+import { slowTestBudget, slowTestFindings } from '../typed/shared-readers.mts';
+import type {
+  FindingRow,
+  GoContext,
+  GoTestFunction,
+  GoTestName,
+  InspectReport,
+  TestOutcome,
+  TestRun,
+} from '../go-types.mts';
+
+type SlowContext = Pick<GoContext, 'projectRoot' | 'settings' | 'snapshot' | 'testSeconds'> & {
+  baselineRoot?: string | undefined;
+  reportRoot: string;
+};
+type Candidate = { run: TestOutcome; test: GoTestFunction; integration: boolean };
 
 const SLOW_TEST_TOOL = 'test-runtime';
 const INTEGRATION_FOLDERS = new Set(['integration', 'integration_tests', 'e2e', 'end_to_end']);
@@ -15,7 +30,7 @@ const INTEGRATION_FILE = /_(?:integration|e2e)_test\.go$/u;
 const INTEGRATION_TAG = /^\/\/go:build\s.*(?<![!\w])(?:integration|e2e)\b/mu;
 const RETIME_TIMEOUT_MS = 10 * 60 * 1000;
 
-export function packageDirectory(modulePath, importPath) {
+export function packageDirectory(modulePath: string, importPath: string): string | undefined {
   if (importPath === modulePath) {
     return '.';
   }
@@ -24,29 +39,36 @@ export function packageDirectory(modulePath, importPath) {
     : undefined;
 }
 
-function functionText(root, { file, start, end }) {
+function functionText(
+  root: string | undefined,
+  { file, start, end }: Pick<GoTestFunction, 'file' | 'start'> & { end?: number },
+) {
   return moduleFileText(root, file)
     ?.split(/\r?\n/u)
     .slice(start - 1, end)
     .join('\n');
 }
 
-export function testFunction(tests, directory, name) {
+export function testFunction<Test extends GoTestName>(
+  tests: readonly Test[],
+  directory: string,
+  name: string,
+): Test | undefined {
   return tests.find((test) => path.posix.dirname(test.file) === directory && test.name === name);
 }
 
-function isIntegration(projectRoot, test) {
+function isIntegration(projectRoot: string, test: GoTestFunction) {
   const folders = path.posix.dirname(test.file).split('/');
   const fileText = moduleFileText(projectRoot, test.file) ?? '';
   return (
     folders.some((folder) => INTEGRATION_FOLDERS.has(folder)) ||
     INTEGRATION_FILE.test(test.file) ||
     INTEGRATION_TAG.test(fileText) ||
-    test.shortSkip === true
+    test['shortSkip'] === true
   );
 }
 
-function changedSince(context, test) {
+function changedSince(context: SlowContext, test: GoTestFunction) {
   const base = inspectBaseline(context);
   if (base === undefined) {
     return true;
@@ -58,7 +80,7 @@ function changedSince(context, test) {
   );
 }
 
-function retimed(context, run) {
+function retimed(context: SlowContext, run: TestOutcome) {
   const result = execute(
     context,
     [
@@ -80,7 +102,11 @@ function retimed(context, run) {
   return again === undefined ? run.seconds : Math.min(run.seconds, again.seconds);
 }
 
-function candidates(context, testRun, report) {
+function candidates(
+  context: SlowContext,
+  testRun: Pick<TestRun, 'tests'>,
+  report: Pick<InspectReport, 'tests'>,
+): Candidate[] {
   const modulePath = readGoModule(context.projectRoot)?.module;
   const budget = slowTestBudget(context.testSeconds);
   const floor = Math.min(budget.unitTestSeconds, budget.integrationTestSeconds);
@@ -105,7 +131,11 @@ function candidates(context, testRun, report) {
     .filter(({ test }) => changedSince(context, test));
 }
 
-export function goSlowTestFindings(context, testRun, report) {
+export function goSlowTestFindings(
+  context: SlowContext,
+  testRun: Pick<TestRun, 'tests'>,
+  report: Pick<InspectReport, 'tests'>,
+): FindingRow[] {
   if (context.snapshot === 'base') {
     return [];
   }
