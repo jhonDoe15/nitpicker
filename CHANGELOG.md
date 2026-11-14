@@ -82,6 +82,9 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   without an index, with sqlc schema files read (#938, #984, #996, #1065, #1066).
 - Container images per preset, smoke-tested in CI and published to GHCR with each release (#561).
 - Go: the go-critic checkers, 80 of its 108, each finding named by its checker (#1005).
+- Go: `nitpicker --fix` runs the formatters the check uses on the changed files, a line that only
+  gofmt reformatted counts as unchanged, and Go gets the copied-constant, test-runtime,
+  unused-option and public-alternative-bypass rules (#781, #951, #1045, #1046, #1200).
 
 ### Changed
 
