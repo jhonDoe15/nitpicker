@@ -1,16 +1,16 @@
-import { createRuleTester } from '../../rules/guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as requireHttpTimeout } from '../../rules/security/http/require-http-timeout.mjs';
 import { rule as noDisabledTlsVerification } from '../../rules/security/tls/no-disabled-tls-verification.mjs';
 
-const tester = createRuleTester();
-const timeoutOf = (call, output) => [
+const tester = typescriptRuleTester();
+const timeoutOf = (call: string, output: string) => [
   {
     messageId: 'noTimeout',
     data: { call },
     suggestions: [{ messageId: 'addTimeout', data: { ms: '10000' }, output }],
   },
 ];
-const noTimeout = (call) => [{ messageId: 'noTimeout', data: { call } }];
+const noTimeout = (call: string) => [{ messageId: 'noTimeout', data: { call } }];
 const axios = 'import axios from "axios"; ';
 
 tester.run('require-http-timeout suggestions', requireHttpTimeout, {
@@ -60,7 +60,7 @@ tester.run('require-http-timeout suggestions', requireHttpTimeout, {
 });
 
 const off = [{ messageId: 'tlsVerificationOff' }];
-const dropped = (output) => [
+const dropped = (output: string) => [
   { messageId: 'tlsVerificationOff', suggestions: [{ messageId: 'dropOption', output }] },
 ];
 

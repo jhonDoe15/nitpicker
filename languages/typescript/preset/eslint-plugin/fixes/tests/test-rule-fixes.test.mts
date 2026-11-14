@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as noTestRetry } from '../../test-assertions/no-test-retry.mjs';
 import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as fakeTimersRequireRestore } from '../../test-quality/fake-timers-require-restore.mjs';
@@ -7,7 +7,7 @@ import { rule as testTsconfigPins } from '../../rules/testing/types/test-tsconfi
 const tester = typescriptRuleTester();
 const filename = '/repo/tests/unit/service.test.ts';
 const retry = [{ messageId: 'retry' }];
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 
 tester.run('no-test-retry fixes', noTestRetry, {
   valid: [],
@@ -70,7 +70,7 @@ tester.run('no-test-retry fixes', noTestRetry, {
 });
 
 const raised = [{ messageId: 'raisedTimeout' }];
-const dropped = (output) => [
+const dropped = (output: string) => [
   { messageId: 'raisedTimeout', suggestions: [{ messageId: 'dropTimeout', output }] },
 ];
 
@@ -110,7 +110,7 @@ tester.run('no-raised-test-timeout suggestions', noRaisedTestTimeout, {
   ],
 });
 
-const restored = (call, restore) =>
+const restored = (call: string, restore: string) =>
   lines(
     "import { afterEach, vi } from 'vitest';",
     `${call};`,

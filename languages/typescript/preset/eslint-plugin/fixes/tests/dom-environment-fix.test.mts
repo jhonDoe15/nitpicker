@@ -1,15 +1,15 @@
 import path from 'node:path';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from '../../rules/testing/environment/no-unused-dom-environment.mjs';
 import {
   createProject,
   docblock,
   lines,
   logic,
-} from '../../testing-rules/test-support/environment-project.mjs';
+} from '../../testing-rules/test-support/environment-project.mts';
 
 const tester = typescriptRuleTester();
-const directive = (name) => ['// @vitest', `-environment ${name}`].join('');
+const directive = (name: string) => ['// @vitest', `-environment ${name}`].join('');
 const root = createProject();
 const filename = path.join(root, 'src/widgets/widget.test.ts');
 const jsdom = { environment: 'jsdom' };

@@ -1,50 +1,21 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typedCaseProject } from '../../test-support/projects/typed-ts-project.mts';
 import { rule as noFalsyDefault } from '../../rules/signatures/no-falsy-default.mjs';
 import { rule as noMutatingMethod } from '../../rules/domain/no-mutating-method-in-domain.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-code-fixes-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2023'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+const { tester, typed } = typedCaseProject<never[]>({
+  prefix: 'nitpicker-code-fixes-',
+  lib: ['ES2023'],
 });
 
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-function typed(code) {
-  const file = path.join(root, `src/case-${randomUUID()}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code };
-}
-
-const pick = (body) => `export function pick(limit?: number, other?: number) { ${body} }`;
-const nullish = (name, output) => [
+const pick = (body: string) => `export function pick(limit?: number, other?: number) { ${body} }`;
+const nullish = (name: string, output: string) => [
   {
     messageId: 'falsyDefault',
     data: { name },
     suggestions: [{ messageId: 'useNullishCoalescing', output }],
   },
 ];
-const noSuggestion = (name) => [{ messageId: 'falsyDefault', data: { name } }];
+const noSuggestion = (name: string) => [{ messageId: 'falsyDefault', data: { name } }];
 
 tester.run('no-falsy-default suggestions', noFalsyDefault, {
   valid: [],
@@ -84,7 +55,9 @@ tester.run('no-falsy-default suggestions', noFalsyDefault, {
   ],
 });
 
-const owner = (method) => [{ messageId: 'mutatingMethod', data: { owner: 'Array', method } }];
+const owner = (method: string) => [
+  { messageId: 'mutatingMethod', data: { owner: 'Array', method } },
+];
 
 tester.run('no-mutating-method-in-domain fixes', noMutatingMethod, {
   valid: [],

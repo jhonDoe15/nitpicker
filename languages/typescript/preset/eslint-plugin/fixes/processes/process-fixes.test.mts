@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as boundedContainerTeardown } from '../../rules/testing/lifecycle/bounded-container-teardown.mjs';
 import { rule as containerPause } from '../../rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { rule as hermeticGit } from '../../rules/testing/processes/hermetic-git-in-tests.mjs';
@@ -8,7 +8,7 @@ import { rule as noShellStringCommand } from '../../rules/guards/no-shell-string
 const tester = typescriptRuleTester();
 const filename = '/repo/tests/integration/cleanup.test.ts';
 const HOLE = ['$', '{dir}'].join('');
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 const teardownImport = "import { teardownContainer } from './containers';";
 const unbounded = [{ messageId: 'unboundedStop' }];
 
@@ -231,14 +231,14 @@ tester.run('hermetic-git-in-tests fixes', hermeticGit, {
 });
 
 const spawn = "import { spawnSync } from 'node:child_process';";
-const added = (method, output) => [
+const added = (method: string, output: string) => [
   {
     messageId: 'missingTimeout',
     data: { method },
     suggestions: [{ messageId: 'addTimeout', output }],
   },
 ];
-const missing = (method) => [{ messageId: 'missingTimeout', data: { method } }];
+const missing = (method: string) => [{ messageId: 'missingTimeout', data: { method } }];
 
 tester.run('require-test-process-timeout suggestions', processTimeout, {
   valid: [],
@@ -277,7 +277,7 @@ tester.run('require-test-process-timeout suggestions', processTimeout, {
 });
 
 const shell = [{ messageId: 'shellString' }];
-const suggested = (messageId, output) => [
+const suggested = (messageId: string, output: string) => [
   { messageId: 'shellString', suggestions: [{ messageId, output }] },
 ];
 const imports =
