@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   POLICY_GUIDANCE,
   hasSpecificGuidance,
-} from '../../diff/reporting/review/policy-guidance.mjs';
-import { policyFindings } from '../../diff/reporting/review/policy-findings.mjs';
-import { between } from '../build-files/test-support/policy-fixtures.mjs';
-import { policyChangeFields } from '../describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from '../policy-scope.mjs';
+} from '../../diff/reporting/review/policy-guidance.mts';
+import { policyFindings } from '../../diff/reporting/review/policy-findings.mts';
+import { between } from '../build-files/test-support/policy-fixtures.mts';
+import { policyChangeFields } from '../describe-policy-changes.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { createPolicyScope, rootSets } from '../policy-scope.mts';
+import type { PolicyConfig, ScopeInputs } from '../types/policy-types.mts';
 
 const CLASS = 'package a;\nclass A {}\n';
 const GRADLE = { 'build.gradle': "plugins { id 'java' }\n", 'src/main/java/a/A.java': CLASS };
@@ -18,7 +20,13 @@ const PYTEST = {
 };
 const PYTHON_ROOTS = { preset: 'python', python: { sourceRoots: ['src', 'lib'] } };
 
-function synthetic(base, head, options = {}) {
+type Run = () => ReturnType<typeof policyChangeFields>;
+
+function synthetic(
+  base: PolicyConfig,
+  head: PolicyConfig,
+  options: { files?: string[]; baseFiles?: string[]; scope?: Partial<ScopeInputs> } = {},
+) {
   const { files = ['src/a.ts', 'src/legacy/old.ts', 'src/vendor/lib.ts'], baseFiles = files } =
     options;
   const scope = createPolicyScope({
@@ -32,7 +40,17 @@ function synthetic(base, head, options = {}) {
   return policyChangeFields(base, head, scope);
 }
 
-function gitBacked({ base, head, config, baseConfig = config }) {
+function gitBacked({
+  base,
+  head,
+  config,
+  baseConfig = config,
+}: {
+  base: Record<string, string>;
+  head: Record<string, string>;
+  config?: PolicyConfig;
+  baseConfig?: PolicyConfig;
+}) {
   return () => between({ base, head, config, baseConfig });
 }
 
@@ -46,7 +64,7 @@ const FIXTURES = {
     synthetic(
       {},
       { layout: { entryPoints: ['src/**'] } },
-      { scope: { importedBy: (files) => files } },
+      { scope: { importedBy: (files: readonly string[]) => files } },
     ),
   exception: () => synthetic({}, { exceptions: [exception] }),
   exclusion: () => synthetic({}, { exclude: ['src/vendor/**'] }),
@@ -183,7 +201,7 @@ const FIXTURES = {
     synthetic({}, { conventions: { 'typescript.detachedWorkRunners': ['runDetached'] } }),
 };
 
-const VARIANTS = [
+const VARIANTS: [string, string, Run][] = [
   [
     'python.sourceRoots removed',
     'source-root-removed',
@@ -237,7 +255,7 @@ describe('policy guidance kinds', () => {
         fields.policyLoosenings.map((text) => [
           text,
           typeof fields.policyKinds[text],
-          hasSpecificGuidance(fields.policyKinds[text]),
+          hasSpecificGuidance(fields.policyKinds[text] ?? ''),
         ]),
       ).toEqual(fields.policyLoosenings.map((text) => [text, 'string', true]));
       expect(fields.policyLoosenings.map((text) => fields.policyKinds[text])).toContain(kind);
@@ -250,19 +268,23 @@ describe('policy guidance kinds', () => {
 
   it('carries the kind to the finding, which words its message with that guidance', () => {
     const fields = FIXTURES.exception();
-    const [finding] = policyFindings(fields.policyLoosenings, 'd1e2f3a4b5c6', {
-      kinds: fields.policyKinds,
+    const findings = policyFindings(fields.policyLoosenings, 'd1e2f3a4b5c6', {
+      kinds: Object.fromEntries(
+        Object.entries(fields.policyKinds).flatMap(([text, kind]) =>
+          kind === undefined ? [] : [[text, kind]],
+        ),
+      ),
     });
 
-    expect(finding.policyKind).toBe('exception');
-    expect(finding.message).toBe(
+    expect(findings.map((finding) => fieldOf(finding, 'policyKind'))).toEqual(['exception']);
+    expect(findings.map((finding) => finding.message)).toEqual([
       [
-        `${fields.policyLoosenings[0]}. ${POLICY_GUIDANCE.exception}`,
+        `${fields.policyLoosenings.at(0) ?? ''}. ${POLICY_GUIDANCE.exception}`,
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
         'at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI,',
         'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
       ].join(' '),
-    );
+    ]);
   });
 });

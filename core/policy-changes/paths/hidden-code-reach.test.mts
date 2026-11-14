@@ -1,12 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { policyChangeFields } from '../describe-policy-changes.mjs';
-import { readPolicyScope } from '../policy-scope.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { policyChangeFields } from '../describe-policy-changes.mts';
+import { readPolicyScope } from '../policy-scope.mts';
+import type { PolicyConfig } from '../types/policy-types.mts';
 
 const { createGitRepository } = useGitFixtures();
 const HEADING = 'exclude and layout.excludedGlobs hide code this change adds or moves';
 
-function loosenings({ base, head, config }) {
+function loosenings({
+  base,
+  head,
+  config,
+}: {
+  base: Record<string, string>;
+  head: Record<string, string>;
+  config: PolicyConfig;
+}) {
   const scope = readPolicyScope({
     baseConfig: config,
     headConfig: config,
