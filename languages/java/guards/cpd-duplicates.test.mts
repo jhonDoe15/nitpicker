@@ -12,14 +12,16 @@ import {
   tokenShape,
 } from './cpd-duplicates.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-const duplication = (lines, files) => `
+type FileSpec = [string, number, number, string?];
+
+const duplication = (lines: number, files: readonly FileSpec[]) => `
   <duplication lines="${String(lines)}" tokens="120">
 ${files
   .map(
@@ -31,17 +33,17 @@ ${files
     <codefragment><![CDATA[ignored]]></codefragment>
   </duplication>`;
 
-const report = (...duplications) =>
+const report = (...duplications: readonly string[]) =>
   `<?xml version="1.0"?>\n<pmd-cpd>\n  <file path="x" totalNumberOfTokens="1"/>${duplications.join('')}\n</pmd-cpd>\n`;
 
 const LOGIC = Array.from(
   { length: 12 },
   (_, index) => `    total += compute(${String(index)}) * rate;`,
 ).join('\n');
-const sourceWith = (name) =>
+const sourceWith = (name: string) =>
   `class ${name} {\n  int run(int rate) {\n    int total = 0;\n${LOGIC}\n    return total;\n  }\n}\n`;
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -53,11 +55,12 @@ function project(files) {
   return { root, reportRoot };
 }
 
+const cpdIdentity: unknown = expect.stringMatching(/^cpd:pair:/);
 const MAIN_A = 'src/main/java/demo/A.java';
 const MAIN_B = 'src/main/java/demo/B.java';
 const TEST_A = 'src/test/java/demo/ATest.java';
 const TEST_B = 'src/test/java/demo/BTest.java';
-const options = (root) => ({ projectRoot: root, testRoots: ['src/test/java'] });
+const options = (root: string) => ({ projectRoot: root, testRoots: ['src/test/java'] });
 
 describe('isAccessorOnly', () => {
   it('treats getters, setters, fields and constructors that only assign as boilerplate', () => {
@@ -127,13 +130,13 @@ describe('isDataTable', () => {
 describe('cpdClones', () => {
   it('pairs the first file by path with each other file and reads the source text', () => {
     const { root } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
-    const sides = [
+    const sides: FileSpec[] = [
       [MAIN_A, 2, 4],
       [MAIN_B, 2, 4],
       [TEST_A, 1, 3],
     ];
     const fragment = '  int run(int rate) {\n    int total = 0;\n    total += compute(0) * rate;';
-    const clone = (second) => ({
+    const clone = (second: { file: string; line: number; endLine: number }) => ({
       first: { file: MAIN_A, line: 2, endLine: 4 },
       second,
       fragment,
@@ -163,8 +166,8 @@ describe('cpdClones', () => {
 
     const [clone] = cpdClones(xml, root);
 
-    expect(clone.first).toEqual({ file: MAIN_A, line: 1, endLine: 3, column: 12, endColumn: 2 });
-    expect(clone.shape).toBe('(){(,,,.);}');
+    expect(clone?.first).toEqual({ file: MAIN_A, line: 1, endLine: 3, column: 12, endColumn: 2 });
+    expect(clone?.shape).toBe('(){(,,,.);}');
   });
 });
 
@@ -188,7 +191,7 @@ describe('readCpdFindings', () => {
         tool: 'duplicates',
         rule: 'duplicate-clone',
         path: MAIN_A,
-        identity: expect.stringMatching(/^cpd:pair:/),
+        identity: cpdIdentity,
         location: { line: 2 },
         classification: 'enforceable',
         ratchet: {
@@ -207,9 +210,12 @@ describe('readCpdFindings', () => {
   });
 
   it('keeps the identities when a literal or a name in a copy changes or CPD lists the files the other way', () => {
-    const identities = (files, order) => {
+    const identities = (
+      files: Readonly<Record<string, string>>,
+      order: (sides: FileSpec[]) => FileSpec[],
+    ) => {
       const { root, reportRoot } = project(files);
-      const sides = [MAIN_A, MAIN_B, TEST_A].map((file) => [
+      const sides = [MAIN_A, MAIN_B, TEST_A].map((file): FileSpec => [
         file,
         2,
         9,
@@ -253,7 +259,7 @@ describe('readCpdFindings', () => {
 
     const [finding] = readCpdFindings(reportRoot, options(root));
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       `This code repeats ${TEST_B}:2 (8 lines). Extract a helper, or fold the cases into one @ParameterizedTest. Keep one copy and call it from both places.`,
     );
   });
@@ -273,7 +279,7 @@ describe('readCpdFindings', () => {
       [MAIN_A, 21, 50],
       [MAIN_B, 21, 50],
     ]);
-    const identities = (...duplications) => {
+    const identities = (...duplications: readonly string[]) => {
       writeFileSync(path.join(reportRoot, 'cpd.xml'), report(...duplications));
       return readCpdFindings(reportRoot, options(root)).map((finding) => finding.identity);
     };
@@ -299,7 +305,7 @@ describe('readCpdFindings', () => {
         ]),
       ),
     );
-    const jscpd = (first, second, start) => ({
+    const jscpd = (first: string, second: string, start: number) => ({
       first: { file: first, line: start },
       second: { file: second, line: start },
       lines: 6,
@@ -319,7 +325,7 @@ describe('readCpdFindings', () => {
       { length: 8 },
       (_, index) => `    RATE_${String(index)}(${String(index)}, "r${String(index)}"),`,
     ).join('\n');
-    const table = (name) => `enum ${name} {\n${rows}\n    ;\n}\n`;
+    const table = (name: string) => `enum ${name} {\n${rows}\n    ;\n}\n`;
     const { root, reportRoot } = project({ [MAIN_A]: table('A'), [MAIN_B]: table('B') });
     writeFileSync(
       path.join(reportRoot, 'cpd.xml'),
@@ -349,7 +355,7 @@ describe('readCpdFindings', () => {
         ]),
       ),
     );
-    const jscpd = (start) => ({
+    const jscpd = (start: number) => ({
       first: { file: MAIN_A, line: start },
       second: { file: MAIN_B, line: start },
       lines: 6,
@@ -428,7 +434,7 @@ describe('readCpdFindings', () => {
       { length: 12 },
       (_, index) => `  C${String(index)}("n${String(index)}", ${String(index)}),`,
     );
-    const enumWith = (name) => `enum ${name} {\n${table.join('\n')}\n  ;\n}\n`;
+    const enumWith = (name: string) => `enum ${name} {\n${table.join('\n')}\n  ;\n}\n`;
     const { root, reportRoot } = project({ [MAIN_A]: enumWith('A'), [MAIN_B]: enumWith('B') });
     writeFileSync(
       path.join(reportRoot, 'cpd.xml'),
