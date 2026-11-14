@@ -1,19 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { collectSignals, compareSignals, readLegacyInventory } from './check.mts';
 
+const policyRoot = path.resolve(import.meta.dirname, '../../../..');
 const legacy = { file: 'src/main/legacy.ts', rule: 'internal-mock', source: 'vi.mock(helper)' };
 describe('coding standards gate', () => {
   it('runs the actual configured rules against a new module and accepts its repaired behavior', async () => {
     const root = mkdtempSync(path.join(tmpdir(), 'coding-standards-fixture-'));
     try {
-      mkdirSync(path.join(root, 'languages/typescript/preset'), { recursive: true });
-      symlinkSync(
-        path.resolve(import.meta.dirname, '../eslint-config'),
-        path.join(root, 'languages/typescript/preset/eslint-config'),
-      );
       mkdirSync(path.join(root, 'src/main/__tests__'), { recursive: true });
       mkdirSync(path.join(root, 'tests'), { recursive: true });
       writeFileSync(path.join(root, 'src/main/helper.ts'), 'export const value = 1;');
@@ -24,7 +20,7 @@ describe('coding standards gate', () => {
         subject,
         "import { vi, it } from 'vitest'; vi.mock('../helper.js'); it('polls', async () => { vi.useFakeTimers(); await vi.waitFor(() => {}); });",
       );
-      const signals = await collectSignals(root);
+      const signals = await collectSignals(root, policyRoot);
       expect(signals.map((item) => item.rule).sort()).toEqual([
         'nitpicker/no-internal-module-mocks',
         'nitpicker/no-wait-for-with-fake-timers',
@@ -34,7 +30,7 @@ describe('coding standards gate', () => {
         subject,
         "import { vi, it, expect } from 'vitest'; import { value } from '../helper.js'; it('completes', async () => { vi.useFakeTimers(); await vi.advanceTimersByTimeAsync(1); expect(value).toBe(1); });",
       );
-      expect(await collectSignals(root)).toEqual([]);
+      expect(await collectSignals(root, policyRoot)).toEqual([]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

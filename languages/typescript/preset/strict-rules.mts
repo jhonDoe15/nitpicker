@@ -3,10 +3,10 @@ import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
 import { i18nRuleIds } from './eslint-config/i18n/i18n-rules.mjs';
-import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mjs';
+import { isUnusedParameterFinding } from './eslint-config/policy/unused-parameters.mts';
 import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
-import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
+import { serverRuleIds } from './eslint-config/server/server-rules.mts';
 export const strictEslintRuleIds = [
   '@typescript-eslint/explicit-module-boundary-types',
   '@typescript-eslint/no-floating-promises',

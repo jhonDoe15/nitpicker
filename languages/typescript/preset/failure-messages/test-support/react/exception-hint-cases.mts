@@ -1,4 +1,4 @@
-import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
+import { strictSyntaxConfig } from '../../../eslint-config/strict.mts';
 
 export const exceptionHintCases = [
   ['default export', 'export default function Page() { return 1; }'],

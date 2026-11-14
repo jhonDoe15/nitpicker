@@ -3,7 +3,7 @@ import { listOf } from '../../../../../../shared/values/readers.mts';
 import tseslint from 'typescript-eslint';
 import { resolveLayout } from '../../../layout.mjs';
 import { strictTestConfigFor } from '../../../eslint-config/strict-tests.mjs';
-import { testHonestyConfigFor } from '../../../eslint-config/test-honesty/index.mjs';
+import { testHonestyConfigFor } from '../../../eslint-config/test-honesty/index.mts';
 
 const layout = resolveLayout();
 const config = [

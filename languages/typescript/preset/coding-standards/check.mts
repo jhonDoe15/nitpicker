@@ -3,6 +3,9 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { ESLint, type Linter } from 'eslint';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { fieldOf, listOf, objectOf } from '../../../../shared/values/readers.mts';
+import { linterConfigs } from '../eslint-config/typed/config-types.mts';
 import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
 import { analyzeRuntimeBoundaries } from '../architecture/runtime-dependency-boundaries.mts';
 import { analyzeProductionCallbacks } from '../callback-protocols/analyze.mts';
@@ -35,6 +38,24 @@ const defaultLegacyInventoryPath = path.join(projectRoot, DEFAULT_LEGACY_INVENTO
 
 export { compareSignals };
 
+const sourcePath: (file: string) => string = checkoutModulePath;
+
+async function policyConfig(policyRoot: string): Promise<Linter.Config[]> {
+  const loaded: unknown = await import(
+    pathToFileURL(
+      sourcePath(
+        path.join(
+          policyRoot,
+          'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
+        ),
+      ),
+    ).href
+  );
+  return linterConfigs(
+    listOf(fieldOf(loaded, 'default')).flatMap((entry) => objectOf(entry) ?? []),
+  );
+}
+
 export async function collectSignals(
   root = projectRoot,
   policyRoot = root,
@@ -42,10 +63,8 @@ export async function collectSignals(
 ): Promise<Signal[]> {
   const eslint = new ESLint({
     cwd: root,
-    overrideConfigFile: path.join(
-      policyRoot,
-      'languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs',
-    ),
+    overrideConfigFile: true,
+    overrideConfig: await policyConfig(policyRoot),
     allowInlineConfig: false,
   });
   const files = layout.projectCodeFiles(root);

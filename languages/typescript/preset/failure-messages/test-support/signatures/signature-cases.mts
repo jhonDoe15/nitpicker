@@ -1,5 +1,5 @@
 import type { FailureMessageCase, SignatureOptions } from '../case-types.mts';
-import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
+import { strictSyntaxConfig } from '../../../eslint-config/strict.mts';
 
 function syntaxCase([name = '', banned = '', allowed = '']: string[]): FailureMessageCase {
   return { name, config: strictSyntaxConfig, filename: 'src/fixture.ts', banned, allowed };

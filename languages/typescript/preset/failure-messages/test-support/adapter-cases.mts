@@ -1,6 +1,6 @@
 import type { FailureMessageCase } from './case-types.mts';
-import { strictAdaptersConfig } from '../../eslint-config/strict-adapters.mjs';
-import { strictSyntaxConfig } from '../../eslint-config/strict.mjs';
+import { strictAdaptersConfig } from '../../eslint-config/strict-adapters.mts';
+import { strictSyntaxConfig } from '../../eslint-config/strict.mts';
 
 const filename = 'src/main/features/billing/adapters/http.ts';
 

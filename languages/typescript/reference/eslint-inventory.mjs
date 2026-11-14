@@ -16,10 +16,10 @@ const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 
 export const ESLINT_CONFIGS = [
   ['eslint-lint', new URL('../preset/defaults/eslint.config.mjs', import.meta.url)],
-  ['eslint-errors', new URL('errors.config.mjs', POLICIES)],
-  ['eslint-logging', new URL('logging.config.mjs', POLICIES)],
-  ['eslint-module-effects', new URL('module-effects.config.mjs', POLICIES)],
-  ['coding-standards', new URL('coding-standards.config.mjs', POLICIES)],
+  ['eslint-errors', checkoutModuleUrl(new URL('errors.config.mjs', POLICIES))],
+  ['eslint-logging', checkoutModuleUrl(new URL('logging.config.mjs', POLICIES))],
+  ['eslint-module-effects', checkoutModuleUrl(new URL('module-effects.config.mjs', POLICIES))],
+  ['coding-standards', checkoutModuleUrl(new URL('coding-standards.config.mjs', POLICIES))],
 ];
 
 const REACT_PACKAGES = { react: '^19.0.0', 'react-dom': '^19.0.0', 'react-intl': '^7.0.0' };
