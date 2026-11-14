@@ -2,23 +2,24 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
-import { kotlinDesignBundle } from '../../kotlin/review-rules/design/kotlin-design.mjs';
+import { kotlinDesignBundle, validateFacts } from '../test-support/views/kotlin-e2e-views.mts';
+import { parseJson } from '../../../../../shared/values/readers.mts';
 import { DEEP_CHAIN } from '../../test-support/kotlin/kotlin-metrics-sources.mjs';
 import {
   prepareCompiler,
   runPsiProgram,
   writeSources,
-} from '../../test-support/kotlin/kotlin-psi-program.mjs';
+} from '../test-support/views/kotlin-psi-views.mts';
+import type { PsiCompiler } from '../test-support/views/kotlin-psi-views.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
 const DESIGN_FIXTURE = path.join(FIXTURES, 'kotlin-design');
 const PUBLISHED_FIXTURE = path.join(FIXTURES, 'kotlin-design-published');
 
-let workspace;
-let compiler;
+let workspace: string;
+let compiler: PsiCompiler;
 
 describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   beforeAll(() => {
@@ -42,7 +43,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     cpSync(path.join(DESIGN_FIXTURE, 'src'), path.join(project, 'src'), { recursive: true });
 
     const { status, log, facts } = runPsiProgram(compiler, project, ['src']);
-    const recorded = JSON.parse(
+    const recorded = parseJson(
       readFileSync(path.join(DESIGN_FIXTURE, 'design-facts.json'), 'utf8'),
     );
 
@@ -58,7 +59,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     const { status, log, facts } = runPsiProgram({ ...compiler, published: true }, project, [
       'src',
     ]);
-    const recorded = JSON.parse(
+    const recorded = parseJson(
       readFileSync(path.join(PUBLISHED_FIXTURE, 'design-facts.json'), 'utf8'),
     );
 

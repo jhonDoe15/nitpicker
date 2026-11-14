@@ -4,16 +4,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
-import { writeSources } from '../../test-support/kotlin/kotlin-psi-program.mjs';
+import { writeSources } from '../test-support/views/kotlin-psi-views.mts';
+import { assigned } from '../test-support/views/assigned.mts';
+import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 
 const fixtureBuild = readFileSync(
   path.resolve(import.meta.dirname, '../../fixtures/kotlin-project/build.gradle.kts'),
   'utf8',
 );
-const kotlinPlugin = /kotlin\("jvm"\) version "([^"]+)"/u.exec(fixtureBuild)[1];
+const kotlinPlugin = assigned(
+  /kotlin\("jvm"\) version "([^"]+)"/u.exec(fixtureBuild)?.[1],
+  'kotlin plugin version',
+);
 const MODULE_BUILD = [
   'plugins {\n    kotlin("jvm")\n}\n',
   'repositories {\n    mavenCentral()\n}\n',
@@ -29,7 +34,7 @@ publishing {
 }
 `;
 
-let workspace;
+let workspace: string;
 
 function publishedProject() {
   return writeSources(workspace, 'published', {
@@ -42,10 +47,12 @@ function publishedProject() {
   });
 }
 
-function publishedFlags(project, module) {
+function publishedFlags(project: string, module: string): [string, unknown][] {
   const report = path.join(project, module, 'build/nitpicker/kotlin-facts.json');
-  const { types, callables } = JSON.parse(readFileSync(report, 'utf8')).design;
-  return [...types, ...callables].map(({ id, published }) => [id, published ?? false]);
+  const design = fieldOf(JSON.parse(readFileSync(report, 'utf8')), 'design');
+  return [...listOf(fieldOf(design, 'types')), ...listOf(fieldOf(design, 'callables'))].map(
+    (item) => [textOf(fieldOf(item, 'id')), fieldOf(item, 'published') ?? false],
+  );
 }
 
 describe.skipIf(!enabled)('kotlin-psi design facts in a Gradle build with a publication', () => {

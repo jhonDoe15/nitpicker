@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { diffOf, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
-import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
+import { diffOf, kotlinE2eEnabled } from '../__tests__/kotlin-e2e-project.mts';
+import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset multiline branch coverage end to end', () => {
   const fixture = useKotlinCoverageProject();
@@ -12,7 +12,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset multiline branch coverage end 
     expect(
       result.newEnforceable
         .filter(({ tool }) => tool === 'jacoco')
-        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`)
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location?.line)}`)
         .sort(),
     ).toEqual(['Offset.kt:4', 'Spread.kt:10', 'Spread.kt:7']);
   });
