@@ -2,7 +2,6 @@ import {
   type Policy,
   type VitestConfig,
   resolveHeadPolicy,
-  isModule,
   type VitestConfigFactory,
   resolveLayout,
 } from './layout-views.mts';
@@ -37,10 +36,22 @@ export function readDefault(name: string): unknown {
   return parseJson(readFileSync(path.join(defaults, name), 'utf8'));
 }
 
-export async function loadConfig<Module extends object, Result>(
+function isVitestFactory(value: unknown): value is VitestConfigFactory {
+  return typeof value === 'function';
+}
+
+function vitestFactoryOf(module: object): VitestConfigFactory {
+  const factory: unknown = Reflect.get(module, 'default');
+  if (!isVitestFactory(factory)) {
+    throw new TypeError('The vitest config does not export a factory');
+  }
+  return factory;
+}
+
+export async function loadConfig<Result>(
   relativePath: string,
   policy: Policy | undefined,
-  read: (module: Module) => Result,
+  read: (module: object) => Result,
 ): Promise<Result> {
   const restore = setPolicyEnvironment(policy);
   try {
@@ -49,7 +60,7 @@ export async function loadConfig<Module extends object, Result>(
     );
     url.search = `policy=${randomUUID()}`;
     const loaded: unknown = await import(url.href);
-    if (!isModule<Module>(loaded)) {
+    if (typeof loaded !== 'object' || loaded === null) {
       throw new TypeError(`${relativePath} does not load as a module`);
     }
     return read(loaded);
@@ -72,11 +83,7 @@ export async function resolveVitestConfig(
   policy: Policy | undefined,
   projectFiles: Readonly<Record<string, string>> = {},
 ): Promise<VitestConfig> {
-  const config = await loadConfig(
-    relativePath,
-    policy,
-    (module: { readonly default: VitestConfigFactory }) => module.default,
-  );
+  const config = await loadConfig(relativePath, policy, vitestFactoryOf);
   const projectRoot = temporaryProject(projectFiles);
   const restorePolicy = setPolicyEnvironment(policy);
   const previousDirectory = process.cwd();
