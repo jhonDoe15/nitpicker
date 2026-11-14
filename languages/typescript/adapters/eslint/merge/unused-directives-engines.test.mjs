@@ -1,7 +1,7 @@
 import { ESLint } from 'eslint';
 import { rmSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../normalize.mjs';
+import { normalizeEslintResults } from '../normalize.mts';
 import { createProject } from '../../oxlint/test-support/oxlint-project.mjs';
 import { withSharedUnusedDirectives } from './unused-directives.mjs';
 
