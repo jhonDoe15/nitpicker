@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { zipOf } from '../../builds/test-support/zip-writer.mjs';
+import { zipOf } from '../../builds/test-support/zip-writer.mts';
 import { declaredDependencies, dependencyReport } from './maven-dependencies.mts';
 
 const roots = [];

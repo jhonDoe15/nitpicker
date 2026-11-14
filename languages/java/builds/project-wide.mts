@@ -1,84 +1,110 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { outerClass } from '../ingest/class-names.mjs';
-import { parseJdeps, readCouplingFindings } from '../adapters/metrics/java-coupling.mjs';
-import { readJavaFileLimitFindings } from '../adapters/metrics/java-structure.mjs';
-import { kotlinModules, readKotlinMetrics } from '../adapters/kotlin/kotlin-metrics.mjs';
-import { inModule } from './module-path.mjs';
-import { readTestOnlyClassFindings } from '../adapters/review-rules/test-only-classes.mjs';
-import { readTestRuntimeFindings } from '../adapters/test-runtime/test-runtime-findings.mjs';
-import { readCopiedConstantFindings } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
-import { readJvmReuse } from '../adapters/reuse/jvm-reuse-facts.mjs';
-import { readRoundTripFindings } from '../adapters/review-rules/round-trips/round-trips.mjs';
-import { readFeatureGraph } from '../adapters/features/feature-findings.mjs';
+import type { JavaFinding } from '../adapters/typed/java-values.mts';
+import {
+  copiedConstantFindings,
+  couplingFindingsOf,
+  featureGraphOf,
+  fileLimitFindings,
+  inModuleOf,
+  jdepsEdges,
+  jvmReuseOf,
+  kotlinMetricsOf,
+  kotlinNodesOf,
+  outerClassOf,
+  roundTripFindings,
+  testOnlyFindings,
+  testRuntimeFindings,
+  type Cycles,
+  type CouplingRun,
+  type Declared,
+  type ModuleReport,
+  type ProjectClasses,
+  type WideRun,
+  type JdeEdge,
+  type KotlinNodes,
+  type ReportProject,
+} from './typed/project-wide-views.mts';
 
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
 const PERMITS_REPORT = 'permits.txt';
 const ROOT_PACKAGE = '(root)';
 
-function readLines(reportRoot, name) {
+function readLines(reportRoot: string, name: string): string[] {
   return readFileSync(path.join(reportRoot, name), 'utf8').split(/\r?\n/u).filter(Boolean);
 }
 
-function qualified(qualifier, className) {
+function qualified(qualifier: string, className: string): string {
   if (qualifier === '') {
     return className;
   }
   return `${qualifier}/${className.includes('.') ? className : `${ROOT_PACKAGE}.${className}`}`;
 }
 
-function declaringProjects(projects) {
-  const declared = new Map();
+function declaringProjects(projects: readonly ProjectClasses[]): Map<string, string[]> {
+  const declared = new Map<string, string[]>();
   for (const project of projects) {
-    for (const className of new Set(project.classes.map(outerClass))) {
+    for (const className of new Set(project.classes.map(outerClassOf))) {
       declared.set(className, [...(declared.get(className) ?? []), project.qualifier]);
     }
   }
   return declared;
 }
 
-function targetOf(target, { qualifier, declared }) {
-  const owners = declared.get(outerClass(target)) ?? [];
+function targetOf(
+  target: string,
+  { qualifier, declared }: { readonly qualifier: string; readonly declared: Declared },
+): string | undefined {
+  const owners = declared.get(outerClassOf(target)) ?? [];
   if (owners.includes(qualifier)) {
     return qualified(qualifier, target);
   }
-  return owners.length === 1 ? qualified(owners[0], target) : undefined;
+  const [only] = owners;
+  return owners.length === 1 && only !== undefined ? qualified(only, target) : undefined;
 }
 
-function sourceFile(projectRoot, sourceRoots, className) {
-  const relative = `${outerClass(className).replaceAll('.', '/')}.java`;
+function sourceFile(
+  projectRoot: string,
+  sourceRoots: readonly string[],
+  className: string,
+): string | undefined {
+  const relative = `${outerClassOf(className).replaceAll('.', '/')}.java`;
   const candidates = sourceRoots.map((root) => `${root}/${relative}`);
   return (
     candidates.find((candidate) => existsSync(path.join(projectRoot, candidate))) ?? candidates[0]
   );
 }
 
-function kotlinNodes(projects) {
-  const moduleOf = new Map();
-  const fileOf = new Map();
+function kotlinNodes(projects: readonly ReportProject[]): KotlinNodes {
+  const moduleOf = new Map<string, string>();
+  const fileOf = new Map<string, string>();
   for (const project of projects) {
-    const nodes = kotlinModules(readKotlinMetrics(project.reportRoot));
+    const nodes = kotlinNodesOf(kotlinMetricsOf(project.reportRoot));
     for (const [className, node] of nodes.moduleOf) {
       moduleOf.set(qualified(project.qualifier, className), qualified(project.qualifier, node));
     }
     for (const [node, file] of nodes.fileOf) {
-      fileOf.set(qualified(project.qualifier, node), inModule(project.filePrefix, file));
+      fileOf.set(qualified(project.qualifier, node), inModuleOf(project.filePrefix, file));
     }
   }
   return { moduleOf, fileOf };
 }
 
-function qualifiedEdges(project, text, declared) {
-  return parseJdeps(text)
-    .map((edge) => ({
+function qualifiedEdges(
+  project: ReportProject,
+  text: string,
+  declared: Declared,
+): { source: string; target: string }[] {
+  return jdepsEdges(text)
+    .map((edge: JdeEdge) => ({
       source: qualified(project.qualifier, edge.source),
       target: targetOf(edge.target, { qualifier: project.qualifier, declared }),
     }))
-    .filter((edge) => edge.target !== undefined);
+    .flatMap(({ source, target }) => (target === undefined ? [] : [{ source, target }]));
 }
 
-function permitsText(reportRoot) {
+function permitsText(reportRoot: string): string {
   const file = path.join(reportRoot, PERMITS_REPORT);
   return existsSync(file)
     ? readLines(reportRoot, PERMITS_REPORT)
@@ -87,7 +113,7 @@ function permitsText(reportRoot) {
     : '';
 }
 
-function mergedPermits(projects, declared) {
+function mergedPermits(projects: readonly ProjectClasses[], declared: Declared): string {
   const lines = projects.flatMap((project) =>
     qualifiedEdges(project, permitsText(project.reportRoot), declared).map(
       ({ source, target }) => `${source} -> ${target}\n`,
@@ -96,7 +122,11 @@ function mergedPermits(projects, declared) {
   return [...new Set(lines)].join('');
 }
 
-function mergeProjects(projectRoot, projects, mergedRoot) {
+function mergeProjects(
+  projectRoot: string,
+  projects: readonly ProjectClasses[],
+  mergedRoot: string,
+): Map<string, string | undefined> {
   const declared = declaringProjects(projects);
   const edges = projects.flatMap((project) =>
     qualifiedEdges(
@@ -121,28 +151,31 @@ function mergeProjects(projectRoot, projects, mergedRoot) {
   writeFileSync(path.join(mergedRoot, PERMITS_REPORT), mergedPermits(projects, declared));
   return new Map(
     projects.flatMap((project) =>
-      project.classes.map((name) => [
-        qualified(project.qualifier, outerClass(name)),
+      project.classes.map((name): [string, string | undefined] => [
+        qualified(project.qualifier, outerClassOf(name)),
         sourceFile(projectRoot, project.sourceRoots, name),
       ]),
     ),
   );
 }
 
-function withClassFiles(cycles) {
+function withClassFiles(cycles: Cycles): Cycles & { readonly classFiles: Map<string, string> } {
   const classes = cycles.classes ?? [];
   return {
     ...cycles,
     classFiles: new Map(
-      classes.map(({ qualifier, name, file }) => [qualified(qualifier, name), file]),
+      classes.map(({ qualifier, name, file }): [string, string] => [
+        qualified(qualifier, name),
+        file,
+      ]),
     ),
   };
 }
 
 function couplingFindings(
-  projectRoot,
-  { projects, mergedRoot, manifest, kotlin, layout, features },
-) {
+  projectRoot: string,
+  { projects, mergedRoot, manifest, kotlin, layout, features }: CouplingRun,
+): JavaFinding[] {
   const complete = projects
     .filter(({ reportRoot }) =>
       [JDEPS_REPORT, JDEPS_CLASSES].every((name) => existsSync(path.join(reportRoot, name))),
@@ -152,17 +185,18 @@ function couplingFindings(
     return [];
   }
   const [single] = complete;
-  if (complete.length === 1 && single.qualifier === '') {
-    return readCouplingFindings(single.reportRoot, {
+  if (complete.length === 1 && single?.qualifier === '') {
+    return couplingFindingsOf(single.reportRoot, {
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
       kotlin: kotlin ? kotlinNodes([single]) : undefined,
+      files: undefined,
       layout,
       features,
     });
   }
   const files = mergeProjects(projectRoot, complete, mergedRoot);
-  return readCouplingFindings(mergedRoot, {
+  return couplingFindingsOf(mergedRoot, {
     projectRoot,
     sourceRoots: manifest.sourceRoots ?? [],
     kotlin: kotlin ? kotlinNodes(complete) : undefined,
@@ -172,7 +206,7 @@ function couplingFindings(
   });
 }
 
-export function reportModuleProjects(modules, rootKey) {
+export function reportModuleProjects(modules: readonly ModuleReport[], rootKey: string) {
   return modules.map((module) => ({
     reportRoot: module.reportRoot,
     qualifier: module.key === rootKey ? '' : module.dir,
@@ -185,19 +219,22 @@ export function reportModuleProjects(modules, rootKey) {
   }));
 }
 
-export function projectWideReport(projectRoot, { projects, mergedRoot, manifest, kotlin, policy }) {
-  const features = readFeatureGraph(projectRoot, {
+export function projectWideReport(
+  projectRoot: string,
+  { projects, mergedRoot, manifest, kotlin, policy }: WideRun,
+): { findings: JavaFinding[]; imports: unknown } {
+  const features = featureGraphOf(projectRoot, {
     projects,
     kotlin,
     policy: { layout: policy.layout, exceptions: policy.exceptions },
   });
-  const reuse = readJvmReuse(projectRoot, {
+  const reuse = jvmReuseOf(projectRoot, {
     projects,
     kotlin,
     policy: { ...policy, layout: features.layout },
   });
   const findings = [
-    ...readJavaFileLimitFindings(projectRoot, {
+    ...fileLimitFindings(projectRoot, {
       manifest,
       kotlin,
       policy: {
@@ -216,11 +253,11 @@ export function projectWideReport(projectRoot, { projects, mergedRoot, manifest,
       layout: features.layout,
       features: withClassFiles(features.cycles),
     }),
-    ...readTestOnlyClassFindings(projectRoot, { projects }),
-    ...readTestRuntimeFindings(projectRoot, { projects }),
+    ...testOnlyFindings(projectRoot, { projects }),
+    ...testRuntimeFindings(projectRoot, { projects }),
     ...reuse.findings,
-    ...readRoundTripFindings(projectRoot, { projects, kotlin, policy }),
-    ...readCopiedConstantFindings(projectRoot, { projects, kotlin, policy }),
+    ...roundTripFindings(projectRoot, { projects, kotlin, policy }),
+    ...copiedConstantFindings(projectRoot, { projects, kotlin, policy }),
     ...features.findings,
   ];
   return { findings, imports: reuse.imports };

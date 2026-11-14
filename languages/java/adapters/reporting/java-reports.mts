@@ -24,7 +24,7 @@ import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { withoutMainMethodFindings } from './entry-point/main-method.mts';
 import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mts';
 import { sarifFindings } from './sarif/sarif-reports.mjs';
-import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mjs';
+import { projectWideReport, reportModuleProjects } from '../../builds/project-wide.mts';
 import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { readKotlinFindings, requireKotlinManifest, sourceLocator } from './kotlin-reports.mjs';
 import {

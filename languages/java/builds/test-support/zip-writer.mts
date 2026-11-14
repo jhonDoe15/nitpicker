@@ -16,13 +16,28 @@ const STORED = 0;
 const DEFLATED = 8;
 const WIDE16 = 0xffff;
 const WIDE32 = 0xffffffff;
-const WRITERS = {
+type Width = typeof U16 | typeof U32 | typeof U64;
+type Field = readonly [Width, number];
+type Writer = (buffer: Buffer, value: number, offset: number) => number;
+type Stored = { readonly nameBytes: Buffer; readonly stored: Buffer; readonly data: Buffer };
+type Entry = Stored & { readonly method: number };
+type Layout = { readonly zip64: boolean; readonly wideSizes: boolean };
+type ZipOptions = Partial<Layout> & { readonly comment?: string };
+type Ending = {
+  readonly count: number;
+  readonly size: number;
+  readonly start: number;
+  readonly zip64: boolean;
+  readonly comment: string;
+};
+
+const WRITERS: Readonly<Record<Width, Writer>> = {
   [U16]: (buffer, value, offset) => buffer.writeUInt16LE(value, offset),
   [U32]: (buffer, value, offset) => buffer.writeUInt32LE(value, offset),
   [U64]: (buffer, value, offset) => buffer.writeBigUInt64LE(BigInt(value), offset),
 };
 
-function header(fields) {
+function header(fields: readonly Field[]): Buffer {
   const buffer = Buffer.alloc(fields.reduce((size, [bytes]) => size + bytes, 0));
   fields.reduce((offset, [bytes, value]) => {
     WRITERS[bytes](buffer, value, offset);
@@ -31,7 +46,15 @@ function header(fields) {
   return buffer;
 }
 
-function localEntry({ name, data, method }) {
+function localEntry({
+  name,
+  data,
+  method,
+}: {
+  readonly name: string;
+  readonly data: Buffer;
+  readonly method: number;
+}): Stored & { readonly local: Buffer } {
   const stored = method === DEFLATED ? deflateRawSync(data) : data;
   const nameBytes = Buffer.from(name);
   const local = Buffer.concat([
@@ -53,7 +76,11 @@ function localEntry({ name, data, method }) {
   return { local, nameBytes, stored, data };
 }
 
-function directoryEntry({ nameBytes, stored, data, method }, localOffset, { zip64, wideSizes }) {
+function directoryEntry(
+  { nameBytes, stored, data, method }: Entry,
+  localOffset: number,
+  { zip64, wideSizes }: Layout,
+): Buffer {
   const wide = [
     ...(wideSizes ? [data.length, stored.length] : []),
     ...(zip64 ? [localOffset] : []),
@@ -64,7 +91,7 @@ function directoryEntry({ nameBytes, stored, data, method }, localOffset, { zip6
       : header([
           [U16, ZIP64_EXTRA],
           [U16, U64 * wide.length],
-          ...wide.map((value) => [U64, value]),
+          ...wide.map((value): Field => [U64, value]),
         ]);
   return Buffer.concat([
     header([
@@ -90,7 +117,7 @@ function directoryEntry({ nameBytes, stored, data, method }, localOffset, { zip6
   ]);
 }
 
-function endRecords({ count, size, start, zip64, comment }) {
+function endRecords({ count, size, start, zip64, comment }: Ending): Buffer {
   const end = header([
     [U32, END_OF_DIRECTORY],
     [U16, 0],
@@ -125,7 +152,10 @@ function endRecords({ count, size, start, zip64, comment }) {
   return Buffer.concat([record, locator, end, Buffer.from(comment)]);
 }
 
-export function zipOf(files, { zip64 = false, wideSizes = false, comment = '' } = {}) {
+export function zipOf(
+  files: Readonly<Record<string, string | Buffer>>,
+  { zip64 = false, wideSizes = false, comment = '' }: ZipOptions = {},
+): Buffer {
   const entries = Object.entries(files).map(([name, text], index) => ({
     name,
     data: typeof text === 'string' ? Buffer.from(text) : text,
@@ -134,10 +164,10 @@ export function zipOf(files, { zip64 = false, wideSizes = false, comment = '' } 
   const written = entries.map((entry) => ({ ...localEntry(entry), method: entry.method }));
   const offsets = [0];
   for (const { local } of written) {
-    offsets.push(offsets.at(-1) + local.length);
+    offsets.push((offsets.at(-1) ?? 0) + local.length);
   }
   const central = Buffer.concat(
-    written.map((entry, index) => directoryEntry(entry, offsets[index], { zip64, wideSizes })),
+    written.map((entry, index) => directoryEntry(entry, offsets[index] ?? 0, { zip64, wideSizes })),
   );
   return Buffer.concat([
     ...written.map(({ local }) => local),
@@ -145,7 +175,7 @@ export function zipOf(files, { zip64 = false, wideSizes = false, comment = '' } 
     endRecords({
       count: entries.length,
       size: central.length,
-      start: offsets.at(-1),
+      start: offsets.at(-1) ?? 0,
       zip64,
       comment,
     }),
