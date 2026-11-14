@@ -1,9 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"iter"
 	"strconv"
 
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/optional"
 	"honnef.co/go/tools/unused"
 )
 
@@ -42,4 +45,30 @@ func (objects unusedObjects) findings() iter.Seq[Finding] {
 			}
 		}
 	}
+}
+
+type optionResults []*optional.Result
+
+func (results *optionResults) add(result any) {
+	if found, ok := result.(*optional.Result); ok {
+		*results = append(*results, found)
+	}
+}
+
+type unusedOption struct {
+	Name      string `json:"name"`
+	Published bool   `json:"published"`
+}
+
+func (results optionResults) findings() []Finding {
+	var found []Finding
+	for _, option := range optional.UnusedOptions(results) {
+		message, _ := json.Marshal(unusedOption{Name: option.Name, Published: option.Published})
+		found = append(found, Finding{
+			Tool: rules.Tool, Rule: ruleName(optional.Analyzer),
+			File: option.Position.Filename, Line: option.Position.Line, Column: option.Position.Column,
+			Message: string(message),
+		})
+	}
+	return found
 }

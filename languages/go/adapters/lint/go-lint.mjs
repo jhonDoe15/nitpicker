@@ -5,6 +5,12 @@ import { lintCommand } from '../execution/go-tools.mjs';
 import { diagnosticFindings, parsePosition } from '../build/diagnostics.mjs';
 import { withoutGatedForeignKeys } from './foreign-keys/key-gate.mjs';
 import { lintMessage, lintRule } from './lint-rules.mjs';
+import { MESSAGES, messageFields } from '../../../../shared/policy.mjs';
+import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
+import {
+  UNUSED_API_RULE_IDS,
+  UNUSED_OPTION_SCOPES,
+} from '../../../../shared/unused-api/unused-api-policy.mjs';
 
 const LINT_REPORT = 'lint.json';
 const PROJECT_CONFIG_FLAG = '-project-staticcheck-config';
@@ -29,6 +35,19 @@ export function lint(context) {
   writeFileSync(path.join(context.reportRoot, LINT_REPORT), result.stdout);
 }
 
+const UNUSED_OPTION_TOOL = 'structure';
+
+function unusedOption(where, entry) {
+  const { name, published } = JSON.parse(entry.message);
+  const rule = UNUSED_API_RULE_IDS.unusedOption;
+  const { message } = messageFields(MESSAGES.unusedOption, {
+    name,
+    scope: UNUSED_OPTION_SCOPES.go[published ? 'published' : 'private'],
+    exception: exceptionText(rule, where.file),
+  });
+  return { tool: UNUSED_OPTION_TOOL, rule, ...where, message };
+}
+
 function diagnostic(projectRoot, entry) {
   const position = parsePosition(
     projectRoot,
@@ -40,6 +59,9 @@ function diagnostic(projectRoot, entry) {
   const where = PACKAGE_RULES.has(entry.rule)
     ? { file: path.posix.dirname(position.file), line: 1 }
     : position;
+  if (entry.tool === 'go-rules' && entry.rule === UNUSED_API_RULE_IDS.unusedOption) {
+    return [unusedOption(where, entry)];
+  }
   return [{ tool: entry.tool, rule: lintRule(entry.rule), ...where, message: lintMessage(entry) }];
 }
 
