@@ -9,7 +9,7 @@ import {
   removeWorkspace,
   toolErrorMessages,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
+} from './test-support/go-e2e-support.mts';
 import {
   BASE_FILES,
   BROKEN,
@@ -21,9 +21,9 @@ import {
   NESTED_TEST,
   PRINTF,
   UNFORMATTED,
-} from './test-support/go-fixtures.mjs';
+} from './test-support/go-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 const EXCEPTING_CONFIG = JSON.stringify({
   preset: 'go',
   disable: ['mutation'],
@@ -39,8 +39,8 @@ const EXCEPTING_CONFIG = JSON.stringify({
 });
 
 describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, BASE_FILES);

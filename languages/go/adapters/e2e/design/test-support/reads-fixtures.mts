@@ -11,7 +11,7 @@ func (a *Account) Label() string {
 }
 `;
 
-function consumer(pkg, name, condition) {
+function consumer(pkg: string, name: string, condition: string) {
   return `package ${pkg}
 
 import "shop/internal/ledger"

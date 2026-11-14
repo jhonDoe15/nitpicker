@@ -8,7 +8,7 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from '../test-support/go-e2e-support.mjs';
+} from '../test-support/go-e2e-support.mts';
 import {
   BROKEN_TEST,
   FEE,
@@ -17,13 +17,13 @@ import {
   MUTATION_BASE,
   POSITIVE_TEST,
   WEAKER_RATE_TEST,
-} from './test-support/go-mutation-fixtures.mjs';
+} from './test-support/go-mutation-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
 describe.skipIf(!goE2eEnabled)('Go preset mutation testing end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, MUTATION_BASE);
@@ -84,7 +84,7 @@ describe.skipIf(!goE2eEnabled)('Go preset mutation testing end to end', () => {
     expect(newFindings(result)).toEqual([]);
     expect(
       result
-        .json('new-findings.json')
+        .findings('new-findings.json')
         .filter(({ rule }) => rule === 'mutation-skipped')
         .map(({ message }) => message),
     ).toEqual([

@@ -7,8 +7,8 @@ import {
   newFindings,
   newMessages,
   removeWorkspace,
-} from './test-support/go-e2e-support.mjs';
-import { BASE_FILES } from './test-support/go-fixtures.mjs';
+} from './test-support/go-e2e-support.mts';
+import { BASE_FILES } from './test-support/go-fixtures.mts';
 import {
   GORM_MIGRATED,
   GORM_MODELS,
@@ -24,13 +24,13 @@ import {
   STOCK_REFRESH,
   STOCK_TEST,
   TOKEN,
-} from './test-support/go-lint-fixtures.mjs';
+} from './test-support/go-lint-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
 describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, BASE_FILES);

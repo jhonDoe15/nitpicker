@@ -3,7 +3,7 @@ import {
   REPEATED_STEPS_FILES,
   TWO_CALLERS_FILES,
   UNCLOSED_FILES,
-} from './calls-fixtures.mjs';
+} from './calls-fixtures.mts';
 import {
   CLUMP_FILES,
   DIFFERENT_POLICY_FILES,
@@ -13,15 +13,15 @@ import {
   OWNING_HOP_FILES,
   POLICY_FILES,
   SHARED_CALLER_FILES,
-} from './surface-fixtures.mjs';
+} from './surface-fixtures.mts';
 import {
   COPYING_FILES,
   ESCAPING_FILES,
   THREADING_FILES,
   WIDE_THREADING_FILES,
-} from './state-fixtures.mjs';
+} from './state-fixtures.mts';
 
-import { FOREIGN_DECISION_FILES, SINGLE_FIELD_FILES } from './reads-fixtures.mjs';
+import { FOREIGN_DECISION_FILES, SINGLE_FIELD_FILES } from './reads-fixtures.mts';
 
 export const SCENARIOS = [
   {

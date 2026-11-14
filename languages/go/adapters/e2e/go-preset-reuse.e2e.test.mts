@@ -7,15 +7,15 @@ import {
   newFindings,
   removeWorkspace,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
-import { BILLING_EDITED, COPIED_FILES, REUSE_FILES } from './test-support/go-reuse-fixtures.mjs';
+} from './test-support/go-e2e-support.mts';
+import { BILLING_EDITED, COPIED_FILES, REUSE_FILES } from './test-support/go-reuse-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
 describe.skipIf(!goE2eEnabled)('Go preset copies across packages end to end', () => {
-  let workspace;
-  let single;
-  let copied;
+  let workspace: string;
+  let single: string;
+  let copied: string;
   beforeAll(() => {
     workspace = createWorkspace();
     single = goRepository(workspace, REUSE_FILES);

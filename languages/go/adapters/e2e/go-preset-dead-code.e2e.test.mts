@@ -8,7 +8,7 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
+} from './test-support/go-e2e-support.mts';
 import {
   APP_FILES,
   MAIN_WITH_REFUND,
@@ -18,13 +18,13 @@ import {
   REFUND_TEST,
   ROUNDING,
   ROUNDING_TEST,
-} from './test-support/go-app-fixtures.mjs';
+} from './test-support/go-app-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
 describe.skipIf(!goE2eEnabled)('Go preset duplicates and dead code end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, APP_FILES);
