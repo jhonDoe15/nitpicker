@@ -9,9 +9,11 @@ import { layeredJscpdConfig, renamedJscpdSettings } from './config.mjs';
 import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 import { rootsPattern } from './skipped-folders.mjs';
+import { describeProcessEnd } from '../../../shared/processes/process-failure.mjs';
 
 export const DUPLICATES_TOOL = 'duplicates';
 export const DUPLICATES_REPORT = 'duplicates.json';
+const TOOL = 'jscpd';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const JSCPD_TIMEOUT_MS = 10 * 60 * 1000;
 const JSCPD_CONFIG = 'jscpd-config.json';
@@ -28,7 +30,7 @@ export function insideReportRoot(reportRoot, ...segments) {
 }
 
 export function jscpdVersion() {
-  return resolveTool('jscpd', { bin: 'run-jscpd.js' }).version;
+  return resolveTool(TOOL, { bin: 'run-jscpd.js' }).version;
 }
 
 function jscpdArguments({ jscpd, paths, config, format, output, together, mode }) {
@@ -62,14 +64,13 @@ function runJscpdOnce({ cwd, output, args }) {
     throw result.error;
   }
   if (result.status !== 0) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`jscpd exited with ${String(result.status)} in ${cwd}: ${detail}`);
+    throw new Error(describeProcessEnd(TOOL, result, { where: cwd }));
   }
   return JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8'));
 }
 
 function runGroups({ cwd, roots, together, settings, ignore, names, reportRoot, ...tool }) {
-  const jscpd = resolveTool('jscpd', { bin: 'run-jscpd.js' }).binPath;
+  const jscpd = resolveTool(TOOL, { bin: 'run-jscpd.js' }).binPath;
   const config = insideReportRoot(reportRoot, names.config);
   const { mode = DUPLICATES_MODE, ...written } = settings;
   writeFileSync(config, JSON.stringify({ ...written, ...(ignore.length > 0 ? { ignore } : {}) }));

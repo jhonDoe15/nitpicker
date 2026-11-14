@@ -8,6 +8,7 @@ import { argumentFileToken } from '../builds/lint/javac-options.mjs';
 import { withCompileErrors } from '../builds/compile-errors/compile-findings.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mjs';
+import { describeProcessEnd } from '../../../shared/processes/process-failure.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
@@ -102,12 +103,27 @@ export function runMaven({
   if (result.status !== 0) {
     const output = `${result.stdout}\n${result.stderr}`;
     throw withCompileErrors(
-      new Error(`Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`),
+      new Error(mavenFailureMessage(result, projectRoot, output)),
       output,
       projectRoot,
     );
   }
   return result.stdout;
+}
+
+function mavenFailureMessage(result, projectRoot, output) {
+  return typeof result.signal === 'string'
+    ? describeProcessEnd('Maven', result, {
+        where: projectRoot,
+        detail: output.trim() === '' ? '' : mavenErrorSummary(output),
+      })
+    : `Maven failed in ${projectRoot}:\n${mavenErrorSummary(output)}`;
+}
+
+function javaFailureMessage(tool, result, detail) {
+  return typeof result.signal === 'string'
+    ? describeProcessEnd(tool, result, { detail })
+    : `${tool} failed with exit code ${String(result.status)}: ${detail || 'no diagnostic output'}`;
 }
 
 export function javaCommand(name) {
@@ -170,9 +186,7 @@ export function runJava({
         .filter((line) => line.trim() !== '' && !JVM_NOISE.test(line))
         .slice(0, MAX_ERROR_LINES)
         .join('\n');
-      const failure = new Error(
-        `${tool} failed with exit code ${String(result.status)}: ${detail}`,
-      );
+      const failure = new Error(javaFailureMessage(tool, result, detail));
       throw Object.defineProperty(failure, 'output', {
         value: `${result.stderr}\n${result.stdout}`,
       });

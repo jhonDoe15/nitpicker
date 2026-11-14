@@ -72,7 +72,7 @@ describe('readCpdFindings without a usable CPD run', () => {
     [
       'a launcher killed by a signal',
       'SIGKILL\n',
-      'PMD CPD was stopped by SIGKILL and wrote no report: no error output',
+      'PMD CPD was killed by SIGKILL (usually the out-of-memory killer; run fewer jobs at once with NITPICKER_MAX_PARALLEL or give the job more memory) and wrote no report: no error output',
     ],
     [
       'a java that could not start',

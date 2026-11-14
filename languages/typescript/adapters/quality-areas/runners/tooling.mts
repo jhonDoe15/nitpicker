@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { lstatSync } from 'node:fs';
 import { TOOL_RUN_CEILING_MS } from '../../../../../shared/processes/deadlines.mjs';
+import { describeProcessEnd } from '../../../../../shared/processes/process-failure.mjs';
 
 type NodeToolSpawn = {
   readonly options: QualityAreaOptions;
@@ -54,8 +55,7 @@ export function runNodeTool({
 }: NodeToolInvocation): SpawnSyncReturns<string> {
   const result = spawnNodeTool(invocation);
   if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${invocation.options.kind} exited with ${String(result.status)}: ${detail}`);
+    throw new Error(describeProcessEnd(invocation.options.kind, result));
   }
   return result;
 }
