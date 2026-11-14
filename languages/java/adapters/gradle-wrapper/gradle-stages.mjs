@@ -57,7 +57,7 @@ function mutationScopeProperties({ mutationScope }, directory) {
 
 export function gradleStages(
   baseArguments,
-  { projectRoot, initScript, policy, directory, testsFailedModules = [] },
+  { projectRoot, initScript, policy, directory, testsFailedModules = [], testsSkipped = false },
 ) {
   const common = [
     ...baseArguments,
@@ -72,6 +72,7 @@ export function gradleStages(
       ...(testsFailedModules.length > 0
         ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
         : []),
+      ...(testsSkipped ? ['-Pnitpicker.testsSkipped=true'] : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
       ...mutationScopeProperties(policy, directory),

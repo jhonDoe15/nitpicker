@@ -1,6 +1,9 @@
 import path from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import { fieldOf } from '../../../shared/values/readers.mts';
+import { EMPTY_SOURCES_TOOL } from '../../../languages/typescript/preset/notices/empty-sources.mjs';
+
+const RUN_TOOLS = new Set(['analyzer-scheduler', EMPTY_SOURCES_TOOL]);
 
 export type Entry = Readonly<Record<string, unknown>> & {
   readonly tool?: unknown;
@@ -215,7 +218,7 @@ function checkedToolErrors(
     throw new TypeError(`Quality shard ${String(shardIndex)} toolErrors must be an array`);
   }
   const unexpectedError = toolErrors.find(
-    ({ tool }) => tool !== 'analyzer-scheduler' && !expectedNames.has(tool),
+    ({ tool }) => !(RUN_TOOLS.has(String(tool)) || expectedNames.has(tool)),
   );
   if (unexpectedError !== undefined) {
     throw new Error(

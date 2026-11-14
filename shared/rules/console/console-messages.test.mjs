@@ -65,6 +65,10 @@ describe('console message normalization', () => {
     expect(normalizeConsoleMessage('x'.repeat(500))).toHaveLength(300);
   });
 
+  it('drops the space a cut at the 300th character leaves at the end', () => {
+    expect(normalizeConsoleMessage('word '.repeat(100))).toBe('word '.repeat(60).trimEnd());
+  });
+
   it('gives the same message when only paths, numbers and times differ', () => {
     const before = 'Warning: timer fired in /a/b/src/x.ts:10:2 at 2026-01-01T00:00:00Z (pid 4)';
     const after = 'Warning: timer fired in /other/src/x.ts:99:5 at 2026-02-03T04:05:06Z (pid 91)';

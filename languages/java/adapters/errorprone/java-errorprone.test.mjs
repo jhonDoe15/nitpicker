@@ -238,4 +238,55 @@ describe('readErrorProneFindings', () => {
         'findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.',
     );
   });
+
+  it('reports a known Error Prone crash as a notice, so a clean project still passes', () => {
+    const cause =
+      'java.lang.ClassCastException: class com.sun.tools.javac.tree.JCTree$JCIdent cannot be cast to ' +
+      'class com.sun.source.tree.MemberSelectTree';
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      {
+        crash: 'UnnecessarilyFullyQualified',
+        file: path.join(root, 'src/main/java/demo/Registration.java'),
+        line: 17,
+        cause,
+      },
+    ]);
+
+    expect(
+      readErrorProneFindings({ reportRoot, roots: [projectRoot], lintedRoots: ['src/main/java'] }),
+    ).toEqual([
+      {
+        tool: 'errorprone',
+        rule: 'check-crashed',
+        path: '.',
+        identity: 'check-crashed:UnnecessarilyFullyQualified',
+        message:
+          "Error Prone's UnnecessarilyFullyQualified check crashed on src/main/java/demo/Registration.java:17 " +
+          `(${cause}), a known Error Prone bug, so it was turned off for this run and only its findings are ` +
+          'missing. The crash is not a problem in this code.',
+        classification: 'descriptive',
+      },
+    ]);
+  });
+
+  it('keeps an unknown crash of the same check a tool error', () => {
+    const { projectRoot, reportRoot } = reportRootWith((root) => [
+      {
+        crash: 'UnnecessarilyFullyQualified',
+        file: path.join(root, 'src/main/java/demo/A.java'),
+        line: 3,
+        cause: 'java.lang.NullPointerException',
+      },
+    ]);
+
+    const findings = readErrorProneFindings({
+      reportRoot,
+      roots: [projectRoot],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(findings.map(({ identity, classification }) => [identity, classification])).toEqual([
+      ['check-crashed:UnnecessarilyFullyQualified', 'tool-error'],
+    ]);
+  });
 });

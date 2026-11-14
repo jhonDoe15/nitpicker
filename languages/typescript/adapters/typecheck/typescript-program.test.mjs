@@ -19,7 +19,7 @@ import {
   preEmitDiagnostics,
   projectTypeScript,
   withoutProjectRoot,
-} from './typescript-program.mjs';
+} from './typescript-program.mts';
 
 const ASSIGN_NUMBER = "Type 'string' is not assignable to type 'number'.";
 const UNKNOWN_OPTION = "Unknown compiler option 'fooBar'.";

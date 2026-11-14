@@ -9,7 +9,7 @@ import {
   cracoJestConfigText,
   mutationRunnerConfig,
   unsupportedMutationRunner,
-} from './mutation-runner-config.mjs';
+} from './mutation-runner-config.mts';
 
 const SOURCE_CONFIG = {
   mutate: ['src/**/*.ts'],

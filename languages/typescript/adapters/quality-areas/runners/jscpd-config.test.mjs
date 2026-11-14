@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../../../preset/head-policy.mjs';
-import { runDuplicates } from './repository.mjs';
+import { runDuplicates } from './duplicates/duplicates.mts';
 
 const roots = [];
 afterEach(() => {
