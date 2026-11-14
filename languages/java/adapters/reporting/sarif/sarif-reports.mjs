@@ -14,6 +14,7 @@ import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
+import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -84,6 +85,14 @@ export function sarifFindings(context) {
       { projectRoot },
     ),
   );
+  const processingErrors = pmdProcessingErrors(
+    readSarifReport(path.join(context.reportRoot, 'pmd.sarif')),
+    {
+      roots: context.roots,
+      sourceRoots: context.sourceRoots,
+      projectRoot,
+    },
+  );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
@@ -112,6 +121,7 @@ export function sarifFindings(context) {
       ),
       { projectRoot },
     ),
+    ...processingErrors,
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
     }).findings,
