@@ -1,6 +1,6 @@
 const CONTINUATION_STEPS = 4;
 
-export function wrappedCall({ step, last }) {
+export function wrappedCall({ step, last }: { step: number; last: number }): string {
   const outer = ' '.repeat(step * 2);
   const inner = ' '.repeat(step * CONTINUATION_STEPS);
   return [

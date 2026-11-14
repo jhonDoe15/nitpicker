@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
+import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mts';
 import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';

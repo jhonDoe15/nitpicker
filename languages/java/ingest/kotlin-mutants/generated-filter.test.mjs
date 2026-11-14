@@ -10,7 +10,7 @@ import {
   negate,
   removed,
   returns,
-} from './test-support/filter-helpers.mjs';
+} from './test-support/filter-helpers.mts';
 
 describe('rules that need no source facts', () => {
   const filter = filterFor();

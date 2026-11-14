@@ -7,7 +7,7 @@ import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mj
 import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
-import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
+import { fakeJvmTools } from './test-support/fake-jvm-tools.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 const GRADLE = { 'build.gradle': "plugins { id 'java' }\n" };
