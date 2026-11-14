@@ -1,32 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { factsView } from '../../build-view.mjs';
+import type { FileFacts } from '../../test-support/facts.mts';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
 import {
   call,
   file,
   fn,
+  importOf,
   klass,
   parameter,
-  run,
-  summary,
   testFile,
-} from '../../test-support/facts.mjs';
-import { UNUSED_OPTION_RULE, unusedOptionFindings } from './unused-options.mjs';
+} from '../../test-support/loose-facts.mts';
+import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
 
 const OTHER_MODULE = 'billing/src/main/kotlin/demo/Billing.kt';
 const OTHER_TESTS = 'billing/src/test/kotlin/demo/BillingTest.kt';
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];
-const shared = (overrides = {}) => fn('format', { parameters: options, line: 8, ...overrides });
+const shared = (overrides: Loose = {}) =>
+  fn('format', { parameters: options, line: 8, ...overrides });
 const partial = call('format', { positional: 1 });
 const full = call('format', { positional: 2 });
-const never = () => false;
+const never: (name: string) => boolean = () => false;
 const FLAGGED = [`${UNUSED_OPTION_RULE} format.pad 8`];
 const TEST_CONFIGURATION = 'org.springframework.boot.test.context.TestConfiguration';
 const SPRING_IMPORTS = [
-  { path: 'org.springframework.stereotype.Service', all: false },
-  { path: 'org.springframework.context.annotation', all: true },
+  importOf('org.springframework.stereotype.Service'),
+  importOf('org.springframework.context.annotation', { all: true }),
 ];
 
-function moduleOf(files, index, { manifest = {}, skipped = [] } = {}) {
+type Settings = {
+  siblings?: FileFacts[][];
+  published?: boolean;
+  gaps?: unknown[];
+  build?: unknown;
+  index?: number;
+};
+
+function moduleOf(
+  files: FileFacts[],
+  index: number,
+  { manifest = {}, skipped = [] }: { manifest?: Loose; skipped?: unknown[] } = {},
+) {
   return {
     reportRoot: `module-${String(index)}`,
     path: `:m${String(index)}`,
@@ -35,12 +50,18 @@ function moduleOf(files, index, { manifest = {}, skipped = [] } = {}) {
   };
 }
 
-function buildOf(modules, { mentionedInJava = never } = {}) {
+function buildOf(
+  modules: Loose[],
+  { mentionedInJava = never }: { mentionedInJava?: (name: string) => boolean } = {},
+): unknown {
   return factsView({ modules, mentionedInJava });
 }
 
-function findingsFor(own, { siblings = [], published = false, gaps = [], build, index = 0 } = {}) {
-  const view =
+function findingsFor(
+  own: FileFacts[],
+  { siblings = [], published = false, gaps = [], build, index = 0 }: Settings = {},
+) {
+  const view: unknown =
     build ??
     buildOf([
       moduleOf(own, 0, { manifest: { published, kotlinCallerGaps: gaps } }),
@@ -53,11 +74,11 @@ function findingsFor(own, { siblings = [], published = false, gaps = [], build, 
   });
 }
 
-function judged(own, settings) {
+function judged(own: FileFacts[], settings?: Settings) {
   return summary(findingsFor(own, settings));
 }
 
-function messageWith(symbol, scope) {
+function messageWith(symbol: string, scope: string) {
   return (
     `Option ${symbol} is never set. Remove it, or set it from a real call (${scope}). If this is intended, ` +
     'add {"rule":"unused-option","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" ' +
@@ -72,7 +93,7 @@ describe('unused option on a public top-level Kotlin function', () => {
     const findings = findingsFor(own);
 
     expect(summary(findings)).toEqual(FLAGGED);
-    expect(findings[0].message).toBe(messageWith('format.pad', 'tests do not count'));
+    expect(findings[0]?.message).toBe(messageWith('format.pad', 'tests do not count'));
   });
 
   it("counts the module's own tests when the module is published, but not another module's", () => {
@@ -82,7 +103,7 @@ describe('unused option on a public top-level Kotlin function', () => {
 
     expect(judged(own, { published: true })).toEqual([]);
     expect(judged(alone, { published: true, siblings: [siblingTest] })).toEqual(FLAGGED);
-    expect(findingsFor(alone, { published: true })[0].message).toBe(
+    expect(findingsFor(alone, { published: true })[0]?.message).toBe(
       messageWith('format.pad', "this module's own tests count"),
     );
   });
@@ -220,7 +241,7 @@ describe('unused option when callers are hidden from the facts', () => {
   ];
   const other = [file({ file: OTHER_MODULE, functions: [shared({ line: 3 })], calls: [partial] })];
   const otherFlagged = [`${UNUSED_OPTION_RULE} format.pad 8`];
-  const sourceSet = (tests) => ({
+  const sourceSet = (tests: boolean) => ({
     label: 'the source set integration of :m0',
     tests,
     owner: ':m0',
@@ -240,7 +261,7 @@ describe('unused option when callers are hidden from the facts', () => {
       `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
     ]);
     expect(first[1]).toEqual({
-      tool: 'structure',
+      tool: UNUSED_OPTION_TOOL,
       rule: UNUSED_OPTION_RULE,
       path: 'src/main/kotlin/demo/Sample.kt',
       identity: 'unused-option:callers-not-analyzed',
@@ -340,14 +361,14 @@ describe('unused option on an internal Kotlin function behind a gap of its own m
       PRIVATE_FLAGGED,
       `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
     ]);
-    expect(findings[1].message).toBe(
+    expect(findings[1]?.message).toBe(
       'Internal functions are not checked for unused options where these can call them: the facts ' +
         'do not cover the source set integrationTest of :m0.',
     );
   });
 
   it('withholds them behind a skipped file of the module, but not one of another module', () => {
-    const skipped = (index) =>
+    const skipped = (index: number) =>
       moduleOf(index === 0 ? own : [], index, {
         skipped:
           index === 1 ? [{ file: 'billing/src/test/kotlin/demo/DeepTest.kt', test: true }] : [],

@@ -14,7 +14,7 @@ import {
   STORING_CALLS,
 } from '../../../../../messages/reuse/reusable-objects.mjs';
 
-function byText(left, right) {
+function byText(left: string, right: string) {
   return left.localeCompare(right);
 }
 
@@ -25,25 +25,25 @@ const RULE_FILE = path.resolve(
 const rule = readFileSync(RULE_FILE, 'utf8');
 const xpath = rule.slice(rule.indexOf('<![CDATA['), rule.indexOf(']]>'));
 
-function section(from, to) {
+function section(from: string, to?: string) {
   const start = xpath.indexOf(from);
   return xpath.slice(start, to === undefined ? undefined : xpath.indexOf(to, start + 1));
 }
 
-function typesIn(text) {
-  return [...text.matchAll(/typeIs\('([^']+)'\)/gu)].map(([, type]) => type).sort(byText);
+function typesIn(text: string) {
+  return [...text.matchAll(/typeIs\('([^']+)'\)/gu)].map(([, type]) => type ?? '').sort(byText);
 }
 
-function listOf(name) {
+function listOf(name: string) {
   const match = new RegExp(`\\$${name} := \\(([^)]*)\\)`, 'u').exec(xpath);
-  return [...match[1].matchAll(/'([^']+)'/gu)].map(([, value]) => value);
+  return [...(match?.[1] ?? '').matchAll(/'([^']+)'/gu)].map(([, value]) => value ?? '');
 }
 
-function methodNames(text) {
+function methodNames(text: string) {
   const match = /@MethodName = (?:\(([^)]*)\)|'([^']+)')/u.exec(text);
-  return match[1] === undefined
-    ? [match[2]]
-    : [...match[1].matchAll(/'([^']+)'/gu)].map(([, value]) => value);
+  return match?.[1] === undefined
+    ? [match?.[2] ?? '']
+    : [...match[1].matchAll(/'([^']+)'/gu)].map(([, value]) => value ?? '');
 }
 
 function factoryPairs() {
@@ -59,7 +59,7 @@ function factoryPairs() {
 
 describe('ReusableObjectPerCall: the Java rule and the shared type list agree', () => {
   it('uses the shared message', () => {
-    expect(/message="([^"]*)"/u.exec(rule)[1]).toBe(REUSABLE_OBJECT_MESSAGE);
+    expect(/message="([^"]*)"/u.exec(rule)?.[1]).toBe(REUSABLE_OBJECT_MESSAGE);
   });
 
   it('builds the listed constructors', () => {
@@ -70,7 +70,7 @@ describe('ReusableObjectPerCall: the Java rule and the shared type list agree', 
 
   it('calls the listed factories', () => {
     const expected = REUSABLE_FACTORIES.flatMap(([type, names]) =>
-      names.map((name) => `${type}#${name}`),
+      (Array.isArray(names) ? names : []).map((name: string) => `${String(type)}#${name}`),
     ).sort(byText);
 
     expect(factoryPairs()).toEqual(expected);
@@ -93,6 +93,8 @@ describe('ReusableObjectPerCall: the Java rule and the shared type list agree', 
     );
     const named = /\$method\/@Name = \(([^)]*)\)/u.exec(section('$start :=', '$setupMethod :='));
 
-    expect([...named[1].matchAll(/'([^']+)'/gu)].map(([, name]) => name)).toEqual(SETUP_METHODS);
+    expect([...(named?.[1] ?? '').matchAll(/'([^']+)'/gu)].map(([, name]) => name)).toEqual(
+      SETUP_METHODS,
+    );
   });
 });

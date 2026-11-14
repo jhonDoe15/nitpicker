@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { findingFactory } from '../../review-finding.mjs';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import type { RuleFinding } from '../../test-support/facts.mts';
 import { unboundedPoolFindings } from './unbounded-pools.mjs';
 
-function source(invocations, { imports = [], test = false } = {}) {
+const poolFindings: (files: Loose[], options: { finding: unknown }) => RuleFinding[] =
+  unboundedPoolFindings;
+
+function source(
+  invocations: Loose[],
+  { imports = [], test = false }: { imports?: string[]; test?: boolean } = {},
+): Loose {
   return {
     file: 'src/main/kotlin/shop/Pools.kt',
     test,
@@ -14,7 +22,7 @@ function source(invocations, { imports = [], test = false } = {}) {
       { id: 0, k: 'class', name: 'Pools', qualified: 'Pools' },
       { id: 1, parent: 0, k: 'fun', name: 'start', line: 3 },
     ],
-    invocations: invocations.map((invocation, index) => ({
+    invocations: invocations.map((invocation: Loose, index: number) => ({
       line: index + 4,
       scope: 1,
       arguments: [],
@@ -23,8 +31,8 @@ function source(invocations, { imports = [], test = false } = {}) {
   };
 }
 
-function lines(file) {
-  return unboundedPoolFindings([file], { finding: findingFactory() }).map(
+function lines(file: Loose) {
+  return poolFindings([file], { finding: findingFactory() }).map(
     ({ location, rule, symbol }) => `${String(location.line)} ${rule} ${symbol}`,
   );
 }

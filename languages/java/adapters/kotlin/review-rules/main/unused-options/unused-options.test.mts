@@ -1,22 +1,34 @@
 import { describe, expect, it } from 'vitest';
+import type { CallFact, ClassFact, FileFacts, FunctionFact } from '../../test-support/facts.mts';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
 import {
   call,
   file,
   fn,
+  importOf,
   klass,
   parameter,
-  run,
-  summary,
   testFile,
-} from '../../test-support/facts.mjs';
+} from '../../test-support/loose-facts.mts';
 import { UNUSED_OPTION_RULE, UNUSED_OPTION_TOOL, unusedOptionFindings } from './unused-options.mjs';
 
 const options = [parameter('value', 'Int'), parameter('pad', 'Int', { default: true, line: 8 })];
-const helper = (overrides = {}) =>
+const helper = (overrides: Loose = {}) =>
   fn('format', { visibility: 'private', parameters: options, line: 8, ...overrides });
-const never = () => false;
+function dataSettings() {
+  return klass('Settings', {
+    data: true,
+    visibility: 'internal',
+    primaryParameters: [
+      parameter('host', 'String'),
+      parameter('retries', 'Int', { default: true }),
+    ],
+  });
+}
+const never: (name: string) => boolean = () => false;
 
-function findingsFor(files, mentionedInJava = never) {
+function findingsFor(files: FileFacts[], mentionedInJava = never) {
   return run(unusedOptionFindings, files, { mentionedInJava });
 }
 
@@ -230,15 +242,8 @@ describe('unused option in Kotlin', () => {
   });
 
   it('counts a copy call with a named argument as setting that parameter of a data class', () => {
-    const settings = klass('Settings', {
-      data: true,
-      visibility: 'internal',
-      primaryParameters: [
-        parameter('host', 'String'),
-        parameter('retries', 'Int', { default: true }),
-      ],
-    });
-    const plain = (calls) => [file({ classes: [settings], calls })];
+    const settings = dataSettings();
+    const plain = (calls: CallFact[]) => [file({ classes: [settings], calls })];
     const construct = call('Settings', { positional: 1 });
 
     expect(findingsFor(plain([construct]))).toHaveLength(1);
@@ -247,14 +252,7 @@ describe('unused option in Kotlin', () => {
   });
 
   it('skips data classes when the module serializes Kotlin classes', () => {
-    const settings = klass('Settings', {
-      data: true,
-      visibility: 'internal',
-      primaryParameters: [
-        parameter('host', 'String'),
-        parameter('retries', 'Int', { default: true }),
-      ],
-    });
+    const settings = dataSettings();
     const files = [file({ classes: [settings], calls: [call('Settings', { positional: 1 })] })];
 
     expect(findingsFor(files)).toHaveLength(1);
@@ -265,53 +263,58 @@ describe('unused option in Kotlin', () => {
 });
 
 describe('the calls that can reach a Kotlin function', () => {
-  const pad = (overrides = {}) =>
+  const pad = (overrides: Loose = {}) =>
     fn('pad', {
       visibility: 'internal',
       parameters: [parameter('text', 'String'), parameter('width', 'Int', { default: true })],
       ...overrides,
     });
-  const declaring = (functions, classes = []) => file({ package: 'demo.text', functions, classes });
-  const caller = (calls, overrides = {}) =>
+  const declaring = (functions: FunctionFact[], classes: ClassFact[] = []) =>
+    file({ package: 'demo.text', functions, classes });
+  const caller = (calls: CallFact[], overrides: Loose = {}) =>
     file({ file: 'src/main/kotlin/demo/app/App.kt', package: 'demo.app', calls, ...overrides });
-  const setsWidth = (overrides = {}) =>
+  const setsWidth = (overrides: Loose = {}) =>
     call('pad', { positional: 1, named: ['width'], ...overrides });
   const plain = call('pad', { positional: 1 });
 
   it('does not count a call with a receiver for a top-level function that is not an extension', () => {
-    const files = [declaring([pad()], []), caller([setsWidth({ qualifier: 'title' })])];
-    files[0].calls = [plain];
+    const declared = declaring([pad()], []);
+    declared.calls = [plain];
+    const files = [declared, caller([setsWidth({ qualifier: 'title' })])];
 
     expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} pad.width 1`]);
   });
 
   it('does not count an unqualified call from a package that neither is nor imports the function', () => {
-    const files = [declaring([pad()]), caller([setsWidth()])];
-    files[0].calls = [plain];
+    const declared = declaring([pad()]);
+    declared.calls = [plain];
+    const files = [declared, caller([setsWidth()])];
 
     expect(summary(findingsFor(files))).toEqual([`${UNUSED_OPTION_RULE} pad.width 1`]);
   });
 
-  it.each([
-    ['an import of the function', { imports: [{ path: 'demo.text.pad', all: false }] }, {}],
-    ['a star import of its package', { imports: [{ path: 'demo.text', all: true }] }, {}],
+  it.each<[string, Loose, Loose]>([
+    ['an import of the function', { imports: [importOf('demo.text.pad')] }, {}],
+    ['a star import of its package', { imports: [importOf('demo.text', { all: true })] }, {}],
     ['the same package', { package: 'demo.text' }, {}],
     ['a package-qualified call', {}, { qualifier: 'demo.text' }],
   ])('counts a call through %s', (_name, callerOverrides, callOverrides) => {
-    const files = [declaring([pad()]), caller([setsWidth(callOverrides)], callerOverrides)];
-    files[0].calls = [plain];
+    const declared = declaring([pad()]);
+    declared.calls = [plain];
+    const files = [declared, caller([setsWidth(callOverrides)], callerOverrides)];
 
     expect(findingsFor(files)).toEqual([]);
   });
 
   it('counts a call with any receiver for an extension that the caller imports', () => {
     const extension = pad({ receiver: 'String', parameters: [pad().parameters[1]] });
-    const imported = { imports: [{ path: 'demo.text.pad', all: false }] };
+    const imported = { imports: [importOf('demo.text.pad')] };
+    const declared = declaring([extension]);
+    declared.calls = [call('pad', { qualifier: '"x"' })];
     const files = [
-      declaring([extension]),
+      declared,
       caller([call('pad', { named: ['width'], qualifier: 'title' })], imported),
     ];
-    files[0].calls = [call('pad', { qualifier: '"x"' })];
 
     expect(findingsFor(files)).toEqual([]);
   });
@@ -319,10 +322,11 @@ describe('the calls that can reach a Kotlin function', () => {
   it('counts a call of an object member through any receiver but another type', () => {
     const texts = klass('Texts', { kind: 'object' });
     const member = pad({ owner: 'Texts' });
-    const imported = { imports: [{ path: 'demo.text.Texts', all: false }] };
-    const run = (qualifier, overrides = imported) => {
-      const files = [declaring([member], [texts]), caller([setsWidth({ qualifier })], overrides)];
-      files[0].calls = [call('pad', { positional: 1, qualifier: 'Texts' })];
+    const imported = { imports: [importOf('demo.text.Texts')] };
+    const run = (qualifier: string | undefined, overrides: Loose = imported) => {
+      const declared = declaring([member], [texts]);
+      declared.calls = [call('pad', { positional: 1, qualifier: 'Texts' })];
+      const files = [declared, caller([setsWidth({ qualifier })], overrides)];
       return findingsFor(files).length;
     };
 
@@ -336,23 +340,24 @@ describe('the calls that can reach a Kotlin function', () => {
       run('Other'),
       run('demo.other.Texts'),
     ]).toEqual([0, 0, 0, 0, 0, 0, 1, 1]);
-    expect(run('T', { imports: [{ path: 'demo.text.Texts', alias: 'T', all: false }] })).toBe(0);
+    expect(run('T', { imports: [importOf('demo.text.Texts', { alias: 'T' })] })).toBe(0);
     expect(run('U', { typeAliases: [{ name: 'U', target: 'Texts', line: 1 }] })).toBe(0);
     expect(run('Texts', {})).toBe(1);
   });
 
   it('counts a named companion through its class and a nested object through an aliased outer class', () => {
-    const run = (owner, kind, qualifier) => {
+    const run = (owner: string, kind: string, qualifier: string) => {
+      const declared = declaring(
+        [pad({ owner })],
+        [klass('Outer'), klass(owner.split('.')[1] ?? '', { qualified: owner, kind })],
+      );
+      declared.calls = [call('pad', { positional: 1, qualifier: owner })];
       const files = [
-        declaring(
-          [pad({ owner })],
-          [klass('Outer'), klass(owner.split('.')[1], { qualified: owner, kind })],
-        ),
+        declared,
         caller([setsWidth({ qualifier })], {
-          imports: [{ path: 'demo.text.Outer', alias: 'O', all: false }],
+          imports: [importOf('demo.text.Outer', { alias: 'O' })],
         }),
       ];
-      files[0].calls = [call('pad', { positional: 1, qualifier: owner })];
       return findingsFor(files).length;
     };
 
@@ -365,11 +370,9 @@ describe('the calls that can reach a Kotlin function', () => {
 
   it('counts a call of a class member through any receiver', () => {
     const owner = klass('Formatter');
-    const files = [
-      declaring([pad({ owner: 'Formatter' })], [owner]),
-      caller([setsWidth({ qualifier: 'formatter' })]),
-    ];
-    files[0].calls = [plain];
+    const declared = declaring([pad({ owner: 'Formatter' })], [owner]);
+    declared.calls = [plain];
+    const files = [declared, caller([setsWidth({ qualifier: 'formatter' })])];
 
     expect(findingsFor(files)).toEqual([]);
   });

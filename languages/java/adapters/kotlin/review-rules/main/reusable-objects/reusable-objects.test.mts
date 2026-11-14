@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REUSABLE_OBJECT_RULE } from '../../../../../messages/reuse/reusable-objects.mjs';
-import { routed, run } from '../../test-support/facts.mjs';
+import type { RuleFinding } from '../../test-support/facts.mts';
+import { routed, run } from '../../test-support/facts.mts';
+import { recordedFiles } from '../../test-support/loose-facts.mts';
 import { KOTLIN_REUSABLE_OBJECT_MESSAGE, reusableObjectFindings } from './reusable-objects.mjs';
 
 const PROJECT = path.resolve(
@@ -10,14 +12,14 @@ const PROJECT = path.resolve(
   '../../../../fixtures/kotlin-reusable-objects-project',
 );
 const FILE = 'src/main/kotlin/demo/formats/Formats.kt';
-const { files } = JSON.parse(readFileSync(path.join(PROJECT, 'facts.json'), 'utf8'));
+const files = recordedFiles(path.join(PROJECT, 'facts.json'));
 const lines = readFileSync(path.join(PROJECT, FILE), 'utf8').split('\n');
 
-function lineOf(fragment) {
+function lineOf(fragment: string) {
   return lines.findIndex((text) => text.includes(fragment)) + 1;
 }
 
-function located(findings) {
+function located(findings: RuleFinding[]) {
   return findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`);
 }
 
@@ -38,7 +40,7 @@ describe('ReusableObjectPerCall on Kotlin sources', () => {
       `Formats.unmarshal.newInstance ${String(lineOf('JAXBContext.newInstance(Formats::class.java)'))}`,
       `Formats.Companion.shared.ObjectMapper ${String(lineOf('fun shared'))}`,
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(KOTLIN_REUSABLE_OBJECT_MESSAGE, REUSABLE_OBJECT_RULE, FILE),
     );
   });
@@ -60,7 +62,7 @@ describe('ReusableObjectPerCall on Kotlin sources', () => {
     ['a factory with an inferred type', 'fun inferred()'],
     ['a function that returns a supplier', 'fun supplier()'],
   ])('leaves %s alone', (_, fragment) => {
-    const first = fragment.split('\n')[0];
+    const first = fragment.split('\n')[0] ?? '';
     const line = lines.findIndex((text) => text.includes(first)) + 1;
 
     expect(line).toBeGreaterThan(0);

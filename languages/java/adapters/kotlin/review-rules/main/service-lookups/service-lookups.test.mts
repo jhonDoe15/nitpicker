@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { argument, file, summary, testFile } from '../../test-support/facts.mjs';
+import { summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { argument, file, flagged, testFile } from '../../test-support/loose-facts.mts';
 import {
   composeMessage,
   findingsFor,
-  flagged,
   imp,
   inClass,
   inFun,
@@ -11,9 +12,9 @@ import {
   lookup,
   lookupMessage,
   rule,
-} from '../../test-support/lookup-facts.mjs';
+} from '../../test-support/lookup-facts.mts';
 
-const sample = (overrides) => file(overrides);
+const sample = (overrides: Loose) => file(overrides);
 
 describe('service lookups in Kotlin', () => {
   it('reports a Koin lookup imported by path, with the allowed form first and the exception route', () => {
@@ -25,8 +26,8 @@ describe('service lookups in Kotlin', () => {
     ]);
 
     expect(summary(findings)).toEqual([rule('Orders.load: Koin inject()')]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(koinMessage('Koin inject()'));
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.message).toBe(koinMessage('Koin inject()'));
   });
 
   it.each([
@@ -246,7 +247,10 @@ describe('service lookups by shape, scope and receiver', () => {
   });
 
   it('types a receiver by the nearest declaration in scope, not by its name elsewhere in the file', () => {
-    const scopes = (owner, id) => [inFun('load', { frameId: 3 }), inClass(owner, { frameId: id })];
+    const scopes = (owner: string, id: number) => [
+      inFun('load', { frameId: 3 }),
+      inClass(owner, { frameId: id }),
+    ];
 
     expect(
       flagged({
@@ -309,7 +313,7 @@ describe('service lookups by shape, scope and receiver', () => {
     ]);
 
     expect(findings.map(({ message }) => message)).toEqual([
-      composeMessage('koinViewModel()'),
+      composeMessage('koinViewModel()', 'src/main/kotlin/demo/Sample.kt'),
       koinMessage('Koin koinInject()'),
       lookupMessage('Injector.getInstance()'),
     ]);
