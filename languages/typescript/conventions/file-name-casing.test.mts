@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { conventionChoices, detectConventions } from '../../../shared/conventions/detect.mjs';
 import {
   FILE_NAME_CONVENTION,
   fileNameRuleOptions,
-  fileNameComplies,
   fittingCasings,
   folderCasing,
 } from './file-name-casing.mjs';
+import {
+  conventionChoices,
+  detectedFor,
+  fileNameComplies,
+  type ConventionDefinition,
+} from './typed/convention-views.mts';
 
-const vote = (file) => FILE_NAME_CONVENTION.measure(undefined, file);
+function vote(file: string): string | undefined {
+  return FILE_NAME_CONVENTION.measure(undefined, file);
+}
 
 describe('file name casing votes', () => {
   it.each([
@@ -127,7 +133,7 @@ describe('file name casing compliance', () => {
     'app/+layout.ts',
     'app/$id.ts',
   ])('%s complies with every casing', (file) => {
-    expect(options.map((casing) => fileNameComplies(file, casing))).toEqual(
+    expect(options.map((casing) => fileNameComplies(file, casing, undefined))).toEqual(
       options.map(() => true),
     );
   });
@@ -143,7 +149,7 @@ describe('file name casing compliance', () => {
     ['src/user-Profile.ts', 'kebab-case', false],
     ['src\\userProfile.ts', 'camelCase', true],
   ])('%s under %s is %s', (file, casing, expected) => {
-    expect(fileNameComplies(file, casing)).toBe(expected);
+    expect(fileNameComplies(file, casing, undefined)).toBe(expected);
   });
 
   it('lists every casing a name fits', () => {
@@ -153,7 +159,7 @@ describe('file name casing compliance', () => {
   });
 
   it('falls back to kebab-case until a convention is followed', () => {
-    expect(fileNameRuleOptions()).toEqual({ casing: 'kebab-case' });
+    expect(fileNameRuleOptions(undefined)).toEqual({ casing: 'kebab-case' });
     expect(fileNameRuleOptions({ conventions: { 'typescript.fileNames': 'camelCase' } })).toEqual({
       casing: 'camelCase',
     });
@@ -167,8 +173,12 @@ describe('file name casing compliance', () => {
 });
 
 describe('hook files', () => {
-  const hook = (name) => `export function ${name}() {\n  return 1;\n}\n`;
-  const measure = (file, text) => FILE_NAME_CONVENTION.measure(text, file);
+  function hook(name: string): string {
+    return `export function ${name}() {\n  return 1;\n}\n`;
+  }
+  function measure(file: string, text: string | undefined): string | undefined {
+    return FILE_NAME_CONVENTION.measure(text, file);
+  }
 
   it.each([
     ['src/useAuth.ts', hook('useAuth')],
@@ -220,18 +230,27 @@ describe('folder casing', () => {
 });
 
 describe('file name casing detection', () => {
-  function detect(names, accepts, texts = {}) {
+  function detect(
+    names: readonly string[],
+    accepts?: (definition: ConventionDefinition, file: string) => boolean,
+    texts: Readonly<Record<string, string | undefined>> = {},
+  ) {
     const source = {
-      paths: ({ unreadable = false } = {}) =>
+      paths: ({ unreadable = false }: { readonly unreadable?: boolean }) =>
         unreadable ? names : names.filter((name) => !name.includes('huge')),
-      readMany: (paths) => {
+      readMany: (paths: readonly string[]) => {
         expect(paths).toEqual(Object.keys(texts));
         return new Map(paths.map((file) => [file, texts[file]]));
       },
     };
-    return detectConventions({ definitions: [FILE_NAME_CONVENTION], source, accepts })[
-      FILE_NAME_CONVENTION.id
-    ];
+    return detectedFor(
+      {
+        definitions: [FILE_NAME_CONVENTION],
+        source,
+        ...(accepts === undefined ? {} : { accepts }),
+      },
+      FILE_NAME_CONVENTION.id,
+    );
   }
 
   it('follows the casing most files use and ignores names that fit several', () => {
@@ -264,7 +283,7 @@ describe('file name casing detection', () => {
   it('measures only the files the caller accepts', () => {
     const detected = detect(
       ['src/a-b.ts', 'scripts/c_d.ts', 'scripts/e_f.ts'],
-      (definition, file) => file.startsWith('src/'),
+      (_definition: ConventionDefinition, file: string) => file.startsWith('src/'),
     );
 
     expect(detected.choice).toBe('kebab-case');
@@ -293,8 +312,11 @@ describe('file name casing detection', () => {
   });
 
   it('adds only a non-default choice to the policy', () => {
-    const choices = (names) =>
-      conventionChoices({ [FILE_NAME_CONVENTION.id]: detect(names) }, [FILE_NAME_CONVENTION]);
+    function choices(names: readonly string[]) {
+      return conventionChoices({ [FILE_NAME_CONVENTION.id]: detect(names) }, [
+        FILE_NAME_CONVENTION,
+      ]);
+    }
 
     expect(choices(['src/a-b.ts', 'src/c-d.ts'])).toEqual({});
     expect(choices(['src/a_b.ts', 'src/c_d.ts'])).toEqual({

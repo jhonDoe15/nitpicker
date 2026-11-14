@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { conventionChoices, detectConventions } from '../../../../shared/conventions/detect.mjs';
 import {
   describeConventions,
   validateConventions,
 } from '../../../../shared/conventions/settings.mjs';
+import { conventionChoices, detectedFor } from '../typed/convention-views.mts';
 import { ASSERTION_HELPERS_CONVENTION, assertionFunctionNames } from './assertion-helpers.mjs';
 
-const evidence = (text) => ASSERTION_HELPERS_CONVENTION.measure(text, 'src/a.test.ts');
-const inTest = (...statements) => `it('a', () => {\n  ${statements.join('\n  ')}\n});\n`;
+function evidence(text: string): unknown {
+  return ASSERTION_HELPERS_CONVENTION.measure(text, 'src/a.test.ts');
+}
+
+function inTest(...statements: readonly string[]): string {
+  return `it('a', () => {\n  ${statements.join('\n  ')}\n});\n`;
+}
 
 describe('assertion helper evidence', () => {
   it.each([
@@ -73,16 +78,25 @@ describe('assertion helper evidence', () => {
 
 describe('assertion helper detection', () => {
   const definition = ASSERTION_HELPERS_CONVENTION;
-  const helper = (name) => `export function ${name}(value) {\n  expect(value).toBeTruthy();\n}\n`;
-  const detect = (files, pinned) =>
-    detectConventions({
-      definitions: [definition],
-      source: {
-        paths: () => Object.keys(files),
-        readMany: (paths) => new Map(paths.map((file) => [file, files[file]])),
+  function helper(name: string): string {
+    return `export function ${name}(value) {\n  expect(value).toBeTruthy();\n}\n`;
+  }
+  function detect(
+    files: Readonly<Record<string, string>>,
+    pinned?: Readonly<Record<string, unknown>>,
+  ) {
+    return detectedFor(
+      {
+        definitions: [definition],
+        source: {
+          paths: () => Object.keys(files),
+          readMany: (paths: readonly string[]) => new Map(paths.map((file) => [file, files[file]])),
+        },
+        ...(pinned === undefined ? {} : { pinned }),
       },
-      pinned,
-    })[definition.id];
+      definition.id,
+    );
+  }
 
   it('follows defined helpers that end tests in at least three files', () => {
     const detected = detect({

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { detectConventions } from '../../../../shared/conventions/detect.mjs';
 import {
   describeConventions,
   validateConventions,
@@ -8,28 +7,32 @@ import {
   DETACHED_WORK_RUNNERS_CONVENTION,
   detachedWorkRunnerNames,
 } from './detached-work-runners.mjs';
+import { detectedFor } from '../typed/convention-views.mts';
 
 const definition = DETACHED_WORK_RUNNERS_CONVENTION;
 
-function detect(pinned) {
-  const read = [];
-  const detected = detectConventions({
-    definitions: [definition],
-    source: {
-      paths: () => ['src/jobs.ts'],
-      readMany: (paths) => {
-        read.push(...paths);
-        return new Map(paths.map((file) => [file, 'export function runDetached() {}\n']));
+function detect(pinned?: Readonly<Record<string, unknown>>) {
+  const read: string[] = [];
+  const detected = detectedFor(
+    {
+      definitions: [definition],
+      source: {
+        paths: () => ['src/jobs.ts'],
+        readMany: (paths: readonly string[]) => {
+          read.push(...paths);
+          return new Map(paths.map((file) => [file, 'export function runDetached() {}\n']));
+        },
       },
+      ...(pinned === undefined ? {} : { pinned }),
     },
-    pinned,
-  })[definition.id];
+    definition.id,
+  );
   return { detected, read };
 }
 
 describe('detached-work runners', () => {
   it('names no runner unless the config pins one', () => {
-    expect(detachedWorkRunnerNames()).toEqual([]);
+    expect(detachedWorkRunnerNames(undefined)).toEqual([]);
     expect(detachedWorkRunnerNames({ 'typescript.detachedWorkRunners': ['runDetached'] })).toEqual([
       'runDetached',
     ]);
