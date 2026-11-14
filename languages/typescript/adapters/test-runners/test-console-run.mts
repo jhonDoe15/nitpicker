@@ -2,7 +2,7 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mts';
-import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import { checkoutModulePath, checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { temporaryProjectPath } from './test-run.mts';
 import { consoleEntry, writeReportFile } from './typed/runner-tools.mts';
@@ -12,9 +12,11 @@ import {
   REPORT_VARIABLE,
   ROOT_VARIABLE,
   RUNNER_VARIABLE,
-} from '../../preset/test-console/console-report.mjs';
+} from '../../preset/test-console/console-report.mts';
 
 type RecordedCall = { readonly content: string; readonly [field: string]: unknown };
+
+const sourcePath: (file: string) => string = checkoutModulePath;
 
 const PRODUCER_FOLDER = 'languages/typescript/preset/test-console';
 
@@ -30,7 +32,7 @@ export function consoleProducerPath(
   options: TestOptions,
   runner: keyof typeof CONSOLE_PRODUCERS,
 ): string {
-  return path.join(options.policyRoot, CONSOLE_PRODUCERS[runner]);
+  return sourcePath(path.join(options.policyRoot, CONSOLE_PRODUCERS[runner]));
 }
 
 export function jestAssertImport(options: TestOptions): string {
