@@ -182,6 +182,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
   `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
   (Python).
+- TypeScript and JavaScript have no map collector that fails on an `undefined` or `null` value (the Java
+  `pmd/NullMapValue` rule for `Collectors.toMap`): `Object.fromEntries` and `Map` accept both, so no rule covers it.
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
   that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,

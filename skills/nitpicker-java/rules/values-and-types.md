@@ -82,6 +82,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
   the source instead of on a `toList()` or `new ArrayList<>(source)` copy
   (`pmd/RedundantStreamStep`).
+- A `Collectors.toMap`, `toUnmodifiableMap`, `toConcurrentMap` value function and a `groupingBy`
+  classifier never return `null` (they throw on it): filter the nulls first, map them
+  (`Objects.toString`), or collect into a `HashMap` with `collect(HashMap::new, ..., Map::putAll)`
+  (`pmd/NullMapValue`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).

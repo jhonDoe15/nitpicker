@@ -3,6 +3,7 @@ import { kotlinSourceRules as rulesSuspendCleanup } from '../../review-rules/cor
 import { kotlinSourceRules as rulesFanOut } from '../../review-rules/main/fan-out/fan-out.mjs';
 import { kotlinSourceRules as rulesUnsafeCasts } from '../casts/unsafe-casts.mjs';
 import { kotlinSourceRules as rulesCostlyCollections } from '../collections/costly-collections.mjs';
+import { kotlinSourceRules as rulesNullMapValues } from '../collectors/null-map-values.mjs';
 import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/configuration-reads.mjs';
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
 import { kotlinSourceRules as rulesRootScopeLaunches } from '../futures/root-scope-launches.mjs';
@@ -45,6 +46,7 @@ export const directoryRules = [
   rulesFanOut,
   rulesUnsafeCasts,
   rulesCostlyCollections,
+  rulesNullMapValues,
   rulesConfigurationReads,
   rulesFutureCompletions,
   rulesRootScopeLaunches,

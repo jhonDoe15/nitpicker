@@ -952,6 +952,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   `C419` for `any([...])`), `PERF` and `RUF015` (`list(xs)[0]` instead of `next(iter(xs))`). The
   same forms run as `nitpicker/no-wasted-collection-step` (TypeScript), `pmd/RedundantStreamStep`
   (Java) and `kotlin-source/RedundantStreamStep` (Kotlin).
+- Python has no map collector that fails on a `None` value (the Java `pmd/NullMapValue` rule for
+  `Collectors.toMap` and `groupingBy`): `dict` comprehensions and `defaultdict` accept it.
 - `streamed-rows-collected` reports a list that collects every row of a streamed query: a loop
   over `qs.iterator()`, `yield_per(...)`, `session.stream(statement)`, `stream_scalars()`,
   `partitions()`, a query run with `stream_results=True` (as `execution_options` on the statement,
