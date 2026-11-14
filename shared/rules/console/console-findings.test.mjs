@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
+import { parseFinding } from '../../../core/diff/comparison/finding-schema.mjs';
 import { testConsoleFindings } from './console-findings.mjs';
 
 function entry(file, message, test = 'works') {
@@ -180,6 +181,13 @@ describe('console output allowlist and exceptions', () => {
       'test/a.test.ts',
       'test/a.test.ts',
     ]);
+  });
+
+  it('splits a line cut at a space into non-empty tokens that pass the finding schema', () => {
+    const [finding] = findingsOf([entry('test/a.test.ts', `WARN ${'word '.repeat(100)}`)]);
+
+    expect(finding.tokens.at(-1)).toBe('word');
+    expect(parseFinding(finding).tokens).toEqual(finding.tokens);
   });
 
   it('leaves exceptions for other rules alone', () => {

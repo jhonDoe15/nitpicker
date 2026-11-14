@@ -4,7 +4,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { CHECKS } from './checks/checks-docs.mjs';
+import { errorProneChecks } from './checks/checks-docs.mts';
+
+const CHECKS = errorProneChecks();
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const RUNNER_DIRECTORY = new URL('../../gradle/errorprone/', import.meta.url);

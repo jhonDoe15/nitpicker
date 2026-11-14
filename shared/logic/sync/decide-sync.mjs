@@ -74,6 +74,23 @@ function isBusy(bridge) {
   return bridge.waiting !== undefined;
 }
 
+function ask(request, timeoutMs) {
+  const current = bridge();
+  if (current.isDead || isBusy(current)) {
+    return undefined;
+  }
+  current.next += 1;
+  const id = current.next;
+  Atomics.store(current.signal, 0, 0);
+  current.worker.postMessage({ id, ...request });
+  current.waiting = id;
+  const result = awaitReply(current, id, Date.now() + timeoutMs);
+  if (result !== undefined) {
+    current.waiting = undefined;
+  }
+  return result;
+}
+
 /**
  * `decide` for synchronous callers such as lint rules: the solver runs in a worker thread and this
  * call blocks until it answers. A solver that does not answer within `timeoutMs` counts as 'open',
@@ -81,18 +98,11 @@ function isBusy(bridge) {
  */
 export function decideSync(conditions, query, options = {}) {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, ...decideOptions } = options;
-  const current = bridge();
-  if (current.isDead || isBusy(current)) {
-    return 'open';
-  }
-  current.next += 1;
-  const id = current.next;
-  Atomics.store(current.signal, 0, 0);
-  current.worker.postMessage({ id, conditions, query, options: decideOptions });
-  current.waiting = id;
-  const result = awaitReply(current, id, Date.now() + timeoutMs);
-  if (result !== undefined) {
-    current.waiting = undefined;
-  }
-  return result ?? 'open';
+  return ask({ explain: false, conditions, query, options: decideOptions }, timeoutMs) ?? 'open';
+}
+
+export function counterexampleSync(conditions, query, options = {}) {
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, ...decideOptions } = options;
+  const result = ask({ explain: true, conditions, query, options: decideOptions }, timeoutMs);
+  return result === undefined || result === 'none' ? undefined : result;
 }

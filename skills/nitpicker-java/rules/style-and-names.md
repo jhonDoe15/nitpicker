@@ -12,10 +12,16 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `parseURL`). Declare a local next to its first use, one variable per declaration, and keep
   overloads next to each other. Mark overrides `@Override`. Never reassign a loop variable, and
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
+- Name types and packages for what they do (`PriceRounder`, `order.pricing`), never `Utils`,
+  `Helper`, `Manager`, `Common` or `Misc`; pure logic shared between features goes in the shared
+  package under such a name (`pmd/GenericTypeName`, `pmd/GenericPackageName`). `CacheManager`-style
+  framework roles are fine.
 - Literals: compare against named constants (`quantity >= BULK_THRESHOLD`), not literals in an
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
-  for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+  for-each where the index is unused. Remove unused fields, locals, parameters, private methods,
+  assignments; a parameter that a signature fixes, with no annotation or `@Override`, is named
+  `unusedX` or `ignoredX`.
   Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
   (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
   resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
@@ -31,6 +37,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
   name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
   (`doc-comment-content`).
+- A `TODO` or `FIXME` names its issue (`TODO(#123): ...`), and commented-out code is deleted
+  (`pmd/TodoWithoutIssue`, `pmd/CommentedOutCode`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security, a broad-catch rule, the boolean simplification rules and its own guard rules),
   forbiddenapis, javac lint and Google checks. A project's `config/pmd/ruleset.xml` or

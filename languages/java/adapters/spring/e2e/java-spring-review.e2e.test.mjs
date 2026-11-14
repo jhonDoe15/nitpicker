@@ -104,7 +104,7 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
   it('runs the Reactor rules on Maven as on Gradle, from reactor-core on the module classpath', () => {
     const reactor = (entries) => entries.filter((entry) => / Reactor\w+$/u.test(entry));
 
-    expect(reactor(runs.markers)).toHaveLength(14);
+    expect(reactor(runs.markers)).toHaveLength(19);
     expect(reactor(located(reviewFindings(runs.maven)))).toEqual(reactor(runs.markers));
     expect(reactor(located(reviewFindings(runs.gradle)))).toEqual(reactor(runs.markers));
   });

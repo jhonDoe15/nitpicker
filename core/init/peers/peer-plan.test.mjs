@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { packageVersion } from '../../help/package-version.mjs';
+import { packageVersion } from '../../help/package-version.mts';
 import { useProjects, withPeers } from '../test-support/projects.mjs';
-import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mjs';
+import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mts';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';

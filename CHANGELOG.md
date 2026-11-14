@@ -11,47 +11,7 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
-### Added
-
-- Monorepos: one run at the top of a monorepo gates every project the change touches, each with
-  its own preset, and combines the results into one summary, one SARIF file, one JUnit file and
-  one exit code (#405). See [Monorepos](https://github.com/jhonDoe15/nitpicker/blob/main/docs/usage.md#monorepos).
-  - A repository is a monorepo only when its top `nitpicker.config.json` lists `projects` or it
-    declares a workspace (npm, Yarn or Bun `workspaces`, `pnpm-workspace.yaml`, uv
-    `[tool.uv.workspace]`). Every other repository runs as before; nested Python, Gradle or Maven
-    folders get one stderr line that shows the `projects` list to gate them.
-  - The top `nitpicker.config.json` stays in force for every project: its settings are the base
-    layer of each project's config, so an existing workspace keeps its `exclude`, `exceptions` and
-    thresholds. Members whose dependencies are installed at the workspace root run as they are.
-  - Project configs can share settings with `"extends": "../nitpicker.shared.json"`. A loosening
-    in the shared file is a `policy-loosened` finding in every project that uses it, and names the
-    file.
-  - Taking a project out of `projects`, emptying the list, shrinking the workspace, moving a
-    project to a folder no project covers or changing a project's preset in `projects` is a policy
-    loosening.
-  - `NITPICKER_ACCEPT_POLICY_CHANGE` takes several digests joined by commas.
-  - `--project <path>` runs the named projects. `--shard-count`, `--json`, `aggregate`,
-    `cache publish` and path arguments that belong to no single project are refused at the top of
-    a monorepo with what to do instead; `"projects": []` keeps a repository one project.
-
-### Changed
-
-- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
-  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
-  `accept-policy-change` approval (#1094). An entry that covers a file other production code
-  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
-  the other loosenings.
-
-### Fixed
-
-- Java: Spring architecture findings no longer print their exception sentence twice, which made
-  the Java analyzer fail on most Spring projects and report no Java findings (#1050).
-- A finding that fails nitpicker's finding schema is left out with one tool error that names it,
-  and the analyzer's other findings are kept (#1050).
-- Java: an Error Prone check that crashes is turned off for the run and reported as one
-  `errorprone/check-crashed` tool error; the other checks' findings are kept (#1069).
-
-## [0.1.0-rc.2] - 2026-11-12
+## [0.1.0-rc.2] - 2026-11-13
 
 ### Added
 
@@ -117,6 +77,10 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   received values, and exit 1 (#719, #730).
 - Compile errors in the change are reported as findings, and Gradle failures are condensed (#966).
 - Java and Kotlin comparisons reuse the base's PIT results on the head (#962).
+- Go: tests under the race detector, mutation testing of the changed lines through
+  `go test -overlay`, the test-honesty rules, gosec security rules, and GORM and ent foreign keys
+  without an index, with sqlc schema files read (#938, #984, #996, #1065, #1066).
+- Container images per preset, smoke-tested in CI and published to GHCR with each release (#561).
 
 ### Changed
 
@@ -225,6 +189,10 @@ Stricter rules, which can fail code that passed before:
 - Python: `typing.cast` and explicit `Any`, reviewed Ruff pitfall families, unresolved imports,
   assertions in test control flow and switched-off tests, and the shared feature boundary rules
   (#372, #373, #449, #477, #636).
+- Every preset: promises and futures with no failure path, and configuration strings tested only for
+  null or undefined (#917, #925).
+- Python: a negated `if`/`else`, a negated ternary and an all-negated chain (#980).
+- Python and Kotlin: imports around public entry points (#971).
 
 Other changes:
 
@@ -250,9 +218,42 @@ Other changes:
 - Project facts come from the Git file set, not the whole tree, and the preset is checked against
   the folder's build files when the config loads (#521, #958).
 - A run that checked only the analyzers named with `--analyzer` says so (#690).
+- TypeScript and JavaScript: `nitpicker/no-null` allows `null` as an object field, array element or
+  conditional branch in the data passed to `JSON.stringify`, where it is the JSON value for nothing
+  (an explicit `null` field of a request body, or a key a tsconfig or merge patch must unset) (#1100).
+  `null` built outside the call, or passed to another function inside it, is still reported.
+- Java: Error Prone's `ForEachIterable` and `FieldCanBeStatic` are off. Every Error Prone release
+  from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
+  fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
+  fields (SpotBugs only when the initializer is a compile-time constant).
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
+- A run given paths mutates only the files in scope, and a comparison mutates only the Java and
+  Kotlin code the change touches (#974, #1078).
+- Java 25: sources are read with Checkstyle 13.5, PMD 7.16 and google-java-format 1.35, and the
+  JaCoCo agent runs at the project's own version and reads Java 25 class files (#1086).
 
 ### Fixed
 
+- TypeScript: the type-aware lint rules run on projects whose tsconfig sets `rootDir`, `rootDirs`,
+  `isolatedDeclarations`, an option TypeScript 7 removed, or a `types` entry that is not installed.
+  Any other tsconfig error oxlint reports now fails the ESLint analyzer with a message naming it,
+  instead of reporting without the type-aware findings (#1056).
+- Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
+  aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
+  (#1052).
+- Java 25 class files: JaCoCo moves to 0.8.16, PIT to 1.22.1 and SpotBugs to 4.9.8. Before, a
+  Java 25 build lost coverage and mutation results to a tool error, and SpotBugs reported nothing
+  without saying so (#1068).
+- Java 25 sources: Checkstyle moves to 13.5.0, PMD to 7.16.0, google-java-format to 1.35.0 and
+  palantir-java-format to 2.90.0, so module imports and statements before `super(...)` parse; the
+  formatter check no longer comes back empty when the formatter fails. Checkstyle and the
+  formatters run on JDK 21 or newer, and the source parsers and `--fix` run on a JDK that reads the
+  project's language level (#1068). PMD findings of every priority still fail the gate, though
+  PMD 7.16 marks its lower priorities as notes.
 - An uncommitted edit made in the same second as the last index write is no longer analyzed as the
   old content (#258).
 - A timed-out Gradle build is stopped, with the processes it started, before the next snapshot
@@ -293,9 +294,30 @@ Other changes:
 - Diff worktrees are checked out under the real temp path, which fixes runs on Windows with short
   temp paths (#993).
 - A Node.js older than 22.14 gets a message naming the required version instead of a crash (#695).
+- Java: Spring architecture findings no longer print their exception sentence twice, which made
+  the Java analyzer fail on most Spring projects and report no Java findings (#1050).
+- A finding that fails nitpicker's finding schema is left out with one tool error that names it,
+  and the analyzer's other findings are kept (#1050).
+- Java: an Error Prone check that crashes is turned off for the run and reported as one
+  `errorprone/check-crashed` tool error; the other checks' findings are kept (#1069).
+- TypeScript and JavaScript: type-aware lint rules run on more tsconfig setups (a `rootDir`,
+  `isolatedDeclarations`, `rootDirs`, unresolved or hoisted `types`, options TypeScript 7 removed),
+  and a tsconfig oxlint still rejects fails the analyzer with a message instead of silently linting
+  nothing (#1056, #1074).
+- Java and Kotlin: a PIT run that fails or times out is reported as one tool error, and the module's
+  other findings are kept (#1051, #1073).
+- `.ts` imports are graphed as runtime imports when the tsconfig rewrites extensions (#1080).
+- `sibling-copy-edit` ignores type-only syntax when it compares copies (#1105).
 
 ### Upgrade notes
 
+- Checkstyle 13.5 renames some rules: `checkstyle/MemberName` is now
+  `checkstyle/GoogleNonConstantFieldName`, `checkstyle/OperatorWrap` is `OperatorWrapNL` or
+  `OperatorWrapEOL`, and `checkstyle/AnnotationLocationMostCases` is
+  `AnnotationLocationMethodsAndCtors` or `AnnotationLocationTypeAndPackage`. A check with an `id`
+  reports as that id. Rename `exceptions` entries that use the old names.
+- Checkstyle and the Java formatters need JDK 21 or newer to run. The project can still compile
+  for an older release; nitpicker finds an installed JDK 21 (or a Gradle toolchain) for them.
 - `vitest` and `@vitest/coverage-v8` are needed only when Vitest is your test runner. Install the
   peers of the runner you use.
 - A `react` key with `"preset": "javascript"` is a configuration error. Use the TypeScript preset for

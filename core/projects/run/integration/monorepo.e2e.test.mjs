@@ -68,7 +68,9 @@ function installWebPackages(root, folder = 'web', manager = 'npm') {
     timeout: NPM_INSTALL_TIMEOUT_MS,
   });
   if (result.status !== 0 || !existsSync(path.join(root, folder, 'node_modules'))) {
-    throw new Error(`npm install failed: ${result.stderr}${result.stdout}`);
+    throw new Error(
+      `${manager} install failed: ${result.error?.message ?? ''}${result.stderr ?? ''}${result.stdout ?? ''}`,
+    );
   }
 }
 

@@ -97,7 +97,7 @@ describe('the set of projects', () => {
   it('fails closed when the projects of the base cannot be read', () => {
     const root = repository({
       'nitpicker.config.json': JSON.stringify({ projects: ['web', 'gone'] }),
-      ...projectFiles('.'),
+      ...projectFiles('.', { 'src/index.ts': 'export const root = 1;\n' }),
       ...typescriptProject('web'),
     });
     writeFiles(root, { 'nitpicker.config.json': '{}' });

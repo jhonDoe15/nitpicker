@@ -29,7 +29,7 @@ function maskBackticks(text) {
   );
 }
 
-export function scanTestFile(text) {
+export function scanTestFile(text, assertionNames = []) {
   const scanned = scanKotlinSource(maskBackticks(text));
   if (generatedFile(scanned)) {
     return undefined;
@@ -38,7 +38,14 @@ export function scanTestFile(text) {
     ...literal,
     text: text.slice(literal.bodyStart, literal.bodyStart + literal.text.length),
   }));
-  return { ...scanned, source: text, literals, tables: textTables(scanned.code), memo: new Map() };
+  return {
+    ...scanned,
+    source: text,
+    literals,
+    tables: textTables(scanned.code),
+    assertionNames: new Set(assertionNames),
+    memo: new Map(),
+  };
 }
 
 function junitNode(suite, fn) {

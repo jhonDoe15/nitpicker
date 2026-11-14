@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { normalizeConsoleMessage } from '../../../../shared/rules/console/console-messages.mjs';
 import { testConsoleFindings } from './console-findings.mjs';
 
@@ -88,6 +89,15 @@ describe('testConsoleFindings', () => {
     expect(messagesOf(testConsoleFindings(entries, { allow }))).toEqual([
       '. Tests print new console output: "legacy driver loaded <n> times"',
     ]);
+  });
+
+  it('gives a long Spring Boot line cut at a space only non-empty tokens', () => {
+    const line = `${spring('main')} ${'bean '.repeat(80)}`;
+    const [finding] = testConsoleFindings([{ file: ORDER_TEST, test: 'a', messages: [line] }], {});
+
+    expect(finding.tokens.at(-1)).toBe('bean');
+    expect(finding.tokens).not.toContain('');
+    expect(parseFinding(finding).tokens).toEqual(finding.tokens);
   });
 
   it('lifts a test file named by an exception in either rule form, under the module path', () => {

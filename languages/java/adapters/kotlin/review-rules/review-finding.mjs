@@ -41,6 +41,8 @@ const COVERED_FINDINGS = {
     'pmd/SpringHttpClientTimeouts',
     'pmd/SpringHttpClientPerCall',
   ],
+  'kotlin-source/ReactorBlockWithoutTimeout': ['kotlin-source/BlockingCallInCoroutine'],
+  'kotlin-source/UnboundedWait': ['kotlin-source/BlockingCallInCoroutine'],
   'kotlin-source/IoCallInLoop': [
     'pmd/SpringDataNoSaveInLoop',
     'pmd/SpringDataBatchOfOne',
@@ -68,7 +70,7 @@ export function withoutCoveredFindings(findings, { exceptions = [], modulePath }
     findings
       .filter(
         (finding) =>
-          finding.tool === REVIEW_TOOL &&
+          PRINTED_TOOLS.has(finding.tool) &&
           !lifted(printedRule(finding), inModule(modulePath, finding.path)),
       )
       .map((finding) => lineKey(printedRule(finding), finding)),
