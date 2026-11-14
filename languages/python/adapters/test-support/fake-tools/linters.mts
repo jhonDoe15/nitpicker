@@ -1,24 +1,26 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
-import { err, exists, lines, out, read, readOr, valueOf, write } from './call.mjs';
+import type { FakeCall } from '../typed/fake-call.mts';
+import { parsePyright } from '../typed/json-views.mts';
+import { err, exists, lines, out, read, readOr, valueOf, write } from './call.mts';
 
 const PYRIGHT_REPORT_FAILURE = 1;
 const RUFF_UNPARSABLE_STATUS = 2;
 const BLACK_UNPARSABLE_STATUS = 123;
 
-const PYRIGHT_VERSIONS = {
+const PYRIGHT_VERSIONS: Readonly<Record<string, string>> = {
   pyright: 'pyright 1.1.390\n',
   basedpyright: 'basedpyright 1.40.2\nbased on pyright 1.1.414\n',
 };
 
-function sarif(call) {
+function sarif(call: FakeCall): object {
   const { cwd } = call;
   return {
     runs: [
       {
         tool: { driver: { name: 'ruff' } },
         results: lines(call, 'violations.txt').map((line, index) => {
-          const [rule, file, message] = line.split('|');
+          const [rule, file = '', message] = line.split('|');
           return {
             ruleId: rule,
             level: 'error',
@@ -38,23 +40,26 @@ function sarif(call) {
   };
 }
 
-function sources(call) {
+function sources(call: FakeCall): string[] {
   const { cwd } = call;
   const listed = lines(call, 'sources.txt');
-  const found = readdirSync(cwd, { recursive: true }).filter(
+  const found = readdirSync(cwd, { recursive: true, encoding: 'utf8' }).filter(
     (file) => file.endsWith('.py') && !file.startsWith('.venv'),
   );
   return (listed.length > 0 ? listed : found.sort()).map((file) => path.join(cwd, file));
 }
 
-function formatStatus({ unparsable, files }, unparsableStatus) {
+function formatStatus(
+  { unparsable, files }: { unparsable: string[]; files: string[] },
+  unparsableStatus: number,
+): number {
   if (unparsable.length > 0) {
     return unparsableStatus;
   }
   return files.length > 0 ? 1 : 0;
 }
 
-export function ruff(call) {
+export function ruff(call: FakeCall): void {
   const { args, result } = call;
   if (args[0] === '--version') {
     out(call, 'ruff 0.9.9\n');
@@ -87,7 +92,7 @@ export function ruff(call) {
   }
 }
 
-export function black(call) {
+export function black(call: FakeCall): void {
   const { args, cwd, result } = call;
   if (args[0] === '--version') {
     out(call, 'black, 24.1.0 (compiled: yes)\n');
@@ -107,7 +112,7 @@ export function black(call) {
   result.status = formatStatus({ unparsable, files }, BLACK_UNPARSABLE_STATUS);
 }
 
-export function mypy(call) {
+export function mypy(call: FakeCall): void {
   const { args, result } = call;
   if (args[0] === '--version') {
     out(call, `mypy ${lines(call, 'mypy-version.txt')[0] ?? '1.13.0'} (compiled: yes)\n`);
@@ -118,14 +123,14 @@ export function mypy(call) {
   result.status = report === '' ? 0 : 1;
 }
 
-export function pyright(call) {
+export function pyright(call: FakeCall): void {
   const { tool, args, cwd, result } = call;
   if (args[0] === '--version') {
-    out(call, PYRIGHT_VERSIONS[tool]);
+    out(call, PYRIGHT_VERSIONS[tool] ?? '');
     return;
   }
   const { generalDiagnostics = [] } = exists(call, 'pyright.json')
-    ? JSON.parse(read(call, 'pyright.json'))
+    ? parsePyright(read(call, 'pyright.json'))
     : {};
   const absolute = generalDiagnostics.map((item) => ({
     ...item,
@@ -135,7 +140,7 @@ export function pyright(call) {
   result.status = absolute.length === 0 ? 0 : PYRIGHT_REPORT_FAILURE;
 }
 
-export function lintImports(call) {
+export function lintImports(call: FakeCall): void {
   const { args, result } = call;
   if (args[0] === '--version') {
     out(call, 'lint-imports, version 2.5\n');
