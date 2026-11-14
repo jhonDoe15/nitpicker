@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { lintRule } from '../model/lint-rule.mjs';
-import { withProject } from '../model/project-model.mjs';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { noCompatibilityShimRecipe as recipe } from './no-compatibility-shim.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { remainingFindings } from '../test-support/remaining-findings.mts';
+import { noCompatibilityShimRecipe as recipe } from './no-compatibility-shim.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/no-compatibility-shim';
-
-function remaining(result, name) {
-  const context = {
-    projectRoot: result.projectRoot,
-    files: [{ path: name }],
-    read: (n) => result.tree[n],
-  };
-  return withProject(context, (project) =>
-    lintRule(project, name, { ruleId: 'no-compatibility-shim' }),
-  );
-}
+const LINT = { ruleId: 'no-compatibility-shim' };
 
 describe('noCompatibilityShimRecipe', () => {
   it('is a review recipe of project scope', () => {
@@ -45,7 +34,7 @@ describe('noCompatibilityShimRecipe', () => {
     expect(result.tree['src/other.ts']).toBe(
       "import { createClient } from './client.js';\nexport const b = createClient();\n",
     );
-    expect(remaining(result, 'src/client.ts')).toEqual([]);
+    expect(remainingFindings(result, 'src/client.ts', LINT)).toEqual([]);
   });
 
   it('declines when an importer already imports the canonical name too', () => {

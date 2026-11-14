@@ -1,27 +1,49 @@
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { renameEdits } from '../edits/symbol-rename.mjs';
-import { declined, replaceEdit } from '../edits/text-edits.mjs';
-import { symbolReferenceProblem } from '../edits/declines.mjs';
-import { verifyEdits } from '../edits/verify-edits.mjs';
-import { lintRecipe } from '../plan/lint-recipe.mjs';
-import { productionScope } from '../model/project-model.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { lintRecipe, type PlanRequest } from '../plan/lint-recipe.mts';
+import type { Planned, ReplaceEdit } from '../typed/project-types.mts';
+import {
+  declined,
+  productionScope,
+  renameEdits,
+  replaceEdit,
+  symbolReferenceProblem,
+  verifyEdits,
+} from '../typed/project-views.mts';
+
+type Removal = { readonly nameNode: TypeScript.Node; readonly edit: ReplaceEdit };
+
+const ts = typescriptApi();
+
+function isNode(value: unknown): value is TypeScript.Node {
+  return typeof value === 'object' && value !== null && 'kind' in value && 'pos' in value;
+}
 
 const ALIAS = /^`([^`]+)` is a second exported name for `([^`]+)`/u;
 
-function statementEnd(text, statement) {
+function statementEnd(text: string, statement: TypeScript.Node): number {
   return text[statement.end] === '\n' ? statement.end + 1 : statement.end;
 }
 
-function declaredNameOf(statement) {
+function namedNode(value: unknown): TypeScript.Node | undefined {
+  return isNode(value) ? value : undefined;
+}
+
+function declaredNameOf(statement: TypeScript.Statement): TypeScript.Node | undefined {
   if (ts.isExportDeclaration(statement)) {
     return undefined;
   }
   return ts.isVariableStatement(statement)
-    ? statement.declarationList.declarations[0].name
-    : (statement.name ?? statement.declaration?.name);
+    ? statement.declarationList.declarations[0]?.name
+    : namedNode(fieldOf(statement, 'name') ?? fieldOf(fieldOf(statement, 'declaration'), 'name'));
 }
 
-function statementRemoval(name, sourceFile, statement) {
+function statementRemoval(
+  name: string,
+  sourceFile: TypeScript.SourceFile,
+  statement: TypeScript.Statement,
+): Removal | undefined {
   const nameNode = declaredNameOf(statement);
   if (nameNode === undefined) {
     return undefined;
@@ -30,10 +52,15 @@ function statementRemoval(name, sourceFile, statement) {
   return { nameNode, edit: replaceEdit(name, [statement.getStart(), end], '') };
 }
 
-function specifierRemoval(name, sourceFile, start) {
+function specifierRemoval(
+  name: string,
+  sourceFile: TypeScript.SourceFile,
+  start: number,
+): Removal | undefined {
   const { text } = sourceFile;
   for (const candidate of sourceFile.statements.filter(ts.isExportDeclaration)) {
-    const elements = candidate.exportClause?.elements ?? [];
+    const clause = candidate.exportClause;
+    const elements = clause !== undefined && ts.isNamedExports(clause) ? clause.elements : [];
     const specifier = elements.find((element) => element.getStart() === start);
     if (specifier === undefined || candidate.moduleSpecifier !== undefined) {
       continue;
@@ -50,23 +77,28 @@ function specifierRemoval(name, sourceFile, start) {
   return undefined;
 }
 
-function removalOf(name, sourceFile, start) {
+function removalOf(
+  name: string,
+  sourceFile: TypeScript.SourceFile,
+  start: number,
+): Removal | undefined {
   const statement = sourceFile.statements.find((candidate) => candidate.getStart() === start);
   return statement === undefined
     ? specifierRemoval(name, sourceFile, start)
     : statementRemoval(name, sourceFile, statement);
 }
 
-function insideRemoval(edit, removal) {
+function insideRemoval(edit: ReplaceEdit, removal: ReplaceEdit): boolean {
   return edit.path === removal.path && edit.start >= removal.start && edit.end <= removal.end;
 }
 
-function planMessage({ context, project, name, message }) {
+function planMessage({ context, project, name, message }: PlanRequest): Planned | undefined {
   const [, alias, target] = ALIAS.exec(message.message) ?? [];
-  if (message.messageId !== 'aliasExport' || alias === undefined) {
+  if (message.messageId !== 'aliasExport' || alias === undefined || target === undefined) {
     return undefined;
   }
-  const removal = removalOf(name, project.sourceFile(name), message.start);
+  const sourceFile = project.sourceFile(name);
+  const removal = sourceFile === undefined ? undefined : removalOf(name, sourceFile, message.start);
   if (removal === undefined) {
     return declined('the alias has a form --fix does not rewrite');
   }

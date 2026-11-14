@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
-import { namingConventionRecipe as recipe } from './naming-convention.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import { namingConventionRecipe as recipe } from './naming-convention.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/naming-convention';
