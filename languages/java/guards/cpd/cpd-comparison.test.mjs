@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { readDuplicateFindings } from '../../adapters/metrics/java-duplicates.mjs';
-import { coveredByCpd, readCpdFindings } from '../cpd-duplicates.mjs';
+import { coveredByCpd, readCpdFindings } from '../cpd-duplicates.mts';
 
 const MAIN_A = 'src/main/java/demo/A.java';
 const MAIN_B = 'src/main/java/demo/B.java';

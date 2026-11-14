@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readPinnedTools } from '../../builds/java-build.mjs';
-import { readCpdFindings } from '../../guards/cpd-duplicates.mjs';
+import { readCpdFindings } from '../../guards/cpd-duplicates.mts';
 import { runCpd } from './maven-pmd.mts';
 import { resolveTools } from '../maven-tools.mjs';
 

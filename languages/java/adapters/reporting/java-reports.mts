@@ -1,7 +1,7 @@
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
-import { coveredByCpd } from '../../guards/cpd-duplicates.mjs';
+import { coveredByCpd } from '../../guards/cpd-duplicates.mts';
 import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
