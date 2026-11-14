@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import cases from './fixtures/code-fix-cases.json' with { type: 'json' };
-import { candidateFiles, codeName, codeFixes, selectedCodeFixes } from './code-fix-rules.mjs';
-import { useCodeFixProjects } from './test-support/code-fix-project.mjs';
+import { candidateFiles, codeFixes, codeName, selectedCodeFixes } from './typed/code-fix-views.mts';
+import { useCodeFixProjects } from './test-support/code-fix-project.mts';
 
 const fixes = useCodeFixProjects();
 
-const expected = {
+const expected: Readonly<Record<string, { readonly rule: string; readonly text: string }>> = {
   'missing-import': {
     rule: 'TS2304',
     text: 'import { helper } from "./lib.js";\n\nexport function run(): number {\n  return helper();\n}\n',
@@ -36,20 +36,39 @@ const expected = {
   },
 };
 
-function selecting(id) {
-  return [codeName(Number(expected[id].rule.slice(2)))];
+function caseOf(id: string): Readonly<Record<string, string>> {
+  const found: Readonly<Record<string, Readonly<Record<string, string>>>> = cases;
+  const files = found[id];
+  if (files === undefined) {
+    throw new Error(`No case ${id}`);
+  }
+  return files;
+}
+
+function expectedOf(id: string): { readonly rule: string; readonly text: string } {
+  const found = expected[id];
+  if (found === undefined) {
+    throw new Error(`No expectation ${id}`);
+  }
+  return found;
+}
+
+function selecting(id: string): string[] {
+  return [codeName(Number(expectedOf(id).rule.slice(2)))];
 }
 
 describe('planCodeFixes', () => {
-  it.each(Object.keys(expected))('turns the %s case into the allowed form', (id) => {
-    const { texts, applied } = fixes(cases[id], { selectedRules: selecting(id) });
+  it.each(Object.keys(expected))('turns the %s case into the allowed form', (id: string) => {
+    const { texts, applied } = fixes(caseOf(id), { selectedRules: selecting(id) });
 
-    expect(texts.get('src/a.ts')).toBe(expected[id].text);
-    expect(applied.map(({ rule }) => rule)).toContain(codeName(Number(expected[id].rule.slice(2))));
+    expect(texts.get('src/a.ts')).toBe(expectedOf(id).text);
+    expect(applied.map(({ rule }) => rule)).toContain(
+      codeName(Number(expectedOf(id).rule.slice(2))),
+    );
   });
 
   it('removes an unused import but keeps the one in use', () => {
-    const { texts } = fixes(cases['unused-import'], { selectedRules: [codeName(6133)] });
+    const { texts } = fixes(caseOf('unused-import'), { selectedRules: [codeName(6133)] });
 
     expect(texts.get('src/a.ts')).toBe(
       "import { basename } from 'node:path';\n\nexport function run(): string {\n  return basename('a');\n}\n",
@@ -57,24 +76,26 @@ describe('planCodeFixes', () => {
   });
 
   it('applies the safe override fix when no rule is selected', () => {
-    expect(fixes(cases['add-override']).texts.get('src/a.ts')).toBe(expected['add-override'].text);
+    expect(fixes(caseOf('add-override')).texts.get('src/a.ts')).toBe(
+      expectedOf('add-override').text,
+    );
   });
 
   it.each(['missing-import', 'unused-declaration', 'missing-await', 'remove-override'])(
     'leaves the review case %s alone when no rule is selected',
     (id) => {
-      expect(fixes(cases[id]).texts.size).toBe(0);
+      expect(fixes(caseOf(id)).texts.size).toBe(0);
     },
   );
 
   it('applies only the selected codes', () => {
-    const { texts } = fixes(cases['unused-declaration'], { selectedRules: [codeName(2304)] });
+    const { texts } = fixes(caseOf('unused-declaration'), { selectedRules: [codeName(2304)] });
 
     expect(texts.size).toBe(0);
   });
 
   it('leaves a missing name alone when two modules could provide it', () => {
-    const { texts } = fixes(cases['ambiguous-import'], { selectedRules: [codeName(2304)] });
+    const { texts } = fixes(caseOf('ambiguous-import'), { selectedRules: [codeName(2304)] });
 
     expect(texts.size).toBe(0);
   });
