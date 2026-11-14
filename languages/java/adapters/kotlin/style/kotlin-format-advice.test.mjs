@@ -4,9 +4,9 @@ import { kotlinFormatAdvice, kotlinSummary } from './kotlin-format-advice.mjs';
 const OPT_IN = (tool) => `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
 
 describe('the advice on the findings', () => {
-  it('sends a ktfmt finding to the command printed at the start of the run', () => {
+  it('sends a ktfmt finding to nitpicker --fix', () => {
     expect(kotlinFormatAdvice({}).ktfmt).toBe(
-      'Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run.',
+      'Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
     );
   });
 

@@ -64,12 +64,14 @@ import (
 	"strconv"
 )
 
+const MaxQuantity = 500
+
 func Quantity(text string) int {
 	value, err := strconv.Atoi(text)
 	if err != nil {
 		panic(err)
 	}
-	return value
+	return min(value, MaxQuantity)
 }
 
 func Read(name string) ([]byte, error) {
@@ -93,6 +95,9 @@ import (
 func TestQuantity(t *testing.T) {
 	if Quantity("2") != 2 {
 		t.Fatal("two")
+	}
+	if Quantity("900") != 500 {
+		t.Fatal("not capped")
 	}
 	defer func() {
 		if recover() == nil {

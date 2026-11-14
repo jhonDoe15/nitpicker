@@ -3,6 +3,7 @@ import { anchorOf } from './entry.mjs';
 const SPRING_PAGE = 'docs/rules/java-nitpicker.md';
 const PAGES = {
   java: { label: 'Java and Kotlin', path: 'docs/rules/java-pmd.md', tool: 'pmd' },
+  jvm: { label: 'Java and Kotlin', path: SPRING_PAGE, tool: 'pmd' },
   typescript: {
     label: 'TypeScript and JavaScript',
     path: 'docs/rules/typescript-nitpicker.md',
@@ -28,6 +29,12 @@ const GROUPS = [
     python: 'unindexed-foreign-key',
     go: 'go-rules/unindexed-foreign-key',
   },
+  {
+    jvm: 'CopiedConstantInTest',
+    typescript: 'nitpicker/no-copied-constant',
+    python: 'copied-constant-in-test',
+    go: 'go-rules/copied-constant-in-test',
+  },
 ];
 
 function spring(rule) {
@@ -50,7 +57,7 @@ function link(language, rule) {
 function groupEntries(group) {
   const languages = Object.keys(PAGES).filter((language) => group[language] !== undefined);
   return languages.map((language) => [
-    language === 'java' ? `pmd/${group.java}` : group[language],
+    PAGES[language].tool === 'pmd' ? `pmd/${group[language]}` : group[language],
     languages.filter((other) => other !== language).map((other) => link(other, group[other])),
   ]);
 }

@@ -5,10 +5,10 @@ import {
   renderBaselineSarifReport,
   renderSarifReport,
   renderSnapshotSarifReport,
-} from '../sarif.mjs';
+} from '../sarif.mts';
 import { expectValidSarif } from '../test-support/report-assertions.mjs';
 import { finding, report } from '../test-support/report-builders.mjs';
-import { SARIF_UPLOAD_LIMITS } from './sarif-limits.mjs';
+import { SARIF_UPLOAD_LIMITS } from './sarif-limits.mts';
 
 function numbered(count, overrides = {}) {
   return Array.from({ length: count }, (_, index) =>
