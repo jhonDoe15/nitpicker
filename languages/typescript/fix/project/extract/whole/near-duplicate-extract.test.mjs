@@ -6,11 +6,13 @@ import { useFixtureProjects } from '../../test-support/fixture-project.mjs';
 import {
   arrow,
   asyncCopy,
+  boxed,
   copy,
   dates,
   loader,
   pair,
   twoMethods,
+  typed,
 } from '../test-support/sources.mjs';
 import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mjs';
 
@@ -220,6 +222,88 @@ describe('nearDuplicateExtractRecipe', () => {
       }
       "
     `);
+  });
+
+  it('turns a differing element type into a type parameter the callers pass', () => {
+    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export function topStrings(items: string[], limit: number): string[] {
+        return sharedTopStrings<string>(items, limit);
+      }
+
+      function sharedTopStrings<T>(items: T[], limit: number): T[] {
+        const picked: T[] = [];
+        for (const item of items) {
+          if (picked.length < limit) {
+            picked.push(item);
+          }
+        }
+        picked.reverse();
+        return picked;
+      }
+
+      export function topNumbers(items: number[], limit: number): number[] {
+        return sharedTopStrings<number>(items, limit);
+      }
+      "
+    `);
+  });
+
+  it('names one type parameter for each differing pair of types', () => {
+    const source = `${boxed('first', 'string', 'number')}\n${boxed('second', 'number', 'string')}`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export function first(rows: Map<string, number>, limit: number): Promise<number[]> {
+        return sharedFirst<number, string>(rows, limit);
+      }
+
+      function sharedFirst<T, U>(rows: Map<U, T>, limit: number): Promise<T[]> {
+        const kept: T[] = [];
+        for (const row of rows.values()) {
+          if (kept.length < limit) {
+            kept.push(row);
+          }
+        }
+        kept.reverse();
+        return Promise.resolve(kept);
+      }
+
+      export function second(rows: Map<number, string>, limit: number): Promise<string[]> {
+        return sharedFirst<string, number>(rows, limit);
+      }
+      "
+    `);
+  });
+
+  it('skips a type parameter name the file already uses', () => {
+    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}\ntype T = string;\n`;
+    expect(fix({ 'src/a.ts': source }).tree['src/a.ts']).toMatchInlineSnapshot(`
+      "export function topStrings(items: string[], limit: number): string[] {
+        return sharedTopStrings<string>(items, limit);
+      }
+
+      function sharedTopStrings<U>(items: U[], limit: number): U[] {
+        const picked: U[] = [];
+        for (const item of items) {
+          if (picked.length < limit) {
+            picked.push(item);
+          }
+        }
+        picked.reverse();
+        return picked;
+      }
+
+      export function topNumbers(items: number[], limit: number): number[] {
+        return sharedTopStrings<number>(items, limit);
+      }
+
+      type T = string;
+      "
+    `);
+  });
+
+  it('leaves no finding behind after a type parameter extraction', () => {
+    const source = `${typed('topStrings', 'string')}\n${typed('topNumbers', 'number')}`;
+    expect(remaining(fix({ 'src/a.ts': source }))).toEqual([]);
   });
 
   it.each([
