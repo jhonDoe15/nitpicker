@@ -16,6 +16,9 @@ helpers by what they call (#435, #329).
 | `RetryWithoutIdempotency` | a Stripe `create` without an idempotency key, a `message` publish without a deduplication id, or a constant plain `INSERT`, direct or through helpers, in a `@Retryable` or `@Retry` function, a resilience4j or `RetryTemplate` block, or a `repeat(n) { try { ...; return } catch ... }` loop (#318)                                                                                       | a stable idempotency key, a deduplication id, an upsert, or retrying only the read                                                                                                                                              |
 | `DualWriteWithoutOutbox`  | a function that writes to the database and, at another call, publishes a message, also through `publisher.publishEvent(...)` to an `@EventListener` or `@TransactionalEventListener` (#322)                                                                                                                                                                                                  | an outbox row in the same transaction, published by a relay                                                                                                                                                                     |
 
+On Maven the engine reads the module's compiled classes (the `kotlin-maven-plugin` output in `target/classes`)
+the same way, so a Kotlin module reports what the same sources report on Gradle.
+
 `IoCallInLoop` replaced the source check `kotlin-source/IoCallInLoop`. An exception written for
 that one keeps working for now: nitpicker reads `kotlin-source/IoCallInLoop` in
 `nitpicker.config.json` as `effects/IoCallInLoop` and prints a notice asking to rename it. When a
