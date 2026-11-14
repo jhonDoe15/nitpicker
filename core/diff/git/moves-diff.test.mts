@@ -1,5 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
 import {
   commitHead,
@@ -12,7 +14,7 @@ import {
   move,
   probeAnalyzer,
   write,
-} from './test-support/moves/move-repositories.mjs';
+} from './test-support/moves/move-repositories.mts';
 
 const createRepository = createMoveRepositories();
 
@@ -36,7 +38,7 @@ describe('a folder move without edits', () => {
     expect(identities(report.newFindings)).toEqual([]);
     expect(identities(report.resolvedFindings)).toEqual([]);
     expect(report.unchangedFindings).toHaveLength(2);
-    expect(report.summary.renamedPaths).toBe(2);
+    expect(report.summary['renamedPaths']).toBe(2);
   });
 
   it('keeps the old behaviour for a repository that did not move', () => {
@@ -49,7 +51,7 @@ describe('a folder move without edits', () => {
     const report = compare(root);
 
     expect(identities(report.newFindings)).toEqual(['c-site']);
-    expect(report.summary.renamedPaths).toBe(0);
+    expect(report.summary['renamedPaths']).toBe(0);
   });
 });
 
@@ -72,7 +74,7 @@ describe('a folder move with a new violation', () => {
     });
 
     expect(identities(report.newFindings)).toEqual(['fresh-site']);
-    expect(report.newFindings[0].path).toBe('lib/fresh.mjs');
+    expect(report.newFindings[0]?.path).toBe('lib/fresh.mjs');
   });
 
   it('matches a moved file that was rewritten beyond git similarity because its folder moved', () => {
@@ -143,7 +145,7 @@ describe('a config that changed between base and head', () => {
     'legacy/b.mjs': `${filler('b')}${finding('b-site')}`,
   };
 
-  function moveToSrc(root) {
+  function moveToSrc(root: string): void {
     git(root, 'rm', '-q', 'nitpicker.config.json');
     write(root, {
       'nitpicker.config.json': '{"layout":{"sourceRoots":["src"]}}\n',
@@ -165,7 +167,7 @@ describe('a config that changed between base and head', () => {
       }),
     });
 
-    expect(report.summary.overallStatus).toBe('completed');
+    expect(report.summary['overallStatus']).toBe('completed');
     expect(identities(report.newFindings)).toEqual([]);
     expect(report.unchangedFindings).toHaveLength(2);
   });
@@ -182,27 +184,30 @@ describe('a config that changed between base and head', () => {
   });
 
   it('falls back to the head config when the base has none or it does not load', () => {
-    const warnings = [];
+    const warnings: string[] = [];
     const resolve = createBaseSetupResolver({
       headConfig: { exclude: ['src/vendor/**'] },
       injectedAnalyzers: [probeAnalyzer()],
-      warn: (message) => warnings.push(message),
+      warn: (message: string) => warnings.push(message),
     });
     const root = createRepository({
       'nitpicker.config.json': '{not json',
       'src/vendor/a.ts': 'export {};\n',
     });
+    const digest: unknown = expect.stringMatching(/^[0-9a-f]{12}$/);
     const comparedWithDefaults = {
       policyChanges: ['exclude added: src/vendor/**'],
       policyLoosenings: ['exclude added: src/vendor/**'],
       policyKinds: { 'exclude added: src/vendor/**': 'exclusion' },
-      policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/),
+      policyDigest: digest,
     };
 
     expect(
       resolve({
         baseProjectRoot: root,
         headSnapshotRoot: root,
+        liveProjectRoot: root,
+        moves: undefined,
         analyzers: [probeAnalyzer()],
       }),
     ).toEqual(comparedWithDefaults);
@@ -210,11 +215,16 @@ describe('a config that changed between base and head', () => {
       "The base's nitpicker.config.json cannot be applied (nitpicker.config.json is not valid JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)); the base is analysed with the head config, and the head config is compared with the defaults.",
     ]);
     expect(
-      resolve({
-        baseProjectRoot: path.join(root, 'missing'),
-        headSnapshotRoot: root,
-        analyzers: [],
-      }).policyLoosenings,
+      fieldOf(
+        resolve({
+          baseProjectRoot: path.join(root, 'missing'),
+          headSnapshotRoot: root,
+          liveProjectRoot: root,
+          moves: undefined,
+          analyzers: [],
+        }),
+        'policyLoosenings',
+      ),
     ).toEqual([
       'exclude and layout.excludedGlobs hide code this change adds or moves where the base config checked it: ' +
         'src/vendor/a.ts',
@@ -235,11 +245,13 @@ describe('a config that changed between base and head', () => {
     const setup = resolve({
       baseProjectRoot: root,
       headSnapshotRoot: root,
+      liveProjectRoot: root,
+      moves: undefined,
       analyzers: [headOnly],
     });
 
-    expect(setup.analyzers).toEqual([headOnly]);
-    expect(setup.headPolicy.exclude).toEqual([]);
+    expect(fieldOf(setup, 'analyzers')).toEqual([headOnly]);
+    expect(fieldAt(setup, 'headPolicy', 'exclude')).toEqual([]);
   });
 });
 
@@ -251,18 +263,21 @@ describe('notices about the change', () => {
       'src/kept.mjs': `${filler('kept')}// edit\n`,
     });
     commitHead(root);
-    const seen = [];
+    const seen: string[] = [];
 
     const report = compare(root, {
-      describeNotices: (files) => {
+      describeNotices: (files: readonly string[]) => {
         seen.push(...files);
         return ['a notice'];
       },
     });
 
-    expect(seen.sort()).toEqual(['scripts/new.mjs', 'src/kept.mjs']);
-    expect(report.summary.notices).toEqual(['a notice']);
-    const lines = report.text.split('\n');
+    expect(seen.toSorted((left, right) => left.localeCompare(right))).toEqual([
+      'scripts/new.mjs',
+      'src/kept.mjs',
+    ]);
+    expect(report.summary['notices']).toEqual(['a notice']);
+    const lines = textOf(report.text).split('\n');
     const start = lines.indexOf('Notices (not failing):');
     expect(lines.slice(start, start + 2)).toEqual(['Notices (not failing):', '  a notice']);
   });
@@ -272,7 +287,7 @@ describe('notices about the change', () => {
     write(root, { 'src/kept.mjs': `${filler('kept')}// edit\n` });
     commitHead(root);
 
-    expect(compare(root).summary.notices).toEqual([]);
+    expect(compare(root).summary['notices']).toEqual([]);
   });
 });
 
@@ -301,7 +316,9 @@ describe('a change that adds a source root', () => {
     });
 
     expect(identities(report.newFindings)).toEqual(['added-site']);
-    expect(identities(report.unchangedFindings).sort()).toEqual(['a-site', 'legacy-site']);
+    expect(
+      identities(report.unchangedFindings).toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual(['a-site', 'legacy-site']);
   });
 });
 
@@ -313,7 +330,7 @@ describe('a duplicate-scan folder list that changed between base and head', () =
     'src/dist/b.mjs': `${filler('b')}${finding('b-site')}`,
   };
 
-  function widenTheScan(root) {
+  function widenTheScan(root: string): void {
     git(root, 'rm', '-q', 'nitpicker.config.json');
     write(root, {
       'nitpicker.config.json': JSON.stringify({
@@ -324,7 +341,7 @@ describe('a duplicate-scan folder list that changed between base and head', () =
     commitHead(root);
   }
 
-  function compareWithHeadFolders(root) {
+  function compareWithHeadFolders(root: string) {
     const headConfig = { layout, duplicates: { skippedFolders: ['build'] } };
     return compare(root, {
       headPolicy: headConfig,

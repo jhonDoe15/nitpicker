@@ -1,6 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { changeRepositories, lines } from './test-support/projects/changes-between.mjs';
-import { lineMapOf } from './unchanged-lines.mjs';
+import { changeRepositories, lines } from './test-support/projects/changes-between.mts';
+import {
+  type ChangedFile,
+  changedFile,
+  lineMapOf,
+} from './test-support/projects/changed-lines-views.mts';
 
 const repositories = changeRepositories();
 
@@ -9,7 +13,7 @@ afterAll(() => {
 });
 
 describe('lines that moved within a file', () => {
-  let changes;
+  let changes: Map<string, ChangedFile>;
 
   beforeAll(() => {
     const sum = [
@@ -29,8 +33,8 @@ describe('lines that moved within a file', () => {
   });
 
   it('keeps the first lines of a function unchanged when a block of it moves to a helper above it', () => {
-    const { ranges } = changes.get('load.ts');
-    const isChanged = (line) => ranges.some(([start, end]) => start <= line && line <= end);
+    const ranges = changedFile(changes, 'load.ts').ranges;
+    const isChanged = (line: number) => ranges.some(([start, end]) => start <= line && line <= end);
 
     expect([1, 7, 8, 9].map(isChanged)).toEqual([true, false, false, true]);
   });

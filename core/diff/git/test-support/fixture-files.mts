@@ -1,7 +1,10 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { parseJson } from '../../../../shared/values/readers.mts';
 
-export function writeFiles(root, files) {
+export type FileMap = Readonly<Record<string, string>>;
+
+export function writeFiles(root: string, files: FileMap): void {
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(root, relativePath);
     mkdirSync(path.dirname(filePath), { recursive: true });
@@ -9,12 +12,12 @@ export function writeFiles(root, files) {
   }
 }
 
-export function renameFile(root, oldPath, newPath) {
+export function renameFile(root: string, oldPath: string, newPath: string): void {
   const destination = path.join(root, newPath);
   mkdirSync(path.dirname(destination), { recursive: true });
   renameSync(path.join(root, oldPath), destination);
 }
 
-export function readJson(root, relativePath) {
-  return JSON.parse(readFileSync(path.join(root, relativePath), 'utf8'));
+export function readJson(root: string, relativePath: string): unknown {
+  return parseJson(readFileSync(path.join(root, relativePath), 'utf8'));
 }

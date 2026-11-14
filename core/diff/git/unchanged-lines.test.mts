@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { changeRepositories, lines, pick } from './test-support/projects/changes-between.mjs';
-import { parseChangedLines } from './patches/changed-lines.mjs';
-import { lineMapOf } from './unchanged-lines.mjs';
+import { changeRepositories, lines, pick } from './test-support/projects/changes-between.mts';
+import {
+  type ChangedFile,
+  changedFile,
+  lineMapOf,
+  parseChangedLines,
+} from './test-support/projects/changed-lines-views.mts';
 
 const repositories = changeRepositories();
 
@@ -49,14 +53,14 @@ const FORMATTED = {
 };
 
 describe('lines whose only change is formatting', () => {
-  let changes;
+  let changes: Map<string, ChangedFile>;
 
   beforeAll(() => {
     changes = repositories.changesBetween(FORMATTED);
   });
 
   it('counts a quote and spacing restyle of a Python line as unchanged', () => {
-    expect(pick(changes.get('greet.py'), ['ranges', 'inserted', 'carried'])).toEqual({
+    expect(pick(changedFile(changes, 'greet.py'), ['ranges', 'inserted', 'carried'])).toEqual({
       ranges: [],
       inserted: [],
       carried: [
@@ -67,7 +71,7 @@ describe('lines whose only change is formatting', () => {
   });
 
   it('counts a one-line if that ruff format splits in two as unchanged, both halves from its line', () => {
-    expect(pick(changes.get('branches.py'), ['ranges', 'carried'])).toEqual({
+    expect(pick(changedFile(changes, 'branches.py'), ['ranges', 'carried'])).toEqual({
       ranges: [],
       carried: [
         [2, 2],
@@ -77,26 +81,26 @@ describe('lines whose only change is formatting', () => {
   });
 
   it('counts joined and split lines, trailing commas, semicolons and arrow parentheses as unchanged', () => {
-    expect(changes.get('list.ts').ranges).toEqual([]);
+    expect(changedFile(changes, 'list.ts').ranges).toEqual([]);
   });
 
   it('counts a line gofmt only split, re-spaced and stripped of header parentheses as unchanged', () => {
-    expect(pick(changes.get('fee.go'), ['ranges', 'inserted'])).toEqual({
+    expect(pick(changedFile(changes, 'fee.go'), ['ranges', 'inserted'])).toEqual({
       ranges: [],
       inserted: [],
     });
   });
 
   it('keeps a changed quote style meaningful where the formatter never changes it', () => {
-    expect(changes.get('Main.java').ranges).toEqual([[2, 2]]);
+    expect(changedFile(changes, 'Main.java').ranges).toEqual([[2, 2]]);
   });
 
   it('counts a line that lost part of its code as edited', () => {
-    expect(changes.get('edit.py').ranges).toEqual([[2, 2]]);
+    expect(changedFile(changes, 'edit.py').ranges).toEqual([[2, 2]]);
   });
 
   it('counts a line with a new token as edited, next to reformatted lines in the same hunk', () => {
-    expect(pick(changes.get('mixed.py'), ['ranges', 'carried'])).toEqual({
+    expect(pick(changedFile(changes, 'mixed.py'), ['ranges', 'carried'])).toEqual({
       ranges: [[2, 2]],
       carried: [
         [1, 1],
@@ -160,13 +164,13 @@ const SEMANTIC = {
 };
 
 describe('edits a formatter never makes', () => {
-  let changes;
+  let changes: Map<string, ChangedFile>;
 
   beforeAll(() => {
     changes = repositories.changesBetween(SEMANTIC);
   });
 
-  it.each([
+  it.each<[string, number]>([
     ['dedent.py', 4],
     ['tuple.py', 2],
     ['raw.py', 2],
@@ -177,17 +181,17 @@ describe('edits a formatter never makes', () => {
     ['Append.kt', 3],
     ['append.go', 3],
   ])('counts the edited line of %s as edited', (file, line) => {
-    expect(changes.get(file).ranges).toEqual([[line, line]]);
+    expect(changedFile(changes, file).ranges).toEqual([[line, line]]);
   });
 
   it('maps the legacy line of a repeated Go body to its own function, not to an inserted twin', () => {
-    const map = lineMapOf(changes.get('twice.go'));
+    const map = lineMapOf(changedFile(changes, 'twice.go'));
 
     expect([map.baseLineOf(6), map.baseLineOf(10)]).toEqual([undefined, 6]);
   });
 
   it('does not let a deleted legacy line pass an identical line in new code elsewhere as unchanged', () => {
-    const file = changes.get('launder.py');
+    const file = changedFile(changes, 'launder.py');
 
     expect(file.ranges).toEqual([[5, 6]]);
     expect(lineMapOf(file).baseLineOf(6)).toBeUndefined();
@@ -195,7 +199,7 @@ describe('edits a formatter never makes', () => {
 });
 
 describe('files the alignment leaves to the line diff', () => {
-  let changes;
+  let changes: Map<string, ChangedFile>;
   const statements = Array.from(
     { length: 30_000 },
     (_, index) => `a${String(index)}=b(${String(index)});`,
@@ -216,15 +220,15 @@ describe('files the alignment leaves to the line diff', () => {
   });
 
   it('aligns a long single-line file without overflowing the stack', () => {
-    expect(changes.get('web/app.min.js').ranges).toEqual([[1, 1]]);
+    expect(changedFile(changes, 'web/app.min.js').ranges).toEqual([[1, 1]]);
   });
 
   it('counts every line of a file it does not analyze as changed', () => {
-    expect(changes.get('data.json').ranges).toEqual([[1, 1]]);
+    expect(changedFile(changes, 'data.json').ranges).toEqual([[1, 1]]);
   });
 
   it('falls back to every added line when a hunk differs too much to align', () => {
-    expect(pick(changes.get('big.py'), ['ranges', 'carried'])).toEqual({
+    expect(pick(changedFile(changes, 'big.py'), ['ranges', 'carried'])).toEqual({
       ranges: [[1, 700]],
       carried: [],
     });
@@ -240,6 +244,6 @@ describe('files the alignment leaves to the line diff', () => {
       '+x = "a"',
     ];
 
-    expect(parseChangedLines(diff.join('\n')).get('x.py').ranges).toEqual([[1, 1]]);
+    expect(changedFile(parseChangedLines(diff.join('\n')), 'x.py').ranges).toEqual([[1, 1]]);
   });
 });

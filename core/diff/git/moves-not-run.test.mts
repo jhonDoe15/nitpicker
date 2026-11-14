@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { DiffReport } from '../comparison/results.mts';
 import {
   commitHead,
   compare,
@@ -7,7 +8,7 @@ import {
   finding,
   move,
   write,
-} from './test-support/moves/move-repositories.mjs';
+} from './test-support/moves/move-repositories.mts';
 
 const createRepository = createMoveRepositories();
 
@@ -28,7 +29,7 @@ describe('a tool that produced no report on one side', () => {
 
     const report = compare(root);
 
-    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(report.summary['overallStatus']).toBe('tool-error');
     expect(report.toolErrors).toEqual([
       {
         tool: 'probe',
@@ -71,7 +72,7 @@ describe('a tool that produced no report on one side', () => {
     notRunScope: ['src/legacy'],
   })}\n`;
 
-  function classified(report) {
+  function classified(report: DiffReport): string[] {
     return report.newFindings.map(
       ({ identity, classification }) => `${identity} ${classification}`,
     );

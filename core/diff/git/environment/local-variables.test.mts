@@ -4,7 +4,7 @@ import { detachLocalGitVariables } from './local-variables.mts';
 describe('detachLocalGitVariables', () => {
   it('removes the repository-local variables and returns their values', () => {
     const environment = {
-      PATH: process.env.PATH,
+      PATH: process.env['PATH'],
       GIT_DIR: '/hook/.git/worktrees/linked',
       GIT_WORK_TREE: '/hook/linked',
       GIT_INDEX_FILE: '/hook/.git/worktrees/linked/index',
@@ -15,7 +15,7 @@ describe('detachLocalGitVariables', () => {
 
     const detached = detachLocalGitVariables(environment);
 
-    expect(environment).toEqual({ PATH: process.env.PATH });
+    expect(environment).toEqual({ PATH: process.env['PATH'] });
     expect(detached).toEqual({
       GIT_DIR: '/hook/.git/worktrees/linked',
       GIT_WORK_TREE: '/hook/linked',
@@ -28,7 +28,7 @@ describe('detachLocalGitVariables', () => {
 
   it('keeps the `git -c` settings and the variables that do not name a repository', () => {
     const environment = {
-      PATH: process.env.PATH,
+      PATH: process.env['PATH'],
       GIT_CONFIG_PARAMETERS: "'core.quotepath'='false'",
       GIT_CONFIG_COUNT: '1',
       GIT_CONFIG_KEY_0: 'safe.directory',

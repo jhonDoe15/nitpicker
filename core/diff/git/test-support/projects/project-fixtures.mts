@@ -3,16 +3,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
-import { writeFiles } from '../fixture-files.mjs';
-import { fixtureGit } from '../git-repository.mjs';
+import { type FileMap, writeFiles } from '../fixture-files.mts';
+import { fixtureGit } from '../git-repository.mts';
 
 const LONG_AGO = new Date('2020-01-01T00:00:00Z');
 
-export function relativeTo(root, files) {
+export function relativeTo(root: string, files: readonly string[]): string[] {
   return files.map((file) => path.relative(root, file).split(path.sep).join('/')).toSorted();
 }
 
-export function ageTree(root) {
+export function ageTree(root: string): void {
   for (const entry of readdirSync(root, { recursive: true })) {
     const full = pathInside(root, entry);
     if (full !== undefined) {
@@ -22,8 +22,16 @@ export function ageTree(root) {
   utimesSync(root, LONG_AGO, LONG_AGO);
 }
 
-export function useProjectFixtures() {
-  const roots = [];
+export function useProjectFixtures(): {
+  readonly temporaryRoot: () => string;
+  readonly outsideGit: (files: FileMap) => string;
+  readonly gitProject: (
+    files: FileMap,
+    options?: { readonly ignored?: readonly string[]; readonly tracked?: readonly string[] },
+  ) => string;
+  readonly tracedGit: (traceFile: string) => void;
+} {
+  const roots: string[] = [];
 
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -38,7 +46,7 @@ export function useProjectFixtures() {
     return root;
   }
 
-  function outsideGit(files) {
+  function outsideGit(files: FileMap): string {
     const base = temporaryRoot();
     writeFileSync(path.join(base, '.git'), 'gitdir: /nonexistent\n');
     const root = path.join(base, 'project');
@@ -47,7 +55,13 @@ export function useProjectFixtures() {
     return root;
   }
 
-  function gitProject(files, { ignored = [], tracked = [] } = {}) {
+  function gitProject(
+    files: FileMap,
+    {
+      ignored = [],
+      tracked = [],
+    }: { readonly ignored?: readonly string[]; readonly tracked?: readonly string[] } = {},
+  ): string {
     const root = temporaryRoot();
     fixtureGit(root, ['init', '-q']);
     writeFiles(root, files);
@@ -58,7 +72,7 @@ export function useProjectFixtures() {
     return root;
   }
 
-  function tracedGit(traceFile) {
+  function tracedGit(traceFile: string): void {
     vi.stubEnv('GIT_TRACE', traceFile);
   }
 

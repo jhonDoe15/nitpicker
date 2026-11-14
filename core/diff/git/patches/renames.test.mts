@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../comparison/compare.mjs';
+import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
 import {
   directoryMoves,
   inferMovedFiles,
@@ -117,7 +117,11 @@ describe('source-root prefixes of aggregate identities', () => {
 });
 
 describe('comparing findings across a folder move', () => {
-  const finding = (path, identity, overrides = {}) => ({
+  const finding = (
+    path: string,
+    identity: string,
+    overrides: Readonly<Record<string, unknown>> = {},
+  ) => ({
     tool: 'structure',
     rule: 'function-structure',
     path,

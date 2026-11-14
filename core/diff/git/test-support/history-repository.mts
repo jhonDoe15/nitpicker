@@ -2,7 +2,8 @@ import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { fixtureGit } from './git-repository.mjs';
+import { type FileMap } from './fixture-files.mts';
+import { fixtureGit } from './git-repository.mts';
 
 const SHORT_SHA_LENGTH = 7;
 const TOGETHER_COMMITS = 8;
@@ -13,21 +14,28 @@ const LATER_ROUND = 100;
 const FIXTURE_IDENTITY = 'Nitpicker Fixture <nitpicker@example.invalid>';
 const FIRST_COMMIT_SECONDS = 1_767_225_600;
 
-export function edit(paths, round) {
+export type HistoryStep = {
+  readonly message?: string;
+  readonly files?: FileMap;
+  readonly renames?: readonly (readonly [string, string])[];
+  readonly deletes?: readonly string[];
+};
+
+export function edit(paths: readonly string[], round: number): FileMap {
   return Object.fromEntries(
     paths.map((file) => [file, `export const value = ${String(round)};\n`]),
   );
 }
 
-export function repeated(count, makeStep) {
+export function repeated<Step>(count: number, makeStep: (index: number) => Step): Step[] {
   return Array.from({ length: count }, (_, index) => makeStep(index));
 }
 
-function dataBlock(text) {
+function dataBlock(text: string): string {
   return `data ${String(Buffer.byteLength(text))}\n${text}\n`;
 }
 
-function branchTip(root) {
+function branchTip(root: string): string | undefined {
   const tip = fixtureGit(root, [
     'for-each-ref',
     '--format=%(objectname)',
@@ -36,7 +44,10 @@ function branchTip(root) {
   return tip === '' ? undefined : tip;
 }
 
-function commitBlock(step, { index, parent }) {
+function commitBlock(
+  step: HistoryStep,
+  { index, parent }: { readonly index: number; readonly parent: string | undefined },
+): string {
   return [
     'commit refs/heads/main\n',
     `committer ${FIXTURE_IDENTITY} ${String(FIRST_COMMIT_SECONDS + index)} +0000\n`,
@@ -51,7 +62,7 @@ function commitBlock(step, { index, parent }) {
   ].join('');
 }
 
-export function importHistory(root, steps) {
+export function importHistory(root: string, steps: readonly HistoryStep[]): void {
   const tip = branchTip(root);
   const stream = steps
     .map((step, index) => commitBlock(step, { index, parent: index === 0 ? tip : undefined }))
@@ -60,21 +71,21 @@ export function importHistory(root, steps) {
   fixtureGit(root, ['reset', '-q', '--hard', 'main']);
 }
 
-export function shortShaOf(root, message) {
-  const [sha] = fixtureGit(root, ['log', '--format=%H', '-n', '1', `--grep=^${message}$`])
+export function shortShaOf(root: string, message: string): string {
+  const [sha = ''] = fixtureGit(root, ['log', '--format=%H', '-n', '1', `--grep=^${message}$`])
     .trim()
     .split('\n');
   return sha.slice(0, SHORT_SHA_LENGTH);
 }
 
-export const SOURCE_FILES = {
+export const SOURCE_FILES: FileMap = {
   'src/billing/invoice.ts': 'export const value = 0;\n',
   'src/invoicing/ledger.ts': 'export const value = 0;\n',
   'src/shipping/route.ts': 'export const value = 0;\n',
   'src/ui/page.ts': 'export const value = 0;\n',
 };
 
-export function amplifiedHistory() {
+export function amplifiedHistory(): HistoryStep[] {
   return [
     ...repeated(TOGETHER_COMMITS, (round) => ({
       files: edit(['src/billing/invoice.ts', 'src/invoicing/ledger.ts'], round + 1),
@@ -91,8 +102,14 @@ export function amplifiedHistory() {
   ];
 }
 
-export function useHistoryRepositories() {
-  const roots = [];
+export function useHistoryRepositories(): {
+  readonly temporaryRoot: (prefix?: string) => string;
+  readonly historyRepository: (options?: {
+    readonly files?: FileMap;
+    readonly steps?: readonly HistoryStep[];
+  }) => string;
+} {
+  const roots: string[] = [];
 
   afterAll(() => {
     for (const root of roots.splice(0)) {
@@ -100,13 +117,16 @@ export function useHistoryRepositories() {
     }
   });
 
-  function temporaryRoot(prefix = 'nitpicker-history-') {
+  function temporaryRoot(prefix = 'nitpicker-history-'): string {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
     roots.push(root);
     return root;
   }
 
-  function historyRepository({ files = SOURCE_FILES, steps = amplifiedHistory() } = {}) {
+  function historyRepository({
+    files = SOURCE_FILES,
+    steps = amplifiedHistory(),
+  }: { readonly files?: FileMap; readonly steps?: readonly HistoryStep[] } = {}): string {
     const root = temporaryRoot();
     fixtureGit(root, ['init', '-q', '--initial-branch=main']);
     importHistory(root, [{ files, message: 'base' }]);

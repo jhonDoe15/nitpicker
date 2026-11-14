@@ -1,17 +1,26 @@
-import { createGitTemplate, copyGitTemplate } from './test-support/git-repository.mjs';
+import { createGitTemplate, copyGitTemplate } from './test-support/git-repository.mts';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mjs';
-import { compareFindings } from '../comparison/compare.mjs';
-import { withEditedLineReason } from '../comparison/positions/touched-lines.mjs';
-import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
+import { compareFindings } from '../comparison/test-support/typed-compare.mts';
+import { withEditedLineReason as withEditedLineReasonJs } from '../comparison/positions/touched-lines.mjs';
+import {
+  type ChangedFile,
+  changedFile,
+  parseChangedLines,
+  readChangedLines,
+} from './test-support/projects/changed-lines-views.mts';
 
-const temporaryRoots = [];
+const withEditedLineReason: (finding: unknown, touchedCode: unknown) => unknown =
+  withEditedLineReasonJs;
 
-function lineSummary({ path: filePath, added, ranges, inserted, deletions }) {
+const temporaryRoots: string[] = [];
+
+function lineSummary({ path: filePath, added, ranges, inserted, deletions }: ChangedFile) {
   return { path: filePath, added, ranges, inserted, deletions };
 }
 
@@ -21,7 +30,7 @@ afterEach(() => {
   }
 });
 
-function finding(overrides = {}) {
+function finding(overrides: Readonly<Record<string, unknown>> = {}) {
   return {
     tool: 'eslint-lint',
     rule: 'no-restricted-syntax',
@@ -34,12 +43,12 @@ function finding(overrides = {}) {
   };
 }
 
-function touched(changed) {
+function touched(changed: Readonly<Record<string, unknown>>) {
   return { changedLines: new Map(Object.entries(changed)), isStrictRule };
 }
 
 describe('changed line ranges', () => {
-  let gitTemplateRoot;
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -78,7 +87,7 @@ describe('changed line ranges', () => {
   it('reads head-side ranges, new files and spaced names, and records pure deletions apart', () => {
     const changed = parseChangedLines(diff);
 
-    expect(lineSummary(changed.get('src/main/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/main/a.ts'))).toEqual({
       path: 'src/main/a.ts',
       added: false,
       ranges: [
@@ -88,8 +97,8 @@ describe('changed line ranges', () => {
       inserted: [[4, 5]],
       deletions: [31],
     });
-    expect(changed.get('src/main/a.ts').inserted).toEqual([[4, 5]]);
-    expect(lineSummary(changed.get('src/main/b.ts'))).toEqual({
+    expect(fieldOf(changedFile(changed, 'src/main/a.ts'), 'inserted')).toEqual([[4, 5]]);
+    expect(lineSummary(changedFile(changed, 'src/main/b.ts'))).toEqual({
       path: 'src/main/b.ts',
       added: true,
       ranges: [[1, 4]],
@@ -97,7 +106,7 @@ describe('changed line ranges', () => {
       deletions: [],
     });
     expect(changed.has('src/main/gone.ts')).toBe(false);
-    expect(lineSummary(changed.get('src/main/with space.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/main/with space.ts'))).toEqual({
       path: 'src/main/with space.ts',
       added: false,
       ranges: [[1, 1]],
@@ -118,7 +127,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [
@@ -144,7 +153,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[43, 44]],
@@ -166,7 +175,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[30, 30]],
@@ -187,7 +196,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[7, 7]],
@@ -209,7 +218,7 @@ describe('changed line ranges', () => {
   it('reads real git output, including a content-preserving rename', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-touched-'));
     temporaryRoots.push(root);
-    const run = (...args) =>
+    const run = (...args: readonly string[]) =>
       execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...args], {
         cwd: root,
         encoding: 'utf8',
@@ -242,14 +251,14 @@ describe('changed line ranges', () => {
       projectRelativePath: '.',
     });
 
-    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[6, 6]],
       inserted: [],
       deletions: [],
     });
-    expect(lineSummary(changed.get('src/fresh.ts'))).toEqual({
+    expect(lineSummary(changedFile(changed, 'src/fresh.ts'))).toEqual({
       path: 'src/fresh.ts',
       added: true,
       ranges: [[1, 1]],
