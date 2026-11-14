@@ -18,7 +18,7 @@ func Status(url string) (status int, err error) {
 }
 
 func Send(request *http.Request) (*http.Response, error) {
-	return http.DefaultClient.Do(request) // want http-without-timeout
+	return http.DefaultClient.Do(request) // want http-without-timeout G704
 }
 
 func NewClient() *http.Client {
@@ -38,7 +38,7 @@ func NewTunedClient(timeout time.Duration) *http.Client {
 func Fetch(ctx context.Context, client *http.Client, url string) (*http.Response, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil) // want httpNoBody
 	if err != nil {
 		return nil, fmt.Errorf("request %s: %w", url, err)
 	}

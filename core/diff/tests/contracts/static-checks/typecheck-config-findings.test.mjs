@@ -1,8 +1,8 @@
 import { symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mjs';
-import { runTypecheck } from '../../../../../languages/typescript/adapters/static-checks/typescript.mjs';
+import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
+import { runTypecheck } from '../../../../../languages/typescript/adapters/static-checks/typescript.mts';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 

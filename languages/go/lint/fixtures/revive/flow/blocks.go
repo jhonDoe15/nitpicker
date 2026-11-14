@@ -38,12 +38,12 @@ func Chained(builder *strings.Builder) func() {
 }
 
 func Deferred(builder *strings.Builder) {
-	defer Chained(builder)() // want defer
+	defer Chained(builder)() // want defer unnecessaryDefer
 }
 
 func Reset(builder *strings.Builder) {
 	reset := Chained(builder)
-	defer reset()
+	defer reset() // want unnecessaryDefer
 }
 
 func Mixed(found, ready bool) bool {

@@ -7,7 +7,7 @@ import { readJson } from '../git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../git/test-support/git-repository.mjs';
 import { exactText } from '../reporting/test-support/output-expectations.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
-import { aggregateShardReports } from './aggregate-shards.mjs';
+import { aggregateShardReports } from './aggregate-shards.mts';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
 const { createFixture } = useShardFixtures();
@@ -345,6 +345,26 @@ ${HELD_STRUCTURE_NOTE}
 
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.summary.tools[0].version).toBe('unknown');
+    expect(report.toolErrors).toEqual([error]);
+  });
+  it('reports a setup error that every shard carries once', () => {
+    const fixture = createFixture();
+    const error = {
+      tool: 'source-roots',
+      snapshot: 'head',
+      rule: 'empty-sources',
+      path: '',
+      message: 'm',
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], toolErrors: [error] });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'], toolErrors: [error] });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('first'), analyzer('second')],
+      shardCount: 2,
+    });
+
     expect(report.toolErrors).toEqual([error]);
   });
   it('rejects a missing shard instead of silently reducing analyzer coverage', () => {

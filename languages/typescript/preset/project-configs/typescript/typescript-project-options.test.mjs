@@ -15,7 +15,7 @@ import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
   loadTypeScript,
   preEmitDiagnostics,
-} from '../../../adapters/typecheck/typescript-program.mjs';
+} from '../../../adapters/typecheck/typescript-program.mts';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../../head-policy.mjs';
 import { resolveLayoutFor } from '../../layout.mjs';
 import { layoutTransformFor } from '../../tool-configs.mjs';

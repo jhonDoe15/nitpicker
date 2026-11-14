@@ -13,6 +13,7 @@ import {
   withoutExcludedFiles,
 } from '../gradle-reports/report-modules.mjs';
 import { readErrorProneFindings } from '../errorprone/java-errorprone.mjs';
+import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
@@ -46,6 +47,8 @@ import {
 } from './kotlin-reports.mjs';
 import { withJavaCountRatchets } from './counts/java-counts.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
+import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
+import { pitSkippedFindings } from '../../builds/pit-failure/pit-skipped.mjs';
 
 const ROOT_MODULE = 'root';
 
@@ -86,6 +89,7 @@ export function readJavaFindings(projectRoot, options = {}) {
         : []),
       ...wide.findings,
       ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+      ...readCommentFindings(projectRoot, lintedRoots(manifest)),
       ...springFindings(projectRoot, manifest, options),
     ],
     { preset, javaStyle: options.javaStyle },
@@ -220,16 +224,21 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jac
 function pitFindings(context) {
   const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  if (!existsSync(pitReport)) {
+  if (context.manifest.testsFailed === true) {
     return [];
   }
+  const failures = pitFailureFindings(reportRoot, context.module?.moduleDir);
+  if (failures.length > 0 || !existsSync(pitReport)) {
+    return failures;
+  }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  return ingestPit(readFileSync(pitReport, 'utf8'), {
+  const mutations = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
     sourceText: sourceTextReader(projectRoot),
     ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
   }).findings;
+  return [...mutations, ...pitSkippedFindings(reportRoot, context.module?.moduleDir)];
 }
 
 function branchFindings(context, jacoco) {

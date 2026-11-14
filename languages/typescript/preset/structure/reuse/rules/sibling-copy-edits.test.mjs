@@ -31,6 +31,13 @@ function formatPrice(tail = ORIGINAL, name = 'formatPrice') {
   );
 }
 
+function untypedPrice(tail = ORIGINAL) {
+  return formatPrice(tail).replace(
+    '(cents: number, currency: string): string {',
+    '(cents, currency) {',
+  );
+}
+
 function rewritten() {
   return source(
     'export function formatPrice(cents: number): string {',
@@ -129,6 +136,25 @@ describe('sibling-copy-edit', () => {
     const reformatted = formatPrice(ORIGINAL).replace('"USD"', "'USD'").replace('{\n', '{ // x\n');
 
     expect(changes(base, pair(reformatted, formatPrice()))).toEqual([]);
+  });
+
+  it('ignores types added to one copy, as converting a module to TypeScript does', () => {
+    const base = pair(untypedPrice(), untypedPrice());
+    const converted = formatPrice()
+      .replace('/ 100);', '/ 100) as number;')
+      .replace('const sign =', 'const sign: string =')
+      .replace('"0");', '"0") satisfies string;');
+
+    expect(changes(base, pair(formatPrice(), untypedPrice()))).toEqual([]);
+    expect(changes(base, pair(converted, untypedPrice()))).toEqual([]);
+  });
+
+  it('still reports a logic edit made while types are added to one copy', () => {
+    const base = pair(untypedPrice(), untypedPrice());
+
+    expect(rows(changes(base, pair(formatPrice(EDITED), untypedPrice())))).toEqual([
+      [RULE, CART, 'sibling-copy:formatPrice'],
+    ]);
   });
 
   it('leaves a new near-copy to duplicate-definition', () => {
@@ -281,8 +307,9 @@ describe('sibling-copy-edit scope', () => {
   it('compares copies that are exactly 80% alike and skips copies that are less alike', () => {
     const names = Array.from({ length: 46 }, (_, index) => `x${String(index)}`);
     const replaced = (count) => names.map((name, index) => (index < count ? `y${name}` : name));
-    const base = pair(listing(names), listing(names));
-    const withEdit = (count) => pair(listing(replaced(count)), listing(names));
+    const list = (listed) => listing(listed, undefined, ['  debugger;', '  void a;']);
+    const base = pair(list(names), list(names));
+    const withEdit = (count) => pair(list(replaced(count)), list(names));
 
     expect(edit(base, withEdit(20))).toEqual([[RULE, CART, 'sibling-copy:pick']]);
     expect(edit(base, withEdit(21))).toEqual([]);

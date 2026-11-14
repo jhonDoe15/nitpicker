@@ -44,6 +44,21 @@ export const STRUCTURE_NOTES = {
     'Editing one of two near-identical copies leaves the other with the old bug.',
     'Edit the copy as well, or merge the copies into one.',
   ],
+  'near-duplicate': [
+    'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, sharing a run of statements, or the same logic written another way.',
+    'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
+    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
+  ],
+  'decided-condition': [
+    'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
+    'The dead case is often a real bug: the branch the author meant to run never can.',
+    'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
+  ],
+  'duplicate-branch': [
+    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
+    'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
+    'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

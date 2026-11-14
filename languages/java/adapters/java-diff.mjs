@@ -6,7 +6,7 @@ import {
   unknownOnBaseFor,
 } from '../../../core/diff/comparison/base-red/unknown-base.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReportKeepingValid } from '../../../core/diff/comparison/schema/invalid-findings.mjs';
 import { captureWorkingTree, resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mjs';
@@ -41,9 +41,10 @@ import { withProjectSourceRules } from './regexes/regex-defects.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
+import { mutationPlanOf } from '../builds/change-scope/mutation-plan.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache', '--continue'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
   return snapshot === 'head' && baselineRoot !== undefined
@@ -62,6 +63,7 @@ function runJavaPreset(
     kotlinRun,
     budget = gradleBudget(),
     testsFailedModules = [],
+    testsSkipped = false,
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
@@ -69,7 +71,6 @@ function runJavaPreset(
   withKotlin((kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
-      ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -81,8 +82,9 @@ function runJavaPreset(
       policy,
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
+      testsSkipped,
     });
-    const checkTests = testsFailedModules.length === 0;
+    const checkTests = testsFailedModules.length === 0 && !testsSkipped;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
       runGradleStage({ args: stage(), ...options });
@@ -145,6 +147,7 @@ function mavenFindings(projectRoot, options) {
   const { moduleDirs, testsFailures, formatAdvice } = runMavenPreset(projectRoot, {
     ...options,
     timeoutMs: options.budget?.mavenCommandTimeoutMs,
+    pitDeadline: options.budget?.pitDeadlineMs,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
   const duplicates = {
@@ -174,18 +177,19 @@ export function collectJavaFindings(root, options = {}) {
 
 export function collectJavaReport(root, options = {}) {
   const projectRoot = path.resolve(root);
-  const { findings, imports, testsFailures } =
-    detectJavaBuild(projectRoot) === 'maven'
-      ? mavenFindings(projectRoot, options)
-      : withGradleReports(projectRoot, options);
+  const plan = mutationPlanOf(projectRoot, options);
+  const {
+    findings: collected,
+    imports,
+    testsFailures,
+  } = detectJavaBuild(projectRoot) === 'maven'
+    ? mavenFindings(projectRoot, plan.options)
+    : withGradleReports(projectRoot, plan.options);
+  const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
-  const parsed = parseAnalyzerReport(
-    {
-      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
-    },
-    preset,
-  ).findings;
+  const columns = withJavaColumns(findings, { projectRoot, policy: options.policy, readSource });
+  const parsed = parseAnalyzerReportKeepingValid({ findings: columns }, preset).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
       withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
@@ -195,7 +199,11 @@ export function collectJavaReport(root, options = {}) {
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
+  const snapshot = options.policy?.snapshot === 'base' ? 'base' : 'head';
+  return {
+    findings: withTestsFailures(policed, { preset, failures: testsFailures, snapshot }),
+    imports,
+  };
 }
 
 function collectBothSnapshots({

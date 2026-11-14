@@ -4,8 +4,8 @@ import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
-import { parseArguments } from '../../quality-areas/arguments.mjs';
-import { runQualityArea } from '../../quality-areas-runner.mjs';
+import { parseArguments } from '../../quality-areas/arguments.mts';
+import { runQualityArea } from '../../quality-areas-runner.mts';
 
 function writeProjectFile(root, file, text) {
   const target = path.resolve(root, file);

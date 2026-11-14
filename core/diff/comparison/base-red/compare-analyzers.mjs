@@ -2,11 +2,19 @@ import { compareFindings } from '../compare.mjs';
 import { analyzerMetadata, analyzerName } from '../../reporting/report-model.mjs';
 import {
   COMPILE_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
+  TESTS_UNMEASURED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
-import { baseFailuresOf, baseNoteOf, redBaseAnalyzers, unknownOnBaseFor } from './unknown-base.mjs';
+import {
+  baseFailuresOf,
+  baseNoteOf,
+  headTestFailuresOf,
+  mutationFailuresOf,
+  redBaseAnalyzers,
+  unknownMutantsFor,
+  unknownOnBaseFor,
+} from './unknown-base.mjs';
 
 export function compareAnalyzers(context) {
   const { analyzers, baseRun, headRun, toolErrors } = context;
@@ -46,8 +54,8 @@ function removalNotes(failureNotes) {
 }
 
 function withoutConsequenceNotes(notes) {
-  return notes.some(({ rule }) => rule === TESTS_FAILED_RULE)
-    ? notes.filter(({ rule }) => rule === TESTS_FAILED_RULE)
+  return notes.some(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
+    ? notes.filter(({ rule }) => TESTS_UNMEASURED_RULES.includes(rule))
     : notes;
 }
 
@@ -108,19 +116,51 @@ function blocksComparison(error, name, stopped) {
   return error.rule !== COMPILE_FAILED_SKIPPED_RULE && !baseTestsFailed;
 }
 
+function eitherOf(first, second) {
+  return first === undefined || second === undefined
+    ? (first ?? second)
+    : (finding) => first(finding) || second(finding);
+}
+
+function unknownOnBaseOf({ name, baseRun, touchedCode, unknownFailures }) {
+  return eitherOf(
+    unknownFailures === undefined ? undefined : unknownOnBaseFor(unknownFailures, touchedCode),
+    unknownMutantsFor(mutationFailuresOf(baseRun.reports.get(name)), touchedCode),
+  );
+}
+
+function withoutUnmeasured(findings, unmeasured) {
+  return unmeasured === undefined ? findings : findings.filter((finding) => !unmeasured(finding));
+}
+
+function withoutUnmeasuredMutants(baseFindings, { name, headRun }) {
+  const headReport = headRun.reports.get(name);
+  return withoutUnmeasured(
+    baseFindings,
+    eitherOf(
+      unknownMutantsFor(mutationFailuresOf(headReport)),
+      unknownOnBaseFor(headTestFailuresOf(headReport, name)),
+    ),
+  );
+}
+
+function withoutHeadUnmeasured(headFindings, { name, headRun }) {
+  return withoutUnmeasured(
+    headFindings,
+    unknownOnBaseFor(headTestFailuresOf(headRun.reports.get(name), name)),
+  );
+}
+
 function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors, unknownFailures } = context;
+  const { name, baseFindings, headFindings, toolErrors } = context;
   try {
     const result = compareFindings({
-      baseFindings,
-      headFindings,
+      baseFindings: withoutUnmeasuredMutants(baseFindings, context),
+      headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       touchedCode: context.touchedCode,
-      unknownOnBase:
-        unknownFailures === undefined
-          ? undefined
-          : unknownOnBaseFor(unknownFailures, context.touchedCode),
+      unknownOnBase: unknownOnBaseOf(context),
     });
     return {
       ...result,

@@ -251,7 +251,13 @@ describe('javaHeadFacts', () => {
     expect([policy.spring, policy.kotlinFormatter, policy.layout, policy.history]).toEqual([
       true,
       'ktlint',
-      { ...layout, sharedInsideFeatures: true },
+      {
+        ...layout,
+        sharedInsideFeatures: true,
+        notFeatures: [],
+        notFeatureFolders: [],
+        aliases: {},
+      },
       { coChange: true },
     ]);
     expect([unset.policy.kotlinFormatter, unset.policy.history]).toEqual(['none', undefined]);
@@ -269,7 +275,14 @@ describe('javaHeadFacts', () => {
 
     expect([policy.featureFolders, policy.layout]).toEqual([
       true,
-      { sharedRoots: ['**/shared'], featureRoots: ['**/modules'], sharedInsideFeatures: false },
+      {
+        sharedRoots: ['**/shared'],
+        featureRoots: ['**/modules'],
+        sharedInsideFeatures: false,
+        notFeatures: [],
+        notFeatureFolders: [],
+        aliases: {},
+      },
     ]);
     expect(readRunnerPolicy(['--project-root', '/p'], {}).policy.layout).toBeUndefined();
   });

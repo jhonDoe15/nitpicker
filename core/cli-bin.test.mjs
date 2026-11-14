@@ -3,10 +3,11 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { projectUsageText } from './command/information/printed-information.mjs';
+import { projectUsageText } from './command/information/printed-information.mts';
+import { checkoutModulePath } from '../shared/paths/checkout-module.mjs';
 
 const temporaryRoots = [];
-const binEntry = path.join(import.meta.dirname, 'bin.mjs');
+const binEntry = checkoutModulePath(path.join(import.meta.dirname, 'bin.mjs'));
 const manifest = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
 );
@@ -84,7 +85,7 @@ describe('nitpicker bin', () => {
 
     const result = spawnSync(
       process.execPath,
-      [path.join(root, 'core/cli.mjs'), 'changelog', version],
+      [checkoutModulePath(path.join(root, 'core/cli.mjs')), 'changelog', version],
       {
         encoding: 'utf8',
         env: { ...process.env, NODE_PATH: '' },

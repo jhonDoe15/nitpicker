@@ -362,7 +362,9 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
-def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
+def rulesWriter = ['write-rules.mts', 'write-rules.mjs']
+    .collect { new File(initScriptDir, "../builds/rulesets/${it}").canonicalFile }
+    .find { it.exists() }
 def runNode = { File script, List<String> arguments, String failure ->
     def process
     try {
@@ -449,7 +451,8 @@ allprojects {
         project.ext.nitpickerRunNode = runNode
         project.ext.nitpickerWriteRules = writeRules
         def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
-        def testsFailed = testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
+        def testsFailed = nitpickerArgument('nitpicker.testsSkipped') == 'true' ||
+            testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
@@ -949,6 +952,7 @@ allprojects {
         }
         def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
         project.apply from: new File(initScriptDir, 'pit/pit-scope.gradle')
+        project.apply from: new File(initScriptDir, 'pit/pit-retry.gradle')
         def scopedPitTargets = {
             project.ext.nitpickerScopedPitTargets(mutatedClassDirs().findAll { it.exists() }, sourceSets.main.allSource.files)
         }
@@ -961,6 +965,30 @@ allprojects {
                 mustRunAfter source
                 classpath = configurations.nitpickerPit
                 mainClass = 'org.pitest.mutationtest.commandline.MutationCoverageReport'
+                def pitOutput = new ByteArrayOutputStream()
+                def pitTask = it
+                def execOperations = project.services.get(org.gradle.process.ExecOperations)
+                ignoreExitValue = true
+                standardOutput = pitOutput
+                errorOutput = pitOutput
+                doLast {
+                    def exitValue = executionResult.get().exitValue
+                    def output = pitOutput.toString('UTF-8')
+                    if (exitValue != 0) {
+                        def retry = project.ext.nitpickerPitRetry(
+                            pitTask, execOperations, pitReportDirectory(source).asFile, output)
+                        if (retry != null) {
+                            exitValue = retry.exitValue
+                            output = retry.output
+                        }
+                    }
+                    if (exitValue != 0) {
+                        def lines = output.readLines().findAll { it.trim() }
+                        def testTask = checkedTestTasks().size() > 1 ? " running the ${source.name} tests" : ''
+                        new File(pitReportDirectory(source).asFile, 'failure.txt').text =
+                            "PIT failed with exit code ${exitValue}${testTask}: ${lines.takeRight(40).join('\n')}"
+                    }
+                }
                 doFirst {
                     def pitDir = pitReportDirectory(source)
                     def classDirs = mutatedClassDirs().findAll { it.exists() }

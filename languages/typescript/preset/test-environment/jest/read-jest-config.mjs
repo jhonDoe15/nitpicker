@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { jestArguments, jestTool } from '../../../adapters/test-runners/jest/jest-launcher.mjs';
+import { jestArguments, jestTool } from './jest-launcher.mjs';
 
 const CONFIG_NAMES = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'].map(
   (extension) => `jest.config.${extension}`,

@@ -2,6 +2,7 @@ import { KEY_MODES, keyOf } from '../tree/keys.mjs';
 import { NONE, contains, isBound, isJump, make, withChildren } from '../tree/nodes.mjs';
 import { accessesOf, continuesLoop, isPure } from './effects.mjs';
 import { negationOf } from './expressions.mjs';
+import { loopMatch } from './library.mjs';
 
 const TRUE = Object.freeze({
   kind: 'literal',
@@ -150,6 +151,10 @@ function mergedDeclaration(previous, statement) {
 }
 
 function merged(previous, statement) {
+  const match = loopMatch(previous, statement);
+  if (match !== undefined) {
+    return match;
+  }
   const jump = guardOf(previous);
   return jump === undefined
     ? mergedDeclaration(previous, statement)

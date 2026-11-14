@@ -149,6 +149,7 @@ describe('overlaps on the probe project', () => {
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
       ['P2Inner.java:10', ['forbiddenapis/legacy-date-time', 'pmd/UnsynchronizedStaticFormatter']],
+      ['P2Inner.java:13', ['errorprone/ClassCanBeStatic', 'pmd/GenericTypeName']],
       ['P2Inner.java:6', ['checkstyle/VisibilityModifier', 'errorprone/NonFinalStaticField']],
       ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
@@ -179,8 +180,9 @@ describe('overlaps on the probe project', () => {
       ['V1Style.java:13', ['checkstyle/MagicNumber', 'errorprone/BigDecimalLiteralDouble']],
       [
         'V1Style.java:8',
-        ['errorprone/AnnotationPosition', 'errorprone/FieldCanBeStatic', 'pmd/CompatibilityShim'],
+        ['errorprone/AnnotationPosition', 'pmd/CompatibilityShim', 'spotbugs/SS_SHOULD_BE_STATIC'],
       ],
+      ['V1Style.java:9', ['errorprone/LongLiteralLowerCaseSuffix', 'spotbugs/SS_SHOULD_BE_STATIC']],
       [
         'V3Unused.java:5',
         ['checkstyle/MagicNumber', 'pmd/UnusedAssignment', 'pmd/UnusedLocalVariable'],
@@ -222,11 +224,16 @@ describe('overlaps on the probe project', () => {
       'C3Locks.java:22 RV_RETURN_VALUE_IGNORED',
       'C6Encoding.java:11 SS_SHOULD_BE_STATIC',
       'C6Encoding.java:16 DM_DEFAULT_ENCODING',
+      'C8Equals.java:4 SS_SHOULD_BE_STATIC',
+      'EqOnly.java:4 SS_SHOULD_BE_STATIC',
+      'Fields.java:5 SS_SHOULD_BE_STATIC',
       'HashOnly.java:5 OverrideBothEqualsAndHashcode',
       'NullColl.java:18 ReturnEmptyCollectionRatherThanNull',
       'P2Eq.java:7 HE_EQUALS_USE_HASHCODE',
       'P3Fields.java:11 URF_UNREAD_FIELD',
       'P3Fields.java:probe.P3Fields.unusedPackage UUF_UNUSED_FIELD',
+      'V1Style.java:8 SS_SHOULD_BE_STATIC',
+      'V1Style.java:9 SS_SHOULD_BE_STATIC',
     ]);
   });
 });

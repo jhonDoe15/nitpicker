@@ -18,7 +18,7 @@ import {
   maven,
   fixtures,
   copyOf,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 
 const DDD_ONLY_FIXTURE = path.join(SPRING_ARCH_FIXTURE, '..', 'ddd-only-project');
 const SPRING_LAYOUT_FINDINGS = [

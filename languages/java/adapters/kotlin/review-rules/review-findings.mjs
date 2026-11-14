@@ -63,9 +63,10 @@ export function readKotlinFanOutFindings(context) {
   return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
 }
 
-function honestyFindings({ manifest, projectRoot, modules = [] }, finding) {
+function honestyFindings({ manifest, projectRoot, modules = [], assertionHelpers }, finding) {
   return testHonestyFindings({
     projectRoot,
+    assertionNames: assertionHelpers,
     testRoots: manifest.kotlinTestSourceRoots,
     contextRoots: contextRoots(manifest, modules),
     finding,

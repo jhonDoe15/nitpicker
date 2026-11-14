@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { CHECKS } from '../checks/checks-docs.mjs';
+import { errorProneChecks } from '../checks/checks-docs.mts';
 import { isClassExempt } from './class-exemptions.mjs';
+
+const CHECKS = errorProneChecks();
 
 const FINAL = '[FieldCanBeFinal] This field is only assigned during initialization';
 const UTILITY =

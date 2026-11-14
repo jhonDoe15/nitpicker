@@ -14,6 +14,7 @@ import {
   slowTest,
   testConsoleRule,
 } from './project-rules/test-runtime-rules.mjs';
+import { BOUNDARY_RULE_IDS, domainRules } from './project-rules/domain/domain-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -65,11 +66,10 @@ export const RULE_IDS = {
   ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
-  featureInternalImport: 'feature-internal-import',
-  sharedImportsFeature: 'shared-imports-feature',
-  featureCycle: 'feature-cycle',
+  ...BOUNDARY_RULE_IDS,
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
+  nearDuplicate: 'near-duplicate',
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
@@ -278,6 +278,7 @@ const CATALOG = [
   ...UNUSED_API_RULES,
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...domainRules(RULE_IDS),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   slowTest(RULE_IDS, TEST_TIME_DEFAULTS, withGo(withKotlin(ALL, true))),
   ...HYGIENE_RULES,

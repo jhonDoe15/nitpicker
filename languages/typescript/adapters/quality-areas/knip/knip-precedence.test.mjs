@@ -8,7 +8,7 @@ import {
   withHeadCheckoutFacts,
   withHeadPolicyFile,
 } from '../../../preset/head-policy.mjs';
-import { runDeadCode } from '../runners/repository.mjs';
+import { runDeadCode } from '../runners/repository.mts';
 
 const roots = [];
 afterEach(() => {

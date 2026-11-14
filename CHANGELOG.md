@@ -11,24 +11,7 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
-### Changed
-
-- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
-  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
-  `accept-policy-change` approval (#1094). An entry that covers a file other production code
-  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
-  the other loosenings.
-
-### Fixed
-
-- Java: Spring architecture findings no longer print their exception sentence twice, which made
-  the Java analyzer fail on most Spring projects and report no Java findings (#1050).
-- A finding that fails nitpicker's finding schema is left out with one tool error that names it,
-  and the analyzer's other findings are kept (#1050).
-- Java: an Error Prone check that crashes is turned off for the run and reported as one
-  `errorprone/check-crashed` tool error; the other checks' findings are kept (#1069).
-
-## [0.1.0-rc.2] - 2026-11-12
+## [0.1.0-rc.2] - 2026-11-13
 
 ### Added
 
@@ -94,6 +77,10 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   received values, and exit 1 (#719, #730).
 - Compile errors in the change are reported as findings, and Gradle failures are condensed (#966).
 - Java and Kotlin comparisons reuse the base's PIT results on the head (#962).
+- Go: tests under the race detector, mutation testing of the changed lines through
+  `go test -overlay`, the test-honesty rules, gosec security rules, and GORM and ent foreign keys
+  without an index, with sqlc schema files read (#938, #984, #996, #1065, #1066).
+- Container images per preset, smoke-tested in CI and published to GHCR with each release (#561).
 
 ### Changed
 
@@ -202,6 +189,10 @@ Stricter rules, which can fail code that passed before:
 - Python: `typing.cast` and explicit `Any`, reviewed Ruff pitfall families, unresolved imports,
   assertions in test control flow and switched-off tests, and the shared feature boundary rules
   (#372, #373, #449, #477, #636).
+- Every preset: promises and futures with no failure path, and configuration strings tested only for
+  null or undefined (#917, #925).
+- Python: a negated `if`/`else`, a negated ternary and an all-negated chain (#980).
+- Python and Kotlin: imports around public entry points (#971).
 
 Other changes:
 
@@ -227,9 +218,30 @@ Other changes:
 - Project facts come from the Git file set, not the whole tree, and the preset is checked against
   the folder's build files when the config loads (#521, #958).
 - A run that checked only the analyzers named with `--analyzer` says so (#690).
+- TypeScript and JavaScript: `nitpicker/no-null` allows `null` as an object field, array element or
+  conditional branch in the data passed to `JSON.stringify`, where it is the JSON value for nothing
+  (an explicit `null` field of a request body, or a key a tsconfig or merge patch must unset) (#1100).
+  `null` built outside the call, or passed to another function inside it, is still reported.
+- Java: Error Prone's `ForEachIterable` and `FieldCanBeStatic` are off. Every Error Prone release
+  from 2.26 to 2.52 crashes on them for record patterns with `var` bindings and Lombok `@Getter`
+  fields; `pmd/ForLoopCanBeForeach` and `spotbugs/SS_SHOULD_BE_STATIC` now report those loops and
+  fields (SpotBugs only when the initializer is a compile-time constant).
+- An added `layout.entryPoints` or `python.entryPoints` entry is listed among the policy changes
+  and no longer fails the gate as a `nitpicker-config/policy-loosened` finding, so it needs no
+  `accept-policy-change` approval (#1094). An entry that covers a file other production code
+  imports, such as a `**` glob, still fails, as do exceptions, exclusions, disabled analyzers and
+  the other loosenings.
+- A run given paths mutates only the files in scope, and a comparison mutates only the Java and
+  Kotlin code the change touches (#974, #1078).
+- Java 25: sources are read with Checkstyle 13.5, PMD 7.16 and google-java-format 1.35, and the
+  JaCoCo agent runs at the project's own version and reads Java 25 class files (#1086).
 
 ### Fixed
 
+- TypeScript: the type-aware lint rules run on projects whose tsconfig sets `rootDir`, `rootDirs`,
+  `isolatedDeclarations`, an option TypeScript 7 removed, or a `types` entry that is not installed.
+  Any other tsconfig error oxlint reports now fails the ESLint analyzer with a message naming it,
+  instead of reporting without the type-aware findings (#1056).
 - Maven: a project that binds its own JaCoCo `prepare-agent` (Spring Boot apps often do) no longer
   aborts its test JVM with two JaCoCo agents; nitpicker's agent runs at the project's JaCoCo version
   (#1052).
@@ -282,6 +294,20 @@ Other changes:
 - Diff worktrees are checked out under the real temp path, which fixes runs on Windows with short
   temp paths (#993).
 - A Node.js older than 22.14 gets a message naming the required version instead of a crash (#695).
+- Java: Spring architecture findings no longer print their exception sentence twice, which made
+  the Java analyzer fail on most Spring projects and report no Java findings (#1050).
+- A finding that fails nitpicker's finding schema is left out with one tool error that names it,
+  and the analyzer's other findings are kept (#1050).
+- Java: an Error Prone check that crashes is turned off for the run and reported as one
+  `errorprone/check-crashed` tool error; the other checks' findings are kept (#1069).
+- TypeScript and JavaScript: type-aware lint rules run on more tsconfig setups (a `rootDir`,
+  `isolatedDeclarations`, `rootDirs`, unresolved or hoisted `types`, options TypeScript 7 removed),
+  and a tsconfig oxlint still rejects fails the analyzer with a message instead of silently linting
+  nothing (#1056, #1074).
+- Java and Kotlin: a PIT run that fails or times out is reported as one tool error, and the module's
+  other findings are kept (#1051, #1073).
+- `.ts` imports are graphed as runtime imports when the tsconfig rewrites extensions (#1080).
+- `sibling-copy-edit` ignores type-only syntax when it compares copies (#1105).
 
 ### Upgrade notes
 

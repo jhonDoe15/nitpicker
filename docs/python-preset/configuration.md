@@ -27,7 +27,7 @@ top-level `exceptions` is accepted only for the rules shared with the other lang
 `unused-option`, whose messages name it, the
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), the
 [fact rules](../../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
-`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan, and
+`exported-name-collision`, `sibling-copy-edit`, `near-duplicate`, `doc-comment-content`, `public-alternative-bypass`), which the Python preset runs over its facts scan, and
 `co-change` of the [change history](../usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a

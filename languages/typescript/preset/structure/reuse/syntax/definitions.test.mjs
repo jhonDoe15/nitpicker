@@ -50,6 +50,80 @@ describe('definition text', () => {
     );
   });
 
+  it('expose untyped tokens without type annotations, type arguments, assertions or markers', () => {
+    const untyped = definitionsOf(
+      [
+        'class Store extends Base {',
+        '  items = new Map();',
+        '  constructor(seed) { super(); this.items = seed; }',
+        '  get(key, fallback) { return this.items.get(key) ?? fallback; }',
+        '}',
+        'function pick(store, key) {',
+        '  const found = store.get(key, []);',
+        '  return found.length > 0 ? found : undefined;',
+        '}',
+      ].join('\n'),
+      'a.js',
+    );
+    const typed = definitionsOf(
+      [
+        'interface Shelf { size: number }',
+        'export abstract class Store<T> extends Base<T> implements Shelf {',
+        '  private readonly items: Map<string, T> = new Map<string, T>();',
+        '  declare size: number;',
+        '  [key: string]: unknown;',
+        '  constructor(seed: Map<string, T>);',
+        '  public constructor(seed: Map<string, T>) { super(); this.items = seed; }',
+        '  override get<K extends string>(key: K, fallback?: T): T | undefined {',
+        '    return this.items.get(key) ?? fallback;',
+        '  }',
+        '}',
+        'function pick(store: Store<string[]>, key: string): string[] | undefined;',
+        'function pick<T>(store: Store<T[]>, key: string): T[] | undefined {',
+        '  type Found = T[];',
+        '  const found: Found = store.get<string>(key, [] as T[])! satisfies Found;',
+        '  return found.length > 0 ? <Found>found : undefined;',
+        '}',
+      ].join('\n'),
+      'a.ts',
+    );
+
+    const code = typed.filter(({ kind }) => kind !== 'interface');
+
+    expect(code.map(({ untypedTokens }) => untypedTokens)).toEqual(
+      untyped.map(({ tokens }) => tokens),
+    );
+    expect(code.map(({ tokens }) => tokens)).not.toEqual(untyped.map(({ tokens }) => tokens));
+  });
+
+  it('drop the parentheses a typed arrow parameter or a wrapped assertion needs', () => {
+    const untyped = definitionsOf(
+      'function f(a, b, c) { return a.map(x => b ? x : c).map((y) => y + 1); }',
+      'a.js',
+    );
+    const typed = definitionsOf(
+      [
+        'function f(this: Window, a: number[], b: boolean, c: number) {',
+        '  declare const hidden: number;',
+        '  return a.map((x: number): number => b ? (x as number) : (c satisfies number))',
+        '    .map((y) => y + 1);',
+        '}',
+      ].join('\n'),
+      'a.ts',
+    );
+
+    expect(typed[0].untypedTokens).toEqual(untyped[0].untypedTokens);
+  });
+
+  it('keep optional chaining, conditionals and comparisons in the untyped tokens', () => {
+    const [definition] = definitionsOf(
+      'function at(list, index) { return list?.[index] ?? (index < 0 ? !list : list > 1); }',
+      'a.js',
+    );
+
+    expect(definition.untypedTokens).toEqual(definition.tokens);
+  });
+
   it('include the overload signatures of a function', () => {
     const body = 'function pick(a: unknown) {\n  return a;\n}';
     const plain = definitionsOf(body)[0].text;

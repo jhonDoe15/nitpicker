@@ -48,6 +48,9 @@ describe('validateJavaFindingRule', () => {
         label,
       );
     }).not.toThrow();
+    expect(() => {
+      validateJavaFindingRule(entry('coupling/domain-imports-io', ['src/main/kotlin/A.kt']), label);
+    }).not.toThrow();
   });
 
   it('accepts an ArchUnit finding on Kotlin sources, which the rules read from compiled Kotlin classes', () => {

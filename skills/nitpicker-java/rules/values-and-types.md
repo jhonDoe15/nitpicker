@@ -17,7 +17,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
-- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+- Signatures: a public method does not branch on a `boolean` parameter (`pmd/BooleanFlagParameter`):
+  write two methods or take an enum. A value with three states is an `enum`, not a boxed `Boolean` parameter, field,
   return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
   fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
   method returns a new collection or array instead of changing a parameter (`items.add`,
@@ -68,11 +69,21 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `BeanManager` or JNDI (`ServiceLocatorLookup`). Only `main`, a Guice `Module`'s `configure`,
   `@Provides`/`@Produces` methods, `@Bean` methods of a `@Configuration` class and CDI extensions
   look dependencies up.
+- Test a configuration string (a `@ConfigurationProperties` field, a `@Value` string) with
+  `StringUtils.hasText(x)`, not only `x != null`: an empty property binds as `""`, which passes a null
+  check (`SpringNullOnlyConfigCheck`).
 - Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
   `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
   `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
   in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
   `sorted(...).findFirst()` (`pmd/SortForExtreme`).
+- Skip a collection step whose result is thrown away: `anyMatch(...)` instead of
+  `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
+  the source instead of on a `toList()` or `new ArrayList<>(source)` copy
+  (`pmd/RedundantStreamStep`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`,
+  `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
+  exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).

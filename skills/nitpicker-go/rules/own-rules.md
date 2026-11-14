@@ -32,6 +32,17 @@ the allowed form and ends with its exception entry.
 - Never `time.Sleep` to wait for a goroutine you started (`go-rules/sleep-to-wait`): wait on its
   WaitGroup, errgroup, channel or context. A sleep between retries, with no goroutine started
   before it, is fine.
+- A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
+  results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
+  the next release (`go-rules/cleanup-skipped`).
+- A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
+  clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
+- A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
+  (`go-rules/ticker-not-stopped`).
+- An initialiser that can fail does not run inside `sync.Once` or `sync.OnceValues`, which keep the first error:
+  guard it with a mutex and reset on failure, or use `singleflight` (`go-rules/once-keeps-error`).
+- A map field of a mutex-guarded struct that a method writes per request is `delete`d from when the request ends, or
+  bounded (`go-rules/map-only-grows`).
 
 ## Package state and design
 
