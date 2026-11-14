@@ -16,6 +16,7 @@ import { withoutFollowedImports } from './imports/followed-imports.mts';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mts';
 import { withJavaColumns } from './reporting/columns/java-columns.mts';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { withTestsFailures } from './red-base/tests-failed.mts';
 import { isJavaTouchedRule } from './touched-rules.mjs';
@@ -143,17 +144,26 @@ function collectBothSnapshots({
             baselineRoot: path.join(baseWorktree, projectRelativePath),
           });
           const notes = findingsOf(testFailuresOf({ findings: collectedBase }));
-          return {
+          return skippedToolsLeftOut({
             notes,
             baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
             headFindings,
-          };
+          });
         },
       );
       return compared;
     },
   );
   return snapshotsOf(snapshots);
+}
+
+function skippedToolsLeftOut(snapshots: ComparedSnapshots): ComparedSnapshots {
+  const kept = callUntyped(withoutSkippedTools, snapshots);
+  return {
+    notes: snapshots.notes,
+    baseFindings: findingsOf(fieldOf(kept, 'baseFindings')),
+    headFindings: findingsOf(fieldOf(kept, 'headFindings')),
+  };
 }
 
 function withEnforceable(outcome: Outcome): EnforcedOutcome {

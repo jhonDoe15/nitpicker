@@ -36,7 +36,7 @@ describe('the files a Gradle build excludes from its Kotlin source sets', () => 
 });
 
 describe('the coverage of an Android or Multiplatform project', () => {
-  it('is not measured, so no coverage report is read', () => {
+  it('is not read when the build wrote none', () => {
     const module = { reportRoot: '/missing', manifest: { kotlinSourceModule: true } };
 
     expect(readModuleJacoco(module, 'kotlin')).toBeUndefined();
@@ -56,5 +56,17 @@ describe('a project whose sources sit outside its analysis root', () => {
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
+  });
+});
+
+describe('the coverage of a Multiplatform project with a JVM target', () => {
+  it('is read from the report the build wrote', () => {
+    const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-source-module-'));
+    writeFileSync(path.join(reportRoot, 'jacoco.xml'), '<report/>');
+
+    expect(readModuleJacoco({ reportRoot, manifest: { kotlinSourceModule: true } }, 'kotlin')).toBe(
+      '<report/>',
+    );
+    rmSync(reportRoot, { recursive: true, force: true });
   });
 });

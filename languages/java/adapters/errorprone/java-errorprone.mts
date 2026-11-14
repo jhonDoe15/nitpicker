@@ -8,7 +8,8 @@ import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
 import { isClosedByUsing } from './reactive/closed-supplier.mjs';
-import { sourceReader } from './lombok/source-text.mjs';
+import { compiledSources, sourceReader } from './lombok/source-text.mjs';
+import { withoutFluentCalls } from './fluent/fluent-returns.mjs';
 import { errorProneChecks } from './checks/checks-docs.mts';
 import type { ErrorProneChecks } from './checks/checks-shape.mts';
 import { callUntyped } from '../typed/java-values.mts';
@@ -47,9 +48,11 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   const { diagnostics, crashes } = splitCrashes(report);
   const readSource: unknown = sourceReader(context.reportRoot);
   const checks = errorProneChecks();
+  const exempted = withoutExemptCode(diagnostics, readSource, checks);
+  const reportRoots = projectReportRoots(context.reportRoot, context['modules']);
   const ingested = callUntyped(
     ingestErrorProne,
-    withoutExemptCode(diagnostics, readSource, checks),
+    withoutFluentReturns(exempted, reportRoots, readSource),
     {
       resolvePath: (file: string) => lintedPath(file, placement),
       guava: guavaRead(manifest, testRoots),
@@ -159,6 +162,26 @@ function withoutExemptCode(
         ),
     ),
   );
+}
+
+function projectReportRoots(reportRoot: string, modules: unknown): string[] {
+  const others = listOf(modules)
+    .map((module) => fieldOf(module, 'reportRoot'))
+    .filter((root) => typeof root === 'string');
+  return [...new Set([reportRoot, ...textsOf(others)])];
+}
+
+function withoutFluentReturns(
+  json: string,
+  reportRoots: readonly string[],
+  readSource: unknown,
+): string {
+  const diagnostics: unknown = JSON.parse(json);
+  if (!Array.isArray(diagnostics)) {
+    return json;
+  }
+  const sources = [...new Set(reportRoots.flatMap((root) => textsOf(compiledSources(root))))];
+  return JSON.stringify(callUntyped(withoutFluentCalls, diagnostics, { sources, readSource }));
 }
 
 function withExceptionRoute(

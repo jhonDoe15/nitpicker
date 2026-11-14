@@ -84,7 +84,11 @@ function runSourceTools(options: ModuleOptions): void {
       auxClasspath: fieldOf(kotlin, 'auxClasspath'),
     }),
     sourceTask(runErrorProne, ERRORPRONE_URL, { ...base, classpaths }),
-    sourceTask(runFormat, FORMAT_URL, { ...base, javaStyle: fieldOf(style, 'javaStyle') }),
+    sourceTask(runFormat, FORMAT_URL, {
+      ...base,
+      javaStyle: fieldOf(style, 'javaStyle'),
+      formatterFlags: fieldOf(style, 'formatterFlags'),
+    }),
     sourceTask(runCheckstyle, LINT_URL, { ...base, pinned, style }),
     sourceTask(runStructure, METRICS_URL, base),
     sourceTask(runJdeps, METRICS_URL, base),
