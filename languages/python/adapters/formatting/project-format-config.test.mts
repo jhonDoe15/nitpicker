@@ -1,18 +1,31 @@
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../test-support/scratch.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
 import {
   projectFormatConfigFiles,
-  readBlackConfig,
-  readRuffConfig,
+  readBlackConfig as untypedReadBlack,
+  readRuffConfig as untypedReadRuff,
 } from './project-format-config.mjs';
+
+type Row = Readonly<Record<string, unknown>>;
+type FormatConfig = Row & {
+  readonly file: string;
+  readonly files: readonly string[];
+  readonly set: Row;
+  readonly scope: Row;
+};
+
+const readRuffConfig: (start: string) => FormatConfig | undefined = untypedReadRuff;
+const readBlackConfig: (start: string) => FormatConfig | undefined = untypedReadBlack;
 
 const scratch = createScratch();
 
 afterEach(scratch.cleanup);
 
-const project = (files) => scratch.write(scratch.directory(), files);
+const project = (files: Readonly<Record<string, string>>) =>
+  scratch.write(scratch.directory(), files);
 
 describe('the ruff config the project has', () => {
   it('takes .ruff.toml before ruff.toml before pyproject.toml, as ruff does', () => {
@@ -29,9 +42,9 @@ describe('the ruff config the project has', () => {
       scope: { extendExclude: [] },
     });
     rmSync(path.join(root, '.ruff.toml'));
-    expect(readRuffConfig(root).set).toEqual({ lineLength: 110 });
+    expect(readRuffConfig(root)?.set).toEqual({ lineLength: 110 });
     rmSync(path.join(root, 'ruff.toml'));
-    expect(readRuffConfig(root).set).toEqual({ lineLength: 100 });
+    expect(readRuffConfig(root)?.set).toEqual({ lineLength: 100 });
   });
 
   it('skips a pyproject.toml without a ruff table and walks up to the repository root', () => {
@@ -60,9 +73,9 @@ describe('the ruff config the project has', () => {
       'ruff.toml': 'indent-width = 3\n[format]\nquote-style = "preserve"\nindent-style = "space"\n',
     });
 
-    expect(readRuffConfig(root).set).toEqual({ indentation: 3, quotes: 'preserve' });
+    expect(readRuffConfig(root)?.set).toEqual({ indentation: 3, quotes: 'preserve' });
     writeFileSync(path.join(root, 'ruff.toml'), '[format]\nindent-style = "tab"\n');
-    expect(readRuffConfig(root).set).toEqual({ indentation: 'tab' });
+    expect(readRuffConfig(root)?.set).toEqual({ indentation: 'tab' });
   });
 
   it('follows extend, the child winning over the config it extends, and lists every file', () => {
@@ -73,8 +86,11 @@ describe('the ruff config the project has', () => {
 
     const config = readRuffConfig(root);
 
-    expect(config.set).toEqual({ lineLength: 100, indentation: 2 });
-    expect(config.files).toEqual([path.join(root, 'ruff.toml'), path.join(root, 'base/ruff.toml')]);
+    expect(config?.set).toEqual({ lineLength: 100, indentation: 2 });
+    expect(config?.files).toEqual([
+      path.join(root, 'ruff.toml'),
+      path.join(root, 'base/ruff.toml'),
+    ]);
   });
 
   it('survives an extend cycle and a missing parent', () => {
@@ -85,8 +101,8 @@ describe('the ruff config the project has', () => {
       'pkg/ruff.toml': 'extend = "../missing.toml"\nline-length = 70\n',
     });
 
-    expect(readRuffConfig(root).set).toEqual({ lineLength: 90 });
-    expect(readRuffConfig(path.join(root, 'pkg')).set).toEqual({ lineLength: 70 });
+    expect(readRuffConfig(root)?.set).toEqual({ lineLength: 90 });
+    expect(readRuffConfig(path.join(root, 'pkg'))?.set).toEqual({ lineLength: 70 });
   });
 
   it('fails with the file name for a config that is not TOML', () => {
@@ -101,7 +117,7 @@ describe('the ruff config the project has', () => {
         'exclude = ["generated"]\nextend-exclude = ["legacy/*.py"]\nforce-exclude = true\ntarget-version = "py39"\n',
     });
 
-    expect(readRuffConfig(root).scope).toEqual({
+    expect(readRuffConfig(root)?.scope).toEqual({
       exclude: [{ pattern: 'generated', directory: root }],
       extendExclude: [{ pattern: 'legacy/*.py', directory: root }],
       forceExclude: true,
@@ -115,11 +131,14 @@ describe('the ruff config the project has', () => {
       'ruff.toml': 'extend = "base/ruff.toml"\nextend-exclude = ["b"]\ntarget-version = "py311"\n',
     });
 
-    const { scope } = readRuffConfig(root);
+    const scope = readRuffConfig(root)?.scope;
 
-    expect(scope.exclude).toEqual([{ pattern: 'old', directory: path.join(root, 'base') }]);
-    expect(scope.extendExclude.map(({ pattern }) => pattern)).toEqual(['b', 'a']);
-    expect(scope.targetVersion).toBe('py311');
+    expect(scope?.['exclude']).toEqual([{ pattern: 'old', directory: path.join(root, 'base') }]);
+    expect(listOf(scope?.['extendExclude']).map((entry) => fieldOf(entry, 'pattern'))).toEqual([
+      'b',
+      'a',
+    ]);
+    expect(scope?.['targetVersion']).toBe('py311');
   });
 });
 
@@ -156,12 +175,12 @@ describe('the black config the project has', () => {
   it('reads the string normalization setting', () => {
     const root = project({ 'pyproject.toml': '[tool.black]\nskip-string-normalization = true\n' });
 
-    expect(readBlackConfig(root).set).toEqual({ quotes: 'preserve' });
+    expect(readBlackConfig(root)?.set).toEqual({ quotes: 'preserve' });
     writeFileSync(
       path.join(root, 'pyproject.toml'),
       '[tool.black]\nskip_string_normalization = false\n',
     );
-    expect(readBlackConfig(root).set).toEqual({ quotes: 'normalize' });
+    expect(readBlackConfig(root)?.set).toEqual({ quotes: 'normalize' });
   });
 
   it('reads the exclusions, the target versions and whether requires-python is declared', () => {
@@ -170,7 +189,7 @@ describe('the black config the project has', () => {
         '[project]\nrequires-python = ">=3.9"\n[tool.black]\nexclude = "/gen/"\nextend_exclude = "/old/"\nforce-exclude = "/x/"\ntarget-version = ["py39", "py310"]\n',
     });
 
-    expect(readBlackConfig(root).scope).toEqual({
+    expect(readBlackConfig(root)?.scope).toEqual({
       exclude: '/gen/',
       extendExclude: '/old/',
       forceExclude: '/x/',

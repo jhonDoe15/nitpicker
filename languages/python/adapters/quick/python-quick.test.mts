@@ -1,22 +1,30 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parsePythonArguments } from '../python-runner.mjs';
-import { MANIFEST_REPORT, createToolContext, runPythonTools } from '../python-tools.mjs';
-import { readPythonFindings } from '../python-reports.mjs';
+import { parsePythonArguments } from '../python-runner.mts';
+import {
+  MANIFEST_REPORT,
+  createToolContext as untypedCreateToolContext,
+  runPythonTools,
+} from '../python-tools.mjs';
+import { createToolContext } from '../test-support/typed/tool-context.mts';
+import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
+import { readPythonFindings } from '../python-reports.mts';
 import {
   callsLog,
   project,
   readReport,
   restoreTemporaryState,
   temporaryRoot,
-} from '../execution/test-support/python-tools-project.mjs';
+} from '../execution/test-support/python-tools-project.mts';
 
 afterEach(restoreTemporaryState);
 
-function quickContext(root) {
+function quickContext(root: string) {
   const reportRoot = temporaryRoot();
-  const context = createToolContext({ projectRoot: root, liveRoot: root, reportRoot, quick: true });
+  const context: unknown = Reflect.apply(untypedCreateToolContext, undefined, [
+    { projectRoot: root, liveRoot: root, reportRoot, quick: true },
+  ]);
   return { context, reportRoot };
 }
 
@@ -44,7 +52,7 @@ describe('python quick mode', () => {
     expect(calls('coverage', 'run')).toEqual([]);
     expect(calls('coverage', 'json')).toEqual([]);
     expect(existsSync(path.join(reportRoot, 'coverage.json'))).toBe(false);
-    expect(JSON.parse(readReport(reportRoot, MANIFEST_REPORT))).toEqual({
+    expect(parseJson(readReport(reportRoot, MANIFEST_REPORT))).toEqual({
       formatter: 'ruff',
       formatterDetected: true,
       quick: true,
@@ -63,7 +71,7 @@ describe('python quick mode', () => {
     runPythonTools(context);
 
     expect(calls('coverage', 'run')).toHaveLength(1);
-    expect(JSON.parse(readReport(reportRoot, MANIFEST_REPORT)).quick).toBeUndefined();
+    expect(fieldOf(parseJson(readReport(reportRoot, MANIFEST_REPORT)), 'quick')).toBeUndefined();
   });
 
   it('reads the static findings and none of the test-driven ones', () => {

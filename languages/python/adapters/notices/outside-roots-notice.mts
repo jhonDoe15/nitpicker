@@ -1,5 +1,5 @@
 import { outsideRootsNotice } from '../../../../shared/notices/outside-roots-message.mjs';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
+import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob.mjs';
 import { isUnder } from '../analysis/python-sources.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import {
@@ -8,6 +8,14 @@ import {
   NON_SOURCE_FILES,
 } from '../execution/python-project.mjs';
 
+export type OutsideProject = {
+  readonly projectRoot: string;
+  readonly sourceRoots: readonly string[];
+  readonly exclude?: readonly string[];
+  readonly isTestFile: (file: string) => boolean;
+};
+
+const globMatcher: (glob: string) => { test: (file: string) => boolean } = untypedGlobMatcher;
 const PYTHON_FILE = /\.pyi?$/u;
 const HIDDEN_FOLDER = /(?:^|\/)\.[^/]+\//u;
 const TOOL_FILES = new Set(['setup.py', 'noxfile.py', 'manage.py', 'tasks.py', 'conf.py']);
@@ -20,17 +28,20 @@ const SKIPPED_FOLDERS = new Set([
   'venv',
 ]);
 
-function isQuiet(file) {
+function isQuiet(file: string): boolean {
   const parts = file.split('/');
   return (
     HIDDEN_FOLDER.test(file) ||
     parts.slice(0, -1).some((part) => SKIPPED_FOLDERS.has(part)) ||
-    NON_SOURCE_FILES.has(parts.at(-1)) ||
-    TOOL_FILES.has(parts.at(-1))
+    NON_SOURCE_FILES.has(parts.at(-1) ?? '') ||
+    TOOL_FILES.has(parts.at(-1) ?? '')
   );
 }
 
-export function pythonOutsideRootsNotices(changedFiles, project) {
+export function pythonOutsideRootsNotices(
+  changedFiles: Iterable<string>,
+  project: OutsideProject,
+): string[] {
   const { projectRoot, sourceRoots, exclude = [], isTestFile } = project;
   const excluded = exclude.map((glob) => globMatcher(glob));
   const outside = [...changedFiles]

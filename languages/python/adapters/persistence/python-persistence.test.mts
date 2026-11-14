@@ -1,20 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { pythonPersistence } from './python-persistence.mjs';
+import { describe, expect, it } from 'vitest';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type {
+  AliasEntry,
+  ClassesReport,
+  ImportsByFile,
+} from '../analysis/typed/python-graph-types.mts';
+import { pythonPersistence } from './python-persistence.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-persistence-'));
-  roots.push(root);
+function projectWith(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-python-persistence-');
   for (const [file, text] of Object.entries(files)) {
     mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
     writeFileSync(path.join(root, file), text);
@@ -22,15 +21,21 @@ function projectWith(files) {
   return root;
 }
 
-function from(module, ...names) {
-  return names.map((name) => ({ level: 0, module, name, asname: null }));
+function from(module: string, ...names: string[]): AliasEntry[] {
+  return names.map((name) => ({ level: 0, module, name, asname: JSON_NULL }));
 }
 
-function moduleOf(file) {
+function moduleOf(file: string): string {
   return file.replace(/\.py$/u, '').replaceAll('/', '.');
 }
 
-function persistenceOf(files, { statements = {}, sources = {} } = {}) {
+function persistenceOf(
+  files: ClassesReport,
+  {
+    statements = {},
+    sources = {},
+  }: { statements?: ImportsByFile; sources?: Readonly<Record<string, string>> } = {},
+) {
   const modules = Object.keys(files).map((file) => ({
     module: moduleOf(file),
     file,

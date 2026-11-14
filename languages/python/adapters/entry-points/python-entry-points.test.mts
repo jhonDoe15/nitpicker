@@ -1,19 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { withEntryPoints } from './python-entry-points.mjs';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type { JsonNull } from '../analysis/typed/python-graph-types.mts';
+import { withEntryPoints as untypedWithEntryPoints } from './python-entry-points.mjs';
 
-function scannedWith(all) {
+type Row = Readonly<Record<string, unknown>>;
+type Exported = Readonly<Record<string, readonly string[] | JsonNull>>;
+
+const withEntryPoints: (
+  bundle: { readonly modules: readonly Row[] },
+  scanned: Readonly<Record<string, unknown>>,
+) => { readonly modules: readonly (Row & { readonly file: string })[] } = untypedWithEntryPoints;
+
+function scannedWith(all: Exported) {
   return Object.fromEntries(
     Object.entries(all).map(([file, names]) => [file, { exports: { all: names } }]),
   );
 }
 
-function fieldsOf(module) {
+function fieldsOf(module: Row) {
   return Object.fromEntries(
     Object.entries(module).filter(([key]) => key !== 'file' && key !== 'role'),
   );
 }
 
-function entryModules(files, all) {
+function entryModules(files: readonly string[], all: Exported) {
   const bundle = { modules: files.map((file) => ({ file, role: 'production' })) };
   return withEntryPoints(bundle, scannedWith(all))
     .modules.filter((module) => Object.keys(module).length > 2)
@@ -34,7 +44,7 @@ describe('Python entry points for public-alternative-bypass', () => {
     const all = {
       'src/shop/__init__.py': ['Invoice'],
       'src/shop/billing/__init__.py': ['Invoice'],
-      'src/shop/orders/__init__.py': null,
+      'src/shop/orders/__init__.py': JSON_NULL,
       'src/shop/shared/__init__.py': ['Money'],
       'src/shop/billing/internal/__init__.py': ['Tax'],
     };
