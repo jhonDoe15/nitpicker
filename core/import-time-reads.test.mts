@@ -2,15 +2,17 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
 
-const root = PACKAGE_ROOT;
+const root: string = untypedPackageRoot;
 const SHIPPED_FOLDERS = ['core', 'shared', 'languages'];
 const UNSHIPPED_FOLDERS = new Set(['node_modules', 'fixtures', 'test-support', '__tests__']);
-const SOURCE_FILE = /\.(?:mjs|cjs|js)$/u;
+const SOURCE_FILE = /\.(?:mjs|mts|cjs|js)$/u;
 const PACKAGE_FILE = /['"`][^'"`]*\b(?:package\.json|package-lock\.json|CHANGELOG\.md)['"`]/u;
 
-function shippedModules(directory) {
+type NamedBody = readonly [string, string];
+
+function shippedModules(directory: string): string[] {
   return readdirSync(path.join(root, directory), { withFileTypes: true }).flatMap((entry) => {
     const relative = `${directory}/${entry.name}`;
     if (entry.isDirectory()) {
@@ -20,7 +22,7 @@ function shippedModules(directory) {
   });
 }
 
-function localFunctions(source) {
+function localFunctions(source: ts.SourceFile): NamedBody[] {
   return source.statements.flatMap((statement) => {
     if (ts.isFunctionDeclaration(statement) && statement.name !== undefined) {
       return [[statement.name.text, statement.getText(source)]];
@@ -28,18 +30,23 @@ function localFunctions(source) {
     if (!ts.isVariableStatement(statement)) {
       return [];
     }
-    return statement.declarationList.declarations
-      .filter(({ name, initializer }) => ts.isIdentifier(name) && isFunction(initializer))
-      .map(({ name, initializer }) => [name.text, initializer.getText(source)]);
+    return statement.declarationList.declarations.flatMap(({ name, initializer }): NamedBody[] =>
+      ts.isIdentifier(name) && initializer !== undefined && isFunction(initializer)
+        ? [[name.text, initializer.getText(source)]]
+        : [],
+    );
   });
 }
 
-function isFunction(node) {
+function isFunction(node: ts.Node | undefined): boolean {
   return node !== undefined && (ts.isArrowFunction(node) || ts.isFunctionExpression(node));
 }
 
-function withReadersAmong(functions, readers) {
-  const calls = (body) =>
+function withReadersAmong(
+  functions: readonly NamedBody[],
+  readers: ReadonlySet<string>,
+): ReadonlySet<string> {
+  const calls = (body: string) =>
     [...readers].some((reader) => new RegExp(`\\b${reader}\\(`, 'u').test(body));
   const added = functions
     .filter(([name, body]) => !readers.has(name) && (PACKAGE_FILE.test(body) || calls(body)))
@@ -49,27 +56,31 @@ function withReadersAmong(functions, readers) {
     : withReadersAmong(functions, new Set([...readers, ...added]));
 }
 
-function packageReaders(source) {
+function packageReaders(source: ts.SourceFile): ReadonlySet<string> {
   return withReadersAmong(localFunctions(source), new Set());
 }
 
-function readsPackageFile(node, source, readers) {
+function readsPackageFile(
+  node: ts.CallExpression,
+  source: ts.SourceFile,
+  readers: ReadonlySet<string>,
+): boolean {
   const callee = node.expression;
   return (
     PACKAGE_FILE.test(node.getText(source)) || (ts.isIdentifier(callee) && readers.has(callee.text))
   );
 }
 
-function isEntryPointGuard(node, source) {
+function isEntryPointGuard(node: ts.Node, source: ts.SourceFile): boolean {
   const condition = ts.isIfStatement(node) ? node.expression.getText(source) : '';
   return /\bimport\.meta\.(?:url|filename)\b/u.test(condition);
 }
 
-function importTimePackageReads(file, text) {
+function importTimePackageReads(file: string, text: string): string[] {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
   const readers = packageReaders(source);
-  const reads = [];
-  const visit = (node) => {
+  const reads: string[] = [];
+  const visit = (node: ts.Node): void => {
     if (ts.isFunctionLike(node) || ts.isClassLike(node) || isEntryPointGuard(node, source)) {
       return;
     }

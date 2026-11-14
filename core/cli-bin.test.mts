@@ -4,13 +4,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { projectUsageText } from './command/information/printed-information.mts';
-import { checkoutModulePath } from '../shared/paths/checkout-module.mjs';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../shared/paths/checkout-module.mjs';
+import { fieldAt } from '../scripts/json/fields.mts';
+import { parseJson, textOf } from '../shared/values/readers.mts';
 
-const temporaryRoots = [];
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
+const temporaryRoots: string[] = [];
 const binEntry = checkoutModulePath(path.join(import.meta.dirname, 'bin.mjs'));
-const manifest = JSON.parse(
-  readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
-);
+const manifest = parseJson(readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'));
 const PACKAGE_ROOT = path.resolve(import.meta.dirname, '..');
 const SHIPPED = ['core', 'shared', 'languages', 'package.json', 'CHANGELOG.md'];
 const NOT_SHIPPED = /[\\/](?:node_modules|fixtures)(?:[\\/]|$)/u;
@@ -19,14 +20,14 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function fakedNodeVersion(version) {
+function fakedNodeVersion(version: string): string {
   const script = `Object.defineProperty(process.versions, 'node', { value: ${JSON.stringify(version)} });`;
   return `--import=data:text/javascript,${encodeURIComponent(script)}`;
 }
 
 describe('nitpicker bin', () => {
   it('is the bin entry of the package', () => {
-    expect(manifest.bin.nitpicker).toBe('core/bin.mjs');
+    expect(fieldAt(manifest, 'bin', 'nitpicker')).toBe('core/bin.mjs');
   });
 
   it('runs through its shebang when launched as a symlinked bin', () => {
@@ -37,9 +38,10 @@ describe('nitpicker bin', () => {
 
     const stdout = execFileSync(binPath, ['--help'], {
       encoding: 'utf8',
+      timeout: 30_000,
       env: {
         ...process.env,
-        PATH: [path.dirname(process.execPath), process.env.PATH].join(path.delimiter),
+        PATH: [path.dirname(process.execPath), process.env['PATH']].join(path.delimiter),
       },
     });
 
@@ -81,7 +83,9 @@ describe('nitpicker bin', () => {
         filter: (source) => !NOT_SHIPPED.test(source),
       });
     }
-    const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const version = textOf(
+      fieldAt(parseJson(readFileSync(path.join(root, 'package.json'), 'utf8')), 'version'),
+    );
 
     const result = spawnSync(
       process.execPath,
