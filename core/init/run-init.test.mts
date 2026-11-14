@@ -7,14 +7,15 @@ import type { FileMap } from '../diff/git/test-support/fixture-files.mts';
 import { readSnippet } from './files/agents-md.mts';
 import { unifiedDiff } from './files/line-diff.mts';
 import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mts';
+import { quotedTypescriptPin, typescriptPin } from './test-support/typescript-pin.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 const SKILL = `npx skills add jhonDoe15/nitpicker#v${textOf(packageVersion())} --skill`;
 const LOCAL_SKILL = 'npx skills add ./node_modules/nitpicker --skill';
 const NITPICKER = `nitpicker@${textOf(packageVersion())}`;
-const NODE_INSTALL = `${NITPICKER} typescript @types/node vitest @vitest/coverage-v8`;
-const NODE_MISSING = `${NITPICKER}, typescript, @types/node, vitest, @vitest/coverage-v8`;
+const NODE_INSTALL = `${NITPICKER} ${quotedTypescriptPin()} @types/node vitest @vitest/coverage-v8`;
+const NODE_MISSING = `${NITPICKER}, ${typescriptPin()}, @types/node, vitest, @vitest/coverage-v8`;
 const GRADLE_NOTE =
   'There is no gradlew, so nitpicker runs gradle from the PATH. Install it, or add the wrapper.';
 const MAVEN_NOTE =

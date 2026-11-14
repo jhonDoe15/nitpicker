@@ -50,7 +50,12 @@ import type {
 import { detektConfigOf, precedenceOf } from '../types/config-readers.mts';
 import { toolConfigText } from './tool-config-text.mts';
 import { appliedConfigs } from './applied-values/applied-sides.mts';
-import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mts';
+import {
+  PYTHON_PRESET,
+  PYTHON_TOOLS,
+  pythonEntries,
+  pytestRetryFingerprints,
+} from './python-tool-configs.mts';
 
 const PACKAGE_JSON = 'package.json';
 const MANIFEST_KEYS = new Map([
@@ -184,19 +189,19 @@ function declaredFingerprints(tool: string, side: ProjectSide, gitBlobId: GitBlo
 }
 
 function sideFingerprints(tool: string, side: ProjectSide, gitBlobId: GitBlobId): Prints {
-  if (BUILD_DECLARED_TOOLS.includes(tool)) {
+  if (tool === TESTS_TOOL && side.config.preset === PYTHON_PRESET) {
+    return pytestRetryFingerprints(side, gitBlobId);
+  }
+  if (
+    BUILD_DECLARED_TOOLS.includes(tool) &&
+    (tool !== TESTS_TOOL || GRADLE_PRESETS.includes(side.config.preset))
+  ) {
     return declaredFingerprints(tool, side, gitBlobId);
   }
   if (!PYTHON_TOOLS.includes(tool)) {
     return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
   }
   return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
-}
-function pythonEntries(
-  tool: string,
-  side: ProjectSide,
-): { file: string; text: string; content: string }[] {
-  return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
 }
 
 function evidenceOf(tool: string, head: ProjectSide, gitBlobId: GitBlobId): { evidence?: Prints } {
@@ -210,7 +215,7 @@ function evidenceOf(tool: string, head: ProjectSide, gitBlobId: GitBlobId): { ev
 }
 
 function importLinterOn(config: PolicyConfig): boolean {
-  return config.preset === 'python' && config.python?.importLinter !== false;
+  return config.preset === PYTHON_PRESET && config.python?.importLinter !== false;
 }
 
 function importLinterSide({ config, root }: ProjectSide): ImportLinterConfig | undefined {
@@ -261,16 +266,18 @@ function toolEntries(
   { gitBlobId, replacedOptions = replacedEslintOptions }: Readers,
 ): ToolFileEntry[] {
   return [
-    'pmd',
-    'checkstyle',
-    ...BUILD_DECLARED_TOOLS,
-    ...KOTLIN_TOOLS,
-    ...GO_TOOLS,
-    ...SCRIPT_TOOL_FILES.keys(),
-    JSCPD,
-    ESLINT,
-    ...PYTHON_TOOLS,
-    ...projectConfigTools(),
+    ...new Set([
+      'pmd',
+      'checkstyle',
+      ...BUILD_DECLARED_TOOLS,
+      ...KOTLIN_TOOLS,
+      ...GO_TOOLS,
+      ...SCRIPT_TOOL_FILES.keys(),
+      JSCPD,
+      ESLINT,
+      ...PYTHON_TOOLS,
+      ...projectConfigTools(),
+    ]),
   ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {

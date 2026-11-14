@@ -175,8 +175,9 @@ export function runJest(options: TestOptions, command: RunnerCommand): TestRun {
         ? coverageArguments(options, rootDir)
         : [
             '--coverage=false',
-            '--testNamePattern',
-            options.rerun.namePattern,
+            ...(options.rerun.namePattern === undefined
+              ? []
+              : ['--testNamePattern', options.rerun.namePattern]),
             '--runTestsByPath',
             ...rerunPaths(options, command),
           ]),
@@ -184,7 +185,7 @@ export function runJest(options: TestOptions, command: RunnerCommand): TestRun {
       `--outputFile=${reportPath}`,
       '--testLocationInResults',
       `--testTimeout=${String(testTimeoutMs(options))}`,
-      '--restoreMocks',
+      ...(options.rerun?.withoutMockPin === true ? [] : ['--restoreMocks']),
       ...workerArguments(options, command.arguments_),
       ...reporterArguments(options, testConsole),
     ]);

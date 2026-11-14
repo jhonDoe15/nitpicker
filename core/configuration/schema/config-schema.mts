@@ -29,7 +29,7 @@ import {
   type JsonSchema,
 } from './schema-parts.mts';
 import { THRESHOLD_PRESETS, type SchemaTable } from '../views/schema-views.mts';
-import { tools, toolsByPreset } from './tools-schema.mts';
+import { toolKeysByPreset, tools, toolsByPreset } from './tools-schema.mts';
 import { MAX_TIMER_MS, MINUTE_MS } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const SCHEMA_URL =
@@ -145,11 +145,22 @@ function forbidding(key: string, forbidden: readonly string[]): JsonSchema {
   return forbidden.length === 0 ? {} : { [key]: { properties: forbid(forbidden) } };
 }
 
+function toolRestrictions(preset: string): JsonSchema {
+  const forbidden = forbid(without(toolsByPreset[preset] ?? [], Object.keys(tools.properties)));
+  const narrowed = [...(toolKeysByPreset[preset] ?? [])].flatMap(
+    ([tool, keys]): [string, JsonSchema][] => {
+      const extra = without(keys, Object.keys(tools.properties[tool]?.properties ?? {}));
+      return extra.length === 0 ? [] : [[tool, { properties: forbid(extra) }]];
+    },
+  );
+  return { ...forbidden, ...Object.fromEntries(narrowed) };
+}
+
 function presetProperties(preset: string): JsonSchema {
   return {
     ...forbidding('thresholds', unavailableThresholds(preset)),
     ...forbidding('layout', without(layoutKeysFor(preset, CO_CHANGE_ON), LAYOUT_KEYS)),
-    ...forbidding('tools', without(toolsByPreset[preset] ?? [], Object.keys(tools.properties))),
+    tools: { properties: toolRestrictions(preset) },
     conventions: conventionProperties(conventionDefinitions(preset)),
     exceptions: exceptionsFor(preset),
     ...forbid(unavailableKeys(preset)),

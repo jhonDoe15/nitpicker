@@ -6,6 +6,7 @@ import { textOf } from '../../shared/values/readers.mts';
 import { packageVersion } from '../help/package-version.mts';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
 import { init, initWith, readText, useProjects } from './test-support/projects.mts';
+import { javascriptApiPin } from './test-support/typescript-pin.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT: FileMap = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
@@ -24,8 +25,7 @@ describe('nitpicker init stops before writing anything', () => {
     expect(initWith({ currentProjectRoot: root, nodeVersion: '22.18.1' })).toEqual({
       exitCode: 2,
       stdoutText: '',
-      stderrText:
-        'nitpicker failed: This project uses TypeScript 7 (^7.0.0 declared). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (typescript@^6), and run nitpicker init again.\n',
+      stderrText: `nitpicker failed: This project uses TypeScript 7 (^7.0.0 declared). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (${javascriptApiPin()}), and run nitpicker init again.\n`,
     });
     expect(existsSync(path.join(root, 'nitpicker.config.json'))).toBe(false);
   });
