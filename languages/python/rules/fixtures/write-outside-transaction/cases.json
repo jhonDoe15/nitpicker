@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "write-outside-transaction",
+    "mention": "session.begin()",
+    "subject": "OrderService.place|self.audit_session.add()|self.session.begin()"
+  }
+]

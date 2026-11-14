@@ -27,6 +27,7 @@ const KOTLIN_FILES = [
   'held/HeldScopes.kt',
   'events/Retries.kt',
   'events/DualWrites.kt',
+  'races/Registrations.kt',
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {

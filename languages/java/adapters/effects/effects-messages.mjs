@@ -1,3 +1,5 @@
+import { RACE_MESSAGES } from './messages/races.mjs';
+
 const BOUNDED = {
   java: [
     'a bounded executor (`Executors.newFixedThreadPool(n)`, a bounded `ThreadPoolExecutor`)',
@@ -243,6 +245,7 @@ export const EFFECTS_MESSAGES = {
   EntityLoadedForOneColumn: oneColumn,
   EntityLoadedForExistence: existence,
   RetryWithStaleObject: staleRetry,
+  ...RACE_MESSAGES,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

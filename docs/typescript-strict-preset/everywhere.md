@@ -605,6 +605,34 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
   row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
   Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
+- Related writes in one transaction (`nitpicker/no-unatomic-writes`, and `nitpicker/no-check-then-write`
+  as a report-only advisory): both apply only to a project that depends on TypeORM, Prisma, Drizzle,
+  Kysely, Knex, Sequelize or MikroORM, and the second form only where the project opens transactions
+  somewhere (the followed convention `typescript.transactions`, measured from non-test source: `.transaction(`,
+  `$transaction(`, `.transactional(`, `startTransaction(`, `@Transactional()`). Inside a transaction
+  callback (`manager.transaction(async (m) => ...)`, `prisma.$transaction(async (tx) => ...)`,
+  Drizzle and Knex `transaction(...)`, Kysely `transaction().execute(...)`) a write through a client or
+  repository that is not the callback's parameter (`this.roleRepository.save(...)`, a module-level `prisma`)
+  is reported, because it runs outside that transaction; a call that passes the parameter on (`{ transaction: t }`),
+  one rooted at another function's parameter and a callback with no parameter are not. Sequelize writes are
+  judged by their options (no `transaction` key); a MikroORM `em.transactional` routes the global entity manager into
+  its transaction, so it is not judged. A function that awaits writes to two or more different tables
+  (a repository's name, `manager.save(Entity, ...)`, `prisma.order.create`, `insert(orders)`,
+  `insertInto("orders")`, `knex("orders").insert`, `Order.create`) outside any transaction is reported at the
+  second one; a write through a parameter (the caller may pass the transaction in), a call that passes a
+  transaction-named argument, a `@Transactional()` method, a `withTransaction`/`inTransaction` callback (CLS
+  transaction hosts), a function that calls `begin()` or `startTransaction()` (MikroORM, query runners), writes in the
+  branches of one `if`/`switch` or either side of an `if` branch that returns or throws, a
+  write in a `catch` or `finally` and two writes to one table are left alone, each write is judged by the ORM its own
+  receiver belongs to when TypeORM and MikroORM are both present, and a table the rule cannot
+  name is not compared. The advisory rule reports a write to a table that follows a read of the same table
+  (`findOne`, `findFirst`, `count`, `exists`, `selectFrom`) whose result decided an insert (`create`, `insert`,
+  `save` of a new object) or, for a `count` or `exists` check, any write, in an `if` (also as a guard clause that
+  returns or throws); a not-found or permission guard before an `update`, `save` or `delete` of the row just
+  loaded is left alone. It also needs no transaction, no lock option (`lock`, `forUpdate`,
+  `pessimistic`) and no atomic form (`upsert`, `on conflict`, a `version` or `updatedAt` condition) in the write; it is
+  classified report-only until measured on more projects. Both name the allowed forms: one transaction with
+  its manager passed down, an atomic statement, or a row lock inside the transaction.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

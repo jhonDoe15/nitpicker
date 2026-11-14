@@ -27,6 +27,10 @@ const SAMPLES = [
   ],
   ['DualWriteWithoutOutbox', { method: METHOD, form: 'inline', write: WRITE, path: PATH }],
   [
+    'CheckThenWriteWithoutLock',
+    { method: METHOD, read: '<repository>.existsBy...()', write: '<repository>.save()' },
+  ],
+  [
     'GraphqlFieldPerParent',
     { method: METHOD, framework: 'spring', kind: 'database', path: PATH },
   ],

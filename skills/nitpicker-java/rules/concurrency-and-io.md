@@ -34,6 +34,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   idempotency key, an upsert, a message deduplication id, or retry only the read (`effects/RetryWithoutIdempotency`).
 - Database and broker: never write a row and publish a message in one method; write the message to an outbox table in
   the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
+- Check, then write: when a read decides a write (`if (users.existsByEmail(e)) throw ...; users.save(...)`, a count
+  against a limit, `findByEmail(e).orElseGet(() -> users.save(...))`), make it atomic: read with `@Lock` inside a
+  transaction, a `@Version` column, an upsert or a unique constraint (`effects/CheckThenWriteWithoutLock`). Two or more
+  repository writes in one public method need `@Transactional` (`pmd/SpringMultiWriteWithoutTransaction`).
 - GraphQL fields: a `@SchemaMapping` or `@DgsData` resolver of a non-root type runs once per parent, so it never calls
   a repository or client itself; use `@BatchMapping` or a `DataLoader` (`effects/GraphqlFieldPerParent`).
 - Reactive pipelines: never look up each element of a list inside `Flux.fromIterable(items).flatMap(...)`; fetch all

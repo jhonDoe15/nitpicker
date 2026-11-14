@@ -91,6 +91,10 @@ than the others, and this skill teaches its rules before an agent writes Go.
   that uses the parent, so a count that ignores the parent or a singular parent stays quiet. The
   convention-measuring rules (#754, #1220, #758), the optimistic-lock retry rule (#739) and the future
   rules (#796) are not built for Go; `docs/go-preset.md` says why.
+- **Transactions (#791).** `writes-without-transaction` and `write-outside-transaction` read the
+  table from the statement text or the gorm model and stay quiet when either is unknown, so
+  independent or dynamic writes are not guessed at; a gorm `*DB` passed in or kept in a local
+  variable may already be the transaction and is not counted.
 - **The shared guards (#419).** Swallowed errors, repeated strings, generic names, task markers
   without an issue, forwarding method aliases and secrets in code or logs are the guards every
   preset runs (`swallowed-exception`, `repeated-string-literal`, `generic-name`,

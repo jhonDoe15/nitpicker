@@ -5,6 +5,7 @@ import (
 
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/concurrency"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/copies"
+	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/database"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/design"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/failures"
 	"github.com/jhonDoe15/nitpicker/languages/go/lint/rules/guards"
@@ -22,6 +23,7 @@ const Tool = "go-rules"
 
 func Analyzers() []*analysis.Analyzer {
 	return slices.Concat(failures.Analyzers(), concurrency.Analyzers(), design.Analyzers(), remote.Analyzers(),
-		guards.Analyzers(), schema.Analyzers(), secrets.Analyzers(), honesty.Analyzers(), lifecycles.Analyzers(),
+		database.Analyzers(), guards.Analyzers(), schema.Analyzers(), secrets.Analyzers(), honesty.Analyzers(),
+		lifecycles.Analyzers(),
 		[]*analysis.Analyzer{copies.Analyzer, optional.Analyzer, resolvers.Analyzer})
 }
