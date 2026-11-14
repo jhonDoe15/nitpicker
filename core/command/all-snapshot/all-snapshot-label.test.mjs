@@ -9,11 +9,11 @@ import { runTasksInProcess } from '../../diff/execution/test-support/in-process-
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
 describe('nitpicker CLI --all snapshot', () => {
-  it('checks the --all snapshot out into a directory named for its head label', () => {
+  it('checks the --all snapshot out into a directory named for its head label', async () => {
     const repository = createRepository({ 'quality-policy.json': policy() });
     const roots = [];
 
-    runCli({
+    await runCli({
       arguments_: ['--all', '--output', makeOutputRoot()],
       environment: {},
       currentProjectRoot: repository.root,
