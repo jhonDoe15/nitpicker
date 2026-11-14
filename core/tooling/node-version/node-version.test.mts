@@ -3,7 +3,7 @@ import {
   minimumNodeVersion,
   unloadableNodeMessage,
   unsupportedNodeMessage,
-} from './node-version.mjs';
+} from './node-version.mts';
 
 describe('unsupportedNodeMessage', () => {
   it.each([

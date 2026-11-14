@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from './build-once.mjs';
+import { SHARED_BUILD_DIRECTORY_ENVIRONMENT } from './build-once.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
 import { runScheduler } from '../../diff/execution/run-analyzers.mts';
 
 const REPORT_DIRECTORY_SCRIPT = `
@@ -11,7 +13,7 @@ process.stdout.write(JSON.stringify({ findings: [{
 }] }));
 `;
 
-function probeTask(name) {
+function probeTask(name: string) {
   return {
     name,
     dependencies: [],
@@ -28,19 +30,37 @@ function probeTask(name) {
 
 describe('runScheduler shared build directory', () => {
   it('gives every analyzer of one run the same directory and removes it afterwards', () => {
-    const { reports } = runScheduler([probeTask('first'), probeTask('second')], undefined);
+    const reports = listOf(
+      fieldAt(runScheduler([probeTask('first'), probeTask('second')], undefined), 'reports'),
+    );
 
-    const directories = reports.map(([, report]) => report.findings[0].identity);
-    expect(reports.map(([name]) => name).sort()).toEqual(['first', 'second']);
+    const directories = reports.map((report) =>
+      textOf(fieldAt(report, 1, 'findings', 0, 'identity')),
+    );
+    expect(reports.map((report) => textOf(fieldAt(report, 0))).sort()).toEqual(['first', 'second']);
     expect(directories[0]).not.toBe('unset');
     expect(directories[1]).toBe(directories[0]);
-    expect(existsSync(directories[0])).toBe(false);
+    expect(existsSync(textOf(directories[0]))).toBe(false);
   });
 
   it('uses a fresh directory for every run', () => {
-    const [[, first]] = runScheduler([probeTask('first')], undefined).reports;
-    const [[, second]] = runScheduler([probeTask('first')], undefined).reports;
+    const first = fieldAt(
+      runScheduler([probeTask('first')], undefined),
+      'reports',
+      0,
+      1,
+      'findings',
+      0,
+    );
+    const second = fieldAt(
+      runScheduler([probeTask('first')], undefined),
+      'reports',
+      0,
+      1,
+      'findings',
+      0,
+    );
 
-    expect(second.findings[0].identity).not.toBe(first.findings[0].identity);
+    expect(fieldAt(second, 'identity')).not.toBe(fieldAt(first, 'identity'));
   });
 });

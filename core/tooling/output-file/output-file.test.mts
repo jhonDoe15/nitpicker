@@ -3,8 +3,36 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { openOutputFile, spawnSyncWithOutputFile } from './output-file.mjs';
+import {
+  openOutputFile as untypedOpenOutputFile,
+  spawnSyncWithOutputFile as untypedSpawnSyncWithOutputFile,
+} from './output-file.mjs';
 import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
+
+type Collected = {
+  error?: Error & {
+    code?: string;
+    syscall?: string;
+    path?: string;
+    spawnargs?: string[];
+    errno?: number;
+  };
+  status: number | null;
+  stdout: string | Buffer;
+  stderr: string;
+  output: unknown[];
+};
+type OutputFile = {
+  directory: string;
+  descriptor: number;
+  size: () => number;
+  read: (encoding: string) => string | Buffer;
+  remove: () => void;
+};
+
+const spawnSyncWithOutputFile: (command: string, args: string[], options?: object) => Collected =
+  untypedSpawnSyncWithOutputFile;
+const openOutputFile: () => OutputFile = untypedOpenOutputFile;
 
 const REPORT_BYTES = 3 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 30_000;
@@ -17,10 +45,10 @@ const GIT_ENVIRONMENT = {
 
 describe('reading a child report through a file instead of a pipe', () => {
   const report = `${JSON.stringify({ findings: 'x'.repeat(REPORT_BYTES) })}\n`;
-  let repository;
-  let blob;
+  let repository: string;
+  let blob: string;
 
-  function catBlob(options) {
+  function catBlob(options?: object) {
     return spawnSyncWithOutputFile('git', ['cat-file', 'blob', blob], {
       cwd: repository,
       env: GIT_ENVIRONMENT,
@@ -68,7 +96,7 @@ describe('reading a child report through a file instead of a pipe', () => {
   it('reports ENOBUFS with the stdout cut at maxBuffer, as spawnSync does', () => {
     const result = catBlob({ encoding: 'utf8', maxBuffer: 1024 });
 
-    const { code, syscall, path: command, spawnargs } = result.error;
+    const { code, syscall, path: command, spawnargs } = result.error ?? {};
 
     expect([code, syscall, command, spawnargs]).toEqual([
       'ENOBUFS',
@@ -76,14 +104,14 @@ describe('reading a child report through a file instead of a pipe', () => {
       'git',
       ['cat-file', 'blob', blob],
     ]);
-    expect(result.error.errno).toBeLessThan(0);
+    expect(result.error?.errno).toBeLessThan(0);
     expect(result.stdout).toBe(report.slice(0, 1024));
   });
 
   it('applies the 1 MiB maxBuffer of spawnSync when none is given', () => {
     const result = catBlob({ encoding: 'utf8' });
 
-    expect(result.error.code).toBe('ENOBUFS');
+    expect(result.error?.code).toBe('ENOBUFS');
     expect(result.stdout.length).toBe(1024 * 1024);
   });
 
@@ -95,7 +123,7 @@ describe('reading a child report through a file instead of a pipe', () => {
       timeout: GIT_TIMEOUT_MS,
     });
 
-    expect(result.error.code).toBe('ENOENT');
+    expect(result.error?.code).toBe('ENOENT');
     expect([result.stdout, result.output]).toEqual([native.stdout, native.output]);
   });
 
@@ -108,7 +136,7 @@ describe('reading a child report through a file instead of a pipe', () => {
       stdio: ['pipe', 'pipe', 'pipe'],
     });
 
-    expect(result.stdout.trim()).toBe(blob);
+    expect(result.stdout.toString().trim()).toBe(blob);
   });
 
   it('removes the temporary directory once it is read', () => {

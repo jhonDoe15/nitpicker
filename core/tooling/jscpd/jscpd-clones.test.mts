@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { jscpdClones } from './jscpd-clones.mjs';
+import { jscpdClones as untypedJscpdClones } from './jscpd-clones.mjs';
+
+type Duplicate = { firstFile?: { name?: string }; secondFile?: { name?: string } };
+
+const jscpdClones: (
+  report: { duplicates: Duplicate[] },
+  configuredPaths: string[] | undefined,
+) => Clone[] = untypedJscpdClones;
+
+type Clone = { first: { file: string }; second: { file: string } };
 
 const report = {
   duplicates: [
@@ -13,7 +22,7 @@ const report = {
   ],
 };
 
-function files(clones) {
+function files(clones: readonly Clone[]) {
   return clones.map(({ first, second }) => [first.file, second.file]);
 }
 
@@ -32,7 +41,7 @@ describe('jscpd clones', () => {
 
   it('adds no prefix for the project root or several roots', () => {
     const configured = [['.'], ['./'], ['a', 'b'], undefined];
-    expect(configured.map((roots) => jscpdClones(report, roots)[0].second.file)).toEqual(
+    expect(configured.map((roots) => jscpdClones(report, roots)[0]?.second.file)).toEqual(
       configured.map(() => 'app/b.py'),
     );
   });

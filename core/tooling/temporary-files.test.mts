@@ -1,12 +1,18 @@
 import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
-import { spawnSync } from 'node:child_process';
+import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const moduleUrl = new URL('./temporary-files.mjs', import.meta.url).href;
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
+
+type Scenario = { result: SpawnSyncReturns<string>; target: string };
+type Scenarios = Record<
+  'failed' | 'terminated' | 'interrupted' | 'cleanedUp' | 'stoppedCleanup' | 'untracked',
+  Scenario
+>;
 
 afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -14,7 +20,7 @@ afterAll(() => {
   }
 });
 
-function runScenario(body) {
+function runScenario(body: string): Scenario {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-temporary-files-'));
   temporaryRoots.push(root);
   const target = path.join(root, '.nitpicker-test.json');
@@ -70,21 +76,19 @@ describe('tracked temporary files', () => {
   });
 });
 
-const scenarios = {};
+let scenarios: Scenarios;
 beforeAll(() => {
-  scenarios.failed = runScenario(`throw new Error('boom');`);
-  scenarios.terminated = runScenario(
-    `process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 10_000);`,
-  );
-  scenarios.interrupted = runScenario(
-    `process.kill(process.pid, 'SIGINT'); setTimeout(() => {}, 10_000);`,
-  );
-  scenarios.untracked = runScenario('untrackTemporaryPath(target);');
   const cleanup = `trackCleanup(() => writeFileSync(target + '.cleaned', 'done'))`;
-  scenarios.cleanedUp = runScenario(
-    `${cleanup}; process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 10_000);`,
-  );
-  scenarios.stoppedCleanup = runScenario(`${cleanup}();`);
+  scenarios = {
+    failed: runScenario(`throw new Error('boom');`),
+    terminated: runScenario(`process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 10_000);`),
+    interrupted: runScenario(`process.kill(process.pid, 'SIGINT'); setTimeout(() => {}, 10_000);`),
+    untracked: runScenario('untrackTemporaryPath(target);'),
+    cleanedUp: runScenario(
+      `${cleanup}; process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 10_000);`,
+    ),
+    stoppedCleanup: runScenario(`${cleanup}();`),
+  };
 });
 
 it('untracks a registered temporary path in the running process', () => {

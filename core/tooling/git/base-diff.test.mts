@@ -2,8 +2,21 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runGit } from '../../diff/git/repository/command.mjs';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { diffFromBase } from './base-diff.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { textOf } from '../../../shared/values/readers.mts';
+import { diffFromBase as untypedDiffFromBase } from './base-diff.mjs';
+
+type DiffRequest = {
+  runGit: typeof runGit;
+  baselineRoot: string;
+  projectRoot: string;
+  args: string[];
+  pathspec?: string[];
+};
+
+function diffFromBase(request: DiffRequest): string {
+  return textOf(Reflect.apply(untypedDiffFromBase, undefined, [request]));
+}
 
 const { createGitRepository } = useGitFixtures();
 

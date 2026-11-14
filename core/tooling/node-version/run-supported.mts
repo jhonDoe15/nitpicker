@@ -1,7 +1,9 @@
 import { readFile } from 'node:fs/promises';
-import { unloadableNodeMessage, unsupportedNodeMessage } from './node-version.mjs';
+import { parseManifest } from './run-supported-types.mts';
+import type { Cli, Loaded, Stderr } from './run-supported-types.mts';
+import { unloadableNodeMessage, unsupportedNodeMessage } from './node-version.mts';
 
-async function loadCli(load) {
+async function loadCli(load: () => Promise<Cli>): Promise<Loaded> {
   try {
     return await load();
   } catch (error) {
@@ -12,8 +14,8 @@ async function loadCli(load) {
   }
 }
 
-export async function runSupported(stderr, load) {
-  const manifest = JSON.parse(
+export async function runSupported(stderr: Stderr, load: () => Promise<Cli>): Promise<unknown> {
+  const manifest = parseManifest(
     await readFile(new URL('../../../package.json', import.meta.url), 'utf8'),
   );
   const nodeVersion = process.versions.node;

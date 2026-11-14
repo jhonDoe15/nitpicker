@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { REGEX_DIALECTS, patternDefects } from './pattern-defects.mjs';
+import { REGEX_DIALECTS, patternDefects as untypedPatternDefects } from './pattern-defects.mjs';
+
+type Dialect = { dot: string; unicodeClasses: boolean };
+type Defects = {
+  pattern?: string;
+  lineAnchor?: unknown;
+  skipped?: string;
+  defects?: { rule: string; kind: string }[];
+};
+
+const patternDefects: (source: string, options: { flags: string; dialect: Dialect }) => Defects =
+  untypedPatternDefects;
 
 const { java, python, pythonAscii } = REGEX_DIALECTS;
 
-function rules(pattern, flags, dialect = java) {
+function rules(pattern: string, flags: string, dialect: Dialect = java) {
   return patternDefects(pattern, { flags, dialect }).defects?.map(
     ({ rule, kind }) => `${kind} ${rule}`,
   );

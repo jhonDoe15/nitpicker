@@ -12,19 +12,39 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import {
-  isToolInstalled,
+  isToolInstalled as untypedIsToolInstalled,
   missingToolMessage,
   PACKAGE_ROOT,
-  resolveTool,
+  resolveTool as untypedResolveTool,
 } from './tool-resolution.mjs';
 import {
-  applyLegacyInventory,
-  configuredAnalyzers,
+  applyLegacyInventory as untypedApplyLegacyInventory,
+  configuredAnalyzers as untypedConfiguredAnalyzers,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { fieldOf, parseJson, textOf } from '../../shared/values/readers.mts';
 import { runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 
+type ToolOptions = { projectRoot?: string; bin?: string; packageRoot?: string };
+type ConfiguredAnalyzer = {
+  name: string;
+  resolveConfigurationHash: (root: string) => string;
+  resolveVersion: (root: string) => string;
+  createInvocation: (context: object) => { args: string[] };
+};
+
+const resolveTool: (
+  name: string,
+  options?: ToolOptions,
+) => { root: string; version: string; binPath: string | undefined } = untypedResolveTool;
+const isToolInstalled: (name: string, options?: ToolOptions) => boolean = untypedIsToolInstalled;
+const configuredAnalyzers: () => ConfiguredAnalyzer[] = untypedConfiguredAnalyzers;
+const applyLegacyInventory: (
+  analyzers: ConfiguredAnalyzer[],
+  legacyInventory: string,
+) => ConfiguredAnalyzer[] = untypedApplyLegacyInventory;
+
 const packageAnalyzers = configuredAnalyzers();
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -32,9 +52,9 @@ afterEach(() => {
 it('resolves installed tool versions and binaries outside snapshots', () => {
   const tool = resolveTool('eslint', { bin: 'bin/eslint.js' });
   expect(tool.version).toBe('10.9.1');
-  expect(tool.binPath.startsWith(tool.root + path.sep)).toBe(true);
+  expect(tool.binPath?.startsWith(tool.root + path.sep)).toBe(true);
   const prettier = resolveTool('prettier', { bin: 'bin/prettier.cjs' });
-  expect(prettier.binPath.startsWith(prettier.root + path.sep)).toBe(true);
+  expect(prettier.binPath?.startsWith(prettier.root + path.sep)).toBe(true);
   expect(resolveTool('vitest', { projectRoot: PACKAGE_ROOT }).version).toBe('4.1.11');
 });
 
@@ -80,9 +100,10 @@ it('records the TypeScript version imported by structure instead of the consumer
     'languages/typescript/preset/structure/analyze.mjs',
   );
   const structureRequire = createRequire(structureModule);
-  const importedTypeScriptVersion = JSON.parse(
-    readFileSync(structureRequire.resolve('typescript/package.json'), 'utf8'),
-  ).version;
+  const importedTypeScriptVersion = fieldOf(
+    parseJson(readFileSync(structureRequire.resolve('typescript/package.json'), 'utf8')),
+    'version',
+  );
   const structure = packageAnalyzers.find(({ name }) => name === 'structure');
   const typecheck = packageAnalyzers.find(({ name }) => name === 'typescript-typecheck');
   const report = runQualitySnapshot({
@@ -100,12 +121,13 @@ it('records the TypeScript version imported by structure instead of the consumer
     policyRoot: PACKAGE_ROOT,
     toolRoot: PACKAGE_ROOT,
     liveProjectRoot,
+    scope: undefined,
   });
 
-  expect(typecheck.resolveVersion(liveProjectRoot)).toBe(
-    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${importedTypeScriptVersion}`,
+  expect(typecheck?.resolveVersion(liveProjectRoot)).toBe(
+    `${consumerTypeScriptVersion};@typescript/native@7.0.2;${textOf(importedTypeScriptVersion)}`,
   );
-  expect(report.summary.tools[0].version).toBe(importedTypeScriptVersion);
+  expect(report.summary.tools[0]?.version).toBe(importedTypeScriptVersion);
 });
 
 it('rejects tools resolved from a generated snapshot', () => {
@@ -185,9 +207,7 @@ it('includes a project-owned coding inventory in the selected policy hash', () =
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-inventory-')));
   temporaryRoots.push(root);
   const analyzer = packageAnalyzers.find(({ name }) => name === 'coding-standards');
-  const resolveHash = /** @type {{ resolveConfigurationHash: (root: string) => string }} */ (
-    analyzer
-  ).resolveConfigurationHash;
+  const resolveHash = (directory: string) => analyzer?.resolveConfigurationHash(directory);
   const original = resolveHash(root);
   writeFileSync(path.join(root, 'nitpicker.legacy.json'), '{"sites":[]}');
   expect(resolveHash(root)).not.toBe(original);
@@ -199,27 +219,27 @@ it('reads the legacy inventory from the configured path and ignores the old inte
     packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
     'config/legacy.json',
   );
-  const original = analyzer.resolveConfigurationHash(root);
+  const original = analyzer?.resolveConfigurationHash(root);
   mkdirSync(path.join(root, 'languages/typescript/preset/coding-standards'), { recursive: true });
   writeFileSync(
     path.join(root, 'languages/typescript/preset/coding-standards/legacy-sites.json'),
     '{"sites":[]}',
   );
   writeFileSync(path.join(root, 'nitpicker.legacy.json'), '{"sites":[]}');
-  expect(analyzer.resolveConfigurationHash(root)).toBe(original);
+  expect(analyzer?.resolveConfigurationHash(root)).toBe(original);
   mkdirSync(path.join(root, 'config'));
   writeFileSync(path.join(root, 'config/legacy.json'), '{"sites":[]}');
-  expect(analyzer.resolveConfigurationHash(root)).not.toBe(original);
-  const invocation = analyzer.createInvocation({
+  expect(analyzer?.resolveConfigurationHash(root)).not.toBe(original);
+  const invocation = analyzer?.createInvocation({
     projectRoot: root,
     policyRoot: root,
     toolRoot: root,
     snapshot: 'head',
   });
-  expect(invocation.args.slice(-2)).toEqual(['--legacy-inventory', 'config/legacy.json']);
+  expect(invocation?.args.slice(-2)).toEqual(['--legacy-inventory', 'config/legacy.json']);
 });
 
-function createTemporaryRoot(prefix) {
+function createTemporaryRoot(prefix: string) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   temporaryRoots.push(root);
   return root;
@@ -235,6 +255,10 @@ function createOwnedToolPackage({
   declaredVersion,
   installedVersion,
   installedName = 'owned-tool',
+}: {
+  declaredVersion: string;
+  installedVersion: string;
+  installedName?: string;
 }) {
   const packageRoot = createTemporaryRoot('nitpicker-tool-package-');
   writeFileSync(
@@ -254,7 +278,7 @@ function createOwnedToolPackage({
   return packageRoot;
 }
 
-function writeManifest(packageRoot, manifest) {
+function writeManifest(packageRoot: string, manifest: object) {
   mkdirSync(packageRoot, { recursive: true });
   writeFileSync(path.join(packageRoot, 'package.json'), JSON.stringify(manifest));
 }
