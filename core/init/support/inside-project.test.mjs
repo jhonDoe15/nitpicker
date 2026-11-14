@@ -6,7 +6,7 @@ import {
   insideProject,
   projectFileText,
   writableProjectFile,
-} from './inside-project.mjs';
+} from './inside-project.mts';
 
 const project = useProjects();
 const ADVICE =

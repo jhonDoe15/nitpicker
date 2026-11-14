@@ -79,6 +79,7 @@ func groups() []group {
 		{tool: "vet", analyzers: passes()},
 		{tool: "errcheck", analyzers: []*analysis.Analyzer{errcheck.Analyzer}},
 		{tool: modernizeTool, analyzers: modernize.Suite},
+		{tool: gosecTool, analyzers: []*analysis.Analyzer{gosecAnalyzer}},
 		{tool: rules.Tool, analyzers: rules.Analyzers()},
 	}
 	for _, linter := range catalog.Linters() {
@@ -105,6 +106,32 @@ func toolNames() map[string]string {
 	for _, each := range groups() {
 		for _, analyzer := range each.analyzers {
 			names[analyzer.Name] = each.tool
+		}
+	}
+	return names
+}
+
+func ruleOf(analyzer *analysis.Analyzer, diagnostic analysis.Diagnostic) (string, string) {
+	if analyzer == gosecAnalyzer {
+		return diagnostic.Category, diagnostic.Message
+	}
+	rule, message := catalog.Rule(analyzer.Name, diagnostic)
+	if rule == analyzer.Name {
+		rule = ruleName(analyzer)
+	}
+	return rule, message
+}
+
+func ruleNames() []string {
+	var names []string
+	for _, analyzer := range analyzers() {
+		switch checks := catalog.Checks(analyzer.Name); {
+		case analyzer == gosecAnalyzer:
+			names = append(names, gosecRules()...)
+		case checks != nil:
+			names = append(names, checks...)
+		default:
+			names = append(names, ruleName(analyzer))
 		}
 	}
 	return names

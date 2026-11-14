@@ -4,26 +4,29 @@ import { exemptRanges, insideAny, outermost, runsAtLeastOnce } from './loops/loo
 
 export const CONTROL_FLOW_RULE = 'AssertionInControlFlow';
 export const CONTROL_FLOW_MESSAGE =
-  'Assert unconditionally. An assertion inside an if, a when, a loop, a safe call, a try/catch that swallows the failure or a runCatching can be skipped, so the test passes without checking anything: a loop over an empty list, or a branch the data never takes, checks nothing. A loop in a same-file helper the test calls is checked too; a loop that cannot run zero times (repeat(3), for (i in 1..3), do/while) is fine. Assert in every branch (an if/else or when whose branches all assert or fail is fine), or narrow with assertNotNull, assertIs or `?: fail(...)` instead of an if or a safe call. Put a table of cases in a parameterized test (@ParameterizedTest with @MethodSource or @CsvSource, Kotest withData) and assert every time; for a loop over results, assert the whole collection at once (assertEquals(expected, results), shouldContainExactly, AssertJ containsExactly). Do not return early before the assertions, and let assertion errors escape. An exception fits only a case that cannot be stated unconditionally, such as cases generated at run time.';
+  'Assert unconditionally. An assertion inside an if, a when, a loop, a safe call, a try/catch that swallows the failure or a runCatching can be skipped, so the test passes without checking anything: a loop over an empty list, or a branch the data never takes, checks nothing. A branch or loop that calls a same-file helper which asserts is checked like one that asserts, and a loop in such a helper too; a loop that cannot run zero times (repeat(3), for (i in 1..3), do/while) is fine. Assert in every branch (an if/else or when whose branches all assert or fail is fine), or narrow with assertNotNull, assertIs or `?: fail(...)` instead of an if or a safe call. Put a table of cases in a parameterized test (@ParameterizedTest with @MethodSource or @CsvSource, Kotest withData) and assert every time; for a loop over results, assert the whole collection at once (assertEquals(expected, results), shouldContainExactly, AssertJ containsExactly). Do not return early before the assertions, and let assertion errors escape. An exception fits only a case that cannot be stated unconditionally, such as cases generated at run time.';
 
 const PROPERTY_ANNOTATIONS = new Set(['Property', 'Example']);
 const RETURN = /(?<![\w.])return\b/u;
 
 function assertive(scanned, construct, scope) {
   return construct.scans.some(
-    (range) =>
-      assertsIn(scanned, range.start, range.end) ||
-      (construct.construct === 'loop' && scope.callsAsserting(range)),
+    (range) => assertsIn(scanned, range.start, range.end) || scope.callsAsserting(range),
   );
 }
 
-function everyBranchEnds(scanned, construct) {
+function everyBranchEnds(scanned, construct, scope) {
   const { branches = [], exhaustive = false } = construct;
-  return exhaustive && branches.every(({ start, end }) => endsBranch(scanned, start, end));
+  return (
+    exhaustive &&
+    branches.every(
+      (range) => endsBranch(scanned, range.start, range.end) || scope.callsAsserting(range),
+    )
+  );
 }
 
 function flagged(scanned, construct, scope) {
-  return assertive(scanned, construct, scope) && !everyBranchEnds(scanned, construct);
+  return assertive(scanned, construct, scope) && !everyBranchEnds(scanned, construct, scope);
 }
 
 function earlyReturns(scanned, body, constructs) {

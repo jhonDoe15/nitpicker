@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { describePackageManager } from './package-manager.mjs';
+import { describePackageManager } from './package-manager.mts';
 
 const project = useProjects();
 const NODE_MODULES_LINKER = 'nodeLinker: node-modules\n';

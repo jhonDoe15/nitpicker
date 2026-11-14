@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
+import { persistenceOfModule } from './persistence-modules.mjs';
 
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS']);
 
@@ -59,16 +60,20 @@ function exportedAs(fact, definition) {
   ];
 }
 
-function sourceText(target, specifier, importer) {
-  if (target.kind === 'file') return `file:${target.path}`;
-  if (!specifier.startsWith('.')) return `${target.kind}:${specifier}`;
+export function importSourceText(target, specifier, importer) {
+  if (target.kind === 'file') {
+    return `file:${target.path}`;
+  }
+  if (!specifier.startsWith('.')) {
+    return `${target.kind}:${specifier}`;
+  }
   return `path:${path.posix.join(path.posix.dirname(importer), specifier)}`;
 }
 
 function bindingText(binding, fact, resolve) {
   if (binding.kind === 'local') return `local:${binding.text}`;
   const target = resolve(binding.specifier, fact.path);
-  return `${sourceText(target, binding.specifier, fact.path)}#${binding.imported}`;
+  return `${importSourceText(target, binding.specifier, fact.path)}#${binding.imported}`;
 }
 
 function keyOf(definition, fact, resolve) {
@@ -90,6 +95,7 @@ function neutralDefinition(definition, fact, resolve) {
     exported: exportNames.length > 0,
     exportNames,
     tokens: definition.tokens,
+    untypedTokens: definition.untypedTokens,
     text: definition.text,
     key: keyOf(definition, fact, resolve),
     size: definition.size,
@@ -99,10 +105,17 @@ function neutralDefinition(definition, fact, resolve) {
   };
 }
 
+function moduleFact(fact) {
+  const persistence = persistenceOfModule(fact);
+  return persistence === undefined
+    ? { file: fact.path, role: 'production' }
+    : { file: fact.path, role: 'production', persistence };
+}
+
 export function neutralReuseFacts(facts, resolve) {
   const files = new Set(facts.map(({ path: file }) => file));
   return {
-    modules: facts.map(({ path: file }) => ({ file, role: 'production' })),
+    modules: facts.map((fact) => moduleFact(fact)),
     packages: [],
     definitions: facts.flatMap((fact) =>
       fact.definitions.map((definition) => neutralDefinition(definition, fact, resolve)),
@@ -110,5 +123,16 @@ export function neutralReuseFacts(facts, resolve) {
     imports: facts
       .flatMap((fact) => neutralImports(fact, resolve))
       .filter(({ to }) => files.has(to)),
+    nearDuplicateUnits: facts.flatMap((fact) =>
+      fact.nearDuplicateUnits.map(({ file, name, start, end, tokens, final, tree }) => ({
+        file,
+        name,
+        start,
+        end,
+        tokens,
+        final,
+        tree,
+      })),
+    ),
   };
 }

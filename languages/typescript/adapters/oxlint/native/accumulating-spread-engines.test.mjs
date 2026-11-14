@@ -7,25 +7,26 @@ import { createFindingsCache } from '../../../../../core/diff/cache/findings-cac
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { importClosure } from '../../../../../shared/import-closure.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
 import { hashFiles } from '../../../preset/checks/hash.mjs';
 import { configuredAnalyzers } from '../../../preset/diff/configured-analyzers.mjs';
 import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
-import { normalizeEslintResults } from '../../eslint/normalize.mjs';
-import { spawnJson } from '../oxlint-process.mjs';
-import { lintWithOxlint } from '../oxlint-runner.mjs';
-import { nativeRuleIndex, PARITY_BRIDGED_RULES, translatePlan } from '../oxlint-translation.mjs';
+import { normalizeEslintResults } from '../../eslint/normalize.mts';
+import { spawnJson } from '../oxlint-process.mts';
+import { lintWithOxlint } from '../oxlint-runner.mts';
+import { nativeRuleIndex, PARITY_BRIDGED_RULES, translatePlan } from '../oxlint-translation.mts';
 import { createProject } from '../test-support/oxlint-project.mjs';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const NATIVE = 'oxc/no-accumulating-spread';
 const PATTERNS = ['src/**/*.{ts,mjs}'];
 const OWNED_ENGINE_FILES = [
-  'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
-  'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mjs',
-  'languages/typescript/adapters/oxlint/native/owned-native-rules.mjs',
-  'languages/typescript/adapters/oxlint/oxlint-diagnostics.mjs',
+  'languages/typescript/adapters/lint-engine/overlapping-reports.mts',
+  'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mts',
+  'languages/typescript/adapters/oxlint/native/owned-native-rules.mts',
+  'languages/typescript/adapters/oxlint/oxlint-diagnostics.mts',
   'languages/typescript/preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs',
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
 ];
@@ -183,11 +184,18 @@ function oxlintResults(root) {
 }
 
 function lintPlan(root) {
-  return spawnJson([path.join(import.meta.dirname, '..', 'oxlint-plan.mjs'), root, ...PATTERNS], {
-    cwd: root,
-    env: environmentOf(root),
-    context: 'oxlint planning',
-  });
+  return spawnJson(
+    [
+      checkoutModulePath(path.join(import.meta.dirname, '..', 'oxlint-plan.mjs')),
+      root,
+      ...PATTERNS,
+    ],
+    {
+      cwd: root,
+      env: environmentOf(root),
+      context: 'oxlint planning',
+    },
+  );
 }
 
 function nativeRulesByFile(plan, bridgedRules) {

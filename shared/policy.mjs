@@ -14,6 +14,7 @@ import {
   slowTest,
   testConsoleRule,
 } from './project-rules/test-runtime-rules.mjs';
+import { BOUNDARY_RULE_IDS, domainRules } from './project-rules/domain/domain-rules.mjs';
 import {
   docCommentRule,
   SOURCE_RULE_IDS,
@@ -65,11 +66,10 @@ export const RULE_IDS = {
   ...SIZE_RULE_IDS,
   slowTest: 'slow-test',
   sharedUsedByOneFeature: 'shared-used-by-one-feature',
-  featureInternalImport: 'feature-internal-import',
-  sharedImportsFeature: 'shared-imports-feature',
-  featureCycle: 'feature-cycle',
+  ...BOUNDARY_RULE_IDS,
   duplicateDefinition: 'duplicate-definition',
   siblingCopyEdit: 'sibling-copy-edit',
+  nearDuplicate: 'near-duplicate',
   exportedNameCollision: 'exported-name-collision',
   redefinedLibraryComponent: 'redefined-library-component',
   newIconAsset: 'new-icon-asset',
@@ -140,7 +140,7 @@ export const MUTATION_EXCEPTION_RULES = [
 /** Rules `exceptions` can lift for some paths in any preset (TypeScript also takes ESLint rules). */
 export const SHARED_EXCEPTION_RULES = [...FUNCTION_EXCEPTION_RULES, ...PATH_EXCEPTION_RULES];
 
-/** A CRAP score at or above this fails (`QUALITY_CRAP_SCORE_LIMIT` / `thresholds.crapLimit` override it). */
+/** A CRAP score at or above this fails (`thresholds.crapLimit` overrides it). */
 export const DEFAULT_CRAP_SCORE_LIMIT = 9;
 
 /** A changed branch below this percentage of coverage fails. */
@@ -216,32 +216,32 @@ const CATALOG = [
   {
     id: RULE_IDS.crapScoreLimit,
     check: 'crap',
-    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`QUALITY_CRAP_SCORE_LIMIT\` (positive number) or \`thresholds.crapLimit\``,
-    enforcedBy: withKotlin(ALL, true),
+    limit: `CRAP score at or above ${String(DEFAULT_CRAP_SCORE_LIMIT)}; override with \`thresholds.crapLimit\` (positive number)`,
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.crapCoverageUnknown,
     check: 'crap',
     limit: 'function with unknown coverage and no CRAP score',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.changedBranchCoverage,
     check: 'coverage',
     limit: `a changed branch with coverage below ${String(MINIMUM_BRANCH_COVERAGE)}%`,
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.duplicateClone,
@@ -278,6 +278,7 @@ const CATALOG = [
   ...UNUSED_API_RULES,
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  ...domainRules(RULE_IDS),
   ...sourceRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
   slowTest(RULE_IDS, TEST_TIME_DEFAULTS, withGo(withKotlin(ALL, true))),
   ...HYGIENE_RULES,

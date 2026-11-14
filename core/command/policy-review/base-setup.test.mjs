@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { createBaseSetupResolver } from './base-setup.mjs';
+import { createBaseSetupResolver } from './base-setup.mts';
 
 const { createGitRepository } = useGitFixtures();
 

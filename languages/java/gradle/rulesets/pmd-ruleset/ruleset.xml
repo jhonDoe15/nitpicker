@@ -18,6 +18,8 @@
     <exclude name="AvoidFieldNameMatchingMethodName"/>
     <exclude name="AvoidLiteralsInIfCondition"/>
     <exclude name="AssignmentInOperand"/>
+    <exclude name="ReplaceJavaUtilCalendar"/>
+    <exclude name="ReplaceJavaUtilDate"/>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
         message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed.">
@@ -47,10 +49,29 @@
   </rule>
   <rule ref="category/java/bestpractices.xml">
     <exclude name="AbstractClassWithoutAbstractMethod"/>
+    <exclude name="ExhaustiveSwitchHasDefault"/>
     <exclude name="GuardLogStatement"/>
+    <exclude name="ImplicitFunctionalInterface"/>
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="UnnecessaryWarningSuppression"/>
+    <exclude name="UnusedFormalParameter"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter">
+    <properties>
+      <property name="checkAll" value="true"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+./ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+  [ModifierList/Annotation
+   or (@Name = 'main' and @Static = true() and FormalParameters/@Size = 1
+       and FormalParameters/FormalParameter[1]/*[2][self::ArrayType or ../@Varargs = true()])]
+| ./ancestor-or-self::FormalParameter[ModifierList/Annotation]
+| ./ancestor::MethodDeclaration[@Overridden = true()]
+]]></value>
+      </property>
+    </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/AbstractClassWithoutAbstractMethod">
     <properties>

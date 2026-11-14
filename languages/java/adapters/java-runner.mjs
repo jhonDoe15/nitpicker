@@ -8,9 +8,14 @@ import { featureLayout } from '../../../shared/rules/features/feature-roles.mjs'
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
 import {
+  MINUTE_MS,
+  analyzerDeadlineMs,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import {
   TROUBLESHOOTING_ANCHORS,
   failureText,
   troubleshootingLinkOf,
+  withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mjs';
@@ -21,8 +26,11 @@ import {
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
+export const INTERNAL_ERROR_RULE = 'internal-error';
+const INTERNAL_ERRORS = [TypeError, RangeError, ReferenceError, SyntaxError];
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_TESTS_FAILED_LENGTH = 40_000;
+const PIT_RESERVE_MS = 2 * MINUTE_MS;
 
 function truncated(message, rule) {
   const limit = rule === TESTS_FAILED_RULE ? MAX_TESTS_FAILED_LENGTH : MAX_MESSAGE_LENGTH;
@@ -52,6 +60,11 @@ export function javaExecutionBudget(environment = process.env) {
   };
 }
 
+export function withPitDeadline(budget, environment, now = Date.now()) {
+  const analyzerMs = analyzerDeadlineMs(environment) ?? budget.analyzerTimeoutMs;
+  return { ...budget, pitDeadlineMs: now + analyzerMs - PIT_RESERVE_MS };
+}
+
 export function analyzeJavaSnapshot(
   projectRoot,
   {
@@ -69,7 +82,7 @@ export function analyzeJavaSnapshot(
       environment,
       policy,
       spawn,
-      budget: javaExecutionBudget(),
+      budget: withPitDeadline(javaExecutionBudget(), environment),
     });
     return { findings, ...moduleImportsSection(imports, policy?.history) };
   } catch (error) {
@@ -77,19 +90,16 @@ export function analyzeJavaSnapshot(
     if (compileErrors.length > 0) {
       return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
     }
+    const preset = policy?.preset ?? 'java';
     const rule = failureRule(error, projectRoot);
-    const anchor =
-      rule === MAVEN_FAILURE_RULE
-        ? TROUBLESHOOTING_ANCHORS.mavenFails
-        : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
-          tool: policy?.preset ?? 'java',
+          tool: preset,
           rule,
           path: '.',
           identity: rule,
-          message: truncated(failureText(error, anchor), rule),
+          message: truncated(failureMessage(error, rule, preset), rule),
           classification: 'tool-error',
         },
       ],
@@ -113,11 +123,32 @@ export function withHeadPolicy(policy, headPolicy) {
   };
 }
 
+function isInternalError(error) {
+  return INTERNAL_ERRORS.some((type) => error instanceof type);
+}
+
 function failureRule(error, projectRoot) {
   if (error?.failures?.length > 0) {
     return TESTS_FAILED_RULE;
   }
+  if (isInternalError(error)) {
+    return INTERNAL_ERROR_RULE;
+  }
   return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+}
+
+function failureMessage(error, rule, preset) {
+  if (rule === INTERNAL_ERROR_RULE) {
+    return withTroubleshooting(
+      `Internal error in the ${preset} analyzer: ${error.message}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    );
+  }
+  const anchor =
+    rule === MAVEN_FAILURE_RULE
+      ? TROUBLESHOOTING_ANCHORS.mavenFails
+      : TROUBLESHOOTING_ANCHORS.gradleFails;
+  return failureText(error, anchor);
 }
 
 export function readRunnerPolicy(runnerArguments, environment = process.env) {

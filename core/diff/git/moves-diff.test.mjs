@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mjs';
+import { createBaseSetupResolver } from '../../command/policy-review/base-setup.mts';
 import {
   commitHead,
   compare,

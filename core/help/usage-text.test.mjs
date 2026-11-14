@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../cli.mjs';
-import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mjs';
-import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mjs';
+import { runCli } from '../cli.mts';
+import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mts';
+import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
-import { INIT_OPTIONS } from '../init/init-arguments.mjs';
-import { packageVersion } from './package-version.mjs';
+import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mts';
+import { INIT_OPTIONS } from '../init/init-arguments.mts';
+import { packageVersion } from './package-version.mts';
 import {
   AGGREGATE_FLAGS,
   CACHE_PUBLISH_FLAGS,
@@ -16,7 +16,7 @@ import {
   FLAGS,
   INIT_FLAGS,
   INIT_USAGE_TEXT,
-} from './usage-text.mjs';
+} from './usage-text.mts';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
 const { temporaryRoot, createGitRepository } = useGitFixtures();
@@ -232,7 +232,7 @@ describe('nitpicker --help', () => {
       }),
       { 'go.mod': 'module example.com/help\n' },
     );
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
+    const go = ['Analyzers of the go preset (for --analyzer):', '  go, mutation, house-rules'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(go, 'go'));
   });
@@ -243,7 +243,10 @@ describe('nitpicker --help', () => {
       'go.mod': 'module example.com/help\n',
       'packages/app/package.json': '{}',
     });
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
+    const go = [
+      'Analyzers of the go preset (for --analyzer):',
+      '  go, mutation, repository-hygiene',
+    ];
 
     expect({
       top: runIn(root, '--help').stdoutText,

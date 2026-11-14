@@ -26,7 +26,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - The shared rules of the other presets (size limits, slow tests, repository hygiene), applied to
   Go where they fit.
 - [staticcheck](https://staticcheck.dev/docs/checks/) (MIT),
-  [errcheck](https://github.com/kisielk/errcheck) (MIT) and the
+  [errcheck](https://github.com/kisielk/errcheck) (MIT), [gosec](https://github.com/securego/gosec)
+  (Apache-2.0) and the
   [`golang.org/x/tools` analysis passes](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes),
   including [modernize](https://pkg.go.dev/golang.org/x/tools/go/analysis/passes/modernize)
   (BSD-3-Clause): the lint program, run directly instead of through golangci-lint.
@@ -47,6 +48,9 @@ than the others, and this skill teaches its rules before an agent writes Go.
   gocheckcompilerdirectives, perfsprint, usestdlibvars and spancheck (MIT), musttag and sloglint
   (MPL-2.0, weak copyleft, used unmodified). OpenTelemetry's trace package is only a dependency
   of the spancheck fixtures.
+  Style and bug checks: go-critic (MIT), with go-ruleguard and gogrep (BSD-3-Clause), the
+  go-toolsmith packages, quasilyte regex syntax and stdinfo (MIT), and go-cmp (BSD-3-Clause)
+  that it builds on.
 
 ## Rules and their reasoning
 
@@ -124,6 +128,48 @@ than the others, and this skill teaches its rules before an agent writes Go.
   `testing.Short()` marker counts only as a skip guard at the top of the test (read from the
   syntax tree), because a text match let `_ = testing.Short()` lift any test to 30 s (#707).
 
+- **Branch coverage from blocks.** `go test -coverprofile` records statement blocks, not branches.
+  Every arm of an `if`, `switch` or `select` and every loop body starts a block of its own, so its
+  block count says whether it ran. The block starts between the arm's brace (or case colon) and its
+  first statement: Go 1.24 starts it at the brace, Go 1.27 at the first statement, and an empty
+  body's block one column after the brace, so an arm takes the block that starts in that span. The
+  outcomes that have no block (an `if` without `else` whose condition was false, a switch where no
+  case matched) are the evaluations of the branch point minus the entries into its arms, which makes
+  an `if err != nil { return err }` count as two outcomes, as it does in JaCoCo and coverage.py. A
+  case reached by `fallthrough` counts those runs too, so the count of the block holding each
+  `fallthrough` statement is taken off. Conditions with `&&` and `||` are not split, since the
+  profile has no blocks inside them; that is weaker than JaCoCo, which counts each operand.
+- **`-covermode=atomic`, not `count`.** `count` loses increments when tests run in parallel, which
+  can make a never-taken implicit outcome look taken, and Go refuses it under `-race` (including a
+  project's own `GOFLAGS=-race`). `atomic` costs a little speed and keeps the arithmetic exact.
+- **CRAP from the same profile.** The cyclomatic complexity comes from the metrics program (each
+  `if`, loop, case and `&&`/`||`), and the coverage is the lower of the statement and branch outcome
+  coverage, as in the Python preset (`coveragePercent` in `languages/python/ingest/crap.mjs`). A
+  function's statements and branch points are picked by position (inside its braces, outside its
+  literals), not by name, since a file can hold several `init` functions.
+- **A crashed test binary measures nothing.** A test binary that panics, times out or calls
+  `os.Exit` writes no profile, so every block of its package reads 0. Its files are not scored;
+  the failing test is already a finding.
+- **Our own mutator instead of a Go mutation tool.** go-mutesting (MIT) is unmaintained and
+  rewrites the files in place, and gremlins (Apache-2.0) mutates a whole module with a smaller
+  operator set and cannot limit itself to changed lines. The metrics program already parses every
+  file, so it writes the mutants with `go/ast`, and `go test -overlay` compiles each mutated file
+  without touching the checkout. The operators take Stryker's names where the mutation is the same
+  (arithmetic, equality, logical, unary, update, assignment, boolean, string, conditional), skip
+  the ones with no Go form (optional chaining, regex literals, arrow functions), and add
+  `RemovedCall` (PIT's void call removal), `BitwiseOperator`, `LoopControl` and `SwitchCase` for
+  Go's own statements.
+- **Changed lines, like Stryker in the TypeScript preset.** Mutating only the lines a change
+  writes keeps the run proportional to the change, and every surviving mutant is the change's own.
+  Python's mutmut reuses base results instead because it can only mutate whole functions.
+- **Weakened tests.** A test edit can drop the assertion that killed a legacy mutant. Mutating the
+  edited test's folder whole on head and rerunning only the escaped mutants on the base checkout
+  finds exactly those, at the cost of one more test run per escaped mutant, as in the TypeScript
+  preset.
+- **A mutant of a failing package is skipped, not killed.** Its tests already fail, so a run would
+  "kill" every mutant; the note names the failing packages.
+- **Files the build leaves out are not scored.** A file behind a build constraint the run does not
+  satisfy has no blocks; scoring it as unknown would fail every platform-specific file.
 - **Tests run under the race detector.** Data races are the Go mistake no linter catches reliably,
   and `go test -race` finds the ones the tests exercise. Each race is a finding keyed by the two
   conflicting functions rather than a failing test, because a failing test makes a snapshot a tool
@@ -171,6 +217,20 @@ than the others, and this skill teaches its rules before an agent writes Go.
   and its typed rules then report nothing for the whole package. The lint program hands revive the
   types from its own package load instead, so those rules work in real modules; a fixture that
   imports a sibling package keeps it that way.
+- **gosec with every rule, its file-mode limits aligned.** Each rule names the safe form (crypto/rand,
+  query parameters, `os.Root`, a server with `ReadHeaderTimeout`, 0o600 files). G307 is held to the
+  same 0o600 as G302 and G306, because gosec's default limit for `os.Create` (0o666) is the mode
+  `os.Create` always uses, so the rule never reported. G104, G107, G116, G204, G304 and G504 are off:
+  errcheck covers unchecked errors; bidichk reports bidirectional characters where they are, not on
+  the file's first line; G107, G204 and G304 flag every non-constant URL, command or
+  path, while the taint rules G704, G702 and G703 report the ones from request data, program
+  arguments, the environment or stdin; G504 names a `net/http/cgi` weakness fixed in Go 1.6.3. G601
+  runs only for files before Go 1.22, read per file, because gosec itself reads one Go version per
+  process.
+- **Every hint was checked against the rule.** Two reviews tried each suggested form against gosec:
+  forms the rule still flags (`http.MaxBytesReader` before `ParseMultipartForm`, a validated
+  command name, an escaped URL string, 0o640 files) were replaced by forms it accepts, and rules
+  that accept no validation say that a checked value takes an exception.
 - **Catalog linters for resources, errors and contexts.** A response body or rows left open, an
   error compared with `==` or dropped by `return nil`, and a context made anew or kept in a
   struct are logic bugs, and each linter's allowed form is the one the Go wiki and the standard
@@ -198,6 +258,16 @@ than the others, and this skill teaches its rules before an agent writes Go.
   rather than key-value pairs, because `LogAttrs` takes only attributes, so it is the form every
   call accepts, and a key-value list can pair a key with the wrong value. usestdlibvars's checks for bare words (`\"May\"`, `\"MD5\"`) and sloglint's constant-message check stay off: both flag correct code (a type-name table, a logging wrapper) that has no other form. predeclared is left
   out because revive's `redefines-builtin-id` reports the same names.
+- **go-critic, checker by checker.** Its checkers are a mix of bug finders, one-form rules,
+  performance thresholds and opinions, so the preset decides each of the 108 on its own rather
+  than by go-critic's tags. Bug finders run. A style or performance checker runs when it names
+  one form (`s == ""`, `a += b`, `bytes.Index(data, ...)`, a type switch over repeated
+  assertions); thresholds (`hugeParam`, `rangeValCopy`, `tooManyResultsChecker`) stay off because
+  a size limit is not a form. A checker that staticcheck, revive, vet or another catalog linter
+  already reports stays off, so one problem is one finding, and `timeExprSimplify` stays off
+  because its rewrites change the value. The lint program runs go-critic's checkers through its
+  own analyzer, which reports each finding under the checker's name and reads the file's Go
+  version, and it fails when a go-critic upgrade adds a checker nobody decided on.
 - **A fixture for every check.** Each enabled check has a failing line and the allowed form in
   `languages/go/lint/fixtures`; the harness fails on a missing or unexpected report, so a tool
   upgrade that changes what a check reports is caught before release.
@@ -252,6 +322,14 @@ Two adversarial reviews of the first version changed these rules:
 - **`layout` and `duplicates` are config errors with their reason**, not silently ignored.
 - **The project's `GOFLAGS` is read with `go env`**, so `go env -w` settings apply, and the tools
   build from a neutral environment so the project's `GOOS` or `GOFLAGS` cannot break them.
+- **Mutation review (two passes).** Weakened-test pairing counted equal mutants over different sets
+  on base and head, so a look-alike line in another function could be reported as weakened: the
+  key now holds the function and counts over every mutant of the file on both sides. A rename of a
+  test file no longer mutates its folder, and the folder is capped at 10 files as in the
+  TypeScript preset. A timeout under `t.Parallel` was read as killed, because the panic text lands
+  on another test: the whole run output is read now. Raw strings with a carriage return, type
+  parameters and array lengths gave mutants that cannot compile and are skipped. A multi-line
+  mutation is in scope when any of its lines changed. `exclude` globs are not mutated.
 - **Race detector review.** Two reviews of the first version changed it: parallel tests the
   detector failed next to a race, and race-only tests that logged with `t.Log`, were still listed as
   failing, so a failing test whose package raced or timed out is now rerun without `-race` instead
@@ -321,3 +399,17 @@ Two adversarial reviews of the other catalog linters changed these rules:
   QF1010 and QF1012 keep the line.
 - **Hints fit every message**: musttag names the tag the message names, spancheck covers a span
   that is never assigned, and sloglint's key-value message names the attribute form.
+
+Two adversarial reviews of go-critic changed these rules:
+
+- **`%q` is not a quoting form for every target.** sprintfQuotedString is off: `%q` writes Go
+  escapes, which an HTTP header, SQL or a shell line does not read.
+- **A rooted join passes.** `filepath.Join("/", path)`, which keeps a path inside the root, is
+  not a filepathJoin finding.
+- **A descending sort keeps `i` on the left.** sortSlice asks for `xs[i] > xs[j]` rather than
+  `xs[j] < xs[i]`, and its hint follows the message, so following it never flips the order.
+- **captLocal checks parameters only.** On every local it flagged math and type names such as
+  `T` and `D` that read as they should.
+- **Overlaps settled**: exhaustive keeps a one-case enum switch over singleCaseSwitch, QF1012
+  keeps the writes it reports over preferFprint, and revive's `useless-fallthrough` keeps the
+  tagged switches over emptyFallthrough, which still covers untagged ones.

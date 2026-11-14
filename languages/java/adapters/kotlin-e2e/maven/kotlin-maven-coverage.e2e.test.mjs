@@ -81,11 +81,17 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'utf8',
     );
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
-    const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
-      ([, line]) => Number(line),
-    );
+    const linesWith = (counter) =>
+      [
+        ...generatedFile.matchAll(
+          new RegExp(`<line nr="(\\d+)"[^>]* ${counter}="[1-9]\\d*"`, 'gu'),
+        ),
+      ].map(([, line]) => Number(line));
 
-    expect(missedLines).toEqual([33, 34, 35]);
+    expect({ covered: linesWith('cb'), missed: linesWith('mb') }).toEqual({
+      covered: [15, 22],
+      missed: [],
+    });
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
@@ -117,6 +123,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',
       'structure function-statements-limit rank',
+      'structure near-duplicate classify(Int)',
+      'structure near-duplicate rank(Int)',
+      'structure near-duplicate rank(Int)',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
       `depth nests control flow 3 deep (limit 2). Return early instead of nesting. ${routeOf('function-control-nesting-limit', 'change/Deep.kt', 'depth')}`,

@@ -76,13 +76,13 @@ by field. Per snapshot:
   with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
-  Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
+  Surefire's or Failsafe's reports, is a `tests/tests-failed` tool error of its module (exit 1) that names up to
   50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
-  as well (the Test retries bullet above has the message). On the base snapshot the failing tests
-  are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
-  `tests-failed` tool error for that module that the core reads as a red base, the same as a Gradle
-  base whose tests fail. The other modules keep their
+  as well (the Test retries bullet above has the message). The failing tests are listed instead of
+  thrown: that module skips JaCoCo and PIT and the other checks run. On the base the failure is a
+  `java/tests-failed` tool error for that module that the core reads as a red base, the same as a
+  Gradle base whose tests fail; on the head it is the `tests/tests-failed` error above. The other modules keep their
   coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
   own source and test directories. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their
@@ -100,7 +100,13 @@ by field. Per snapshot:
   never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
   build get the integration budget.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
-  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent of the
+  same jar there). Two JaCoCo agents of different versions cannot share a JVM (the second fails to
+  define `java.lang.$JaCoCo` and the forked test JVM aborts), so when the project binds its own
+  agent at a version (Spring Boot's parent manages one), our `prepare-agent` runs at that version
+  instead of the pinned one; the pinned JaCoCo CLI still writes the report. Modules of one reactor
+  that bind different agent versions stop the run with a message that names them, since one
+  `prepare-agent` goal runs for the whole reactor.
   Without a configured `destFile` the project's agent still writes our file, because our
   `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
   fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
@@ -169,7 +175,10 @@ by field. Per snapshot:
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
-  set, else the PATH.
+  set, else the PATH. Checkstyle 13 and the Java formatters need JDK 21 or newer to run: they run on
+  that `java` when it is 21 or newer, else on the lowest JDK 21 or newer found where Error Prone
+  looks for one (the `JAVA_HOME_<N>_X64` variables, `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm`,
+  `/Library/Java/JavaVirtualMachines`), and the run stops with that list when there is none.
 - **Kotlin.** A Maven project that applies `kotlin-maven-plugin` runs with the Kotlin preset (see
   [Maven](kotlin-preset.md#maven)); the java preset on it analyzes the Java sources only.
 - **Not covered.** A surefire or Failsafe configuration that sets

@@ -1,5 +1,7 @@
 import { exceptionSentence } from './exception-sentence.mjs';
 
+const FIX_PLACEHOLDER = '{fix}';
+
 export const EXCEPTION_HINT = exceptionSentence('{exception}');
 
 const ALLOWED_OPEN = '\u27E6';
@@ -41,13 +43,16 @@ export const BASE_MESSAGES = {
   restatingDocComment: `This doc comment only restates {name}. ${allowedForm('Delete it, or say what the name cannot: a unit, a limit, an edge case or why.')} ${EXCEPTION_HINT}`,
   longDocComment: `This doc comment's description is {lines} lines (limit {limit}). ${allowedForm('Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.')} ${EXCEPTION_HINT}`,
   slowTest: `{name} took {seconds} s; {kind} test may take {limit} s. ${allowedForm('{fix}.')} ${EXCEPTION_HINT}`,
+  publicAlternativeBypass: `{names} is imported from {target}, around its public entry point {entry}. ${allowedForm('Import {publicNames} from {entry}.')} ${EXCEPTION_HINT}`,
   sharedUsedByOneFeature: `{path} is used only by feature {feature}. ${allowedForm('Move it into {directory}.')} ${EXCEPTION_HINT}`,
   featureInternalImport: `Import feature {feature} only through {face}: {importer} imports its internal module {target}. ${allowedForm('Expose what it needs there, or move the code both use to a shared root.')} ${EXCEPTION_HINT}`,
   sharedImportsFeature: `Shared code imports only shared code: {importer} is shared and imports feature {feature} ({targets}). ${allowedForm(SHARED_IMPORTS_FEATURE_FORM)} ${EXCEPTION_HINT}`,
   featureCycle: `Keep feature dependencies one-way: {importer} in {source} imports {feature} ({targets}), which depends back on {source} (cycle: {cycle}). ${allowedForm('Move what both need to a shared root, or invert this import behind an interface.')} ${EXCEPTION_HINT}`,
-  duplicateDefinition: `{name} is also defined with {same} in {others}. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
+  foreignFeaturePersistence: `Use feature {feature} through its services, not its persistence: {importer} in feature {source} uses its {kind} {target}{via}. ${allowedForm("Call a service {feature} exposes on its public face, or keep a read model of your own fed by {feature}'s events or queries.")} ${EXCEPTION_HINT}`,
+  duplicateDefinition: `{name} is also defined with {same} in {others}. ${allowedForm(FIX_PLACEHOLDER)} ${EXCEPTION_HINT}`,
+  nearDuplicate: `{name} is a copy of {other} {difference}. ${allowedForm(FIX_PLACEHOLDER)} ${EXCEPTION_HINT}`,
   siblingCopyEdit: `{name} is edited here but not in {others}, where it has almost the same code. ${allowedForm('Edit it there too, or merge the copies.')} ${EXCEPTION_HINT}`,
-  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. ${allowedForm('{fix}')} ${EXCEPTION_HINT}`,
+  exportedNameCollision: `{name} is also exported by {others}; {importer} imports both. ${allowedForm(FIX_PLACEHOLDER)} ${EXCEPTION_HINT}`,
   redefinedLibraryComponent: `{name} is already rendered from {package} in {count}. ${allowedForm('Use that one.')} ${EXCEPTION_HINT}`,
   newIconAsset: `${allowedForm('Use an icon from {package} instead of adding {path}.')} ${EXCEPTION_HINT}`,
   stabilityDirectionFeature:

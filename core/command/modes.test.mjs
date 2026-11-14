@@ -1,7 +1,7 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
@@ -258,8 +258,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       stderr: output.stderr,
     });
 
-    expect(exitCode).toBe(0);
-    expect(output.stderrText).toBe('');
+    expect([exitCode, output.stderrText]).toEqual([0, '']);
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
@@ -311,6 +310,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
   it('returns a tool error for a crashing --all analyzer', () => {
     const repository = createRepository({
       'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+      'src/main/clean.ts': 'export const clean = true;\n',
     });
     const output = captureOutput();
     expect(

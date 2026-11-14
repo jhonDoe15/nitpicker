@@ -2,8 +2,8 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
-`duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` are the shared rules of
-the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+`duplicate-definition`, `sibling-copy-edit`, `exported-name-collision`, `near-duplicate`,
+`decided-condition` and `duplicate-branch` are the shared rules of the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
 (`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
 Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
 The findings have tool `structure` and are lifted with the top-level `exceptions`.
@@ -49,6 +49,42 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`decided-condition`.** The same trees feed `shared/rules/decided/`, which walks each method body
+  with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
+  return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`) and asks
+  the solver whether the condition can still be both true and false. Only a proof reports: always
+  false is dead code, always true a redundant check, and the message names the guard that decides
+  it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
+  what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
+  opaque value because JVM integers overflow. SpotBugs `UC_USELESS_CONDITION` reports a few of
+  these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
+- **`duplicate-branch`.** The same trees again: two arms of an `else if` chain, two `switch`
+  cases (not one that falls through or that a case falls into; arrow cases never do) or two `when`
+  arms whose bodies have the same canonical tree, with the locals declared in the arm renamed,
+  fail. Arms picked by a type test (`instanceof`, `is`, a type pattern) are not compared: the same
+  call can pick a different overload for each type. Error Prone
+  `DuplicateBranches` keeps the two-arm `if`/`else` and the ternary. Report-only: the statements
+  every arm of a complete `if` chain or `when` starts or ends with, when moving them before or after
+  it keeps behaviour (pure conditions over locals that the moved statements do not write; a tail
+  that reads no local declared earlier in the arm).
+- **`near-duplicate`.** `adapters/near-duplicates/jvm-trees.mjs` parses the same `.java` and
+  `.kt` files with tree-sitter (`web-tree-sitter` and the vendored `tree-sitter-java` and
+  `tree-sitter-kotlin` grammars, in a child process) into one tree per method, constructor,
+  accessor and field lambda, and the shared engine (`shared/near-duplicates/`) proves which pairs are copies,
+  also when one copy is a loop and the other its stream call, one calls a `private`, `static` or
+  `final` helper of the same file that the other spells out, or a solver proves their guards and
+  locals equal (reordered guards; arithmetic is an opaque value, since `int` and `long` overflow). Each pair is reported
+  once, at the copy whose `file#name` sorts last, and keeps its identity while both copies stay, so
+  a pair the base already had is never new. A type-specialized family is left out: copies that
+  differ only in primitive, boxed or generic types (`int[]`/`long[]`, `Integer`, `Object`, `T`),
+  in the own helpers or classes named after those types (`Ints.reverse`/`Longs.reverse`) and in
+  number literals next to them, in one file or in sibling files whose names carry the types
+  (`Ints.java`, `Longs.java`), and a run shared by two members whose signatures differ only that
+  way. Java cannot merge them into one method without boxing (`type-families.mjs`). The platform
+  variants of one Kotlin Multiplatform declaration are left out too: two units in different
+  `src/<platform>Main/` source sets with the same name or the same path below the source set
+  (`jvmMain` and `nativeMain` copies of `FileSink.write`), which the platform APIs keep apart
+  (`platform-variants.mjs`).
 - **`shared-used-by-one-feature`.** The same facts feed the feature rule: a source file under a
   folder that `layout.sharedRoots` matches (default `**/shared`, such as
   `src/main/java/com/acme/shared`) that only the files of one feature use, directly or through

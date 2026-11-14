@@ -1,6 +1,5 @@
 import path from 'node:path';
-
-export type Environment = Readonly<Record<string, string | undefined>>;
+import type { Environment } from '../../shared/processes/environment.mts';
 
 export function durationFile(environment: Environment = process.env): string {
   const enabled = ['java', 'kotlin', 'python', 'go'].filter(

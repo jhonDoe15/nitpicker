@@ -103,6 +103,8 @@ func skippedPlace(info *types.Info, cursor inspector.Cursor) bool {
 		return parent.Key == literal || discriminant(parent.Key)
 	case *ast.CallExpr:
 		return firstArgument(parent, literal) && translation(parent.Fun) || logKey(info, parent, literal)
+	case *ast.BinaryExpr:
+		return comparedToDiscriminant(parent, literal) || inConstant(cursor)
 	}
 	return inConstant(cursor)
 }
@@ -137,6 +139,18 @@ func discriminant(key ast.Expr) bool {
 		return err == nil && slices.Contains(discriminantKeys, value)
 	}
 	return false
+}
+
+func comparedToDiscriminant(comparison *ast.BinaryExpr, literal ast.Node) bool {
+	if comparison.Op != token.EQL && comparison.Op != token.NEQ {
+		return false
+	}
+	other := comparison.X
+	if comparison.X == literal {
+		other = comparison.Y
+	}
+	selector, isSelector := ast.Unparen(other).(*ast.SelectorExpr)
+	return isSelector && slices.Contains(discriminantKeys, strings.ToLower(selector.Sel.Name))
 }
 
 func translation(function ast.Expr) bool {
