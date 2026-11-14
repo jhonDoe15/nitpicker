@@ -3,27 +3,30 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import type { Entry } from './typed/dependency-report.mts';
 import { dependencyFindings, readDependencyFindings } from './dependencies.mts';
 import {
   classWithStrings,
   descriptorOfLength,
 } from '../builds/classes/test-support/class-bytes.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-const declared = (group, name, extra = {}) => ({
-  configuration: 'implementation',
-  group,
-  name,
-  archives: [`${name}.jar`],
-  used: false,
-  ...extra,
-});
+function declared(group: string, name: string, extra: Partial<Entry> = {}): Entry {
+  return {
+    configuration: 'implementation',
+    group,
+    name,
+    archives: [`${name}.jar`],
+    used: false,
+    ...extra,
+  };
+}
 
 const UNUSED_LANG = {
   tool: 'dependencies',
@@ -109,15 +112,15 @@ describe('readDependencyFindings', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
     roots.push(root);
     const field = descriptorOfLength(69, 'org/acme/widgets');
-    const write = (file, bytes) => {
+    const write = (file: string, bytes: string | Uint8Array): void => {
       mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       writeFileSync(path.join(root, file), bytes);
     };
     write('classes/demo/A.class', classWithStrings([field]));
     write(`widgets/${field.slice(1, -1)}.class`, '');
     write('lang/org/apache/commons/lang3/StringUtils.class', '');
-    const entry = (group, name) =>
-      declared(group, name, { used: undefined, archivePaths: [path.join(root, name)] });
+    const entry = (group: string, name: string): Entry =>
+      declared(group, name, { archivePaths: [path.join(root, name)] });
     write(
       'dependencies.json',
       JSON.stringify({
