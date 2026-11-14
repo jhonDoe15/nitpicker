@@ -38,20 +38,30 @@ export function boundNames(root) {
   return new Set([...depthFirst(root, codeChildren)].flatMap(declaredNames));
 }
 
-function importsOf(program) {
-  const imported = new Map();
-  for (const declaration of codeChildren(program).filter(
-    (child) => child.type === 'import_declaration',
-  )) {
-    const text = declaration.text
-      .replace(/^import\s+(static\s+)?/u, '')
-      .replace(/;$/u, '')
-      .replaceAll(/\s+/gu, '');
-    if (!text.endsWith('.*')) {
-      imported.set(text.slice(text.lastIndexOf('.') + 1), text);
-    }
+function importEntries(declaration) {
+  const text = declaration.text
+    .replace(/^import\s+(static\s+)?/u, '')
+    .replace(/;$/u, '')
+    .replaceAll(/\s+/gu, '');
+  if (text.endsWith('.*')) {
+    return [];
   }
-  return imported;
+  const simple = text.slice(text.lastIndexOf('.') + 1);
+  const isStatic = /^import\s+static\s/u.test(declaration.text);
+  return isStatic
+    ? [
+        [simple, text],
+        [`#${simple}()`, text],
+      ]
+    : [[simple, text]];
+}
+
+function importsOf(program) {
+  return new Map(
+    codeChildren(program)
+      .filter((child) => child.type === 'import_declaration')
+      .flatMap(importEntries),
+  );
 }
 
 function packageOf(program) {
@@ -110,12 +120,12 @@ export function nameNode(text, { bound, scope, file }) {
   return { kind: 'name', children: [], binding: 'free', value, text };
 }
 
-export function methodNode(text, { scope }) {
+export function methodNode(text, { scope, file }) {
   return {
     kind: 'name',
     children: [],
     binding: 'free',
-    value: scope.methods.get(text) ?? `#${text}()`,
+    value: scope.methods.get(text) ?? file.imported.get(`#${text}()`) ?? `#${text}()`,
     text,
   };
 }

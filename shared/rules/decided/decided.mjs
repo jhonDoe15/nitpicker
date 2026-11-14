@@ -9,10 +9,9 @@ import { enumConstants } from './flow/arms/arms.mjs';
 import { withValueEquality } from './flow/values/equals.mjs';
 import { isIntegerLoop } from './flow/loops.mjs';
 import { lambdaStatements } from './flow/nested.mjs';
-import { sitesIn } from './flow/sites.mjs';
+import { isChain, sitesIn } from './flow/sites.mjs';
 import { declaredTypes, stableNames } from './flow/stability.mjs';
 
-const CHAINS = new Set(['&&', '||']);
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const MAX_CHECKS = 200;
 const VERDICTS = new Set(['true', 'false']);
@@ -30,10 +29,6 @@ function chainOperands(chain) {
   ].filter((node) => node.kind !== 'binary' || node.value !== chain.value);
 }
 
-function isChain(node) {
-  return node.kind === 'binary' && CHAINS.has(node.value);
-}
-
 function armFacts(scan, earlier = []) {
   let facts = [];
   for (const arm of earlier) {
@@ -47,6 +42,21 @@ function armFacts(scan, earlier = []) {
     );
   }
   return facts;
+}
+
+function provingFacts(known, query, verdict) {
+  const own = known.filter(({ assertion }) => !assertion);
+  if (own.length === known.length) {
+    return known;
+  }
+  const alone = solveFacts(
+    own.map(({ term }) => term),
+    query,
+  );
+  if (alone === verdict) {
+    return own;
+  }
+  return verdict === 'false' ? undefined : known;
 }
 
 function check(scan, node, { facts, part = 'condition' }) {
@@ -66,7 +76,11 @@ function check(scan, node, { facts, part = 'condition' }) {
   if (!VERDICTS.has(verdict)) {
     return false;
   }
-  scan.found.push({ node, verdict, part, reason: reasonFor(known, query, verdict) });
+  const basis = provingFacts(known, query, verdict);
+  if (basis === undefined) {
+    return false;
+  }
+  scan.found.push({ node, verdict, part, reason: reasonFor(basis, query, verdict) });
   return true;
 }
 
@@ -123,11 +137,12 @@ function unitChecks(tree, flow) {
  * counts as an integer only when every declaration of it in the unit has an integer type.
  * `looseBooleans` (Python, where `True == 1`) leaves `==` against a boolean undecided.
  */
-export function decidedConditions(source, { looseBooleans = false } = {}) {
+export function decidedConditions(source, { looseBooleans = false, kotlin = false } = {}) {
   const types = declaredTypes(source);
   const scope = {
     integers: integerNames(source),
     looseBooleans,
+    kotlin,
     types,
     enums: enumConstants(source, types),
   };

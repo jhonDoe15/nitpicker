@@ -1093,7 +1093,7 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   condition that the guards before it in the same function already decide. Reported: an `if`,
   `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
   always true or always false given an earlier `if` that returned, threw, broke or continued, the
-  `if` or `else` branch it sits in, the test of the loop it sits in, the `case` of a `switch` over a variable it sits in, the branch of a ternary it sits in, a function it
+  `if` or `else` branch it sits in, the test of the loop it sits in, the `case` of a `switch` over a variable it sits in, an earlier `node:assert` call (`assert(c)`, `assert.ok(c)`, `assert.strictEqual(x, literal)`) or call of a project function with an `asserts c` signature, the branch of a ternary it sits in, a function it
   sits in (for names that are never reassigned), a `const`/`let` initialised or assigned a literal
   until it is written again, or the operands before it in
   the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that

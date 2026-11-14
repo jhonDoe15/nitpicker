@@ -75,7 +75,7 @@ members is not reported.
   expression or `and`/`or` operand that the guards before it in the same function decide fails,
   when a solver proves it always true (a redundant check) or always false (dead code). The guards
   are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
-  `continue`, the arms of a `match` over literal patterns, the left side of `and` and `or`, the bounds of a `for i in range(...)` loop, the
+  `continue`, an `assert` (which only removes a redundant check), the arms of a `match` over literal patterns, the left side of `and` and `or`, the bounds of a `for i in range(...)` loop, the
   branches of a conditional expression, and facts about names a lambda or nested function captures
   when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
   is a module name, forgets what was known, and arithmetic is an opaque value.
