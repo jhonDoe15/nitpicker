@@ -1,25 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-lint-output-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 function stagedTree(files: Readonly<Record<string, string>>): string {
-  const staged = mkdtempSync(path.join(tmpdir(), 'nitpicker-lint-output-'));
-  roots.push(staged);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(staged, name)), { recursive: true });
-    writeFileSync(path.join(staged, name), text);
-  }
-  return staged;
+  return trees.tree(files);
 }
 
 type Block = {

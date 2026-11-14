@@ -1,25 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../../test-support/temporary-trees.mts';
 import { type XmlElement, parseXml } from '../../../../../shared/values/xml.mts';
 import type { ToolchainContext } from '../../typed/toolchain-types.mts';
 import { jdkRequirements, toolchainJdkHome } from './toolchain-jdk.mts';
 
-const homes: string[] = [];
+const trees = temporaryTrees('nitpicker-toolchains-');
 
 function contextOf(home: string): ToolchainContext {
   return { projectRoot: '/nowhere', environment: {}, home, maven: '/nonexistent/mvn' };
 }
 
 function mavenProject(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-toolchains-project-'));
-  homes.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return trees.tree(files);
 }
 
 function entry(version: string, vendor: string, jdkHome: string): string {
@@ -28,22 +22,14 @@ function entry(version: string, vendor: string, jdkHome: string): string {
 }
 
 function userHome(toolchains: string): string {
-  const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-toolchains-'));
-  homes.push(home);
-  mkdirSync(path.join(home, '.m2'));
-  writeFileSync(path.join(home, '.m2', 'toolchains.xml'), `<toolchains>${toolchains}</toolchains>`);
-  return home;
+  return trees.tree({ '.m2/toolchains.xml': `<toolchains>${toolchains}</toolchains>` });
 }
 
 function project(build: string): XmlElement {
   return parseXml(`<project><build><plugins>${build}</plugins></build></project>`);
 }
 
-afterEach(() => {
-  for (const home of homes.splice(0)) {
-    rmSync(home, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 describe('the JDK the build selects', () => {
   it('reads the requirement of the toolchains plugin, of its execution or of the compiler plugin', () => {

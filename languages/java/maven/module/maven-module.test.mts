@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { buildAndTest } from '../quick/maven-test-phase.mts';
 import { readReactor } from '../maven-project.mts';
@@ -11,21 +11,14 @@ import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { checkoutModulePath as untypedCheckoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-maven-manifest-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 function singleModule(): ModuleDescription {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-manifest-'));
-  roots.push(root);
-  writeFileSync(
-    path.join(root, 'pom.xml'),
-    '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
-  );
+  const root = trees.tree({
+    'pom.xml': '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
+  });
   const [module] = readReactor(
     root,
     `<?xml version="1.0"?>

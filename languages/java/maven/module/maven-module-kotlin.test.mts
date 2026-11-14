@@ -1,26 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
 import { readReactor } from '../maven-project.mts';
 import type { ModuleDescription } from '../typed/module-description.mts';
 
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-maven-kotlin-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 function moduleWith(build: string, directories: readonly string[]): ModuleDescription {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-kotlin-'));
-  roots.push(root);
-  writeFileSync(
-    path.join(root, 'pom.xml'),
-    '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
-  );
+  const root = trees.tree({
+    'pom.xml': '<project><groupId>demo</groupId><artifactId>shop</artifactId></project>',
+  });
   for (const directory of directories) {
     mkdirSync(path.join(root, directory), { recursive: true });
   }

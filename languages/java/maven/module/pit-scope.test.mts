@@ -1,26 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
+import { u16, utf8 } from '../test-support/class-constants.mts';
 import { pitRunTargets, scopedPitTargets } from './pit-scope.mts';
 
-const roots: string[] = [];
-
-function utf8(text: string): Buffer {
-  const bytes = Buffer.from(text, 'utf8');
-  const header = Buffer.alloc(3);
-  header[0] = 1;
-  header.writeUInt16BE(bytes.length, 1);
-  return Buffer.concat([header, bytes]);
-}
-
-function u16(...values: number[]): Buffer {
-  const buffer = Buffer.alloc(2 * values.length);
-  for (const [index, value] of values.entries()) {
-    buffer.writeUInt16BE(value, 2 * index);
-  }
-  return buffer;
-}
+const trees = temporaryTrees('nitpicker-pit-scope-');
 
 function classFile(internalName: string, sourceFile: string): Buffer {
   return Buffer.concat([
@@ -38,24 +22,14 @@ function classFile(internalName: string, sourceFile: string): Buffer {
 }
 
 function project(files: Readonly<Record<string, string | Buffer>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-pit-scope-'));
-  roots.push(root);
-  for (const [name, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), content);
-  }
-  return root;
+  return trees.tree(files);
 }
 
 function compiled(name: string, sourceFile: string): Record<string, Buffer> {
   return { [`classes/${name}.class`]: classFile(name, sourceFile) };
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 describe('scopedPitTargets', () => {
   function targetsOf(

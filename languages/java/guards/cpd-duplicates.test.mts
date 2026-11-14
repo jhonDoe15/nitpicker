@@ -62,6 +62,18 @@ const TEST_A = 'src/test/java/demo/ATest.java';
 const TEST_B = 'src/test/java/demo/BTest.java';
 const options = (root: string) => ({ projectRoot: root, testRoots: ['src/test/java'] });
 
+function writeMainDuplication(reportRoot: string): void {
+  writeFileSync(
+    path.join(reportRoot, 'cpd.xml'),
+    report(
+      duplication(8, [
+        [MAIN_A, 2, 9],
+        [MAIN_B, 2, 9],
+      ]),
+    ),
+  );
+}
+
 describe('isAccessorOnly', () => {
   it('treats getters, setters, fields and constructors that only assign as boilerplate', () => {
     const entity = `@Entity
@@ -296,15 +308,7 @@ describe('readCpdFindings', () => {
 
   it('marks a jscpd clone of the same lines as covered, in either order', () => {
     const { root, reportRoot } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
-    writeFileSync(
-      path.join(reportRoot, 'cpd.xml'),
-      report(
-        duplication(8, [
-          [MAIN_A, 2, 9],
-          [MAIN_B, 2, 9],
-        ]),
-      ),
-    );
+    writeMainDuplication(reportRoot);
     const jscpd = (first: string, second: string, start: number) => ({
       first: { file: first, line: start },
       second: { file: second, line: start },
@@ -327,15 +331,7 @@ describe('readCpdFindings', () => {
     ).join('\n');
     const table = (name: string) => `enum ${name} {\n${rows}\n    ;\n}\n`;
     const { root, reportRoot } = project({ [MAIN_A]: table('A'), [MAIN_B]: table('B') });
-    writeFileSync(
-      path.join(reportRoot, 'cpd.xml'),
-      report(
-        duplication(8, [
-          [MAIN_A, 2, 9],
-          [MAIN_B, 2, 9],
-        ]),
-      ),
-    );
+    writeMainDuplication(reportRoot);
     const jscpd = { first: { file: MAIN_A, line: 2 }, second: { file: MAIN_B, line: 2 }, lines: 8 };
 
     expect({
@@ -367,15 +363,7 @@ describe('readCpdFindings', () => {
 
   it('covers no jscpd clone in a module where CPD failed, even with a stale report', () => {
     const { root, reportRoot } = project({ [MAIN_A]: sourceWith('A'), [MAIN_B]: sourceWith('B') });
-    writeFileSync(
-      path.join(reportRoot, 'cpd.xml'),
-      report(
-        duplication(8, [
-          [MAIN_A, 2, 9],
-          [MAIN_B, 2, 9],
-        ]),
-      ),
-    );
+    writeMainDuplication(reportRoot);
     writeFileSync(path.join(reportRoot, 'cpd-failed.txt'), '1\nboom\n');
 
     const covered = coveredByCpd([{ reportRoot }], root);

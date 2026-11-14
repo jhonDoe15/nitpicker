@@ -1,22 +1,16 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { archunitMatcher } from '../maven-tests.mts';
 import { copyTestResults, requireTestngRun } from './maven-test-results.mts';
 
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-maven-results-');
 const since = Date.now() - 2000;
 const LONG_AGO = new Date(2020, 0, 1);
 
 function tree(files: Readonly<Record<string, string>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-results-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return trees.tree(files);
 }
 
 function stale(directory: string, name: string): void {
@@ -32,11 +26,7 @@ function copy(module: unknown, reportDir: string): void {
   copyTestResults({ module, reportDir, since, isArchunit: archunitMatcher() });
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 describe('copyTestResults', () => {
   it('copies fresh surefire and failsafe reports to their own task folders', () => {
