@@ -13,7 +13,12 @@ import { byText } from '../../../shared/text-order/by-text.mjs';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
 import type { ReportEntry } from '../../../shared/values/findings.mts';
 import type { Analyzer } from '../../../shared/values/analyzers.mts';
-import type { MonorepoCli, MonorepoPlan, PlanProject } from '../project-types.mts';
+import type {
+  MonorepoCli,
+  MonorepoPlan,
+  PlanProject,
+  SelectionCli,
+} from '../project-types.mts';
 
 const enabled: (analyzers: readonly Analyzer[], config: NitpickerConfig) => readonly Analyzer[] =
   applyDisable;
@@ -21,7 +26,7 @@ const enabled: (analyzers: readonly Analyzer[], config: NitpickerConfig) => read
 type BaseQuery = {
   readonly repositoryRoot: string;
   readonly configuredBase: string | undefined;
-  readonly cli: MonorepoCli;
+  readonly cli: SelectionCli;
 };
 
 export function comparisonBase({ repositoryRoot, configuredBase, cli }: BaseQuery): {

@@ -1,4 +1,5 @@
 import { textOf } from '../../shared/values/readers.mts';
+import { PROJECTS_USAGE } from '../projects/command/projects-arguments.mts';
 
 type Row = readonly [name: string, text: string];
 
@@ -16,6 +17,7 @@ export const COMMANDS: readonly Row[] = [
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
   ['nitpicker changelog', 'Print what changed in a version, from the changelog of the package.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
+  ['nitpicker projects', 'List the projects of a monorepo and the ones a run would check.'],
   ['nitpicker explain', 'Print what the rule reference says about the rules named.'],
   ['nitpicker rules', 'List the rules the preset of the project reports.'],
 ];
@@ -96,6 +98,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   CACHE_PUBLISH_USAGE,
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
+  PROJECTS_USAGE,
   'nitpicker explain <tool/rule>...',
   'nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
 ];

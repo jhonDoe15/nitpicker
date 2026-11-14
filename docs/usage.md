@@ -733,6 +733,7 @@ nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>] [--help]
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
+nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]
 nitpicker explain <tool/rule>...
 nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
 ```
@@ -877,6 +878,8 @@ The other commands:
   (marked `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+- `nitpicker projects`: list the projects of a [monorepo](#monorepos) and the ones a run would
+  check, without running them; see [Plan the projects of a run](#plan-the-projects-of-a-run).
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
@@ -2100,6 +2103,54 @@ Monorepo: 3 projects listed in "projects" of nitpicker.config.json.
 ...
 Monorepo summary: 1 failed, 1 passed, 1 skipped (3 projects)
 ```
+
+### Plan the projects of a run
+
+`nitpicker projects` prints every project with its preset, where it comes from (the `projects`
+list, a workspace declaration) and whether the change selects it, with the reason. It runs no
+analyzer. It takes `--base`, `--all` and `--project` as a run does, and selects the same projects:
+
+```
+3 projects detected, 2 selected by the change against origin/main:
+  skip packages/docs (typescript; package.json workspaces): no changed files
+  run  packages/ui (typescript; package.json workspaces): 1 changed file
+  run  packages/web (typescript; package.json workspaces): depends on packages/ui
+```
+
+`--json` prints the same as one JSON object: `matrix` holds `{"include": [{"project", "preset"}]}`
+for the selected projects, ready for a CI job matrix, and `projects` holds every project with
+`path`, `preset`, `origin`, `selected` and `reason`. Outside a monorepo it lists the one project.
+
+To run one CI job per selected project, compute the plan in one job and fan out:
+
+```yaml
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: echo "matrix=$(npx nitpicker projects --base origin/main --json | jq -c .matrix)" >> "$GITHUB_OUTPUT"
+  gate:
+    needs: plan
+    if: fromJSON(needs.plan.outputs.matrix).include[0] != null
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - run: npx nitpicker --base origin/main --project ${{ matrix.project }}
+```
+
+A job that runs one project with `--project` still checks the repository policy (see
+[The set of projects is policy](#the-set-of-projects-is-policy)).
 
 ### Reports and exit code
 

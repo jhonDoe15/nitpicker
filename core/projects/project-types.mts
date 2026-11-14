@@ -63,6 +63,11 @@ export type RepositoryPolicy = {
 
 export type MonorepoCli = ConfiguredCli & { readonly singleProject?: boolean };
 
+export type SelectionCli = {
+  readonly options: Pick<CliOptions, 'all' | 'baseRef' | 'staged' | 'projectPaths'>;
+  readonly environment: NodeJS.ProcessEnv;
+};
+
 export type ProjectCli = {
   readonly currentProjectRoot: string;
   readonly configOverlay: ProjectOverlay | undefined;

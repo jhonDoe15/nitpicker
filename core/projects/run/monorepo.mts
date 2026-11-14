@@ -2,11 +2,9 @@ import path from 'node:path';
 import { policyAcceptance } from '../../command/policy-review/policy-acceptance.mts';
 import { clearDiffReports, outputRootFor } from '../../diff/reporting/reporters.mts';
 import { clearSnapshotReports } from '../../snapshot/reporters.mts';
-import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
 import { reportFolder } from '../plan/project-entry.mjs';
-import { basePlanOf, planInputsChanged } from '../policy/base-plan.mjs';
 import {
   asProjectLoosenings,
   projectSetLoosenings,
@@ -20,22 +18,14 @@ import {
 import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/combined-summary.mjs';
 import { projectHeading, renderPlan, renderSummary } from '../report/console.mjs';
 import { outcomeOf } from '../report/outcome.mjs';
-import { changedFiles } from '../selection/changed-files.mjs';
-import { dependencyGraph } from '../selection/dependencies/graph.mts';
-import { selectProjects } from '../selection/select-projects.mts';
-import {
-  analyzersByProject,
-  comparisonBase,
-  rootConfigFiles,
-  toolErrorsOf,
-  unlistedFolders,
-} from './context.mts';
+import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
   rejectPathScope,
   rejectWholeRunOptions,
   undeclaredHint,
   unlistedHint,
 } from './messages.mjs';
+import { comparisonOf, selectionOf } from './selection-plan.mts';
 import { enclosingRun, requestsProjects, singleMode } from './single-mode.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
@@ -46,7 +36,6 @@ import type {
   ProjectCli,
   ProjectOutcome,
   ProjectRow,
-  ProjectSelection,
   RepositoryPolicy,
   RunProject,
 } from '../project-types.mts';
@@ -61,7 +50,6 @@ type RunContext = {
   readonly analyzers: Analyzers;
 };
 type Extras = { readonly options: object; readonly cli: ProjectCli };
-type Chosen = { readonly selection: readonly ProjectSelection[]; readonly outside: unknown };
 type Planned = { readonly plan: MonorepoPlan; readonly files: readonly string[] };
 type Inspection = {
   readonly files: readonly string[];
@@ -77,62 +65,10 @@ const inspect: (query: {
 }) => Inspection = inspectRepository;
 const memberOf: (plan: MonorepoPlan, directory: string | undefined) => PlanProject | undefined =
   memberProjectOf;
-const basePlanAt: (query: {
-  readonly repositoryRoot: string;
-  readonly prefix: string;
-  readonly mergeBaseSha: string;
-}) => { readonly plan?: MonorepoPlan; readonly error?: unknown } = basePlanOf;
 
 function clearReports(reportRoot: string): void {
   clearDiffReports(reportRoot);
   clearSnapshotReports(reportRoot);
-}
-
-function comparisonOf(plan: MonorepoPlan, cli: MonorepoCli): Comparison {
-  if (cli.options.all) {
-    return { changed: [] };
-  }
-  const { repositoryRoot } = plan;
-  const { base, mergeBaseSha } = comparisonBase({
-    repositoryRoot,
-    configuredBase: plan.rootConfig.base,
-    cli,
-  });
-  const changed: readonly string[] = changedFiles({ repositoryRoot, mergeBaseSha });
-  const { plan: basePlan, error } =
-    planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) === true
-      ? basePlanAt({ ...plan, mergeBaseSha })
-      : { plan, error: undefined };
-  return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
-}
-
-function choose(plan: MonorepoPlan, cli: MonorepoCli, comparison: Comparison): Chosen {
-  const requested: readonly string[] = (cli.options.projectPaths ?? []).map(normalizeProjectPath);
-  const byChanges = !cli.options.all && requested.length === 0;
-  const projectPaths = plan.projects.map(({ path: folder }) => folder);
-  return selectProjects({
-    projects: plan.projects,
-    changed: byChanges ? comparison.changed : [],
-    graph: byChanges ? dependencyGraph(plan.root, projectPaths) : new Map(),
-    prefix: plan.prefix,
-    requested,
-    all: cli.options.all,
-    rootConfigFiles: rootConfigFiles(plan),
-  });
-}
-
-function withAnalyzers(
-  selection: readonly ProjectSelection[],
-  analyzers: Analyzers,
-): readonly ProjectSelection[] {
-  if (analyzers.size === 0) {
-    return selection;
-  }
-  return selection.map((entry) =>
-    entry.selected && analyzers.get(entry.path)?.length === 0
-      ? { ...entry, selected: false, reason: 'has none of the requested analyzers' }
-      : entry,
-  );
 }
 
 function runSelected(
@@ -233,14 +169,7 @@ function prepare(plan: MonorepoPlan, cli: MonorepoCli): Prepared {
   const analyzers = analyzersByProject(plan, cli);
   clearStaleProjectReports({ outputRoot, plan, clearReports });
   clearReports(outputRoot);
-  const comparison = comparisonOf(plan, cli);
-  const { selection, outside } = choose(plan, cli, comparison);
-  const chosen = withAnalyzers(selection, analyzers);
-  const rows = plan.projects.flatMap((project, index) => {
-    const entry = chosen[index];
-    return entry === undefined ? [] : [{ project, selection: entry }];
-  });
-  return { outputRoot, analyzers, comparison, outside, rows };
+  return { outputRoot, analyzers, ...selectionOf(plan, cli, analyzers) };
 }
 
 function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): ExitCode {
