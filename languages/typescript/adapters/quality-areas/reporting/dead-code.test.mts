@@ -60,8 +60,8 @@ describe('dependency findings', () => {
   it('keys an entry by package name so a version bump is not a new finding', () => {
     const [unused] = findings;
 
-    expect(unused.identity).toBe('name:left-pad|occurrence:1');
-    expect(unused.location).toEqual({ line: 14, column: 5 });
+    expect(unused?.identity).toBe('name:left-pad|occurrence:1');
+    expect(unused?.location).toEqual({ line: 14, column: 5 });
   });
 
   it('counts a name listed twice as two entries', () => {

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
+import type { Finding } from '../../static-checks/shared.mts';
+import { linkSentence } from '../../test-runners/typed/link-sentence.mts';
+import { testOptions } from '../../test-runners/typed/test-options.mts';
+import type { CrapReport } from '../typed/reporting.mts';
+import type { TestReport } from '../../test-runners/typed/runner-types.mts';
 import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
 import { mutationSkipFor } from '../runners/skips/mutation-skips.mts';
 import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mts';
@@ -13,6 +17,14 @@ import {
   unhandledErrorText,
   withSnapshotAdvice,
 } from './failure-lines.mts';
+
+function nonEmpty<T>(items: readonly T[]): [T, ...T[]] {
+  const [first, ...rest] = items;
+  if (first === undefined) {
+    throw new Error('Expected at least one item');
+  }
+  return [first, ...rest];
+}
 
 const rule = '⎯⎯⎯⎯⎯⎯⎯';
 const unhandledOutput = [
@@ -126,7 +138,7 @@ describe('unhandled errors in the Vitest output', () => {
   it('cuts a long message and counts further errors', () => {
     const long = 'x'.repeat(250);
     const output = `${rule} Uncaught Exception ${rule}\n${long}\n${rule} Unhandled Error ${rule}\nsecond`;
-    const errors = unhandledErrors(output);
+    const errors = nonEmpty(unhandledErrors(output));
 
     expect(errors.map(({ kind }) => kind)).toEqual(['uncaught exception', 'unhandled error']);
     expect(errors[0].message).toBe(`${'x'.repeat(200)}…`);
@@ -137,11 +149,12 @@ describe('unhandled errors in the Vitest output', () => {
 
   it('becomes a tool error that names the file, the message and the fix', () => {
     const findings = coverageFailureFindings(
-      { analyzerName: 'coverage', projectRoot: '/p' },
+      testOptions({ analyzerName: 'coverage', projectRoot: '/p' }),
       {
         report: { numFailedTests: 0, testResults: [] },
         result: { status: 1, stdout: '', stderr: unhandledOutput },
         runnerName: 'Vitest',
+        precedingCommands: undefined,
       },
     );
 
@@ -176,11 +189,25 @@ describe('failures of a base snapshot', () => {
       },
     ],
   };
-  const findingsOf = ({ report, snapshot, runnerName }) =>
-    coverageFailureFindings(
-      { analyzerName: 'coverage', projectRoot: '/p', snapshot },
-      { report, result: { status: 1, stdout: '', stderr: '' }, runnerName },
+  function findingsOf({
+    report,
+    snapshot,
+    runnerName,
+  }: {
+    readonly report: TestReport;
+    readonly snapshot: 'base' | 'head';
+    readonly runnerName: string;
+  }): Finding[] {
+    return coverageFailureFindings(
+      testOptions({ analyzerName: 'coverage', projectRoot: '/p', snapshot }),
+      {
+        report,
+        result: { status: 1, stdout: '', stderr: '' },
+        runnerName,
+        precedingCommands: undefined,
+      },
     );
+  }
 
   it.each(['Vitest', 'Jest', 'Mocha', 'node:test'])(
     'is a tests-failed note naming the failing tests for %s',
@@ -206,7 +233,7 @@ describe('failures of a base snapshot', () => {
   it('keeps the instruction wording for the head', () => {
     const [finding] = findingsOf({ report: failedReport, snapshot: 'head', runnerName: 'Jest' });
 
-    expect(finding.message.split('\n')[0]).toBe(
+    expect(finding?.message.split('\n')[0]).toBe(
       '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
     );
   });
@@ -226,7 +253,7 @@ describe('failures of a base snapshot', () => {
 
     const [finding] = findingsOf({ report, snapshot: 'base', runnerName: 'Vitest' });
 
-    expect([finding.rule, finding.message]).toEqual([
+    expect([finding?.rule, finding?.message]).toEqual([
       'tests-not-run',
       [
         '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
@@ -291,17 +318,17 @@ describe('unknown coverage text', () => {
   });
 
   it('reaches the TypeScript CRAP findings', () => {
-    const report = (source) => ({
-      functions: [{ source, function: 'greet', lines: { start: 1, end: 3 }, crap: null }],
-    });
+    function report(source: string): CrapReport {
+      return { functions: [{ source, function: 'greet', lines: { start: 1, end: 3 } }] };
+    }
 
     const [domain] = normalizeCrap(report('src/main/features/greeting/domain/greet.ts'), 'crap');
     const [root] = normalizeCrap(report('src/main/composition-root.ts'), 'crap');
 
-    expect(domain.message).toBe(
+    expect(domain?.message).toBe(
       'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/features/greeting/domain/greet.ts"],"function":"greet","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    expect(root.message).toBe(
+    expect(root?.message).toBe(
       'greet has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/composition-root.ts"],"function":"greet","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -329,8 +356,8 @@ describe('mutants hidden by a Stryker comment', () => {
       ({ rule: id }) => id === 'mutant-ignored',
     );
 
-    expect(ignored.classification).toBe('enforceable');
-    expect(ignored.message).toBe(
+    expect(ignored?.classification).toBe('enforceable');
+    expect(ignored?.message).toBe(
       'Ignored ConditionalExpression at column 7: an ignore comment hides this code from mutation testing. Remove the comment and test the code; an ignore comment is not an exception route. If this is intended, add {"rule":"mutant-ignored","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });

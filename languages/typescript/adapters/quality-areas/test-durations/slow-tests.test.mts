@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -7,8 +7,13 @@ import {
   useGitFixtures,
 } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { changedTestLines, slowTestFindings } from './slow-tests.mts';
+import type { SlowTestContext } from './slow-tests.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { writeFileTree } from '../../test-support/file-tree.mts';
 
-const temporaryRoots = [];
+type Duration = readonly [string, number, number];
+
+const temporaryRoots: string[] = [];
 const TEST_FILE = [
   "import { expect, it } from 'vitest';",
   "it('waits', async () => {",
@@ -27,17 +32,18 @@ afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function projectWith(files) {
+function projectWith(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-slow-tests-'));
   temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
+  writeFileTree(root, files);
   return root;
 }
 
-function report(projectRoot, file, durations) {
+function report(
+  projectRoot: string,
+  file: string,
+  durations: readonly Duration[],
+): Parameters<typeof slowTestFindings>[0] {
   return {
     testResults: [
       {
@@ -52,7 +58,11 @@ function report(projectRoot, file, durations) {
   };
 }
 
-function findings(file, durations, context = {}) {
+function findings(
+  file: string,
+  durations: readonly Duration[],
+  context: Partial<SlowTestContext> = {},
+): Finding[] {
   const projectRoot = projectWith({ [file]: TEST_FILE });
   return slowTestFindings(report(projectRoot, file, durations), {
     projectRoot,
@@ -91,7 +101,7 @@ describe('tests over their time budget', () => {
   });
 
   it('stay baselined when the change did not touch them or their file', () => {
-    const untouched = new Map([['test/a.test.ts', [[9, 9]]]]);
+    const untouched = new Map<string, [number, number][]>([['test/a.test.ts', [[9, 9]]]]);
 
     expect(findings('test/a.test.ts', [['waits', 7200, 2]], { changedLines: untouched })).toEqual(
       [],
@@ -151,6 +161,6 @@ describe('lines of the test files the change wrote', () => {
     expect(changedTestLines({ baselineRoot, projectRoot: root })).toEqual(
       new Map([['test/a.test.ts', [[3, 3]]]]),
     );
-    expect(changedTestLines({ projectRoot: root })).toBeUndefined();
+    expect(changedTestLines({ baselineRoot: undefined, projectRoot: root })).toBeUndefined();
   });
 });

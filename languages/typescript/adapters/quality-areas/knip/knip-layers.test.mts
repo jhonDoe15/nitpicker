@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
+import type { KnipConfig } from '../typed/policy.mts';
 
 const NITPICKER = {
   $schema: 'nitpicker',
@@ -23,7 +24,11 @@ const PROJECT = {
   treatConfigHintsAsErrors: true,
 };
 
-function layered(precedence, project = PROJECT, nitpicker = NITPICKER) {
+function layered(
+  precedence: string[],
+  project: KnipConfig = PROJECT,
+  nitpicker: KnipConfig = NITPICKER,
+): KnipConfig {
   return layeredKnipConfig(nitpicker, { precedence, config: project });
 }
 
@@ -63,7 +68,7 @@ describe('layered knip config', () => {
 
   it('merges ignored issue types per pattern', () => {
     const nitpicker = { ...NITPICKER, ignoreIssues: { 'src/a.ts': ['types'] } };
-    expect(layered(['project'], PROJECT, nitpicker).ignoreIssues).toEqual({
+    expect(layered(['project'], PROJECT, nitpicker)['ignoreIssues']).toEqual({
       'src/a.ts': ['types', 'exports'],
     });
   });
@@ -76,14 +81,14 @@ describe('layered knip config', () => {
       },
     };
     const config = layered(['project', 'nitpicker'], project);
-    expect(config.ignore).toEqual(['coverage/**', 'src/old/**']);
-    expect(config.workspaces).toEqual({ 'packages/*': { entry: ['src/cli.ts'] } });
-    expect(writtenKnipConfig({ ...config, vitest: false }).workspaces).toEqual({
+    expect(config['ignore']).toEqual(['coverage/**', 'src/old/**']);
+    expect(config['workspaces']).toEqual({ 'packages/*': { entry: ['src/cli.ts'] } });
+    expect(writtenKnipConfig({ ...config, vitest: false })['workspaces']).toEqual({
       '.': {
-        entry: config.entry,
-        project: config.project,
-        ignore: config.ignore,
-        ignoreDependencies: config.ignoreDependencies,
+        entry: config['entry'],
+        project: config['project'],
+        ignore: config['ignore'],
+        ignoreDependencies: config['ignoreDependencies'],
         vitest: false,
       },
       'packages/*': { entry: ['src/cli.ts'] },

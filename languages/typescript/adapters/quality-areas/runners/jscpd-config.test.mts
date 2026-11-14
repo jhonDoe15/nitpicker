@@ -3,16 +3,21 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../../preset/head-policy.mjs';
+import {
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from '../../test-runners/typed/head-policy-views.mts';
+import { testOptions } from '../../test-runners/typed/test-options.mts';
+import type { Finding } from '../../static-checks/shared.mts';
 import { runDuplicates } from './duplicates/duplicates.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function analyze(precedence, projectConfig) {
+function analyze(precedence: string[], projectConfig: object): Finding[] {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-jscpd-layers-'));
   roots.push(root);
   cpSync(
@@ -24,12 +29,14 @@ function analyze(precedence, projectConfig) {
   const policy = resolveHeadPolicy({ tools: { jscpd: { precedence } } }, root);
   return withHeadPolicyFile(policy, (policyFile) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
-    return runDuplicates({
-      projectRoot: root,
-      policyRoot: PACKAGE_ROOT,
-      liveProjectRoot: PACKAGE_ROOT,
-      analyzerName: 'duplicates',
-    });
+    return runDuplicates(
+      testOptions({
+        projectRoot: root,
+        policyRoot: PACKAGE_ROOT,
+        liveProjectRoot: PACKAGE_ROOT,
+        analyzerName: 'duplicates',
+      }),
+    );
   });
 }
 

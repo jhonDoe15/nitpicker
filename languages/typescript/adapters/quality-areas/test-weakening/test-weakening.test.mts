@@ -10,6 +10,9 @@ import { normalizeMutation } from '../reporting/tests.mts';
 import { strykerRunConfig } from '../runners/stryker/stryker-config.mts';
 import { runScopedMutation } from './scoped-mutation.mts';
 import { testedSourceModules } from './tested-modules.mts';
+import { testOptions } from '../../test-runners/typed/test-options.mts';
+import type { QualityAreaOptions } from '../typed/area-types.mts';
+import type { Mutant, MutationReport } from '../typed/mutation.mts';
 
 const CLASSIFY_TEST = [
   "import { expect, it } from 'vitest';",
@@ -23,11 +26,14 @@ const CLASSIFY_TEST = [
 
 const { createGitRepository } = useGitFixtures();
 
-function tested(modules, skipped = []) {
+function tested(
+  modules: string[],
+  skipped: string[] = [],
+): { modules: string[]; skipped: string[] } {
   return { modules, skipped };
 }
 
-function escaped(status, line) {
+function escaped(status: string, line: number): Mutant {
   return {
     status,
     mutatorName: 'ConditionalExpression',
@@ -36,7 +42,15 @@ function escaped(status, line) {
   };
 }
 
-function snapshots({ headChanges = {}, removed = [], baseFiles = {} }) {
+function snapshots({
+  headChanges = {},
+  removed = [],
+  baseFiles = {},
+}: {
+  readonly headChanges?: Readonly<Record<string, string>>;
+  readonly removed?: readonly string[];
+  readonly baseFiles?: Readonly<Record<string, string>>;
+}): QualityAreaOptions {
   const { root } = createGitRepository({
     ...baseFiles,
     'src/classify.ts': "export const classify = (n: number) => (n < 5 ? 'low' : 'high');\n",
@@ -59,7 +73,7 @@ function snapshots({ headChanges = {}, removed = [], baseFiles = {} }) {
   }
   fixtureGit(root, ['add', '-A', '--', ':!.base-worktree']);
   fixtureGit(root, ['-c', 'commit.gpgsign=false', 'commit', '-q', '--allow-empty', '-m', 'head']);
-  return { snapshot: 'head', baselineRoot, projectRoot: root };
+  return testOptions({ snapshot: 'head', baselineRoot, projectRoot: root });
 }
 
 describe('production modules of the changed tests', () => {
@@ -235,24 +249,45 @@ describe('production modules of the changed tests', () => {
 
     expect(testedSourceModules({ ...options, snapshot: 'base' }, layout)).toEqual(tested([]));
     expect(
-      testedSourceModules({ snapshot: 'head', projectRoot: options.projectRoot }, layout),
+      testedSourceModules(
+        testOptions({ snapshot: 'head', projectRoot: options.projectRoot }),
+        layout,
+      ),
     ).toEqual(tested([]));
   });
 });
 
 describe('the mutation run of a change', () => {
-  function fakeStryker(reports) {
-    const calls = [];
+  function fakeStryker(reports: Readonly<Record<string, MutationReport>>): {
+    readonly calls: {
+      readonly snapshot: string;
+      readonly projectRoot: string;
+      readonly targets: readonly string[] | undefined;
+    }[];
+    readonly mutationReport: (
+      options: QualityAreaOptions,
+      targets: readonly string[] | undefined,
+    ) => Promise<{ readonly report: MutationReport }>;
+  } {
+    const calls: {
+      readonly snapshot: string;
+      readonly projectRoot: string;
+      readonly targets: readonly string[] | undefined;
+    }[] = [];
     return {
       calls,
       mutationReport: (options, targets) => {
         calls.push({ snapshot: options.snapshot, projectRoot: options.projectRoot, targets });
-        return Promise.resolve({ report: reports[options.snapshot] });
+        return Promise.resolve({ report: reports[options.snapshot] ?? {} });
       },
     };
   }
 
-  function run(options, stryker, exceptions = []) {
+  function run(
+    options: QualityAreaOptions,
+    stryker: ReturnType<typeof fakeStryker>,
+    exceptions: unknown[] = [],
+  ): ReturnType<typeof runScopedMutation> {
     return runScopedMutation(options, {
       layout,
       exceptions,
@@ -324,7 +359,7 @@ describe('the mutation run of a change', () => {
     expect(
       findings.map(({ rule, path: file, classification }) => [rule, file, classification]),
     ).toEqual([['tested-modules-capped', 'src/m10.ts', 'descriptive']]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       'The changed tests reach more than 10 production modules, so weaker tests were not checked in src/m10.ts, src/unrelated.ts. Run `nitpicker --all` to mutate every module.',
     );
   });
@@ -353,7 +388,9 @@ describe('the mutation run of a change', () => {
       jsonReporter: { fileName: 'reports/quality/mutation/mutation.json' },
     });
     expect(
-      strykerRunConfig(sourceConfig, { snapshot: 'head', targets: undefined, ...files }).checkers,
+      strykerRunConfig(sourceConfig, { snapshot: 'head', targets: undefined, ...files })[
+        'checkers'
+      ],
     ).toEqual(['typescript']);
   });
 });
