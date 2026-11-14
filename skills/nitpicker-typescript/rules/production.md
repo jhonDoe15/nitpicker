@@ -114,6 +114,8 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
   chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
   (`nitpicker/no-io-in-loop`).
+- Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
+  created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

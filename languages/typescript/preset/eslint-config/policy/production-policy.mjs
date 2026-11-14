@@ -113,6 +113,7 @@ function productionGuardRules({ react, security }) {
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-io-in-loop': 'error',
+    'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
     'nitpicker/no-orm-query-logging': 'error',
