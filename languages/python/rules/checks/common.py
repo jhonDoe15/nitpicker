@@ -228,7 +228,11 @@ def root_name(node, through_calls=False):
 
 
 def own_nodes(root):
-    pending = list(ast.iter_child_nodes(root))
+    return walk_statements(ast.iter_child_nodes(root))
+
+
+def walk_statements(statements):
+    pending = list(statements)
     while pending:
         node = pending.pop()
         yield node
