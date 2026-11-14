@@ -7,7 +7,11 @@ export const ANSI = {
   yellow: '\u001B[33m',
 };
 
-export function style(value: string, codes: readonly string[], color: boolean): string {
+export function style(
+  value: string,
+  codes: readonly string[],
+  { color }: { readonly color: boolean },
+): string {
   return color ? `${codes.join('')}${value}${ANSI.reset}` : value;
 }
 

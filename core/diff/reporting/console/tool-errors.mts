@@ -9,11 +9,11 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { singleLine } from '../format/text.mjs';
-import { ANSI, pluralize, style as styled } from './style.mts';
+import { ANSI, pluralize, style } from './style.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
-export { ANSI, pluralize };
+export { ANSI, pluralize, style };
 
 type ErrorGroup = {
   readonly first: ReportEntry;
@@ -35,14 +35,6 @@ const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT
 const DEPENDENCY_SKIP = /^(?<skipped>\S+) skipped: (?<cause>\S+) failed \(see above\)$/u;
 const LISTED_NAMES = 3;
 const SNAPSHOT_ORDER = ['base', 'head'];
-
-export function style(
-  value: string,
-  codes: readonly string[],
-  { color }: { readonly color: boolean },
-): string {
-  return styled(value, codes, color);
-}
 
 export function splitToolErrors(toolErrors: readonly ReportEntry[]): {
   readonly failingTests: ReportEntry[];
