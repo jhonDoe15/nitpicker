@@ -108,10 +108,22 @@ describe('readEffectsFindings', () => {
   });
 
   it('names the Kotlin bounded forms and collection builders in Kotlin files', () => {
-    const messages = read([{ ...loop, fileName: 'Import.kt', kind: 'remote' }], {
-      directory: 'kotlin',
-      kotlin: true,
-    }).map((finding) => finding.message);
+    const messages = read(
+      [
+        { ...loop, fileName: 'Import.kt', kind: 'remote' },
+        {
+          rule: 'AccumulatorCopyInLoop',
+          className: 'shop.Import',
+          fileName: 'Import.kt',
+          line: 20,
+          method: 'Import.fold',
+          detail: 'Import.fold|acc',
+          variable: 'acc',
+          form: 'loop',
+        },
+      ],
+      { directory: 'kotlin', kotlin: true },
+    ).map((finding) => finding.message);
 
     expect(messages).toEqual([
       sentence(
@@ -120,6 +132,12 @@ describe('readEffectsFindings', () => {
         `${PATH} ${PER_ITEM}, one request each.`,
         LOOPS_FINE,
         exception('IoCallInLoop', KOTLIN_FILE),
+      ),
+      sentence(
+        'Build the result once with `map`, `flatMap`, `associate`, `groupBy`, `buildList`, or one mutable',
+        'collection filled in the loop: in `Import.fold()` each loop step copies `acc` into a new collection,',
+        'so the work grows with the square of the list.',
+        exception('AccumulatorCopyInLoop', KOTLIN_FILE),
       ),
     ]);
   });
@@ -251,10 +269,12 @@ describe('withoutCoveredLines', () => {
       at('effects', 'IoCallInLoop', 5),
       at('effects', 'IoCallInLoop', 7),
       at('effects', 'IoCallInLoop', 12, 10),
+      at('effects', 'AccumulatorCopyInLoop', 3),
     ];
 
     expect(withoutCoveredLines(findings).filter(({ tool }) => tool === 'effects')).toEqual([
       at('effects', 'IoCallInLoop', 7),
+      at('effects', 'AccumulatorCopyInLoop', 3),
     ]);
   });
 

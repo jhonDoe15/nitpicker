@@ -22,6 +22,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `ids.forEach(id -> loader.load(id))` is reported (`effects/IoCallInLoop`, with the path of calls), also when the helper
   lives in another module of the build; give the helper the whole list. Writes flushed in steps
   (`if (++n % 50 == 0) { em.flush(); em.clear(); }`) and a batch filled in the loop and queried when full are fine.
+- Accumulators: never rebuild a collection from itself on each step (`all = Stream.concat(all.stream(), ...).toList()`,
+  `byId = new HashMap<>(byId)` in a loop); collect once, or fill one mutable collection (`effects/AccumulatorCopyInLoop`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

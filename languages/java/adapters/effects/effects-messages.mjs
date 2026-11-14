@@ -6,6 +6,15 @@ const BOUNDED = {
   kotlin:
     '`Semaphore.withPermit`, `flatMapMerge(concurrency = n)`, `limitedParallelism(n)` or `chunked(n)`',
 };
+const COLLECTING = {
+  java: [
+    '`collect(Collectors.toList())`, `toMap`, `groupingBy`, `flatMap`,',
+    'or one mutable collection filled in the loop',
+  ].join(' '),
+  kotlin:
+    '`map`, `flatMap`, `associate`, `groupBy`, `buildList`, or one mutable collection filled in the loop',
+};
+
 const ONE_QUERY = '`findAllById`, `saveAll`, `WHERE id IN (...)`';
 const LOOPS_FINE =
   'Paging, polling and retry loops are fine; a loop the rule misjudges (a cursor kept in an object or array, a page count read first) goes in `exceptions`.';
@@ -47,8 +56,17 @@ function loopIo({ method, kind, form, path, store }, language) {
   ].join(' ');
 }
 
+function accumulatorCopy({ method, variable, form }, language) {
+  const step = form === 'reduce' ? 'each `reduce` step' : 'each loop step';
+  return [
+    `Build the result once with ${COLLECTING[language]}: in ${code(`${method}()`)} ${step}`,
+    `copies ${code(variable)} into a new collection, so the work grows with the square of the list.`,
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
+  AccumulatorCopyInLoop: accumulatorCopy,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

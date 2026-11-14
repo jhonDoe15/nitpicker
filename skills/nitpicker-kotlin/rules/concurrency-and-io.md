@@ -29,6 +29,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Helpers count: a helper that reads or writes through a repository or client is a data access too, so
   `ids.forEach { loader.load(it) }` is reported (`effects/IoCallInLoop`, with the path of calls); give the helper the
   whole list.
+- Accumulators: never rebuild a collection from itself on each step (`acc + x` in `fold`, `reduce` or a loop,
+  `acc += x` on a `var` read-only list); use `map`, `flatMap`, `buildList` or one mutable collection
+  (`effects/AccumulatorCopyInLoop`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

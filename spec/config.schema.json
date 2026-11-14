@@ -2290,6 +2290,7 @@
                             "kotlin-source/TimeUnitMismatch",
                             "kotlin-source/UriCreateDynamic",
                             "effects/IoCallInLoop",
+                            "effects/AccumulatorCopyInLoop",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

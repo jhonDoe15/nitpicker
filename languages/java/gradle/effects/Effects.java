@@ -17,6 +17,7 @@ import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.kinds.Summaries;
+import nitpicker.effects.rules.AccumulatorCopy;
 import nitpicker.effects.rules.LoopIo;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -77,6 +78,7 @@ public final class Effects {
     program.io((flow, index) -> flow.insns[index] instanceof MethodInsnNode call
         && summaries.kind(call.owner, call.name, call.desc) != null);
     new LoopIo(program, summaries, report).run();
+    new AccumulatorCopy(program, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {
