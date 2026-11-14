@@ -1,17 +1,10 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { configuredRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './report-module-load-effects.mjs';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
+const tester = configuredRuleTester({
+  languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
 });
-const tester = new RuleTester({ languageOptions: { ecmaVersion: 'latest', sourceType: 'module' } });
 const filename = '/repo/src/main/main.js';
 
 tester.run('report-module-load-effects for style and asset imports', rule, {

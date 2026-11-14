@@ -1,11 +1,11 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-production-console.mjs';
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 const root = '/repo/src/main/composition-root.ts';
 const adapter = '/repo/src/main/features/a/adapters/x.ts';
-const stream = (name) => [{ messageId: 'streamOutsideRoot', data: { stream: name } }];
-const consoleUse = (reference) => [{ messageId: 'consoleCall', data: { reference } }];
+const stream = (name: string) => [{ messageId: 'streamOutsideRoot', data: { stream: name } }];
+const consoleUse = (reference: string) => [{ messageId: 'consoleCall', data: { reference } }];
 const entry = [{ allowStandardStreams: true }];
 
 tester.run('no-production-console', rule, {

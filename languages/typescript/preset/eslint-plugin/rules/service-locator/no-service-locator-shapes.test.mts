@@ -1,9 +1,9 @@
-import { ESLint } from 'eslint';
+import { ESLint, type Linter } from 'eslint';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import { afterAll, describe, expect, it } from 'vitest';
-import { strictConfig } from '../../../eslint-config/strict.mjs';
+import { strictConfig as untypedStrictConfig } from '../../../eslint-config/strict.mjs';
 import { rule } from './no-service-locator.mjs';
 import { rootFileMatcher } from './root-files.mjs';
 import {
@@ -12,8 +12,9 @@ import {
   lookup,
   lookups,
   wrapper,
-} from './test-support/locator-project.mjs';
+} from './test-support/locator-project.mts';
 
+const ts = typescriptApi();
 const { write, tester, typed, remove } = createLocatorProject();
 afterAll(remove);
 
@@ -61,7 +62,7 @@ write(
   ].join('\n'),
 );
 
-const AT_SHAPES = (name) => wrapper(name, MAIL, SHAPES);
+const AT_SHAPES = (name: string) => wrapper(name, MAIL, SHAPES);
 const FROM_SHAPES =
   "import { Holder, Built, Constructed, withDefault, plain, cradled, lazyMailer, castMailer, checkedMailer } from '../shared/shapes';\n";
 const AWILIX = "import { createContainer } from 'awilix';\nconst c = createContainer();\n";
@@ -206,7 +207,7 @@ tester.run('no-service-locator helpers of every shape', rule, {
   ],
 });
 
-function contextFor(code, options = []) {
+function contextFor(code: string, options: unknown[] = []) {
   const source = ts.createSourceFile('src/orders.ts', code, ts.ScriptTarget.Latest);
   const program = {
     getSourceFiles: () => [source],
@@ -219,13 +220,37 @@ function contextFor(code, options = []) {
   return { filename: 'src/orders.ts', options, sourceCode: { parserServices: { program } } };
 }
 
+function severityOf(config: unknown): unknown {
+  if (typeof config !== 'object' || config === null || !('rules' in config)) {
+    return undefined;
+  }
+  const { rules } = config;
+  if (typeof rules !== 'object' || rules === null) {
+    return undefined;
+  }
+  const entry: unknown = Reflect.get(rules, 'nitpicker/no-service-locator');
+  return Array.isArray(entry) ? entry.at(0) : undefined;
+}
+
 function pythonEntryStems() {
   const roots = readFileSync(
     path.resolve(import.meta.dirname, '../../../../../python/rules/environment/roots.py'),
     'utf8',
   );
-  const block = /ENTRY_STEMS = \{([^}]*)\}/u.exec(roots)[1];
-  return [...block.matchAll(/"([^"]+)"/gu)].map(([, stem]) => stem);
+  const block = /ENTRY_STEMS = \{([^}]*)\}/u.exec(roots)?.at(1) ?? '';
+  return [...block.matchAll(/"([^"]+)"/gu)].map(([, stem]) => stem ?? '');
+}
+
+function isConfigs(value: unknown): value is Linter.Config[] {
+  return Array.isArray(value);
+}
+
+function strictConfig(): Linter.Config[] {
+  const configs: unknown = untypedStrictConfig({});
+  if (!isConfigs(configs)) {
+    throw new TypeError('strictConfig did not return a flat config array.');
+  }
+  return configs;
 }
 
 describe('no-service-locator options and scope', () => {
@@ -259,9 +284,8 @@ describe('no-service-locator options and scope', () => {
   });
 
   it('runs on production sources only, not on tests', async () => {
-    const eslint = new ESLint({ overrideConfigFile: true, overrideConfig: strictConfig({}) });
-    const severity = async (file) =>
-      (await eslint.calculateConfigForFile(file))?.rules?.['nitpicker/no-service-locator']?.[0];
+    const eslint = new ESLint({ overrideConfigFile: true, overrideConfig: strictConfig() });
+    const severity = async (file: string) => severityOf(await eslint.calculateConfigForFile(file));
 
     expect([await severity('src/orders.ts'), await severity('src/orders.test.ts')]).toEqual([
       2,
