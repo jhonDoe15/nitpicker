@@ -1,9 +1,22 @@
 import path from 'node:path';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { moduleReferences } from '../model/module-references.mjs';
-import { packageEntryProblem, templateImporterProblem } from './hidden-importers.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { moduleReferences } from '../model/module-references.mts';
+import type { ModuleReference } from '../model/reference-types.mts';
+import type { Project } from '../typed/project-types.mts';
+import { packageEntryProblem, templateImporterProblem } from './hidden-importers.mts';
 
-function couldReach({ reference, from, target }) {
+const ts = typescriptApi();
+
+function couldReach({
+  reference,
+  from,
+  target,
+}: {
+  readonly reference: ModuleReference;
+  readonly from: string;
+  readonly target: string;
+}): boolean {
   const { prefix = '' } = reference;
   if (prefix === '') {
     return true;
@@ -15,11 +28,27 @@ function couldReach({ reference, from, target }) {
   return target.startsWith(directory.slice(0, directory.lastIndexOf('/') + 1));
 }
 
-function loadsDynamically(reference) {
-  return reference.kind === 'dynamic' || reference.kind === 'require';
+function loadsDynamically(reference: ModuleReference): boolean {
+  switch (reference.kind) {
+    case 'dynamic':
+    case 'require':
+      return true;
+    case 'import':
+    case 'export':
+    case 'type-import':
+      return false;
+  }
 }
 
-function referenceProblem({ name, reference, target }) {
+function referenceProblem({
+  name,
+  reference,
+  target,
+}: {
+  readonly name: string;
+  readonly reference: ModuleReference;
+  readonly target: string;
+}): string | undefined {
   if (loadsDynamically(reference) && reference.specifier === undefined) {
     return couldReach({ reference, from: name, target })
       ? `${name} loads a module with a computed path`
@@ -28,9 +57,19 @@ function referenceProblem({ name, reference, target }) {
   return undefined;
 }
 
-function stringPathProblem(project, { name, target, covered }) {
-  const found = [];
-  function visit(node) {
+function stringPathProblem(
+  project: Project,
+  {
+    name,
+    target,
+    covered,
+  }: { readonly name: string; readonly target: string; readonly covered: Set<unknown> },
+): string | undefined {
+  const found: string[] = [];
+  function visit(node: TypeScript.Node | undefined): void {
+    if (node === undefined) {
+      return;
+    }
     if (ts.isStringLiteral(node) && !covered.has(node) && /^\.{1,2}\//u.test(node.text)) {
       found.push(node.text);
     }
@@ -42,11 +81,11 @@ function stringPathProblem(project, { name, target, covered }) {
     : undefined;
 }
 
-function hiddenImporterProblem(project, target) {
+function hiddenImporterProblem(project: Project, target: string): string | undefined {
   return templateImporterProblem(project.projectRoot, target);
 }
 
-export function fileReferenceProblem(project, target) {
+export function fileReferenceProblem(project: Project, target: string): string | undefined {
   const outside =
     packageEntryProblem(project.projectRoot, target) ?? hiddenImporterProblem(project, target);
   if (outside !== undefined) {
@@ -67,9 +106,19 @@ export function fileReferenceProblem(project, target) {
   return undefined;
 }
 
-function namespaceProblem(project, { name, exportName, namespaces }) {
-  const found = [];
-  function visit(node) {
+function namespaceProblem(
+  project: Project,
+  {
+    name,
+    exportName,
+    namespaces,
+  }: { readonly name: string; readonly exportName: string; readonly namespaces: Set<string> },
+): string | undefined {
+  const found: boolean[] = [];
+  function visit(node: TypeScript.Node | undefined): void {
+    if (node === undefined) {
+      return;
+    }
     const isKeyed =
       ts.isElementAccessExpression(node) &&
       ts.isIdentifier(node.expression) &&
@@ -84,21 +133,43 @@ function namespaceProblem(project, { name, exportName, namespaces }) {
   return found.includes(true) ? `${name} reads the export by a string key` : undefined;
 }
 
-function namespacesOf(project, { sourceFile, name, target }) {
+function namespaceNameOf(
+  project: Project,
+  { name, target, reference }: { name: string; target: string; reference: ModuleReference },
+): string | undefined {
+  const { kind, node, specifier } = reference;
+  const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : undefined;
+  return kind === 'import' &&
+    bindings !== undefined &&
+    ts.isNamespaceImport(bindings) &&
+    project.resolve(specifier ?? '', name) === target
+    ? bindings.name.text
+    : undefined;
+}
+
+function namespacesOf(
+  project: Project,
+  {
+    sourceFile,
+    name,
+    target,
+  }: { sourceFile: TypeScript.SourceFile | undefined; name: string; target: string },
+): Set<string> {
   return new Set(
     moduleReferences(sourceFile)
-      .filter(
-        ({ kind, node, specifier }) =>
-          kind === 'import' &&
-          node.importClause?.namedBindings !== undefined &&
-          ts.isNamespaceImport(node.importClause.namedBindings) &&
-          project.resolve(specifier, name) === target,
-      )
-      .map(({ node }) => node.importClause.namedBindings.name.text),
+      .map((reference) => namespaceNameOf(project, { name, target, reference }))
+      .filter((found) => found !== undefined),
   );
 }
 
-function loadProblem(project, { name, references, target }) {
+function loadProblem(
+  project: Project,
+  {
+    name,
+    references,
+    target,
+  }: { readonly name: string; readonly references: ModuleReference[]; readonly target: string },
+): string | undefined {
   const loads = references.find(
     (reference) =>
       (loadsDynamically(reference) || reference.kind === 'type-import') &&
@@ -115,7 +186,10 @@ function loadProblem(project, { name, references, target }) {
     : `${name} names the module in a string`;
 }
 
-export function symbolReferenceProblem(project, { target, exportName }) {
+export function symbolReferenceProblem(
+  project: Project,
+  { target, exportName }: { readonly target: string; readonly exportName: string },
+): string | undefined {
   const hidden = hiddenImporterProblem(project, target);
   if (hidden !== undefined) {
     return hidden;
@@ -139,9 +213,10 @@ export function symbolReferenceProblem(project, { target, exportName }) {
   return undefined;
 }
 
-export function exportsName(project, name, symbolName) {
+export function exportsName(project: Project, name: string, symbolName: string): boolean {
   const checker = project.program.getTypeChecker();
-  const moduleSymbol = checker.getSymbolAtLocation(project.sourceFile(name));
+  const file = project.sourceFile(name);
+  const moduleSymbol = file === undefined ? undefined : checker.getSymbolAtLocation(file);
   return (
     moduleSymbol !== undefined &&
     checker.getExportsOfModule(moduleSymbol).some((symbol) => symbol.name === symbolName)
