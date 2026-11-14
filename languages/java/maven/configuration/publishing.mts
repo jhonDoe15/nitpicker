@@ -1,4 +1,5 @@
-import { childAt } from '../../../../shared/ingest/common.mjs';
+import type { XmlElement } from '../../../../shared/values/xml.mts';
+import { childAt } from '../typed/pom-values.mts';
 const DEPLOY = 'org.apache.maven.plugins:maven-deploy-plugin';
 
 const PUBLISHING_PLUGINS = [
@@ -8,11 +9,14 @@ const PUBLISHING_PLUGINS = [
 ];
 const LIBRARY_PACKAGING = new Set(['jar', 'bundle', 'maven-plugin']);
 
-export function isTrue(text) {
+export function isTrue(text: string | undefined): boolean {
   return text?.trim().toLowerCase() === 'true';
 }
 
-export function isPublished(project, plugins) {
+export function isPublished(
+  project: XmlElement,
+  plugins: ReadonlyMap<string, XmlElement>,
+): boolean {
   const packaging = childAt(project, 'packaging')?.text ?? 'jar';
   const deploys =
     childAt(project, 'distributionManagement') !== undefined ||

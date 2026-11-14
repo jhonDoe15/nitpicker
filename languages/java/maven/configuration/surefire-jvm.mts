@@ -1,21 +1,22 @@
-import { childAt } from '../../../../shared/ingest/common.mjs';
+import type { XmlElement } from '../../../../shared/values/xml.mts';
+import { childAt } from '../typed/pom-values.mts';
 
 const ARGUMENT = /(?:[^\s"']|"[^"]*"?|'[^']*'?)+/gu;
 const QUOTED = /"([^"]*)"?|'([^']*)'?/gu;
 const LATE_REFERENCE = /@\{([^}]*)\}/gu;
 const UNRESOLVED_REFERENCE = /[@$]\{/u;
 
-export function argLineTokens(argLine) {
+export function argLineTokens(argLine: string): string[] {
   return (argLine.match(ARGUMENT) ?? [])
     .map((token) => token.replaceAll(QUOTED, '$1$2'))
     .filter((token) => token !== '');
 }
 
-function entries(element) {
+function entries(element: XmlElement | undefined): [string, string][] {
   return (element?.children ?? []).map((child) => [child.name, child.text ?? '']);
 }
 
-function propertyEntries(element) {
+function propertyEntries(element: XmlElement | undefined): [string, string][] {
   return (element?.children ?? []).map((child) => {
     const name = childAt(child, 'name')?.text;
     return child.name === 'property' && name !== undefined
@@ -24,16 +25,24 @@ function propertyEntries(element) {
   });
 }
 
-function configured(execution, plugin, name) {
+function configured(
+  execution: XmlElement | undefined,
+  plugin: XmlElement | undefined,
+  name: string,
+): XmlElement | undefined {
   return childAt(execution, 'configuration', name) ?? childAt(plugin, 'configuration', name);
 }
 
-export function testJvmArguments(project, plugin, execution) {
+export function testJvmArguments(
+  project: XmlElement,
+  plugin: XmlElement | undefined,
+  execution: XmlElement | undefined,
+): string[] {
   const properties = new Map(entries(childAt(project, 'properties')));
   const argLine = configured(execution, plugin, 'argLine')?.text ?? properties.get('argLine') ?? '';
   const resolved = argLine.replaceAll(
     LATE_REFERENCE,
-    (reference, name) => properties.get(name) ?? reference,
+    (reference: string, name: string) => properties.get(name) ?? reference,
   );
   const systemProperties = [
     ...propertyEntries(configured(execution, plugin, 'systemProperties')),
