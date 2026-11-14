@@ -784,6 +784,8 @@ rule, checked like the linters' fixtures. A linter fixture whose code an own rul
 carries both rules on its `// want` line. `fixtures/stubs` holds minimal stand-ins for zap, zerolog,
 errgroup, pgx, GORM and ent, so the fixtures build without downloads.
 
+Go has no map collector that fails on a nil value (the Java `Collectors.toMap` null check), so no rule covers it.
+
 ## Facts
 
 The metrics program writes, per `.go` file, its top-level functions, types, constants and variables

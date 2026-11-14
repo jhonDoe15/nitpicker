@@ -2262,6 +2262,7 @@
                             "kotlin-source/LinearLookupInLoop",
                             "kotlin-source/RedundantStreamStep",
                             "kotlin-source/SortForExtreme",
+                            "kotlin-source/NullMapValue",
                             "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/FutureWithoutException",
                             "kotlin-source/UnhandledRootCoroutine",

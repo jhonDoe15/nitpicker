@@ -142,6 +142,7 @@ const REVIEW_RULES = new Set([
   'LinearLookupInLoop',
   'SortForExtreme',
   'RedundantStreamStep',
+  'NullMapValue',
   'StreamedRowsCollected',
   'SpringDataFilterInQuery',
   'HardcodedSecret',
