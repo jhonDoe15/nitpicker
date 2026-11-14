@@ -111,12 +111,30 @@ function remoteUnderLock({ method, scope, holder, path }) {
   ].join(' ');
 }
 
+const IDEMPOTENT_FORMS = {
+  payment:
+    'Pass a stable idempotency key derived from the request (`RequestOptions.builder().setIdempotencyKey(...)`)',
+  insert:
+    'Make the insert an upsert keyed on a stable id (`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`)',
+  message:
+    'Give the message a deduplication id the broker honours (SQS or SNS FIFO `messageDeduplicationId`)',
+};
+
+function retryWrite({ method, scope, holder, write, path }) {
+  return [
+    `${IDEMPOTENT_FORMS[write]}, or retry only the read:`,
+    `${code(`${method}()`)} ${callPath(path)} inside ${heldScope(scope, holder)},`,
+    'and when a call times out after the other side accepted the write, the retry makes it again.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
   LazyRelationInLoop: lazyRelation,
   RemoteCallInTransaction: remoteInTransaction,
   RemoteCallUnderLock: remoteUnderLock,
+  RetryWithoutIdempotency: retryWrite,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

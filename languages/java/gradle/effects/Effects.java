@@ -22,6 +22,7 @@ import nitpicker.effects.rules.AccumulatorCopy;
 import nitpicker.effects.rules.HeldScope;
 import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
+import nitpicker.effects.rules.RetryWrite;
 import nitpicker.effects.scopes.Scopes;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -86,6 +87,7 @@ public final class Effects {
     new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
+    new RetryWrite(program, scopes, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

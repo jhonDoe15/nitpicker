@@ -2294,6 +2294,7 @@
                             "effects/LazyRelationInLoop",
                             "effects/RemoteCallInTransaction",
                             "effects/RemoteCallUnderLock",
+                            "effects/RetryWithoutIdempotency",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

@@ -20,6 +20,10 @@ const SAMPLES = [
     { method: METHOD, scope: '@Transactional', holder: HOLDER, path: PATH },
   ],
   ['RemoteCallUnderLock', { method: METHOD, scope: 'synchronized', holder: HOLDER, path: PATH }],
+  [
+    'RetryWithoutIdempotency',
+    { method: METHOD, scope: '@Retryable', holder: HOLDER, write: 'insert', path: PATH },
+  ],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

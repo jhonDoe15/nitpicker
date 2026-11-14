@@ -38,6 +38,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Remote calls: make an HTTP or RPC call before a `@Transactional` function or `transactionTemplate.execute { }`
   starts or after it commits, and never inside `withLock { }`, `synchronized` or a `Mutex`: copy what you need out
   first (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
+- Retries: a call that retries (`@Retryable`, `RetryTemplate`, resilience4j, `repeat(n) { try { ... } }`) writes
+  idempotently: a Stripe idempotency key, an upsert, a message deduplication id, or retry only the read
+  (`effects/RetryWithoutIdempotency`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

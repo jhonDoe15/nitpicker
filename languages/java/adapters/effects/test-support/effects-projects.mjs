@@ -7,6 +7,8 @@ export const KOTLIN_EFFECTS_FIXTURE = path.join(FIXTURES, 'effects-kotlin-projec
 
 const JAVA_REMOTE = 'PriceSource.priceOf()>RestClient.get()';
 const KOTLIN_REMOTE = 'OrderLoader.price()>RestClient.get()';
+const JAVA_SEND = 'OrderEvents.placed()>KafkaTemplate.send()';
+const KOTLIN_SEND = 'OrderLoader.placed()>KafkaTemplate.send()';
 
 export const JAVA_EFFECTS = [
   'IoCallInLoop 26 LoopImports.eachInLoop loop OrderLoader.load()>OrderRepository.findById()',
@@ -32,6 +34,9 @@ export const JAVA_EFFECTS = [
   `RemoteCallUnderLock 51 HeldScopes.inBlock synchronized ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 61 HeldScopes.guardedUnderLock ReentrantLock.lock() ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 73 HeldScopes.guardedBlock synchronized ${JAVA_REMOTE}`,
+  `RetryWithoutIdempotency 25 Retries.announce @Retryable ${JAVA_SEND}`,
+  'RetryWithoutIdempotency 31 Retries.record retry loop JdbcTemplate.update()',
+  'RetryWithoutIdempotency 42 Retries.charge RetryTemplate.execute() Charge.create()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -74,6 +79,8 @@ export const KOTLIN_EFFECTS = [
   `RemoteCallUnderLock 39 HeldScopes.guardedUnderLock Lock.lock() ${KOTLIN_REMOTE}`,
   `RemoteCallUnderLock 45 HeldScopes.guardedBlock synchronized ${KOTLIN_REMOTE}`,
   `RemoteCallUnderLock 50 HeldScopes.guardedMutex Mutex.lock() ${KOTLIN_REMOTE}`,
+  `RetryWithoutIdempotency 9 Retries.announce @Retryable ${KOTLIN_SEND}`,
+  `RetryWithoutIdempotency 14 Retries.announceWithLoop retry loop ${KOTLIN_SEND}`,
 ];
 
 function summaryOf(violation) {

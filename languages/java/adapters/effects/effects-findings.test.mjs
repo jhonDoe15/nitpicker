@@ -216,6 +216,66 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the retry scope, the write and its idempotent form', () => {
+    const retried = {
+      rule: 'RetryWithoutIdempotency',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      method: 'Import.pay',
+      holder: 'Import.pay',
+    };
+    const messages = read([
+      {
+        ...retried,
+        line: 3,
+        detail: 'a',
+        scope: '@Retryable',
+        write: 'payment',
+        path: ['Charge.create()'],
+      },
+      {
+        ...retried,
+        line: 4,
+        detail: 'b',
+        scope: 'retry loop',
+        write: 'insert',
+        path: ['JdbcTemplate.update()'],
+      },
+      {
+        ...retried,
+        line: 5,
+        detail: 'c',
+        scope: 'RetryTemplate.execute()',
+        write: 'message',
+        path: ['KafkaTemplate.send()'],
+      },
+    ]).map((finding) => finding.message);
+    const tail =
+      'and when a call times out after the other side accepted the write, the retry makes it again.';
+
+    expect(messages).toEqual([
+      sentence(
+        'Pass a stable idempotency key derived from the request (`RequestOptions.builder().setIdempotencyKey(...)`),',
+        'or retry only the read: `Import.pay()` calls `Charge.create()` inside the `@Retryable` method `Import.pay()`,',
+        tail,
+        exception('RetryWithoutIdempotency', JAVA_FILE),
+      ),
+      sentence(
+        'Make the insert an upsert keyed on a stable id (`ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`),',
+        'or retry only the read: `Import.pay()` calls `JdbcTemplate.update()` inside a retry loop in `Import.pay()`,',
+        tail,
+        exception('RetryWithoutIdempotency', JAVA_FILE),
+      ),
+      sentence(
+        'Give the message a deduplication id the broker honours (SQS or SNS FIFO `messageDeduplicationId`),',
+        'or retry only the read: `Import.pay()` calls `KafkaTemplate.send()` inside `RetryTemplate.execute()`',
+        'in `Import.pay()`,',
+        tail,
+        exception('RetryWithoutIdempotency', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 
