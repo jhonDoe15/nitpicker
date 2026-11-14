@@ -1,15 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
-  braceDepths,
-  closingIndex,
-  enclosingOpen,
-  isCompositionRoot,
-  lineOf,
-  lineText,
-  literalAt,
-  scanKotlinSource,
-  splitArguments,
+  braceDepths as untypedBraceDepths,
+  closingIndex as untypedClosingIndex,
+  enclosingOpen as untypedEnclosingOpen,
+  isCompositionRoot as untypedIsCompositionRoot,
+  lineText as untypedLineText,
+  literalAt as untypedLiteralAt,
+  splitArguments as untypedSplitArguments,
 } from './kotlin-source.mjs';
+import { type Literal, type Scanned, lineOf, scanKotlinSource } from './typed/typed-scan.mts';
+
+type Argument = {
+  start: number;
+  end: number;
+};
+
+const braceDepths: (code: string) => Int32Array = untypedBraceDepths;
+const closingIndex: (code: string, open: number) => number = untypedClosingIndex;
+const enclosingOpen: (code: string, offset: number) => number = untypedEnclosingOpen;
+const isCompositionRoot: (scanned: Scanned) => boolean = untypedIsCompositionRoot;
+const lineText: (scanned: Scanned, line: number) => string = untypedLineText;
+const literalAt: (scanned: Scanned, offset: number) => Literal | undefined = untypedLiteralAt;
+const splitArguments: (code: string, open: number) => { close: number; parts: Argument[] } =
+  untypedSplitArguments;
 
 describe('scanKotlinSource', () => {
   it('blanks comments and string bodies in place and keeps every line where it was', () => {
@@ -31,7 +44,7 @@ describe('scanKotlinSource', () => {
   });
 
   it('keeps the code of a template expression in contextCode and blanks its text and comments', () => {
-    const source = 'val a = "id: ${row["order_id"] /* c */}"\nval b = "cost $`x` dollars"\n';
+    const source = `val a = "id: \${row["order_id"] /* c */}"\nval b = "cost $\`x\` dollars"\n`;
     const { contextCode, literals } = scanKotlinSource(source);
 
     expect(contextCode.split('\n')).toEqual([
@@ -40,19 +53,18 @@ describe('scanKotlinSource', () => {
       '',
     ]);
     expect(literals.map(({ text, template }) => [text, template])).toEqual([
-      ['id: ${row["order_id"] /* c */}', true],
+      [`id: \${row["order_id"] /* c */}`, true],
       ['order_id', false],
       ['cost $`x` dollars', true],
     ]);
   });
 
   it('reads templates, raw strings, nested comments, KDoc and character literals', () => {
-    const source =
-      'val a = "hi $name ${f("}")}"\nval r = """a"b"""\n/* x /* y */ z */\n/** doc */\nval c = \'"\'\nval d = "\\$x"\n';
+    const source = `val a = "hi $name \${f("}")}"\nval r = """a"b"""\n/* x /* y */ z */\n/** doc */\nval c = '"'\nval d = "\\$x"\n`;
     const scanned = scanKotlinSource(source);
 
     expect(scanned.literals.map(({ text, template, raw }) => [text, template, raw])).toEqual([
-      ['hi $name ${f("}")}', true, false],
+      [`hi $name \${f("}")}`, true, false],
       ['}', false, false],
       ['a"b', false, true],
       ['\\$x', false, false],

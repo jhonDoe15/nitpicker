@@ -1,31 +1,43 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import {
-  nestedCheckout,
+  nestedCheckout as untypedNestedCheckout,
   useGitCheckouts,
 } from '../../../../../core/diff/git/test-support/git-checkout.mjs';
-import { afterEach, describe, expect, it } from 'vitest';
-import { withFrameworkAllowances } from './framework-allowances.mjs';
-import { KOTLIN_SOURCE_RULES, readKotlinSourceFindings } from './kotlin-scan.mjs';
+import { useTempProjects } from '../rules/test-support/temp-projects.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
+import { describe, expect, it } from 'vitest';
+import { type Allowed, withFrameworkAllowances } from './typed/typed-allowances.mts';
+import {
+  KOTLIN_SOURCE_RULES as UNTYPED_KOTLIN_SOURCE_RULES,
+  readKotlinSourceFindings as untypedReadKotlinSourceFindings,
+} from './kotlin-scan.mjs';
 
-const roots = [];
-const { gitCheckout } = useGitCheckouts();
+type SourceFinding = Allowed & {
+  identity: string;
+  classification: string;
+};
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+type Manifest = {
+  kotlinSourceRoots: string[];
+  kotlinTestSourceRoots: string[];
+};
 
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-scan-'));
-  roots.push(root);
-  for (const [relative, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), text);
-  }
-  return root;
+type FilesByPath = Record<string, string>;
+
+const readKotlinSourceFindings: (projectRoot: string, manifest: Manifest) => SourceFinding[] =
+  untypedReadKotlinSourceFindings;
+const KOTLIN_SOURCE_RULES: string[] = UNTYPED_KOTLIN_SOURCE_RULES;
+const nestedCheckout: (directory: string, files: FilesByPath) => FilesByPath =
+  untypedNestedCheckout;
+const { gitCheckout: untypedGitCheckout } = useGitCheckouts();
+
+const { projectWith } = useTempProjects('nitpicker-kotlin-scan-');
+
+function gitCheckout(files: FilesByPath, ignored: string[]): string {
+  return textOf(Reflect.apply(untypedGitCheckout, undefined, [files, ignored]));
+}
+
+function matching(pattern: RegExp): unknown {
+  return expect.stringMatching(pattern);
 }
 
 const manifest = {
@@ -44,8 +56,8 @@ describe('readKotlinSourceFindings', () => {
         tool: 'kotlin-source',
         rule: 'MutableModuleState',
         path: 'src/main/kotlin/demo/State.kt',
-        identity: expect.stringMatching(/^MutableModuleState:[0-9a-f]+$/),
-        message: expect.stringMatching(/^Keep state in an instance/),
+        identity: matching(/^MutableModuleState:[0-9a-f]+$/),
+        message: matching(/^Keep state in an instance/),
         classification: 'enforceable',
         location: { line: 3 },
       },
@@ -53,8 +65,8 @@ describe('readKotlinSourceFindings', () => {
         tool: 'kotlin-source',
         rule: 'MutableModuleState',
         path: 'src/main/kotlin/demo/State.kt',
-        identity: expect.stringMatching(/^MutableModuleState:[0-9a-f]+#2$/),
-        message: expect.stringMatching(/^Keep state in an instance/),
+        identity: matching(/^MutableModuleState:[0-9a-f]+#2$/),
+        message: matching(/^Keep state in an instance/),
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -69,7 +81,7 @@ describe('readKotlinSourceFindings', () => {
         'package demo',
         '',
         'class Users(private val jdbc: JdbcTemplate) {',
-        '    fun sorted(sort: Sort) = jdbc.query("SELECT * FROM users ORDER BY ${sort.sql}", mapper)',
+        `    fun sorted(sort: Sort) = jdbc.query("SELECT * FROM users ORDER BY \${sort.sql}", mapper)`,
         '    fun named(name: String) = jdbc.query("SELECT * FROM users WHERE name = \'$name\'", mapper)',
         '    fun etag(body: String) = DigestUtils.md5Hex(body)',
         '}',
@@ -93,8 +105,8 @@ describe('readKotlinSourceFindings', () => {
     const before = projectWith({ 'src/main/kotlin/A.kt': 'var a = 0\n' });
     const after = projectWith({ 'src/main/kotlin/A.kt': '\n\nval b = 1\nvar a = 0\n' });
 
-    expect(readKotlinSourceFindings(after, manifest)[0].identity).toBe(
-      readKotlinSourceFindings(before, manifest)[0].identity,
+    expect(readKotlinSourceFindings(after, manifest)[0]?.identity).toBe(
+      readKotlinSourceFindings(before, manifest)[0]?.identity,
     );
   });
 
@@ -141,7 +153,7 @@ describe('readKotlinSourceFindings', () => {
       'src/main/kotlin/demo/Parse.kt UnsafeCastOperator',
       'src/test/kotlin/demo/ParseTest.kt UnsafeCastOperator',
     ]);
-    expect(readKotlinSourceFindings(moved, manifest)[0].identity).toBe(found[0].identity);
+    expect(readKotlinSourceFindings(moved, manifest)[0]?.identity).toBe(found[0]?.identity);
   });
 
   it('skips a file whose header says it is generated, and files that are not Kotlin', () => {
@@ -225,7 +237,7 @@ describe('readKotlinSourceFindings', () => {
 });
 
 describe('withFrameworkAllowances', () => {
-  const environment = (file) => ({
+  const environment = (file: string) => ({
     tool: 'detekt',
     rule: 'detekt.style.ForbiddenMethodCall',
     path: file,
@@ -233,7 +245,7 @@ describe('withFrameworkAllowances', () => {
       'The method `java.lang.System.getenv` has been forbidden: Read it in the composition root.',
     location: { line: 3 },
   });
-  const spread = (file, line) => ({
+  const spread = (file: string, line: number) => ({
     tool: 'detekt',
     rule: 'detekt.performance.SpreadOperator',
     path: file,
@@ -305,7 +317,7 @@ describe('withFrameworkAllowances', () => {
   });
 
   it('keeps the forbidden-API calls to main sources', () => {
-    const forbidden = (rule, kind, name, file) => ({
+    const forbidden = (rule: string, kind: string, name: string, file: string) => ({
       tool: 'detekt',
       rule: `detekt.style.${rule}`,
       path: file,
@@ -332,7 +344,7 @@ describe('withFrameworkAllowances', () => {
   });
 
   it('keeps one finding for a Thread.sleep in a suspend function and drops the repeat of the forbidden call', () => {
-    const at = (rule, message, line) => ({
+    const at = (rule: string, message: string, line: number) => ({
       tool: 'detekt',
       rule,
       path: 'src/main/kotlin/demo/Shop.kt',
@@ -344,7 +356,7 @@ describe('withFrameworkAllowances', () => {
       'This use of Thread.sleep() inside a suspend function should be replaced by delay().',
       4,
     );
-    const forbidden = (line) =>
+    const forbidden = (line: number) =>
       at(
         'detekt.style.ForbiddenMethodCall',
         'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code.',
@@ -357,7 +369,7 @@ describe('withFrameworkAllowances', () => {
   });
 
   it('keeps the dispatcher injection to main sources', () => {
-    const dispatcher = (file) => ({
+    const dispatcher = (file: string) => ({
       tool: 'detekt',
       rule: 'detekt.coroutines.InjectDispatcher',
       path: file,
