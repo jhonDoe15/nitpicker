@@ -35,6 +35,10 @@ const GROUPS = [
     python: 'copied-constant-in-test',
     go: 'go-rules/copied-constant-in-test',
   },
+  {
+    jvm: 'MaxValueOverflow',
+    go: 'go-rules/max-value-overflow',
+  },
 ];
 
 function spring(rule) {

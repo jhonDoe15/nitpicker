@@ -1743,3 +1743,5 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
+- Integer overflow on a "no limit" maximum (`MaxValueOverflow` in the Java and Kotlin presets,
+  `go-rules/max-value-overflow` in Go) does not apply to Python: `int` has arbitrary precision, so a sum never wraps.

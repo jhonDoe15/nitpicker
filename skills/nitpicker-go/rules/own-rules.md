@@ -72,6 +72,11 @@ the allowed form and ends with its exception entry.
   managers of a named resource are fine.
 - A getter is named after the value (`go-rules/get-prefixed-getter`): `Owner()`, never
   `GetOwner()`, unless an imported interface requires the Get name.
+- Never add to a value that can hold the maximum of its type (`go-rules/max-value-overflow`): a
+  constant, variable, field or parameter set to `math.MaxInt` (or `MaxInt32`, `MaxInt64`) that a sum or
+  product turns negative as an index, slice bound, `make` length, `min`/`max` argument or comparison
+  operand. Compare without adding (`width >= len(text)-start`), check the sentinel first
+  (`if width == math.MaxInt { ... }`), or clamp with `min` before the add.
 
 ## HTTP and databases
 

@@ -2253,6 +2253,7 @@
                             "test-runtime/test-not-run",
                             "pmd/UntestedRoundTrip",
                             "pmd/CopiedConstantInTest",
+                            "pmd/MaxValueOverflow",
                             "kotlin-source/ChildCoroutineOutlivesResource",
                             "kotlin-source/SuspendFunInFinallySection",
                             "kotlin-source/UnboundedFanOut",

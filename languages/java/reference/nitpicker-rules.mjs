@@ -25,6 +25,11 @@ import {
   COPIED_CONSTANT_RULE,
 } from '../adapters/review-rules/copied-constants/copied-constants.mjs';
 import { copiedConstantMessage } from '../../../shared/rules/copied-constants/copied-constants.mjs';
+import {
+  MAX_VALUE_ALLOWED,
+  MAX_VALUE_EXCEPTION_RULE,
+  MAX_VALUE_RULE,
+} from '../adapters/review-rules/max-value-sums/max-value-sums.mjs';
 import { springConfigForms } from './spring-config-messages.mjs';
 import {
   ROUND_TRIP_EXCEPTION_RULE,
@@ -33,6 +38,7 @@ import {
 import { roundTripMessage } from '../../../shared/rules/round-trips/round-trips.mjs';
 
 const GUIDE = 'docs/java-preset.md';
+const MAX_VALUE_GUIDE_LABEL = 'Java preset guide';
 const EXCEPTIONS_KEY = 'exceptions';
 const JVM = { page: 'java-nitpicker', analyzers: JVM_ANALYZERS, builds: JVM_BUILDS };
 const SPRING_ONLY = 'A project with Spring on the compile classpath.';
@@ -259,6 +265,23 @@ function copiedConstantEntry() {
   });
 }
 
+function maxValueEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'pmd',
+    rule: MAX_VALUE_RULE,
+    summary:
+      'An integer `+`, `*` or `+=` with an operand that can hold `Integer.MAX_VALUE` or `Long.MAX_VALUE` (a constant, field or local initialised to it, a parameter a call passes it or defaults to it), whose result is an index, length, bound, `Math.min` argument or compared.',
+    why: 'A "no limit" value overflows as soon as it is added to something, and the negative result goes on as an index or bound. Nitpicker reads the sources of every module for it and prints it as a PMD rule, like the other cross-file rules.',
+    allowed: MAX_VALUE_ALLOWED,
+    exception: { key: EXCEPTIONS_KEY, rule: MAX_VALUE_EXCEPTION_RULE },
+    docs: [
+      { label: MAX_VALUE_GUIDE_LABEL, path: GUIDE, anchor: 'sums-that-overflow-a-maximum-value' },
+      ...counterpartsOf(MAX_VALUE_EXCEPTION_RULE),
+    ],
+  });
+}
+
 /** The entries of the rules nitpicker itself adds to the Java and Kotlin presets. */
 export function jvmNitpickerEntries() {
   return [
@@ -267,6 +290,7 @@ export function jvmNitpickerEntries() {
     unrunTestEntry(),
     roundTripEntry(),
     copiedConstantEntry(),
+    maxValueEntry(),
     formatEntry('google'),
     formatEntry('palantir'),
     ...suppressionEntries(),
