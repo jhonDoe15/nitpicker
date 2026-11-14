@@ -1,4 +1,4 @@
-import { runCases } from './test-support/rule-cases.mjs';
+import { runCases } from './test-support/rule-cases.mts';
 
 const TIMER = 'setTimeout(() => { expect(a).toBe(1); }, 1000);';
 

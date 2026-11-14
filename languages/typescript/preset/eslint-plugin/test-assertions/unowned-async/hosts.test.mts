@@ -1,4 +1,4 @@
-import { FS, runCases } from './test-support/rule-cases.mjs';
+import { FS, runCases } from './test-support/rule-cases.mts';
 
 const HTTP = "import http from 'node:http';\n";
 const RX = "import { of, interval, EMPTY } from 'rxjs';\nimport { delay } from 'rxjs/operators';\n";

@@ -1,4 +1,4 @@
-import { runCases } from './test-support/rule-cases.mjs';
+import { runCases } from './test-support/rule-cases.mts';
 
 runCases('no-unowned-async-assertion owners inside nested statements and callbacks', {
   valid: [
