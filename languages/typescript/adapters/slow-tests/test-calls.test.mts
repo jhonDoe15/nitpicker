@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { testCallsOf } from './test-calls.mts';
+import { firstOf } from '../eslint/test-support/finding-comparison.mts';
 
 const SOURCE = `describe('checkout', () => {
   it('pays', () => {});
@@ -41,7 +42,7 @@ describe('test calls of a source file', () => {
         key: 'checkout plan .* row .*',
         dynamic: false,
         fileLevel: true,
-        text: 'test(`row ${n}`, () => { })',
+        text: `test(\`row \${n}\`, () => { })`,
         line: 5,
       },
       { key: 'checkout .*', dynamic: true, fileLevel: true, text: 'it(title, () => { })', line: 7 },
@@ -58,8 +59,8 @@ describe('test calls of a source file', () => {
   it('reads a call the same whatever its formatting', () => {
     const wrapped = "it('pays', () => {\n  run(\n    a,\n    b,\n  );\n});\n";
     const compact = "it('pays', () => { run(a, b); });\n";
-    expect(testCallsOf('a.test.ts', wrapped)[0].text).toBe(
-      testCallsOf('a.test.ts', compact)[0].text,
+    expect(firstOf(testCallsOf('a.test.ts', wrapped)).text).toBe(
+      firstOf(testCallsOf('a.test.ts', compact)).text,
     );
   });
 

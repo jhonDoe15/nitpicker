@@ -1,31 +1,50 @@
 import { describe, expect, it } from 'vitest';
-import { defaultResolvedLayout } from '../../preset/layout.mjs';
-import { strictPresetConfig } from '../../preset/eslint-config/strict.mjs';
+import { defaultResolvedLayout as untypedDefaultLayout } from '../../preset/layout.mjs';
+import { strictPresetConfig as untypedStrictPresetConfig } from '../../preset/eslint-config/strict.mjs';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
-import { routedEslintFields } from './eslint-hints.mts';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
+import { routedEslintFields } from './test-support/hint-input.mts';
 import { statedAllowedForm, withStatedForm } from './stated-form.mts';
 
+const defaultResolvedLayout: unknown = untypedDefaultLayout;
+const strictPresetConfig: (
+  layout: unknown,
+  settings: object,
+  options: { readonly react: boolean },
+) => readonly { readonly rules?: Readonly<Record<string, unknown>> }[] = untypedStrictPresetConfig;
 const PLUGIN_RULES = ['no-comments', 'no-magic-numbers', 'no-production-console'];
 const UNREPORTED_MESSAGES = new Set(['no-magic-numbers useConst']);
 const PLACEHOLDER = /\{\{\s*(\w+)\s*\}\}/gu;
 
-function pluginMessages() {
+function pluginMessages(): [string, string, string][] {
   return PLUGIN_RULES.flatMap((name) =>
-    Object.entries(nitpickerRules.rules[name].meta.messages)
+    Object.entries(
+      fieldsOf(fieldOf(fieldOf(fieldsOf(nitpickerRules.rules)[name], 'meta'), 'messages')),
+    )
       .filter(([id]) => !UNREPORTED_MESSAGES.has(`${name} ${id}`))
-      .map(([id, text]) => [`nitpicker/${name}`, id, text.replaceAll(PLACEHOLDER, 'value')]),
+      .map(([id, text]): [string, string, string] => [
+        `nitpicker/${name}`,
+        id,
+        textOf(text).replaceAll(PLACEHOLDER, 'value'),
+      ]),
   );
 }
 
-function restrictedSyntaxMessages() {
+function restrictedSyntaxMessages(): [string, string, string][] {
   const configs = [false, true].flatMap((react) =>
     strictPresetConfig(defaultResolvedLayout, {}, { react }),
   );
   const messages = configs.flatMap((config) => {
     const setting = config.rules?.['no-restricted-syntax'];
-    return Array.isArray(setting) ? setting.slice(1).map((entry) => entry.message) : [];
+    return listOf(setting)
+      .slice(1)
+      .map((entry) => textOf(fieldOf(entry, 'message')));
   });
-  return [...new Set(messages)].map((text) => ['no-restricted-syntax', 'restrictedSyntax', text]);
+  return [...new Set(messages)].map((text): [string, string, string] => [
+    'no-restricted-syntax',
+    'restrictedSyntax',
+    text,
+  ]);
 }
 
 const IMPERATIVE_START = /^[A-Za-z]+\b/u;
@@ -67,7 +86,7 @@ describe('withStatedForm', () => {
   it.each([...pluginMessages(), ...restrictedSyntaxMessages()])(
     'gives %s %s an allowed form that its message states: %s',
     (ruleId, _id, message) => {
-      const { allowedForm } = withStatedForm(ruleId, { message });
+      const { allowedForm = '' } = withStatedForm(ruleId, { message });
 
       expect([
         message.includes(allowedForm),

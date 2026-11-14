@@ -3,8 +3,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../eslint/normalize.mts';
+import { firstOf } from '../eslint/test-support/finding-comparison.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
@@ -12,12 +13,12 @@ afterAll(() => {
   }
 });
 
-function positionOf(code, offset) {
+function positionOf(code: string, offset: number) {
   const before = code.slice(0, offset).split('\n');
   return { line: before.length, column: (before.at(-1)?.length ?? 0) + 1 };
 }
 
-function messageFor(kind, code, reported) {
+function messageFor(kind: string, code: string, reported: string) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-immutable-hint-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'src'), { recursive: true });
@@ -25,7 +26,7 @@ function messageFor(kind, code, reported) {
   const start = code.indexOf(reported);
   const first = positionOf(code, start);
   const last = positionOf(code, start + reported.length);
-  const [finding] = normalizeEslintResults({
+  const findings = normalizeEslintResults({
     value: [
       {
         filePath: path.join(root, 'src/x.ts'),
@@ -45,7 +46,7 @@ function messageFor(kind, code, reported) {
     projectRoot: root,
     analyzerName: 'eslint-lint',
   });
-  return finding.message.replace(/ If this is intended, add .*$/u, '');
+  return firstOf(findings).message.replace(/ If this is intended, add .*$/u, '');
 }
 
 const TAIL = 'domain/ values must be deeply readonly.';
@@ -189,27 +190,31 @@ describe('prefer-immutable-types message for a parameter', () => {
 });
 
 describe('prefer-immutable-types message for a return type and a property', () => {
-  it('names the function and the array it returns', () => {
-    const code = 'function listItems(): Item[] {\n  return [];\n}\n';
-
-    expect(messageFor('Return type', code, ': Item[]')).toBe(
-      `Return type of \`listItems\` is mutable (array); ${TAIL} ${ARRAY_HINT}`,
-    );
-  });
-
-  it('names an arrow function bound to a constant', () => {
-    const code = 'const listItems = () => [1];\n';
-
-    expect(messageFor('Return type', code, '() => [1]')).toBe(
-      `Return type of \`listItems\` is mutable (array); ${TAIL} ${ARRAY_HINT}`,
-    );
-  });
-
-  it('names the property', () => {
-    const code = 'class Box {\n  readonly tags: string[] = [];\n}\n';
-
-    expect(messageFor('Property', code, 'readonly tags: string[] = []')).toBe(
-      `Property \`tags\` is mutable (array); ${TAIL} ${ARRAY_HINT}`,
+  it.each([
+    [
+      'names the function and the array it returns',
+      'Return type',
+      'function listItems(): Item[] {\n  return [];\n}\n',
+      ': Item[]',
+      'Return type of `listItems`',
+    ],
+    [
+      'names an arrow function bound to a constant',
+      'Return type',
+      'const listItems = () => [1];\n',
+      '() => [1]',
+      'Return type of `listItems`',
+    ],
+    [
+      'names the property',
+      'Property',
+      'class Box {\n  readonly tags: string[] = [];\n}\n',
+      'readonly tags: string[] = []',
+      'Property `tags`',
+    ],
+  ])('%s', (_name, kind, code, reported, subject) => {
+    expect(messageFor(kind, code, reported)).toBe(
+      `${subject} is mutable (array); ${TAIL} ${ARRAY_HINT}`,
     );
   });
 });
@@ -241,35 +246,35 @@ describe('prefer-immutable-types message for forms that need an annotation', () 
     );
   });
 
-  it('names the Object.groupBy result type', () => {
-    const code =
-      'function byTag(items: readonly Item[]) {\n  return Object.groupBy(items, (i) => i.tag);\n}\n';
-
-    expect(messageFor('Return type', code, 'function byTag')).toBe(
-      `Return type of \`byTag\` is mutable (Object.groupBy result); ${TAIL} Type it \`Readonly<Partial<Record<Key, readonly T[]>>>\`.`,
-    );
-  });
-
   it('tells an object literal variable to carry a readonly type', () => {
     expect(messageFor('Variable', 'const totals = { paid: 0 };\n', 'totals')).toBe(
       `Variable \`totals\` is mutable (object literal); ${TAIL} Give it a type with readonly fields: \`const x: { readonly a: number } = ...\`, or return it from a function with a readonly return type.`,
     );
   });
 
-  it('tells an Error field to use unknown', () => {
-    const code =
-      "type Failure = { readonly kind: 'failed'; readonly error: Error };\nfunction f(failure: Failure): void {}\n";
-
-    expect(messageFor('Parameter', code, 'failure: Failure')).toBe(
+  it.each([
+    [
+      'names the Object.groupBy result type',
+      'Return type',
+      'function byTag(items: readonly Item[]) {\n  return Object.groupBy(items, (i) => i.tag);\n}\n',
+      'function byTag',
+      `Return type of \`byTag\` is mutable (Object.groupBy result); ${TAIL} Type it \`Readonly<Partial<Record<Key, readonly T[]>>>\`.`,
+    ],
+    [
+      'tells an Error field to use unknown',
+      'Parameter',
+      "type Failure = { readonly kind: 'failed'; readonly error: Error };\nfunction f(failure: Failure): void {}\n",
+      'failure: Failure',
       `Parameter \`failure\` is mutable (\`error: Error\`); ${TAIL} Error is a class and always mutable: type the field \`unknown\` (domain/ allows \`error\` and \`cause\` typed unknown for a caught error) or carry \`message: string\`.`,
-    );
-  });
-
-  it('tells a generic parameter to constrain with readonly fields', () => {
-    const code = 'function f<T extends { id: string }>(item: T): void {}\n';
-
-    expect(messageFor('Parameter', code, 'item: T')).toBe(
+    ],
+    [
+      'tells a generic parameter to constrain with readonly fields',
+      'Parameter',
+      'function f<T extends { id: string }>(item: T): void {}\n',
+      'item: T',
       `Parameter \`item\` is mutable (generic type); ${TAIL} Constrain the type parameter with readonly fields: \`<T extends { readonly id: string }>\`.`,
-    );
+    ],
+  ])('%s', (_name, kind, code, reported, expected) => {
+    expect(messageFor(kind, code, reported)).toBe(expected);
   });
 });

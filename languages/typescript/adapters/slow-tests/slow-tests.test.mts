@@ -1,8 +1,11 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readSlowTestFindings } from './slow-tests.mts';
+import type { TestOptions, TestReport } from '../test-runners/typed/runner-types.mts';
+import type { Finding } from '../static-checks/shared.mts';
+import { writeFileTree } from '../test-support/file-tree.mts';
 
 const FIX =
   'Remove fixed sleeps and real timers (use fake timers) and mock network, database and disk access';
@@ -18,16 +21,13 @@ const TEST_FILE = `describe('orders', () => {
   });
 });
 `;
-let directory;
+let directory: string;
 
-function write(files) {
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(directory, name)), { recursive: true });
-    writeFileSync(path.join(directory, name), text);
-  }
+function write(files: Readonly<Record<string, string>>) {
+  writeFileTree(directory, files);
 }
 
-function writePolicy(policy) {
+function writePolicy(policy: object) {
   write({
     'policy.json': JSON.stringify({
       exclude: [],
@@ -40,7 +40,7 @@ function writePolicy(policy) {
   vi.stubEnv('NITPICKER_POLICY', path.join(directory, 'policy.json'));
 }
 
-function reportOf(file, runs) {
+function reportOf(file: string, runs: readonly (readonly [string, number])[]): TestReport {
   return {
     numTotalTests: runs.length,
     testResults: [
@@ -58,18 +58,38 @@ function reportOf(file, runs) {
   };
 }
 
-function options(extra = {}) {
+function options(extra: Partial<TestOptions> = {}): TestOptions {
   return {
     projectRoot: path.join(directory, 'head'),
     analyzerName: 'coverage',
     snapshot: 'head',
+    kind: 'coverage',
+    projectPolicyRoot: '',
+    policyRoot: '',
+    toolRoot: '',
+    liveProjectRoot: '',
+    legacyInventory: '',
+    crapScoreLimit: 0,
+    baselineRoot: undefined,
+    baselineMovesFile: undefined,
+    mutationScope: undefined,
     ...extra,
   };
 }
 
-function unitMessage({ seconds, file, name, limit = 5 }) {
+function unitMessage({
+  seconds,
+  file,
+  name,
+  limit = 5,
+}: {
+  readonly seconds: string;
+  readonly file: string;
+  readonly name: string;
+  readonly limit?: number;
+}) {
   return (
-    `${path.posix.basename(file)} ${name} took ${seconds} s; a unit test may take ${limit} ` +
+    `${path.posix.basename(file)} ${name} took ${seconds} s; a unit test may take ${String(limit)} ` +
     `s. ${FIX}${MOVE}. If this is intended, add ` +
     `{"rule":"slow-test","paths":["${file}"],"reason":"..."} ` +
     'to "exceptions" in nitpicker.config.json.'
@@ -80,11 +100,11 @@ function keepFirstTimings() {
   return vi.fn(() => Promise.resolve(new Map()));
 }
 
-function findingsOf(settings, report, retime = keepFirstTimings()) {
+function findingsOf(settings: TestOptions, report: TestReport, retime = keepFirstTimings()) {
   return readSlowTestFindings(settings, report, retime);
 }
 
-function identities(findings) {
+function identities(findings: readonly Finding[]) {
   return findings.map(({ identity }) => identity);
 }
 
@@ -226,7 +246,7 @@ describe('slow tests from a runner report', () => {
   });
 
   it('ignores failed, skipped and untimed tests and files outside the project', async () => {
-    const report = {
+    const report: TestReport = {
       testResults: [
         {
           name: '/elsewhere/a.test.ts',
@@ -236,7 +256,7 @@ describe('slow tests from a runner report', () => {
           name: path.join(directory, 'head/src/orders.test.ts'),
           assertionResults: [
             { fullName: 'orders pays', status: 'failed', duration: 99000 },
-            { fullName: 'orders refunds', status: 'pending', duration: null },
+            { fullName: 'orders refunds', status: 'pending', duration: undefined },
           ],
         },
       ],

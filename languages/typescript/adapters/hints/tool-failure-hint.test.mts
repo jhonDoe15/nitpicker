@@ -1,26 +1,32 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
-  explainedError,
-  troubleshootingUrl,
-  withTroubleshooting,
+  explainedError as untypedExplainedError,
+  troubleshootingUrl as untypedTroubleshootingUrl,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { withTroubleshooting } from '../lint-engine/typed/tools.mts';
+import { fieldOf, fieldsOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { PEER_TOOLS, withTypeScriptHint } from './tool-failure-hint.mts';
 
-const hinted = (error) => withTypeScriptHint(error).message;
+const explainedError: (message: string) => Error = untypedExplainedError;
+const troubleshootingUrl: (anchor: string) => string | undefined = untypedTroubleshootingUrl;
 
-const manifest = JSON.parse(
+const hinted = (error: unknown) => withTypeScriptHint(error).message;
+
+const manifest: unknown = parseJson(
   readFileSync(new URL('../../../../package.json', import.meta.url), 'utf8'),
 );
 
 describe('withTypeScriptHint', () => {
   it('knows every peer dependency of the package', () => {
-    expect(PEER_TOOLS).toEqual(Object.keys(manifest.peerDependencies).toSorted());
+    expect(PEER_TOOLS).toEqual(
+      Object.keys(fieldsOf(fieldOf(manifest, 'peerDependencies'))).toSorted(),
+    );
   });
 
   it('links a tool that exits with an error to the TypeScript tool entry', () => {
     expect(hinted(new Error('prettier exited with 2: boom'))).toBe(
-      `prettier exited with 2: boom. See ${troubleshootingUrl('a-typescript-or-javascript-tool-fails')}`,
+      `prettier exited with 2: boom. See ${textOf(troubleshootingUrl('a-typescript-or-javascript-tool-fails'))}`,
     );
   });
 
@@ -30,7 +36,7 @@ describe('withTypeScriptHint', () => {
     "Cannot find module 'typescript/lib/tsserverlibrary.js' imported from /p/a.mjs",
   ])('links a peer that node_modules lacks to the missing-peer entry: %s', (message) => {
     expect(hinted(new Error(message))).toBe(
-      `${message}. See ${troubleshootingUrl('a-peer-tool-is-missing')}`,
+      `${message}. See ${textOf(troubleshootingUrl('a-peer-tool-is-missing'))}`,
     );
   });
 
@@ -38,7 +44,7 @@ describe('withTypeScriptHint', () => {
     const message = "Cannot find package 'left-pad' imported from /p/src/a.ts";
 
     expect(hinted(new Error(message))).toBe(
-      `${message}. See ${troubleshootingUrl('a-typescript-or-javascript-tool-fails')}`,
+      `${message}. See ${textOf(troubleshootingUrl('a-typescript-or-javascript-tool-fails'))}`,
     );
   });
 

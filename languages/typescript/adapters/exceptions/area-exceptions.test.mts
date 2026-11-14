@@ -3,12 +3,15 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import type { Finding } from '../static-checks/shared.mts';
+import type { CruiseReport } from '../typed/static-checks.mts';
 import { normalizeArchitectureViolations } from '../static-checks-runner.mts';
 import { applyAreaExceptions } from './area-exceptions.mts';
 
-const architectureFindings = (report, analyzerName) =>
-  applyAreaExceptions(normalizeArchitectureViolations(report, analyzerName));
-const roots = [];
+function architectureFindings(report: CruiseReport, analyzerName: string): Finding[] {
+  return applyAreaExceptions(normalizeArchitectureViolations(report, analyzerName));
+}
+const roots: string[] = [];
 const originalPolicy = process.env[HEAD_POLICY_ENV];
 
 afterEach(() => {
@@ -22,7 +25,7 @@ afterEach(() => {
   }
 });
 
-function withExceptions(exceptions) {
+function withExceptions(exceptions: readonly Record<string, unknown>[]): void {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-area-exceptions-'));
   roots.push(root);
   const policyFile = path.join(root, 'policy.json');
@@ -30,18 +33,21 @@ function withExceptions(exceptions) {
   process.env[HEAD_POLICY_ENV] = policyFile;
 }
 
-const finding = (tool, rule, overrides = {}) => ({
-  tool,
-  rule,
-  path: 'src/main/a.ts',
-  identity: `${rule}:1`,
-  message: 'The base message.',
-  classification: 'enforceable',
-  ...overrides,
-});
+function finding(tool: string, rule: string, overrides: Partial<Finding> = {}): Finding {
+  return {
+    tool,
+    rule,
+    path: 'src/main/a.ts',
+    identity: `${rule}:1`,
+    message: 'The base message.',
+    classification: 'enforceable',
+    ...overrides,
+  };
+}
 
-const route = (entry) =>
-  `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+function route(entry: string): string {
+  return `If this is intended, add ${entry} to "exceptions" in nitpicker.config.json.`;
+}
 
 const ROUTED = [
   ['test-runtime', 'no-production-runtime'],
@@ -60,7 +66,7 @@ const ROUTED = [
 describe('applyAreaExceptions', () => {
   it.each(ROUTED)(
     'names the entry that lifts a %s %s finding, and the entry lifts it',
-    (tool, rule) => {
+    (tool: string, rule: string) => {
       withExceptions([{ rule, paths: ['src/main/**'], reason: 'A reviewed reason.' }]);
       const found = finding(tool, rule);
 
@@ -126,7 +132,7 @@ describe('architectureFindings', () => {
     withExceptions([]);
     const [violation] = architectureFindings(report, 'dependency-architecture');
 
-    expect(violation.message).toBe(
+    expect(violation?.message).toBe(
       `src/main/a.ts must not depend on src/main/adapters/b.ts. ${route('{"rule":"domain-does-not-import-adapters","paths":["src/main/a.ts"],"reason":"..."}')}`,
     );
 
