@@ -2,19 +2,21 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { HEAD_POLICY_ENV } from '../../../shared/head-policy.mjs';
+import { fieldOf } from '../../../shared/values/readers.mts';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { parseArguments } from '../../typescript/adapters/quality-areas/arguments.mts';
 import { runQualityArea } from '../../typescript/adapters/quality-areas-runner.mts';
-import { resolveHeadPolicy } from '../../typescript/preset/head-policy.mjs';
+import { resolveHeadPolicy } from '../../typescript/adapters/dependency-graph/typed/head-policy-views.mts';
 
-const originalPolicy = process.env.NITPICKER_POLICY;
-const temporaryRoots = [];
+const originalPolicy = process.env[HEAD_POLICY_ENV];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   if (originalPolicy === undefined) {
-    delete process.env.NITPICKER_POLICY;
+    Reflect.deleteProperty(process.env, HEAD_POLICY_ENV);
   } else {
-    process.env.NITPICKER_POLICY = originalPolicy;
+    process.env[HEAD_POLICY_ENV] = originalPolicy;
   }
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -35,7 +37,7 @@ const sources = {
   'src/main/features/grade/domain/classify.ts': branchy,
 };
 
-async function measuredFiles(config) {
+async function measuredFiles(config: object): Promise<unknown> {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   temporaryRoots.push(parent);
   const root = path.join(parent, 'head');
@@ -45,7 +47,7 @@ async function measuredFiles(config) {
   }
   const policyFile = path.join(parent, 'policy.json');
   writeFileSync(policyFile, JSON.stringify(resolveHeadPolicy(config)));
-  process.env.NITPICKER_POLICY = policyFile;
+  process.env[HEAD_POLICY_ENV] = policyFile;
   const options = parseArguments([
     '--analyzer-name',
     'crap',
@@ -61,7 +63,8 @@ async function measuredFiles(config) {
     'head',
   ]);
   const findings = await runQualityArea(options);
-  return findings.find(({ identity }) => identity === 'summary:files')?.metric.value;
+  const summary = findings.find(({ identity }) => identity === 'summary:files');
+  return fieldOf(fieldOf(summary, 'metric'), 'value');
 }
 
 describe('CRAP report for a JavaScript project', () => {

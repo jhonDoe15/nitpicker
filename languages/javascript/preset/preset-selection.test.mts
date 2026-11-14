@@ -1,23 +1,80 @@
 import { describe, expect, it } from 'vitest';
 import { presetAnalyzers } from '../../../core/configuration/preset-analyzers.mts';
 import { createHygieneAnalyzers } from '../../../shared/hygiene/analyzers.mjs';
+import type { Layout as ProjectLayout } from '../../typescript/adapters/typed/head-policy.mts';
+import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
 import {
-  applyLayout,
-  applyThresholds,
-  configuredAnalyzers,
-  javascriptAnalyzers,
+  applyLayout as untypedApplyLayout,
+  applyThresholds as untypedApplyThresholds,
+  configuredAnalyzers as untypedConfiguredAnalyzers,
+  javascriptAnalyzers as untypedJavascriptAnalyzers,
 } from '../../typescript/preset/diff/configured-analyzers.mjs';
 import {
-  readHeadPolicy,
-  readLayout,
+  readHeadPolicy as untypedReadHeadPolicy,
+  readLayout as untypedReadLayout,
+} from '../../typescript/preset/head-policy.mjs';
+import {
+  type ResolvedHeadPolicy,
   resolveHeadPolicy,
   withHeadPolicyFile,
-} from '../../typescript/preset/head-policy.mjs';
-import { resolveLayout, resolveLayoutFor } from '../../typescript/preset/layout.mjs';
-import { createQualityChecks } from '../../typescript/preset/quality-checks.mjs';
+} from '../../typescript/adapters/dependency-graph/typed/head-policy-views.mts';
+import {
+  resolveLayout as untypedResolveLayout,
+  resolveLayoutFor as untypedResolveLayoutFor,
+} from '../../typescript/preset/layout.mjs';
+import { createQualityChecks as untypedCreateQualityChecks } from '../../typescript/preset/quality-checks.mjs';
 import { isJavascriptPolicy } from './javascript-preset.mjs';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+
+type Layout = ProjectLayout & {
+  readonly unitTestGlobs: readonly string[];
+  readonly entryExtensions: readonly string[];
+};
+type PresetAnalyzer = Analyzer & {
+  readonly createInvocation: (context: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+  }) => { readonly args: readonly string[] };
+};
+type QualityCheck = {
+  readonly name: string;
+  readonly patterns?: readonly string[];
+  readonly configurationFiles: readonly string[];
+};
+
+type QualityChecks = {
+  create(layout?: Layout): {
+    readonly staticChecks: QualityCheck[];
+    readonly qualityAreaChecks: QualityCheck[];
+  };
+};
+
+const applyLayout: (analyzers: Analyzer[], policy: ResolvedHeadPolicy) => Analyzer[] =
+  untypedApplyLayout;
+const applyThresholds: (
+  analyzers: Analyzer[],
+  thresholds: { readonly crapLimit?: number },
+  policy: ResolvedHeadPolicy,
+) => Analyzer[] = untypedApplyThresholds;
+const configuredAnalyzers: () => Analyzer[] = untypedConfiguredAnalyzers;
+const javascriptAnalyzers: () => Analyzer[] = untypedJavascriptAnalyzers;
+const readHeadPolicy: (environment: Readonly<Record<string, string>>) => {
+  readonly preset?: string;
+} = untypedReadHeadPolicy;
+const readLayout: (environment: Readonly<Record<string, string>>) => Layout = untypedReadLayout;
+const resolveLayout: (
+  config?: object,
+  roots?: string[],
+  options?: { javascript: boolean },
+) => Layout = untypedResolveLayout;
+const resolveLayoutFor: (policy?: ResolvedHeadPolicy) => Layout = untypedResolveLayoutFor;
+const createQualityChecks: QualityChecks['create'] = untypedCreateQualityChecks;
+
+function hasInvocation(analyzer: Analyzer): analyzer is PresetAnalyzer {
+  return typeof analyzer['createInvocation'] === 'function';
+}
 
 const cliPath = fileURLToPath(checkoutModuleUrl(new URL('../../../core/cli.mjs', import.meta.url)));
 
@@ -27,26 +84,29 @@ const javascriptPolicy = resolveHeadPolicy({ preset: 'javascript' });
 const packageAnalyzers = configuredAnalyzers();
 const javascriptPackageAnalyzers = javascriptAnalyzers();
 
-function analyzerNames(analyzers) {
+function analyzerNames(analyzers: readonly Analyzer[]): string[] {
   return analyzers.map(({ name }) => name);
 }
 
-function fingerprint(analyzers) {
-  return analyzers.map(({ name, configurationHash, createInvocation }) => ({
+function fingerprint(analyzers: readonly Analyzer[]) {
+  return analyzers.filter(hasInvocation).map(({ name, configurationHash, createInvocation }) => ({
     name,
     configurationHash,
     args: createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot }).args,
   }));
 }
 
-function prettierPatterns(layout) {
+function prettierPatterns(layout: Layout): readonly string[] | undefined {
   return createQualityChecks(layout).staticChecks.find(({ name }) => name === 'prettier-format')
-    .patterns;
+    ?.patterns;
 }
 
 describe('preset selection', () => {
   it('runs the TypeScript analyzers for the typescript preset and for no preset', () => {
-    const expected = fingerprint([...packageAnalyzers, ...createHygieneAnalyzers(cliPath)]);
+    const expected = fingerprint([
+      ...packageAnalyzers,
+      ...analyzersOf(createHygieneAnalyzers(cliPath)),
+    ]);
 
     expect(fingerprint(presetAnalyzers({ preset: 'typescript' }))).toEqual(expected);
     expect(fingerprint(presetAnalyzers({}))).toEqual(expected);
@@ -56,7 +116,7 @@ describe('preset selection', () => {
     const selected = fingerprint(presetAnalyzers({ preset: 'javascript' }));
 
     expect(selected).toEqual(
-      fingerprint([...javascriptPackageAnalyzers, ...createHygieneAnalyzers(cliPath)]),
+      fingerprint([...javascriptPackageAnalyzers, ...analyzersOf(createHygieneAnalyzers(cliPath))]),
     );
     expect(selected).not.toEqual(fingerprint(packageAnalyzers));
   });
@@ -221,18 +281,19 @@ describe('javascript prettier patterns', () => {
 describe('javascript analyzers with a customized policy', () => {
   const customized = resolveHeadPolicy({ preset: 'javascript', layout: { sourceRoots: ['lib'] } });
 
-  function invocation(analyzers, name) {
+  function invocation(analyzers: Analyzer[], name: string) {
     return analyzers
+      .filter(hasInvocation)
       .find((analyzer) => analyzer.name === name)
-      .createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot });
+      ?.createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot });
   }
 
   it('rebuild with the project roots and keep the JavaScript pipeline', () => {
     const rebuilt = applyLayout(javascriptPackageAnalyzers, customized);
     expect(rebuilt).not.toBe(javascriptPackageAnalyzers);
     expect(analyzerNames(rebuilt)).toEqual(analyzerNames(javascriptPackageAnalyzers));
-    const underLib = (name) =>
-      invocation(rebuilt, name).args.filter((argument) => argument.startsWith('lib/'));
+    const underLib = (name: string) =>
+      invocation(rebuilt, name)?.args.filter((argument) => argument.startsWith('lib/'));
     expect(underLib('eslint-lint')).toEqual([
       'lib/**/*.{ts,mts,cts,js,mjs,cjs}',
       'lib/**/*.{test,spec}.{ts,mts,cts,js,mjs,cjs}',
@@ -247,7 +308,7 @@ describe('javascript analyzers with a customized policy', () => {
   });
 
   it('rebuild the shared analyzers of either preset and replace nothing else', () => {
-    const custom = { name: 'custom', createInvocation() {} };
+    const custom: Analyzer = { name: 'custom', createInvocation() {} };
     expect(applyLayout([custom], customized)).toEqual([custom]);
     const rebuiltTypescript = applyLayout(packageAnalyzers, customized);
     expect(analyzerNames(rebuiltTypescript)).toEqual(analyzerNames(packageAnalyzers));

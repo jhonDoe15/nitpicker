@@ -1,34 +1,48 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { eslintMessageWithHint } from '../../../typescript/adapters/hints/eslint-hints.mts';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../../../typescript/preset/head-policy.mjs';
+import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
+import { typescriptApi } from '../../../typescript/adapters/typed/typescript-program.mts';
+import {
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from '../../../typescript/adapters/dependency-graph/typed/head-policy-views.mts';
 
-const originalPolicy = process.env.NITPICKER_POLICY;
+const originalPolicy = process.env[HEAD_POLICY_ENV];
+const hintSource = typescriptApi().createSourceFile(
+  'hint.js',
+  '',
+  typescriptApi().ScriptTarget.Latest,
+);
+
+function hintOf(input: { ruleId: string; text: string; relativePath: string }): string {
+  return eslintMessageWithHint({ ...input, node: undefined, sourceFile: hintSource });
+}
 
 afterEach(() => {
   if (originalPolicy === undefined) {
-    delete process.env.NITPICKER_POLICY;
+    Reflect.deleteProperty(process.env, HEAD_POLICY_ENV);
   } else {
-    process.env.NITPICKER_POLICY = originalPolicy;
+    process.env[HEAD_POLICY_ENV] = originalPolicy;
   }
 });
 
 function unsafeAnyMessage() {
-  return eslintMessageWithHint({
+  return hintOf({
     ruleId: '@typescript-eslint/no-unsafe-return',
     text: 'Unsafe return of a value of type `any`.',
     relativePath: 'src/main/a.js',
   });
 }
 
-function withPreset(config, check) {
+function withPreset(config: object, check: () => void): void {
   withHeadPolicyFile(resolveHeadPolicy(config), (policyFile) => {
-    process.env.NITPICKER_POLICY = policyFile;
+    process.env[HEAD_POLICY_ENV] = policyFile;
     check();
   });
 }
 
 function nodeTestMessage() {
-  return eslintMessageWithHint({
+  return hintOf({
     ruleId: 'vitest/no-import-node-test',
     text: 'Import from vitest instead of node:test',
     relativePath: 'test/greet.test.mjs',
@@ -55,7 +69,7 @@ describe('unsafe any hint', () => {
   it('tells domain code to have adapters parse a legacy any', () => {
     withPreset({ preset: 'javascript' }, () => {
       expect(
-        eslintMessageWithHint({
+        hintOf({
           ruleId: '@typescript-eslint/no-unsafe-return',
           text: 'Unsafe return.',
           relativePath: 'src/main/features/billing/domain/split.js',

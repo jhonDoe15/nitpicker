@@ -1,15 +1,16 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
+import { fieldOf, fieldsOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import {
   createCleanProject,
+  createGitTemplate,
+  findingsSchemaErrors,
   git,
   readReport,
   runNitpicker,
-} from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
+} from './typed/clean-project-views.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,
@@ -22,13 +23,13 @@ const UNKNOWN_FOLDER_ADVICE =
   'Under src/main/ put code in features/<name>/ (domain/ for pure logic, adapters/ for I/O), ' +
   'in shared/ when several features need it, or in the composition root. ' +
   'An exception fits only when this folder is deliberate.';
-const routed = (rule, file) =>
+const routed = (rule: string, file: string) =>
   `If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
-const unknownFolder = (file, line) =>
+const unknownFolder = (file: string, line: number) =>
   `eslint-lint/nitpicker/no-unknown-main-folder src/main/${file}:${String(line)} ` +
-  `'${file.split('/')[0]}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE} ` +
+  `'${textOf(file.split('/')[0])}/' is not a layer of this layout. ${UNKNOWN_FOLDER_ADVICE} ` +
   routed('nitpicker/no-unknown-main-folder', `src/main/${file}`);
-const unusedFile = (file) =>
+const unusedFile = (file: string) =>
   `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
   `Nothing imports it. Delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
 const PLANTED_OUTPUT = [
@@ -85,7 +86,7 @@ const PLANTED_OUTPUT = [
   '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (lines 12)',
   '  duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js (tokens 126)',
   '',
-  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+  `Rule reference: ${textOf(docsUrl('docs/rules/README.md'))} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const FAILING_COVERAGE_OUTPUT = [
@@ -102,11 +103,11 @@ const FAILING_COVERAGE_OUTPUT = [
   'Tool errors:',
   'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
   "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
-  `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
+  `Help with tool errors: ${textOf(troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2))}`,
   '',
 ].join('\n');
 
-const duplicatedBody = (name) => `/**
+const duplicatedBody = (name: string) => `/**
  * @param {readonly number[]} values
  * @returns {number}
  */
@@ -175,8 +176,8 @@ export const counter = legacyCounter;
 };
 
 describe('the js-clean fixture project', () => {
-  const temporaryRoots = [];
-  let gitTemplateRoot;
+  const temporaryRoots: string[] = [];
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -188,13 +189,13 @@ describe('the js-clean fixture project', () => {
     }
   });
 
-  function createProject(files = {}) {
+  function createProject(files: Record<string, string> = {}) {
     const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'js-clean', files });
     temporaryRoots.push(root);
     return root;
   }
 
-  function runSnapshot(root, extraArguments = []) {
+  function runSnapshot(root: string, extraArguments: string[] = []) {
     const result = runNitpicker(root, [
       '--all',
       '--output',
@@ -205,7 +206,7 @@ describe('the js-clean fixture project', () => {
       ...result,
       summary: readReport(root, 'reports/snapshot/summary.json'),
       toolErrors: readReport(root, 'reports/snapshot/tool-errors.json'),
-      findings: readReport(root, 'reports/snapshot/findings.json'),
+      findings: listOf(readReport(root, 'reports/snapshot/findings.json')).map(fieldsOf),
     };
   }
 
@@ -218,12 +219,12 @@ describe('the js-clean fixture project', () => {
       expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
       expect(toolErrors).toEqual([]);
       expect(findingsSchemaErrors(findings)).toEqual([]);
-      expect(summary.overallStatus).toBe('clean');
-      expect(summary.tools.length).toBeGreaterThan(10);
-      expect(
-        findings.find(({ tool, identity }) => tool === 'crap' && identity === 'summary:files')
-          ?.metric.value,
-      ).toBe(SOURCE_FILES);
+      expect(fieldOf(summary, 'overallStatus')).toBe('clean');
+      expect(listOf(fieldOf(summary, 'tools')).length).toBeGreaterThan(10);
+      const crap = findings.find(
+        ({ tool, identity }) => tool === 'crap' && identity === 'summary:files',
+      );
+      expect(fieldOf(fieldOf(crap, 'metric'), 'value')).toBe(SOURCE_FILES);
       expect(exitCode).toBe(0);
     },
     FIXTURE_TIMEOUT_MS,
@@ -244,7 +245,7 @@ describe('the js-clean fixture project', () => {
       );
       expect(stderrText).toBe('');
       expect(toolErrors).toEqual([]);
-      expect(summary.overallStatus).toBe('clean');
+      expect(fieldOf(summary, 'overallStatus')).toBe('clean');
       expect(exitCode).toBe(0);
     },
     FIXTURE_TIMEOUT_MS,
@@ -269,7 +270,11 @@ describe('the js-clean fixture project', () => {
         'eslint-lint',
       ]);
 
-      expect(summary.tools.map(({ name }) => name).sort()).toEqual([
+      expect(
+        listOf(fieldOf(summary, 'tools'))
+          .map((tool) => textOf(fieldOf(tool, 'name')))
+          .sort(),
+      ).toEqual([
         'dead-code',
         'duplicates',
         'entry-points',
@@ -301,7 +306,9 @@ describe('the js-clean fixture project', () => {
 
         expect(toolErrors).toEqual([]);
         expect(
-          findings.filter(({ rule }) => /^react/u.test(rule)).map(({ identity }) => identity),
+          findings
+            .filter(({ rule }) => /^react/u.test(textOf(rule)))
+            .map(({ identity }) => identity),
         ).toEqual([]);
       },
       FIXTURE_TIMEOUT_MS,
@@ -374,7 +381,7 @@ it('fails on purpose', () => {
       'export const last = 3;',
       '',
     ].join('\n');
-    let sharedRoot;
+    let sharedRoot: string;
 
     function legacyTarget() {
       return path.join(sharedRoot, 'src/main/legacy.js');
@@ -391,7 +398,7 @@ it('fails on purpose', () => {
       rmSync(sharedRoot, { recursive: true, force: true });
     });
 
-    function runDifference(branch, edit) {
+    function runDifference(branch: string, edit: (text: string) => string) {
       git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
       writeFileSync(legacyTarget(), edit(legacy));
       const result = runNitpicker(sharedRoot, [
@@ -412,7 +419,7 @@ it('fails on purpose', () => {
           text.replace('first = 1', 'first = 2'),
         );
 
-        expect(summary.newEnforceableFindings).toBe(0);
+        expect(fieldOf(summary, 'newEnforceableFindings')).toBe(0);
         expect(exitCode).toBe(0);
       },
       FIXTURE_TIMEOUT_MS,

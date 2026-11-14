@@ -1,14 +1,42 @@
 import { describe, expect, it } from 'vitest';
 import {
-  castTags,
+  castTags as untypedCastTags,
   isJsdocBlock,
-  parseJsdoc,
-  typePredicateTags,
-  unknownMemberTags,
-  withJsdoc,
+  parseJsdoc as untypedParseJsdoc,
+  typePredicateTags as untypedTypePredicateTags,
+  unknownMemberTags as untypedUnknownMemberTags,
+  withJsdoc as untypedWithJsdoc,
 } from './jsdoc.mjs';
 
-function messageIds(value) {
+type Tag = { readonly tag: string; readonly type?: string; readonly name?: string };
+type Problem = { readonly messageId: string; readonly data?: Readonly<Record<string, string>> };
+type Comment = {
+  readonly type: string;
+  readonly value: string;
+  readonly loc: { readonly line: number };
+};
+type Report = { readonly loc: { readonly line: number }; readonly messageId: string };
+type Visitors = { Program(): void; [visitor: string]: () => void };
+
+const castTags: (tags: Tag[]) => Tag[] = untypedCastTags;
+const typePredicateTags: (tags: Tag[]) => Tag[] = untypedTypePredicateTags;
+const unknownMemberTags: (tags: Tag[]) => Tag[] = untypedUnknownMemberTags;
+const parseJsdoc: (value: string) => { tags: Tag[]; problems: Problem[] } = untypedParseJsdoc;
+const withJsdoc: (
+  context: {
+    readonly options: object[];
+    readonly sourceCode: { getAllComments(): Comment[] };
+    report(report: Report): number;
+  },
+  visitors: Record<string, () => void>,
+  selection: {
+    readonly selectTags: (tags: Tag[]) => Tag[];
+    readonly messageId: string;
+    readonly data: undefined;
+  },
+) => Visitors = untypedWithJsdoc;
+
+function messageIds(value: string) {
   return parseJsdoc(value).problems.map((problem) => problem.messageId);
 }
 
@@ -116,12 +144,11 @@ describe('parseJsdoc problems', () => {
     ]);
   });
 
-  it('reports an unclosed type brace as malformed', () => {
-    expect(messageIds('* @type {string')).toEqual(['jsdocMalformed']);
-  });
-
-  it('reports a malformed import', () => {
-    expect(messageIds('* @import {Row}')).toEqual(['jsdocMalformed']);
+  it.each([
+    ['reports an unclosed type brace as malformed', '* @type {string'],
+    ['reports a malformed import', '* @import {Row}'],
+  ])('%s', (_name, comment) => {
+    expect(messageIds(comment)).toEqual(['jsdocMalformed']);
   });
 
   it('reports any and the star type', () => {
@@ -185,6 +212,10 @@ describe('parseJsdoc problems', () => {
   });
 });
 
+function selectedTagNames(select: (tags: Tag[]) => Tag[]) {
+  return (value: string) => select(parseJsdoc(value).tags).map((tag) => tag.tag);
+}
+
 describe('castTags', () => {
   it('selects @type tags except const', () => {
     const { tags } = parseJsdoc('* @type {Row}');
@@ -195,9 +226,7 @@ describe('castTags', () => {
 });
 
 describe('unknownMemberTags', () => {
-  function selected(value) {
-    return unknownMemberTags(parseJsdoc(value).tags).map((tag) => tag.tag);
-  }
+  const selected = selectedTagNames(unknownMemberTags);
 
   it('selects param, property and prop types that mention unknown', () => {
     expect(selected('* @param {unknown} value')).toEqual(['param']);
@@ -240,9 +269,7 @@ describe('unknownMemberTags', () => {
 });
 
 describe('typePredicateTags', () => {
-  function selected(value) {
-    return typePredicateTags(parseJsdoc(value).tags).map((tag) => tag.tag);
-  }
+  const selected = selectedTagNames(typePredicateTags);
 
   it('selects a returned type predicate or assertion', () => {
     expect(selected('* @returns {value is string}')).toEqual(['returns']);
@@ -262,8 +289,8 @@ describe('typePredicateTags', () => {
 });
 
 describe('withJsdoc', () => {
-  function recordingContext(options, value) {
-    const reports = [];
+  function recordingContext(options: object[], value: string) {
+    const reports: Report[] = [];
     const comment = { type: 'Block', value, loc: { line: 3 } };
     const lineComment = { type: 'Line', value: '* @param {unknown} value', loc: { line: 9 } };
     return {
@@ -271,12 +298,12 @@ describe('withJsdoc', () => {
       context: {
         options,
         sourceCode: { getAllComments: () => [lineComment, comment] },
-        report: (report) => reports.push(report),
+        report: (report: Report) => reports.push(report),
       },
     };
   }
 
-  const selection = { selectTags: unknownMemberTags, messageId: 'unknownType' };
+  const selection = { selectTags: unknownMemberTags, messageId: 'unknownType', data: undefined };
 
   it('returns the visitors unchanged unless the jsdoc option is true', () => {
     const visitors = { Identifier() {} };
