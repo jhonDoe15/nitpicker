@@ -49,6 +49,56 @@ export const policyFailureMessageCases = [
     'fixed-size chunks',
   ),
   adapterCase(
+    'query in a loop names the batched call',
+    'export async function load(ids: string[]) { for (const id of ids) { await repository.findById(id); } }',
+    'findByIds',
+  ),
+  adapterCase(
+    'request in a loop names bounded concurrency',
+    'export async function load(ids: string[]) { for (const id of ids) { await httpClient.get(id); } }',
+    'p-limit',
+  ),
+  adapterCase(
+    'query in Promise.all names one query',
+    'export async function load(ids: string[]) { await Promise.all(ids.map((id) => repository.findById(id))); }',
+    'in one query',
+  ),
+  adapterCase(
+    'Redis command in a loop names mget and a pipeline',
+    'export async function load(ids: string[]) { for (const id of ids) { await redisClient.get(id); } }',
+    'pipeline()',
+  ),
+  adapterCase(
+    'accumulator concat names pushing into the accumulator',
+    'export const all = (xs: number[][]) => xs.reduce((acc, x) => acc.concat(x), []);',
+    'push into an array',
+  ),
+  adapterCase(
+    'remote call in a transaction names the outbox',
+    'export async function run(prisma, url) { await prisma.$transaction(async (tx) => { await tx.order.create({}); await fetch(url); }); }',
+    'outbox row',
+  ),
+  adapterCase(
+    'remote call under a lock names releasing it first',
+    'export async function run(mutex, url) { await mutex.runExclusive(async () => { await fetch(url); }); }',
+    'after releasing it',
+  ),
+  adapterCase(
+    'retried insert names the upsert',
+    "import pRetry from 'p-retry';\nexport async function run(db) { await pRetry(() => db.query('INSERT INTO t (id) VALUES (1)')); }",
+    'ON CONFLICT',
+  ),
+  adapterCase(
+    'dual write names the outbox',
+    "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+    'outbox table',
+  ),
+  adapterCase(
+    'dual write names the relay',
+    "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+    'relay',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

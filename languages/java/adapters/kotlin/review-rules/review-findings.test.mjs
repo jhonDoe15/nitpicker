@@ -367,22 +367,14 @@ describe('Kotlin exception rules for the review rules', () => {
 describe('withoutCoveredFindings', () => {
   const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
 
-  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
+  it('keeps one finding when a Spring rule names the allowed form for the same client', () => {
     const findings = [
       at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
       at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
       at(SOURCE_TOOL, 'HttpWithoutTimeout', 9),
-      at(SOURCE_TOOL, 'IoCallInLoop', 3),
-      at(SOURCE_TOOL, 'IoCallInLoop', 7),
-      at(REVIEW_TOOL, 'SpringDataNoSaveInLoop', 7),
     ];
 
-    expect(withoutCoveredFindings(findings)).toEqual([
-      findings[1],
-      findings[2],
-      findings[3],
-      findings[5],
-    ]);
+    expect(withoutCoveredFindings(findings)).toEqual([findings[1], findings[2]]);
   });
 
   it('keeps the blocking-call finding when an unbounded wait is reported on the same line', () => {

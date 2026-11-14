@@ -21,6 +21,8 @@ MAX_COLLECTION_TEXT = 40
 
 def work_of(site, context):
     call = site.work
+    if not isinstance(call, ast.Call):
+        return None
     scope = remote_of(context)
     kind = scope.kind(call)
     if kind:
