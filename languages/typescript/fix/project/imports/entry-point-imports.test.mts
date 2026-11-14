@@ -1,25 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeEntryPoints } from '../../../preset/entry-points/analyze.mjs';
-import { projectGraph } from '../model/project-graph.mjs';
-import { withProject } from '../model/project-model.mjs';
+import { analyzeFixedSources } from '../test-support/analyze-fixed-sources.mts';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
+import type { FixedProject } from '../test-support/fixture-project.mts';
+import { analyzeEntryPoints, projectGraph } from '../typed/reuse-views.mts';
 import {
   featureInternalsOnlyThroughIndexRecipe,
   publicAlternativeBypassRecipe,
-} from './entry-point-imports.mjs';
+} from './entry-point-imports.mts';
 
 const projects = useFixtureProjects();
 const BYPASS = 'entry-points/public-alternative-bypass';
 const INTERNALS = 'dependency-architecture/feature-internals-only-through-index';
 
-function bypassesAfter(result) {
-  const names = Object.keys(result.tree).filter((name) => name.startsWith('src/'));
-  const context = {
-    projectRoot: result.projectRoot,
-    files: names.map((path) => ({ path })),
-    read: (name) => result.tree[name],
-  };
-  return withProject(context, (project) =>
+function bypassesAfter(result: FixedProject): string[] {
+  return analyzeFixedSources(result, (project) =>
     analyzeEntryPoints(projectGraph(project), 'src').publicAlternativeBypasses.map(
       ({ source }) => source,
     ),
@@ -142,7 +136,7 @@ describe('featureInternalsOnlyThroughIndexRecipe', () => {
         changed: ['src/main/app.ts', 'src/main/other.ts'],
       },
     );
-    expect(result.tree[`${FEATURE}/index.ts`].match(/tax/gu)).toHaveLength(1);
+    expect(result.tree[`${FEATURE}/index.ts`]?.match(/tax/gu)).toHaveLength(1);
     expect(result.tree['src/main/other.ts']).toMatchInlineSnapshot(`
       "import { tax } from './features/billing/index.js';
       export const y = tax;

@@ -1,17 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { testOnlyExportRecipe as recipe } from './test-only-export.mjs';
+import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
+import { testOnlyExportRecipe as recipe } from './test-only-export.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'dead-code/test-only-export';
 
 describe('testOnlyExportRecipe', () => {
   it('is a review recipe of project scope for the dead-code rule', () => {
-    expect([recipe.safety, recipe.scope, recipe.rules]).toEqual([
-      'review',
-      'project',
-      [{ tool: 'dead-code', rule: 'test-only-export' }],
-    ]);
+    const { safety, scope, rules } = recipe;
+    expect({ safety, scope, rules }).toEqual({
+      safety: 'review',
+      scope: 'project',
+      rules: [{ tool: 'dead-code', rule: 'test-only-export' }],
+    });
   });
 
   it('moves an export only tests import into test support and repoints the tests', () => {
@@ -44,8 +46,12 @@ describe('testOnlyExportRecipe', () => {
       'test/prices.test.ts':
         "import { helper } from '../src/prices.js';\nexport const t = helper();\n",
     };
-    const result = projects.fix(files, { recipe, rule: RULE, changed: ['src/prices.ts'] });
-    expect(result.tree['src/prices.ts']).toBe(files['src/prices.ts']);
+    const result = fixLeavingFileUnchanged(
+      projects,
+      files,
+      { recipe, rule: RULE, changed: ['src/prices.ts'] },
+      'src/prices.ts',
+    );
     expect(result.notes).toMatchInlineSnapshot(`
       [
         "--fix left src/prices.ts:1 test-only-export: helper is also used inside src/prices.ts",

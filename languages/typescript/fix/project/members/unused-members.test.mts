@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { unusedOptionRecipe, unusedPropRecipe } from './unused-members.mjs';
+import { fixLeavingFileUnchanged } from '../test-support/unchanged-fix.mts';
+import { unusedOptionRecipe, unusedPropRecipe } from './unused-members.mts';
 
 const projects = useFixtureProjects();
 
@@ -54,12 +55,16 @@ describe('unused member recipes', () => {
           'export function run(task: string, options: { retries?: number; verbose?: boolean }) {\n  return [task, options.retries, options.verbose];\n}\n',
         'src/use.ts': "import { run } from './run.js';\nrun('a', { retries: 2 });\n",
       };
-      const result = projects.fix(files, {
-        recipe: unusedOptionRecipe,
-        rule,
-        changed: ['src/run.ts'],
-      });
-      expect(result.tree['src/run.ts']).toBe(files['src/run.ts']);
+      const result = fixLeavingFileUnchanged(
+        projects,
+        files,
+        {
+          recipe: unusedOptionRecipe,
+          rule,
+          changed: ['src/run.ts'],
+        },
+        'src/run.ts',
+      );
       expect(result.notes).toMatchInlineSnapshot(`
         [
           "--fix left src/run.ts:1 unused-option: the change would add errors to src/run.ts",
