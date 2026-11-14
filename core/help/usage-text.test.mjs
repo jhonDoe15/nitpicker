@@ -56,7 +56,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --verify <narrow|full>           With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
-  '  --project <path>                 In a monorepo, run only this project (repeatable).',
+  '  --project <path>                 In a monorepo, run only this project: folder, package name or quoted glob (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --quick                          Run only the fast checks and skip the tests and what builds on them.',

@@ -815,8 +815,13 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). With `--fix`, it takes full `tool/rule` names and picks the fixes to apply (see [Preview and pick fixes](#preview-and-pick-fixes)).
-- `--project <path>`: at the top of a [monorepo](#monorepos), check only this project, whether or
-  not it changed (repeatable). Without a monorepo it is an error.
+- `--project <path>`: in a [monorepo](#monorepos), check only this project, whether or not it
+  changed (repeatable). It takes the project folder from the top of the monorepo, a folder
+  relative to the current one, a package name (the `package.json` `name`, the Python project name,
+  the Maven `artifactId` or the Gradle `rootProject.name`), or a quoted glob over folders and names
+  (`--project 'packages/*'`). Inside a project it still picks from the whole monorepo. A value
+  that matches nothing names the closest projects, and a name and a folder that point at different
+  projects are an error. Without a monorepo it is an error.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -2088,7 +2093,7 @@ Nitpicker compares the files changed against the merge base (plus untracked file
   or `uv.lock` for Python, a settings or build file for Java and Kotlin. Such a file in a folder
   that is not a project, such as `tools/package.json`, runs nothing.
 
-`--project <path>` (repeatable) runs exactly the named projects, changed or not. `--all` runs every
+`--project` (repeatable; a folder, package name or quoted glob, see [Command line](#command-line)) runs exactly the named projects, changed or not. `--all` runs every
 project against the whole checkout. `--analyzer <name>` runs the projects that have that analyzer
 and is an error when no project has it. Changed files that belong to no project are listed and not
 checked. With a `projects` list, a new folder that holds a project file but is not listed gets a

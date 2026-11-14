@@ -132,8 +132,8 @@ describe('a run at the top of a monorepo', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.err).toBe(
-      'nitpicker failed: --project names docs, which is not a project of this repository. ' +
-        'Projects: web, api, tools/app\n',
+      'nitpicker failed: --project docs matches no project of this repository by folder, ' +
+        'folder from the current one, or package name. nitpicker projects lists the projects.\n',
     );
   });
 
