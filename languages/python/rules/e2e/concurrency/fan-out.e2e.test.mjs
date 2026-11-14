@@ -322,3 +322,16 @@ describe.skipIf(!enabled)('io-in-loop next to unbounded-fan-out', () => {
     expect(loopsAndFanOut(actual)).toEqual(expected);
   });
 });
+
+describe.skipIf(!enabled)('unbounded-fan-out over a task group given a callable name', () => {
+  it('does not crash when the spawned work is an annotated name, not a call', () => {
+    const [actual, expected] = check([
+      [
+        'create_task of an annotated coroutine parameter',
+        'import asyncio\nfrom typing import Any, Coroutine\n\nimport anyio\n\n\nasync def gather(*coros: Coroutine[Any, Any, Any]) -> tuple[Any, ...]:\n    handles: list[Any] = []\n    async with anyio.create_task_group() as tg:\n        handles.extend(tg.create_task(coro) for coro in coros)\n    return tuple(handles)\n',
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});
