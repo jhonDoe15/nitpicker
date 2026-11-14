@@ -2,12 +2,33 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { cruiseWithConfig } from '../test-support/strict-cruise.mjs';
+import { cruiseWithConfig, outputText } from '../test-support/strict-cruise.mts';
+import { outsideRootsRule, type OutsideRootsOptions } from '../test-support/outside-roots-view.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../../shared/values/readers.mts';
 import { createQualityChecks } from '../../quality-checks.mjs';
-import { NO_IMPORT_OUTSIDE_ROOTS, outsideRootsRule } from './outside-roots.mjs';
+import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots.mjs';
 
 const tsConfig = path.resolve(import.meta.dirname, '../fixtures/tsconfig.fixture.json');
-const created = [];
+const created: string[] = [];
+const createQualityChecksTyped: () => {
+  readonly staticChecks: readonly { readonly name: string; readonly exclude?: string }[];
+} = createQualityChecks;
+
+type Violation = readonly [string, string, string];
+
+function violationsOf(output: string): Violation[] {
+  return listOf(fieldOf(fieldOf(parseJson(output), 'summary'), 'violations')).map((violation) => [
+    textOf(fieldOf(violation, 'from')),
+    textOf(fieldOf(violation, 'to')),
+    textOf(fieldOf(fieldOf(violation, 'rule'), 'name')),
+  ]);
+}
+
+function dependencyArchitectureExclude(): string | undefined {
+  return createQualityChecksTyped().staticChecks.find(
+    ({ name }) => name === 'dependency-architecture',
+  )?.exclude;
+}
 
 afterEach(() => {
   for (const directory of created.splice(0)) {
@@ -15,7 +36,7 @@ afterEach(() => {
   }
 });
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const directory = mkdtempSync(path.join(tmpdir(), 'outside-roots-'));
   created.push(directory);
   for (const [name, content] of Object.entries(files)) {
@@ -25,13 +46,9 @@ function project(files) {
   return directory;
 }
 
-async function cruise(files, options = {}) {
+async function cruise(files: Readonly<Record<string, string>>, options: OutsideRootsOptions = {}) {
   const baseDir = project(files);
-  const rule = outsideRootsRule({
-    productionSource: '^src/',
-    roots: ['src'],
-    ...options,
-  });
+  const rule = outsideRootsRule('^src/', ['src'], options);
   const result = await cruiseWithConfig(
     { forbidden: [rule], options: { tsConfig: { fileName: tsConfig } } },
     { baseDir, paths: ['src'], outputType: 'err-long' },
@@ -47,7 +64,7 @@ describe('outsideRootsRule', () => {
     });
 
     expect(result.exitCode).not.toBe(0);
-    expect(result.output).toContain(NO_IMPORT_OUTSIDE_ROOTS);
+    expect(outputText(result)).toContain(NO_IMPORT_OUTSIDE_ROOTS);
   });
 
   it('accepts imports inside the source roots, packages and json files', async () => {
@@ -58,7 +75,7 @@ describe('outsideRootsRule', () => {
       'data.json': '{}',
     });
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 
   it('accepts an import of a folder the project excludes', async () => {
@@ -70,16 +87,12 @@ describe('outsideRootsRule', () => {
       { excludePattern: '^lib/' },
     );
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 
   it('fails an import of build output or unmarked generated code, and accepts marked generated code', async () => {
-    const { exclude } = createQualityChecks().staticChecks.find(
-      ({ name }) => name === 'dependency-architecture',
-    );
-    const rule = outsideRootsRule({
-      productionSource: '^src/',
-      roots: ['src'],
+    const exclude = dependencyArchitectureExclude();
+    const rule = outsideRootsRule('^src/', ['src'], {
       generatedFilePattern: '^(?:generated/marked\\.ts)$',
     });
     const result = await cruiseWithConfig(
@@ -99,11 +112,7 @@ describe('outsideRootsRule', () => {
         outputType: 'json',
       },
     );
-    const violations = JSON.parse(result.output).summary.violations.map(({ from, to, rule }) => [
-      from,
-      to,
-      rule.name,
-    ]);
+    const violations = violationsOf(outputText(result));
 
     expect(violations).toEqual([
       ['src/a.ts', 'dist/b.ts', NO_IMPORT_OUTSIDE_ROOTS],
@@ -119,19 +128,19 @@ describe('outsideRootsRule', () => {
     });
     const result = await cruiseWithConfig(
       {
-        forbidden: [outsideRootsRule({ productionSource: '^src/', roots: ['src'] })],
+        forbidden: [outsideRootsRule('^src/', ['src'])],
         options: { tsConfig: { fileName: tsConfig } },
       },
       { baseDir, paths: ['tests'], outputType: 'err-long' },
     );
 
-    expect(result.exitCode, result.output).toBe(0);
+    expect(result.exitCode, outputText(result)).toBe(0);
   });
 });
 
 describe('the outside-roots message', () => {
   it('names moving the code under a source root first and the loosening route second', () => {
-    expect(outsideRootsRule({ productionSource: '^src/', roots: ['src'] }).comment).toBe(
+    expect(outsideRootsRule('^src/', ['src']).comment).toBe(
       'Production code imports only from layout.sourceRoots: move the imported code under a source root, or add its folder to layout.sourceRoots so the gate checks it. Excluding the imported file instead is a policy loosening that fails until a person accepts it.',
     );
   });

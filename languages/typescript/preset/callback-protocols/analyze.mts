@@ -1,8 +1,19 @@
-import { depthFirst } from '../../../../shared/traversal.mjs';
-import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
-import { syntaxChildren } from '../syntax/children.mjs';
-import { callbackProtocolContracts } from './contracts.mjs';
-import { ts } from '../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
+import {
+  depthFirst,
+  projectFilesUnder,
+  syntaxChildren,
+} from '../architecture/typed/syntax-views.mts';
+import type { Layout } from '../architecture/typed/boundary-types.mts';
+import { callbackProtocolContracts } from './contracts.mts';
+import type {
+  Bindings,
+  CallbackFinding,
+  Contract,
+  FunctionLike,
+  OptionProperty,
+} from './callback-types.mts';
 import {
   unwrap,
   invokedReadName,
@@ -13,12 +24,28 @@ import {
   calleeName,
   optionProperties,
   constructedTarget,
-} from './bindings.mjs';
-import { defaultResolvedLayout } from '../layout.mjs';
+} from './bindings.mts';
+import { defaultResolvedLayout as untypedDefaultLayout } from '../layout.mjs';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-function createReporter(tree, file, findings) {
+const ts = typescriptApi();
+
+const defaultResolvedLayout: Layout = untypedDefaultLayout;
+
+type Report = (rule: string, node: TypeScript.Node, callee: string) => void;
+
+type Frame = {
+  readonly node: TypeScript.Node;
+  readonly bindings: Bindings;
+  readonly active: Set<FunctionLike>;
+};
+
+function createReporter(
+  tree: TypeScript.SourceFile,
+  file: string,
+  findings: CallbackFinding[],
+): Report {
   const emitted = new Set();
   return (rule, node, callee) => {
     const key = `${rule}:${node.getStart(tree)}`;
@@ -29,7 +56,7 @@ function createReporter(tree, file, findings) {
   };
 }
 
-function calledFrame(frame) {
+function calledFrame(frame: Frame): Frame[] {
   if (!ts.isCallExpression(frame.node)) return [];
   const fn = resolveCallback(unwrap(frame.node.expression), frame.bindings);
   if (!fn?.body || frame.active.has(fn)) return [];
@@ -42,15 +69,19 @@ function calledFrame(frame) {
   ];
 }
 
-function callbackChildren(frame) {
+function callbackChildren(frame: Frame): Frame[] {
   const nested = calledFrame(frame);
   const children = functionLike(frame.node) ? [] : syntaxChildren(frame.node);
   return [...nested, ...children.map((node) => ({ ...frame, node }))];
 }
 
-function inspectSource(callback, { target, contract }, report) {
+function inspectSource(
+  callback: FunctionLike,
+  { target, contract }: { readonly target: string; readonly contract: Contract },
+  report: Report,
+): void {
   if (!callback.body) return;
-  const root = { node: callback.body, bindings: new Map(), active: new Set([callback]) };
+  const root: Frame = { node: callback.body, bindings: new Map(), active: new Set([callback]) };
   for (const { node, bindings } of depthFirst(root, callbackChildren)) {
     if (!ts.isCallExpression(node)) continue;
     const invoked = unwrap(node.expression);
@@ -58,6 +89,7 @@ function inspectSource(callback, { target, contract }, report) {
     if (
       readName &&
       contract.snapshotReadMethods.includes(readName) &&
+      (ts.isPropertyAccessExpression(invoked) || ts.isElementAccessExpression(invoked)) &&
       accessPath(invoked.expression, bindings) === target
     ) {
       report('source-loader-does-not-merge-published-state', node, contract.callee);
@@ -65,8 +97,15 @@ function inspectSource(callback, { target, contract }, report) {
   }
 }
 
-function inspectProperty(property, { contract, target }, report) {
-  if (contract.externalPublicationCallbacks.includes(property.name)) {
+function inspectProperty(
+  property: OptionProperty,
+  { contract, target }: { readonly contract: Contract; readonly target: string | undefined },
+  report: Report,
+): void {
+  if (
+    property.name !== undefined &&
+    contract.externalPublicationCallbacks.includes(property.name)
+  ) {
     report('publication-owner-does-not-commit-external-state', property.node, contract.callee);
   }
   const correlated = contract.correlatedCallbacks.find((item) => item.name === property.name);
@@ -74,11 +113,20 @@ function inspectProperty(property, { contract, target }, report) {
   if (correlated && callback && callback.parameters.length <= correlated.inputIndex) {
     report('correlated-callback-declares-correlation-input', property.node, contract.callee);
   }
-  if (callback && target && contract.sourceCallbacks.includes(property.name))
+  if (
+    callback &&
+    target &&
+    property.name !== undefined &&
+    contract.sourceCallbacks.includes(property.name)
+  )
     inspectSource(callback, { target, contract }, report);
 }
 
-function inspectInvocation(node, contracts, report) {
+function inspectInvocation(
+  node: TypeScript.Node,
+  contracts: readonly Contract[],
+  report: Report,
+): void {
   if (!ts.isNewExpression(node) && !ts.isCallExpression(node)) return;
   const contract = contracts.find((item) => item.callee === calleeName(node.expression));
   if (!contract) return;
@@ -90,11 +138,14 @@ function inspectInvocation(node, contracts, report) {
 }
 
 export function analyzeCallbackProtocols(
-  source,
-  { file = 'input.ts', contracts = callbackProtocolContracts } = {},
-) {
+  source: string,
+  {
+    file = 'input.ts',
+    contracts = callbackProtocolContracts,
+  }: { readonly file?: string; readonly contracts?: readonly Contract[] } = {},
+): CallbackFinding[] {
   const tree = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
-  const findings = [];
+  const findings: CallbackFinding[] = [];
   const report = createReporter(tree, file, findings);
   for (const node of depthFirst(tree, syntaxChildren)) inspectInvocation(node, contracts, report);
   return findings;
@@ -105,8 +156,13 @@ export function analyzeProductionCallbacks({
   sourceRoot = layout.sourceRoot,
   displayRoot = sourceRoot,
   contracts = callbackProtocolContracts,
-} = {}) {
-  function skipDirectory(_absolute, entry) {
+}: {
+  readonly layout?: Layout;
+  readonly sourceRoot?: string;
+  readonly displayRoot?: string;
+  readonly contracts?: readonly Contract[];
+} = {}): { readonly filesScanned: number; readonly findings: CallbackFinding[] } {
+  function skipDirectory(_absolute: string, entry: { readonly name: string }): boolean {
     return /^(?:__tests__|tests|node_modules)$/.test(entry.name);
   }
   const files = existsSync(sourceRoot)

@@ -2,12 +2,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { collectArchitectureSignals } from './check.mjs';
-import { resolveLayout } from '../layout.mjs';
-import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mjs';
+import { collectArchitectureSignals } from './check.mts';
+import { resolveLayout as untypedResolveLayout } from '../layout.mjs';
+import type { ProjectLayout } from '../callback-protocols/typed/project-layout.mts';
+import { analyzePublicContractUsage } from '../architecture/public-contract-usage.mts';
+
+const resolveLayout: (
+  layout?: { readonly sourceRoots?: string[] },
+  exclude?: string[],
+) => ProjectLayout = untypedResolveLayout;
 
 describe('architecture signal paths', () => {
-  let root;
+  let root: string;
 
   beforeEach(() => {
     root = mkdtempSync(path.join(tmpdir(), 'architecture-signals-'));
@@ -17,24 +23,24 @@ describe('architecture signal paths', () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  function write(file, source) {
+  function write(file: string, source: string): void {
     const absolute = path.join(root, file);
     mkdirSync(path.dirname(absolute), { recursive: true });
     writeFileSync(absolute, source);
   }
 
-  function config(file, include, rootDir) {
+  function config(file: string, include: string[], rootDir?: string): void {
     write(file, JSON.stringify({ compilerOptions: { noLib: true, types: [], rootDir }, include }));
   }
 
-  function contract(file) {
+  function contract(file: string): void {
     write(
       file,
       'export interface Port { send(): void; } export class Adapter implements Port { send() {} }',
     );
   }
 
-  function signal(file) {
+  function signal(file: string) {
     return { file, rule: 'public-contract-production-use', source: 'Port.send' };
   }
 
