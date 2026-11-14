@@ -1,8 +1,11 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
+import { isEntryOfListedBase } from '../analysis/node/listed-entries.mjs';
+import { isPathBuilder } from '../analysis/node/listed-entry-sources.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { isContained, unwrapped } from './path-containment.mjs';
 
+const JOINED_TEMPLATE_PARTS = 3;
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
 const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);
 const TWO_PATH_FUNCTIONS = new Set(
@@ -48,7 +51,10 @@ function boundValues(sourceCode, identifier) {
   const writes = variable.references
     .filter((reference) => reference.isWrite() && reference.writeExpr)
     .map((reference) => reference.writeExpr);
-  return [...new Set([definition.node.init, ...writes].filter(Boolean))];
+  const loop = definition.parent.parent;
+  const iteration =
+    loop?.type === 'ForOfStatement' && loop.left === definition.parent ? loop.right : undefined;
+  return [...new Set([definition.node.init, iteration, ...writes].filter(Boolean))];
 }
 
 function isParameter(sourceCode, identifier) {
@@ -83,6 +89,7 @@ function taintSources(scope, expression) {
     case 'ConditionalExpression':
       return [expression.consequent, expression.alternate];
     case 'SpreadElement':
+    case 'AwaitExpression':
       return [expression.argument];
     default:
       return [];
@@ -127,12 +134,40 @@ function pathParts(scope, node) {
   return isConcatenation(node) ? concatenated(node) : undefined;
 }
 
+function isTaintedSegment(scope, base, segment) {
+  return (
+    segment !== undefined && !isEntryOfListedBase(scope, base, segment) && isTainted(scope, segment)
+  );
+}
+
+function listedEntryBase(scope, node, parts) {
+  if (
+    node.type === 'CallExpression' &&
+    parts?.length === 2 &&
+    isPathBuilder(scope, node) &&
+    ['join', 'resolve'].includes(importedCalleeName(node.callee, scope.pathModule))
+  ) {
+    return parts[0];
+  }
+  const simpleTemplate =
+    node.type === 'TemplateLiteral' &&
+    node.quasis.length === JOINED_TEMPLATE_PARTS &&
+    node.quasis[0].value.cooked === '' &&
+    node.quasis[1].value.cooked === '/' &&
+    node.quasis[2].value.cooked === '';
+  return simpleTemplate ? parts[0] : undefined;
+}
+
 function isUnsafeBuild(scope, expression) {
   const pending = [expression];
   for (const current of pending) {
     const node = unwrapped(current);
     const parts = node.type === 'Identifier' ? undefined : pathParts(scope, node);
-    if (parts?.slice(1).some((segment) => segment && isTainted(scope, segment))) {
+    if (
+      parts
+        ?.slice(1)
+        .some((segment) => isTaintedSegment(scope, listedEntryBase(scope, node, parts), segment))
+    ) {
       return true;
     }
     if (pending.length < MAX_TAINT_STEPS) {
@@ -181,6 +216,7 @@ export const rule = {
     const scope = {
       context,
       sourceCode,
+      fs,
       pathModule: { named: new Map(), namespaces: new Set() },
     };
 
@@ -191,6 +227,7 @@ export const rule = {
     return {
       Program(node) {
         fs = fsBindings(node);
+        scope.fs = fs;
         scope.pathModule = moduleBindings(node, PATH_MODULES);
       },
       CallExpression(node) {

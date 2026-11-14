@@ -92,7 +92,7 @@ it('keeps a detekt run that wrote no report apart from a clean one', () => {
 
 it('fails the build step when detekt, type resolution included, ends with an error instead of findings', () => {
   const init = readFileSync(
-    path.resolve(import.meta.dirname, '../../../gradle/nitpicker.init.gradle'),
+    path.resolve(import.meta.dirname, '../../../gradle/kotlin/kotlin-detekt.gradle'),
     'utf8',
   );
 
