@@ -1,3 +1,4 @@
+import { logicPairs } from '../proof/candidates.mjs';
 import { THRESHOLDS } from '../thresholds.mjs';
 import { statementHashes } from './hashes.mjs';
 import { partnerLimit, similarityPairs } from './similarity.mjs';
@@ -40,6 +41,7 @@ export function candidatePairs(units, inScope) {
   const pairs = new Set();
   indexPairs(units, inScope, pairs);
   similarityPairs(units, inScope, pairs);
+  logicPairs(units, inScope, pairs);
   return [...pairs]
     .sort((left, right) => left - right)
     .map((key) => [Math.floor(key / units.length), key % units.length]);

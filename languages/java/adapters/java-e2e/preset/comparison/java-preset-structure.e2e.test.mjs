@@ -31,4 +31,25 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       'function-parameters-limit Wide.sum',
     ]);
   }, 180_000);
+  it('fails a method copied with one changed literal', () => {
+    const result = fixture.diffOf('near-copy');
+
+    expect(fixture.structureOf(result.newEnforceable)).toEqual([
+      'near-duplicate OrderPricing.total(long[],long,StringBuilder)',
+    ]);
+    expect(result.failed).toBe(true);
+  }, 180_000);
+  it('passes the copied method with an exception', () => {
+    const exceptions = [
+      {
+        rule: 'near-duplicate',
+        paths: ['src/main/java/demo/OrderPricing.java'],
+        reason: 'pricing per document type',
+      },
+    ];
+
+    expect(fixture.structureOf(fixture.diffOf('near-copy', { exceptions }).newEnforceable)).toEqual(
+      [],
+    );
+  }, 180_000);
 });

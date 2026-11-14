@@ -68,7 +68,9 @@ Part of the [Java preset guide](../java-preset.md).
   1.8, by version), which the runner gives javac as `-source 8 -target 8`, the oldest level JDK
   21's javac takes; plugin 4.x has no such default and javac's own applies. An `annotationProcessorPaths` entry without a version takes it from the effective
   `dependencyManagement`, as `maven-compiler-plugin` does; one with no version there, or an
-  unresolved one, is a tool error that names the coordinate, never a guessed version. Without
+  unresolved one, is a tool error that names the module and the coordinate, never a guessed
+  version. Only modules that compile are read: an aggregator (packaging `pom`) compiles nothing,
+  so its unresolved entries do not matter, as in Maven. Without
   `annotationProcessorPaths` the processors come from the classpath, as javac finds them. The main
   classpath ends with `target/classes`, so classes that code generators (protobuf, JAXB, OpenAPI,
   jOOQ, ANTLR) compiled there resolve; the module's own sources are compiled from source and take

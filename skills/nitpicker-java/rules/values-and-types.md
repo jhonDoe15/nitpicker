@@ -77,6 +77,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
   in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
   `sorted(...).findFirst()` (`pmd/SortForExtreme`).
+- Skip a collection step whose result is thrown away: `anyMatch(...)` instead of
+  `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
+  the source instead of on a `toList()` or `new ArrayList<>(source)` copy
+  (`pmd/RedundantStreamStep`).
 - A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
   `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
   (`pmd/StreamedRowsCollected`).
