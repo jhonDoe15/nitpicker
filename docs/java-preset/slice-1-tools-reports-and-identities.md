@@ -29,6 +29,15 @@ Notes on the glue in `java-reports.mjs`:
   a file PMD fails on in both snapshots is listed in a full run and is not a new finding in a comparison;
   a file that fails only on head is new. The findings of that file are not removed from either side.
   Both the Gradle and the Maven build read the report the same way.
+- **Keys built from a runtime value.** PMD's `HardCodedCryptoKey` reports any key that contains a string
+  literal, so `new SecretKeySpec((timestamp + "\n" + secret).getBytes(), ...)` is reported although the
+  secret is configured. `crypto-keys/crypto-key-filter.mjs` reads the source at the finding (PMD points
+  at the literal), takes the key expression (the first argument of `new SecretKeySpec(...)`, or the
+  initializer of the variable the literal is assigned to) and drops the finding when it holds a method
+  parameter, a field or local that is not a constant or only literals, a member of another object, or a
+  call other than the conversions that keep a literal a literal (`getBytes`, `toCharArray`, a Base64 or
+  hex `decode`, `valueOf`, `substring` and similar). Names in capitals count as constants. A key made only
+  of literals and constants is still reported. The Kotlin preset reads the same report for its Java files.
 - **Identity injection.** Neither tool emits `partialFingerprints`. The glue sets one
   (`nitpicker/subject`) from the message text (PMD) or message arguments (SpotBugs), so the SARIF
   ingester's `fp:` identity path is used and the line is never involved. The alternative, the

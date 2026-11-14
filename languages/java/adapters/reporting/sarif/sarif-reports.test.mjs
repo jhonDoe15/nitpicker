@@ -113,13 +113,30 @@ describe('sarifFindings', () => {
       'class CartTest { String u(String x) { return x.replace("a", "127.0.0.1"); } }\n',
     );
     const log = JSON.parse(PMD(context.projectRoot, 'AvoidUsingHardCodedIP'));
-    log.runs[0].results[0].message.text = 'Do not hard code the IP address ${variableName}';
+    log.runs[0].results[0].message.text = `Do not hard code the IP address \${variableName}`;
     log.runs[0].results[0].locations[0].physicalLocation.region = { startLine: 1, startColumn: 59 };
     writeFileSync(path.join(context.reportRoot, 'pmd.sarif'), JSON.stringify(log));
 
     expect(sarifFindings(context).map(({ message }) => message)).toEqual([
       'Do not hard code the IP address "127.0.0.1"',
     ]);
+  });
+
+  it('drops a HardCodedCryptoKey finding whose key is built from a parameter', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    writeFileSync(
+      path.join(context.projectRoot, 'src/test/java/shop/CartTest.java'),
+      'class CartTest { Object k(String s) { String x = "a" + s; return new SecretKeySpec(x.getBytes(), "AES"); } }\n',
+    );
+    writeFileSync(
+      path.join(context.reportRoot, 'pmd.sarif'),
+      PMD(context.projectRoot, 'HardCodedCryptoKey').replace(
+        '"startLine":1',
+        '"startLine":1,"startColumn":53',
+      ),
+    );
+
+    expect(sarifFindings(context)).toEqual([]);
   });
 
   it('reads blank reports as empty logs and still rejects a truncated one', () => {
