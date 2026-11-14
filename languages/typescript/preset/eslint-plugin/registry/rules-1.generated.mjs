@@ -69,6 +69,8 @@ import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/n
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mjs';
+import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
+import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mjs';
@@ -96,8 +98,6 @@ import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mjs';
-import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mjs';
-import { rule as ruleNoUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -172,6 +172,8 @@ export const partRules = {
   'no-promise-chain': ruleNoPromiseChain,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
+  'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
+  'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
@@ -199,6 +201,4 @@ export const partRules = {
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
-  'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
-  'no-uninjectable-delay': ruleNoUninjectableDelay,
 };

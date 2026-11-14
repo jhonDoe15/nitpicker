@@ -98,6 +98,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
 - Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
   `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
+- Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
+  commits (and outside the lock), and keep only the shared-state change under the lock
+  (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

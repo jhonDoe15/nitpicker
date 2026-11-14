@@ -216,6 +216,15 @@ reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` r
 that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
 item. Only proven cases are reported: a collection of unknown origin is not.
 
+Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
+`nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,
+direct or through project helpers, inside a transaction that also runs a query (a Prisma `$transaction`
+callback, `startTransaction`/`commit` ranges, TypeORM, Sequelize, knex) or while a mutex or distributed lock is
+held (`runExclusive`, `async-lock`, Web Locks, redlock). The finding names the call path and the outbox form.
+A fill-once block under a lock (`if (!token) token = await refresh()`) is left alone, and an early rollback or
+release in a guard clause does not end the scope for the calls after it. Broker publishes belong to the
+dual-write rule.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic
