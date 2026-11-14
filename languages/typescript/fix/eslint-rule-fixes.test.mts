@@ -1,13 +1,20 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
+import {
+  fixOptions,
+  fixtureGit,
+  topicRepository,
+  useGitFixtures,
+  writeFiles,
+} from './test-support/fix-test-support.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-const environmentDirective = (name) => ['/** @vitest', `-environment ${name} */`].join('');
+function environmentDirective(name: string): string {
+  return ['/** @vitest', `-environment ${name} */`].join('');
+}
 
 const HOLE = ['$', '{directory}'].join('');
 
@@ -234,21 +241,17 @@ const REVIEW_RULES = [
   'eslint-lint/nitpicker/no-raised-test-timeout',
 ];
 
-function topic(changed) {
-  const repository = createGitRepository(COMMITTED, { baseRef: 'base' });
-  fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
-  writeFiles(repository.root, changed);
-  return repository;
+function topic(changed: Readonly<Record<string, string>>) {
+  return topicRepository(createGitRepository, COMMITTED, changed);
 }
 
-function fix(repository, selectedRules) {
-  const result = fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    ...(selectedRules === undefined ? {} : { selectedRules }),
-  });
-  const read = (name) => readFileSync(path.join(repository.root, name), 'utf8');
+function fix(repository: { readonly root: string }, selectedRules?: readonly string[]) {
+  const result = fixWorkingTree(
+    fixOptions(repository.root, selectedRules === undefined ? {} : { selectedRules }),
+  );
+  function read(name: string): string {
+    return readFileSync(path.join(repository.root, name), 'utf8');
+  }
   return { result, read };
 }
 

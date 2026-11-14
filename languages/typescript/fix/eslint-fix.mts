@@ -6,19 +6,60 @@ import {
   projectLayerValue,
 } from '../adapters/lint-engine/project-layer.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
-import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
-import { containedPath } from '../../../core/fix/common/contained-path.mjs';
-import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.mjs';
-import { readBytes } from '../../../core/fix/common/fix-files.mjs';
-import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
-import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
-import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mjs';
-import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
-import { applySuggestions } from './suggestions/apply-suggestions.mjs';
+import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import type { FixFile, FixSettings, FixStep } from '../../../core/fix/typed/fix-types.mts';
+import { linkPolicyFile, resolveTool, type LinkedPolicyFile } from '../adapters/typed/tooling.mts';
+import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mts';
+import { applySuggestions } from './suggestions/apply-suggestions.mts';
+import type { LintMessage } from './suggestions/typed/suggestion-views.mts';
+import { reportedFilesOf, type ReportedFile } from './typed/eslint-report.mts';
+import {
+  containedPath,
+  fixerError,
+  formatNotes,
+  readBytes,
+  runFixCommand,
+  withFixedLineEndingsOf,
+  writeTexts,
+  type Bytes,
+  type Layout,
+} from './typed/fix-views.mts';
 
-const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
-const loggingPolicy = eslintChecks.find(({ name }) => name === 'eslint-logging');
+type EslintSettings = Pick<
+  FixSettings,
+  'projectRoot' | 'executeFixCommand' | 'selectedRules' | 'writer'
+> & {
+  readonly policyEnvironment: NodeJS.ProcessEnv;
+  readonly eslintSettings: unknown;
+  readonly layout: Layout;
+};
+type Reported = {
+  readonly name: string;
+  readonly output: unknown;
+  readonly messages: readonly LintMessage[];
+  readonly fatal: boolean;
+};
+type Attempt = {
+  readonly linked: LinkedPolicyFile | undefined;
+  readonly failure?: unknown;
+  readonly rewritten: string[];
+  readonly fixedFindings: string[];
+  readonly changedMeanwhile: string[];
+  readonly unformattable: string[];
+  readonly unwritable: string[];
+};
+
+function eslintCheck(name: string) {
+  const found = eslintChecks.find((check) => check.name === name);
+  if (found === undefined) {
+    throw new Error(`The ${name} check is not defined`);
+  }
+  return found;
+}
+
+const eslintPolicy = eslintCheck('eslint-lint');
+const loggingPolicy = eslintCheck('eslint-logging');
 
 const TOOL = 'eslint --fix';
 
@@ -26,15 +67,21 @@ const EXTRA_POLICY_VARIABLE = 'NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG';
 
 const REPORT_EXCERPT_LENGTH = 200;
 
-function runEslint(settings, files, linked) {
+function runEslint(settings: EslintSettings, files: readonly FixFile[], linked: LinkedPolicyFile) {
   const { projectRoot, policyEnvironment, executeFixCommand } = settings;
+  const { binPath } = resolveTool('eslint', { bin: 'bin/eslint.js' });
+  if (binPath === undefined) {
+    throw new Error('eslint is not installed');
+  }
   return runFixCommand({
     operation: 'eslint-fix',
     command: process.execPath,
     args: [
-      resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
+      binPath,
       '--config',
-      path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-wrapper.config.mjs'),
+      checkoutModulePath(
+        path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-wrapper.config.mjs'),
+      ),
       ...(settings.selectedRules.length === 0 ? ['--fix-dry-run'] : []),
       '--format',
       'json',
@@ -60,7 +107,7 @@ function runEslint(settings, files, linked) {
   });
 }
 
-function namesByPath(projectRoot, files) {
+function namesByPath(projectRoot: string, files: readonly FixFile[]): Map<string, string> {
   return new Map(
     files.flatMap(({ path: name }) => {
       const full = containedPath(projectRoot, name);
@@ -74,8 +121,8 @@ function namesByPath(projectRoot, files) {
   );
 }
 
-function parseReport(stdout) {
-  let results;
+function parseReport(stdout: string): readonly unknown[] {
+  let results: unknown;
   try {
     results = JSON.parse(stdout);
   } catch (error) {
@@ -89,18 +136,24 @@ function parseReport(stdout) {
   return results;
 }
 
-function reportedFiles(projectRoot, files, stdout) {
+function reportedFiles(projectRoot: string, files: readonly FixFile[], stdout: string): Reported[] {
   const names = namesByPath(projectRoot, files);
-  return parseReport(stdout).map(({ filePath, output, messages = [] }) => {
-    const name = names.get(filePath);
-    if (name === undefined) {
-      throw new Error(`ESLint reported a file it was not given: ${filePath}`);
-    }
-    return { name, output, messages, fatal: messages.some(({ fatal }) => fatal === true) };
-  });
+  return reportedFilesOf(parseReport(stdout)).map(
+    ({ filePath, output, messages }: ReportedFile) => {
+      const name = names.get(filePath);
+      if (name === undefined) {
+        throw new Error(`ESLint reported a file it was not given: ${filePath}`);
+      }
+      return { name, output, messages, fatal: messages.some(({ fatal }) => fatal === true) };
+    },
+  );
 }
 
-function fixedText(settings, original, { output, messages, fatal }) {
+function fixedText(
+  settings: EslintSettings,
+  original: string,
+  { output, messages, fatal }: Reported,
+) {
   if (fatal) {
     return { text: typeof output === 'string' ? output : original, applied: [] };
   }
@@ -116,13 +169,15 @@ function fixedText(settings, original, { output, messages, fatal }) {
   return { text: text ?? original, applied: suggested };
 }
 
-function plannedTexts(settings, before, reported) {
-  const findings = [];
+function plannedTexts(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
+  const findings: string[] = [];
   const planned = reported.flatMap((file) => {
-    const original = before.get(file.name).toString('utf8');
+    const original = before.get(file.name)?.toString('utf8') ?? '';
     const { text: fixed, applied } = fixedText(settings, original, file);
     findings.push(
-      ...applied.map(({ rule, line }) => `${file.name}:${line} ${rule} (eslint-suggestion)`),
+      ...applied.map(
+        ({ rule, line }) => `${file.name}:${String(line)} ${rule} (eslint-suggestion)`,
+      ),
     );
     const text = withFixedLineEndingsOf(original, fixed);
     return text === original ? [] : [{ name: file.name, text }];
@@ -130,7 +185,7 @@ function plannedTexts(settings, before, reported) {
   return { planned, findings };
 }
 
-function writeOutputs(settings, before, reported) {
+function writeOutputs(settings: EslintSettings, before: Bytes, reported: readonly Reported[]) {
   const { planned, findings } = plannedTexts(settings, before, reported);
   const { written, changedMeanwhile, unwritable } = writeTexts(
     settings.writer,
@@ -146,14 +201,22 @@ function writeOutputs(settings, before, reported) {
   };
 }
 
-function attemptEslintFix(settings, files, before) {
+function attemptEslintFix(
+  settings: EslintSettings,
+  files: readonly FixFile[],
+  before: Bytes,
+): Attempt {
   const { projectRoot, layout } = settings;
-  let linked;
+  let linked: LinkedPolicyFile | undefined;
   try {
+    const [policyFile] = eslintPolicy.policyFiles;
+    if (policyFile === undefined) {
+      throw new Error('The eslint-lint check names no policy file');
+    }
     linked = linkPolicyFile(
-      path.join(PACKAGE_ROOT, eslintPolicy.policyFiles[0]),
+      path.join(PACKAGE_ROOT, policyFile),
       path.join(projectRoot, '.nitpicker-fix-tsconfig.json'),
-      layoutTransformFor(eslintPolicy.policyFiles[0], layout),
+      layoutTransformFor(policyFile, layout),
     );
     const reported = reportedFiles(projectRoot, files, runEslint(settings, files, linked).stdout);
     return {
@@ -174,7 +237,7 @@ function attemptEslintFix(settings, files, before) {
   }
 }
 
-function removeLinkedFile(linked) {
+function removeLinkedFile(linked: LinkedPolicyFile | undefined): unknown {
   try {
     linked?.remove();
     return undefined;
@@ -183,7 +246,7 @@ function removeLinkedFile(linked) {
   }
 }
 
-export function eslintFixStep(settings, files) {
+export function eslintFixStep(settings: EslintSettings, files: readonly FixFile[]): FixStep {
   const unselected =
     settings.selectedRules.length > 0 && selectedEslintRules(settings.selectedRules).length === 0;
   if (files.length === 0 || unselected) {

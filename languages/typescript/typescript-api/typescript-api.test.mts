@@ -14,15 +14,24 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import {
+  PACKAGE_ROOT,
+  resolveTool as untypedResolveTool,
+} from '../../../core/tooling/tool-resolution.mjs';
+import { parseJson } from '../../../shared/values/readers.mts';
+import { typescriptApi } from '../adapters/typed/typescript-program.mts';
 import {
   apiResolution,
   hasJavaScriptApi,
   supportsRedirect,
-  withRedirectPreload,
+  withRedirectPreload as untypedWithRedirectPreload,
 } from './api-redirect.mjs';
 import { selectTypeScriptApi } from './api-selection.mjs';
-import { ts } from './typescript-api.mjs';
+
+const resolveTool: (name: string) => { readonly root: string; readonly version: string } =
+  untypedResolveTool;
+const withRedirectPreload: (nodeOptions: string | undefined, apiRoot: string) => string =
+  untypedWithRedirectPreload;
 
 const require = createRequire(import.meta.url);
 const bundledFile = require.resolve('typescript-js-api');
@@ -31,15 +40,36 @@ const nativeRoot = resolveTool('@typescript/native').root;
 const nativeMain = path.join(nativeRoot, 'lib/version.cjs');
 const bundledVersion = resolveTool('typescript-js-api').version;
 
-function notFound(code) {
+type Resolved = {
+  readonly url: string;
+  readonly format?: string;
+  readonly shortCircuit?: true;
+};
+type NextResolve = (specifier: string, context?: object) => Resolved;
+
+const apiResolutionHook: (
+  apiRoot: string,
+) => (
+  specifier: string,
+  context: { readonly parentURL?: string },
+  nextResolve: NextResolve,
+) => Resolved = apiResolution;
+
+function notFound(code: string): Error {
   return Object.assign(new Error(code), { code });
 }
 
-function resolverOf(files) {
-  return (specifier) => {
-    if (files[specifier] === undefined) throw notFound('MODULE_NOT_FOUND');
-    return files[specifier];
-  };
+function resolverOf(files: Readonly<Record<string, string>>): NodeJS.RequireResolve {
+  function resolve(specifier: string): string {
+    const found = files[specifier];
+    if (found === undefined) throw notFound('MODULE_NOT_FOUND');
+    return found;
+  }
+  return Object.assign(resolve, { paths: (): string[] => [] });
+}
+
+function supports(versions: { readonly node: string }, hooks: unknown): unknown {
+  return Reflect.apply(supportsRedirect, undefined, [versions, hooks]);
 }
 
 describe('choosing the TypeScript API nitpicker reads source files with', () => {
@@ -51,7 +81,7 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
       bundled: false,
     });
     expect(selectTypeScriptApi().bundled).toBe(false);
-    expect(ts.createSourceFile).toBeTypeOf('function');
+    expect(typescriptApi().createSourceFile).toBeTypeOf('function');
   });
 
   it('still reports the bundled API once the redirect sends typescript to it', () => {
@@ -85,14 +115,18 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
 });
 
 describe('the resolve hook for TypeScript 7 projects', () => {
-  const resolve = apiResolution(bundledRoot);
-  const toNative = () => ({ url: pathToFileURL(nativeMain).href });
+  const resolve = apiResolutionHook(bundledRoot);
+  function toNative(): Resolved {
+    return { url: pathToFileURL(nativeMain).href };
+  }
   const dependency = { parentURL: 'file:///project/node_modules/typescript-eslint/dist/index.js' };
-  const redirected = (file, format = 'commonjs') => ({
-    url: pathToFileURL(path.join(bundledRoot, file)).href,
-    format,
-    shortCircuit: true,
-  });
+  function redirected(file: string, format = 'commonjs'): Resolved {
+    return {
+      url: pathToFileURL(path.join(bundledRoot, file)).href,
+      format,
+      shortCircuit: true,
+    };
+  }
 
   it('redirects typescript, its manifest and its libraries for a package without an API', () => {
     expect(resolve('typescript', dependency, toNative)).toEqual(redirected('lib/typescript.js'));
@@ -105,12 +139,12 @@ describe('the resolve hook for TypeScript 7 projects', () => {
   });
 
   it('redirects the library path that TypeScript 7 does not export, and a missing package', () => {
-    const unexported = () => {
+    function unexported(): never {
       throw notFound('ERR_PACKAGE_PATH_NOT_EXPORTED');
-    };
-    const missing = () => {
+    }
+    function missing(): never {
       throw notFound('ERR_MODULE_NOT_FOUND');
-    };
+    }
 
     expect(resolve('typescript/lib/typescript.js', dependency, unexported)).toEqual(
       redirected('lib/typescript.js'),
@@ -122,9 +156,9 @@ describe('the resolve hook for TypeScript 7 projects', () => {
     const native = { url: pathToFileURL(nativeMain).href };
     const installed = { url: pathToFileURL(require.resolve('typescript')).href };
     const other = { url: 'node:fs' };
-    const broken = () => {
+    function broken(): never {
       throw notFound('ERR_INVALID_PACKAGE_CONFIG');
-    };
+    }
 
     expect(
       resolve('typescript', { parentURL: 'file:///project/test/a.test.js' }, () => native),
@@ -145,19 +179,21 @@ describe('the resolve hook for TypeScript 7 projects', () => {
   });
 
   it('needs Node.js 22.19 or newer with module.registerHooks', () => {
-    const hooks = () => undefined;
+    function hooks(): undefined {
+      return undefined;
+    }
 
-    expect(supportsRedirect({ node: '22.19.0' }, hooks)).toBe(true);
-    expect(supportsRedirect({ node: '24.1.0' }, hooks)).toBe(true);
-    expect(supportsRedirect({ node: '22.18.1' }, hooks)).toBe(false);
-    expect(supportsRedirect({ node: '20.19.0' }, hooks)).toBe(false);
-    expect(supportsRedirect({ node: '22.19.0' }, null)).toBe(false);
+    expect(supports({ node: '22.19.0' }, hooks)).toBe(true);
+    expect(supports({ node: '24.1.0' }, hooks)).toBe(true);
+    expect(supports({ node: '22.18.1' }, hooks)).toBe(false);
+    expect(supports({ node: '20.19.0' }, hooks)).toBe(false);
+    expect(supports({ node: '22.19.0' }, false)).toBe(false);
   });
 });
 
 describe('a Node process started with the preload in a TypeScript 7 project', () => {
-  let project;
-  let loaded;
+  let project: string;
+  let loaded: unknown;
 
   beforeAll(() => {
     project = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker ts7 project-')));
@@ -187,7 +223,7 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
       timeout: 30_000,
       env: { ...process.env, NODE_OPTIONS: withRedirectPreload(undefined, bundledRoot) },
     });
-    loaded = JSON.parse(output);
+    loaded = parseJson(output);
   });
 
   afterAll(() => {
@@ -209,14 +245,19 @@ describe('a Node process started with the preload in a TypeScript 7 project', ()
 
 describe('modules that load TypeScript', () => {
   it('go through the selected API instead of importing typescript directly', () => {
+    const typeOnlyImport = /\bimport\s+type\b[^;]*;/gu;
     const direct = /(?:\bfrom\s+|\brequire\(\s*|\bimport\(\s*)['"]typescript(?:\/[^'"]*)?['"]/u;
-    const sources = globSync('{core,languages,shared}/**/*.{mjs,cjs,js}', {
+    const sources = globSync('{core,languages,shared}/**/*.{mjs,cjs,js,mts}', {
       cwd: PACKAGE_ROOT,
       exclude: (name) => ['node_modules', 'fixtures', 'test-support'].includes(name),
-    }).filter((file) => !file.endsWith('.test.mjs'));
+    }).filter((file) => !(file.endsWith('.test.mjs') || file.endsWith('.test.mts')));
 
     expect(
-      sources.filter((file) => direct.test(readFileSync(path.join(PACKAGE_ROOT, file), 'utf8'))),
+      sources.filter((file) =>
+        direct.test(
+          readFileSync(path.join(PACKAGE_ROOT, file), 'utf8').replaceAll(typeOnlyImport, ''),
+        ),
+      ),
     ).toEqual([]);
   });
 });

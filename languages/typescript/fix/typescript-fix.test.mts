@@ -9,22 +9,31 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
-import { resolveHeadPolicy } from '../preset/head-policy.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { fixWorkingTree, type FixOptions } from '../../../core/fix/run-fix.mts';
+import type { FixInvocation } from '../../../core/fix/typed/fix-types.mts';
+import {
+  fixOptions,
+  fixtureGit,
+  linkSentence,
+  operationOf,
+  resolveHeadPolicy,
+  useGitFixtures,
+  writeFiles,
+} from './test-support/fix-test-support.mts';
 
 const { createGitRepository } = useGitFixtures();
 
-function topic(committed, changed) {
+type Files = Readonly<Record<string, string>>;
+type Repository = { readonly root: string };
+
+function topic(committed: Files, changed: Files) {
   const repository = createGitRepository(committed, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changed);
   return repository;
 }
 
-function eslintReply(repository, outputs, fatal = []) {
+function eslintReply(repository: Repository, outputs: Files, fatal: readonly string[] = []) {
   const reported = [...new Set([...Object.keys(outputs), ...fatal])];
   return {
     status: 1,
@@ -39,25 +48,40 @@ function eslintReply(repository, outputs, fatal = []) {
   };
 }
 
-function fix(repository, eslint, extra = {}) {
-  const operations = [];
-  const result = fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    ...extra,
-    executeFixCommand: (invocation) => {
-      if (invocation.operation === 'knip-fix') {
-        return { status: 0, stdout: '', stderr: '' };
-      }
-      operations.push(invocation.operation);
-      return invocation.operation === 'eslint-fix' ? eslint(invocation) : undefined;
-    },
-  });
+function fix(
+  repository: Repository,
+  eslint?: (invocation: FixInvocation) => unknown,
+  extra: Partial<FixOptions> = {},
+) {
+  const operations: string[] = [];
+  const result = fixWorkingTree(
+    fixOptions(repository.root, {
+      ...extra,
+      executeFixCommand: (invocation) => {
+        const operation = operationOf(invocation);
+        if (operation === 'knip-fix') {
+          return { status: 0, stdout: '', stderr: '' };
+        }
+        operations.push(operation);
+        if (operation !== 'eslint-fix') {
+          return undefined;
+        }
+        if (eslint === undefined) {
+          throw new TypeError('eslint is not a function');
+        }
+        return eslint(invocation);
+      },
+    }),
+  );
   return { ...result, operations };
 }
 
-function suggestionReply(repository, name, messages, output) {
+function suggestionReply(
+  repository: Repository,
+  name: string,
+  messages: readonly object[],
+  output?: string,
+) {
   return {
     status: 1,
     stdout: JSON.stringify([
@@ -71,7 +95,7 @@ function suggestionReply(repository, name, messages, output) {
   };
 }
 
-function read(repository, name) {
+function read(repository: Repository, name: string): string {
   return readFileSync(path.join(repository.root, name), 'utf8');
 }
 
@@ -181,6 +205,7 @@ describe('fixTypeScript', () => {
     ]);
   });
   it('counts a file deleted while ESLint ran as changed meanwhile, and Prettier as a tool error', () => {
+    const missingFile: unknown = expect.stringMatching(/^ENOENT: no such file or directory/u);
     const repository = topic({}, { 'src/a.ts': 'let a = 1;\nexport { a };\n' });
     const result = fix(repository, () => {
       const reply = eslintReply(repository, { 'src/a.ts': 'const a = 1;\nexport { a };\n' });
@@ -195,7 +220,7 @@ describe('fixTypeScript', () => {
         {
           tool: 'prettier-fix',
           snapshot: 'fix',
-          message: expect.stringMatching(/^ENOENT: no such file or directory/u),
+          message: missingFile,
         },
       ],
       notes: ['--fix left src/a.ts as is: the file changed while --fix ran'],
@@ -207,17 +232,16 @@ describe('fixTypeScript', () => {
       { '.prettierrc.json': '{ "semi": false }\n' },
       { 'src/a.json': '{"a":1}\n', 'src/b.mjs': 'export const b=1;\n' },
     );
-    const result = fixWorkingTree({
-      repositoryRoot: repository.root,
-      projectRoot: repository.root,
-      baseRef: 'base',
-      headPolicy: resolveHeadPolicy({
-        tools: { prettier: { precedence: ['project', 'nitpicker'] } },
+    const result = fixWorkingTree(
+      fixOptions(repository.root, {
+        headPolicy: resolveHeadPolicy({
+          tools: { prettier: { precedence: ['project', 'nitpicker'] } },
+        }),
+        config: { preset: 'javascript' },
+        executeFixCommand: (invocation) =>
+          operationOf(invocation) === 'eslint-fix' ? eslintReply(repository, {}) : undefined,
       }),
-      config: { preset: 'javascript' },
-      executeFixCommand: ({ operation }) =>
-        operation === 'eslint-fix' ? eslintReply(repository, {}) : undefined,
-    });
+    );
 
     expect([read(repository, 'src/a.json'), read(repository, 'src/b.mjs')]).toEqual([
       '{ "a": 1 }\n',
@@ -234,20 +258,21 @@ describe('fixTypeScript', () => {
   });
   it('leaves a file alone that changed between formatting and writing', () => {
     const repository = topic({}, { 'src/a.json': '{"a":1}\n' });
-    const operations = [];
-    const result = fixWorkingTree({
-      repositoryRoot: repository.root,
-      projectRoot: repository.root,
-      baseRef: 'base',
-      executeFixCommand: ({ operation }) => {
-        operations.push(operation);
-        writeFileSync(path.join(repository.root, 'src/a.json'), '{"b":2}\n');
-        return {
-          status: 0,
-          stdout: JSON.stringify({ results: [{ path: 'src/a.json', formatted: '{ "a": 1 }\n' }] }),
-        };
-      },
-    });
+    const operations: string[] = [];
+    const result = fixWorkingTree(
+      fixOptions(repository.root, {
+        executeFixCommand: (invocation) => {
+          operations.push(operationOf(invocation));
+          writeFileSync(path.join(repository.root, 'src/a.json'), '{"b":2}\n');
+          return {
+            status: 0,
+            stdout: JSON.stringify({
+              results: [{ path: 'src/a.json', formatted: '{ "a": 1 }\n' }],
+            }),
+          };
+        },
+      }),
+    );
 
     expect(read(repository, 'src/a.json')).toBe('{"b":2}\n');
     expect(operations).toEqual(['prettier-fix']);
@@ -300,57 +325,57 @@ describe('fixTypeScript', () => {
 
   it('applies the suggestion of a selected rule from an unfixed report and nothing else', () => {
     const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
-    const arguments_ = [];
-    const result = fixWorkingTree({
-      repositoryRoot: repository.root,
-      projectRoot: repository.root,
-      baseRef: 'base',
-      selectedRules: ['eslint-lint/nitpicker/no-falsy-default'],
-      executeFixCommand: (invocation) => {
-        if (invocation.operation !== 'eslint-fix') {
-          return undefined;
-        }
-        arguments_.push(invocation.args);
-        return {
-          status: 1,
-          stderr: '',
-          stdout: JSON.stringify([
-            {
-              filePath: path.join(repository.root, 'src/a.ts'),
-              messages: [
-                { ruleId: 'nitpicker/no-comments', fix: { range: [0, 6], text: '' } },
-                {
-                  ruleId: 'nitpicker/no-falsy-default',
-                  suggestions: [{ fix: { range: [35, 37], text: '??' } }],
-                },
-              ],
-            },
-          ]),
-        };
-      },
-    });
+    const arguments_: (readonly string[])[] = [];
+    const result = fixWorkingTree(
+      fixOptions(repository.root, {
+        selectedRules: ['eslint-lint/nitpicker/no-falsy-default'],
+        executeFixCommand: (invocation) => {
+          if (operationOf(invocation) !== 'eslint-fix') {
+            return undefined;
+          }
+          arguments_.push(invocation.args);
+          return {
+            status: 1,
+            stderr: '',
+            stdout: JSON.stringify([
+              {
+                filePath: path.join(repository.root, 'src/a.ts'),
+                messages: [
+                  { ruleId: 'nitpicker/no-comments', fix: { range: [0, 6], text: '' } },
+                  {
+                    ruleId: 'nitpicker/no-falsy-default',
+                    suggestions: [{ fix: { range: [35, 37], text: '??' } }],
+                  },
+                ],
+              },
+            ]),
+          };
+        },
+      }),
+    );
 
     expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n ?? 10;\n');
     expect(arguments_).toHaveLength(1);
     expect(arguments_[0]).not.toContain('--fix-dry-run');
-    expect(result.notes.some((note) => note.includes('eslint --fix rewrote src/a.ts'))).toBe(true);
+    expect(
+      (result.notes ?? []).some((note) => note.includes('eslint --fix rewrote src/a.ts')),
+    ).toBe(true);
   });
   it('never applies a suggestion when no rule is selected', () => {
     const repository = topic({}, { 'src/a.ts': 'export const f = (n?: number) => n || 10;\n' });
-    const arguments_ = [];
-    fixWorkingTree({
-      repositoryRoot: repository.root,
-      projectRoot: repository.root,
-      baseRef: 'base',
-      executeFixCommand: (invocation) => {
-        if (invocation.operation === 'eslint-fix') {
-          arguments_.push(invocation.args);
-        }
-        return invocation.operation === 'eslint-fix' ? eslintReply(repository, {}) : undefined;
-      },
-    });
+    const arguments_: (readonly string[])[] = [];
+    fixWorkingTree(
+      fixOptions(repository.root, {
+        executeFixCommand: (invocation) => {
+          if (operationOf(invocation) === 'eslint-fix') {
+            arguments_.push(invocation.args);
+          }
+          return operationOf(invocation) === 'eslint-fix' ? eslintReply(repository, {}) : undefined;
+        },
+      }),
+    );
 
-    expect(arguments_[0].includes('--fix-dry-run')).toBe(true);
+    expect(arguments_[0]?.includes('--fix-dry-run')).toBe(true);
     expect(read(repository, 'src/a.ts')).toBe('export const f = (n?: number) => n || 10;\n');
   });
 });
