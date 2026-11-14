@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createEslintAnalyzer } from '../eslint/analyzer.mjs';
-import { createStaticCheckAnalyzer } from '../static-checks/analyzer.mjs';
+import { createEslintAnalyzer, createStaticCheckAnalyzer } from './typed/analyzers.mts';
 
 describe('analyzers that need the installed dependencies in the snapshot', () => {
   it('asks the run to link them once, so a finished analyzer cannot remove them under a running one', () => {
@@ -19,7 +18,7 @@ describe('analyzers that need the installed dependencies in the snapshot', () =>
   });
 
   it('runs ESLint analyzers with the package policy side by side, and the others one at a time', () => {
-    const analyzer = (policyFromPackage) =>
+    const analyzer = (policyFromPackage: boolean) =>
       createEslintAnalyzer({
         name: 'eslint-lint',
         configRelativePath: 'eslint.config.mjs',

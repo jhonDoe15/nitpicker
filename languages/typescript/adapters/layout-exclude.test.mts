@@ -1,6 +1,6 @@
 import {
-  createGitTemplate,
-  copyGitTemplate,
+  createGitTemplate as untypedCreateGitTemplate,
+  copyGitTemplate as untypedCopyGitTemplate,
 } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -9,10 +9,35 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mts';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mts';
-import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';
+import { withDefaultAnalyzerParallelism as untypedParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { type AnalyzerRun, runAnalyzers } from '../../../core/diff/execution/run-analyzers.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import {
+  applyLayout as untypedApplyLayout,
+  configuredAnalyzers as untypedConfiguredAnalyzers,
+} from '../preset/diff/configured-analyzers.mjs';
+import {
+  type ResolvedHeadPolicy,
+  resolveHeadPolicy,
+  withHeadPolicyFile,
+} from './dependency-graph/typed/head-policy-views.mts';
+
+type PresetAnalyzer = {
+  readonly name: string;
+  readonly exclusions?: readonly string[];
+  createInvocation(options: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+  }): { readonly args: string[] };
+};
+
+const createGitTemplate: () => string = untypedCreateGitTemplate;
+const copyGitTemplate: (template: string, root: string) => void = untypedCopyGitTemplate;
+const withDefaultAnalyzerParallelism: <T>(run: () => T) => T = untypedParallelism;
+const configuredAnalyzers: () => PresetAnalyzer[] = untypedConfiguredAnalyzers;
+const applyLayout: (analyzers: PresetAnalyzer[], policy: ResolvedHeadPolicy) => PresetAnalyzer[] =
+  untypedApplyLayout;
 
 const packageAnalyzers = configuredAnalyzers();
 // Every runner and tool is pointed at a project whose sources live in `lib/` and whose tests live
@@ -22,7 +47,7 @@ const packageAnalyzers = configuredAnalyzers();
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const TOOL_TIMEOUT_MS = 60_000;
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 const customConfig = {
   exclude: ['lib/legacy/**', 'spec/legacy/**'],
@@ -51,7 +76,7 @@ afterAll(() => {
 });
 
 describe('custom layout and exclude across runners and tools', () => {
-  let run;
+  let run: AnalyzerRun;
 
   beforeAll(() => {
     run = analyze(ANALYZER_NAMES, fixtureFiles());
@@ -83,7 +108,7 @@ describe('custom layout and exclude across runners and tools', () => {
 
   it('reports coupling metrics for the custom root only', () => {
     const paths = findingPaths(run, 'coupling', { includeDescriptive: true }).filter(
-      (findingPath) => findingPath !== '.',
+      (findingPath: string) => findingPath !== '.',
     );
     expect([...new Set(paths)].sort()).toEqual([
       'lib/alpha/index.ts',
@@ -99,7 +124,7 @@ describe('custom layout and exclude across runners and tools', () => {
       'lib/live/uses-spec.ts',
     ]);
     expect(paths.filter(isExcludedPath)).toEqual([]);
-    expect(paths.filter((findingPath) => findingPath.startsWith('src/'))).toEqual([]);
+    expect(paths.filter((findingPath: string) => findingPath.startsWith('src/'))).toEqual([]);
   });
 
   it('finds nothing in lib/ and spec/ when the config does not change the layout', () => {
@@ -202,7 +227,7 @@ describe('custom layout and exclude for tools that need project dependencies', (
 });
 
 describe('custom layout through the command line', () => {
-  let gitTemplateRoot;
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -216,7 +241,7 @@ describe('custom layout through the command line', () => {
       },
       gitTemplateRoot,
     );
-    const chunks = [];
+    const chunks: string[] = [];
     const exitCode = runCli({
       arguments_: ['--all', '--analyzer', 'dependency-architecture', '--output', 'out'],
       currentProjectRoot: projectRoot,
@@ -226,7 +251,7 @@ describe('custom layout through the command line', () => {
     const output = chunks.join('');
     expect(exitCode).toBe(1);
     expect(output).toEqual(
-      `nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\nRan only: dependency-architecture. Run nitpicker without --analyzer before you finish.\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n\nRule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)\n`,
+      `nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\nRan only: dependency-architecture. Run nitpicker without --analyzer before you finish.\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n\nRule reference: ${textOf(docsUrl('docs/rules/README.md'))} (nitpicker explain <tool/rule> prints one rule)\n`,
     );
     expect(output).not.toContain('lib/legacy');
   });
@@ -234,7 +259,7 @@ describe('custom layout through the command line', () => {
 
 describe('applyLayout', () => {
   it('rebuilds the preset analyzers with the config roots and exclusions', () => {
-    const eslint = customAnalyzers.find(({ name }) => name === 'eslint-lint');
+    const eslint = analyzerNamed('eslint-lint');
     const invocation = eslint.createInvocation({
       projectRoot: '/p',
       policyRoot: '/p',
@@ -273,9 +298,11 @@ describe('applyLayout', () => {
       'spec/legacy/**',
       'target/**',
     ]);
-    const entryPoints = customAnalyzers
-      .find(({ name }) => name === 'entry-points')
-      .createInvocation({ projectRoot: '/p', policyRoot: '/p', toolRoot: packageRoot });
+    const entryPoints = analyzerNamed('entry-points').createInvocation({
+      projectRoot: '/p',
+      policyRoot: '/p',
+      toolRoot: packageRoot,
+    });
     expect(entryPoints.args.slice(entryPoints.args.indexOf('--source-root'))).toEqual([
       '--source-root',
       'lib',
@@ -288,28 +315,45 @@ describe('applyLayout', () => {
   });
 
   it('leaves custom and injected analyzers alone', () => {
-    const custom = { name: 'custom', createInvocation() {} };
+    const custom = {
+      name: 'custom',
+      createInvocation() {
+        return { args: [] };
+      },
+    };
     const [kept] = applyLayout([custom], customPolicy);
     expect(kept).toBe(custom);
   });
 });
 
-function isExcludedPath(findingPath) {
+function analyzerNamed(name: string): PresetAnalyzer {
+  const found = customAnalyzers.find((analyzer) => analyzer.name === name);
+  if (found === undefined) {
+    throw new Error(`No configured analyzer named ${name}`);
+  }
+  return found;
+}
+
+function isExcludedPath(findingPath: string): boolean {
   return findingPath.startsWith('lib/legacy/') || findingPath.startsWith('spec/legacy/');
 }
 
-function findingPaths(run, name, { includeDescriptive = false } = {}) {
+function findingPaths(
+  run: AnalyzerRun,
+  name: string,
+  { includeDescriptive = false }: { includeDescriptive?: boolean } = {},
+): string[] {
   return (run.reports.get(name)?.findings ?? [])
     .filter((finding) => includeDescriptive || finding.classification === 'enforceable')
     .map((finding) => finding.path);
 }
 
-function metricValue(run, name, identity) {
+function metricValue(run: AnalyzerRun, name: string, identity: string): unknown {
   const finding = run.reports.get(name)?.findings.find((entry) => entry.identity === identity);
-  return finding?.metric?.value;
+  return fieldOf(fieldOf(finding, 'metric'), 'value');
 }
 
-function readPackageFile(name) {
+function readPackageFile(name: string): string {
   return readFileSync(path.join(packageRoot, name), 'utf8');
 }
 
@@ -336,7 +380,7 @@ function passingTest() {
 // One file per tool, planted in `lib/<directory>/`: formatting, a type error, a lint error, a
 // production-to-test import, a clone pair, an unused file, a type assertion and a bypass of a
 // component's public entry point.
-function cloneSource(factor) {
+function cloneSource(factor: number): string {
   const statements = Array.from(
     { length: 12 },
     (_, index) =>
@@ -345,7 +389,7 @@ function cloneSource(factor) {
   return `export function compute(input: number, offset: (n: number) => number): number {\n  let total = 0;\n${statements}\n  return total;\n}\n`;
 }
 
-function violations(directory) {
+function violations(directory: string): Record<string, string> {
   const clone = cloneSource(3);
   return {
     [`lib/${directory}/format.ts`]: 'export const   ugly  =  1;\n',
@@ -363,7 +407,12 @@ function violations(directory) {
   };
 }
 
-function analyze(names, files, policy = customPolicy, analyzers = customAnalyzers) {
+function analyze(
+  names: string[],
+  files: Record<string, string>,
+  policy: ResolvedHeadPolicy = customPolicy,
+  analyzers: PresetAnalyzer[] = customAnalyzers,
+): AnalyzerRun {
   const projectRoot = createProject(files);
   // The tools are independent, so they run side by side as they do for a user.
   return withDefaultAnalyzerParallelism(() =>
@@ -375,13 +424,18 @@ function analyze(names, files, policy = customPolicy, analyzers = customAnalyzer
         toolRoot: packageRoot,
         liveProjectRoot: packageRoot,
         snapshot: 'head',
+        baselineRoot: undefined,
+        baselineMovesFile: undefined,
+        mutationScope: undefined,
+        logRoot: undefined,
+        runTasks: undefined,
         headPolicyFile,
       }),
     ),
   );
 }
 
-function createProject(files) {
+function createProject(files: Record<string, string>): string {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'base');
@@ -396,12 +450,12 @@ function createProject(files) {
   return projectRoot;
 }
 
-function createGitProject(files, templateRoot) {
+function createGitProject(files: Record<string, string>, templateRoot: string): string {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-cli-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'repo');
   writeFiles(projectRoot, files);
-  const git = (...arguments_) =>
+  const git = (...arguments_: string[]) =>
     execFileSync('git', arguments_, {
       cwd: projectRoot,
       env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
@@ -414,7 +468,7 @@ function createGitProject(files, templateRoot) {
   return projectRoot;
 }
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Record<string, string>): void {
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(root, relativePath);
     mkdirSync(path.dirname(filePath), { recursive: true });

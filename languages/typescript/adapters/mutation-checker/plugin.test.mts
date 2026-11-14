@@ -1,39 +1,35 @@
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { strykerPlugins } from './plugin.mts';
+import type { Mutant } from './compiler.mts';
+import { strictProjects } from './test-support/strict-project.mts';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+type Checker = ReturnType<(typeof strykerPlugins)[0]['factory']>;
 
-function project(source, extra = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-types-'));
-  roots.push(root);
-  const files = {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: { strict: true, types: [], lib: ['ES2022'], skipLibCheck: true },
-      include: ['src'],
-    }),
-    'src/main.ts': source,
-    ...extra,
-  };
-  for (const [name, content] of Object.entries(files)) {
-    const file = path.join(root, name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, content);
-  }
+const projects = strictProjects('nitpicker-mutation-types-');
+
+function project(
+  source: string,
+  extra: Readonly<Record<string, string>> = {},
+): { readonly root: string; readonly checker: Checker } {
+  const root = projects.create(source, { skipLibCheck: true }, extra);
   const checker = strykerPlugins[0].factory({ tsconfigFile: path.join(root, 'tsconfig.json') });
   checker.init();
   return { root, checker };
 }
 
-function mutant(root, source, { id, from, replacement }) {
+function mutant(
+  root: string,
+  source: string,
+  {
+    id,
+    from,
+    replacement,
+  }: { readonly id: string; readonly from: string; readonly replacement: string },
+): Mutant {
   const offset = source.indexOf(from);
   const before = source.slice(0, offset).split('\n');
-  const start = { line: before.length - 1, column: before.at(-1).length };
+  const start = { line: before.length - 1, column: (before.at(-1) ?? '').length };
   return {
     id,
     fileName: path.join(root, 'src/main.ts'),
@@ -51,8 +47,8 @@ describe('mutation checking with existing diagnostics', () => {
       mutant(root, source, { id: 'valid', from: 'a + b', replacement: 'a - b' }),
       mutant(root, source, { id: 'invalid', from: 'a + b', replacement: "'wrong'" }),
     ]);
-    expect(result.valid).toEqual({ status: 'passed' });
-    expect(result.invalid).toEqual({
+    expect(result['valid']).toEqual({ status: 'passed' });
+    expect(result['invalid']).toEqual({
       status: 'compileError',
       reason: "Type 'string' is not assignable to type 'number'.",
     });
@@ -69,7 +65,7 @@ describe('mutation checking with existing diagnostics', () => {
         replacement: "consume('oops'); return 1",
       }),
     ]);
-    expect(result.additional).toEqual({
+    expect(result['additional']).toEqual({
       status: 'compileError',
       reason: "Argument of type 'string' is not assignable to parameter of type 'number'.",
     });
