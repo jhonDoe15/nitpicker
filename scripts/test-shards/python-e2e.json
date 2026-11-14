@@ -54,6 +54,7 @@
   "languages/python/rules/e2e/configuration/env-none-only-check.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effect-forms/kind-forms.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effect-forms/loop-skips.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/effects/accumulator-copy.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effects/effect-kinds.e2e.test.mjs": 4,
   "languages/python/rules/e2e/effects/io-in-loop.e2e.test.mjs": 2,
   "languages/python/rules/e2e/effects/loop-forms.e2e.test.mjs": 3,
