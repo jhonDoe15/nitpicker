@@ -10,4 +10,6 @@ public interface ReactiveCrudRepository<T, ID> extends Repository<T, ID> {
   Flux<T> findAllById(Iterable<ID> ids);
 
   Flux<T> findAll();
+
+  <S extends T> Mono<S> save(S entity);
 }

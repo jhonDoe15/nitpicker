@@ -594,6 +594,17 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   `bufferCount`, `toArray`, `take` or other grouping operator before the lookup, a fixed literal collection, a
   function that does not read the element, and a `mergeMap` without a limit over a remote client that
   `nitpicker/unbounded-reactive-fan-out` already reports are left alone.
+- `nitpicker/no-stale-retry-after-conflict`: a retry after a TypeORM optimistic-lock conflict that saves a
+  stale or unchanged entity is reported. The retry is a p-retry, async-retry, exponential-backoff or
+  cockatiel call, or a hand-written `for`/`while` retry loop, that names `OptimisticLockVersionMismatchError`
+  (in its arguments, in the cockatiel policy it runs, or in the loop), around `repository.save(entity)` or
+  `manager.save(Order, entity)`. Two shapes: the saved entity, or the object spread into the saved literal,
+  was loaded before the retried scope and nothing inside the scope reads the database or assigns it (every
+  attempt carries the old version and fails the same way), and the entity was re-read inside the scope by a
+  `find*` call but saved as it is, with no field assigned and no helper given it (the update is lost). Allowed:
+  re-read by id and re-apply the change inside the retried scope (`const row = await repo.findOneByOrFail({ id });
+  row.status = next; return repo.save(row);`). A retry that does not name the conflict error is not reported.
+  Prisma, Sequelize and MikroORM have no equivalent in this check, which reads TypeORM's `save`.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

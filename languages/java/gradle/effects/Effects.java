@@ -27,6 +27,7 @@ import nitpicker.effects.rules.DualWrite;
 import nitpicker.effects.rules.HeldScope;
 import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
+import nitpicker.effects.retries.StaleRetry;
 import nitpicker.effects.rows.Projections;
 import nitpicker.effects.rows.SetBasedUpdates;
 import nitpicker.effects.rules.RetryWrite;
@@ -104,6 +105,7 @@ public final class Effects {
     new DualWrite(program, report).run();
     new SetBasedUpdates(program, scopes, report).run();
     new Projections(program, report).run();
+    new StaleRetry(program, summaries, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

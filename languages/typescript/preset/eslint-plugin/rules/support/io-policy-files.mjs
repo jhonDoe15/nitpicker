@@ -33,5 +33,7 @@ export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/writes/no-retry-without-idempotency.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/relays.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/retry-scopes.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/writes/stale-retries/no-stale-retry-after-conflict.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/writes/stale-retries/stale-saves.mjs',
   'languages/typescript/preset/eslint-plugin/rules/writes/write-sites.mjs',
 ];

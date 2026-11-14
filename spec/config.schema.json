@@ -2304,6 +2304,7 @@
                             "effects/RowsChangedInMemory",
                             "effects/EntityLoadedForOneColumn",
                             "effects/EntityLoadedForExistence",
+                            "effects/RetryWithStaleObject",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

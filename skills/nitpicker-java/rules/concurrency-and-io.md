@@ -43,6 +43,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Reads: never load whole entities to read one column (`findByTeam(id).map { it.email }`; select a projection) or to
   test existence (`countByEmail(e) > 0`, `findByEmail(e).isPresent()`; use `existsByEmail`)
   (`effects/EntityLoadedForOneColumn`, `effects/EntityLoadedForExistence`).
+- Optimistic-lock retries: read the row by id and apply the change inside the retried scope (`Mono.defer`, the loop
+  body, or a `@Retryable` method that takes the id); never resend the object that conflicted (`effects/RetryWithStaleObject`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

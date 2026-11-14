@@ -119,6 +119,11 @@ export const policyFailureMessageCases = [
     'findFirst',
   ),
   adapterCase(
+    'stale retry after a version conflict names the re-read',
+    "import pRetry from 'p-retry';\nimport { OptimisticLockVersionMismatchError } from 'typeorm';\nexport async function rename(orderRepo, order) { await pRetry(() => orderRepo.save(order), { shouldRetry: (error) => error instanceof OptimisticLockVersionMismatchError }); }",
+    'findOneByOrFail',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

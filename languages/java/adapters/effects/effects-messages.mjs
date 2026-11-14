@@ -217,6 +217,18 @@ function existence({ method, form, origin }) {
   ].join(' ');
 }
 
+function staleRetry({ method, scope, object, write }) {
+  const where =
+    scope === '@Retryable'
+      ? 'is retried by `@Retryable` after an optimistic-lock conflict but takes the object to save as a parameter'
+      : `retries after an optimistic-lock conflict (${scope}) but sends an object that was read or built outside the retry`;
+  return [
+    'Re-read the row by id and re-apply the change inside the retried scope (`Mono.defer { findById(id).map(change).flatMap(save) }`,',
+    `a loop that loads the row on each attempt, or a \`@Retryable\` method that takes the id): ${code(`${method}()`)} ${where},`,
+    `then calls ${code(write)} with ${code(object)}, which keeps the old version, so every attempt fails the same way.`,
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -230,6 +242,7 @@ export const EFFECTS_MESSAGES = {
   RowsChangedInMemory: rowsChanged,
   EntityLoadedForOneColumn: oneColumn,
   EntityLoadedForExistence: existence,
+  RetryWithStaleObject: staleRetry,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

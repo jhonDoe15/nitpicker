@@ -1,4 +1,5 @@
 import { RESOLVER_HINTS } from '../resolvers/query.mjs';
+import { STALE_RETRY_HINTS } from '../stale/retry.mjs';
 import { ACCUMULATOR_HINTS } from './accumulator.mjs';
 import { LAZY_HINTS } from './lazy.mjs';
 import { LOOP_IO_HINTS } from './loop-io.mjs';
@@ -8,4 +9,5 @@ export const EFFECT_HINTS = [
   ...ACCUMULATOR_HINTS,
   ...LAZY_HINTS,
   ...RESOLVER_HINTS,
+  ...STALE_RETRY_HINTS,
 ];

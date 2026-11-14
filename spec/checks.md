@@ -133,6 +133,10 @@ SQLAlchemy query loads whole only to read one known column (`[u.email for u in U
 for existence (`.count() > 0`, `.first() is not None`); `values_list`, `select(User.email)` and `.exists()` are the
 allowed forms, and relationships, properties and already narrowed queries stay quiet.
 
+Stale retries: `stale-retry` in the Python preset reports a SQLAlchemy `commit()` or `flush()` that a retry loop, a
+`tenacity` or `backoff` decorator or a `Retrying` loop runs again after `StaleDataError` without reading the row again
+(`session.get`, `refresh`, a query); the row is read by id inside each attempt.
+
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
@@ -283,6 +287,12 @@ for the column form) reports query rows (TypeORM, Prisma, Sequelize, MikroORM) l
 declared column, a `count` only compared with zero or one, and a `findOne`/`findFirst` result only used as a
 condition: select the column, or ask `exists`/`findFirst` with `select`. A query that already selects, a paged
 query and rows used another way are not reported.
+
+Optimistic-lock retries: `nitpicker/no-stale-retry-after-conflict` (production source, in `eslint-lint`) reports a
+TypeORM `save` inside a retry that names `OptimisticLockVersionMismatchError` (p-retry, async-retry,
+exponential-backoff, cockatiel or a hand-written loop) when it saves an entity loaded before the retried scope, or
+one re-read inside it but saved without the change re-applied. Re-read by id and re-apply the change inside the
+retried scope.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

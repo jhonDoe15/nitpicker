@@ -160,4 +160,36 @@ describe('the messages of the per-item rules for GraphQL, reactive pipelines and
       ),
     ]);
   });
+
+  it('names the stale object and the re-read inside the retried scope', () => {
+    const retry = {
+      rule: 'RetryWithStaleObject',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      method: 'Import.save',
+      write: 'OrderRepository.save()',
+      object: 'order',
+    };
+    const messages = read([
+      { ...retry, line: 3, detail: 'a', scope: 'retry loop' },
+      { ...retry, line: 4, detail: 'b', scope: '@Retryable' },
+    ]).map((finding) => finding.message);
+
+    expect(messages).toEqual([
+      sentence(
+        'Re-read the row by id and re-apply the change inside the retried scope (`Mono.defer { findById(id).map(change).flatMap(save) }`,',
+        'a loop that loads the row on each attempt, or a `@Retryable` method that takes the id): `Import.save()` retries after an',
+        'optimistic-lock conflict (retry loop) but sends an object that was read or built outside the retry, then calls',
+        '`OrderRepository.save()` with `order`, which keeps the old version, so every attempt fails the same way.',
+        exception('RetryWithStaleObject', JAVA_FILE),
+      ),
+      sentence(
+        'Re-read the row by id and re-apply the change inside the retried scope (`Mono.defer { findById(id).map(change).flatMap(save) }`,',
+        'a loop that loads the row on each attempt, or a `@Retryable` method that takes the id): `Import.save()` is retried by',
+        '`@Retryable` after an optimistic-lock conflict but takes the object to save as a parameter, then calls',
+        '`OrderRepository.save()` with `order`, which keeps the old version, so every attempt fails the same way.',
+        exception('RetryWithStaleObject', JAVA_FILE),
+      ),
+    ]);
+  });
 });
