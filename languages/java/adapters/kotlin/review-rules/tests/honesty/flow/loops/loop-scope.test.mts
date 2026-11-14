@@ -1,18 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, rulesOf } from '../../../../test-support/sources.mjs';
+import { JUNIT_HEAD, rulesOf } from '../../../../test-support/sources.mts';
 import { CONTROL_FLOW_RULE } from '../assertion-flow.mjs';
 
-const flow = (text) => rulesOf(text, CONTROL_FLOW_RULE);
-const inTest = (body) => `${JUNIT_HEAD}class OrderTest {
+function flow(text: string): string[] {
+  return rulesOf(text, CONTROL_FLOW_RULE);
+}
+function inTest(body: string): string {
+  return `${JUNIT_HEAD}class OrderTest {
     @Test
     fun checks() {
 ${body}
     }
 }
 `;
+}
 
 describe('loops that always run and loops in helpers', () => {
-  const withHelpers = (body, helpers) => `${JUNIT_HEAD}class OrderTest {
+  function withHelpers(body: string, helpers: string): string {
+    return `${JUNIT_HEAD}class OrderTest {
     @Test
     fun checks() {
 ${body}
@@ -20,6 +25,7 @@ ${body}
 ${helpers}
 }
 `;
+  }
 
   it('allows loops with a literal count, literal ranges and do/while', () => {
     const text = inTest(`        repeat(3) { assertEquals(1, 1) }
@@ -112,7 +118,8 @@ fun verifyAll(items: List<Item>) {
 });
 
 describe('which helper a call reaches', () => {
-  const withClasses = (test, helpers, other) => `${JUNIT_HEAD}${other}
+  function withClasses(test: string, helpers: string, other: string): string {
+    return `${JUNIT_HEAD}${other}
 class OrderTest {
     @Test
     fun checks() {
@@ -121,6 +128,7 @@ ${test}
 ${helpers}
 }
 `;
+  }
   const LOOP = 'for (e in items) assertEquals(1, e)';
 
   it.each([

@@ -1,16 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mts';
 import { MESSAGE_RULE } from './message-after-assertion.mjs';
 
-const messages = (text) => rulesOf(text, MESSAGE_RULE);
+function messages(text: string): string[] {
+  return rulesOf(text, MESSAGE_RULE);
+}
 const HEAD = `${JUNIT_HEAD}import org.assertj.core.api.Assertions.assertThat\n`;
-const inTest = (body, head = HEAD) => `${head}class NameTest {
+function inTest(body: string, head = HEAD): string {
+  return `${head}class NameTest {
     @Test
     fun checks() {
 ${body}
     }
 }
 `;
+}
 
 describe('an AssertJ message set after the assertion', () => {
   it.each([

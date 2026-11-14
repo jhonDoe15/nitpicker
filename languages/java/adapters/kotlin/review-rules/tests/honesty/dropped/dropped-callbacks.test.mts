@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
 import { DROPPED_RULE } from './dropped-callbacks.mjs';
 
-const dropped = (text) => rulesOf(text, DROPPED_RULE);
+function dropped(text: string): string[] {
+  return rulesOf(text, DROPPED_RULE);
+}
 const HELPERS = `    private fun hasLength(size: Int): (String) -> Unit = { assertEquals(size, it.length) }
     private fun isUpper(): Consumer<String> = Consumer { name -> assertEquals(name.uppercase(), name) }
     private fun run(check: (String) -> Unit) = check("ADA")
 `;
-const inTest = (body, helpers = HELPERS) => `${JUNIT_HEAD}import java.util.function.Consumer
+function inTest(body: string, helpers = HELPERS): string {
+  return `${JUNIT_HEAD}import java.util.function.Consumer
 
 class NameTest {
 ${helpers}
@@ -17,6 +20,7 @@ ${body}
     }
 }
 `;
+}
 
 describe('a callback that a statement builds and drops', () => {
   it.each([

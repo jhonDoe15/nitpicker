@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mjs';
+import { KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
 import { RETRY_RULE } from './retry-tests.mjs';
 
-const retries = (text) => rulesOf(text, RETRY_RULE);
+function retries(text: string): string[] {
+  return rulesOf(text, RETRY_RULE);
+}
 
 describe('Kotest retries', () => {
   it('reports retries in a config chain on a test and on a container', () => {
