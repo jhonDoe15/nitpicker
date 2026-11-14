@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { mochaConfigRetries } from './mocha-config.mjs';
-import { OPT_IN, createRetryProjects } from './test-support/retry-projects.mjs';
+import { mochaConfigRetries as untypedMochaConfigRetries } from './mocha-config.mjs';
+import { OPT_IN, createRetryProjects } from './test-support/retry-projects.mts';
+import type { ProjectFiles } from './test-support/runner-views.mts';
+
+const mochaConfigRetries: (options: {
+  projectRoot: string;
+  liveRoot: string;
+  tokens: string[];
+  timeoutMs: number | undefined;
+}) => number | undefined = untypedMochaConfigRetries;
 
 const projects = createRetryProjects();
 
@@ -9,9 +17,9 @@ afterEach(() => {
   projects.remove();
 });
 
-function retriesOf(files, tokens = []) {
+function retriesOf(files: ProjectFiles, tokens: string[] = []) {
   const projectRoot = projects.plainProject(files);
-  return mochaConfigRetries({ projectRoot, liveRoot: projectRoot, tokens });
+  return mochaConfigRetries({ projectRoot, liveRoot: projectRoot, tokens, timeoutMs: undefined });
 }
 
 describe('the Mocha options the project config loader reads', () => {
@@ -62,10 +70,12 @@ describe('the Mocha options the project config loader reads', () => {
       { linkDependencies: false },
     );
 
-    expect(mochaConfigRetries({ projectRoot, liveRoot: PACKAGE_ROOT, tokens: [] })).toBe(3);
-    expect(() => mochaConfigRetries({ projectRoot, liveRoot: projectRoot, tokens: [] })).toThrow(
-      `Mocha is not installed in ${projectRoot}, so its config cannot be read`,
-    );
+    expect(
+      mochaConfigRetries({ projectRoot, liveRoot: PACKAGE_ROOT, tokens: [], timeoutMs: undefined }),
+    ).toBe(3);
+    expect(() =>
+      mochaConfigRetries({ projectRoot, liveRoot: projectRoot, tokens: [], timeoutMs: undefined }),
+    ).toThrow(`Mocha is not installed in ${projectRoot}, so its config cannot be read`);
   });
 
   it('prints nothing of the rc file into the result', () => {

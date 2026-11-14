@@ -1,22 +1,9 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
-import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { tester } from './test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
 
-function guardRule(...validation) {
+function guardRule(...validation: string[]) {
   return boundaryGuardRule({ validation });
 }
 
@@ -36,7 +23,7 @@ const PHRASES = [
   ['typia', 'a typia validator'],
   ['effect', 'an effect schema'],
   ['valita', 'a valita schema'],
-];
+] as const;
 
 for (const [library, phrase] of PHRASES) {
   tester.run(`type guard message for ${library}`, guardRule(library), {

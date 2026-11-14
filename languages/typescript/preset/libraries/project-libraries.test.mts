@@ -6,13 +6,51 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { librariesForFile } from './file-libraries.mjs';
-import { detectLibraries, loggerShapes, validationBehavior } from './project-libraries.mjs';
+import {
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
+} from '../head-policy.mjs';
+import { librariesForFile as untypedLibrariesForFile } from './file-libraries.mjs';
+import {
+  detectLibraries as untypedDetectLibraries,
+  loggerShapes as untypedLoggerShapes,
+  validationBehavior as untypedValidationBehavior,
+} from './project-libraries.mjs';
+
+type Libraries = {
+  validation: string[];
+  logger: string[];
+  packages: Record<string, unknown>;
+};
+type HeadPolicy = {
+  libraries: Libraries;
+  layout?: { sourceRoots?: string[]; colocatedTests?: boolean };
+};
+
+const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot: string) => HeadPolicy =
+  untypedResolveHeadPolicy;
+const withHeadCheckoutFacts: (
+  policy: Record<string, unknown>,
+  head: Record<string, unknown>,
+) => HeadPolicy = untypedWithHeadCheckoutFacts;
+const librariesForFile: (
+  file: { filename: string; cwd: string },
+  libraries: { validation: string[]; logger: string[]; packages?: Record<string, unknown> },
+) => { validation: string[]; logger: string[] } = untypedLibrariesForFile;
+const detectLibraries: (
+  projectRoot: string,
+  isExcluded?: (...file: never[]) => boolean,
+) => Libraries = untypedDetectLibraries;
+const loggerShapes: (libraries: { logger?: string[] } | undefined) => string[] =
+  untypedLoggerShapes;
+const validationBehavior: (libraries: { validation: string[] } | undefined) => {
+  name: string;
+  accepted: { id: string }[];
+} = untypedValidationBehavior;
 
 const { gitCheckout } = useGitCheckouts();
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -20,7 +58,7 @@ afterEach(() => {
   }
 });
 
-function projectWith(manifests) {
+function projectWith(manifests: Record<string, unknown>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-libraries-'));
   roots.push(root);
   for (const [directory, manifest] of Object.entries(manifests)) {
@@ -124,7 +162,7 @@ describe('libraries of the manifest nearest a file', () => {
 
   it('lists the nearest package first, then the ones above it up to the root', () => {
     const root = projectWith(monorepo);
-    const libraries = detectLibraries(root, (file) => file.startsWith('dist/'));
+    const libraries = detectLibraries(root, (file: string) => file.startsWith('dist/'));
     const file = path.join(root, 'packages/api/src/handler.ts');
 
     expect(librariesForFile({ filename: file, cwd: root }, libraries)).toEqual({
@@ -136,9 +174,9 @@ describe('libraries of the manifest nearest a file', () => {
   it('records every package directory that declares libraries, except dependencies and excluded folders', () => {
     const root = projectWith(monorepo);
 
-    expect(Object.keys(detectLibraries(root, (file) => file.startsWith('dist/')).packages)).toEqual(
-      ['.', 'packages/api'],
-    );
+    expect(
+      Object.keys(detectLibraries(root, (file: string) => file.startsWith('dist/')).packages),
+    ).toEqual(['.', 'packages/api']);
   });
 
   it('reads the root manifest for a file at the root', () => {

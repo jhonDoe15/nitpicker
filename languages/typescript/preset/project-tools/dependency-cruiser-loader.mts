@@ -1,30 +1,35 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import nodeModule from 'node:module';
 import path from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { isPlainObject, listOf } from '../../../../shared/config.mjs';
+import { fileURLToPath } from 'node:url';
+import { isPlainObject, listOf as untypedListOf } from '../../../../shared/config.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import { isRealPathInside } from '../../../../shared/conventions/read-inside.mjs';
-import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { withDependencyCruiserFiles } from './config-values.mjs';
+import { withDependencyCruiserFiles as untypedWithDependencyCruiserFiles } from './config-values.mjs';
+import { importToolFile, toolFunction } from './typed/tool-modules.mts';
+
+const listOf: (value: unknown) => unknown[] = untypedListOf;
+const withDependencyCruiserFiles: (config: unknown, root: string) => unknown =
+  untypedWithDependencyCruiserFiles;
 
 const TOOL = 'dependency-cruiser';
 const CONFIG_EXTENSIONS = ['', '.js', '.json', '.cjs', '.mjs', '.ts', '.cts', '.mts'];
 
-function isLocalSpecifier(specifier) {
+function isLocalSpecifier(specifier: string): boolean {
   return specifier.startsWith('.') || path.isAbsolute(specifier) || specifier.startsWith('file:');
 }
 
-function isInside(root, file) {
+function isInside(root: string, file: string): boolean {
   return existsSync(file) && isRealPathInside(root, file);
 }
 
-function isProjectFile(root, file) {
+function isProjectFile(root: string, file: string): boolean {
   return (
     isInside(root, file) && !realpathSync.native(file).split(path.sep).includes('node_modules')
   );
 }
 
-function containLocalImports(root) {
+function containLocalImports(root: string): void {
   if (typeof nodeModule.registerHooks !== 'function') {
     return;
   }
@@ -49,7 +54,7 @@ function containLocalImports(root) {
   });
 }
 
-function extendedFile(target, from) {
+function extendedFile(target: string, from: string): string {
   const base = target.startsWith('file:') ? fileURLToPath(target) : path.resolve(from, target);
   return (
     CONFIG_EXTENSIONS.map((extension) => `${base}${extension}`).find(
@@ -58,9 +63,9 @@ function extendedFile(target, from) {
   );
 }
 
-function containedExtends(root, current, config) {
-  const local = listOf(isPlainObject(config) ? config.extends : undefined).filter(
-    (target) => typeof target === 'string' && isLocalSpecifier(target),
+function containedExtends(root: string, current: string, config: unknown): string[] {
+  const local = listOf(isPlainObject(config) ? fieldOf(config, 'extends') : undefined).filter(
+    (target): target is string => typeof target === 'string' && isLocalSpecifier(target),
   );
   return local.flatMap((target) => {
     const extended = extendedFile(target, path.dirname(current));
@@ -76,7 +81,11 @@ function containedExtends(root, current, config) {
   });
 }
 
-async function assertContainedExtends(root, file, readConfig) {
+async function assertContainedExtends(
+  root: string,
+  file: string,
+  readConfig: (file: string) => unknown,
+): Promise<void> {
   const pending = [file];
   const seen = new Set();
   for (const current of pending) {
@@ -88,14 +97,13 @@ async function assertContainedExtends(root, file, readConfig) {
   }
 }
 
-export async function loadDependencyCruiserConfig(loader, file) {
+export async function loadDependencyCruiserConfig(loader: unknown, file: string): Promise<unknown> {
   const root = process.cwd();
   containLocalImports(root);
-  const readConfig = await import(
-    pathToFileURL(
-      resolveTool(TOOL, { bin: 'src/config-utl/extract-depcruise-config/read-config.mjs' }).binPath,
-    ).href
+  const readConfig = await importToolFile(
+    TOOL,
+    'src/config-utl/extract-depcruise-config/read-config.mjs',
   );
-  await assertContainedExtends(root, file, readConfig.default);
-  return withDependencyCruiserFiles(await loader.default(file), root);
+  await assertContainedExtends(root, file, toolFunction(readConfig, 'default'));
+  return withDependencyCruiserFiles(await toolFunction(loader, 'default')(file), root);
 }

@@ -4,9 +4,15 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
-import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
 
-const roots = [];
+const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
+
+const linterClass: new (options: { cwd: string }) => {
+  verify(code: string, config: unknown, options: { filename: string }): Linter.LintMessage[];
+} = Linter;
+
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -38,10 +44,10 @@ function project() {
   return root;
 }
 
-function lint(root, code) {
+function lint(root: string, code: string) {
   const file = path.join(root, 'src/a.ts');
   writeFileSync(file, code);
-  const linter = new Linter({ cwd: root });
+  const linter = new linterClass({ cwd: root });
   return linter.verify(
     code,
     [

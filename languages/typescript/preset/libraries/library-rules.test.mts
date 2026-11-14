@@ -1,36 +1,25 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
-import { boundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
-import { unknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
+import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { unknownInDomainRule as untypedUnknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
+import { tester } from './test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
+const unknownInDomainRule: (options: { validation: string[] }) => unknown =
+  untypedUnknownInDomainRule;
 
-function guardRule(...validation) {
+function guardRule(...validation: string[]) {
   return boundaryGuardRule({ validation });
 }
 
 const PREDICATE = 'function isUser(value: unknown): value is User { return true; }';
 const UNION_NOTE =
   'A predicate over a union (`(result): result is Ok => result.kind === "ok"`) is fine.';
-const predicateMessage = (how) =>
+const predicateMessage = (how: string) =>
   `Do not hand-write a type guard for unknown input: parse it once at the boundary with ${how}. ${UNION_NOTE} An exception fits only when the guard is genuinely needed.`;
 const ZOD_PREDICATE_MESSAGE = predicateMessage('a zod schema (schema.parse or schema.safeParse)');
-const unparsed = (call) => ({
+const unparsed = (call: string) => ({
   message: `Pass \`JSON.parse(text)\` straight into \`${call}(...)\` inside the same \`try\`. An exception fits only when the text is trusted and already typed.`,
 });
-const domainMessage = (library) =>
+const domainMessage = (library: string) =>
   `domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with ${library} schema and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as \`cause\` or \`error\`. An exception fits only when the value is genuinely opaque.`;
 
 tester.run('boundary guard with no validation library detected', guardRule(), {

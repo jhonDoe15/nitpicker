@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { testsIgnoredNotices } from './test-runner-notices.mjs';
-import { createRetryProjects } from './test-support/retry-projects.mjs';
+import { testsIgnoredNotices as untypedTestsIgnoredNotices } from './test-runner-notices.mjs';
+import { createRetryProjects } from './test-support/retry-projects.mts';
+
+const testsIgnoredNotices: (options: {
+  config: Record<string, unknown>;
+  projectRoot: string;
+}) => unknown = untypedTestsIgnoredNotices;
 
 const projects = createRetryProjects();
 
@@ -9,10 +14,11 @@ afterEach(() => {
 });
 
 const OPT_IN = '"tools": { "tests": { "precedence": ["project", "nitpicker"] } }';
-const notice = (setting) => `Ignoring ${setting}; opt in with ${OPT_IN}`;
-const noticesOf = (root, config = {}) => testsIgnoredNotices({ config, projectRoot: root });
-const retry = (value, file = 'vitest.config.ts') => ({
-  [file]: `export default { test: { retry: ${value} } };\n`,
+const notice = (setting: string) => `Ignoring ${setting}; opt in with ${OPT_IN}`;
+const noticesOf = (root: string, config: Record<string, unknown> = {}) =>
+  testsIgnoredNotices({ config, projectRoot: root });
+const retry = (value: string | number, file = 'vitest.config.ts') => ({
+  [file]: `export default { test: { retry: ${String(value)} } };\n`,
 });
 const inlineProject = (retryOption = '') =>
   `export default { test: { projects: [{ test: { name: 'unit', ${retryOption} include: ['test/**'] } }] } };\n`;

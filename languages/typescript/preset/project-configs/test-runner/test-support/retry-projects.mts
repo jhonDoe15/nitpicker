@@ -1,31 +1,37 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { vi } from 'vitest';
-import {
-  PICK_SOURCE,
-  createRunnerProjects,
-  rulesOf,
-  runArea,
-} from '../../../../adapters/test-runners/test-support/runner-project.mjs';
-import { resolveHeadPolicy } from '../../../head-policy.mjs';
+import { resolveHeadPolicy } from '../../test-support/policy-views.mts';
+import type { ToolSettings } from '../../test-support/policy-views.mts';
+import { PICK_SOURCE, createRunnerProjects, rulesOf, runArea } from './runner-views.mts';
+import type { ProjectFiles } from './runner-views.mts';
 
 export const OPT_IN = ['project', 'nitpicker'];
 export const TESTS_FAILED = ['tool-error:tests-failed'];
 const TEST_RUN_FAILURE = /:tests-(?:failed|not-run)$/u;
 const SECOND_ATTEMPT = 'let attempts = 0;\nconst secondAttempt = () => (attempts += 1) === 2;\n';
 
-function packageFile(test) {
+type RetryProjects = {
+  remove(): void;
+  vitestProject(files: ProjectFiles): string;
+  mochaProject(files: ProjectFiles, test?: string): string;
+  plainProject(files: ProjectFiles, options?: { linkDependencies?: false }): string;
+  headTests(root: string, precedence: string[], runner?: string): ToolSettings;
+  coverageWith(root: string, precedence: string[]): Promise<string[]>;
+};
+
+function packageFile(test: string) {
   return { name: 'p', type: 'module', scripts: { test } };
 }
 
-export function createRetryProjects() {
+export function createRetryProjects(): RetryProjects {
   const projects = createRunnerProjects();
   return {
     remove() {
       vi.unstubAllEnvs();
       projects.remove();
     },
-    vitestProject(files) {
+    vitestProject(files: ProjectFiles): string {
       return projects.project({
         'package.json': packageFile('vitest'),
         'src/main/pick.ts': PICK_SOURCE,
@@ -42,7 +48,7 @@ export function createRetryProjects() {
         ...files,
       });
     },
-    mochaProject(files, test = 'mocha') {
+    mochaProject(files: ProjectFiles, test = 'mocha'): string {
       return projects.project({
         'package.json': packageFile(test),
         'src/main/pick.ts': PICK_SOURCE,
@@ -61,14 +67,14 @@ export function createRetryProjects() {
         ...files,
       });
     },
-    plainProject(files, options) {
+    plainProject(files: ProjectFiles, options?: { linkDependencies?: false }): string {
       return projects.project(files, options);
     },
-    headTests(root, precedence, runner) {
+    headTests(root: string, precedence: string[], runner?: string): ToolSettings {
       const tests = { precedence, ...(runner === undefined ? {} : { runner }) };
       return resolveHeadPolicy({ tools: { tests } }, root).tools.tests;
     },
-    async coverageWith(root, precedence) {
+    async coverageWith(root: string, precedence: string[]): Promise<string[]> {
       const policyFile = path.join(path.dirname(root), 'policy.json');
       writeFileSync(
         policyFile,

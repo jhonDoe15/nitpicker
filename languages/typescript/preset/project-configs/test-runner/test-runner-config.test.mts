@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../../core/configuration/validate.mjs';
-import { withHeadCheckoutFacts } from '../../head-policy.mjs';
-import { vitestRetryArguments } from './test-retry.mjs';
-import { runArea } from '../../../adapters/test-runners/test-support/runner-project.mjs';
-import { projectTestRetry } from './test-runner-config.mjs';
+import { validateConfig, withHeadCheckoutFacts } from '../test-support/policy-views.mts';
+import type { ToolSettings } from '../test-support/policy-views.mts';
+import { vitestRetryArguments as untypedVitestRetryArguments } from './test-retry.mjs';
+import { runArea } from './test-support/runner-views.mts';
+import { projectTestRetry as untypedProjectTestRetry } from './test-runner-config.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
-import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mjs';
+import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mts';
+
+const vitestRetryArguments: (retry: unknown) => string[] = untypedVitestRetryArguments;
+const projectTestRetry: (runner: string, settings: ToolSettings) => unknown =
+  untypedProjectTestRetry;
 
 const projects = createRetryProjects();
 
@@ -18,9 +22,10 @@ const EACH_ORDERING = ORDERINGS.map((precedence) => [precedence]);
 const VITEST_FORM =
   'a whole number from 0 to 10 or { count, delay, condition } with a count from 0 to 10, ' +
   'a delay from 0 to 10000 ms and a condition that is a RegExp without flags';
-const expectedFailures = (precedence) => (precedence[0] === 'project' ? [] : TESTS_FAILED);
-const vitestRetry = (retry) => ({
-  'vitest.config.mjs': `export default { test: { retry: ${retry} } };\n`,
+const expectedFailures = (precedence: string[]) =>
+  precedence[0] === 'project' ? [] : TESTS_FAILED;
+const vitestRetry = (retry: number | string) => ({
+  'vitest.config.mjs': `export default { test: { retry: ${String(retry)} } };\n`,
 });
 
 describe('the test runner retries a project opts into', () => {
@@ -61,7 +66,7 @@ describe('the test runner retries a project opts into', () => {
   });
 
   it('applies the root test.retry of Vitest to every project', async () => {
-    const config = (retry, projectRetry) =>
+    const config = (retry: string, projectRetry: string) =>
       `export default { test: { ${retry}projects: [{ test: { name: 'unit', include: ['test/**/*.test.ts'], ${projectRetry} } }] } };\n`;
 
     expect(
@@ -95,7 +100,7 @@ describe('the test runner retries a project opts into', () => {
   });
 
   it('reports every failing Mocha test although the rc file bails', async () => {
-    const failing = (name) => `  it('${name}', () => assert.equal(1, 2));`;
+    const failing = (name: string) => `  it('${name}', () => assert.equal(1, 2));`;
     const root = projects.mochaProject({
       '.mocharc.json': '{ "bail": true }',
       'test/pick.test.ts': [
@@ -110,7 +115,7 @@ describe('the test runner retries a project opts into', () => {
 
     const [finding] = await runArea('coverage', root);
 
-    expect(finding.message).toBe(
+    expect(finding?.message).toBe(
       '2 tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
         '  test/pick.test.ts:3 > pick first: AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n' +
         '    expected: 2\n' +
@@ -134,7 +139,7 @@ describe('the retry captured from the head checkout', () => {
       runner: 'vitest',
       retry: { count: 2, delay: 5, condition: { source: 'flaky', flags: '' } },
     });
-    expect(projectTestRetry('vitest', tests)).toEqual(tests.projectConfig.retry);
+    expect(projectTestRetry('vitest', tests)).toEqual(tests.projectConfig?.retry);
     expect(vitestRetryArguments(projectTestRetry('vitest', tests))).toEqual([
       '--retry.count=2',
       '--retry.delay=5',
@@ -178,7 +183,7 @@ describe('the retry captured from the head checkout', () => {
     [
       'no Vitest config',
       () => projects.vitestProject({}),
-      `"tools.tests.precedence" lists "project" but a vitest.config.* or vite.config.* is missing: create it, or remove "project" from tools.tests.precedence. ${linkSentence('projectToolConfigMissing')}`,
+      `"tools.tests.precedence" lists "project" but a vitest.config.* or vite.config.* is missing: create it, or remove "project" from tools.tests.precedence. ${String(linkSentence('projectToolConfigMissing'))}`,
     ],
     [
       'a Vitest config that throws',
@@ -213,7 +218,7 @@ describe('the retry captured from the head checkout', () => {
     [
       'no Mocha config',
       () => projects.mochaProject({}),
-      `"tools.tests.precedence" lists "project" but a .mocharc.* file or a "mocha" key in package.json is missing: create it, or remove "project" from tools.tests.precedence. ${linkSentence('projectToolConfigMissing')}`,
+      `"tools.tests.precedence" lists "project" but a .mocharc.* file or a "mocha" key in package.json is missing: create it, or remove "project" from tools.tests.precedence. ${String(linkSentence('projectToolConfigMissing'))}`,
     ],
     [
       'Mocha retries that are not a count',
