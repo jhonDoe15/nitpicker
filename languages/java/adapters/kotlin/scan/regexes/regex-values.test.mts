@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { plainTextRegexes, unquotedRegexValues } from './regex-values.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import {
+  plainTextRegexes as untypedPlainTextRegexes,
+  unquotedRegexValues as untypedUnquotedRegexValues,
+} from './regex-values.mjs';
 
-function found(check, lines) {
-  const source = `class Routes {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
+const plainTextRegexes: Check<Subjected> = untypedPlainTextRegexes;
+const unquotedRegexValues: Check<Subjected> = untypedUnquotedRegexValues;
+
+function found(check: Check<Subjected>, lines: string[]) {
+  const source = `class Routes {\n${lines.map((line: string) => `    ${line}`).join('\n')}\n}\n`;
   const scanned = scanKotlinSource(source);
   return check(scanned).map((reported) => [lineOf(scanned, reported.offset), reported.subject]);
 }
@@ -11,7 +17,7 @@ function found(check, lines) {
 describe('unquotedRegexValues', () => {
   it.each([
     ['a parameter in a template', 'fun route(name: String) = Regex("^/$name/\\\\d+$")', 'name'],
-    ['a braced template entry', 'fun route(user: User) = Regex("^/${user.name}/")', 'user.name'],
+    ['a braced template entry', `fun route(user: User) = Regex("^/\${user.name}/")`, 'user.name'],
     ['a concatenation', 'fun route(name: String) = Regex("^/" + name + "/")', 'name'],
     ['toRegex on a template', 'fun route(name: String) = "^/$name/".toRegex()', 'name'],
     ['toRegex on a concatenation', 'fun route(name: String) = ("^/" + name).toRegex()', 'name'],
@@ -21,7 +27,7 @@ describe('unquotedRegexValues', () => {
     ['a raw string', 'fun route(name: String) = Regex("""^/$name/\\d+""")', 'name'],
     [
       'an unescape helper',
-      'fun route(name: String) = Regex("^/${unescapeRegex(name)}/")',
+      `fun route(name: String) = Regex("^/\${unescapeRegex(name)}/")`,
       'unescapeRegex(name)',
     ],
     [
@@ -40,7 +46,7 @@ describe('unquotedRegexValues', () => {
   });
 
   it.each([
-    ['an escaped value', 'fun route(name: String) = Regex("^/${Regex.escape(name)}/")'],
+    ['an escaped value', `fun route(name: String) = Regex("^/\${Regex.escape(name)}/")`],
     ['a quoted value', 'fun route(name: String) = Pattern.compile("^/" + Pattern.quote(name))'],
     ['a whole pattern', 'fun compile(pattern: String) = Regex(pattern)'],
     [
@@ -51,11 +57,11 @@ describe('unquotedRegexValues', () => {
     ['a number', 'fun digits(count: Int) = Regex("^\\\\d{$count}$")'],
     ['a constant', 'fun route() = Regex("^/$PREFIX/")'],
     ['a qualified constant', 'fun route() = Regex("^/" + Paths.PREFIX)'],
-    ['a regex source', 'fun anchored(inner: Regex) = Regex("^(?:${inner.pattern})$")'],
+    ['a regex source', `fun anchored(inner: Regex) = Regex("^(?:\${inner.pattern})$")`],
     ['an escaped dollar', 'fun total() = Regex("\\$name")'],
     ['a literal', 'val digits = Regex("\\\\d+")'],
     ['a call result', 'fun route() = loadPattern().toRegex()'],
-    ['an escape helper', 'fun route(name: String) = Regex("^/${escapeRegex(name)}/")'],
+    ['an escape helper', `fun route(name: String) = Regex("^/\${escapeRegex(name)}/")`],
     [
       'a qualified escape helper',
       'fun route(name: String) = Regex("^/" + Texts.quotePattern(name))',

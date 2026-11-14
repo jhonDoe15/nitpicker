@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { unboundedQueryArrays } from './unbounded-arrays.mjs';
-import { unorderedQueries } from './unordered-queries.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { unboundedQueryArrays as untypedUnboundedQueryArrays } from './unbounded-arrays.mjs';
+import { unorderedQueries as untypedUnorderedQueries } from './unordered-queries.mjs';
 
-function lines(check, source) {
+const unboundedQueryArrays: Check<Ruled> = untypedUnboundedQueryArrays;
+const unorderedQueries: Check<Ruled> = untypedUnorderedQueries;
+
+function lines(check: Check<Ruled>, source: string) {
   const scanned = scanKotlinSource(source);
   return check(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
