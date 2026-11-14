@@ -1,6 +1,20 @@
-import { changesToEdits, declined } from './text-edits.mjs';
+import type { Planned, Project, ReplaceEdit } from '../typed/project-types.mts';
+import { changesToEdits, declined } from './text-edits.mts';
 
-export function renameEdits(project, { name, offset, newName, accepts }) {
+export function renameEdits(
+  project: Project,
+  {
+    name,
+    offset,
+    newName,
+    accepts,
+  }: {
+    readonly name: string;
+    readonly offset: number;
+    readonly newName: string;
+    readonly accepts: (name: string) => boolean;
+  },
+): Planned<ReplaceEdit> {
   const locations = project.service.findRenameLocations(
     project.absolute(name),
     offset,

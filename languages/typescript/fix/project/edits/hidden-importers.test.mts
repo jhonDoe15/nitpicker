@@ -6,7 +6,9 @@ import { resolveLayoutFor } from '../../../preset/layout.mjs';
 const projects = useFixtureProjects();
 const RULE = 'eslint/nitpicker/file-name-casing';
 
-function rename(files, options = {}) {
+type FixRequest = Parameters<typeof projects.fix>[1];
+
+function rename(files: Record<string, string>, options: Partial<FixRequest> = {}) {
   return projects.fix(
     { 'src/myHelper.ts': 'export const h = 1;\n', ...files },
     { recipe, rule: RULE, changed: ['src/myHelper.ts'], ...options },

@@ -1,22 +1,29 @@
-import { composed } from './text-edits.mjs';
-import { createProject } from '../model/project-model.mjs';
-import { projectGraph } from '../model/project-graph.mjs';
+import type { FixContext, Project, ProjectEdit, ReplaceEdit } from '../typed/project-types.mts';
+import { composed } from './text-edits.mts';
+import { createProject } from '../model/project-model.mts';
+import { projectGraph } from '../model/project-graph.mts';
 
-function overlayOf(context, edits, moves) {
-  const texts = new Map();
+type Move = { readonly from: string; readonly to: string };
+
+function overlayOf(
+  context: FixContext,
+  edits: readonly ProjectEdit[],
+  moves: Map<string, string>,
+): Map<string, string | undefined> {
+  const texts = new Map<string, string | undefined>();
   const byPath = Map.groupBy(
-    edits.filter(({ type }) => type === 'replace'),
+    edits.filter((edit): edit is ReplaceEdit => edit.type === 'replace' && 'start' in edit),
     ({ path }) => path,
   );
   for (const [name, list] of byPath) {
-    texts.set(name, composed(context.read(name), list));
+    texts.set(name, composed(context.read(name) ?? '', list));
   }
   for (const edit of edits) {
-    if (edit.type === 'write') {
+    if (edit.type === 'write' && 'text' in edit) {
       texts.set(edit.path, edit.text);
-    } else if (edit.type === 'delete') {
+    } else if (edit.type === 'delete' && 'path' in edit) {
       texts.set(edit.path, undefined);
-    } else if (edit.type === 'move') {
+    } else if (edit.type === 'move' && 'from' in edit) {
       texts.set(edit.to, context.read(edit.from));
       texts.set(edit.from, undefined);
       moves.set(edit.to, edit.from);
@@ -25,7 +32,7 @@ function overlayOf(context, edits, moves) {
   return texts;
 }
 
-function errorCount(project, name) {
+function errorCount(project: Project, name: string): number {
   if (!project.has(name)) {
     return 0;
   }
@@ -36,8 +43,8 @@ function errorCount(project, name) {
   );
 }
 
-function withImporters(project, names) {
-  const importers = new Map();
+function withImporters(project: Project, names: readonly string[]): string[] {
+  const importers = new Map<string, string[]>();
   for (const { source, dependencies } of projectGraph(project).modules) {
     for (const { resolved } of dependencies) {
       importers.set(resolved, [...(importers.get(resolved) ?? []), source]);
@@ -52,7 +59,11 @@ function withImporters(project, names) {
   return [...covered];
 }
 
-export function verifyMove(context, project, { edits, renames }) {
+export function verifyMove(
+  context: FixContext,
+  project: Project,
+  { edits, renames }: { readonly edits: readonly ProjectEdit[]; readonly renames: readonly Move[] },
+): string | undefined {
   const moves = new Map(renames.map(({ from, to }) => [to, from]));
   const texts = overlayOf(context, edits, moves);
   const written = [...texts].filter(([, text]) => text !== undefined).map(([name]) => name);
@@ -72,6 +83,10 @@ export function verifyMove(context, project, { edits, renames }) {
   }
 }
 
-export function verifyEdits(context, project, edits) {
+export function verifyEdits(
+  context: FixContext,
+  project: Project,
+  edits: readonly ProjectEdit[],
+): string | undefined {
   return verifyMove(context, project, { edits, renames: [] });
 }

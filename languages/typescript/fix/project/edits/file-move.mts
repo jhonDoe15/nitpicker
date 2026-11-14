@@ -1,23 +1,34 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { fileReferenceProblem } from './declines.mjs';
-import { changesToEdits, composed, declined, fileEdits } from './text-edits.mjs';
-import { verifyMove } from './verify-edits.mjs';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import type { FixContext, Planned, Project, ProjectEdit } from '../typed/project-types.mts';
+import { fileReferenceProblem } from './declines.mts';
+import { changesToEdits, composed, declined, fileEdits } from './text-edits.mts';
+import { verifyMove } from './verify-edits.mts';
 
+const ts = typescriptApi();
 const FORMAT = ts.getDefaultFormatCodeSettings();
 
-function moveEdits(project, { from, to, edits }) {
+type Move = { readonly from: string; readonly to: string };
+
+function moveEdits(
+  project: Project,
+  { from, to, edits }: Move & { readonly edits: readonly ProjectEdit[] },
+): ProjectEdit[] {
   const own = fileEdits(edits, from);
-  const others = edits.filter((edit) => edit.path !== from);
+  const others = edits.filter((edit) => !('path' in edit) || edit.path !== from);
   if (own.length === 0) {
     return [...others, { type: 'move', from, to }];
   }
-  const text = composed(project.read(from), own);
+  const text = composed(project.read(from) ?? '', own);
   return [...others, { type: 'delete', path: from }, { type: 'write', path: to, text }];
 }
 
-function targetProblem(context, project, { from, to }) {
+function targetProblem(
+  context: FixContext,
+  project: Project,
+  { from, to }: Move,
+): string | undefined {
   if (from === to) {
     return 'the file is already there';
   }
@@ -28,7 +39,7 @@ function targetProblem(context, project, { from, to }) {
   return project.read(to) !== undefined || existsSync(target) ? `${to} is taken` : undefined;
 }
 
-export function planFileMove(context, project, { from, to }) {
+export function planFileMove(context: FixContext, project: Project, { from, to }: Move): Planned {
   const taken = targetProblem(context, project, { from, to });
   const problem = taken ?? fileReferenceProblem(project, from);
   if (problem !== undefined) {
