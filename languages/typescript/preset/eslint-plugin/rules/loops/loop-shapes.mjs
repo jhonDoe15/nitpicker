@@ -1,4 +1,5 @@
 import { ancestorsOf, contains } from '../analysis/ancestry.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 import { hasCollectionType } from '../support/checked-types.mjs';
 import { isConcurrentBatch } from './concurrent-batches.mjs';
 
@@ -32,10 +33,6 @@ const ASSIGNMENT = 'AssignmentExpression';
 const ARITHMETIC_OPERATORS = new Set(['+', '-', '*', '/', '%', '**']);
 const LOOP_EXITS = new Set(['ThrowStatement', 'ReturnStatement', 'BreakStatement']);
 const BREAK_TARGETS = new Set([...LOOPS, 'SwitchStatement']);
-
-export function childrenOf(node, visitorKeys) {
-  return (visitorKeys[node.type] ?? []).flatMap((key) => [node[key]].flat()).filter(Boolean);
-}
 
 function descendants(root, visitorKeys, isBoundary) {
   const found = [];

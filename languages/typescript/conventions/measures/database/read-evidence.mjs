@@ -1,47 +1,20 @@
-import tseslint from 'typescript-eslint';
-import { isEstreeConsumed } from '../../../preset/eslint-plugin/rules/support/flow/consumed.mjs';
+import { parseProgram, withParents } from '../parsing/estree-program.mjs';
+import { isEstreeConsumed } from '../../../preset/eslint-plugin/rules/support/flow/estree-consumed.mjs';
 import { readMentions } from '../../../preset/eslint-plugin/rules/queries/soft-delete/read-mentions.mjs';
-import { childrenOf } from '../../../preset/eslint-plugin/rules/loops/loop-shapes.mjs';
 
 const ALL_ORMS = ['drizzle', 'knex', 'kysely', 'mikro', 'prisma', 'sequelize', 'typeorm'];
 const READ_HINT = /\b(?:find|select|from|createQueryBuilder|knex|query)/iu;
 const MAX_READS_PER_TABLE = 40;
 
-export function parsedProgram(text, file) {
-  if (!READ_HINT.test(text)) {
-    return undefined;
-  }
-  try {
-    const { ast, visitorKeys } = tseslint.parser.parseForESLint(text, {
-      sourceType: 'module',
-      range: true,
-      filePath: file,
-    });
-    return { ast, visitorKeys };
-  } catch {
-    return undefined;
-  }
+function consumedCalls(program) {
+  return withParents(program).filter(
+    (node) => node.type === 'CallExpression' && node.parent !== undefined && isEstreeConsumed(node),
+  );
 }
 
-function consumedCalls({ ast, visitorKeys }) {
-  const calls = [];
-  const pending = [ast];
-  for (const node of pending) {
-    const children = childrenOf(node, visitorKeys);
-    for (const child of children) {
-      child.parent = node;
-    }
-    if (node.type === 'CallExpression' && node.parent !== undefined && isEstreeConsumed(node)) {
-      calls.push(node);
-    }
-    pending.push(...children);
-  }
-  return calls;
-}
-
-export function tableReads(text, file) {
-  const program = parsedProgram(text, file);
-  if (program === undefined) {
+function tableReads(text, file) {
+  const program = READ_HINT.test(text) ? parseProgram(text, file) : undefined;
+  if (program === undefined || program.ast === undefined) {
     return [];
   }
   return consumedCalls(program)

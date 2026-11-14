@@ -95,6 +95,7 @@ describe('conventions per preset', () => {
       'typescript.detachedWorkRunners',
       'typescript.transactions',
       'typescript.softDeleteFilters',
+      'typescript.routeAuth',
       'typescript.typeImports',
     ]);
     expect(nonPrettierIds('javascript')).toEqual([
@@ -103,6 +104,7 @@ describe('conventions per preset', () => {
       'typescript.detachedWorkRunners',
       'typescript.transactions',
       'typescript.softDeleteFilters',
+      'typescript.routeAuth',
     ]);
   });
 

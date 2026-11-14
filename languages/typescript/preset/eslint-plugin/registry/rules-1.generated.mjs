@@ -78,6 +78,7 @@ import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remot
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mjs';
 import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mjs';
+import { rule as ruleNoRouteWithoutAuth } from '../rules/route-auth/no-route-without-auth.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mjs';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoTaskOutlivingResource } from '../rules/lifetimes/no-task-
 import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-helpers-in-source.mjs';
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
-import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -181,6 +181,7 @@ export const partRules = {
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
   'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
+  'no-route-without-auth': ruleNoRouteWithoutAuth,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-test-helpers-in-source': ruleNoTestHelpersInSource,
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
-  'no-tri-state-boolean': ruleNoTriStateBoolean,
 };

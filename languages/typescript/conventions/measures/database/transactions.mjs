@@ -8,8 +8,6 @@ const OPENERS = [
   String.raw`@Transaction\s*\(`,
 ];
 const OPENS_TRANSACTION = new RegExp(OPENERS.join('|'), 'u');
-export const TEST_FILE =
-  /(?:\.(?:test|spec)\.[^/]+$|(?:^|\/)(?:__tests__|test|tests|e2e|test-support)\/)/u;
 
 export const TRANSACTIONS_CONVENTION = {
   id: 'typescript.transactions',
@@ -18,7 +16,7 @@ export const TRANSACTIONS_CONVENTION = {
   optionLabels: { used: 'the project opens transactions', unused: 'no transactions found' },
   fallback: 'unused',
   files: ['**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}'],
-  scope: 'layout',
+  scope: 'source',
   sampleLimit: 2000,
   measure: opensTransaction,
 };
@@ -27,7 +25,7 @@ export function projectOpensTransactions(conventions = {}) {
   return conventions[TRANSACTIONS_CONVENTION.id] === 'used';
 }
 
-function opensTransaction(text, file) {
-  const opens = !TEST_FILE.test(file) && OPENS_TRANSACTION.test(codeLines(text).join('\n'));
+function opensTransaction(text) {
+  const opens = OPENS_TRANSACTION.test(codeLines(text).join('\n'));
   return opens ? 'used' : undefined;
 }

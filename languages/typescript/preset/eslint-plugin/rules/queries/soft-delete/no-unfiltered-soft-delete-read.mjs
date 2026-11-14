@@ -1,4 +1,4 @@
-import { isEstreeConsumed } from '../../support/flow/consumed.mjs';
+import { isEstreeConsumed } from '../../support/flow/estree-consumed.mjs';
 import { filtersByTable } from './columns.mjs';
 import { readMentions } from './read-mentions.mjs';
 

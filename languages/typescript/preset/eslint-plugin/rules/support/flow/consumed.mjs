@@ -1,61 +1,5 @@
 import { ts } from '../../../../../typescript-api/typescript-api.mjs';
-import { outermostWrapper } from '../../analysis/ancestry.mjs';
-
-const PROMISE_STEPS = new Set(['then', 'catch', 'finally']);
-const COMBINATORS = new Set(['all', 'allSettled', 'any', 'race']);
-const ESTREE_WRAPPERS = new Set([
-  'ChainExpression',
-  'TSAsExpression',
-  'TSNonNullExpression',
-  'TSSatisfiesExpression',
-]);
-const ESTREE_SINKS = new Set(['AwaitExpression', 'ReturnStatement', 'YieldExpression']);
-const TERMINAL_METHODS = new Set([
-  'exec',
-  'then',
-  'first',
-  'execute',
-  'executeTakeFirst',
-  'executeTakeFirstOrThrow',
-  'getMany',
-  'getOne',
-  'getOneOrFail',
-  'getRawMany',
-  'getRawOne',
-  'getManyAndCount',
-  'getCount',
-  'getExists',
-  'stream',
-]);
-
-export function isTerminalMethod(method) {
-  return TERMINAL_METHODS.has(method);
-}
-
-function estreeMemberName(node) {
-  return node?.type === 'MemberExpression' && !node.computed ? node.property.name : undefined;
-}
-
-function isEstreeCollected(node) {
-  const { parent } = node;
-  const host = parent.type === 'ArrayExpression' ? parent.parent : parent;
-  const collector = host.type === 'CallExpression' ? estreeMemberName(host.callee) : undefined;
-  const combined = COMBINATORS.has(collector) && host.callee.object.name === 'Promise';
-  return host.type === 'CallExpression' && (collector === 'push' || combined);
-}
-
-export function isEstreeConsumed(call) {
-  const node = outermostWrapper(call, ESTREE_WRAPPERS);
-  const { parent } = node;
-  if (ESTREE_SINKS.has(parent.type)) {
-    return true;
-  }
-  if (parent.type === 'ArrowFunctionExpression' && parent.body === node) {
-    return true;
-  }
-  const stepped = parent.type === 'MemberExpression' && parent.object === node;
-  return (stepped && PROMISE_STEPS.has(estreeMemberName(parent))) || isEstreeCollected(node);
-}
+import { isCombinator, isPromiseStep } from './estree-consumed.mjs';
 
 function tsOuter(call) {
   const chain = [call];
@@ -76,7 +20,7 @@ function isTsCollected(node) {
   }
   const { name, expression } = host.expression;
   const combined =
-    COMBINATORS.has(name.text) && ts.isIdentifier(expression) && expression.text === 'Promise';
+    isCombinator(name.text) && ts.isIdentifier(expression) && expression.text === 'Promise';
   return name.text === 'push' || combined;
 }
 
@@ -94,6 +38,6 @@ export function isTsConsumed(call) {
   const stepped =
     ts.isPropertyAccessExpression(parent) &&
     parent.expression === node &&
-    PROMISE_STEPS.has(parent.name.text);
+    isPromiseStep(parent.name.text);
   return stepped || isTsCollected(node);
 }

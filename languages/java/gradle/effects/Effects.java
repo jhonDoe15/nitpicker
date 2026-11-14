@@ -14,9 +14,9 @@ import java.util.Set;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+import nitpicker.effects.auth.HandlerAuth;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
-import nitpicker.effects.deleted.InMemory;
 import nitpicker.effects.deleted.InMemory;
 import nitpicker.effects.deleted.QueryFilter;
 import nitpicker.effects.deleted.SoftDelete;
@@ -121,6 +121,7 @@ public final class Effects {
     QueryFilter filter = new QueryFilter(program, soft, report);
     filter.run();
     new InMemory(program, soft, entities, filter.reported(), report).run();
+    new HandlerAuth(program, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

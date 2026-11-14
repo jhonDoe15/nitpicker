@@ -5,11 +5,13 @@ import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-gra
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { QUERY_RULE_FILES } from '../../../../shared/rules/queries/query-rule-files.mjs';
 import { LIFECYCLE_POLICY_FILES } from './lifecycles/lifecycle-policy-files.mjs';
+import { RULE_BACKED_MEASURE_FILES } from '../../conventions/measures/parsing/rule-backed-measures.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
 
 export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
+  ...RULE_BACKED_MEASURE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
   ...IO_POLICY_FILES,

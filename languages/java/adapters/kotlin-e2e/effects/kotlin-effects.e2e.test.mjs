@@ -89,6 +89,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/jobs/NightlyJobs.kt',
         'src/main/kotlin/shop/trash/ProductService.kt',
         'src/main/kotlin/shop/carts/BasketReports.kt',
+        'src/main/kotlin/shop/api/AccountController.kt',
         JAVA_LOOP,
       ]),
     );

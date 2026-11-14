@@ -1,5 +1,5 @@
 import { ancestorsOf, chainOf, contains } from '../analysis/ancestry.mjs';
-import { childrenOf } from '../loops/loop-shapes.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 import { isOwned } from '../support/flow/scope-owners.mjs';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';

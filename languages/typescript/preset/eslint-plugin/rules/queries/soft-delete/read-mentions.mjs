@@ -1,5 +1,5 @@
 import { stringValue } from '../../analysis/constant-resolution.mjs';
-import { childrenOf } from '../../loops/loop-shapes.mjs';
+import { childrenOf } from '../../analysis/node/estree-children.mjs';
 import { firstString } from '../../support/orm/chains.mjs';
 import { ormSite } from '../../support/orm/sites.mjs';
 import { tableKey } from '../../support/orm/table-names.mjs';
@@ -114,21 +114,23 @@ function acknowledges(node) {
 }
 
 function collect(root, visitorKeys) {
-  const found = { mentions: [], helpers: new Set(), acknowledged: false };
+  const mentions = [];
+  const helpers = new Set();
+  let acknowledged = false;
   const pending = [root];
   for (const node of pending) {
-    found.mentions.push(...textMentions(node));
+    mentions.push(...textMentions(node));
     if (node.type === 'Property' && RELATION_KEYS.has(nameOf(node.key))) {
       continue;
     }
-    found.mentions.push(...columnMentions(node));
+    mentions.push(...columnMentions(node));
     for (const name of helperNames(node)) {
-      found.helpers.add(name);
+      helpers.add(name);
     }
-    found.acknowledged ||= acknowledges(node);
+    acknowledged ||= acknowledges(node);
     pending.push(...childrenOf(node, visitorKeys));
   }
-  return found;
+  return { mentions, helpers, acknowledged };
 }
 
 export function readMentions(call, orms, visitorKeys) {

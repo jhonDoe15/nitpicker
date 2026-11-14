@@ -33,6 +33,7 @@ const KOTLIN_FILES = [
   'jobs/NightlyJobs.kt',
   'trash/ProductService.kt',
   'carts/BasketReports.kt',
+  'api/AccountController.kt',
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {

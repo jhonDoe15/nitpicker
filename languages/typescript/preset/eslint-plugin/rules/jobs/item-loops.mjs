@@ -1,6 +1,6 @@
 import { ancestorsOf, contains } from '../analysis/ancestry.mjs';
 import { callsWithin } from '../effects/held-scopes.mjs';
-import { isEstreeConsumed } from '../support/flow/consumed.mjs';
+import { isEstreeConsumed } from '../support/flow/estree-consumed.mjs';
 import { callEffects } from '../support/io-effects.mjs';
 
 const ITEM_IO = ['database', 'remote'];

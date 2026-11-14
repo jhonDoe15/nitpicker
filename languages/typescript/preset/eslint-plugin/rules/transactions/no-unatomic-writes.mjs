@@ -1,6 +1,6 @@
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';
-import { isEstreeConsumed } from '../support/flow/consumed.mjs';
+import { isEstreeConsumed } from '../support/flow/estree-consumed.mjs';
 import { ormSite } from '../support/orm/sites.mjs';
 import { rootNode } from '../support/orm/chains.mjs';
 import { clientOrigin, mentionsTransaction, transactionCallback } from './clients.mjs';

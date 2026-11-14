@@ -680,16 +680,20 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   A NestJS handler is a method with `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Options` or `@Head` (from
   `@nestjs/common`) in a `@Controller` class; its auth declarations are the decorators at method and class level whose
   name has an auth word (`Auth`, `Authenticated`, `Authorize`, `UseGuards`, `Roles`, `Permission`, `Jwt`, `Scopes`,
-  ...), as a shape of the name plus the option keys of an object argument (`@Authenticated({ permission })`), and a
+  ...; documentation and throttling names such as `ApiBearerAuth`, `Throttle` or `ThrottlerGuard` are not auth), as a shape of the name plus the option keys of an object argument (`@Authenticated({ permission })`), and a
   public marker is a name with `Public` or `Anonymous` (or a skip-auth name) or an auth option set to `false`
   (`permission: false`). When at least ten handlers exist and one shape covers at least half of them and, with the
   public ones, at least 90%, a handler with neither the shape nor a public marker is reported, naming the shape.
-  Without such a majority, where some handlers declare a guard, there is no global guard (`APP_GUARD` or
-  `useGlobalGuards`) and there are at least five handlers, a handler with no auth decorator at method or class level and
-  no public marker is reported. Express, Fastify, Koa router, Hono and Restify route calls (`app.get('/path', ...)`,
-  with a path first, in a file that imports the framework) follow the same 90% rule on the auth middleware name (a
+  With a global guard (`APP_GUARD`, `useGlobalGuards`, or an auth-named middleware applied with
+  `consumer.apply(...).forRoutes(...)`) nothing is followed. Without a majority, where more than half of at least
+  five handlers declare a guard or auth decorator, a handler with no auth decorator at method or class level and
+  no public marker is reported. Express, Fastify, Koa router, Hono and Restify route calls (`app.get('/path', ...)`
+  on a receiver created by the framework (`express()`, `Router()`, `Fastify()`, `new Hono()`), typed as one, or
+  registered through `register`, with a path first and a handler last; calls are read in source order) follow the same 90% rule on the auth middleware name (a
   name with an auth word) among the route's own middleware, `preHandler`/`onRequest` options, and a
-  `use(...)`/`addHook(...)` on the same receiver before it. The service form (a request id reaching a repository call
+  `use(...)`/`addHook(...)` on the same receiver before it; there is no public marker, so a route whose path names
+  `health`, `ready`, `live`, `ping`, `metrics`, `status`, `login`, `signup`, `register`, `logout`, `callback`, `webhook`,
+  `public` or `oauth` is left alone. The service form (a request id reaching a repository call
   without the project's access check) needs data flow and is not covered.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or

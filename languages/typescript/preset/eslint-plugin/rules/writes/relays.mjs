@@ -2,7 +2,8 @@ import { findVariable } from '../analysis/constant-resolution.mjs';
 import { callsWithin } from '../effects/held-scopes.mjs';
 import { awaited } from '../effects/lazy-relations.mjs';
 import { contains } from '../analysis/ancestry.mjs';
-import { childrenOf, enclosingLoop } from '../loops/loop-shapes.mjs';
+import { enclosingLoop } from '../loops/loop-shapes.mjs';
+import { childrenOf } from '../analysis/node/estree-children.mjs';
 import { callEffects } from '../support/io-effects.mjs';
 
 function loopElement(found, sourceCode) {

@@ -27,5 +27,7 @@ dependencies {
     compileOnly('com.netflix.graphql.dgs:graphql-dgs:10.0.4') { transitive = false }
     compileOnly('org.quartz-scheduler:quartz:2.3.2') { transitive = false }
     compileOnly('io.awspring.cloud:spring-cloud-aws-sqs:3.3.0') { transitive = false }
+    compileOnly('org.springframework.security:spring-security-core:6.4.4') { transitive = false }
+    compileOnly('jakarta.annotation:jakarta.annotation-api:2.1.1') { transitive = false }
     compileOnly('com.stripe:stripe-java:29.0.0') { transitive = false }
 }

@@ -227,6 +227,7 @@ function layoutFilter(config, headPolicy) {
   const formatted = prettierPatterns(layout).map(globMatcher);
   const scopes = {
     layout: (file) => layout.isSourceFile(file) || layout.isTestFile(file),
+    source: (file) => layout.isSourceFile(file),
     'test-code': (file) => layout.isTestFile(file) || TEST_SUPPORT_PATH.test(file),
     'formatted-data': (file) =>
       formatted.some((pattern) => pattern.test(file)) &&

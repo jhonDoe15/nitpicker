@@ -18,6 +18,13 @@ const databaseConfig = [
   ...productionLayoutConfigFor(defaultResolvedLayout),
 ];
 
+const routeAuthConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    routeAuth: { entries: ['nest__Authenticated__permission'] },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
 const softDeleteConfig = [
   ...productionPolicyConfigFor(defaultResolvedLayout, {
     softDeleteFilters: { orms: ['kysely'], filters: ['asset__helper__withDefaultVisibility'] },
@@ -135,6 +142,14 @@ export const policyFailureMessageCases = [
       'withDefaultVisibility',
     ),
     config: softDeleteConfig,
+  },
+  {
+    ...adapterCase(
+      'a route without the project auth decorator names it',
+      "import { Controller, Get } from '@nestjs/common'; @Controller('orders') export class Orders { @Get() list() { return []; } }",
+      '@Authenticated({ permission })',
+    ),
+    config: routeAuthConfig,
   },
   adapterCase(
     'resolver map query names the DataLoader',

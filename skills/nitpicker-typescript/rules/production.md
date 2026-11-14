@@ -150,6 +150,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Skip deleted items the way the project does in every new loop, `find` or `filter` over a collection that carries
   `isDeleted` (a guard, a helper such as `getNonDeletedElements`, or the narrowed type `NonDeleted<T>`); undo and
   restore code that reads them on purpose takes the exception (`nitpicker/no-unguarded-deleted-items`).
+- Declare the auth requirement on every new route the way the project's other routes do (`@Authenticated({ permission })`,
+  the guard decorator, the auth middleware), or mark it public with the project's marker
+  (`nitpicker/no-route-without-auth`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
