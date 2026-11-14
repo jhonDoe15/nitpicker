@@ -7,9 +7,10 @@ const POLICY_RULE = 'policy-loosened';
 const DIGEST_LENGTH = 12;
 const COMMIT_PREFIX = 'commit:';
 
-export function policyDigest({ loosenings, files = [] }) {
+export function policyDigest(request) {
+  const files = (request.files ?? []).toSorted();
   return createHash('sha256')
-    .update(JSON.stringify({ loosenings: loosenings.toSorted(), files: files.toSorted() }))
+    .update(JSON.stringify({ loosenings: request.loosenings.toSorted(), files }))
     .digest('hex')
     .slice(0, DIGEST_LENGTH);
 }

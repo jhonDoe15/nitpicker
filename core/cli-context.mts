@@ -9,6 +9,7 @@ export type TextOutput = {
 export type CliOptions = {
   readonly analyzerNames: readonly string[];
   readonly ruleFilters: readonly string[];
+  readonly projectPaths?: readonly string[];
   readonly fix: boolean;
   readonly dryRun: boolean;
   readonly details: boolean;
