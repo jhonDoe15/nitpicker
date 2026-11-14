@@ -77,6 +77,27 @@ describe('clones of declarations only', () => {
         '}',
       ],
     ],
+    [
+      'go',
+      'a struct, its constructor and error checks',
+      [
+        'type Point struct {',
+        '\tX     int    `json:"x"`',
+        '\tLabel string',
+        '}',
+        'func NewPoint(x int) (*Point, error) {',
+        '\tif err != nil {',
+        '\t\treturn nil, err',
+        '\t}',
+        '\treturn &Point{',
+        '\t\tX: x,',
+        '\t}, nil',
+        '}',
+        'func (p *Point) Name() string {',
+        '\treturn p.Label',
+        '}',
+      ],
+    ],
   ])('treats %s %s as boilerplate', (syntax, _, lines) => {
     expect(isBoilerplate(lines, syntax)).toBe(true);
   });
@@ -89,6 +110,7 @@ describe('clones of declarations only', () => {
     ['kotlin', ['fun total() {', '    val sum = compute(items)', '    return sum', '}']],
     ['python', ['TOTAL = compute(items)', 'print(TOTAL)']],
     ['java', ['public int total() {', '    int sum = compute(items);', '    return sum;', '}']],
+    ['go', ['func total(items []int) int {', '\tsum := compute(items)', '\treturn sum', '}']],
   ])('treats %s code with logic as code', (syntax, lines) => {
     expect(isBoilerplate(lines, syntax)).toBe(false);
   });

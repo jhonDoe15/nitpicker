@@ -11,11 +11,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
-import { installStrykerTsconfig, mutationSkipFor } from './quality-areas/runners/mutation.mjs';
-import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
-import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
-import { parseArguments } from './quality-areas/arguments.mjs';
-import { runQualityArea } from './quality-areas-runner.mjs';
+import {
+  createdFilesTracker,
+  installStrykerTsconfig,
+} from './quality-areas/runners/stryker/stryker-config.mts';
+import { mutationSkipFor } from './quality-areas/runners/skips/mutation-skips.mts';
+import { normalizeStructure } from './quality-areas/reporting/repository.mts';
+import { normalizeCrap } from './quality-areas/reporting/tests.mts';
+import { parseArguments } from './quality-areas/arguments.mts';
+import { runQualityArea } from './quality-areas-runner.mts';
+import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 
 const temporaryRoots = [];
 
@@ -75,7 +80,7 @@ describe('crap runner without a coverage report', () => {
         rule: 'tests-failed-skipped',
         path: '.',
         identity: 'tests-failed-skipped',
-        message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        message: `CRAP did not run: there is no coverage report, because the project tests fail.`,
         classification: 'tool-error',
       },
     ]);
@@ -132,7 +137,7 @@ describe('coverage runner invoked as a script', () => {
     const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     process.argv = [
       originalArguments[0],
-      path.join(import.meta.dirname, 'quality-areas-runner.mjs'),
+      path.join(import.meta.dirname, 'quality-areas-runner.mts'),
       '--analyzer-name',
       'coverage',
       '--kind',
@@ -148,7 +153,7 @@ describe('coverage runner invoked as a script', () => {
     ];
     vi.resetModules();
 
-    await import('./quality-areas-runner.mjs');
+    await import('./quality-areas-runner.mts');
 
     expect(stderr).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(originalExitCode);
@@ -331,6 +336,7 @@ describe('mutation testing that cannot start', () => {
       rule: 'typecheck-failed-skipped',
       message:
         'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseDoesNotTypeCheck,
     });
   });
 
@@ -342,6 +348,7 @@ describe('mutation testing that cannot start', () => {
       rule: 'tests-failed-skipped',
       message:
         'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseTestsFail,
     });
   });
 
@@ -381,10 +388,9 @@ describe.each([
     include: ['src'],
   })}\n`;
   const stryker = async (projectRoot) => {
-    const created = [];
     const prepared = await installStrykerTsconfig(optionsFor('mutation', projectRoot), {
       sourceRelativePath: 'tsconfig.stryker.json',
-      createdFiles: created,
+      createdFiles: createdFilesTracker(),
       engine,
     });
     return {

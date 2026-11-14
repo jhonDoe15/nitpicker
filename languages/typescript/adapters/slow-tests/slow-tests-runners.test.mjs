@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { parseArguments } from '../quality-areas/arguments.mjs';
-import { retimeWithoutCoverage } from './rerun-timings.mjs';
+import { parseArguments } from '../quality-areas/arguments.mts';
+import { retimeWithoutCoverage } from './rerun-timings.mts';
 import {
   PICK_SOURCE,
   createRunnerProjects,

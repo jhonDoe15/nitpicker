@@ -1,6 +1,7 @@
 export const LOOKUP = `package shop
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -13,8 +14,28 @@ func Forget(name string) {
 	os.Remove(name)
 }
 
-func Anything() interface{} {
-	return 1
+func Describe(value interface{}) string {
+	return fmt.Sprint(value)
+}
+
+func Counts(names []string) map[string]int {
+	//revive:disable-next-line:enforce-map-style
+	counts := make(map[string]int)
+	for _, name := range names {
+		counts[name]++
+	}
+	return counts
+}
+`;
+
+export const LOOKUP_TEST = `package shop
+
+import "testing"
+
+func TestCounts(t *testing.T) {
+	if Counts([]string{"a"})["a"] != 1 {
+		t.Fatal("a counted once")
+	}
 }
 `;
 
@@ -22,5 +43,219 @@ export const SKIP_S1003 = 'checks = ["all", "-S1003"]\n';
 
 export const PROJECT_STATICCHECK = JSON.stringify({
   preset: 'go',
+  disable: ['mutation'],
   tools: { staticcheck: { precedence: ['project'] } },
 });
+
+export const TOKEN = `package shop
+
+import "math/rand/v2"
+
+func Token() uint64 {
+	return rand.Uint64() // #nosec G404
+}
+`;
+
+export const OWN_RULES = `package shop
+
+import (
+	"log"
+	"os"
+	"strconv"
+)
+
+func Quantity(text string) int {
+	value, err := strconv.Atoi(text)
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+func Read(name string) ([]byte, error) {
+	data, err := os.ReadFile(name)
+	if err != nil {
+		log.Printf("read %s: %v", name, err)
+		return nil, err
+	}
+	return data, nil
+}
+`;
+
+export const OWN_RULES_TEST = `package shop
+
+import (
+	"io"
+	"log"
+	"testing"
+)
+
+func TestQuantity(t *testing.T) {
+	if Quantity("2") != 2 {
+		t.Fatal("two")
+	}
+	defer func() {
+		if recover() == nil {
+			t.Fatal("no panic")
+		}
+	}()
+	Quantity("x")
+}
+
+func TestRead(t *testing.T) {
+	log.SetOutput(io.Discard)
+	if _, err := Read("missing.txt"); err == nil {
+		t.Fatal("missing.txt read")
+	}
+	if data, err := Read("rules.go"); err != nil || len(data) == 0 {
+		t.Fatalf("rules.go: %v", err)
+	}
+}
+`;
+
+export const STOCK = `package shop
+
+import (
+	"context"
+	"io"
+	"os"
+
+	"example.com/shop/shop/stock"
+)
+
+func AtEnd(err error) bool {
+	return err == io.EOF
+}
+
+func Size(name string) (int64, error) {
+	info, err := os.Stat(name)
+	if err != nil {
+		return 0, nil
+	}
+	return info.Size(), nil
+}
+
+func Sync(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	return stock.Refresh()
+}
+`;
+
+export const STOCK_TEST = `package shop
+
+import (
+	"context"
+	"testing"
+)
+
+func TestSize(t *testing.T) {
+	if size, err := Size("missing.txt"); size != 0 || err != nil {
+		t.Fatalf("missing file: %d, %v", size, err)
+	}
+	if size, err := Size("stock.go"); size == 0 || err != nil {
+		t.Fatalf("stock.go: %d, %v", size, err)
+	}
+}
+
+func TestSync(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	if err := Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	cancel()
+	if Sync(ctx) == nil {
+		t.Fatal("a cancelled context syncs")
+	}
+}
+`;
+
+export const STOCK_REFRESH = `// Package stock refreshes the stock.
+package stock
+
+import "context"
+
+func Refresh() error {
+	return load(context.Background())
+}
+
+func load(ctx context.Context) error {
+	return ctx.Err()
+}
+`;
+
+export const STATUS = `package shop
+
+type Status int
+
+const (
+	Open Status = iota
+	Shipped
+	Returned
+)
+
+func Label(status Status) string {
+	switch status {
+	case Open:
+		return "open"
+	case Shipped:
+		return "shipped"
+	}
+	return ""
+}
+`;
+
+export const STATUS_TEST = `package shop
+
+import "testing"
+
+func TestStatusLabel(t *testing.T) {
+	labels := []string{Label(Open), Label(Shipped), Label(Returned)}
+	if labels[0] != "open" || labels[1] != "shipped" || labels[2] != "" {
+		t.Fatalf("labels %q", labels)
+	}
+}
+`;
+
+const MODELS = `package shop
+
+import "gorm.io/gorm"
+
+type Customer struct {
+	gorm.Model
+	Orders []Order
+}
+
+type Order struct {
+	gorm.Model
+	CustomerID uint
+}
+`;
+
+const GORM_STUB = `// Package gorm stands in for gorm.io/gorm.
+package gorm
+
+type Model struct {
+	ID uint \`gorm:"primarykey"\`
+}
+`;
+
+const ORDERS_MIGRATION = `CREATE TABLE orders (
+  id bigserial PRIMARY KEY,
+  customer_id bigint REFERENCES customers (id)
+);
+`;
+
+export const GORM_MODELS = {
+  'go.mod':
+    'module example.com/shop\n\ngo 1.22\n\nrequire gorm.io/gorm v0.0.0\n\nreplace gorm.io/gorm => ./third_party/gorm\n',
+  'third_party/gorm/go.mod': 'module gorm.io/gorm\n\ngo 1.22\n',
+  'third_party/gorm/gorm.go': GORM_STUB,
+  'shop/models.go': MODELS,
+};
+
+export const GORM_MIGRATED = {
+  ...GORM_MODELS,
+  'migrations/0001_orders.up.sql': ORDERS_MIGRATION,
+};

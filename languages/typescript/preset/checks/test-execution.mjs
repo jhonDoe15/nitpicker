@@ -1,11 +1,16 @@
 import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mjs';
-import {
-  JAVASCRIPT_PRESET_FILE,
-  CRAP_CONFIGURATION_FILES,
-  TEST_RUNNER_CONFIGURATION_FILES,
-} from './policy-files.mjs';
+import { JAVASCRIPT_PRESET_FILE, TEST_RUNNER_CONFIGURATION_FILES } from './policy-files.mjs';
+import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { testConsoleCheckFor } from './test-console.mjs';
+
+const CRAP_CONFIGURATION_FILES = [
+  ...CRAP_CHECK_FILES,
+  'languages/typescript/preset/layout.mjs',
+  'languages/typescript/preset/head-policy.mjs',
+  JAVASCRIPT_PRESET_FILE,
+  'shared/rules/crap.mjs',
+];
 
 const COVERAGE_CONFIGURATION_FILES = [
   'shared/test-timeouts/resolve.mjs',

@@ -1,7 +1,7 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { jscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
@@ -230,5 +230,19 @@ describe('nitpicker with "preset": "python"', () => {
       ['python', 'types-failed', 'base'],
       ['python', 'types-failed', 'head'],
     ]);
+  });
+  it('reports an error of the design facts producer as one tool error instead of passing', () => {
+    const root = pythonRepository();
+    writeFiles(root, {
+      'design-facts.json': JSON.stringify({ error: 'RecursionError (calls.py:12)' }),
+    });
+    commit(root, 'add a file the producer cannot read');
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(
+      result.json('tool-errors.json').map(({ tool, rule, snapshot }) => [tool, rule, snapshot]),
+    ).toEqual([['python', 'design-failed', 'head']]);
   });
 });

@@ -45,6 +45,9 @@ function isIntegral(node, children) {
   if (isIntegerLiteral(node) || node.integer === true) {
     return true;
   }
+  if (node.kind === 'conditional') {
+    return children[1].integral && children[2].integral;
+  }
   return isArithmeticOperator(node) && children.every((child) => child.integral);
 }
 
@@ -68,16 +71,19 @@ function atom(encoding, sort, node) {
     ? key(node)
     : `occurrence ${String(encoding.atoms.size)}`;
   return memo(encoding.atoms, `${sort}:${identity}`, (index) =>
-    sort === 'value' ? z3.Real.const(`a${String(index)}`) : z3.Bool.const(`a${String(index)}`),
+    sort === 'value'
+      ? encoding.numbers.const(`a${String(index)}`)
+      : z3.Bool.const(`a${String(index)}`),
   );
 }
 
 function literalValue(encoding, node) {
-  const { z3 } = encoding;
   if (isExactNumber(node)) {
-    return memo(encoding.literals, node.value, () => z3.Real.val(node.value));
+    return memo(encoding.literals, node.value, () => encoding.numbers.val(node.value));
   }
-  return memo(encoding.literals, node.value, (index) => z3.Real.const(`c${String(index)}`));
+  return memo(encoding.literals, node.value, (index) =>
+    encoding.numbers.const(`c${String(index)}`),
+  );
 }
 
 function arithmeticValue(node, [left, right]) {
@@ -97,15 +103,19 @@ function encodeValue(encoding, { node, children, integral }) {
   if (integral && isArithmeticOperator(node)) {
     return arithmeticValue(node, children);
   }
+  if (integral && node.kind === 'conditional') {
+    const [condition, whenTrue, whenFalse] = children;
+    return encoding.z3.If(condition.truth, whenTrue.value, whenFalse.value);
+  }
   const value = atom(encoding, 'value', node);
-  if (integral) {
+  if (integral && !encoding.integers) {
     encoding.facts.push(encoding.z3.IsInt(value));
   }
   return value;
 }
 
 function encodeNotANumber(encoding, { node, integral }) {
-  return node.kind === 'literal' || integral
+  return node.kind === 'literal' || integral || encoding.integers
     ? encoding.z3.Bool.val(false)
     : atom(encoding, 'not-a-number', node);
 }
@@ -181,20 +191,38 @@ function distinctLiterals(encoding) {
   return literals.length > 1 ? [encoding.z3.Distinct(...literals)] : [];
 }
 
-function satisfiable(z3, assertions, resourceLimit) {
+function solverOf(z3, assertions, resourceLimit) {
   const solver = new z3.Solver();
   solver.set('rlimit', resourceLimit);
   solver.add(...assertions);
-  return solver.check();
+  return solver;
 }
 
-export async function decide(conditions, query, options = {}) {
-  const { resourceLimit = DEFAULT_RESOURCE_LIMIT, sameCalls = false } = options;
+function satisfiable(z3, assertions, resourceLimit) {
+  return solverOf(z3, assertions, resourceLimit).check();
+}
+
+async function encoded(conditions, query, { sameCalls = false, integers = false }) {
   const z3 = await solverContext();
-  const encoding = { z3, sameCalls, atoms: new Map(), literals: new Map(), facts: [] };
+  const numbers = integers ? z3.Int : z3.Real;
+  const encoding = {
+    z3,
+    sameCalls,
+    integers,
+    numbers,
+    atoms: new Map(),
+    literals: new Map(),
+    facts: [],
+  };
   const path = conditions.map((condition) => encode(encoding, condition));
   const asked = encode(encoding, query);
   const facts = [...distinctLiterals(encoding), ...encoding.facts, ...path];
+  return { z3, encoding, facts, asked };
+}
+
+export async function decide(conditions, query, options = {}) {
+  const { resourceLimit = DEFAULT_RESOURCE_LIMIT } = options;
+  const { z3, facts, asked } = await encoded(conditions, query, options);
   const canHold = await satisfiable(z3, [...facts, asked], resourceLimit);
   const canFail = await satisfiable(z3, [...facts, z3.Not(asked)], resourceLimit);
   if (canHold === 'unsat' && canFail === 'unsat') {
@@ -204,4 +232,26 @@ export async function decide(conditions, query, options = {}) {
     return 'true';
   }
   return canHold === 'unsat' ? 'false' : 'open';
+}
+
+const SHOWN_ATOMS = /^(?:value|truth):\(?(?:name|member|index|call|this)\b/u;
+const NEGATIVE = /\(- (?<magnitude>[\d./]+)\)/gu;
+
+function shownAtoms(encoding, model) {
+  return [...encoding.atoms]
+    .filter(([name]) => SHOWN_ATOMS.test(name))
+    .map(([name, constant]) => [name.slice(name.indexOf(':') + 1), String(model.eval(constant))])
+    .filter(([, value]) => !/^[ac]\d+$/u.test(value))
+    .map(([name, value]) => `${name} = ${value.replaceAll(NEGATIVE, '-$<magnitude>')}`)
+    .toSorted();
+}
+
+export async function counterexample(conditions, query, options = {}) {
+  const { resourceLimit = DEFAULT_RESOURCE_LIMIT } = options;
+  const { z3, encoding, facts, asked } = await encoded(conditions, query, options);
+  const solver = solverOf(z3, [...facts, z3.Not(asked)], resourceLimit);
+  if ((await solver.check()) !== 'sat') {
+    return undefined;
+  }
+  return shownAtoms(encoding, solver.model()).join(', ');
 }

@@ -6,7 +6,12 @@ The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jd
 class directory (the Java and the Kotlin one, so references in both directions between the languages
 count) and the Nitpicker side builds the package graph as for Java (see the
 [Java preset](../java-preset/coupling-and-stability-ticket-sh6.md)): a package depending on a less stable
-package fails with `stability-direction`, with the report-only coupling metrics beside it.
+package fails with `stability-direction`, with the report-only coupling metrics beside it. A
+feature package is one unit, as in Java: adapters that implement interfaces declared in the
+feature's top package, and a top package that builds its adapters, are not an inversion (see
+[Stability direction](../usage.md#stability-direction)). Packages in a dependency cycle fail with
+`package-cycle`, one finding per package, from the same graph (see the Java preset's Guards
+section).
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin
 metrics step lists the JVM class names of each file: its top-level classes, objects and interfaces and
@@ -17,3 +22,36 @@ classes Kotlin generates. The package is the one in the bytecode, that is the `p
 the file and not its directory. Of a `@JvmMultifileClass` facade, each file lists its own part
 (`Facade__FileKt`) and the first file (in path order) lists the facade class, so callers of the
 facade belong to that file. A class that no file lists is its own module.
+
+## Feature packages and domain boundaries
+
+`feature-internal-import`, `shared-imports-feature`, `feature-cycle` and
+`foreign-feature-persistence` run as for Java, over the same jdeps graph, and `shared-used-by-one-feature`
+over the same source facts (see [Feature packages](../java-preset/feature-packages.md)): the
+public face of a feature is the classes and file facades directly in its package, a feature split
+over `src/main/java` and `src/main/kotlin` is one feature, and a Java class calling a top-level
+Kotlin function of another feature is an edge to that function's file. Kotlin's `internal` is
+visible in the whole module, so it is not feature-private; what counts is the package.
+
+- **Persistence.** `foreign-feature-persistence` knows the Kotlin forms too: an Exposed `Table`,
+  `IdTable` (`IntIdTable`, `LongIdTable`, `UUIDTable`) or DAO `Entity` subclass is an entity, and a
+  repository declared as `interface PaymentRepository : CrudRepository<Payment, Long>` is a
+  repository even when it shares its file with the entity; the file is the unit.
+
+**Domain boundaries.**
+The [domain rules](../java-preset/domain-boundaries.md) (`domain-imports-adapter`, `domain-imports-io`,
+`domain-imports-client`, `domain-imports-logger`, `domain-imports-random`,
+`domain-imports-framework-context`, `domain-reaches-io`) run on Kotlin classes from the same graph.
+Kotlin's own forms are in the lists: `kotlin.io` file functions (`File.readText()` compiles to a
+call on the `FilesKt` facade, reported as `FilesKt`) and `kotlin.io.path`, `kotlin.concurrent`
+threads and timers, `kotlin.random.Random`, kotlin-logging (`io.github.oshai.kotlinlogging`, and
+the older `mu` package), the Ktor client, and `Uuid.random()` from `kotlin.uuid`, found in the
+source like `UUID.randomUUID()`. A top-level function in a domain package is checked through its
+file facade, so the finding is on its file. An `inline` library function is copied into the
+domain class, so the edge is to what its body calls.
+
+**Feature cycles.** A cycle between features is reported as `feature-cycle` on each edge that
+closes it, also when an edge goes through a file facade (`RatesKt`) and so starts or ends at a
+`.kt` file. The `package-cycle` of the same packages is left out when the feature edges alone
+close it, so one cycle fails once. Packages of one feature split over `src/main/java` and
+`src/main/kotlin` are one feature, so a loop between them is no feature cycle.

@@ -11,9 +11,9 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
-In a comparison, PIT mutates every class on both sides, and head starts from the PIT results of the
-base run, so it runs again only the mutants of changed classes and of classes whose tests changed;
-see [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
+In a comparison, PIT mutates the lines the change wrote and the classes its changed tests use, and
+the base runs PIT only for the latter; see
+[Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
 
 Every rule the preset can report has an entry in the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/README.md): [PMD](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-pmd.md), [Checkstyle](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-checkstyle.md), [SpotBugs](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-spotbugs.md), [Error Prone](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-errorprone.md) and [nitpicker's own rules](https://github.com/jhonDoe15/nitpicker/blob/latest/docs/rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
@@ -37,14 +37,20 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slice 5: CRAP](java-preset/slice-5-crap.md)
 - [Slice 6: duplicates](java-preset/slice-6-duplicates.md)
 - [Slice 8: gate on changed coverage](java-preset/slice-8-gate-on-changed-coverage.md)
+- [Design rules](java-preset/design-rules.md)
 - [Slow tests](java-preset/slow-tests.md)
 - [Tests that never run](java-preset/tests-that-never-run.md)
+- [Tests that copy a constant](java-preset/tests-that-copy-a-constant.md)
 - [Console output of tests](java-preset/console-output-of-tests.md)
+- [Round-trip tests](java-preset/round-trip-tests.md)
 - [Error Prone and NullAway](java-preset/error-prone-and-nullaway.md)
 - [Structure limits (SH5)](java-preset/structure-limits-sh5.md)
 - [Class and package size limits](java-preset/class-and-package-size-limits.md)
 - [Style](java-preset/style.md)
 - [Coupling and stability (ticket SH6)](java-preset/coupling-and-stability-ticket-sh6.md)
+- [Feature packages](java-preset/feature-packages.md)
+- [Domain boundaries](java-preset/domain-boundaries.md)
+- [Guards](java-preset/guards.md)
 - [Generated sources](java-preset/generated-sources.md)
 - [Spring rules](java-preset/spring-rules.md)
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)
@@ -56,3 +62,4 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Slice 1: what is deliberately not included](java-preset/slice-1-what-is-deliberately-not-included.md)
 - [Tools evaluated and not integrated](java-preset/tools-evaluated-and-not-integrated.md)
 - [Tests](java-preset/tests.md)
+- [Troubleshooting](java-preset/troubleshooting.md)

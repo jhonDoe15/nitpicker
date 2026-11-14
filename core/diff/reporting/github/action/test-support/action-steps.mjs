@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
+import { checkoutModulePath } from '../../../../../../shared/paths/checkout-module.mjs';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../../..');
 
@@ -102,7 +103,7 @@ export function executeStep({ step, root, cwd, environment, searchPath }) {
       GITHUB_OUTPUT: outputFile,
       GITHUB_WORKSPACE: root,
       FAKE_LOG: log,
-      NITPICKER_CLI: path.join(repositoryRoot, 'core/cli.mjs'),
+      NITPICKER_CLI: checkoutModulePath(path.join(repositoryRoot, 'core/cli.mjs')),
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_NOSYSTEM: '1',
       ...environment,

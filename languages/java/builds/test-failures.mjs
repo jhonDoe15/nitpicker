@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml, testCaseProblem } from '../../../shared/ingest/common.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { testsFailHeadline } from '../../../shared/rules/finding-helpers.mjs';
 import {
   failingTestEntries,
@@ -99,13 +100,17 @@ function modulesOf(failures) {
   return modules.length === 0 ? '' : ` in ${modules.join(', ')}`;
 }
 
-export function failingTestsError(failures) {
+export function failingTestsText(failures, consequence) {
   const count = failures.reduce((total, { tests }) => total + tests.length, 0);
-  const error = new Error(
-    [
-      testsFailHeadline(count, 'the build stopped, so no other check ran', modulesOf(failures)),
-      ...listedFailures(failures),
-    ].join('\n'),
+  return [
+    testsFailHeadline(count, consequence, modulesOf(failures)),
+    ...listedFailures(failures),
+  ].join('\n');
+}
+
+export function failingTestsError(failures) {
+  const error = explainedError(
+    failingTestsText(failures, 'the build stopped, so no other check ran'),
   );
   return Object.defineProperty(error, 'failures', { value: failures });
 }

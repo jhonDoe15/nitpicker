@@ -5,13 +5,75 @@ import {
   validateStringArray,
 } from '../../../../shared/config.mjs';
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
-import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { COMMON_EXCEPTION_RULES, RULE_IDS } from '../../../../shared/policy.mjs';
+import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mjs';
 import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
-export const GO_LINT_TOOLS = ['vet', 'staticcheck', 'errcheck', 'modernize'];
-export const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
+const GO_CATALOG_TOOLS = [
+  'bodyclose',
+  'rowserrcheck',
+  'sqlclosecheck',
+  'noctx',
+  'errorlint',
+  'nilerr',
+  'nilnil',
+  'errname',
+  'contextcheck',
+  'containedctx',
+  'fatcontext',
+  'exhaustive',
+  'recvcheck',
+  'durationcheck',
+  'makezero',
+  'reassign',
+  'unconvert',
+  'wastedassign',
+  'thelper',
+  'tparallel',
+  'testifylint',
+  'usetesting',
+  'asciicheck',
+  'bidichk',
+  'gocheckcompilerdirectives',
+  'canonicalheader',
+  'musttag',
+  'perfsprint',
+  'usestdlibvars',
+  'sloglint',
+  'spancheck',
+  'gocritic',
+];
+export const GO_LINTER_TOOLS = [
+  'vet',
+  'staticcheck',
+  'errcheck',
+  'modernize',
+  'gosec',
+  'revive',
+  ...GO_CATALOG_TOOLS,
+  'go-rules',
+];
+export const GO_LINT_TOOLS = [...GO_LINTER_TOOLS, 'deadcode'];
+export const GO_EXCEPTION_RULES = [
+  ...COMMON_EXCEPTION_RULES,
+  ...GO_SIZE_RULES,
+  RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
+  RULE_IDS.testOnlyExport,
+  RULE_IDS.sharedUsedByOneFeature,
+  RULE_IDS.featureInternalImport,
+  RULE_IDS.sharedImportsFeature,
+  RULE_IDS.featureCycle,
+  RULE_IDS.domainImportsAdapter,
+  RULE_IDS.domainImportsIo,
+  RULE_IDS.domainImportsClient,
+  RULE_IDS.domainImportsLogger,
+  RULE_IDS.domainImportsRandom,
+  PACKAGE_RULE_IDS.unusedDependency,
+  PACKAGE_RULE_IDS.unlistedDependency,
+];
 export const GO_SETTING_KEYS = ['formatters', 'buildTags'];
 export const BUILD_TAG = /^!?[\w.]+$/u;
 const TYPESCRIPT_REASON =
@@ -21,8 +83,6 @@ const UNSUPPORTED_KEYS = new Map([
     key,
     TYPESCRIPT_REASON,
   ]),
-  ['layout', 'Go packages follow the module, so there are no source roots to set'],
-  ['duplicates', 'the Go preset runs no duplicate-code scan'],
 ]);
 
 function validateUnsupported(config) {

@@ -1,53 +1,25 @@
 import { readFileSync } from 'node:fs';
-import { isCount } from '../../config.mjs';
+import {
+  isBoolean,
+  isCount,
+  isLine,
+  isNonEmpty,
+  isProjectPath,
+  isRootOrPath,
+  isString,
+  isStrings,
+  oneOf,
+  optional,
+} from './checks.mjs';
+import { DESIGN_SHAPES, designItemProblem } from '../design/schema/design-shapes.mjs';
+import { designReferenceProblem } from '../design/schema/design-references.mjs';
 
 const ROLES = ['production', 'test'];
+const PERSISTENCE_KINDS = ['entity', 'data-access'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
 const SCHEMA_DOCS = 'see "Facts schema" in docs/internals.md';
 const PATH_RULE =
   'paths are project-relative with "/" separators, without "./", ".." or a trailing "/"';
-
-function isString(value) {
-  return typeof value === 'string';
-}
-
-function isNonEmpty(value) {
-  return isString(value) && value.length > 0;
-}
-
-function isLine(value) {
-  return Number.isInteger(value) && value > 0;
-}
-
-function isBoolean(value) {
-  return typeof value === 'boolean';
-}
-
-function isStrings(value) {
-  return Array.isArray(value) && value.every(isString);
-}
-
-function isProjectPath(value) {
-  return (
-    isNonEmpty(value) &&
-    !value.includes('\\') &&
-    !value.startsWith('/') &&
-    !/^[A-Za-z]:/u.test(value) &&
-    value.split('/').every((part) => part !== '' && part !== '.' && part !== '..')
-  );
-}
-
-function isRootOrPath(value) {
-  return value === '' || isProjectPath(value);
-}
-
-function optional(check) {
-  return (value) => value === undefined || check(value);
-}
-
-function oneOf(choices) {
-  return (value) => choices.includes(value);
-}
 
 function isName(value) {
   return (
@@ -56,6 +28,10 @@ function isName(value) {
     isNonEmpty(value.name) &&
     optional(isNonEmpty)(value.alias)
   );
+}
+
+function isTree(value) {
+  return typeof value === 'object' && value !== null && isNonEmpty(value.kind);
 }
 
 function isNames(value) {
@@ -70,6 +46,12 @@ const SHAPES = {
     file: isProjectPath,
     role: oneOf(ROLES),
     entry: optional(isBoolean),
+    publicNames: optional(isStrings),
+    entryName: optional(isNonEmpty),
+    compositionRoot: optional(isBoolean),
+    persistence: optional(oneOf(PERSISTENCE_KINDS)),
+    generated: optional(isBoolean),
+    initializer: optional(isBoolean),
   },
   packages: { root: isRootOrPath, published: isBoolean },
   definitions: {
@@ -79,6 +61,7 @@ const SHAPES = {
     line: isLine,
     exported: isBoolean,
     tokens: isStrings,
+    untypedTokens: optional(isStrings),
     qualifier: optional(isNonEmpty),
     lines: optional(isLine),
     size: optional(isCount),
@@ -96,8 +79,10 @@ const SHAPES = {
     to: isProjectPath,
     names: isNames,
     reexport: optional(isBoolean),
+    typeOnly: optional(isBoolean),
     conditional: optional(isBoolean),
     reference: optional(isBoolean),
+    local: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,
@@ -108,9 +93,17 @@ const SHAPES = {
     detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
+  nearDuplicateUnits: {
+    file: isProjectPath,
+    name: isNonEmpty,
+    start: isLine,
+    end: isLine,
+    tokens: isCount,
+    tree: isTree,
+  },
 };
 
-const FACT_LISTS = Object.keys(SHAPES);
+const FACT_LISTS = [...Object.keys(SHAPES), ...Object.keys(DESIGN_SHAPES)];
 
 function isModule(known, file) {
   return known.has(file);
@@ -127,12 +120,20 @@ const MODULE_REFERENCES = [
   ['imports', 'to', isModule],
   ['definitions', 'file', isModule],
   ['docComments', 'file', isModule],
+  ['nearDuplicateUnits', 'file', isModule],
   ['console', 'file', isModuleOrFolder],
 ];
 
-const REFERENCE_NOUNS = { docComments: 'doc comment', console: 'console entry' };
+const REFERENCE_NOUNS = {
+  docComments: 'doc comment',
+  console: 'console entry',
+  nearDuplicateUnits: 'near-duplicate unit',
+};
 
 function itemProblem(list, item, index) {
+  if (DESIGN_SHAPES[list] !== undefined) {
+    return designItemProblem(list, item, index);
+  }
   if (typeof item !== 'object' || item === null || Array.isArray(item)) {
     return `facts.${list}[${String(index)}] must be an object`;
   }
@@ -181,7 +182,9 @@ export function validateFacts(facts) {
     throw new TypeError('facts must be a JSON object');
   }
   const problem =
-    FACT_LISTS.map((list) => listProblem(facts, list)).find(Boolean) ?? referenceProblem(facts);
+    FACT_LISTS.map((list) => listProblem(facts, list)).find(Boolean) ??
+    referenceProblem(facts) ??
+    designReferenceProblem(facts);
   if (problem !== undefined) {
     throw new TypeError(`${problem}; ${SCHEMA_DOCS}`);
   }

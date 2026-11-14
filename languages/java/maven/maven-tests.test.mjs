@@ -15,14 +15,13 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
-  javaArgumentFile,
-  pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
-  runPit,
 } from './maven-tests.mjs';
+import { javaArgumentFile, runPit } from './pit/maven-pit.mjs';
 import { readPitMutators } from '../builds/java-build.mjs';
+import { pitTargets } from './module/pit-scope.mjs';
 
 const roots = [];
 
@@ -178,58 +177,43 @@ describe('collectTestResults', () => {
     expect(existsSync(path.join(reportDir, 'archunit/TEST-shop.OrderTest.xml'))).toBe(false);
   });
 
-  it('fails naming every failing test', () => {
+  it('lists every failing test of the module', () => {
     const cases = Array.from({ length: 12 }, (_, index) => [
       `case${String(index)}`,
       `expected ${String(index)}`,
     ]);
     const reports = tree({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', cases) });
 
-    const listed = cases.map(([test, failure]) => `  shop.OrderTest.${test}: ${failure}`);
+    const { failure } = collectTestResults({
+      module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
+      reportDir: tree({}),
+      since,
+      isArchunit: archunitMatcher(),
+    });
 
-    expect(() => {
-      collectTestResults({
-        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
-        reportDir: tree({}),
-        since,
-        isArchunit: archunitMatcher(),
-      });
-    }).toThrow(
-      new Error(
-        [
-          '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
-          ...listed,
-        ].join('\n'),
-      ),
-    );
+    expect([failure.module, failure.tests]).toEqual([
+      '.',
+      cases.map(([test, message]) => `shop.OrderTest.${test}: ${message}`),
+    ]);
   });
 
-  it('fails on failing Failsafe tests as on Surefire ones, reading a shared directory once', () => {
+  it('lists failing Failsafe tests as Surefire ones, reading a shared directory once', () => {
     const surefire = tree({
       'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
     });
     const failsafe = tree({ 'TEST-shop.OrderIT.xml': suite('shop.OrderIT', [['stores', 'gone']]) });
-    const run = (failsafeReports) => () => {
+    const run = (failsafeReports) =>
       collectTestResults({
         module: { basedir: '/m', surefireReports: surefire, failsafeReports },
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
-      });
-    };
-    const failing = (...lines) =>
-      new Error(
-        [
-          `${String(lines.length)} ${lines.length === 1 ? 'test fails' : 'tests fail'}; ` +
-            'the build stopped, so no other check ran. Fix the tests and rerun:',
-          ...lines,
-        ].join('\n'),
-      );
+      }).failure.tests;
 
-    expect(run(failsafe)).toThrow(
-      failing('  shop.OrderTest.totals: no', '  shop.OrderIT.stores: gone'),
-    );
-    expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
+    expect([run(failsafe), run(`${surefire}/.`)]).toEqual([
+      ['shop.OrderTest.totals: no', 'shop.OrderIT.stores: gone'],
+      ['shop.OrderTest.totals: no'],
+    ]);
   });
 
   it('reports whether any test ran', () => {
@@ -252,7 +236,7 @@ describe('collectTestResults', () => {
     ]).toEqual([false, true]);
   });
 
-  it('lists the failing tests instead of failing when it is told to tolerate them', () => {
+  it('lists the failing tests with their details under the module name', () => {
     const reports = tree({
       'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'expected 3']]),
     });
@@ -263,7 +247,6 @@ describe('collectTestResults', () => {
         reportDir: tree({}),
         since,
         isArchunit: archunitMatcher(),
-        tolerateFailures: true,
         moduleName: 'core',
       }),
     ).toEqual({

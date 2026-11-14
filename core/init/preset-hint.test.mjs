@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';

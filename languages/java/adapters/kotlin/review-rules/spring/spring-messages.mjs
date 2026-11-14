@@ -31,6 +31,8 @@ const ALLOWED = {
     'Read configuration through a @ConfigurationProperties data class and pass the values in through constructors or parameters, not @Value, System.getProperty or Environment.getProperty. JVM properties such as java.*, user.*, javax.*, jdk.* and http.* are fine.',
   SpringValueSecretDefault:
     'Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.',
+  SpringNullOnlyConfigCheck:
+    'Use isNullOrBlank() (or isNullOrEmpty()) to test this configuration string, not only a null check: if (props.issuerUri.isNullOrBlank()), props.issuerUri?.ifBlank { null } ?: fallback. A property set to an empty value binds as an empty string, which passes != null, ?.let and ?:, so the feature turns on with nothing to use. An exception fits only when an empty value is a real setting here.',
   SpringProfileOnConfiguration:
     'Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.',
   SpringProxyMethodVisibility:
@@ -88,6 +90,8 @@ const ALLOWED = {
     'Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.',
   JpaManyToManyCascade:
     'Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.',
+  JpaMultipleCollectionFetch:
+    'Load at most one collection per query with join fetch or an entity graph, and the others in their own query or with @BatchSize or @Fetch(FetchMode.SUBSELECT): two fetched collections return one row for every pair of their elements, and Hibernate throws MultipleBagFetchException for two lists.',
   JpaManyToManySet:
     'Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.',
   JpaVersion:
@@ -96,6 +100,8 @@ const ALLOWED = {
     'Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.',
   JpaEnumString:
     'Write @Enumerated(EnumType.STRING) on this enum property or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.',
+  JpaUnindexedForeignKey:
+    'Add Index(columnList = "<join column>") to the entity\'s @Table(indexes = [...]) for the join column of this @ManyToOne. Only MySQL indexes a foreign key by itself; on PostgreSQL, SQL Server and SQLite every join and delete through it scans the table.',
   JpaIdentityHashCode:
     'Return javaClass.hashCode() from the hashCode of an entity, or hash an immutable business key, and do not make an entity with a generated id a data class. A hash of the generated id or of every property changes when the entity is saved, and a hash set then loses it.',
   SpringDataDerivedQuery:

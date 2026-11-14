@@ -4,10 +4,10 @@ import { runAnalyzers } from '../../../execution/run-analyzers.mjs';
 import {
   coverageFailureFindings,
   formatTestFailures,
-} from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mjs';
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mts';
 import { compareFindings } from '../../../comparison/compare.mjs';
-import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
-import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mts';
+import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { fileURLToPath } from 'node:url';
 
 describe('coverage reporting in the quality-area analyzers', () => {
@@ -117,12 +117,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed',
-      message:
-        '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
       classification: 'tool-error',
     });
     expect(finding.message).toBe(
-      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no',
+      `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
     );
   });
   it('says which steps of the test script nitpicker did not run before the tests', () => {
@@ -152,11 +151,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
 
     expect(run(['tsc'])).toEqual([
       `${failure}\nThe test script runs "tsc" before the tests; nitpicker runs only the test command, ` +
-        'so run that step first if the tests need it.',
+        `so run that step first if the tests need it.`,
     ]);
     expect(run(['npm run build', 'npm run seed'])).toEqual([
       `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
-        'nitpicker runs only the test command, so run those steps first if the tests need it.',
+        `nitpicker runs only the test command, so run those steps first if the tests need it.`,
     ]);
     expect(run([])).toEqual([failure]);
   });
@@ -235,7 +234,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         identity: 'covered-branches-per-test',
         message: 'Covered branch outcomes per test',
         classification: 'descriptive',
-        metric: { name: 'coveredBranchesPerTest', value: 0.5 },
+        metric: { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       },
       {
         tool: 'coverage',
@@ -249,7 +248,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     ]);
     expect(findings.map(({ metric }) => metric).filter(Boolean)).toEqual([
       { name: 'branches', value: 50 },
-      { name: 'coveredBranchesPerTest', value: 0.5 },
+      { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       { name: 'testCount', value: 2 },
     ]);
   });

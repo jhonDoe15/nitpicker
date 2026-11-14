@@ -1,18 +1,18 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
-
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
-
+const CRASH = `crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`;
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
     const repository = createRepository({
@@ -38,11 +38,11 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/untracked.ts:1:4
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -68,9 +68,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -116,12 +116,12 @@ describe('nitpicker CLI', () => {
         exclusions: [],
         renamedPaths: 0,
         elapsedMs: expect.any(Number),
+        mode: 'full',
         overallStatus: 'completed',
         newEnforceableFindings: 0,
         noChanges: true,
       });
-      expect(read('new-findings.json')).toEqual([]);
-      expect(read('tool-errors.json')).toEqual([]);
+      expect([read('new-findings.json'), read('tool-errors.json')]).toEqual([[], []]);
     });
     it('skips the run when the working tree undoes the committed change', () => {
       const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
@@ -174,9 +174,9 @@ describe('nitpicker CLI', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: origin/main (remote-head)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
     expect(output.stderrText).toBe('');
@@ -258,14 +258,13 @@ describe('nitpicker CLI', () => {
       stderr: output.stderr,
     });
 
-    expect(exitCode).toBe(0);
-    expect(output.stderrText).toBe('');
+    expect([exitCode, output.stderrText]).toEqual([0, '']);
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
   });
@@ -311,6 +310,7 @@ describe('nitpicker CLI', () => {
   it('returns a tool error for a crashing --all analyzer', () => {
     const repository = createRepository({
       'quality-policy.json': JSON.stringify({ marker: 'QUALITY_FINDING', mode: 'crash' }),
+      'src/main/clean.ts': 'export const clean = true;\n',
     });
     const output = captureOutput();
     expect(
@@ -335,7 +335,7 @@ describe('nitpicker CLI', () => {
         'fake-quality-analyzer: total=0 enforceable=0 descriptive=0',
         '',
         'Tool errors:',
-        'fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash',
+        `fake-quality-analyzer (head): fake-quality-analyzer crashed with exit 2: fake analyzer crash. ${linkSentence('analyzerCrashed')}`,
         '',
       ].join('\n'),
     );
@@ -389,19 +389,19 @@ describe('nitpicker CLI', () => {
             'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
             '',
             'Tool errors:',
-            'crashing-analyzer (head): crashing-analyzer crashed with exit 2: no diagnostic output',
+            `crashing-analyzer (head): ${CRASH}`,
             '',
           ].join('\n')
         : expect.stringMatching(exactText`Base: comparison-base (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+Quality gate summary
+✖ 1 new enforceable violation
+  fake-quality-analyzer/fixture-rule: Fixture finding
     src/main/new.ts:1:4
-\u001b[1m\u001b[31m✖ 2 tool errors\u001b[0m
-  \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
-  \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+✖ 2 tool errors
+  crashing-analyzer (base): ${CRASH}
+  crashing-analyzer (head): ${CRASH}
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
     it('exits 1 for findings plus a tool error and still lists the error', () => {
       const { exitCode, output } = run({ withFinding: true, withToolError: true });

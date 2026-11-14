@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../cli.mjs';
-import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mjs';
-import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mjs';
+import { runCli } from '../cli.mts';
+import { COMPARISON_OPTIONS, parseArguments } from '../command/arguments.mts';
+import { CACHE_PUBLISH_OPTIONS } from '../command/cache.mts';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mjs';
-import { INIT_OPTIONS } from '../init/init-arguments.mjs';
-import { packageVersion } from './package-version.mjs';
+import { AGGREGATE_OPTIONS } from '../diff/sharding/arguments.mts';
+import { INIT_OPTIONS } from '../init/init-arguments.mts';
+import { packageVersion } from './package-version.mts';
 import {
   AGGREGATE_FLAGS,
   CACHE_PUBLISH_FLAGS,
@@ -16,7 +16,7 @@ import {
   FLAGS,
   INIT_FLAGS,
   INIT_USAGE_TEXT,
-} from './usage-text.mjs';
+} from './usage-text.mts';
 import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
 const { temporaryRoot, createGitRepository } = useGitFixtures();
@@ -25,11 +25,13 @@ const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--s
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--details] [--json] [--shard-count <n> --shard-index <i>]',
-  '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
+  '                 [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
+  '                 [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
+  '                 [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
+  '       nitpicker changelog [<version>]',
   '       nitpicker base [--base <ref>]',
   '       nitpicker explain <tool/rule>...',
   '       nitpicker rules [--preset <name>] [--tool <name>]',
@@ -39,6 +41,7 @@ const EXPECTED_USAGE_HEAD = [
   '  nitpicker init           Detect the project and set it up: config, install command, agent skill.',
   '  nitpicker aggregate      Combine the reports of sharded runs into one result.',
   '  nitpicker cache publish  Upload the findings of HEAD to the remote cache.',
+  '  nitpicker changelog      Print what changed in a version, from the changelog of the package.',
   '  nitpicker base           Print the base ref a run would compare with.',
   '  nitpicker explain        Print what the rule reference says about the rules named.',
   '  nitpicker rules          List the rules the preset of the project reports.',
@@ -51,6 +54,8 @@ const EXPECTED_USAGE_HEAD = [
   '  --rule <substring>               List the findings whose rule matches (repeatable).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
+  '  --quick                          Run only the fast checks and skip the tests and what builds on them.',
+  '  --staged                         Judge the git index (what the next commit would contain), not the working tree.',
   '  --output <dir>                   Write the reports to this directory.',
   '  --shard-count <n>                Split the analyzers over n jobs (with --shard-index).',
   '  --shard-index <i>                Run shard i of the split (0 to n-1).',
@@ -227,7 +232,7 @@ describe('nitpicker --help', () => {
       }),
       { 'go.mod': 'module example.com/help\n' },
     );
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, house-rules'];
+    const go = ['Analyzers of the go preset (for --analyzer):', '  go, mutation, house-rules'];
 
     expect(runIn(root, '--help').stdoutText).toBe(expectedUsage(go, 'go'));
   });
@@ -238,7 +243,10 @@ describe('nitpicker --help', () => {
       'go.mod': 'module example.com/help\n',
       'packages/app/package.json': '{}',
     });
-    const go = ['Analyzers of the go preset (for --analyzer):', '  go, repository-hygiene'];
+    const go = [
+      'Analyzers of the go preset (for --analyzer):',
+      '  go, mutation, repository-hygiene',
+    ];
 
     expect({
       top: runIn(root, '--help').stdoutText,
@@ -272,6 +280,7 @@ describe('nitpicker --help', () => {
       'nitpicker init',
       'nitpicker aggregate',
       'nitpicker cache publish',
+      'nitpicker changelog',
       'nitpicker base',
       'nitpicker explain',
       'nitpicker rules',

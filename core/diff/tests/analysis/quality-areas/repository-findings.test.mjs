@@ -4,8 +4,8 @@ import {
   normalizeCoupling,
   normalizeStructure,
   normalizeTestRuntime,
-} from '../../../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-import { normalizeDeadCode } from '../../../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
+import { normalizeDeadCode } from '../../../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
 import { compareFindings } from '../../../comparison/compare.mjs';
 
 describe('repository-level findings in the quality-area analyzers', () => {
@@ -55,7 +55,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'descriptive',
-        metric: { name: 'instabilityDelta', value: 0.5 },
+        metric: { name: 'instabilityDelta', value: expect.closeTo(0.5, 10) },
       },
     ]);
     expect(findings).toEqual([
@@ -74,7 +74,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'descriptive',
-        metric: { name: 'instabilityDelta', value: 0.5 },
+        metric: { name: 'instabilityDelta', value: expect.closeTo(0.5, 10) },
       },
     ]);
   });

@@ -22,6 +22,14 @@ const productionRestrictedProperties = [
 
 const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
+const SUPPORT_OFF_RULES = [
+  ...SECURITY_RULES,
+  'nitpicker/no-hardcoded-secret',
+  'nitpicker/no-secret-in-log',
+  'nitpicker/timeout-abandons-operation',
+  'nitpicker/require-client-timeout',
+];
+
 const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
 
 function withReactFormat(formats, react) {
@@ -77,6 +85,11 @@ function productionRules({ react, routeHandlers }) {
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
     'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-costly-collection-form': 'error',
+    'nitpicker/no-collected-stream-rows': 'error',
+    'nitpicker/no-wasted-collection-step': 'error',
+    'nitpicker/no-repeated-string-literal': 'error',
+    'nitpicker/no-hardcoded-secret': 'error',
+    'nitpicker/no-secret-in-log': 'error',
     'nitpicker/no-magic-numbers': [
       'error',
       {
@@ -100,14 +113,20 @@ function productionGuardRules({ react, security }) {
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-in-memory-query': 'error',
+    'nitpicker/no-multiple-collection-joins': 'error',
     'nitpicker/no-orm-query-logging': 'error',
     'nitpicker/no-orm-schema-sync': 'error',
     'nitpicker/no-unindexed-foreign-key': 'error',
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/require-process-timeout': 'error',
+    'nitpicker/require-client-timeout': 'error',
+    'nitpicker/time-unit-mismatch': 'error',
+    'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/require-error-listener': 'error',
+    'nitpicker/require-promise-reject': 'error',
+    'nitpicker/promise-wait-deadline': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     'nitpicker/unbounded-reactive-fan-out': 'error',
     ...securityRules({ react, security }),
@@ -125,6 +144,7 @@ export function productionLayoutConfigFor(layout, options = {}) {
       ignores: [...layout.testGlobs, ...layout.sourceTestDirectoryGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: {
+        'nitpicker/no-generic-name': 'error',
         'nitpicker/no-unknown-main-folder': [
           'error',
           { sourceRoots: layout.sourceRoots, react: options.react === true },
@@ -132,6 +152,14 @@ export function productionLayoutConfigFor(layout, options = {}) {
       },
     },
   ];
+}
+
+function securitySupportOff() {
+  return {
+    files: securitySupportGlobs(),
+    plugins: { nitpicker: nitpickerRules },
+    rules: Object.fromEntries(SUPPORT_OFF_RULES.map((rule) => [rule, 'off'])),
+  };
 }
 
 export function productionPolicyConfigFor(layout, options = {}) {
@@ -152,13 +180,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
         ...productionGuardRules({ react: options.react === true, security: options.security }),
       },
     },
-    {
-      files: securitySupportGlobs(),
-      plugins: { nitpicker: nitpickerRules },
-      rules: Object.fromEntries(
-        [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
-      ),
-    },
+    securitySupportOff(),
     {
       files: layout.sourceGlobs,
       ignores: [...production.ignores, JAVASCRIPT_FILES],
@@ -179,6 +201,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],
       rules: { 'nitpicker/no-process-access-outside-composition-root': 'off' },
+    },
+    {
+      files: configFileGlobsFor(layout),
+      rules: { 'nitpicker/no-sync-node-api-in-async': 'off' },
     },
   ];
 }

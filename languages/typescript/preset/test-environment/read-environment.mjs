@@ -5,6 +5,10 @@ import { chainOf } from '../../../../shared/traversal.mjs';
 import { loadInChild, loaderScript } from '../project-configs/config-module.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig } from './environments.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const READ_SCRIPT = loaderScript(
   "process.env.VITEST = 'true';",
@@ -30,7 +34,12 @@ function viteManifestFrom(root) {
   const manifestPath = chainOf(root, parentDirectory)
     .map((directory) => path.join(directory, 'node_modules/vite/package.json'))
     .find((candidate) => existsSync(candidate));
-  if (manifestPath === undefined) throw new Error(`vite is not installed at or above ${root}`);
+  if (manifestPath === undefined) {
+    throw troubleshootingError(
+      `vite is not installed at or above ${root}`,
+      TROUBLESHOOTING_ANCHORS.missingPeer,
+    );
+  }
   return manifestPath;
 }
 
@@ -49,7 +58,10 @@ async function loadVite(roots) {
       failures.push(error instanceof Error ? error.message : String(error));
     }
   }
-  throw new Error(`vite could not be resolved from the project (${failures.join('; ')})`);
+  throw troubleshootingError(
+    `vite could not be resolved from the project (${failures.join('; ')})`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
+  );
 }
 
 function serializedRetry(retry) {

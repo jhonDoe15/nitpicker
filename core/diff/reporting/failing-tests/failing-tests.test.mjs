@@ -3,9 +3,15 @@ import { comparisonExitCode, failingHeadTests } from './failing-tests.mjs';
 import { renderConsoleSummary } from '../summary.mjs';
 import { renderDiffSummary } from '../github/diff-summary.mjs';
 import { finding, report } from '../test-support/report-builders.mjs';
-import { formatTestFailures } from '../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mjs';
+import { formatTestFailures } from '../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mts';
 import { failingTestsError } from '../../../../languages/java/builds/test-failures.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../../shared/messages/troubleshooting.mjs';
 import { testFailureFindings } from '../../../../languages/python/adapters/test-runs/test-failures.mjs';
+
+const HELP_LINE = `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`;
 
 const TS_MESSAGE = formatTestFailures(
   {
@@ -94,10 +100,11 @@ describe('failing head tests', () => {
         'Quality gate summary',
         `✖ ${message.split('\n')[0]}`,
       ]);
-      expect(lines.slice(-5)).toEqual([
+      expect(lines.slice(-6)).toEqual([
         'No new enforceable violations, but the run is incomplete:',
         '✖ 1 tool error',
         '  mutation (head): Error: Stryker crashed',
+        HELP_LINE,
         DIAGNOSTICS,
         '',
       ]);

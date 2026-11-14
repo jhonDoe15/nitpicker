@@ -244,6 +244,137 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
     or pmd-java:typeIs('java.net.http.HttpClient')]]
 ]]></value></property></properties>
   </rule>
+  <rule name="SpringNullOnlyConfigCheck" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use StringUtils.hasText (or hasLength, or isBlank next to the null test) to test this configuration string, not only a null check. A property set to an empty value binds as an empty string, which passes a null check, so the feature turns on with nothing to use; requireNonNullElse, Optional.orElse and Environment.containsProperty count the empty value as set too. An exception fits only when an empty value is a real setting here.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $configuration := 'org.springframework.boot.context.properties.ConfigurationProperties',
+    $value := 'org.springframework.beans.factory.annotation.Value',
+    $resolver := 'org.springframework.core.env.PropertyResolver',
+    $string := function($declaration) {
+  exists($declaration/ClassType[pmd-java:typeIsExactly('java.lang.String')])
+},
+    $getter := function($name) {
+  concat('get', upper-case(substring($name, 1, 1)), substring($name, 2))
+},
+    $valued := function($declaration) {
+  exists($declaration/ModifierList/Annotation[pmd-java:typeIs($value)])
+},
+    $fields := function($type) {
+  let $bound := exists($type/ancestor-or-self::*[self::ClassDeclaration or self::RecordDeclaration]
+        /ModifierList/Annotation[pmd-java:typeIs($configuration)]),
+      $valueParameters := $type/ClassBody/ConstructorDeclaration/FormalParameters/FormalParameter
+        [$valued(.)][$string(.)]/VariableId/@Name
+  return distinct-values((
+    $type/ClassBody/FieldDeclaration[$string(.)][not(pmd-java:modifiers() = 'static')]
+      [$bound or $valued(.)]/VariableDeclarator/VariableId/@Name,
+    $type[$bound]/RecordComponentList/RecordComponent[$string(.)]/VariableId/@Name,
+    $type/ClassBody/ConstructorDeclaration//AssignmentExpression[*[2][self::VariableAccess][@Name = $valueParameters]]
+      /*[1][self::FieldAccess[ThisExpression] or self::VariableAccess]/@Name))
+},
+    $own := function($target) {
+  let $type := $target/ancestor::*[self::ClassDeclaration or self::RecordDeclaration or self::EnumDeclaration][1],
+      $names := $fields($type),
+      $record := exists($type/self::RecordDeclaration),
+      $member := $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+        or self::FieldDeclaration][1],
+      $locals := $member//VariableId[not(parent::VariableDeclarator/parent::FieldDeclaration)]/@Name
+  return ($target/self::VariableAccess[@Name = $names][not(@Name = $locals)]
+    or $target/self::FieldAccess[ThisExpression][@Name = $names]
+    or $target/self::MethodCall[ArgumentList[count(*) = 0]][not(*[1][not(self::ArgumentList or self::ThisExpression)])]
+      [some $name in $names satisfies (@MethodName = $getter($name) or ($record and @MethodName = $name))])
+},
+    $parameter := function($target) {
+  $target/self::VariableAccess[@Name = $target/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+    /FormalParameters/FormalParameter[$valued(.)][$string(.)]/VariableId/@Name]
+},
+    $propertiesRoot := function($root) {
+  let $name := $root/self::*[self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
+  return exists($root/ancestor::CompilationUnit//(FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      | FormalParameter[VariableId/@Name = $name]
+      | LocalVariableDeclaration[VariableDeclarator/VariableId/@Name = $name]
+      | RecordComponent[VariableId/@Name = $name])
+    /ClassType[matches(@SimpleName, '.Properties$')][not(pmd-java:typeIs('java.util.Properties'))])
+},
+    $read := function($target) {
+  exists($target/self::MethodCall[ArgumentList[count(*) = 0]][not(@MethodName = 'toString')]
+    [pmd-java:typeIsExactly('java.lang.String')]
+    [not(*[1]/descendant-or-self::MethodCall[ArgumentList/*])]
+    [$propertiesRoot(*[1]/descendant-or-self::*[self::VariableAccess or self::FieldAccess][last()])])
+},
+    $stereotyped := function($node) {
+  exists($node/ancestor::ClassDeclaration/ModifierList/Annotation[
+    pmd-java:typeIs('org.springframework.stereotype.Component')
+    or pmd-java:typeIs('org.springframework.stereotype.Service')
+    or pmd-java:typeIs('org.springframework.stereotype.Repository')
+    or pmd-java:typeIs('org.springframework.stereotype.Controller')
+    or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')])
+},
+    $lookup := function($target) {
+  exists($target/self::MethodCall[@MethodName = 'getProperty'][ArgumentList[count(*) = 1]]
+    [*[1][pmd-java:typeIs($resolver)]][not($stereotyped(.))])
+},
+    $configured := function($target) {
+  $own($target) or $parameter($target) or $read($target) or $lookup($target)
+},
+    $key := function($target) {
+  string-join(for $part in $target/descendant-or-self::*[self::VariableAccess or self::FieldAccess or self::MethodCall
+      or self::StringLiteral]
+    return string(($part/@Name, $part/@MethodName, $part/@ConstValue)[1]), '.')
+},
+    $bare := function($target) {
+  if ($target/self::MethodCall[@MethodName = ('trim', 'strip')][ArgumentList[count(*) = 0]])
+  then $target/*[1] else $target
+},
+    $emptiness := function($root, $wanted) {
+  some $call in $root/descendant-or-self::MethodCall satisfies (
+    ($call/*[1][not(self::ArgumentList)] and $key($bare($call/*[1])) = $wanted)
+    or ($call[@MethodName = ('hasText', 'hasLength', 'isEmpty', 'isBlank', 'isNotEmpty', 'isNotBlank', 'isNullOrEmpty')]
+      [ArgumentList[count(*) = 1]] and $key($bare($call/ArgumentList/*[1])) = $wanted)
+    or ($call[@MethodName = 'equals'][ArgumentList[count(*) = 1]]
+      and (($call/*[1][self::StringLiteral[@ConstValue = '']] and $key($call/ArgumentList/*[1]) = $wanted)
+        or ($call/ArgumentList/StringLiteral[@ConstValue = ''] and $key($call/*[1]) = $wanted))))
+},
+    $condition := function($test) {
+  ($test/ancestor-or-self::*[not(parent::InfixExpression[@Operator = ('&&', '||')]
+    or parent::UnaryExpression[@Operator = '!'])])[last()]
+},
+    $nullSafe := function($test) {
+  let $branches := $test/parent::ConditionalExpression[*[1] is $test]
+  return exists($branches[($test/@Operator = '==' and *[2][self::NullLiteral])
+    or ($test/@Operator = '!=' and *[3][self::NullLiteral])])
+},
+    $plain := function($test) {
+  not($test/ancestor::MethodDeclaration[1][@Name = ('equals', 'hashCode', 'toString', 'compareTo')])
+}
+return
+//InfixExpression[@Operator = ('==', '!=')][NullLiteral][$plain(.)][not($nullSafe(.))]
+  [let $target := *[not(self::NullLiteral)]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[pmd-java:matchesSig('java.util.Objects#isNull(_)') or pmd-java:matchesSig('java.util.Objects#nonNull(_)')]
+  [$plain(.)]
+  [let $target := ArgumentList/*[1]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList[count(*) = 0]]
+  [*[1][self::MethodCall][pmd-java:matchesSig('java.util.Optional#ofNullable(_)')]]
+  [let $target := *[1]/ArgumentList/*[1]
+   return $configured($target) and not($emptiness($condition(.), $key($target)))]
+|
+//MethodCall[pmd-java:matchesSig('java.util.Objects#requireNonNullElse(_,_)')]
+  [not(ArgumentList/*[2][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
+  [$configured(ArgumentList/*[1])]
+|
+//MethodCall[@MethodName = 'containsProperty'][ArgumentList[count(*) = 1]][*[1][pmd-java:typeIs($resolver)]][$plain(.)]
+  [not($stereotyped(.))]
+|
+//MethodCall[@MethodName = ('orElse', 'orElseGet')][ArgumentList[count(*) = 1]]
+  [not(ArgumentList/*[1][self::NullLiteral or self::StringLiteral[@ConstValue = '']])]
+  [*[1][self::MethodCall][pmd-java:matchesSig('java.util.Optional#ofNullable(_)')]]
+  [$configured(*[1]/ArgumentList/*[1])]
+]]></value></property></properties>
+  </rule>
   <rule name="SpringProfileOnConfiguration" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code.">
     <priority>3</priority>
@@ -527,12 +658,81 @@ return (
   /ClassType[pmd-java:typeIs('java.util.List') or pmd-java:typeIsExactly('java.util.Collection')]
 ]]></value></property></properties>
   </rule>
+  <rule name="JpaMultipleCollectionFetch" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Load at most one collection per query with join fetch or an entity graph, and the others in their own query or with @BatchSize or @Fetch(FetchMode.SUBSELECT): two fetched collections return one row for every pair of their elements, and Hibernate throws MultipleBagFetchException for two lists.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.Query')
+    or (pmd-java:typeIs('jakarta.persistence.NamedQuery') or pmd-java:typeIs('javax.persistence.NamedQuery'))]
+  [count(tokenize(lower-case(string-join(.//StringLiteral/@ConstValue, ' ')), 'join\s+fetch\s')) > 2]
+|
+//MethodCall[@MethodName = ('createQuery', 'createSelectionQuery')]
+  [let $first := ArgumentList/*[1],
+       $constant := ancestor::ClassBody[last()]/FieldDeclaration
+         /VariableDeclarator[VariableId/@Name = $first[self::VariableAccess]/@Name]
+   return count(tokenize(lower-case(string-join(
+     ($first/descendant-or-self::StringLiteral, $constant//StringLiteral)/@ConstValue, ' ')),
+     'join\s+fetch\s')) > 2]
+|
+//Annotation[pmd-java:typeIs('org.springframework.data.jpa.repository.EntityGraph')]
+  [count(AnnotationMemberList/MemberValuePair[@Name = 'attributePaths']//StringLiteral) > 1]
+|
+//Annotation[pmd-java:typeIs('jakarta.persistence.NamedEntityGraph') or pmd-java:typeIs('javax.persistence.NamedEntityGraph')]
+  [count(.//Annotation[pmd-java:typeIs('jakarta.persistence.NamedAttributeNode')
+    or pmd-java:typeIs('javax.persistence.NamedAttributeNode')]) > 1]
+|
+(//MethodDeclaration | //LambdaExpression[not(ancestor::MethodDeclaration)])
+  /(descendant::MethodCall[@MethodName = 'fetch']
+    [*[1][pmd-java:typeIs('jakarta.persistence.criteria.FetchParent')
+      or pmd-java:typeIs('javax.persistence.criteria.FetchParent')]])[2]
+]]></value></property></properties>
+  </rule>
   <rule name="JpaSequenceIds" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //Annotation[(pmd-java:typeIs('jakarta.persistence.GeneratedValue') or pmd-java:typeIs('javax.persistence.GeneratedValue'))]
   /AnnotationMemberList/MemberValuePair[@Name = 'strategy'][.//*[@Name = ('IDENTITY', 'TABLE')]]
+]]></value></property></properties>
+  </rule>
+  <rule name="JpaUnindexedForeignKey" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Add @Index(columnList = &quot;&lt;join column&gt;&quot;) to the entity''s @Table(indexes = ...) for the join column of this @ManyToOne. Only MySQL indexes a foreign key by itself; on PostgreSQL, SQL Server and SQLite every join and delete through it scans the table.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $norm := function($name) { lower-case(replace(string($name), '[_\s`"\[\]]', '')) },
+    $first := function($list) { $norm(tokenize(normalize-space(tokenize(string($list), ',')[1]), ' ')[1]) }
+return
+//ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Entity') or pmd-java:typeIs('javax.persistence.Entity')]]
+  /ClassBody/FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')]]
+  [not(ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.MapsId') or pmd-java:typeIs('javax.persistence.MapsId')
+    or pmd-java:typeIs('jakarta.persistence.JoinTable') or pmd-java:typeIs('javax.persistence.JoinTable')])]
+  [let $ids := ../FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Id') or pmd-java:typeIs('javax.persistence.Id')]]
+         /VariableDeclarator/VariableId/@Name ! string(.),
+       $field := string(VariableDeclarator[1]/VariableId/@Name),
+       $join := (ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumn') or pmd-java:typeIs('javax.persistence.JoinColumn')]
+         | ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumns') or pmd-java:typeIs('javax.persistence.JoinColumns')]
+           //Annotation[pmd-java:typeIs('jakarta.persistence.JoinColumn') or pmd-java:typeIs('javax.persistence.JoinColumn')])[1],
+       $named := $join/AnnotationMemberList/MemberValuePair[@Name = 'name'],
+       $table := ancestor::ClassDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.Table') or pmd-java:typeIs('javax.persistence.Table')],
+       $lists := $table//Annotation[pmd-java:typeIs('jakarta.persistence.Index') or pmd-java:typeIs('javax.persistence.Index')]
+         /AnnotationMemberList/MemberValuePair[@Name = 'columnList']/*,
+       $uniques := $table//Annotation[pmd-java:typeIs('jakarta.persistence.UniqueConstraint') or pmd-java:typeIs('javax.persistence.UniqueConstraint')]
+         /AnnotationMemberList/MemberValuePair[@Name = 'columnNames']/(StringLiteral | MemberValueArrayInitializer/*[1]),
+       $leads := ($lists[self::StringLiteral]/@ConstValue ! $first(.), $uniques[self::StringLiteral]/@ConstValue ! $norm(.)),
+       $referenced := $join/AnnotationMemberList/MemberValuePair[@Name = 'referencedColumnName'],
+       $column := if (exists($named))
+         then $named/StringLiteral/@ConstValue ! $norm(.)
+         else $norm($field) || (if (exists($referenced)) then $referenced/StringLiteral/@ConstValue ! $norm(.) else 'id')
+   return not(
+     exists($lists[not(self::StringLiteral)]) or exists($uniques[not(self::StringLiteral)])
+     or exists(($named, $referenced)[not(StringLiteral)])
+     or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'table'])
+     or exists($join/AnnotationMemberList/MemberValuePair[@Name = 'unique'][BooleanLiteral[@True = true()]])
+     or exists($join//*[@Name = 'NO_CONSTRAINT'])
+     or $field = min($ids)
+     or $leads = $column
+   )]
+  /ModifierList/Annotation[pmd-java:typeIs('jakarta.persistence.ManyToOne') or pmd-java:typeIs('javax.persistence.ManyToOne')]
 ]]></value></property></properties>
   </rule>
   <rule name="JpaVersion" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
@@ -1554,7 +1754,7 @@ return
 ]]></value></property></properties>
   </rule>
   <rule name="SpringQueryConcatenation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection.">
+        message="Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection. A column name chosen from a fixed list can be intended.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $scope := function($node) {

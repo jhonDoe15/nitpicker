@@ -60,7 +60,7 @@ public final class Prefetch {
   }
 
   public List<String> oneByOne(List<String> urls) {
-    return urls.stream().map(url -> CompletableFuture.supplyAsync(() -> body(url)).join()).toList();
+    return urls.stream().map(url -> CompletableFuture.supplyAsync(() -> body(url)).join()).toList(); // violation: UnboundedWait
   }
 
   public void virtualSubmit(List<String> urls) {
@@ -159,7 +159,7 @@ public final class Prefetch {
     for (int start = 0; start < urls.size(); start += 20) {
       List<String> batch = urls.subList(start, Math.min(start + 20, urls.size()));
       List<CompletableFuture<String>> pending = batch.stream().map(url -> CompletableFuture.supplyAsync(() -> body(url))).toList();
-      CompletableFuture.allOf(pending.toArray(new CompletableFuture[0])).get();
+      CompletableFuture.allOf(pending.toArray(new CompletableFuture[0])).get(); // violation: UnboundedWait
     }
   }
 
@@ -173,7 +173,7 @@ public final class Prefetch {
     for (String url : urls) {
       Thread thread = new Thread(() -> body(url));
       thread.start();
-      thread.join();
+      thread.join(); // violation: UnboundedWait
     }
   }
 
@@ -186,7 +186,7 @@ public final class Prefetch {
   }
 
   private void launch(String url) {
-    schedule(url);
+    schedule(url.strip());
   }
 
   private void schedule(String url) {

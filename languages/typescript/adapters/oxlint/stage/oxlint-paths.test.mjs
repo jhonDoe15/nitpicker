@@ -2,16 +2,22 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createProject } from '../test-support/oxlint-project.mjs';
-import { baseUrlFreeOptions } from './oxlint-paths.mjs';
+import { stageConfigOptions } from './oxlint-paths.mts';
 
 const roots = [];
+
+function writtenOptions({ compilerOptions, unset }) {
+  return { ...compilerOptions, ...Object.fromEntries(unset.map((option) => [option, null])) };
+}
 
 function optionsFor(files, config) {
   const root = createProject('nitpicker-oxlint-paths-test-', files);
   roots.push(root);
   return {
     root,
-    options: baseUrlFreeOptions(config, path.join(root, 'tsconfig.nitpicker.json')),
+    options: writtenOptions(
+      stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), root),
+    ),
   };
 }
 
@@ -19,7 +25,7 @@ afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-describe('baseUrlFreeOptions', () => {
+describe('stageConfigOptions', () => {
   it('rewrites paths relative to a dot baseUrl and unsets baseUrl', () => {
     const { root, options } = optionsFor(
       {},
@@ -110,5 +116,86 @@ describe('baseUrlFreeOptions', () => {
     expect(() => optionsFor({}, { extends: './missing.json' })).toThrow(
       /Lint TypeScript config .*tsconfig\.nitpicker\.json is invalid: .*missing\.json/u,
     );
+  });
+
+  it('unsets rootDir and moves rootDirs inside the project into the stage', () => {
+    const root = createProject('nitpicker-oxlint-paths-test-', {});
+    roots.push(root);
+    const outside = path.join(path.dirname(root), 'shared');
+    const config = { compilerOptions: { rootDir: 'src', rootDirs: ['.', 'gen', outside] } };
+
+    expect(
+      writtenOptions(
+        stageConfigOptions(config, path.join(root, 'tsconfig.nitpicker.json'), '/stage'),
+      ),
+    ).toEqual({ rootDir: null, rootDirs: ['/stage', '/stage/gen', outside] });
+  });
+
+  it('turns off isolatedDeclarations and unsets options TypeScript 7 removed', () => {
+    const { options } = optionsFor(
+      {},
+      {
+        compilerOptions: {
+          isolatedDeclarations: true,
+          declaration: true,
+          target: 'es5',
+          module: 'umd',
+          moduleResolution: 'node',
+          downlevelIteration: false,
+          outFile: 'out.js',
+          esModuleInterop: false,
+          allowSyntheticDefaultImports: false,
+          alwaysStrict: false,
+        },
+      },
+    );
+
+    expect(options).toEqual({
+      isolatedDeclarations: false,
+      target: null,
+      module: null,
+      moduleResolution: null,
+      downlevelIteration: null,
+      outFile: null,
+      esModuleInterop: null,
+      allowSyntheticDefaultImports: null,
+      alwaysStrict: null,
+    });
+  });
+
+  it('keeps supported option values', () => {
+    const { options } = optionsFor(
+      {},
+      {
+        compilerOptions: {
+          isolatedDeclarations: false,
+          target: 'es2015',
+          module: 'commonjs',
+          moduleResolution: 'bundler',
+          esModuleInterop: true,
+          alwaysStrict: true,
+        },
+      },
+    );
+
+    expect(options).toEqual({});
+  });
+
+  it('leaves out type definitions that do not resolve', () => {
+    const { options } = optionsFor(
+      { 'node_modules/@types/present/index.d.ts': 'export {};\n' },
+      { compilerOptions: { types: ['present', 'missing'] } },
+    );
+
+    expect(options).toEqual({ types: ['present'] });
+  });
+
+  it('keeps types when every entry resolves', () => {
+    const { options } = optionsFor(
+      { 'node_modules/@types/present/index.d.ts': 'export {};\n' },
+      { compilerOptions: { types: ['present'] } },
+    );
+
+    expect(options).toEqual({});
   });
 });

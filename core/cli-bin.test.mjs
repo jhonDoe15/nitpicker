@@ -1,15 +1,19 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { projectUsageText } from './command/information/printed-information.mjs';
+import { projectUsageText } from './command/information/printed-information.mts';
+import { checkoutModulePath } from '../shared/paths/checkout-module.mjs';
 
 const temporaryRoots = [];
-const binEntry = path.join(import.meta.dirname, 'bin.mjs');
+const binEntry = checkoutModulePath(path.join(import.meta.dirname, 'bin.mjs'));
 const manifest = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../package.json'), 'utf8'),
 );
+const PACKAGE_ROOT = path.resolve(import.meta.dirname, '..');
+const SHIPPED = ['core', 'shared', 'languages', 'package.json', 'CHANGELOG.md'];
+const NOT_SHIPPED = /[\\/](?:node_modules|fixtures)(?:[\\/]|$)/u;
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -66,5 +70,29 @@ describe('nitpicker bin', () => {
       status: 0,
       stdout: projectUsageText(),
     });
+  });
+
+  it('prints a changelog entry from a checkout without installed packages', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-no-packages-'));
+    temporaryRoots.push(root);
+    for (const entry of SHIPPED) {
+      cpSync(path.join(PACKAGE_ROOT, entry), path.join(root, entry), {
+        recursive: true,
+        filter: (source) => !NOT_SHIPPED.test(source),
+      });
+    }
+    const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+
+    const result = spawnSync(
+      process.execPath,
+      [checkoutModulePath(path.join(root, 'core/cli.mjs')), 'changelog', version],
+      {
+        encoding: 'utf8',
+        env: { ...process.env, NODE_PATH: '' },
+        timeout: 60_000,
+      },
+    );
+
+    expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: '' });
   });
 });

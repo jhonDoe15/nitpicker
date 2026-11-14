@@ -218,8 +218,8 @@ accept-policy-change`, or Issues > Labels > New label), and add the small workfl
    which shows in the checks of the pull request with the name of the person, the pull request
    number and its target branch;
 4. waits up to 20 minutes for the pull request runs of that commit to finish, then re-runs the
-   failed jobs of the latest failed run of each workflow on that commit (also of workflows other
-   than the gate).
+   failed jobs of each failed run of that commit, oldest first (also of workflows other than the
+   gate).
 
 The action reads that status for the head it gates and accepts the loosenings of that commit
 (`NITPICKER_ACCEPT_POLICY_CHANGE=commit:<sha>`), also when the checkout is the merge commit GitHub
@@ -240,6 +240,23 @@ the pull request head, and a push. Map `accept-policy-change` from
 reads no approval; the workflow re-runs it once it fails, or says to re-run it when it takes longer
 than the wait. Without `statuses: read` the action cannot see an approval, and says so when the
 gate fails. Coding agents never add the label.
+
+When a workflow of yours also runs on the `labeled` event (for example to start CI with a label),
+do not skip its required jobs for the other labels with a job `if`. GitHub keeps only the newest
+run of a workflow for a commit and counts a skipped required check as passed, so adding any label
+after a failed run would make the pull request mergeable. Decide on the labels the pull request
+carries instead of the label just added, and let a required job fail rather than skip, as the
+workflows of this repository do:
+
+```yaml
+gate:
+  if: always()
+  needs: tests
+  steps:
+    - run: test "${{ needs.tests.result }}" = success
+tests:
+  if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')
+```
 
 ### Without the action
 
@@ -284,7 +301,7 @@ The cache is restored after `npm ci`, which empties `node_modules`, and saved wi
 and a failing gate has measured the base too. To upload the SARIF, add
 `github/codeql-action/upload-sarif@v4.39.1` with `sarif_file: reports/nitpicker/report.sarif`
 after the run, with `if: ${{ !cancelled() }}` and the `security-events: write` permission. The
-[container image](usage.md#container-image) runs the gate without a Node.js setup, for TypeScript
+[container images](usage.md#container-images) runs the gate without a Node.js setup, for TypeScript
 and JavaScript projects.
 
 ### Job summary and annotations

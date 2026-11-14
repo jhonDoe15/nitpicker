@@ -22,15 +22,16 @@ public final class Bodies {
   private final List<Object> nullReturns = new ArrayList<>();
   private final List<Object> locals = new ArrayList<>();
   private final List<Object> throwsList = new ArrayList<>();
+  private final NullTests nullTests = new NullTests();
   private final ExceptionUses exceptionUses;
   private final Throwing throwing;
   private final Set<String> handlerNames;
 
-  public Bodies(String text, boolean test, Set<String> nothing, Set<String> handlerNames) {
+  public Bodies(String text, boolean test, Throwing throwing, Set<String> handlerNames) {
     this.active = !test;
     this.lines = new Lines(text);
     this.exceptionUses = new ExceptionUses(this::lineOf);
-    this.throwing = new Throwing(nothing);
+    this.throwing = throwing;
     this.handlerNames = handlerNames;
   }
 
@@ -80,6 +81,7 @@ public final class Bodies {
       call((KtCallExpression) element, frame);
     } else if (element instanceof KtBinaryExpression) {
       assignment((KtBinaryExpression) element, frame);
+      nullTests.binary((KtBinaryExpression) element, lineOf(element), scopes.id(frame));
     } else if (element instanceof KtCatchClause) {
       catchClause((KtCatchClause) element, frame);
     } else if (element instanceof KtProperty && ((KtProperty) element).isLocal()) {
@@ -278,7 +280,7 @@ public final class Bodies {
     return active
         ? m("scopes", scopes.entries(), "invocations", invocations, "catches", catches, "literals", literals,
             "nullReturns", nullReturns, "exceptionUses", exceptionUses.uses(), "locals", locals,
-            "throws", throwsList)
+            "throws", throwsList, "nullTests", nullTests.tests())
         : Map.of();
   }
 }

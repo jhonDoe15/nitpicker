@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
+import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mts';
 import {
   normalizeCoupling,
   normalizeStructure,
   normalizeTestRuntime,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
+} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
 import {
   normalizeCrap,
   normalizeMutation,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+} from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
@@ -335,9 +335,11 @@ describe('spec/findings.schema.json', () => {
           classification: 'tool-error',
         },
       ],
+      moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
     };
 
     expect(parseAnalyzerReport(report, 'fixture').findings).toHaveLength(report.findings.length);
+    expect(parseAnalyzerReport(report, 'fixture').moduleImports).toEqual(report.moduleImports);
     expect(validate(report)).toEqual([]);
   });
 
@@ -407,6 +409,35 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts the units around a finding, also outside the project, and rejects a unit without a count', () => {
+    const finding = {
+      tool: 'coupling',
+      rule: 'stability-direction',
+      path: 'src/features/loans',
+      identity: 'package-edge:src/features/loans->src/features/fines',
+      message: 'message',
+      classification: 'enforceable',
+      cause: {
+        folders: ['src/features/loans'],
+        units: [
+          {
+            unit: 'feature src/features/fines',
+            folders: ['src/features/fines', '../generated/fines'],
+            files: ['src/features/fines/index.ts'],
+            count: 4,
+          },
+        ],
+      },
+    };
+    const [unit] = finding.cause.units;
+    const countless = { ...finding, cause: { ...finding.cause, units: [{ ...unit, count: 0 }] } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(countless)).toThrow(TypeError);
+    expect(validate({ findings: [countless] })).toHaveLength(1);
+  });
+
   const linkedFinding = {
     tool: 'tool',
     rule: 'rule',
@@ -456,5 +487,14 @@ describe('spec/findings.schema.json', () => {
   it('is exercised by a validator that covers every keyword the schema uses', () => {
     expect(() => validate({ findings: [] })).not.toThrow();
     expect(() => validate({ findings: [] }, { oneOf: [] })).toThrow(/does not support/);
+  });
+
+  it.each([
+    [{ from: 'src/billing/invoice.ts' }, ['$.moduleImports[0].to is required']],
+    [{ from: 'src/billing.ts', to: 'src', files: 1 }, ['$.moduleImports[0].files is not allowed']],
+  ])('rejects the module import %j like the reference parser', (entry, errors) => {
+    const report = { findings: [], moduleImports: [entry] };
+    expect(() => parseAnalyzerReport(report, 'fixture')).toThrow(TypeError);
+    expect(validate(report)).toEqual(errors);
   });
 });

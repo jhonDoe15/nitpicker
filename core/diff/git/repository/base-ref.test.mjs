@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { resolveBase } from './base-ref.mjs';
+import { resolveBase } from './base-ref.mts';
 
 const { createGitRepository } = useGitFixtures();
 
@@ -231,6 +231,37 @@ describe('resolveBase', () => {
     expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
       new Error(
         'No base found: no remote, and you are on main. Pass --base <ref>, set "base" in nitpicker.config.json, or run nitpicker --all to check the whole project.',
+      ),
+    );
+  });
+
+  it('compares a staged run with HEAD when no remote base exists', () => {
+    const repositoryRoot = createRepository();
+
+    expect(resolveBase({ repositoryRoot, environment: {}, staged: true })).toEqual({
+      baseRef: 'HEAD',
+      source: 'staged, no remote base',
+    });
+  });
+
+  it('still prefers the remote base for a staged run', () => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+
+    expect(resolveBase({ repositoryRoot, environment: {}, staged: true })).toEqual({
+      baseRef: 'origin/main',
+      source: 'remote-head',
+    });
+  });
+
+  it('says how to make the first commit when a staged run finds none', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--orphan', 'empty']);
+
+    expect(() => resolveBase({ repositoryRoot, environment: {}, staged: true })).toThrow(
+      new Error(
+        'No base could be determined: the repository has no commit yet. Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
       ),
     );
   });

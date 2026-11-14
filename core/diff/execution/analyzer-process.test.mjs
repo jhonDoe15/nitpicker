@@ -4,11 +4,12 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { executeAnalyzerTask, reportFromAnalyzerOutput } from './process.mjs';
+import { FORCE_KILL_DELAY_MS, executeAnalyzerTask } from './process.mts';
+import { reportFromAnalyzerOutput } from './report/analyzer-report.mts';
 import { task, waitForFile } from './test-support/analyzer-task.mjs';
 import { fileURLToPath } from 'node:url';
 
-const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
+const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mts', import.meta.url));
 
 describe('analyzer process execution', () => {
   it('accepts findings of declared wrapped tools and rejects any other tool', () => {
@@ -34,6 +35,29 @@ describe('analyzer process execution', () => {
     expect(() => reportFromAnalyzerOutput(...outputOf([]))).toThrow(
       'wrapper emitted a finding for unexpected tool inner',
     );
+  });
+  it.each([
+    [true, '60000'],
+    [false, 'unset'],
+  ])('passes a configured deadline (%s) to the analyzer process', async (configured, seen) => {
+    const probe = {
+      ...task('probe'),
+      timeoutMs: 60_000,
+      configuredTimeout: configured,
+      invocation: {
+        command: process.execPath,
+        args: [
+          '-e',
+          "process.stdout.write(JSON.stringify({findings:[{tool:'probe',rule:'r',path:'a',identity:'i',message:process.env.NITPICKER_ANALYZER_TIMEOUT_MS ?? 'unset',classification:'enforceable'}]}))",
+        ],
+        cwd: fileURLToPath(new URL('../', import.meta.url)),
+        env: { PATH: process.env.PATH },
+      },
+    };
+
+    const report = await executeAnalyzerTask(probe);
+
+    expect(report.findings.map(({ message }) => message)).toEqual([seen]);
   });
   it('hides the CI job summary path from analyzers and keeps the rest of the environment', async () => {
     const probe = {
@@ -90,7 +114,7 @@ describe('analyzer process execution', () => {
       const outcome = executeAnalyzerTask(analyzerTask);
       await waitForFile(readyMarker);
       vi.advanceTimersByTime(500);
-      vi.advanceTimersByTime(1_000);
+      vi.advanceTimersByTime(FORCE_KILL_DELAY_MS);
       await expect(outcome).rejects.toThrow('stuck timed out after 500 ms');
     } finally {
       vi.useRealTimers();

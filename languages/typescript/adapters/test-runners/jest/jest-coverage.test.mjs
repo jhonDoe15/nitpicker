@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { rebaseGlobs, shownConfig } from './jest-coverage.mjs';
+import { rebaseGlobs, shownConfig } from './jest-coverage.mts';
 
 const GLOBS = ['src/**/*.ts', '!src/**/*.spec.*', '!**/dist/**'];
 

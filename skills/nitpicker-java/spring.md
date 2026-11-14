@@ -7,8 +7,9 @@ architecture rules below, `archunit/spring-...`. Write it this way.
 Layout (enforced by `archunit/spring-...`; each message says what to change):
 
 - Package by feature under the `@SpringBootApplication` package: `<root>.<feature>` holds its
-  controller, service, repository and entity; other features use only the classes directly in it;
-  pure utilities go to `<root>.shared`. Controllers call services and exchange records, never
+  controller, service, repository and entity; other features use only the services and records
+  directly in it, never its repositories or entities (`foreign-feature-persistence`); pure
+  utilities go to `<root>.shared`. Controllers call services and exchange records, never
   entities; a controller never holds another controller, and a repository never calls a service;
   services know nothing of the web layer.
 - A test that starts a Spring context is an integration test: name it `*IT` in its own package
@@ -92,6 +93,10 @@ JPA and Spring Data:
   `@OneToOne` says `fetch = FetchType.LAZY`; nothing is `EAGER`. `@ManyToMany` is a `Set` and never
   cascades `ALL` or `REMOVE`. Enum fields and enum element collections say `@Enumerated(EnumType.STRING)`. `hashCode` never uses
   the generated id: return `getClass().hashCode()` or hash an immutable business key.
+- Every `@ManyToOne` join column leads an index of the entity's `@Table`, for example
+  `@Table(indexes = @Index(columnList = "customer_id"))` (`JpaUnindexedForeignKey`); PostgreSQL
+  does not index foreign keys itself. With migrations, the index goes in the migration instead
+  (`foreign-key-index`).
 - Every repository method you declare has `@Query` (JPQL in a text block for JPA) with named parameters
   (`:email`); inherited methods such as `findById` and `save` need nothing. No derived names like
   `findByEmailAndStatus`.
@@ -111,10 +116,16 @@ JPA and Spring Data:
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
+- Index every foreign key in the Flyway or Liquibase migration that adds it:
+  `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
+  PostgreSQL does not create one (`foreign-key-index`).
 - Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
   that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
   `collectList()`. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
+- Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
+  the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`
+  (`JpaMultipleCollectionFetch`). Two fetched collections return a row for every pair.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
 

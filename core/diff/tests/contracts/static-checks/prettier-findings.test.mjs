@@ -4,8 +4,8 @@ import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
-import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mjs';
-import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mjs';
+import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
+import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mts';
 import {
   toolRoot,
   useStaticCheckFixtures,
