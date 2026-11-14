@@ -1,17 +1,13 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { kotlinDesignFindings } from './kotlin-design.mjs';
+import type { DesignFinding } from './design-support.mts';
+import { callText, callsOf, designFindings, recordedFacts } from './design-support.mts';
 
-const RECORDED = JSON.parse(
-  readFileSync(
-    path.resolve(import.meta.dirname, '../../../fixtures/kotlin-design/design-facts.json'),
-    'utf8',
-  ),
-);
+const RECORDED = recordedFacts('kotlin-design');
 const SHOP = 'src/shop';
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) {
@@ -19,7 +15,7 @@ afterAll(() => {
   }
 });
 
-function findingsWith(protocols) {
+function findingsWith(protocols: Record<string, unknown>[]) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-scopes-'));
   roots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -30,28 +26,25 @@ function findingsWith(protocols) {
   );
   const policy = path.join(root, 'policy.json');
   writeFileSync(policy, JSON.stringify({ protocols }));
-  return kotlinDesignFindings(reportRoot, { environment: { NITPICKER_POLICY: policy } });
+  return designFindings(reportRoot, { environment: { NITPICKER_POLICY: policy } });
 }
 
-function identities(findings, rule, file) {
+function identities(findings: DesignFinding[], rule: string, file: string) {
   return findings
     .filter((finding) => finding.rule === rule && finding.path === `${SHOP}/${file}`)
     .map(({ identity }) => identity.replace(/^src\/shop\/\w+\.kt#/u, ''));
 }
 
-function callable(file, name) {
+function callable(file: string, name: string) {
   return RECORDED.callables.find(({ id }) => id === `${SHOP}/${file}#${name}`);
 }
 
-function typeOf(file, name) {
+function typeOf(file: string, name: string) {
   return RECORDED.types.find(({ id }) => id === `${SHOP}/${file}#${name}`);
 }
 
-function calls(file, name) {
-  return callable(file, name).calls.map(
-    ({ target, receiver, cleanup, branch }) =>
-      `${target.slice(target.indexOf('#') + 1)} ${receiver} ${cleanup === true} ${(branch ?? []).join()}`,
-  );
+function calls(file: string, name: string) {
+  return callsOf(callable(file, name)).map(callText);
 }
 
 describe('the visibility of members in the recorded facts', () => {
@@ -60,11 +53,11 @@ describe('the visibility of members in the recorded facts', () => {
     ['Base.inner', true],
     ['Base.visible', true],
   ])('exports %s: %s', (name, exported) => {
-    expect(callable('Visibility.kt', name).exported).toEqual(exported);
+    expect(callable('Visibility.kt', name)?.exported).toEqual(exported);
   });
 
   it('lists a protected property as private and an internal one as visible', () => {
-    expect(typeOf('Visibility.kt', 'Base').fields).toEqual([
+    expect(typeOf('Visibility.kt', 'Base')?.fields).toEqual([
       { name: 'shared', mutable: true, private: true },
       { name: 'inside', mutable: true },
     ]);
@@ -73,7 +66,7 @@ describe('the visibility of members in the recorded facts', () => {
   it.each([['Shape.sides:get'], ['Shape.label:get'], ['Named.title:get']])(
     'lists the abstract or interface property as an accessor without a body: %s',
     (name) => {
-      const { kind, calls: found, exported } = callable('Visibility.kt', name);
+      const { kind, calls: found, exported } = callable('Visibility.kt', name) ?? {};
 
       expect([kind, found, exported]).toEqual(['accessor', undefined, true]);
     },
@@ -89,7 +82,7 @@ describe('the entries of the recorded facts', () => {
     ['Controller.index', true],
     ['main', true],
   ])('mark %s as an entry: %s', (name, entry) => {
-    expect(callable('Entries.kt', name).entry).toEqual(entry);
+    expect(callable('Entries.kt', name)?.entry).toEqual(entry);
   });
 
   it('target the implementation that a call on its own type reaches', () => {
@@ -105,7 +98,7 @@ describe('the supertypes of a type in the recorded facts', () => {
     ['Hierarchy.kt', 'Pg', [`${SHOP}/Hierarchy.kt#Conn`]],
     ['Entries.kt', 'Framework', undefined],
   ])('are the project types that %s %s extends or implements', (file, name, supertypes) => {
-    expect(typeOf(file, name).supertypes).toEqual(supertypes);
+    expect(typeOf(file, name)?.supertypes).toEqual(supertypes);
   });
 });
 
@@ -161,7 +154,7 @@ describe('the calls inside receiver lambdas and branches in the recorded facts',
 
 describe('the mutable state in the recorded facts', () => {
   it('lists the fields that hold a mutable collection, however it is created or reassigned', () => {
-    expect(typeOf('Stores.kt', 'Stores').fields).toEqual([
+    expect(typeOf('Stores.kt', 'Stores')?.fields).toEqual([
       { name: 'given', mutable: true },
       { name: 'plain' },
       { name: 'reused', mutable: true, private: true },
@@ -184,7 +177,7 @@ describe('the mutable state in the recorded facts', () => {
     ['Stores.lazily:get', 'lazily'],
     ['Buf.text', 'text'],
   ])('names the field that %s returns', (name, field) => {
-    expect(callable('Stores.kt', name).returnsField).toEqual(field);
+    expect(callable('Stores.kt', name)?.returnsField).toEqual(field);
   });
 
   it('reports the changes made through scope functions, Collections and StringBuilder methods', () => {

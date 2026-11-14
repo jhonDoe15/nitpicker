@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,33 +6,17 @@ import {
   DESIGN_RULE_IDS,
   DESIGN_RULES,
 } from '../../../../../../shared/project-rules/design/design-rules.mjs';
+import { fieldOf, listOf } from '../../../../../../shared/values/readers.mts';
 import { validateFacts } from '../../../../../../shared/rules/facts/schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../../kotlin-options.mjs';
-import {
-  DESIGN_FAILURE_RULE,
-  DESIGN_TOOL,
-  kotlinDesignBundle,
-  kotlinDesignFindings,
-} from './kotlin-design.mjs';
+import { bundleOf, callsOf, designFindings, recordedFacts } from './design-support.mts';
+import { DESIGN_FAILURE_RULE, DESIGN_TOOL } from './kotlin-design.mjs';
 
-const RECORDED = JSON.parse(
-  readFileSync(
-    path.resolve(import.meta.dirname, '../../../fixtures/kotlin-design/design-facts.json'),
-    'utf8',
-  ),
-);
-const RECORDED_PUBLISHED = JSON.parse(
-  readFileSync(
-    path.resolve(
-      import.meta.dirname,
-      '../../../fixtures/kotlin-design-published/design-facts.json',
-    ),
-    'utf8',
-  ),
-);
+const RECORDED = recordedFacts('kotlin-design');
+const RECORDED_PUBLISHED = recordedFacts('kotlin-design-published');
 const EMPTY = { modules: [], types: [], callables: [] };
 const PREFIX = 'The design rules did not run on the Kotlin sources: ';
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -40,7 +24,7 @@ afterEach(() => {
   }
 });
 
-function reportWith(facts) {
+function reportWith(facts: string) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-design-'));
   temporaryRoots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -49,13 +33,13 @@ function reportWith(facts) {
   return { root, reportRoot };
 }
 
-function policyFile(root, policy) {
+function policyFile(root: string, policy: unknown) {
   const file = path.join(root, 'policy.json');
   writeFileSync(file, JSON.stringify(policy));
   return { NITPICKER_POLICY: file };
 }
 
-function failure(message) {
+function failure(message: string) {
   return {
     tool: DESIGN_TOOL,
     rule: DESIGN_FAILURE_RULE,
@@ -68,8 +52,10 @@ function failure(message) {
 
 describe('the recorded design facts of the fixture sources', () => {
   it('pass the facts schema as the bundle the rules read', () => {
-    expect(() => validateFacts(kotlinDesignBundle(RECORDED))).not.toThrow();
-    expect(kotlinDesignBundle(RECORDED).packages).toEqual([]);
+    expect(() => {
+      validateFacts(bundleOf(RECORDED));
+    }).not.toThrow();
+    expect(bundleOf(RECORDED).packages).toEqual([]);
   });
 });
 
@@ -88,13 +74,13 @@ describe('the callables the recorded facts list as used as values', () => {
   ])('are those of %s', (id, expected) => {
     const callable = RECORDED.callables.find((item) => item.id === id);
 
-    expect(callable.references).toEqual(expected);
+    expect(callable?.references).toEqual(expected);
   });
 
   it('are those that the top-level property initializers of a module call or reference', () => {
     const module = RECORDED.types.find((item) => item.id === REFS);
 
-    expect(module.references).toEqual([
+    expect(module?.references).toEqual([
       `${REFS}#double`,
       `${REFS}#triple`,
       `${REFS}#negate`,
@@ -106,7 +92,7 @@ describe('the callables the recorded facts list as used as values', () => {
 const RES = 'src/shop/Resources.kt';
 const LINK = `${RES}#Link`;
 
-function callableNamed(id) {
+function callableNamed(id: string) {
   return RECORDED.callables.find((item) => item.id === id);
 }
 
@@ -118,7 +104,7 @@ describe('the types a callable returns in the recorded facts', () => {
     [`${RES}#openVia`, LINK],
     [`${RES}#capacityOf`, 'Int'],
   ])('are the project type id, or the written name outside the project: %s', (id, returns) => {
-    expect(callableNamed(id).returns).toEqual(returns);
+    expect(callableNamed(id)?.returns).toEqual(returns);
   });
 });
 
@@ -136,7 +122,7 @@ describe('the calls on a field of the owner in the recorded facts', () => {
     [`${RES}#Gateway.lendTo`, [{ target: `${RES}#Lender.lend`, line: 28 }]],
     [`${RES}#Depot.reopen`, [{ target: `${RES}#Depot.open`, line: 12, receiver: 'this' }]],
   ])('have the receiver this.<field> and no receiver for another object: %s', (id, calls) => {
-    expect(callableNamed(id).calls).toEqual(calls);
+    expect(callableNamed(id)?.calls).toEqual(calls);
   });
 });
 
@@ -146,9 +132,13 @@ describe('the abstract and interface members in the recorded facts', () => {
     [`${RES}#Depot.close`, [LINK]],
     [`${RES}#Lender.lend`, undefined],
   ])('have a callable site without body facts: %s', (id, params) => {
-    const { kind, calls, params: found } = callableNamed(id);
+    const { kind, calls, params: found } = callableNamed(id) ?? {};
 
-    expect([kind, found?.map(({ type }) => type), calls]).toEqual(['method', params, undefined]);
+    expect([
+      kind,
+      found === undefined ? undefined : listOf(found).map((param) => fieldOf(param, 'type')),
+      calls,
+    ]).toEqual(['method', params, undefined]);
   });
 
   it.each([
@@ -156,16 +146,19 @@ describe('the abstract and interface members in the recorded facts', () => {
     [`${RES}#closeVia`, `${RES}#Depot.close`, 'depot'],
     [`${RES}#lendVia`, `${RES}#Lender.lend`, 'lender'],
   ])('are the targets of the calls through a receiver of that type: %s', (id, target, receiver) => {
-    expect(callableNamed(id).calls.map((call) => [call.target, call.receiver])).toEqual([
-      [target, receiver],
-    ]);
+    expect(
+      callsOf(callableNamed(id)).map((call) => [
+        fieldOf(call, 'target'),
+        fieldOf(call, 'receiver'),
+      ]),
+    ).toEqual([[target, receiver]]);
   });
 
   it('resolve a protocols contract on an abstract class to the callers of its members', () => {
     const { root, reportRoot } = reportWith(JSON.stringify({ files: [], design: RECORDED }));
     const protocols = [{ type: 'Depot', open: ['open'], close: ['close'] }];
 
-    const findings = kotlinDesignFindings(reportRoot, {
+    const findings = designFindings(reportRoot, {
       environment: policyFile(root, { protocols }),
     });
 
@@ -180,7 +173,9 @@ describe('the abstract and interface members in the recorded facts', () => {
 
 describe('the recorded design facts of a published module', () => {
   it('pass the facts schema as the bundle the rules read', () => {
-    expect(() => validateFacts(kotlinDesignBundle(RECORDED_PUBLISHED))).not.toThrow();
+    expect(() => {
+      validateFacts(bundleOf(RECORDED_PUBLISHED));
+    }).not.toThrow();
   });
 
   it('mark each exported type and each exported top-level function, and nothing else', () => {
@@ -208,9 +203,9 @@ describe('kotlinDesignFindings', () => {
       exceptions: [{ rule: DESIGN_RULE_IDS.dataClump, paths: ['src/shop/*'], reason: 'agreed' }],
     };
     const finding = { tool: DESIGN_TOOL, rule: DESIGN_RULE_IDS.dataClump, path: 'src/a.kt' };
-    const evaluator = vi.fn(() => [finding]);
+    const evaluator = vi.fn<(facts: unknown, options: unknown) => unknown[]>(() => [finding]);
 
-    const findings = kotlinDesignFindings(reportRoot, {
+    const findings = designFindings(reportRoot, {
       environment: policyFile(root, policy),
       evaluator,
     });
@@ -218,7 +213,7 @@ describe('kotlinDesignFindings', () => {
     expect(findings).toEqual([finding]);
     expect(evaluator.mock.calls).toEqual([
       [
-        kotlinDesignBundle(RECORDED),
+        bundleOf(RECORDED),
         { language: 'kotlin', analyzerName: DESIGN_TOOL, rules: DESIGN_RULES, policy },
       ],
     ]);
@@ -227,33 +222,31 @@ describe('kotlinDesignFindings', () => {
   it('runs the registered shared rules on the recorded facts without a tool error', () => {
     const { reportRoot } = reportWith(JSON.stringify({ files: [], design: RECORDED }));
 
-    const findings = kotlinDesignFindings(reportRoot, { environment: {} });
+    const findings = designFindings(reportRoot, { environment: {} });
 
     expect(findings.filter(({ classification }) => classification === 'tool-error')).toEqual([]);
   });
 
   it('runs on a project without production sources, which has empty design facts', () => {
     const { reportRoot } = reportWith(JSON.stringify({ files: [], design: EMPTY }));
-    const evaluator = vi.fn(() => []);
+    const evaluator = vi.fn<(facts: unknown, options: unknown) => unknown[]>(() => []);
 
-    expect(kotlinDesignFindings(reportRoot, { environment: {}, evaluator })).toEqual([]);
-    expect(evaluator.mock.calls[0][0]).toEqual({ ...EMPTY, packages: [] });
+    expect(designFindings(reportRoot, { environment: {}, evaluator })).toEqual([]);
+    expect(evaluator.mock.calls[0]?.[0]).toEqual({ ...EMPTY, packages: [] });
   });
 
   it('reports the error the program wrote instead of design facts as a tool error', () => {
     const { reportRoot } = reportWith(JSON.stringify({ files: [], design: { error: 'boom' } }));
-    const evaluator = vi.fn(() => []);
+    const evaluator = vi.fn<(facts: unknown, options: unknown) => unknown[]>(() => []);
 
-    expect(kotlinDesignFindings(reportRoot, { environment: {}, evaluator })).toEqual([
-      failure('boom'),
-    ]);
+    expect(designFindings(reportRoot, { environment: {}, evaluator })).toEqual([failure('boom')]);
     expect(evaluator.mock.calls).toEqual([]);
   });
 
   it('reports a facts report without a design key as a tool error', () => {
     const { reportRoot } = reportWith(JSON.stringify({ files: [] }));
 
-    expect(kotlinDesignFindings(reportRoot, { environment: {} })).toEqual([
+    expect(designFindings(reportRoot, { environment: {} })).toEqual([
       failure('the facts report has no "design" key, so it was written by an older plugin'),
     ]);
   });
@@ -261,9 +254,9 @@ describe('kotlinDesignFindings', () => {
   it('reports a facts report that cannot be read as a tool error', () => {
     const { reportRoot } = reportWith('{ not json');
 
-    const [finding] = kotlinDesignFindings(reportRoot, { environment: {} });
+    const [finding] = designFindings(reportRoot, { environment: {} });
 
-    expect(finding.message).toMatch(
+    expect(finding?.message).toMatch(
       /^The design rules did not run on the Kotlin sources: the facts report cannot be read \(.+\)$/u,
     );
   });
@@ -274,7 +267,7 @@ describe('kotlinDesignFindings', () => {
       throw new TypeError('callables[0].target must be an id');
     };
 
-    expect(kotlinDesignFindings(reportRoot, { environment: {}, evaluator })).toEqual([
+    expect(designFindings(reportRoot, { environment: {}, evaluator })).toEqual([
       failure('callables[0].target must be an id'),
     ]);
   });
