@@ -44,7 +44,21 @@ function globMatches(entry, { root, files }) {
   );
 }
 
-function expand(entry, { root, files }) {
+function rejectSubmodules(entry, submodules) {
+  const matcher = isGlob(entry.path) ? globMatcher(entry.path) : undefined;
+  const named = submodules.find((submodule) =>
+    matcher === undefined ? isInside(entry.path, submodule) : matcher.test(submodule),
+  );
+  if (named !== undefined) {
+    throw configError(
+      `"projects" entry ${entry.path} names ${named}, a Git submodule. Nitpicker does not gate a ` +
+        `submodule from the repository around it: leave it out of "projects" and run nitpicker inside ${named}`,
+    );
+  }
+}
+
+function expand(entry, { root, files, submodules = [] }) {
+  rejectSubmodules(entry, submodules);
   if (!isGlob(entry.path)) {
     if (!isFolder(root, entry.path)) {
       throw configError(`"projects" lists ${entry.path}, which is not a folder under ${root}`);
@@ -88,10 +102,10 @@ function workspaceMembersOf(entry, { root, files }) {
   }));
 }
 
-export function resolveDeclaredProjects({ root, entries, files }) {
+export function resolveDeclaredProjects({ root, entries, files, submodules }) {
   const seen = new Set();
   return entries
-    .flatMap((entry) => expand(entry, { root, files }))
+    .flatMap((entry) => expand(entry, { root, files, submodules }))
     .flatMap((entry) => workspaceMembersOf(entry, { root, files }))
     .filter((entry) => {
       const fresh = !seen.has(entry.path);

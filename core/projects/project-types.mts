@@ -30,6 +30,7 @@ export type MonorepoPlan = {
   readonly source: 'declared' | 'detected';
   readonly projects: readonly PlanProject[];
   readonly undeclared: readonly unknown[];
+  readonly submodules?: readonly string[];
 };
 
 export type ProjectSelection = {

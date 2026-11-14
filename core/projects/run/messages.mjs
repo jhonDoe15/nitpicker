@@ -117,3 +117,14 @@ export function unlistedHint(folders) {
           `${CONFIG_FILE_NAME}, so no project gates it. Add it to "projects" to gate it.`,
       ];
 }
+
+export function submoduleHint(folders) {
+  if (folders.length === 0) {
+    return [];
+  }
+  const one = folders.length === 1;
+  return [
+    `${folders.join(', ')} ${one ? 'is a Git submodule' : 'are Git submodules'}, which this run does ` +
+      `not check: run nitpicker inside ${one ? 'it' : 'each'} to gate ${one ? 'its' : 'their'} own changes.`,
+  ];
+}

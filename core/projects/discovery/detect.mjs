@@ -4,6 +4,7 @@ import {
   hasScriptSources,
   scriptProjectPreset,
 } from '../../configuration/project-checks/preset-detection.mjs';
+import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { angularWorkspace, javascriptWorkspaces, nxWorkspace } from './javascript-workspaces.mjs';
 import { JVM_MARKERS, jvmBuilds } from './jvm-builds.mjs';
@@ -80,20 +81,41 @@ export function undeclaredProjects({ root, files, projects, exclude = [] }) {
     .toSorted(byPath);
 }
 
-function workspacesOf(root, files) {
+function workspacesOf(root, files, submodules) {
   const nxProjects = directoriesWith(root, files, ['project.json']).filter(
     (directory) => !isSkippedLocation(directory),
   );
+  const withSubmodules = (directories) => [...new Set([...directories, ...submodules])];
   return [
-    javascriptWorkspaces(root, directoriesWith(root, files, ['package.json'])),
+    javascriptWorkspaces(root, withSubmodules(directoriesWith(root, files, ['package.json']))),
     nxWorkspace(root, nxProjects),
     angularWorkspace(root),
-    pythonWorkspace(root, directoriesWith(root, files, PYTHON_MARKERS)),
+    pythonWorkspace(root, withSubmodules(directoriesWith(root, files, PYTHON_MARKERS))),
   ];
 }
 
-export function detectProjects({ root, rootConfig = {}, files = listRepositoryFiles(root) }) {
-  const workspaces = workspacesOf(root, files);
+function rejectSubmoduleMembers(members, submodules) {
+  const covered = members.find(({ path: member }) => submodules.includes(member));
+  if (covered !== undefined) {
+    throw configError(
+      `The ${covered.origin} cover ${covered.path}, a Git submodule, which nitpicker does not gate ` +
+        `from the repository around it. List the other projects in "projects" of ${CONFIG_FILE_NAME}, ` +
+        `and run nitpicker inside ${covered.path} for its own changes`,
+    );
+  }
+}
+
+export function detectProjects({
+  root,
+  rootConfig = {},
+  files = listRepositoryFiles(root),
+  submodules = [],
+}) {
+  const workspaces = workspacesOf(root, files, submodules);
+  rejectSubmoduleMembers(
+    workspaces.flatMap((workspace) => workspace.members),
+    submodules,
+  );
   const declared = workspaces.some((workspace) => workspace.declared);
   const members = unique(workspaces.flatMap((workspace) => workspace.members));
   const multiple = declared && members.some((entry) => entry.path !== '.');

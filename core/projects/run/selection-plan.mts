@@ -63,6 +63,12 @@ function choose(plan: MonorepoPlan, cli: SelectionCli, comparison: Comparison): 
   });
 }
 
+export function submodulePaths(plan: MonorepoPlan): readonly string[] {
+  return (plan.submodules ?? []).map((submodule) =>
+    plan.prefix === '.' ? submodule : `${plan.prefix}/${submodule}`,
+  );
+}
+
 function withAnalyzers(
   selection: readonly ProjectSelection[],
   analyzers: Analyzers,
@@ -83,7 +89,9 @@ export function selectionOf(
   analyzers: Analyzers = new Map(),
 ): PlannedSelection {
   const comparison = comparisonOf(plan, cli);
-  const { selection, outside } = choose(plan, cli, comparison);
+  const { selection, outside: unclaimed } = choose(plan, cli, comparison);
+  const submodules = submodulePaths(plan);
+  const outside = unclaimed.filter((file) => !submodules.includes(file));
   const chosen = withAnalyzers(selection, analyzers);
   const rows = plan.projects.flatMap((project, index) => {
     const entry = chosen[index];

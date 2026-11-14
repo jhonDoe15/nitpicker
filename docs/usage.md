@@ -2090,6 +2090,10 @@ Where you start the run matters:
   every project, and loosening it is a `policy-loosened` finding that names it.
 - A project may sit inside another one (`.` and `web`, or `web` and `web/sub`). The outer project's
   run leaves the inner folders out, so each file is gated once.
+- A Git submodule is never a project of the repository around it: a `projects` entry or glob that
+  names one, or a workspace glob that covers one, is an error, and a changed submodule gets a
+  notice (`services/svc is a Git submodule, which this run does not check`) instead of the
+  "outside every project" line. Run nitpicker inside the submodule to gate its own changes.
 - `"projects": []` keeps the repository one project, whatever it holds.
 - Without a list, nitpicker gates the members of the declared workspace and says so
   (`Monorepo: 3 projects detected`). The root joins them when it has a `package.json` and
