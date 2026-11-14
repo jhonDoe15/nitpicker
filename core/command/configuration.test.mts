@@ -2,17 +2,22 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { describeConfigOverrides } from '../configuration/config.mjs';
+import { describeConfigOverrides } from '../configuration/config.mts';
 import { policyHash } from '../diff/reporting/report-model.mts';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
-import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { acceptedDigest } from './test-support/accepted-digest.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import type { Analyzer } from '../../shared/values/analyzers.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../shared/values/readers.mts';
+import { acceptedDigest } from './test-support/accepted-digest.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
+
+const anyNumber: unknown = expect.any(Number);
+const sha256Hex: unknown = expect.stringMatching(exactText`${/[a-f0-9]{64}/}`);
 
 const customAnalyzerScript = `import { existsSync, readdirSync } from 'node:fs';
 const mode = process.argv[2];
@@ -40,7 +45,15 @@ if (mode === 'json') {
 }
 `;
 
-function customAnalyzerEntry(mode) {
+function toolNames(summary: unknown): string[] {
+  return listOf(fieldOf(summary, 'tools')).map((tool) => textOf(fieldOf(tool, 'name')));
+}
+
+function readSummary(file: string): unknown {
+  return parseJson(readFileSync(file, 'utf8'));
+}
+
+function customAnalyzerEntry(mode: string) {
   return { name: 'custom', command: process.execPath, args: ['custom-analyzer.mjs', mode] };
 }
 
@@ -118,14 +131,13 @@ Quality gate summary
 Full diagnostics: ${root}/combined/report.txt
 `);
     expect(output.stderrText).toBe('');
-    const summary = JSON.parse(readFileSync(path.join(root, 'combined', 'summary.json'), 'utf8'));
-    expect(summary.tools.map(({ name }) => name)).toEqual(['first', 'second']);
-    expect(summary.newEnforceableFindings).toBe(1);
+    const summary = readSummary(path.join(root, 'combined', 'summary.json'));
+    expect(toolNames(summary)).toEqual(['first', 'second']);
+    expect(fieldOf(summary, 'newEnforceableFindings')).toBe(1);
   });
 });
 describe('nitpicker config file', () => {
-  // Config errors are raised before any git work, so these need only the config file.
-  function runConfigOnly(config) {
+  function runConfigOnly(config: unknown) {
     const projectRoot = makeTemporaryRoot('nitpicker-cli-config-');
     writeFiles(projectRoot, {
       'nitpicker.config.json': typeof config === 'string' ? config : JSON.stringify(config),
@@ -141,7 +153,16 @@ describe('nitpicker config file', () => {
     });
     return { exitCode, output };
   }
-  function runWithConfig(config, { extraArguments = ['--base', 'HEAD'], analyzers } = {}) {
+  function runWithConfig(
+    config: unknown,
+    {
+      extraArguments = ['--base', 'HEAD'],
+      analyzers,
+    }: {
+      readonly extraArguments?: readonly string[];
+      readonly analyzers?: readonly Analyzer[];
+    } = {},
+  ) {
     const repository = createRepository({
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
@@ -164,15 +185,13 @@ describe('nitpicker config file', () => {
       interactive: true,
     });
     const summaryPath = path.join(outputRoot, 'summary.json');
-    const summary = existsSync(summaryPath)
-      ? JSON.parse(readFileSync(summaryPath, 'utf8'))
-      : undefined;
+    const summary = existsSync(summaryPath) ? readSummary(summaryPath) : undefined;
     return { exitCode, output, summary, outputRoot };
   }
   it('names the ESLint config it ignores until the project opts in', () => {
     const notice =
       'Ignoring eslint.config.mjs; opt in with "tools": { "eslint": { "precedence": ["project", "nitpicker"] } }';
-    const run = (config) => {
+    const run = (config: unknown) => {
       const repository = createRepository({
         'quality-policy.json': policy(),
         'src/main/clean.ts': 'export const clean = true;\n',
@@ -180,7 +199,7 @@ describe('nitpicker config file', () => {
         'nitpicker.config.json': JSON.stringify(config),
       });
       const output = captureOutput();
-      runCli({
+      void runCli({
         arguments_: ['--output', makeOutputRoot(), '--base', 'HEAD'],
         environment: {},
         currentProjectRoot: repository.root,
@@ -200,11 +219,13 @@ describe('nitpicker config file', () => {
       paths: ['src/legacy/**'],
       reason: 'Legacy module until migration',
     };
-    const plain = runWithConfig(undefined).summary.policyHash;
+    const plain = fieldOf(runWithConfig(undefined).summary, 'policyHash');
     const { summary, exitCode } = runWithConfig({ exceptions: [exception] });
     expect(exitCode).toBe(0);
-    expect(summary.configOverrides).toEqual([`exception: ${JSON.stringify(exception)}`]);
-    expect(summary.policyHash).not.toBe(plain);
+    expect(fieldOf(summary, 'configOverrides')).toEqual([
+      `exception: ${JSON.stringify(exception)}`,
+    ]);
+    expect(fieldOf(summary, 'policyHash')).not.toBe(plain);
   });
   it.each([
     [{ unknownKey: true }, /unknown key "unknownKey"/],
@@ -230,7 +251,7 @@ describe('nitpicker config file', () => {
     const { exitCode, summary } = runWithConfig(undefined);
 
     expect(exitCode).toBe(0);
-    expect(summary.configOverrides).toEqual([]);
+    expect(fieldOf(summary, 'configOverrides')).toEqual([]);
   });
   it('uses base from the config file', () => {
     const { exitCode, output } = runWithConfig({ base: 'comparison-base' }, { extraArguments: [] });
@@ -273,13 +294,10 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       },
     );
 
-    expect(plain.summary.tools.map(({ name }) => name)).toEqual([
-      'fake-quality-analyzer',
-      'second-analyzer',
-    ]);
-    expect(disabled.summary.tools.map(({ name }) => name)).toEqual(['fake-quality-analyzer']);
-    expect(disabled.summary.configOverrides).toEqual(['disable: ["second-analyzer"]']);
-    expect(disabled.summary.policyHash).not.toBe(plain.summary.policyHash);
+    expect(toolNames(plain.summary)).toEqual(['fake-quality-analyzer', 'second-analyzer']);
+    expect(toolNames(disabled.summary)).toEqual(['fake-quality-analyzer']);
+    expect(fieldOf(disabled.summary, 'configOverrides')).toEqual(['disable: ["second-analyzer"]']);
+    expect(fieldOf(disabled.summary, 'policyHash')).not.toBe(fieldOf(plain.summary, 'policyHash'));
     expect(readFileSync(path.join(disabled.outputRoot, 'report.txt'), 'utf8')).toEqual(
       expect.stringMatching(exactText`Nitpicker quality diff
 Base ref: HEAD
@@ -321,7 +339,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     });
 
     expect(exitCode).toBe(0);
-    expect(summary.tools.map(({ name }) => name)).toEqual(['other-analyzer']);
+    expect(toolNames(summary)).toEqual(['other-analyzer']);
     expect(output.stderrText).toBe(
       'nitpicker: fake-quality-analyzer is disabled, so dependent-analyzer is off too\n',
     );
@@ -335,32 +353,30 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     );
   });
   it('reports every parsed key and changes the policy hash for each', () => {
-    // Keys in describeConfigOverrides order. One run covers the CLI wiring for most of them.
-    // `exclude` gets its own run: with it set, the layout-only branch of applyLayout is skipped.
-    const entries = [
+    const entries: [string, unknown][] = [
       ['preset', 'typescript'],
       ['thresholds', { crapLimit: 8 }],
       ['layout', { sourceRoots: ['src', 'lib'] }],
       ['analyzers', [customAnalyzerEntry('clean')]],
       ['legacyInventory', 'config/legacy.json'],
     ];
-    const plainHash = runWithConfig(undefined).summary.policyHash;
+    const plainHash = fieldOf(runWithConfig(undefined).summary, 'policyHash');
     const { summary, exitCode } = runWithConfig(Object.fromEntries(entries));
     expect(exitCode).toBe(0);
-    expect(summary.configOverrides).toEqual(
+    expect(fieldOf(summary, 'configOverrides')).toEqual(
       entries.map(
         ([key, value]) =>
           `${typeof key === 'string' ? key : JSON.stringify(key)}: ${JSON.stringify(value)}`,
       ),
     );
-    expect(summary.policyHash).not.toBe(plainHash);
+    expect(fieldOf(summary, 'policyHash')).not.toBe(plainHash);
     const excluded = runWithConfig({ exclude: ['generated/**'] });
     expect(excluded.exitCode).toBe(0);
-    expect(excluded.summary.configOverrides).toEqual(['exclude: ["generated/**"]']);
-    expect(excluded.summary.policyHash).not.toBe(plainHash);
-    // Each key alone must change the hash, computed with the same functions the CLI uses.
+    expect(fieldOf(excluded.summary, 'configOverrides')).toEqual(['exclude: ["generated/**"]']);
+    expect(fieldOf(excluded.summary, 'policyHash')).not.toBe(plainHash);
     const analyzers = [fakeAnalyzer()];
-    const singleKeyHashes = [...entries, ['exclude', ['generated/**']]].map(([key, value]) =>
+    const singleKeyEntries: [string, unknown][] = [...entries, ['exclude', ['generated/**']]];
+    const singleKeyHashes = singleKeyEntries.map(([key, value]) =>
       policyHash(analyzers, describeConfigOverrides({ [key]: value })),
     );
     expect(singleKeyHashes).not.toContain(policyHash(analyzers));
@@ -389,22 +405,24 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
         stderr: output.stderr,
       });
 
-      const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
-      const tool = summary.tools.find(({ name }) => name === 'custom');
+      const summary = readSummary(path.join(outputRoot, 'summary.json'));
+      const tool = listOf(fieldOf(summary, 'tools')).find(
+        (entry) => fieldOf(entry, 'name') === 'custom',
+      );
       expect(exitCode).toBe(1);
       expect(tool).toEqual({
         name: 'custom',
         version: 'custom',
-        configurationHash: expect.stringMatching(exactText`${/[a-f0-9]{64}/}`),
+        configurationHash: sha256Hex,
         base: 1,
         head: 2,
         new: 1,
         resolved: 0,
         unchanged: 1,
         changedMetrics: 0,
-        baseElapsedMs: expect.any(Number),
-        headElapsedMs: expect.any(Number),
-        elapsedMs: expect.any(Number),
+        baseElapsedMs: anyNumber,
+        headElapsedMs: anyNumber,
+        elapsedMs: anyNumber,
       });
       expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
@@ -427,7 +445,7 @@ Full diagnostics: ${outputRoot}/report.txt
       });
 
       expect(exitCode).toBe(2);
-      expect(summary.overallStatus).toBe('tool-error');
+      expect(fieldOf(summary, 'overallStatus')).toBe('tool-error');
       expect(output.stdoutText).toMatch(message);
     });
     it('rejects a name that clashes with a built-in analyzer', () => {

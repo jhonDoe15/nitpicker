@@ -3,11 +3,15 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { useCliFixtures } from '../test-support/cli-harness.mjs';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { policy } from '../../diff/execution/test-support/analyzer-findings.mts';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { useCliFixtures } from '../test-support/cli-harness.mts';
+import type { FixtureRepository } from '../test-support/fixture-types.mts';
+import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mjs';
+
+const checkoutModulePath: (file: string) => string = moduleSourcePath;
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot } = useCliFixtures(nitpickerCli);
 
@@ -15,7 +19,14 @@ const CLI_URL = pathToFileURL(
   checkoutModulePath(path.resolve(import.meta.dirname, '../../cli.mjs')),
 ).href;
 
-function probeReport(recordFile) {
+type HookFiles = {
+  readonly baseRef: string;
+  readonly outputRoot: string;
+  readonly recordFile: string;
+  readonly exitFile: string;
+};
+
+function probeReport(recordFile: string): string {
   return [
     "const { execFileSync } = await import('node:child_process');",
     "const { appendFileSync } = await import('node:fs');",
@@ -27,7 +38,7 @@ function probeReport(recordFile) {
   ].join('\n');
 }
 
-function hookScript({ baseRef, outputRoot, recordFile, exitFile }) {
+function hookScript({ baseRef, outputRoot, recordFile, exitFile }: HookFiles): string {
   const analyzer = {
     name: 'git-probe',
     version: '1.0.0',
@@ -50,7 +61,7 @@ function hookScript({ baseRef, outputRoot, recordFile, exitFile }) {
   ].join('\n');
 }
 
-function installHook(project) {
+function installHook(project: FixtureRepository) {
   const scriptRoot = makeTemporaryRoot('nitpicker-worktree-hook-');
   const files = {
     script: path.join(scriptRoot, 'hook.mjs'),
@@ -70,7 +81,7 @@ function installHook(project) {
   return files;
 }
 
-function linkedWorktree(project) {
+function linkedWorktree(project: FixtureRepository): string {
   const worktree = path.join(makeTemporaryRoot('nitpicker-linked-worktree-'), 'linked');
   fixtureGit(project.root, ['worktree', 'add', '-q', '-b', 'feature', worktree]);
   writeFiles(worktree, { 'src/main/a.ts': 'export const a = 2;\n' });
@@ -78,12 +89,16 @@ function linkedWorktree(project) {
   return worktree;
 }
 
-function snapshotRecords(recordFile) {
+function cwdName(record: unknown): string {
+  return path.basename(textOf(fieldOf(record, 'cwd')));
+}
+
+function snapshotRecords(recordFile: string): unknown[] {
   return readFileSync(recordFile, 'utf8')
     .trim()
     .split('\n')
-    .map((line) => JSON.parse(line))
-    .toSorted((left, right) => path.basename(left.cwd).localeCompare(path.basename(right.cwd)));
+    .map((line) => parseJson(line))
+    .toSorted((left, right) => cwdName(left).localeCompare(cwdName(right)));
 }
 
 describe('nitpicker inside a pre-commit hook of a linked worktree', () => {
@@ -102,9 +117,9 @@ describe('nitpicker inside a pre-commit hook of a linked worktree', () => {
 
     expect(readFileSync(exitFile, 'utf8')).toBe('0');
     const records = snapshotRecords(recordFile);
-    expect(records.map(({ cwd }) => path.basename(cwd))).toEqual(['base', 'head']);
-    expect(records.map(({ gitDir }) => gitDir)).not.toContain(linkedGitDir);
-    expect(records[0].head).toBe(project.baseSha);
+    expect(records.map(cwdName)).toEqual(['base', 'head']);
+    expect(records.map((record) => fieldOf(record, 'gitDir'))).not.toContain(linkedGitDir);
+    expect(fieldOf(records[0], 'head')).toBe(project.baseSha);
     expect(fixtureGit(worktree, ['show', '--name-only', '--format=', 'HEAD']).trim()).toBe(
       'src/main/b.ts',
     );

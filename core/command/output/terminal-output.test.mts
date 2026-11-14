@@ -2,16 +2,18 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
 import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import { linkSentence } from '../test-support/report-readers.mts';
+import type { FixtureInvocationContext } from '../test-support/fixture-types.mts';
+import type { Analyzer } from '../../../shared/values/analyzers.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -22,7 +24,7 @@ const OUTPUT_ROOT = /\/tmp\/nitpicker-cli-output-[A-Za-z0-9]{6}\/reports/u;
 function colouredCrash() {
   return {
     ...fakeAnalyzer('coloured-crash'),
-    createInvocation({ policyRoot }) {
+    createInvocation({ policyRoot }: FixtureInvocationContext) {
       return {
         command: process.execPath,
         args: ['-e', `process.stderr.write('${RED}boom\\u001b[0m'); process.exit(2)`],
@@ -32,14 +34,21 @@ function colouredCrash() {
   };
 }
 
-function runWith({ terminal = false, environment = {}, analyzers, outputRoot } = {}) {
+type RunWithOptions = {
+  readonly terminal?: true;
+  readonly environment?: NodeJS.ProcessEnv;
+  readonly analyzers?: readonly Analyzer[];
+  readonly outputRoot?: string;
+};
+
+function runWith({ terminal, environment = {}, analyzers, outputRoot }: RunWithOptions = {}) {
   const repository = createRepository({ 'quality-policy.json': policy() });
   writeFiles(repository.root, {
     'src/main/flagged.ts': findingLine(
       finding({ message: `${RED}Expected${ESCAPE}[0m 1 to be 2` }),
     ),
   });
-  const output = captureOutput({ terminal });
+  const output = captureOutput(terminal === true ? { terminal } : {});
   const reports = outputRoot ?? makeOutputRoot();
   const exitCode = runCli({
     arguments_: ['--base', repository.baseRef, '--output', reports],
@@ -53,7 +62,7 @@ function runWith({ terminal = false, environment = {}, analyzers, outputRoot } =
   return { exitCode, stdout: output.stdoutText, reports, baseRef: repository.baseRef };
 }
 
-function plainSummary(baseRef, reportPath = OUTPUT_ROOT) {
+function plainSummary(baseRef: string, reportPath: RegExp | string = OUTPUT_ROOT) {
   return exactText`Base: ${baseRef} (argument)
 
 Quality gate summary
@@ -65,7 +74,7 @@ Full diagnostics: ${reportPath}/report.txt
 }
 
 describe('console colour', () => {
-  it.each([
+  it.each<[string, RunWithOptions]>([
     ['a terminal', { terminal: true }],
     ['a pipe with FORCE_COLOR', { environment: { FORCE_COLOR: '1' } }],
   ])('colours the summary on %s', (_name, options) => {
@@ -84,7 +93,7 @@ describe('console colour', () => {
     );
   });
 
-  it.each([
+  it.each<[string, RunWithOptions]>([
     ['a pipe', {}],
     ['a terminal with NO_COLOR', { terminal: true, environment: { NO_COLOR: '1' } }],
     ['a terminal with FORCE_COLOR=0', { terminal: true, environment: { FORCE_COLOR: '0' } }],

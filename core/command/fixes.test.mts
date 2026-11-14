@@ -2,15 +2,23 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
-import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
-import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { linkSentence } from './test-support/report-readers.mts';
+import type { FixCommandCall, FixtureInvocationContext } from './test-support/fixture-types.mts';
+import { fieldAt } from '../../scripts/json/fields.mts';
+import { parseJson, textOf } from '../../shared/values/readers.mts';
 import { fileURLToPath } from 'node:url';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
-import { PROJECT_LAYER_VARIABLE } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { PROJECT_LAYER_VARIABLE as projectLayerVariable } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
+
+const anyNumber: unknown = expect.any(Number);
+const sha40: unknown = expect.stringMatching(exactText`${/[a-f0-9]{40}/}`);
+const sha64: unknown = expect.stringMatching(exactText`${/[a-f0-9]{64}/}`);
+const PROJECT_LAYER_VARIABLE: string = projectLayerVariable;
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -19,24 +27,24 @@ function isolatedCache() {
   return { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') };
 }
 
-function fixLines(stdout) {
+function fixLines(stdout: string): string {
   return stdout.slice(0, stdout.indexOf('Base: '));
 }
 
 function fixOrderObserver() {
-  const operations = [];
-  const operationsAtInvocations = [];
+  const operations: string[] = [];
+  const operationsAtInvocations: string[][] = [];
   const analyzer = fakeAnalyzer();
   return {
     operationsAtInvocations,
     analyzer: {
       ...analyzer,
-      createInvocation: (settings) => {
+      createInvocation: (settings: FixtureInvocationContext) => {
         operationsAtInvocations.push([...operations]);
         return analyzer.createInvocation(settings);
       },
     },
-    executeFixCommand: ({ operation }) => {
+    executeFixCommand: ({ operation }: FixCommandCall) => {
       operations.push(operation);
     },
   };
@@ -127,10 +135,11 @@ Full diagnostics: ${outputRoot}/report.txt
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
-      executeFixCommand({ operation }) {
+      executeFixCommand({ operation }: FixCommandCall) {
         if (operation === 'eslint-fix') {
           return { status: 2, stderr: '\u001B[31mfixture ESLint failure\u001B[39m' };
         }
+        return undefined;
       },
       stdout: output.stdout,
       stderr: output.stderr,
@@ -154,12 +163,12 @@ No new enforceable violations, but the run is incomplete:
 Full diagnostics: ${outputRoot}/report.txt
 `);
     expect(output.stderrText).toBe('');
-    expect(JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'))).toEqual({
+    expect(parseJson(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'))).toEqual({
       requestedBaseRef: repository.baseRef,
       resolvedBaseSha: repository.baseSha,
       mergeBaseSha: repository.baseSha,
-      headSha: expect.stringMatching(exactText`${/[a-f0-9]{40}/}`),
-      policyHash: expect.stringMatching(exactText`${/[a-f0-9]{64}/}`),
+      headSha: sha40,
+      policyHash: sha64,
       configOverrides: [],
       tools: [
         {
@@ -172,14 +181,14 @@ Full diagnostics: ${outputRoot}/report.txt
           resolved: 0,
           unchanged: 0,
           changedMetrics: 0,
-          baseElapsedMs: expect.any(Number),
-          headElapsedMs: expect.any(Number),
-          elapsedMs: expect.any(Number),
+          baseElapsedMs: anyNumber,
+          headElapsedMs: anyNumber,
+          elapsedMs: anyNumber,
         },
       ],
       exclusions: [],
       renamedPaths: 0,
-      elapsedMs: expect.any(Number),
+      elapsedMs: anyNumber,
       overallStatus: 'tool-error',
       newEnforceableFindings: 0,
       policyChanges: [],
@@ -188,7 +197,7 @@ Full diagnostics: ${outputRoot}/report.txt
       notices: [],
       mode: 'full',
     });
-    expect(JSON.parse(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual([
+    expect(parseJson(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual([
       {
         tool: 'eslint-fix',
         snapshot: 'fix',
@@ -209,15 +218,15 @@ Full diagnostics: ${outputRoot}/report.txt
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":false}\n]\n',
     });
     const output = captureOutput();
-    let checkedBasePath;
+    let checkedBasePath: string | undefined;
     const exitCode = runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
-      executeFixCommand({ operation, input }) {
+      executeFixCommand({ operation, input }: FixCommandCall) {
         if (operation === 'prettier-base-check') {
-          checkedBasePath = JSON.parse(input).files[0].filePath;
+          checkedBasePath = textOf(fieldAt(parseJson(input ?? ''), 'files', 0, 'filePath'));
         }
       },
       stdout: output.stdout,
@@ -407,18 +416,18 @@ Fix notes:
     writeFiles(repository.root, {
       'src/main/changed.ts': 'const changed = 1;\nexport const holder = { changed: changed };\n',
     });
-    const layers = [];
+    const layers: unknown[] = [];
     const output = captureOutput();
     const exitCode = runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
-      executeFixCommand({ operation, environment }) {
+      executeFixCommand({ operation, environment }: FixCommandCall) {
         if (operation !== 'eslint-fix') {
           return undefined;
         }
-        layers.push(JSON.parse(environment[PROJECT_LAYER_VARIABLE]));
+        layers.push(parseJson(environment?.[PROJECT_LAYER_VARIABLE] ?? ''));
         return { status: 0, stdout: '[]', stderr: '' };
       },
       stdout: output.stdout,

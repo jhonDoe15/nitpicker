@@ -2,11 +2,22 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { runTasksInProcess } from '../../diff/execution/test-support/in-process-analyzers.mjs';
+import { PACKAGE_ROOT as packageRoot } from '../../tooling/tool-resolution.mjs';
+import { runTasksInProcess } from '../../diff/execution/test-support/in-process-analyzers.mts';
 import { fixAnalysis } from './verify-analysis.mts';
 
-const roots = [];
+const PACKAGE_ROOT: string = packageRoot;
+
+type Roots = {
+  readonly projectRoot: string;
+  readonly projectPolicyRoot: string;
+  readonly liveProjectRoot: string;
+  readonly toolRoot: string;
+};
+
+type Call = Roots & { readonly source: string; readonly copyExistedDuringRun: boolean };
+
+const roots: string[] = [];
 
 function projectWithSource() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-verify-live-'));
@@ -17,14 +28,14 @@ function projectWithSource() {
   return root;
 }
 
-function recordingAnalyzer(seen) {
+function recordingAnalyzer(seen: Call[]) {
   return {
     name: 'typescript-typecheck',
     version: '1.0.0',
     configurationHash: 'fixture',
     exclusions: [],
     findingExitCodes: [1],
-    createInvocation(roots_) {
+    createInvocation(roots_: Roots) {
       seen.push({
         projectRoot: roots_.projectRoot,
         projectPolicyRoot: roots_.projectPolicyRoot,
@@ -38,7 +49,7 @@ function recordingAnalyzer(seen) {
   };
 }
 
-function verifyWith(live, seen) {
+function verifyWith(live: string, seen: Call[]) {
   return fixAnalysis({
     options: { quick: true, analyzerNames: [] },
     currentProjectRoot: live,
@@ -57,11 +68,18 @@ afterEach(() => {
 describe('--fix verification analysis', () => {
   it('analyzes a generated copy of the project as a head snapshot', () => {
     const live = projectWithSource();
-    const seen = [];
+    const seen: Call[] = [];
 
     verifyWith(live, seen);
 
-    const [call] = seen;
+    const call = seen[0] ?? {
+      projectRoot: '',
+      projectPolicyRoot: '',
+      liveProjectRoot: '',
+      toolRoot: '',
+      source: '',
+      copyExistedDuringRun: false,
+    };
     expect(seen).toHaveLength(1);
     expect(path.basename(call.projectRoot)).toBe('head');
     expect(path.basename(path.dirname(call.projectRoot)).startsWith('nitpicker-diff-fix-')).toBe(
@@ -78,11 +96,11 @@ describe('--fix verification analysis', () => {
   });
   it('removes the copy after the analysis and leaves the project untouched', () => {
     const live = projectWithSource();
-    const seen = [];
+    const seen: Call[] = [];
 
     verifyWith(live, seen);
 
-    expect(existsSync(path.dirname(seen[0].projectRoot))).toBe(false);
+    expect(existsSync(path.dirname(seen[0]?.projectRoot ?? ''))).toBe(false);
     expect(readFileSync(path.join(live, 'src/a.ts'), 'utf8')).toBe('export const a = 1;\n');
   });
 });

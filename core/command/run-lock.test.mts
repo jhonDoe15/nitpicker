@@ -4,7 +4,15 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { acquireRunLock, describeRunInProgress, isProcessAlive, withRunLock } from './run-lock.mts';
 
-const temporaryRoots = [];
+type RunLock = ReturnType<typeof acquireRunLock>;
+
+const temporaryRoots: string[] = [];
+
+function release(lock: RunLock): void {
+  if (lock.acquired) {
+    lock.release();
+  }
+}
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -26,7 +34,7 @@ describe('run lock', () => {
 
     expect(lock.acquired).toBe(true);
     expect(readFileSync(lockPath, 'utf8')).toBe('4242\n');
-    lock.release();
+    release(lock);
     expect(existsSync(lockPath)).toBe(false);
   });
 
@@ -38,7 +46,7 @@ describe('run lock', () => {
 
     expect(lock).toEqual({ acquired: false, holder: 1234 });
     expect(readFileSync(lockPath, 'utf8')).toBe('1234\n');
-    expect(describeRunInProgress(lock.holder)).toBe(
+    expect(describeRunInProgress(1234)).toBe(
       `nitpicker: another run is in progress in this project (pid 1234); wait for it to finish.\n`,
     );
   });
@@ -51,7 +59,7 @@ describe('run lock', () => {
 
     expect(lock.acquired).toBe(true);
     expect(readFileSync(lockPath, 'utf8')).toBe('4242\n');
-    lock.release();
+    release(lock);
   });
 
   it('takes over a lock without a readable pid and a lock left by this very pid', () => {
@@ -63,7 +71,7 @@ describe('run lock', () => {
     const second = acquireRunLock(lockPath, { pid: 4242, isAlive: () => true });
 
     expect(second.acquired).toBe(true);
-    second.release();
+    release(second);
     expect(existsSync(lockPath)).toBe(false);
   });
 
@@ -72,7 +80,7 @@ describe('run lock', () => {
     const lock = acquireRunLock(lockPath, { pid: 4242, isAlive: () => false });
     writeFileSync(lockPath, '9999\n');
 
-    lock.release();
+    release(lock);
 
     expect(readFileSync(lockPath, 'utf8')).toBe('9999\n');
   });
@@ -81,7 +89,7 @@ describe('run lock', () => {
     const lockPath = lockPathInTemporaryDirectory();
     const lockRoot = path.dirname(lockPath);
     const stderr = { write: () => undefined };
-    const seen = [];
+    const seen: boolean[] = [];
 
     const exitCode = withRunLock({ lockPath, projectRoot: lockRoot, stderr }, () => {
       seen.push(existsSync(lockPath));
@@ -118,7 +126,7 @@ describe('run lock', () => {
     const lock = acquireRunLock(lockPath);
 
     expect(lock.acquired).toBe(true);
-    lock.release();
+    release(lock);
   });
 
   it('removes the lock from the exit hook it registers, and unregisters the hook on release', () => {
@@ -126,11 +134,12 @@ describe('run lock', () => {
     const before = new Set(process.listeners('exit'));
 
     const lock = acquireRunLock(lockPath);
-    const [exitHook] = process.listeners('exit').filter((listener) => !before.has(listener));
-    exitHook();
+    for (const exitHook of process.listeners('exit').filter((listener) => !before.has(listener))) {
+      exitHook(0);
+    }
 
     expect(existsSync(lockPath)).toBe(false);
     expect(process.listeners('exit').filter((listener) => !before.has(listener))).toEqual([]);
-    lock.release();
+    release(lock);
   });
 });

@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { validateConfig } from '../../configuration/validate.mjs';
+import { validateConfig } from '../../configuration/validate.mts';
 import { RULE_IDS } from '../../../shared/policy.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { LEGACY_VIOLATION, usePythonFixtures } from '../python/test-support/python-cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { enforceableRules as enforceable } from '../test-support/report-readers.mts';
+import { LEGACY_VIOLATION, usePythonFixtures } from '../python/test-support/python-cli-harness.mts';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
 describe('exceptions with "preset": "python"', () => {
-  const config = (...entries) =>
+  const config = (...entries: readonly object[]) =>
     `${JSON.stringify(validateConfig({ preset: 'python', exceptions: entries }))}\n`;
   const lifted = {
     rule: RULE_IDS.functionParameters,
@@ -28,11 +29,6 @@ describe('exceptions with "preset": "python"', () => {
     parameters: 4,
   };
   const SOURCE = 'import os\n\n\ndef value():\n    return 2\n';
-  const enforceable = (result) =>
-    result
-      .json('new-findings.json')
-      .filter(({ classification }) => classification === 'enforceable')
-      .map(({ rule, symbol }) => [rule, symbol]);
 
   it('fails the same wide method without the exception', () => {
     const root = pythonRepository();
@@ -76,7 +72,7 @@ describe('exceptions with "preset": "python"', () => {
   });
 
   it('keeps a legacy print unchanged when the change removes the python.exceptions entry that lifted it', () => {
-    const lintedConfig = (...entries) =>
+    const lintedConfig = (...entries: readonly object[]) =>
       `${JSON.stringify(validateConfig({ preset: 'python', python: { exceptions: entries } }))}\n`;
     const root = pythonRepository({
       'nitpicker.config.json': lintedConfig({

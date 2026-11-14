@@ -3,15 +3,18 @@ import { parseArguments } from '../arguments.mts';
 import { policyAcceptance } from './policy-acceptance.mts';
 
 const DIGEST = '0a1b2c3d4e5f';
-const variable = (value, ci) => ({
+const variable = (value: string, ci?: string) => ({
   NITPICKER_ACCEPT_POLICY_CHANGE: value,
   ...(ci === undefined ? {} : { CI: ci }),
 });
 
 describe('policyAcceptance', () => {
   it('honours the flag only at an interactive terminal and the variable only in CI', () => {
-    const accepted = (options, environment, interactive) =>
-      policyAcceptance(options, environment, interactive).acceptPolicyChange;
+    const accepted = (
+      options: { readonly acceptPolicyChange?: string },
+      environment: NodeJS.ProcessEnv,
+      interactive: boolean,
+    ) => policyAcceptance(options, environment, interactive).acceptPolicyChange;
 
     expect([
       accepted({}, {}, true),

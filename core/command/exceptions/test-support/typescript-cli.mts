@@ -1,23 +1,25 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
-import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mjs';
-import { withoutHelpUris } from '../../../diff/reporting/test-support/report-reading.mjs';
-import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
+import { captureOutput } from '../../../diff/reporting/test-support/output-capture.mts';
+import { withoutHelpUris } from '../../../diff/reporting/test-support/report-reading.mts';
+import { parseJson } from '../../../../shared/values/readers.mts';
+import type { RunNitpickerCli, TypescriptCli } from '../../test-support/fixture-types.mts';
+import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
 
 const COMPARISON_BASE_REF = 'comparison-base';
 
-function readReport(reports, name) {
+function readReport(reports: string, name: string): unknown {
   const file = path.resolve(reports, name);
   if (!file.startsWith(reports + path.sep)) {
     throw new Error(`report outside the output folder: ${name}`);
   }
-  return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
+  return withoutHelpUris(parseJson(readFileSync(file, 'utf8')));
 }
 
-export function useTypescriptCli(runCli) {
+export function useTypescriptCli(runCli: RunNitpickerCli): TypescriptCli {
   const git = useGitFixtures();
 
-  function typescriptRepository(files) {
+  function typescriptRepository(files?: Readonly<Record<string, string>>): string {
     const { root } = git.createGitRepository(
       {
         '.gitignore': 'node_modules/\n',
@@ -34,7 +36,7 @@ export function useTypescriptCli(runCli) {
     return root;
   }
 
-  function runTypescript(root, analyzers) {
+  function runTypescript(root: string, analyzers: readonly string[]) {
     const reports = path.join(git.temporaryRoot('nitpicker-typescript-out-'), 'reports');
     const output = captureOutput();
     const exitCode = runCli({
@@ -53,7 +55,7 @@ export function useTypescriptCli(runCli) {
     });
     return {
       exitCode,
-      json: (name) => readReport(reports, name),
+      json: (name: string) => readReport(reports, name),
       text: output.stdoutText + output.stderrText,
     };
   }

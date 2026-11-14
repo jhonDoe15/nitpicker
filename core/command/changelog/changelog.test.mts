@@ -3,9 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mts';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
 import { changelogSection, changelogVersions, runChangelogCommand } from './changelog.mts';
-import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
+import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import { checkoutModulePath as moduleSourcePath } from '../../../shared/paths/checkout-module.mjs';
+
+const checkoutModulePath: (file: string) => string = moduleSourcePath;
 
 const root = path.resolve(import.meta.dirname, '../../..');
 const SAMPLE = [
@@ -28,17 +31,21 @@ const SAMPLE = [
   '',
 ].join('\n');
 const text = readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
-const { version } = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+const version = textOf(
+  fieldOf(parseJson(readFileSync(path.join(root, 'package.json'), 'utf8')), 'version'),
+);
 
-const STATIC_IMPORT = /^\s*(?:import|export)\s(?:[^'"]*?\sfrom\s)?['"]([^'"]+)['"]/gmu;
+const STATIC_IMPORT = /^\s*(?:import|export)\s(?!type\s)(?:[^'"]*?\sfrom\s)?['"]([^'"]+)['"]/gmu;
 
-function packagesImportedFrom(entry) {
-  const visit = (file, seen) => {
+function packagesImportedFrom(entry: string): string[] {
+  const visit = (file: string, seen: Set<string>): string[] => {
     if (seen.has(file)) {
       return [];
     }
     seen.add(file);
-    const specifiers = [...readFileSync(file, 'utf8').matchAll(STATIC_IMPORT)].map(([, s]) => s);
+    const specifiers = [...readFileSync(file, 'utf8').matchAll(STATIC_IMPORT)].map(
+      ([, s]) => s ?? '',
+    );
     return specifiers.flatMap((specifier) => {
       if (specifier.startsWith('.')) {
         return visit(path.resolve(path.dirname(file), specifier), seen);
@@ -49,7 +56,7 @@ function packagesImportedFrom(entry) {
   return visit(entry, new Set());
 }
 
-function changelogCli(...arguments_) {
+function changelogCli(...arguments_: readonly string[]) {
   const output = captureOutput();
   const exitCode = runCli({
     arguments_: ['changelog', ...arguments_],
@@ -112,8 +119,8 @@ describe('CHANGELOG.md', () => {
   });
 });
 
-function printed(version) {
-  const { heading, body } = changelogSection(text, version);
+function printed(version: string): string {
+  const { heading, body } = changelogSection(text, version) ?? { heading: '', body: '' };
   return `${heading}\n\n${body}\n`;
 }
 
