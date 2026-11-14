@@ -1,4 +1,4 @@
-import { FS, NODE_TEST, VITEST, runCases } from './test-support/rule-cases.mjs';
+import { FS, NODE_TEST, VITEST, runCases } from './test-support/rule-cases.mts';
 
 runCases('no-unowned-async-assertion waits the test can see', {
   valid: [

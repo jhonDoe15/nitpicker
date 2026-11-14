@@ -1,4 +1,4 @@
-import { NODE_TEST, VITEST, runCases } from './test-support/rule-cases.mjs';
+import { NODE_TEST, VITEST, runCases } from './test-support/rule-cases.mts';
 
 runCases('no-unowned-async-assertion plans, promises and done', {
   valid: [
