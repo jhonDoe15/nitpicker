@@ -5,6 +5,7 @@ import tseslint from 'typescript-eslint';
 import { ESLint } from 'eslint';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { frameworkConventions } from '../scope-support.mjs';
 import { nestClassMessage } from './nest-forms.mjs';
@@ -26,7 +27,9 @@ const defaultsDirectory = path.join(path.dirname(fileURLToPath(import.meta.url))
 async function presetRulesFor(manifest, file) {
   const root = projectWith(manifest);
   vi.stubEnv('NITPICKER_DIFF_ESLINT_PROJECT_ROOT', root);
-  const configUrl = pathToFileURL(path.join(defaultsDirectory, 'eslint.config.mjs'));
+  const configUrl = pathToFileURL(
+    checkoutModulePath(path.join(defaultsDirectory, 'eslint.config.mjs')),
+  );
   const { default: config } = await import(`${configUrl.href}?nest=${encodeURIComponent(root)}`);
   const eslint = new ESLint({
     cwd: defaultsDirectory,

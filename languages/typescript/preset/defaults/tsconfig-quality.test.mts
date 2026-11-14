@@ -1,19 +1,23 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import { resolveLayout } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mjs';
 
-const ts = createRequire(import.meta.url)('typescript');
+const layoutTransformFor: (
+  name: string,
+  layout: ReturnType<typeof resolveLayout>,
+) => ((text: string, configPath: string) => string) | undefined = untypedLayoutTransformFor;
+const ts = typescriptApi();
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-tsconfig-quality-'));
 
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function programFiles(files) {
+function programFiles(files: readonly string[]) {
   for (const file of files) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), 'export {};');
@@ -21,8 +25,8 @@ function programFiles(files) {
   const configPath = path.join(root, '.nitpicker-diff-tsconfig.json');
   const shipped = readFileSync(path.join(import.meta.dirname, 'tsconfig.quality.json'), 'utf8');
   const transform = layoutTransformFor('tsconfig.quality.json', resolveLayout());
-  writeFileSync(configPath, transform(shipped, configPath));
-  const { config } = ts.readConfigFile(configPath, ts.sys.readFile);
+  writeFileSync(configPath, transform?.(shipped, configPath) ?? shipped);
+  const config: unknown = ts.readConfigFile(configPath, (file) => ts.sys.readFile(file)).config;
   return ts
     .parseJsonConfigFileContent(config, ts.sys, root, undefined, configPath)
     .fileNames.map((name) => path.relative(root, name))

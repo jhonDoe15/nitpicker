@@ -1,10 +1,7 @@
 import { format as formatOutput } from 'node:util';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { cruise } from '../dependency-graph/cruise.mjs';
-import { analyzeEntryPoints } from './analyze.mjs';
-import { existingRoots } from '../layout.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { analyzeEntryPoints, cruise, existingRoots, readLayout } from './typed/typed-analysis.mts';
 
 const layout = readLayout();
 const { sourceRoot } = layout;
@@ -30,7 +27,7 @@ process.stdout.write(
 for (const finding of report.publicAlternativeBypasses) {
   process.stdout.write(
     formatOutput(
-      `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${finding.publicEntryPoint})`,
+      `PUBLIC ALTERNATIVE\t${finding.source} -> ${finding.target} (use ${String(finding.publicEntryPoint)})`,
     ) + '\n',
   );
 }

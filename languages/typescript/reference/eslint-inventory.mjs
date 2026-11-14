@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const run = promisify(execFile);
@@ -233,7 +234,10 @@ export function writeEslintInventory(text) {
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [variant, root] = process.argv.slice(2);
   const configs = await Promise.all(
-    ESLINT_CONFIGS.map(async ([tool, url]) => [tool, (await import(url.href)).default]),
+    ESLINT_CONFIGS.map(async ([tool, url]) => [
+      tool,
+      (await import(checkoutModuleUrl(url).href)).default,
+    ]),
   );
   const inventory = await inventoryOfConfigs({
     configs,

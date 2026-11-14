@@ -10,12 +10,13 @@ import { POLICY_FILES } from '../../checks/policy-files.mjs';
 import { resolveHeadPolicy } from '../../head-policy.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import { isStrictRule, strictEslintRuleIds } from '../../strict-rules.mjs';
+import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { i18nOffRules, i18nRuleIds, i18nRuleNames, i18nRules } from './i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from './i18n-scope.mjs';
 
 const layout = resolveLayout();
 const presetConfigUrl = pathToFileURL(
-  path.join(import.meta.dirname, '../../defaults/eslint.config.mjs'),
+  checkoutModulePath(path.join(import.meta.dirname, '../../defaults/eslint.config.mjs')),
 );
 const temporaryRoots = [];
 let importCount = 0;

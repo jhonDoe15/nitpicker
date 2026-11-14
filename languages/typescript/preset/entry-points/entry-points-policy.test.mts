@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
-import { analyzeEntryPoints } from './analyze.mjs';
+import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mts';
+import { analyzeEntryPoints } from './typed/typed-analysis.mts';
 
 const fixtureRoot = 'languages/typescript/preset/entry-points/fixtures';
-const options = { foundationDirectories: new Set() };
+const matching = (pattern: RegExp): unknown => expect.stringMatching(pattern);
+const options = { foundationDirectories: new Set<string>() };
 
 describe('production entry-point policy', () => {
   it('accepts public, same-component, and composition-root imports', async () => {
@@ -62,8 +63,8 @@ describe('production entry-point policy', () => {
         publicEntryPoint: `${sourceRoot}/beta/index.ts`,
       },
       {
-        source: expect.stringMatching(/root-plugin\.ts$/),
-        target: expect.stringMatching(/beta\/public\.ts$/),
+        source: matching(/root-plugin\.ts$/),
+        target: matching(/beta\/public\.ts$/),
         sourceComponent: '(root)',
         targetComponent: 'beta',
         dependencyKind: 'runtime',

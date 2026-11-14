@@ -1,16 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
-import { analyzeCoupling } from './analyze.mjs';
-import { LIBRARY_ROOT, libraryGraph } from './test-support/library-graph.mjs';
+import { libraryProject as untypedLibraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { analyzeCoupling, type CouplingOptions } from './test-support/analyze-view.mts';
+import { LIBRARY_ROOT, libraryGraph } from './test-support/library-graph.mts';
+
+const libraryProject: (options?: {
+  readonly withFines?: boolean;
+  readonly adaptersImplementFace?: boolean;
+}) => { readonly uses: string[][] } = untypedLibraryProject;
 
 const FIX =
   "Depend on the other side's public face, or move the code that joins them into the composition root.";
 
-function directions(uses, options) {
+function directions(uses: readonly (readonly string[])[], options?: CouplingOptions) {
   return analyzeCoupling(libraryGraph(uses), LIBRARY_ROOT, options).stabilityDirection;
 }
 
-function pairs(found) {
+function onlyDirection<T>(found: readonly T[]): T {
+  const [first] = found;
+  if (first === undefined) {
+    throw new RangeError('Expected a stability direction');
+  }
+  return first;
+}
+
+function pairs(found: readonly { readonly source: string; readonly target: string }[]) {
   return found.map(({ source, target }) => `${source} -> ${target}`);
 }
 
@@ -30,16 +43,18 @@ describe('stability direction over TypeScript features, with the default source 
 
   it('measures shared code as its own folder against whole features', () => {
     const { uses } = libraryProject({ withFines: true });
-    const [{ cause, ...direction }] = directions([...uses, ['shared', 'members:face']]);
+    const { cause, sourceInstability, targetInstability, delta, ...direction } = onlyDirection(
+      directions([...uses, ['shared', 'members:face']]),
+    );
 
     expect(direction).toEqual({
       source: 'src/main/shared',
       target: 'src/main/features/members',
-      sourceInstability: expect.closeTo(0.1111, 4),
-      targetInstability: expect.closeTo(0.2, 4),
-      delta: expect.closeTo(0.0889, 4),
       message: `Keep feature dependencies pointing at more stable units: folder src/main/shared (instability 0.1111) depends on feature src/main/features/members (instability 0.2). ${FIX}`,
     });
+    expect(sourceInstability).toBeCloseTo(0.1111, 4);
+    expect(targetInstability).toBeCloseTo(0.2, 4);
+    expect(delta).toBeCloseTo(0.0889, 4);
     expect(cause.folders).toEqual(['src/main/shared']);
   });
 

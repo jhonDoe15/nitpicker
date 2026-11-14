@@ -3,48 +3,48 @@ import { defineConfig } from 'eslint/config';
 import vitest from '@vitest/eslint-plugin';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import { nitpickerRules } from '../eslint-plugin/index.mjs';
-import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
-import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import {
   UNUSED_PARAMETERS,
-  usesRouteHandlerFramework,
-  productionLayoutConfigFor,
-} from '../eslint-config/policy/production-policy.mjs';
-import { applyRuleExceptions } from '../eslint-config/exceptions.mjs';
-import { logicConfigFor } from '../eslint-config/logic/logic-rules.mjs';
-import {
-  applyJavascriptDialect,
-  scriptRuleEntries,
-} from '../../../javascript/preset/eslint-dialect.mjs';
-import { reactRuleIds, reactTestRuleIds } from '../eslint-config/react/react-rules.mjs';
-import {
   analyzedProjectRoot,
+  applyJavascriptDialect,
+  applyRuleExceptions,
+  assertionFunctionNames,
+  detachedWorkRunnerNames,
+  errorWrappingPolicy,
+  existingRoots,
+  fileNameRuleOptions,
+  i18nRuleIds,
+  i18nScopeConfigFor,
+  isI18nProject,
+  isNestProject,
   isReactProject,
+  isServerProject,
+  logicConfigFor,
+  nestScopeConfigFor,
+  nitpickerRules,
+  precedenceLayers,
+  productionLayoutConfigFor,
+  reactRuleIds,
   reactScopeConfigFor,
-} from '../eslint-config/react/react-scope.mjs';
-import { testHonestyConfigFor } from '../eslint-config/test-honesty/index.mjs';
-import { setupFilesIn } from '../eslint-config/test-honesty/setup-files.mjs';
-import { stubRestoresIn } from '../eslint-config/test-honesty/stub-restores.mjs';
-import { readDependencyNames } from '../eslint-config/scope-support.mjs';
-import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
-import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
-import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
-import { isServerProject, serverScopeConfigFor } from '../eslint-config/server/server-scope.mjs';
-import { serverRuleIds } from '../eslint-config/server/server-rules.mjs';
-import { isNestProject } from '../eslint-config/nest/nest-project.mjs';
-import { nestScopeConfigFor } from '../eslint-config/nest/nest-scope.mjs';
-import { readHeadPolicy, readLayout } from '../head-policy.mjs';
-import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
-import { existingRoots } from '../layout.mjs';
-import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
-import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
-import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
-import { detachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
-import {
+  reactTestRuleIds,
+  readDependencyNames,
+  readHeadPolicy,
+  readLayout,
+  scriptRuleEntries,
+  securityFactsFor,
+  serverRuleIds,
+  serverScopeConfigFor,
+  setupFilesIn,
+  strictPresetConfig,
+  stubRestoresIn,
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
-} from '../test-environment/test-environment-config.mts';
+  testHonestyConfigFor,
+  typeImportFixStyle,
+  usesRouteHandlerFramework,
+  type Entry,
+  type ParserOptions,
+} from './eslint-inputs.mts';
 
 const policy = readHeadPolicy();
 
@@ -64,14 +64,26 @@ const security = securityFactsFor(analyzedProjectRoot(), (file) => layout.isSour
 const server = isServerProject(analyzedProjectRoot());
 const nest = isNestProject(analyzedProjectRoot());
 const { sourceGlobs, testGlobs, excludedGlobs, unitTestGlobs } = layout;
-const parserOptions = {
+const parserOptions: ParserOptions = {
   project: './tsconfig.quality.json',
   tsconfigRootDir: import.meta.dirname,
 };
-const productionFiles = sourceGlobs;
+const productionFiles = [...sourceGlobs];
 const testFiles = [...testGlobs, ...layout.sourceTestDirectoryGlobs];
 const VITEST_TYPE_TEST_FILES = ['**/*.{test,spec}-d.?(c|m)[jt]s?(x)'];
 const selectedFiles = [...productionFiles, ...testFiles];
+
+const endToEndEntries: Entry[] =
+  layout.endToEndGlobs.length === 0
+    ? []
+    : [
+        {
+          files: [...layout.endToEndGlobs],
+          rules: {
+            'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }],
+          },
+        },
+      ];
 
 const presetConfig = defineConfig(
   {
@@ -125,20 +137,12 @@ const presetConfig = defineConfig(
     detachedWorkRunners: detachedWorkRunnerNames(policy.conventions),
   }),
   ...productionLayoutConfigFor(layout, { react }),
-  ...(layout.endToEndGlobs.length === 0
-    ? []
-    : [
-        {
-          files: layout.endToEndGlobs,
-          rules: { 'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }] },
-        },
-      ]),
+  ...endToEndEntries,
   ...(react ? await reactScopeConfigFor(layout, policy.react) : []),
   ...(i18n ? await i18nScopeConfigFor(layout, policy.i18n) : []),
   ...(server ? serverScopeConfigFor(layout, { browser: react || security.browser }) : []),
   ...(nest ? nestScopeConfigFor(selectedFiles) : []),
   {
-    // eslint-errors reports this rule for all production code; reporting it here too lists every
     files: productionFiles,
     ignores: testFiles,
     plugins: { nitpicker: nitpickerRules },
@@ -201,7 +205,7 @@ const presetConfig = defineConfig(
     },
   },
   {
-    files: unitTestGlobs,
+    files: [...unitTestGlobs],
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testHonestyConfigFor(layout, {

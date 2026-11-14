@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveLayout } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
+import { layoutTransformFor as untypedLayoutTransformFor } from '../tool-configs.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+
+const layoutTransformFor: (
+  name: string,
+  layout: ReturnType<typeof resolveLayout>,
+) => ((text: string, configPath: string) => string) | undefined = untypedLayoutTransformFor;
 
 const FLAGS = [
   'exactOptionalPropertyTypes',
@@ -19,7 +25,7 @@ const shippedStryker = readFileSync(
   'utf8',
 );
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots.splice(0)) {
@@ -27,34 +33,39 @@ afterAll(() => {
   }
 });
 
-function typeCheckConfig(layout, { withProjectConfig }) {
+function typeCheckConfig(
+  layout: ReturnType<typeof resolveLayout>,
+  { withProjectConfig }: { readonly withProjectConfig: boolean },
+): unknown {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-flags-'));
   roots.push(root);
   if (withProjectConfig) {
     writeFileSync(path.join(root, 'tsconfig.json'), '{}');
   }
   const transform = layoutTransformFor('tsconfig.quality.json', layout);
-  return JSON.parse(transform(shippedQuality, path.join(root, '.nitpicker-x.json')))
-    .compilerOptions;
+  return fieldOf(
+    JSON.parse(transform?.(shippedQuality, path.join(root, '.nitpicker-x.json')) ?? shippedQuality),
+    'compilerOptions',
+  );
 }
 
 describe('TypeScript-only compiler flags of the type check', () => {
   it('ship in the default tsconfig', () => {
-    const { compilerOptions } = JSON.parse(shippedQuality);
+    const compilerOptions = fieldOf(JSON.parse(shippedQuality), 'compilerOptions');
 
-    expect(FLAGS.map((flag) => compilerOptions[flag])).toEqual([true, true, true]);
+    expect(FLAGS.map((flag) => fieldOf(compilerOptions, flag))).toEqual([true, true, true]);
   });
 
   it('sit on top of the project tsconfig', () => {
     const options = typeCheckConfig(resolveLayout(), { withProjectConfig: true });
 
-    expect(FLAGS.map((flag) => options[flag])).toEqual([true, true, true]);
+    expect(FLAGS.map((flag) => fieldOf(options, flag))).toEqual([true, true, true]);
   });
 
   it('are off for a JavaScript project, with or without its own tsconfig', () => {
     const flagValues = [true, false].map((withProjectConfig) => {
       const options = typeCheckConfig(javascriptLayout, { withProjectConfig });
-      return FLAGS.map((flag) => options[flag] ?? false);
+      return FLAGS.map((flag) => fieldOf(options, flag) ?? false);
     });
 
     expect(flagValues).toEqual([
@@ -64,8 +75,12 @@ describe('TypeScript-only compiler flags of the type check', () => {
   });
 
   it('are not part of the mutation tsconfig', () => {
-    const { compilerOptions } = JSON.parse(shippedStryker);
+    const compilerOptions = fieldOf(JSON.parse(shippedStryker), 'compilerOptions');
 
-    expect(FLAGS.map((flag) => flag in compilerOptions)).toEqual([false, false, false]);
+    expect(FLAGS.map((flag) => fieldOf(compilerOptions, flag) !== undefined)).toEqual([
+      false,
+      false,
+      false,
+    ]);
   });
 });

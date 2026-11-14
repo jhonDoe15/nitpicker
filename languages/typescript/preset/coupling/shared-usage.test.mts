@@ -3,22 +3,36 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { resolveLayout } from '../layout.mjs';
-import { analyzeCoupling } from './analyze.mjs';
-import { sharedUsedByOneFeature } from './shared-usage.mjs';
+import {
+  analyzeCoupling,
+  sharedUsedByOneFeature,
+  type SharedUsage,
+} from './test-support/analyze-view.mts';
 
-const module = (source, ...targets) => ({
+const module = (source: string, ...targets: readonly string[]) => ({
   source,
   dependencies: targets.map((resolved) => ({ resolved, dependencyTypes: ['local'] })),
 });
 
-function usage(modules, { sourceRoot = 'src', layout = resolveLayout(), analyze } = {}) {
+function usage(
+  modules: readonly ReturnType<typeof module>[],
+  {
+    sourceRoot = 'src',
+    layout = resolveLayout(),
+    analyze,
+  }: {
+    readonly sourceRoot?: string;
+    readonly layout?: ReturnType<typeof resolveLayout>;
+    readonly analyze?: SharedUsage;
+  } = {},
+) {
   const sharedUsage = analyze ?? sharedUsedByOneFeature;
   return sharedUsage({ modules }, { sourceRoot, isProduction: layout.isSourceFile }).map(
     ({ source, feature, directory }) => [source, feature, directory],
   );
 }
 
-async function analyzerForRoots(sourceRoots) {
+async function analyzerForRoots(sourceRoots: readonly string[]): Promise<SharedUsage> {
   const directory = mkdtempSync(path.join(tmpdir(), 'shared-usage-'));
   const policyFile = path.join(directory, 'policy.json');
   writeFileSync(policyFile, JSON.stringify({ layout: { sourceRoots } }));

@@ -1,14 +1,29 @@
 import path from 'node:path';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { cruise as runDependencyCruiser } from 'dependency-cruiser';
-import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
-import { readLayout } from '../../head-policy.mjs';
+import { cruise as runDependencyCruiser, type ICruiseResult } from 'dependency-cruiser';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { readLayout as untypedReadLayout } from '../../head-policy.mjs';
+import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import {
   EXCLUDED_PATH_PATTERN,
   POLICY_TYPESCRIPT_CONFIG,
   TYPESCRIPT_CONFIG_ENVIRONMENT,
-  dependencyGraphTsconfig,
+  dependencyGraphTsconfig as untypedDependencyGraphTsconfig,
 } from '../cruise.mjs';
+import type { Layout } from '../../../adapters/typed/head-policy.mts';
+
+const ts = typescriptApi();
+
+const readLayout: () => Layout & { readonly excludePattern?: string | undefined } =
+  untypedReadLayout;
+
+const linkPolicyFile: (
+  source: string,
+  target: string,
+  transform: (text: string, targetPath: string) => string,
+) => { readonly targetPath: string; readonly remove: () => void } = untypedLinkPolicyFile;
+
+const dependencyGraphTsconfig: (layout: Layout) => (text: string, targetPath: string) => string =
+  untypedDependencyGraphTsconfig;
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../../..');
 
@@ -16,7 +31,7 @@ async function importConfigWithPlaceholderTypeScriptConfig() {
   const previous = process.env[TYPESCRIPT_CONFIG_ENVIRONMENT];
   process.env[TYPESCRIPT_CONFIG_ENVIRONMENT] = path.join(projectRoot, POLICY_TYPESCRIPT_CONFIG);
   try {
-    const { default: config } = await import('../dependency-cruiser.config.mjs');
+    const { default: config } = await import('../dependency-cruiser.config.mts');
     return config;
   } finally {
     if (previous === undefined) {
@@ -27,7 +42,7 @@ async function importConfigWithPlaceholderTypeScriptConfig() {
   }
 }
 
-function parseTypeScriptConfig(fileName) {
+function parseTypeScriptConfig(fileName: string) {
   return ts.parseJsonConfigFileContent(
     ts.readConfigFile(fileName, (file) => ts.sys.readFile(file)).config,
     ts.sys,
@@ -37,7 +52,7 @@ function parseTypeScriptConfig(fileName) {
   );
 }
 
-function cruiseOptions(ruleSet) {
+function cruiseOptions(ruleSet: object) {
   return {
     ruleSet,
     validate: true,
@@ -50,20 +65,34 @@ function cruiseOptions(ruleSet) {
   };
 }
 
-function graphOf(report) {
+function isGraph(value: unknown): value is ICruiseResult {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'modules' in value &&
+    Array.isArray(value.modules)
+  );
+}
+
+function graphOf(report: { readonly output: unknown; readonly exitCode: number }): ICruiseResult {
   const output = typeof report.output === 'string' ? report.output : JSON.stringify(report.output);
   if (report.exitCode !== 0) {
     throw new Error(`dependency-cruiser failed with exit ${String(report.exitCode)}:\n${output}`);
   }
-  const graph = JSON.parse(output);
-  if (!Array.isArray(graph.modules)) {
+  const graph: unknown = JSON.parse(output);
+  if (!isGraph(graph)) {
     throw new TypeError('dependency-cruiser report is missing its modules array');
   }
   return graph;
 }
 
-export async function cruiseInProcess(paths, { typeScriptRoot = projectRoot } = {}) {
-  if (paths.length === 0) return { modules: [] };
+export async function cruiseInProcess(
+  paths: readonly string[],
+  { typeScriptRoot = projectRoot }: { readonly typeScriptRoot?: string } = {},
+): Promise<ICruiseResult | { readonly modules: [] }> {
+  if (paths.length === 0) {
+    return { modules: [] };
+  }
   const config = await importConfigWithPlaceholderTypeScriptConfig();
   const linkedConfig = linkPolicyFile(
     path.join(projectRoot, POLICY_TYPESCRIPT_CONFIG),
@@ -74,9 +103,14 @@ export async function cruiseInProcess(paths, { typeScriptRoot = projectRoot } = 
     dependencyGraphTsconfig(readLayout()),
   );
   try {
-    const ruleSet = structuredClone(config);
-    ruleSet.options.baseDir = projectRoot;
-    ruleSet.options.tsConfig.fileName = linkedConfig.targetPath;
+    const ruleSet = {
+      ...structuredClone(config),
+      options: {
+        ...structuredClone(config.options),
+        baseDir: projectRoot,
+        tsConfig: { fileName: linkedConfig.targetPath },
+      },
+    };
     const tsConfig = parseTypeScriptConfig(linkedConfig.targetPath);
     const report = await runDependencyCruiser(
       paths.map((value) => path.resolve(projectRoot, value)),
