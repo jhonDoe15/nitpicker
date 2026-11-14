@@ -1,31 +1,20 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule } from './no-weak-assertion.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const tester = typescriptRuleTester();
 const filename = '/repo/test/orders.test.ts';
 
-function flagged(code, messageId, found, absent = '') {
+function flagged(code: string, messageId: string, found: string, absent = '') {
   return { filename, code, errors: [{ messageId, data: { found, absent } }] };
 }
 
-const presence = (code, found, absent) => flagged(code, 'presenceMatcher', found, absent);
-const nonEmpty = (code, found) => flagged(code, 'nonEmptyMatcher', found);
-const wildcard = (code, found) => flagged(code, 'wildcardCall', found);
-const assertPresence = (code, found, absent) => flagged(code, 'presenceAssert', found, absent);
-const assertNonEmpty = (code, found) => flagged(code, 'nonEmptyAssert', found);
+const presence = (code: string, found: string, absent: string) =>
+  flagged(code, 'presenceMatcher', found, absent);
+const nonEmpty = (code: string, found: string) => flagged(code, 'nonEmptyMatcher', found);
+const wildcard = (code: string, found: string) => flagged(code, 'wildcardCall', found);
+const assertPresence = (code: string, found: string, absent: string) =>
+  flagged(code, 'presenceAssert', found, absent);
+const assertNonEmpty = (code: string, found: string) => flagged(code, 'nonEmptyAssert', found);
 
 tester.run('no-weak-assertion presence', rule, {
   valid: [

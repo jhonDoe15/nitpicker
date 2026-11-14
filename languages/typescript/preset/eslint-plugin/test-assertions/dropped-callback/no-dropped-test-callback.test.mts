@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-dropped-test-callback.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-dropped-callback-')));
@@ -42,7 +42,11 @@ const PRELUDE = [
   'declare function schedule(task: () => () => void): () => void;',
 ].join('\n');
 
-function typed(body, errors = 0) {
+type Typed = { filename: string; code: string };
+
+function typed(body: string, errors?: 0): Typed;
+function typed(body: string, errors: number): Typed & { errors: { messageId: string }[] };
+function typed(body: string, errors = 0) {
   const file = path.join(root, `src/case-${randomUUID()}.ts`);
   const code = `${PRELUDE}\n${body}`;
   writeFileSync(file, code);

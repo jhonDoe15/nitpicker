@@ -5,6 +5,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { rule } from './no-copied-constant.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const SOURCES = {
   'tsconfig.json': JSON.stringify({
@@ -51,7 +52,7 @@ const SOURCES = {
   'test/helpers/values.ts': 'export const HELPER_LIMIT = 123;',
 };
 
-let root;
+let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-copied-constants-'));
@@ -65,17 +66,17 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function lint(code, file = 'test/limits.test.ts') {
-  const config = {
+function lint(code: string, file = 'test/limits.test.ts') {
+  const config: Linter.Config = {
     files: ['**/*.{ts,js}'],
     languageOptions: { parser: tseslint.parser },
-    plugins: { local: { rules: { 'no-copied-constant': rule } } },
+    plugins: { local: { rules: { 'no-copied-constant': ruleModule(rule) } } },
     rules: { 'local/no-copied-constant': 'error' },
   };
   return new Linter({ cwd: root }).verify(code, config, { filename: path.join(root, file) });
 }
 
-function reported(code, file) {
+function reported(code: string, file?: string) {
   return lint(code, file).map(({ line, message }) => ({ line, message }));
 }
 
@@ -92,10 +93,10 @@ describe('no-copied-constant', () => {
     );
 
     expect(messages.map(({ line }) => line)).toEqual([3, 4]);
-    expect(messages[0].message).toBe(
+    expect(messages[0]?.message).toBe(
       'This literal copies MAX_ITEMS from ../src/limits: when MAX_ITEMS changes, the test keeps checking the old value or stops testing the case it was written for. Use MAX_ITEMS (or an expression on it, such as MAX_ITEMS + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect(MAX_ITEMS).toBe(50).',
     );
-    expect(messages[1].message).toBe(
+    expect(messages[1]?.message).toBe(
       'This literal copies DEFAULT_REGION from ../src/limits: when DEFAULT_REGION changes, the test keeps checking the old value or stops testing the case it was written for. Use DEFAULT_REGION (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect(DEFAULT_REGION).toBe("eu-west-1").',
     );
   });
@@ -120,7 +121,7 @@ describe('no-copied-constant', () => {
   });
 
   it('names every constant that holds the value and every module it comes from', () => {
-    const [{ message }] = reported(
+    const [first] = reported(
       [
         "import { limit } from '../src/limits';",
         "import { OTHER_LIMIT } from '../src/other';",
@@ -129,7 +130,7 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(message).toBe(
+    expect(first?.message).toBe(
       'This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same: when BATCH_SIZE changes, the test keeps checking the old value or stops testing the case it was written for. Use BATCH_SIZE (or an expression on it, such as BATCH_SIZE + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect(BATCH_SIZE).toBe(50).',
     );
   });
@@ -201,7 +202,9 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(messages.map(({ line, message }) => `${line} ${message.split(':')[0]}`)).toEqual([
+    expect(
+      messages.map(({ line, message }) => `${String(line)} ${message.split(':')[0] ?? ''}`),
+    ).toEqual([
       '5 This literal copies MIN_BALANCE from ../src/limits',
       '6 This literal copies ROLE from ../src/roles',
       '8 This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same',
@@ -221,7 +224,9 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+    expect(
+      messages.map(({ line, message }) => `${String(line)} ${message.split(' from ')[0] ?? ''}`),
+    ).toEqual([
       '2 This literal copies Paging.PAGE_LIMIT',
       '4 This literal copies Paging.PAGE_LIMIT',
       '7 This literal copies Shared.LOCAL_KEY',
@@ -239,7 +244,9 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+    expect(
+      messages.map(({ line, message }) => `${String(line)} ${message.split(' from ')[0] ?? ''}`),
+    ).toEqual([
       '3 This literal copies Legacy.MAX_RETRIES',
       '5 This literal copies Pages.PAGE_LIMIT',
     ]);
@@ -256,9 +263,9 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
-      '2 This literal copies Settings.THEME_NAME',
-    ]);
+    expect(
+      messages.map(({ line, message }) => `${String(line)} ${message.split(' from ')[0] ?? ''}`),
+    ).toEqual(['2 This literal copies Settings.THEME_NAME']);
   });
 
   it('works in JavaScript test files', () => {
@@ -280,9 +287,9 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
-      '4 This literal copies PALETTE_SIZE',
-    ]);
+    expect(
+      messages.map(({ line, message }) => `${String(line)} ${message.split(' from ')[0] ?? ''}`),
+    ).toEqual(['4 This literal copies PALETTE_SIZE']);
   });
 
   it('reads a barrel constant the test imports by name, also through a namespace import', () => {
