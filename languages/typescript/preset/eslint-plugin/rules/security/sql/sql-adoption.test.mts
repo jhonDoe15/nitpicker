@@ -1,13 +1,14 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
-import { rule, taggedForm } from './no-sql-string-building.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
+import { rule, taggedForm as untypedTaggedForm } from './no-sql-string-building.mjs';
 
-const tester = createRuleTester();
-const built = (kind, library) => [
+const taggedForm: (library?: string) => string = untypedTaggedForm;
+const tester = typescriptRuleTester();
+const built = (kind: string, library?: string) => [
   { messageId: 'sqlBuilt', data: { kind, tagged: taggedForm(library) } },
 ];
 const template = built('a template literal');
 const concatenation = built('concatenation');
-const script = (code) => ({ code, filename: 'src/db.js' });
+const script = (code: string) => ({ code, filename: 'src/db.js' });
 
 tester.run('no-sql-string-building on prose and builders', rule, {
   valid: [
@@ -156,5 +157,5 @@ tester.run('no-sql-string-building on prose and builders', rule, {
     script(
       'export function find(db, name) { const conditions = []; conditions.push(name); return db.query(`SELECT * FROM users WHERE ${conditions.join(" AND ")}`); }',
     ),
-  ].map((entry) => (entry.errors === undefined ? { ...entry, errors: template } : entry)),
+  ].map((entry) => ('errors' in entry ? entry : { ...entry, errors: template })),
 });

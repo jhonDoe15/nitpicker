@@ -1,8 +1,8 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as noUnsafeDeserialization } from './no-unsafe-deserialization.mjs';
 
-const tester = createRuleTester();
-const code = (messageId, name) => [{ messageId, data: { name } }];
+const tester = typescriptRuleTester();
+const code = (messageId: string, name: string) => [{ messageId, data: { name } }];
 
 tester.run('no-unsafe-deserialization', noUnsafeDeserialization, {
   valid: [

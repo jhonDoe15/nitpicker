@@ -1,44 +1,14 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typedCaseProject } from '../../../test-support/projects/typed-ts-project.mts';
 import { rule } from './require-http-timeout.mjs';
 import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-http-typed-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022', 'DOM'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
+type Errors = { messageId: string; data: Record<string, string> }[];
 
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+const { tester, typed } = typedCaseProject<Errors>({
+  prefix: 'nitpicker-http-typed-',
+  lib: ['ES2022', 'DOM'],
+  header: 'import https from "node:https";\nimport type { RequestOptions } from "node:https";\n',
 });
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-const header =
-  'import https from "node:https";\nimport type { RequestOptions } from "node:https";\n';
-let counter = 0;
-
-function typed(body, errors) {
-  counter += 1;
-  const code = `${header}${body}`;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
 
 tester.run('require-http-timeout with types', withoutFixes(rule), {
   valid: [

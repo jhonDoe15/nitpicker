@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-secret-in-log.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/adapters/billing-client.ts';
 
-const logged = (name) => ({ messageId: 'secretInLog', data: { name: `\`${name}\`` } });
+const logged = (name: string) => ({ messageId: 'secretInLog', data: { name: `\`${name}\`` } });
 
 tester.run('no-secret-in-log', rule, {
   valid: [

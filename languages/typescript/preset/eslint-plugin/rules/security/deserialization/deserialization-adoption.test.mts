@@ -1,8 +1,8 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-unsafe-deserialization.mjs';
 
-const tester = createRuleTester();
-const code = (messageId, name) => [{ messageId, data: { name } }];
+const tester = typescriptRuleTester();
+const code = (messageId: string, name: string) => [{ messageId, data: { name } }];
 const legacy = [{ yamlMajor: 3 }];
 
 tester.run('no-unsafe-deserialization with clones, versions and import forms', rule, {

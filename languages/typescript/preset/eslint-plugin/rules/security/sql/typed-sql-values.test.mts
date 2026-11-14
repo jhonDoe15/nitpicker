@@ -1,9 +1,10 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
-import { rule, taggedForm } from './no-sql-string-building.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
+import { rule, taggedForm as untypedTaggedForm } from './no-sql-string-building.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-sql-typed-')));
 writeFileSync(
@@ -28,14 +29,24 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
+const taggedForm: (library?: string) => string = untypedTaggedForm;
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 const header = 'declare const pool: { query(text: string): unknown };\n';
-let counter = 0;
+type Errors = { messageId: string; data: Record<string, string> }[];
 
-function typed(body, errors, extension = 'ts') {
-  counter += 1;
+function typed(
+  body: string,
+  errors?: undefined,
+  extension?: string,
+): { filename: string; code: string };
+function typed(
+  body: string,
+  errors: Errors,
+  extension?: string,
+): { filename: string; code: string; errors: Errors };
+function typed(body: string, errors?: Errors, extension = 'ts') {
   const code = extension === 'ts' ? `${header}${body}` : body;
-  const file = path.join(root, `src/case-${String(counter)}.${extension}`);
+  const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
   writeFileSync(file, code);
   return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
 }
