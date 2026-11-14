@@ -147,6 +147,20 @@ function dualWrite({ method, form, write, path }) {
   ].join(' ');
 }
 
+const BATCH_FIELDS = {
+  spring: '`@BatchMapping` (one call for all parents) or a registered `DataLoader`',
+  dgs: 'a `@DgsDataLoader` (one call for all parents) read through `DataLoader.load`',
+};
+
+function graphqlField({ method, framework, kind, path }) {
+  const target = kind === 'remote' ? 'requests' : 'queries';
+  return [
+    `Batch this field with ${BATCH_FIELDS[framework]}, or read the value from the parent object:`,
+    `${code(`${method}()`)} ${callPath(path)} once per parent object, so a list of N parents`,
+    `sends N ${target}, and nothing in the code looks like a loop.`,
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -155,6 +169,7 @@ export const EFFECTS_MESSAGES = {
   RemoteCallUnderLock: remoteUnderLock,
   RetryWithoutIdempotency: retryWrite,
   DualWriteWithoutOutbox: dualWrite,
+  GraphqlFieldPerParent: graphqlField,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

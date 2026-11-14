@@ -113,7 +113,7 @@ export function runEngineOnSamples({ maven = 'mvn' } = {}) {
   const output = path.join(work, `${NAME}.json`);
   writeFileSync(
     input,
-    `main ${classes}\nclasspath ${stubs}\nclasspath ${library}\ndependency ${library}\n`,
+    `main ${classes}\nclasspath ${stubs}\nclasspath ${library}\ndependency ${library}\nresources ${path.join(SAMPLES, 'resources')}\n`,
   );
   runJava({
     tool: TOOL,

@@ -64,6 +64,30 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.springframework.graphql</groupId>
+      <artifactId>spring-graphql</artifactId>
+      <version>1.3.5</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.netflix.graphql.dgs</groupId>
+      <artifactId>graphql-dgs</artifactId>
+      <version>10.0.4</version>
+      <scope>provided</scope>
+      <exclusions>
+        <exclusion>
+          <groupId>*</groupId>
+          <artifactId>*</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
       <groupId>com.stripe</groupId>
       <artifactId>stripe-java</artifactId>
       <version>29.0.0</version>

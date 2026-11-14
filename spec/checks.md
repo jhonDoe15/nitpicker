@@ -125,6 +125,7 @@ groups (one query per item stays one query per item), while a remote call in tho
 
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
+`resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
 `remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
 held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
 publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
@@ -218,6 +219,9 @@ preset runs the same rule. A call that takes a whole chunk, a paging or polling 
 publish are left alone. A remote call inside `Promise.all` is the fan-out rule's, so no call is reported
 twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-in-loop` in the Go preset.
 
+Field resolvers: the Go preset reports a gqlgen field resolver of a list parent that queries once per parent without
+a dataloader (`go-rules/query-per-parent-resolver`).
+
 Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
 accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
@@ -246,6 +250,12 @@ Dual writes: `nitpicker/no-dual-write` (production source, in `eslint-lint`, typ
 that writes to the database and publishes a broker message at separate calls, since a crash between them
 loses or duplicates the message; the outbox table or relay is the allowed form. An outbox relay (publish a
 row read from the database, then mark it sent) is not reported.
+
+GraphQL field resolvers: `nitpicker/no-query-per-parent` (production source, in `eslint-lint`, type-aware)
+reports a database or remote call made by a NestJS `@ResolveField`, type-graphql `@FieldResolver` or resolver-map
+field function (Apollo Server, Mercurius, graphql-yoga) whose parent type is returned as a list somewhere in the
+schema: N parents cost N queries. The allowed forms are a DataLoader, a request-scoped cache and data already on
+the parent; a parent type that is only returned alone is not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

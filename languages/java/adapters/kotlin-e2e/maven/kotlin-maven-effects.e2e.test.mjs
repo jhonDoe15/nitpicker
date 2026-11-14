@@ -13,10 +13,12 @@ import { kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-proje
 const maven = process.env.NITPICKER_MAVEN;
 const POM = path.resolve(import.meta.dirname, '../../../maven/fixtures/effects-kotlin/pom.xml');
 const KOTLIN_SOURCES = 'src/main/kotlin';
+const RESOURCES = 'src/main/resources';
 const JAVA_ONLY = 'JavaImports.saveEach';
 const KOTLIN_FILES = [
   'reports/LoopImports.kt',
   'reports/Accumulators.kt',
+  'graphql/OrderFields.kt',
   'billing/LazyLoads.kt',
   'held/HeldScopes.kt',
   'events/Retries.kt',
@@ -31,6 +33,9 @@ describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-maven-effects-'));
     mkdirSync(path.join(root, KOTLIN_SOURCES), { recursive: true });
     cpSync(path.join(KOTLIN_EFFECTS_FIXTURE, KOTLIN_SOURCES), path.join(root, KOTLIN_SOURCES), {
+      recursive: true,
+    });
+    cpSync(path.join(KOTLIN_EFFECTS_FIXTURE, RESOURCES), path.join(root, RESOURCES), {
       recursive: true,
     });
     cpSync(POM, path.join(root, 'pom.xml'));

@@ -571,6 +571,20 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   own message: it no longer publishes a rolled-back change, but a crash after the commit still
   loses the message. Write the message to an outbox table in the same transaction and let a relay
   publish it, or use change data capture or a database-backed queue.
+- `nitpicker/no-query-per-parent`: a GraphQL field resolver that calls a database or remote function once per
+  parent object, when the parent type is returned as a list somewhere in the schema, is reported: a list of N
+  parents costs N queries and nothing in the code looks like a loop. The resolvers are a NestJS method with
+  `@ResolveField` (`@nestjs/graphql`) or a type-graphql method with `@FieldResolver`, whose parent type is the
+  class decorator `@Resolver(() => View)` (or the type of its `@Parent()` or `@Root()` parameter), and the field
+  functions of a resolver map (`resolvers: { View: { owner: (view) => ... } }`, also with `resolve`) in a file
+  that imports Apollo Server, Mercurius, graphql-yoga or graphql-tools; root fields (`Query`, `Mutation`,
+  `Subscription`) are never reported. A parent counts as a list when `@Query(() => [View])`, `@Field(() => [View])`
+  or the like names it, or an SDL string holds `: [View!]!`, in the program's files (the current file without
+  the type checker); a type only ever returned alone is not reported. The call is classified like
+  `nitpicker/no-io-in-loop`, through a project service too when the type checker runs. Allowed forms: a
+  DataLoader (`loaders.owner.load(parent.ownerId)`, `loadMany`), a read from a request-scoped cache, data already on
+  the parent. Prisma `findUnique` and `findUniqueOrThrow` (also the fluent `findUnique(...).relation()` form) are
+  batched by Prisma within a tick, so they are not reported. Calls in a loop or iteration callback inside the resolver stay with `nitpicker/no-io-in-loop`.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

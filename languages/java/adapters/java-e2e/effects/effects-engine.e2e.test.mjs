@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 19,
+      classes: 21,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -167,6 +167,17 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
 
   it('reports copies on every step', () => {
     expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
+  });
+
+  it('reports resolvers of a parent list that query once per parent, and leaves batch and root fields', () => {
+    expect(methodsOf(run.report, 'GraphqlFieldPerParent')).toEqual([
+      'Graphql.direct',
+      'Graphql.throughHelper',
+      'Graphql.price',
+      'Graphql.federated',
+      'Graphql.nested',
+      'Graphql.withContext',
+    ]);
   });
 
   it('reports lazy access per element only', () => {

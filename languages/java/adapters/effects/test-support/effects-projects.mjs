@@ -25,6 +25,10 @@ export const JAVA_EFFECTS = [
   'AccumulatorCopyInLoop 16 Accumulators.concatenated loop all',
   'AccumulatorCopyInLoop 23 Accumulators.reduced reduce acc',
   'AccumulatorCopyInLoop 32 Accumulators.copiedMap loop byId',
+  'GraphqlFieldPerParent 23 OrderFields.previous spring OrderRepository.findById()',
+  'GraphqlFieldPerParent 28 OrderFields.viaHelper spring OrderLoader.load()>OrderRepository.findById()',
+  `GraphqlFieldPerParent 33 OrderFields.price spring ${JAVA_REMOTE}`,
+  'GraphqlFieldPerParent 38 OrderFields.dgsPrevious dgs OrderRepository.findById()',
   'LazyRelationInLoop 21 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
   'LazyRelationInLoop 35 LazyLoads.linesFromQuery TypedQuery.getResultList() Invoice.lines',
   'LazyRelationInLoop 44 LazyLoads.namesNextToFetchedLines InvoiceRepository.findWithLines() Invoice.customer',
@@ -75,6 +79,10 @@ export const KOTLIN_EFFECTS = [
   'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
   'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
   'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
+  'GraphqlFieldPerParent 12 OrderFields.previous spring CrudRepository.findByIdOrNull()',
+  'GraphqlFieldPerParent 15 OrderFields.viaHelper spring OrderLoader.load()>CrudRepository.findByIdOrNull()',
+  `GraphqlFieldPerParent 18 OrderFields.price spring ${KOTLIN_REMOTE}`,
+  'GraphqlFieldPerParent 21 OrderFields.dgsPrevious dgs CrudRepository.findByIdOrNull()',
   'LazyRelationInLoop 4 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
   'LazyRelationInLoop 9 LazyLoads.lineCount InvoiceRepository.findFrom() Invoice.lines',
   'LazyRelationInLoop 14 LazyLoads.lazySequence InvoiceRepository.findAll() Invoice.lines',
@@ -103,7 +111,11 @@ function summaryOf(violation) {
     entity,
     relation,
     scope,
+    framework,
   } = violation;
+  if (framework !== undefined) {
+    return [rule, line, method, framework, calls.join('>')].join(' ');
+  }
   if (scope !== undefined) {
     return [rule, line, method, scope, calls.join('>')].join(' ');
   }

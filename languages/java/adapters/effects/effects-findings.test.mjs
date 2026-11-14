@@ -310,6 +310,36 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the batch form of a GraphQL field that queries once per parent', () => {
+    const field = {
+      rule: 'GraphqlFieldPerParent',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      method: 'Import.customer',
+      parent: 'Order',
+      path: ['OrderRepository.findById()'],
+    };
+    const messages = read([
+      { ...field, line: 3, detail: 'a', framework: 'spring', kind: 'database' },
+      { ...field, line: 4, detail: 'b', framework: 'dgs', kind: 'remote' },
+    ]).map((finding) => finding.message);
+
+    expect(messages).toEqual([
+      sentence(
+        'Batch this field with `@BatchMapping` (one call for all parents) or a registered `DataLoader`,',
+        'or read the value from the parent object: `Import.customer()` calls `OrderRepository.findById()`',
+        'once per parent object, so a list of N parents sends N queries, and nothing in the code looks like a loop.',
+        exception('GraphqlFieldPerParent', JAVA_FILE),
+      ),
+      sentence(
+        'Batch this field with a `@DgsDataLoader` (one call for all parents) read through `DataLoader.load`,',
+        'or read the value from the parent object: `Import.customer()` calls `OrderRepository.findById()`',
+        'once per parent object, so a list of N parents sends N requests, and nothing in the code looks like a loop.',
+        exception('GraphqlFieldPerParent', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 

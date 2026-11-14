@@ -10,12 +10,15 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
 import nitpicker.effects.flow.Program;
+import nitpicker.effects.graphql.GraphqlFields;
+import nitpicker.effects.graphql.Schema;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.rules.AccumulatorCopy;
@@ -40,6 +43,7 @@ public final class Effects {
     List<String> mainDirectories = new ArrayList<>();
     List<String> classPath = new ArrayList<>();
     List<String> dependencies = new ArrayList<>();
+    List<String> resources = new ArrayList<>();
     Map<String, String> options = new HashMap<>();
     for (String line : Files.readAllLines(Path.of(args[1]), StandardCharsets.UTF_8)) {
       int space = line.indexOf(' ');
@@ -51,6 +55,7 @@ public final class Effects {
         case "main" -> mainDirectories.add(value);
         case "classpath" -> classPath.add(value);
         case "dependency" -> dependencies.add(value);
+        case "resources" -> resources.add(value);
         case "option" -> options.put(value.split("=", 2)[0], value.contains("=") ? value.split("=", 2)[1] : "");
         default -> { }
       }
@@ -68,7 +73,9 @@ public final class Effects {
         load(index, Path.of(dependency), report, true);
       }
       Budget.begin(longOption(options, "timeBudgetSeconds"));
-      run(new Program(index), report, options);
+      List<String> schemaRoots = new ArrayList<>(mainDirectories);
+      schemaRoots.addAll(resources);
+      run(new Program(index), report, options, Schema.listTypes(schemaRoots));
       report.unreadableLibraries(index.unreadable());
       int[] supertypes = index.supertypeCoverage();
       report.note("unresolved", Map.of("supertypes", supertypes[0], "total", supertypes[1]));
@@ -78,13 +85,14 @@ public final class Effects {
     Files.writeString(Path.of(args[0]), report.toJson(), StandardCharsets.UTF_8);
   }
 
-  static void run(Program program, Report report, Map<String, String> options) {
+  static void run(Program program, Report report, Map<String, String> options, Set<String> listTypes) {
     Summaries summaries = new Summaries(program);
     summaries.compute();
     program.io((flow, index) -> flow.insns[index] instanceof MethodInsnNode call
         && summaries.kind(call.owner, call.name, call.desc) != null);
     new LoopIo(program, summaries, report).run();
     new AccumulatorCopy(program, report).run();
+    new GraphqlFields(program, summaries, listTypes, report).run();
     new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
