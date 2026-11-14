@@ -38,6 +38,7 @@ export function conditionTerm(node, scope) {
     parameters: new Map(),
     strictEquality: true,
     looseBooleans: scope.looseBooleans,
+    exactIntegers: scope.unbounded,
   };
   return logicTerm(node, context);
 }

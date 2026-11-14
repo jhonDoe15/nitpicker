@@ -81,6 +81,7 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.decidedCondition, [STRUCTURE_TOOL]],
   [RULE_IDS.duplicateBranch, [STRUCTURE_TOOL]],
   [RULE_IDS.resultSlip, [STRUCTURE_TOOL]],
+  [RULE_IDS.integerSlip, [STRUCTURE_TOOL]],
   [RULE_IDS.exportedNameCollision, [STRUCTURE_TOOL]],
   [RULE_IDS.redefinedLibraryComponent, [STRUCTURE_TOOL]],
   [RULE_IDS.newIconAsset, [STRUCTURE_TOOL]],

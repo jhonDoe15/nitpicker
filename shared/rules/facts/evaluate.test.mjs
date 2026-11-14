@@ -229,7 +229,9 @@ describe('the shared fact rules', () => {
       ...DESIGN_RULES,
     ]);
     withLanguageRegistered('public-alternative-bypass', 'go', () => {
-      expect(sharedFactExceptionRules()).toEqual(python);
+      expect(sharedFactExceptionRules()).toEqual(
+        python.toSpliced(python.indexOf('result-slip') + 1, 0, 'integer-slip'),
+      );
       expect(registeredFactRules('go').includes('public-alternative-bypass')).toBe(true);
       expect(registeredFactRules('python')).toEqual(python);
     });

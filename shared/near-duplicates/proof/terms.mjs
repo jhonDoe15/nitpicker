@@ -1,3 +1,4 @@
+import { modelOf } from '../../logic/models/models.mjs';
 import { print } from '../../logic/print.mjs';
 import { term } from '../../logic/terms.mjs';
 import { rebuild } from '../tree/nodes.mjs';
@@ -31,6 +32,7 @@ const SINGLE_FLOAT = /f$/u;
 const PLAIN_CHAR = /^'(?<char>[^\\'])'$/u;
 const INTEGER_TEXT = /^-?\d+$/u;
 const ARITHMETIC = new Set(['+', '-', '*', '/', '%']);
+const EXACT = new Set(['+', '-', '*']);
 const COMPARISONS = new Set(['==', '!=', '<', '<=', '>', '>=']);
 const LOOSE_EQUALITY = new Set(['==', '!=']);
 
@@ -53,6 +55,9 @@ function numberValue(text) {
 }
 
 function literalTerm(node) {
+  if (node.bits !== undefined) {
+    return term(LITERAL_KIND, node.value);
+  }
   if (node.literal === 'number') {
     const value = numberValue(node.value);
     return Number.isFinite(value) ? term(LITERAL_KIND, String(value)) : undefined;
@@ -93,12 +98,20 @@ function isArithmetic(value, children) {
   return ARITHMETIC.has(value) && children.some((child) => child.kind !== LITERAL_KIND);
 }
 
-function valueAtom(built) {
-  const atom = term('name', `#value ${print(built)}`);
-  const integral = built.children.every(
-    (child) =>
-      child.integer === true || (child.kind === LITERAL_KIND && INTEGER_TEXT.test(child.value)),
+function isIntegral(child) {
+  return (
+    child.integer === true ||
+    modelOf(child)?.integer === true ||
+    (child.kind === LITERAL_KIND && INTEGER_TEXT.test(child.value))
   );
+}
+
+function valueAtom(built, context) {
+  const integral = built.children.every((child) => isIntegral(child));
+  if (integral && context.exactIntegers === true && EXACT.has(built.value)) {
+    return built;
+  }
+  const atom = term('name', `#value ${print(built)}`);
   return integral ? { ...atom, integer: true } : atom;
 }
 
@@ -125,8 +138,11 @@ function binaryTerm(node, operands, context) {
   const [left, right] = COMPARISONS.has(node.value)
     ? operands.map((operand, index) => charCode(operand, node.children[index]))
     : operands;
+  if (node.bits !== undefined) {
+    return term(BINARY_KIND, node.value, [left, right]);
+  }
   if (isArithmetic(node.value, [left, right])) {
-    return valueAtom(term(BINARY_KIND, node.value, [left, right]));
+    return valueAtom(term(BINARY_KIND, node.value, [left, right]), context);
   }
   const strict = context.strictEquality ? EQUALITY.get(node.value) : undefined;
   return term(BINARY_KIND, strict ?? node.value, [left, right]);
@@ -138,10 +154,16 @@ const TERMS = {
   this: () => term('this'),
   member: (node, children) => term('member', node.value, children),
   index: (_node, children) => term('index', undefined, children),
-  call: (node, children) => extremeOf(node, children) ?? term('call', undefined, children),
-  unary: (node, children) => {
+  call: (node, children) =>
+    operationOf(node, children) ?? extremeOf(node, children) ?? term('call', undefined, children),
+  expression: (node, children) =>
+    node.operation === 'cast' ? term('cast', node.value, children) : undefined,
+  unary: (node, children, context) => {
+    if (node.bits !== undefined) {
+      return term('unary', node.value, children);
+    }
     if (node.value === '-' && isArithmetic(node.value, children)) {
-      return valueAtom(term('unary', '-', children));
+      return valueAtom(term('unary', '-', children), context);
     }
     return node.value === '!' || node.value === '-'
       ? term('unary', node.value, children)
@@ -155,6 +177,15 @@ function pick(node, field) {
   return node[field] === undefined ? {} : { [field]: node[field] };
 }
 
+function operationOf(node, children) {
+  if (node.operation === 'abs') {
+    return term('abs', undefined, [children[1]]);
+  }
+  return node.operation === 'cast'
+    ? term('cast', node.value, [children[0].children[0]])
+    : undefined;
+}
+
 function termOf(node, children, context) {
   const convert = Object.hasOwn(TERMS, node.kind) ? TERMS[node.kind] : undefined;
   if (convert === undefined || children.some((child) => child === undefined)) {
@@ -164,7 +195,8 @@ function termOf(node, children, context) {
   if (built === undefined) {
     return built;
   }
-  return { ...built, ...pick(node, 'model'), ...pick(node, 'helper') };
+  const fields = ['model', 'helper', 'bits', 'signed'].map((field) => pick(node, field));
+  return Object.assign({}, built, ...fields);
 }
 
 export function logicTerm(root, context) {

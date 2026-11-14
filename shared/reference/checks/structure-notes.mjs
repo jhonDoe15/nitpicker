@@ -64,6 +64,11 @@ export const STRUCTURE_NOTES = {
     'A comparator may return any positive or negative number, and `indexOf(x) > 0` skips a match at position 0; both pass most tests and fail on the first unlucky input.',
     'Compare the result with 0, or test `>= 0` (or use a containment check).',
   ],
+  'integer-slip': [
+    'Integer arithmetic that gives the wrong answer for some inputs a solver can name: a difference compared with 0 or returned from a comparator (it overflows), `Math.abs` of a value that can be the smallest integer used as an index or bucket, and a remainder compared with a positive value on a value that can be negative (Kotlin).',
+    'These pass tests on small numbers and fail on a large or negative input, with a wrong order, a negative index or a missed match.',
+    'Compare the operands (`Integer.compare`), use `Math.floorMod`, or compare the remainder with 0.',
+  ],
   'exported-name-collision': [
     'Two different exports with one name, imported by the same module, which keeps the name for one of them.',
     'Two things with one name make an import ambiguous to read.',

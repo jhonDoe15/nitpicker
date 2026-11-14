@@ -42,6 +42,13 @@ same-file getter that only returns a field gives the same value until something 
 call of a same-file function that cannot be overridden and only returns a side-effect-free condition
 is read as that condition (at most 2 levels, no recursion) and the message names the helper.
 
+`integer-slip` (tool `structure`) reads them with fixed-width `Int` and `Long` values: a difference
+compared with 0 or returned from `compareTo`/`compare` overflows for some inputs, `Math.abs(x)` of an
+`Int` used as an index or `%` bucket stays negative for `Int.MIN_VALUE`, and `x % 2 == 1` on a
+parameter that can be negative never matches it; the message names the inputs. Use `compareValues`
+or `Int.compareTo`, `mod`, or compare the remainder with 0. `decided-condition` uses the same
+fixed-width arithmetic, so `n + 1 > 0` is decided only where `n` cannot reach the maximum.
+
 `result-slip` (tool `structure`) reads the same trees: the result of `compareTo`, `compare` or
 `compareValues` compared with a value other than 0 (`== 1`, `== -1`, `> 1`) fails, because only its
 sign is defined, and so does `indexOf(x) > 0`, which misses a match at position 0; compare with 0

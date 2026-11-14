@@ -1,3 +1,4 @@
+import { hasExactArithmetic, hasVectorOperations } from '../bitvectors/values.mjs';
 import { hasModels, modelReason } from '../models/models.mjs';
 import { decideByTruthTable, needsValues } from '../propositional.mjs';
 import { decideSync } from './decide-sync.mjs';
@@ -43,7 +44,10 @@ export function solveFacts(conditions, query) {
     return quick;
   }
   const linked = quick === undefined || needsValues(conditions, query);
-  return linked || hasModels([...conditions, query]) ? decideSync(conditions, query) : 'open';
+  const terms = [...conditions, query];
+  return linked || hasModels(terms) || hasVectorOperations(terms) || hasExactArithmetic(terms)
+    ? decideSync(conditions, query)
+    : 'open';
 }
 
 /**

@@ -54,6 +54,13 @@ object`. Instance methods are left to the duplicates check, as class methods are
   match at position 0. Use `>= 0`, `!= -1` or `contains`. SpotBugs `RV_CHECK_FOR_POSITIVE_INDEXOF`
   keeps the `String` case and Error Prone `CompareToZero` keeps `compareTo`/`compare` results
   compared with a value other than 0, so the two do not overlap.
+- **`integer-slip`.** The same trees and the same solver with fixed-width integers: a difference
+  compared with 0 (`a - b > 0`) or returned from `compareTo`/`compare` overflows for some inputs, and
+  `Math.abs(x)` of an `int` or `long` used as an index or `% n` bucket stays negative for the
+  smallest value; the message names the inputs, for example `a = 2147483647, b = -1`. Guards before
+  it (and sizes, which are bounded) rule a case out. Use `Integer.compare`, `Math.floorMod`, or mask
+  with `& Integer.MAX_VALUE`. The remainder slip `x % 2 == 1` is left to SpotBugs
+  `IM_BAD_CHECK_FOR_ODD` on Java.
 - **`decided-condition`.** The same trees feed `shared/rules/decided/`, which walks each method body
   with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
   return, throw, break or continue, earlier `when` arms, the arms of a `switch` or `when (subject)` (the label in its arm, the earlier
@@ -70,7 +77,9 @@ object`. Instance methods are left to the duplicates check, as class methods are
   false is dead code, always true a redundant check, and the message names the guard that decides
   it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
   what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
-  opaque value because JVM integers overflow. Value models add what every caller knows about a
+  exact to the solver, which follows the 32-bit and 64-bit wrap-around of `int` and `long` (typed
+  from declarations, literals, casts and the sizes of collections), so `n + 1 > 0` is decided only
+  where `n` cannot reach the maximum. Value models add what every caller knows about a
   call on a name whose declared type is a known `String`, collection, `Optional`, array or
   floating-point type: sizes and lengths are whole numbers that are never negative, `isEmpty()`
   means a size of 0, `indexOf` returns at least -1, `Math.abs` of a `double` is not negative,

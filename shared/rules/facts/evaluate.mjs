@@ -21,6 +21,7 @@ import { siblingCopyEditFindings } from '../reuse/sibling-copy-edits.mjs';
 import { nearDuplicateFindings } from '../near-duplicates/near-duplicates.mjs';
 import { decidedConditionFindings } from '../decided/decided-conditions.mjs';
 import { resultSlipFindings } from '../slips/slip-findings.mjs';
+import { integerSlipFindings } from '../decided/slips/integer-slips.mjs';
 import { duplicateBranchFindings } from '../branches/duplicate-branches.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
@@ -63,6 +64,7 @@ const EVALUATORS = {
   'duplicate-branch': ({ facts, context }) =>
     duplicateBranchFindings(facts.nearDuplicateUnits, context),
   'result-slip': ({ facts, context }) => resultSlipFindings(facts.nearDuplicateUnits, context),
+  'integer-slip': ({ facts, context }) => integerSlipFindings(facts.nearDuplicateUnits, context),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),
