@@ -8,27 +8,29 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from '../test-support/go-e2e-support.mjs';
+} from '../test-support/go-e2e-support.mts';
+import type { GateResult } from '../test-support/go-e2e-support.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   LABEL,
   LABEL_TEST,
   RACE_BASE_FILES,
   STOCK,
   STOCK_TEST,
-} from './test-support/go-race-fixtures.mjs';
+} from './test-support/go-race-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
-function raceFindings(result) {
+function raceFindings(result: GateResult) {
   return result
-    .json('new-findings.json')
+    .findings('new-findings.json')
     .filter(({ tool }) => tool === 'race')
     .map(({ rule, classification }) => `race/${rule} ${classification}`);
 }
 
 describe.skipIf(!goE2eEnabled)('Go preset race detector end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, RACE_BASE_FILES);
@@ -68,7 +70,7 @@ describe.skipIf(!goE2eEnabled)('Go preset race detector end to end', () => {
     expect(toolErrors(result)).toEqual([]);
     expect(newFindings(result)).toEqual([]);
     expect(raceFindings(result)).toEqual([]);
-    expect(result.json('summary.json').notices).toEqual([
+    expect(fieldOf(result.json('summary.json'), 'notices')).toEqual([
       'race/race-not-checked: Data races were not checked: go test -race needs cgo, which is off (CGO_ENABLED=0, or Go found no C compiler). Enable cgo (CGO_ENABLED=1 with a C compiler such as gcc on the PATH) on a platform the race detector supports to run the tests with -race.',
     ]);
     expect(result.text.split('\n').filter((line) => line.includes('Notices'))).toEqual([

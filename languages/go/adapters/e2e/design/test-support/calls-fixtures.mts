@@ -29,9 +29,9 @@ const PROTOCOLS_CONFIG = JSON.stringify({
   ],
 });
 
-function saver(name, file, body) {
+function saver(name: string, file: string, body: string) {
   return {
-    [`internal/${file}`]: `package ${file.split('/')[0]}
+    [`internal/${file}`]: `package ${file.split('/')[0] ?? ''}
 
 import "shop/internal/db"
 

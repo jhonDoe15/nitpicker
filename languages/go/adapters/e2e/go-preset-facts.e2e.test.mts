@@ -8,14 +8,14 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
-import { FACT_FILES, PRINTING_FILES, RESTATING_FILES } from './test-support/go-fact-fixtures.mjs';
+} from './test-support/go-e2e-support.mts';
+import { FACT_FILES, PRINTING_FILES, RESTATING_FILES } from './test-support/go-fact-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
 describe.skipIf(!goE2eEnabled)('Go preset doc comments and test output end to end', () => {
-  let workspace;
-  let repository;
+  let workspace: string;
+  let repository: string;
   beforeAll(() => {
     workspace = createWorkspace();
     repository = goRepository(workspace, FACT_FILES);
@@ -38,7 +38,7 @@ describe.skipIf(!goE2eEnabled)('Go preset doc comments and test output end to en
     expect(newFindings(result)).toEqual([
       'test-runtime/test-console-output internal/cart/cart_test.go',
     ]);
-    expect(newMessages(result).map((message) => /"([^"]*)"/u.exec(message)[1])).toEqual([
+    expect(newMessages(result).map((message) => /"([^"]*)"/u.exec(message)?.[1])).toEqual([
       'price list has <n> entries',
     ]);
   });

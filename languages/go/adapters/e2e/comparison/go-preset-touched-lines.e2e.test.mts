@@ -6,12 +6,13 @@ import {
   goRepository,
   removeWorkspace,
   toolErrors,
-} from '../test-support/go-e2e-support.mjs';
-import { BASE_FILES } from '../test-support/go-fixtures.mjs';
+} from '../test-support/go-e2e-support.mts';
+import type { GateResult } from '../test-support/go-e2e-support.mts';
+import { BASE_FILES } from '../test-support/go-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 
-const fee = (condition) => `package shop
+const fee = (condition: string) => `package shop
 
 func Fee(weight int) int {
 	${condition}
@@ -21,7 +22,7 @@ func Fee(weight int) int {
 }
 `;
 
-const cleanup = (call) => `package shop
+const cleanup = (call: string) => `package shop
 
 import "os"
 
@@ -30,16 +31,16 @@ func Clean(path string) {
 }
 `;
 
-function newLines(result, rule) {
+function newLines(result: GateResult, rule: string) {
   return result
-    .json('new-findings.json')
+    .findings('new-findings.json')
     .filter((finding) => finding.classification === 'enforceable' && finding.rule === rule)
     .map(({ path, location }) => `${path}:${String(location.line)}`);
 }
 
 describe.skipIf(!goE2eEnabled)('Go findings on lines gofmt only re-spaced', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, {

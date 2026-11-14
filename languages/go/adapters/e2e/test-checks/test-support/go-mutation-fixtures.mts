@@ -8,13 +8,13 @@ func Rate(amount int) int {
 }
 `;
 
-function rateTest(checks) {
+function rateTest(checks: readonly string[]) {
   return `package shop
 
 import "testing"
 
 func TestRate(t *testing.T) {
-${checks.map((check) => `\tif ${check} {\n\t\tt.Fatal("wrong rate")\n\t}`).join('\n')}
+${checks.map((check: string) => `\tif ${check} {\n\t\tt.Fatal("wrong rate")\n\t}`).join('\n')}
 }
 `;
 }
@@ -75,13 +75,13 @@ func Fee(total int) int {
 }
 `;
 
-function feeTest(checks) {
+function feeTest(checks: readonly string[]) {
   return `package shop
 
 import "testing"
 
 func TestFee(t *testing.T) {
-${checks.map((check) => `\tif ${check} {\n\t\tt.Fatal("wrong fee")\n\t}`).join('\n')}
+${checks.map((check: string) => `\tif ${check} {\n\t\tt.Fatal("wrong fee")\n\t}`).join('\n')}
 }
 `;
 }

@@ -123,7 +123,7 @@ func TestBroken(t *testing.T) {
 }
 `;
 
-function sleepingTest(header, name, seconds, guard = '') {
+function sleepingTest(header: string, name: string, seconds: number, guard = '') {
   const helper = name.replace('Test', 'restock');
   return `${header}package shop
 
@@ -228,7 +228,7 @@ func TestDiscount(t *testing.T) {
 }
 `;
 
-export function twice(result) {
+export function twice(result: number): string {
   return `package shop
 
 func Twice(x, flag bool) int {
@@ -243,7 +243,7 @@ func Twice(x, flag bool) int {
 `;
 }
 
-export function twiceTest(...calls) {
+export function twiceTest(...calls: string[]): string {
   const checks = calls.map((call) => `\tif Twice(${call}) < 0 {\n\t\tt.Fatal("negative")\n\t}\n`);
   return `package shop
 

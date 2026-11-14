@@ -21,7 +21,7 @@ func Get(id string, limit int) store.Order {
 }
 `;
 
-function service(call) {
+function service(call: string) {
   return `package service
 
 import "shop/internal/store"
@@ -105,10 +105,12 @@ func Load(l *ledger.Ledger) {
 `,
 };
 
-function endpoint(path, name, params) {
+const COORDINATES = 'x, y, z float64';
+
+function endpoint(path: string, name: string, params: string) {
   const [, directory] = path.split('/').toReversed();
   return {
-    [`internal/${path}`]: `package ${directory}
+    [`internal/${path}`]: `package ${directory ?? ''}
 
 func ${name}(${params}) {}
 `,
@@ -126,9 +128,9 @@ export const CLUMP_FILES = {
 export const NO_CLUMP_FILES = {
   ...endpoint('net/connect.go', 'Connect', ENDPOINT_PARAMS),
   ...endpoint('web/serve.go', 'Serve', ENDPOINT_PARAMS),
-  ...endpoint('geometry/move.go', 'Move', 'x, y, z float64'),
-  ...endpoint('geometry/scale.go', 'Scale', 'x, y, z float64'),
-  ...endpoint('physics/push.go', 'Push', 'x, y, z float64'),
+  ...endpoint('geometry/move.go', 'Move', COORDINATES),
+  ...endpoint('geometry/scale.go', 'Scale', COORDINATES),
+  ...endpoint('physics/push.go', 'Push', COORDINATES),
 };
 
 const METHOD = `package pay
@@ -158,7 +160,7 @@ func Fee(method pay.Method) int {
 }
 `;
 
-function audit(condition) {
+function audit(condition: string) {
   return `package audit
 
 import "shop/internal/pay"

@@ -13,7 +13,7 @@ import {
   temporaryDirectory,
   toolErrorMessages,
   toolErrors,
-} from './test-support/go-e2e-support.mjs';
+} from './test-support/go-e2e-support.mts';
 import {
   BASE_FILES,
   DISCOUNT,
@@ -23,15 +23,15 @@ import {
   SHORT_SKIPPED_TEST,
   SLOW_INTEGRATION_TEST,
   SLOW_TEST,
-} from './test-support/go-fixtures.mjs';
+} from './test-support/go-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 const GO_NOT_FOUND =
   'go was not found on the PATH: install Go (https://go.dev/dl/) or put its bin folder on the PATH';
 const INSPECT_SOURCE = path.resolve(import.meta.dirname, '../../inspect');
 const LINT_SOURCE = path.resolve(import.meta.dirname, '../../lint');
 
-function pathWithoutGo(workspace) {
+function pathWithoutGo(workspace: string) {
   const bin = temporaryDirectory(workspace, 'bin-');
   for (const program of ['git', 'node']) {
     symlinkSync(command(bin, 'which', [program]).trim(), path.join(bin, program));
@@ -40,8 +40,8 @@ function pathWithoutGo(workspace) {
 }
 
 describe.skipIf(!goE2eEnabled)('Go preset project setups end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, {

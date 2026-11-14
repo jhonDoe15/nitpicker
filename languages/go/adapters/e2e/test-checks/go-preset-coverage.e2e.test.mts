@@ -8,7 +8,7 @@ import {
   newMessages,
   removeWorkspace,
   toolErrors,
-} from '../test-support/go-e2e-support.mjs';
+} from '../test-support/go-e2e-support.mts';
 import {
   BASE_FILES,
   BRANCHY,
@@ -19,9 +19,9 @@ import {
   UNTESTED_LEGACY,
   twice,
   twiceTest,
-} from '../test-support/go-fixtures.mjs';
+} from '../test-support/go-fixtures.mts';
 
-const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
+const goE2eEnabled = process.env['NITPICKER_GO_E2E'] === '1';
 const EXCEPTION = {
   rule: 'changed-branch-coverage',
   paths: ['shop/discount.go'],
@@ -30,8 +30,8 @@ const EXCEPTION = {
 };
 
 describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
-  let workspace;
-  let project;
+  let workspace: string;
+  let project: string;
   beforeAll(() => {
     workspace = createWorkspace();
     project = goRepository(workspace, {
