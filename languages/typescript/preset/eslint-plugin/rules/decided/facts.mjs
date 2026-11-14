@@ -206,3 +206,13 @@ export function mutableNames(sourceCode) {
   const unresolved = scopeManager.globalScope.through.map((reference) => reference.identifier.name);
   return new Set([...reassigned, ...unresolved]);
 }
+
+/** The fact that the already built `raw` term holds (`holds`) or fails. */
+export function factOfTerm(raw, { holds, reason }) {
+  return {
+    term: holds ? raw : not(raw),
+    names: namesOf(raw),
+    readsMembers: readsMembers(raw),
+    reason,
+  };
+}

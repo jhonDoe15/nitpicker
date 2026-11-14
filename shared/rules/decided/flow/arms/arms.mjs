@@ -102,7 +102,7 @@ function enumNode(constant, label) {
     kind: 'literal',
     literal: 'enum',
     value: constant,
-    text: constant,
+    text: label.text ?? constant,
     children: [],
     start: label.start,
   };
