@@ -15,6 +15,7 @@ import {
   isJavaFindingRule,
   validateJavaFindingRule,
 } from './exception-rules/java-finding-rules.mjs';
+import { JAVA_BUILD_TOOLS } from '../builds/java-build.mjs';
 import { KOTLIN_FORMATTERS } from './kotlin/kotlin-options.mjs';
 import { JAVA_LINE_LENGTH, JAVA_SIZE_RULES } from '../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../shared/policy.mjs';
@@ -53,7 +54,11 @@ export function parseJavaRunnerArguments(argumentList) {
   }
   const parsed = parseRunnerArguments(at === -1 ? argumentList : argumentList.toSpliced(at, 2), {
     runner: 'java-runner.mjs',
-    choices: { '--preset': GRADLE_PRESETS, '--kotlin-formatter': KOTLIN_FORMATTERS },
+    choices: {
+      '--preset': GRADLE_PRESETS,
+      '--kotlin-formatter': KOTLIN_FORMATTERS,
+      '--build-tool': JAVA_BUILD_TOOLS,
+    },
     precedenceTools: precedenceToolNames(),
   });
   return movesFile === undefined
@@ -112,6 +117,7 @@ function runnerArguments({
   exclude = [],
   exceptions = [],
   kotlin = {},
+  java = {},
   duplicates = {},
   tools = {},
   testConsole = {},
@@ -128,6 +134,7 @@ function runnerArguments({
       : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
     ...exceptions.flatMap((exception) => ['--exception', exceptionArgument(exception)]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(java.buildTool === undefined ? [] : ['--build-tool', java.buildTool]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...(duplicates.skippedFolders === undefined
       ? []
