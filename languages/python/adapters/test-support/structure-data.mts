@@ -1,6 +1,12 @@
+import type { Finding, StructureFunction } from './typed/structure-types.mts';
+
 const BODY_LINE = 5;
 
-export function fn(name, parameters, { complexity = 1, file = 'src/demo/a.py' } = {}) {
+export function fn(
+  name: string,
+  parameters: number,
+  { complexity = 1, file = 'src/demo/a.py' }: { complexity?: number; file?: string } = {},
+): StructureFunction {
   return {
     file,
     name,
@@ -16,7 +22,7 @@ export function fn(name, parameters, { complexity = 1, file = 'src/demo/a.py' } 
   };
 }
 
-export function coverageOf(...names) {
+export function coverageOf(...names: readonly string[]): string {
   return JSON.stringify({
     files: {
       'src/demo/a.py': {
@@ -40,9 +46,9 @@ export function coverageOf(...names) {
   });
 }
 
-export function enforceable(result) {
+export function enforceable(result: { json: (name: string) => readonly Finding[] }): Finding[] {
   return result
     .json('new-findings.json')
-    .filter(({ classification }) => classification === 'enforceable')
-    .map(({ tool, rule, symbol, message }) => ({ tool, rule, symbol, message }));
+    .filter(({ classification }: Finding) => classification === 'enforceable')
+    .map(({ tool, rule, symbol, message }: Finding) => ({ tool, rule, symbol, message }));
 }

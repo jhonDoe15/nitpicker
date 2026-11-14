@@ -1,27 +1,33 @@
 import { appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { at, exists, lines, out, read, write } from './call.mjs';
+import type { FakeCall } from '../typed/fake-call.mts';
+import { parseMutants } from '../typed/json-views.mts';
+import { at, exists, lines, out, read, write } from './call.mts';
 
-const MUTMUT_MESSAGES = {
+const MUTMUT_MESSAGES: Readonly<Record<number, string>> = {
   0: '',
   1: 'Stopping early, because we could not find any test case for any mutant.\n',
 };
 
-function seededMutants(call) {
+function seededMutants(call: FakeCall): string[] {
   return exists(call, 'mutants')
-    ? readdirSync(at(call, 'mutants'), { recursive: true }).filter((file) => file.endsWith('.meta'))
+    ? readdirSync(at(call, 'mutants'), { recursive: true, encoding: 'utf8' }).filter((file) =>
+        file.endsWith('.meta'),
+      )
     : [];
 }
 
-export function mutmut(call) {
+export function mutmut(call: FakeCall): void {
   const { env, result } = call;
-  if (env.FAKE_PYTHON_LOG !== undefined) {
+  if (env['FAKE_PYTHON_LOG'] !== undefined) {
     appendFileSync(
-      env.FAKE_PYTHON_LOG,
+      env['FAKE_PYTHON_LOG'],
       `${JSON.stringify({ tool: 'mutmut-seeded', seeded: seededMutants(call) })}\n`,
     );
   }
-  const data = exists(call, 'mutants-data.json') ? JSON.parse(read(call, 'mutants-data.json')) : {};
+  const data = exists(call, 'mutants-data.json')
+    ? parseMutants(read(call, 'mutants-data.json'))
+    : {};
   mkdirSync(at(call, 'mutants'), { recursive: true });
   for (const [file, { exitCodes, mutated }] of Object.entries(data)) {
     mkdirSync(path.dirname(path.join(at(call, 'mutants'), file)), { recursive: true });
@@ -33,7 +39,7 @@ export function mutmut(call) {
     write(call, path.join('mutants', file), mutated);
   }
   const failing = lines(call, 'mutmut-failing-tests.txt');
-  const addopts = env.PYTEST_ADDOPTS ?? '';
+  const addopts = env['PYTEST_ADDOPTS'] ?? '';
   const ignored = failing.filter((file) => addopts.includes(`--ignore=${file}`));
   if (failing.length > 0 && ignored.length < failing.length) {
     out(call, 'failed to collect stats. runner returned 1\n');
