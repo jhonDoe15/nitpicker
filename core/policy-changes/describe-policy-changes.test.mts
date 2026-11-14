@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from './policy-scope.mjs';
+import { describePolicyChanges, policyChangeFields } from './describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from './policy-scope.mts';
+import type { ExceptionEntry, PolicyConfig, ScopeInputs } from './types/policy-types.mts';
 
 const exception = { rule: 'nitpicker/no-comments', paths: ['src/legacy/**'], reason: 'Legacy' };
 const FILES = [
@@ -15,7 +16,12 @@ const FILES = [
 ];
 const NOTHING_NEW = 'covers no checked file it did not cover before';
 
-function scopeOf(baseConfig, headConfig, files = FILES, moves) {
+function scopeOf(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  files: string[] = FILES,
+  moves?: ScopeInputs['moves'],
+) {
   const sources = new Map([...(moves?.files ?? [])].map(([from, to]) => [to, from]));
   return createPolicyScope({
     files,
@@ -27,7 +33,12 @@ function scopeOf(baseConfig, headConfig, files = FILES, moves) {
   });
 }
 
-function changes(baseConfig, headConfig, files = FILES, moves) {
+function changes(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+  files: string[] = FILES,
+  moves?: ScopeInputs['moves'],
+) {
   return describePolicyChanges(
     baseConfig,
     headConfig,
@@ -35,7 +46,7 @@ function changes(baseConfig, headConfig, files = FILES, moves) {
   );
 }
 
-function loosened(baseConfig, headConfig, files = FILES) {
+function loosened(baseConfig: PolicyConfig, headConfig: PolicyConfig, files: string[] = FILES) {
   return changes(baseConfig, headConfig, files).loosened;
 }
 
@@ -100,7 +111,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts a python exception like a top-level one', () => {
-    const python = (exceptions) => ({
+    const python = (exceptions: ExceptionEntry[]) => ({
       preset: 'python',
       python: { sourceRoots: ['src'], exceptions },
     });
@@ -111,7 +122,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('lists an added or removed python entry point without counting it as loosening', () => {
-    const python = (entryPoints) => ({
+    const python = (entryPoints: string[]) => ({
       preset: 'python',
       python: { sourceRoots: ['src'], entryPoints },
     });
@@ -230,7 +241,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts a python source root that no longer covers its files', () => {
-    const python = (sourceRoots) => ({ preset: 'python', python: { sourceRoots } });
+    const python = (sourceRoots: string[]) => ({ preset: 'python', python: { sourceRoots } });
 
     expect(loosened(python(['src', 'tools']), python(['src']), ['tools/run.py'])).toEqual([
       'python.sourceRoots removed: tools',
@@ -238,7 +249,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('compares the preset that runs, not the preset that is written', () => {
-    const presetChange = (before, after) =>
+    const presetChange = (before: string | undefined, after: string | undefined) =>
       loosened(
         before === undefined ? {} : { preset: before },
         after === undefined ? {} : { preset: after },
@@ -258,22 +269,6 @@ describe('describePolicyChanges', () => {
     expect(presetChange('java', undefined)).toEqual(['preset: "java" -> not set']);
   });
 
-  it('does not count declaring the preset a project without scripts has to declare', () => {
-    const head = { preset: 'python' };
-    const scope = createPolicyScope({
-      files: [],
-      baseRoots: {},
-      headRoots: {},
-      headConfig: head,
-      presetRequired: true,
-    });
-
-    expect(describePolicyChanges({}, head, scope)).toEqual({
-      loosened: [],
-      changed: ['preset: not set -> "python"'],
-    });
-  });
-
   it('counts an exclude that covers code outside the roots, such as code production imports', () => {
     expect(loosened({}, { exclude: ['lib/**', 'tools/**'] })).toEqual([
       'exclude added: lib/**',
@@ -282,7 +277,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts a removed tsconfig and checkJs turned off in any of them, and lists checkJs turned on', () => {
-    const scope = (base, head) => ({
+    const scope = (base: [string, boolean][], head: [string, boolean][]) => ({
       ...scopeOf({}, {}),
       tsconfigs: { base: new Map(base), head: new Map(head) },
     });
@@ -366,7 +361,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts precedence by what the tool runs', () => {
-    const precedence = (tool, before, after, preset = 'java') =>
+    const precedence = (tool: string, before: string[], after: string[], preset = 'java') =>
       loosened(
         { preset, tools: { [tool]: { precedence: before } } },
         { preset, tools: { [tool]: { precedence: after } } },
@@ -376,7 +371,8 @@ describe('describePolicyChanges', () => {
     expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
       'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
     ]);
-    const script = (before, after) => precedence('knip', before, after, 'typescript');
+    const script = (before: string[], after: string[]) =>
+      precedence('knip', before, after, 'typescript');
     expect(script(['nitpicker'], ['nitpicker', 'project'])).toEqual([
       'tools.knip.precedence: ["nitpicker"] -> ["nitpicker","project"]',
     ]);
@@ -393,7 +389,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts any ESLint opt-in that lists the project, since its ignores apply with nitpicker first too', () => {
-    const eslint = (before, after) =>
+    const eslint = (before: string[], after: string[]) =>
       loosened(
         { tools: { eslint: { precedence: before } } },
         { tools: { eslint: { precedence: after } } },
@@ -446,7 +442,7 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts a Spring role mapping that drops a type as loosened and one that adds a type as changed', () => {
-    const roles = (service) => ({ preset: 'java', spring: { roles: { service } } });
+    const roles = (service: string[]) => ({ preset: 'java', spring: { roles: { service } } });
 
     expect(
       changes(roles(['com.acme.UseCase']), roles(['com.acme.UseCase', 'com.acme.Job']), []),
@@ -489,11 +485,13 @@ describe('describePolicyChanges', () => {
     const base = { base: 'a' };
     const head = { base: 'b', exclude: ['src/vendor/**'] };
 
-    expect(policyChangeFields(base, head, scopeOf(base, head))).toEqual({
+    const { policyDigest, ...fields } = policyChangeFields(base, head, scopeOf(base, head));
+
+    expect(fields).toEqual({
       policyChanges: ['exclude added: src/vendor/**', 'base: "a" -> "b"'],
       policyLoosenings: ['exclude added: src/vendor/**'],
       policyKinds: { 'exclude added: src/vendor/**': 'exclusion' },
-      policyDigest: expect.stringMatching(/^[0-9a-f]{12}$/u),
     });
+    expect(policyDigest).toMatch(/^[0-9a-f]{12}$/u);
   });
 });

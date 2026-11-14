@@ -1,18 +1,29 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useProjectFixtures } from '../diff/git/test-support/projects/project-fixtures.mjs';
-import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mjs';
-import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
-import { policyChangeFields } from './describe-policy-changes.mjs';
-import { listedFiles, readPolicyScope } from './policy-scope.mjs';
+import { useProjectFixtures } from '../diff/git/test-support/projects/project-fixtures.mts';
+import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mts';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
+import { policyChangeFields } from './describe-policy-changes.mts';
+import { listedFiles, readPolicyScope } from './policy-scope.mts';
+import type { PolicyConfig } from './types/policy-types.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { gitCheckout } = useGitCheckouts();
 const { outsideGit } = useProjectFixtures();
 const vendor = { exclude: ['src/vendor/**'] };
 
-function fieldsBetween({ base, head, baseConfig = {}, headConfig = baseConfig }) {
+function fieldsBetween({
+  base,
+  head,
+  baseConfig = {},
+  headConfig = baseConfig,
+}: {
+  base: Record<string, string>;
+  head: Record<string, string>;
+  baseConfig?: PolicyConfig;
+  headConfig?: PolicyConfig;
+}) {
   const scope = readPolicyScope({
     baseConfig,
     headConfig,
@@ -26,14 +37,14 @@ describe('readPolicyScope', () => {
   it('reads the preset a first config has to declare from the head checkout', () => {
     const java = { 'pom.xml': '<project/>\n', 'src/main/java/A.java': 'class A {}\n' };
     const typescript = { 'src/a.ts': 'export {};\n' };
-    const declared = (files) =>
+    const declared = (files: Record<string, string>) =>
       fieldsBetween({ base: files, head: files, headConfig: { preset: 'java' } }).policyLoosenings;
 
     expect([declared(java), declared(typescript)]).toEqual([[], ['preset: not set -> "java"']]);
   });
 
   it('reads checkJs from every project tsconfig, and counts a removed one', () => {
-    const checkJs = (value) =>
+    const checkJs = (value: boolean) =>
       JSON.stringify({
         compilerOptions: { allowJs: true, checkJs: value, types: [], lib: ['ES2022'] },
       });
@@ -79,7 +90,7 @@ describe('readPolicyScope', () => {
   });
 
   it('changes the digest when a hidden file changes, though the text stays the same', () => {
-    const run = (text) =>
+    const run = (text: string) =>
       fieldsBetween({
         base: { 'src/a.ts': 'export {};\n' },
         head: { 'src/a.ts': 'export {};\n', 'lib/feature.ts': text },

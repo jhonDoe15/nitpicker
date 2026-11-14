@@ -1,34 +1,43 @@
 import {
   builtInExcludedGlobs,
+  canonicalRule,
   defaultResolvedLayout,
   sourceRoots,
   testRoots,
-} from '../../languages/typescript/preset/layout.mjs';
-import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
-import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
-import { sameJson } from '../../shared/config.mjs';
+} from './types/typed-views.mts';
+import { sameJson, THRESHOLD_DEFAULTS } from './types/config-views.mts';
+import { exceptionEntries, thresholdsOf } from './types/config-readers.mts';
+import { textsOf } from '../../shared/values/readers.mts';
+import type { ExceptionEntry, LayoutConfig, PolicyConfig } from './types/policy-types.mts';
+
+type MutableConfig = { -readonly [K in keyof PolicyConfig]: PolicyConfig[K] };
 
 const UNSET_ROOTS = { sourceRoots, testRoots: defaultResolvedLayout.executedTestRoots };
-const DEFAULT_LAYOUT = {
+const DEFAULT_LAYOUT: Readonly<Record<string, readonly string[]>> = {
   sourceRoots,
   testRoots,
   excludedGlobs: builtInExcludedGlobs,
   entryPoints: [],
 };
 
-function union(base, head) {
+function union(base: readonly string[], head: readonly string[]): string[] {
   return [...new Set([...base, ...head])];
 }
 
-function common(base, head) {
+function common(base: readonly string[], head: readonly string[]): string[] {
   return base.filter((entry) => head.includes(entry));
 }
 
-function coveringLayout(baseLayout, headLayout) {
+function layoutList(layout: LayoutConfig, key: string): readonly string[] | undefined {
+  const value = layout[key];
+  return Array.isArray(value) ? textsOf(value) : undefined;
+}
+
+function coveringLayout(baseLayout: LayoutConfig, headLayout: LayoutConfig): LayoutConfig {
   const roots = Object.fromEntries(
     Object.entries(UNSET_ROOTS).map(([key, unset]) => [
       key,
-      union(baseLayout[key] ?? unset, headLayout[key] ?? unset),
+      union(layoutList(baseLayout, key) ?? unset, layoutList(headLayout, key) ?? unset),
     ]),
   );
   const excludedGlobs = common(
@@ -45,7 +54,7 @@ function coveringLayout(baseLayout, headLayout) {
   );
 }
 
-function sameScope(left, right) {
+function sameScope(left: ExceptionEntry, right: ExceptionEntry): boolean {
   return (
     canonicalRule(left.rule) === canonicalRule(right.rule) &&
     left.function === right.function &&
@@ -53,7 +62,10 @@ function sameScope(left, right) {
   );
 }
 
-function commonExceptions(base, head = []) {
+function commonExceptions(
+  base: readonly ExceptionEntry[],
+  head: readonly ExceptionEntry[] = [],
+): ExceptionEntry[] {
   return base
     .map((entry) => ({
       ...entry,
@@ -64,17 +76,23 @@ function commonExceptions(base, head = []) {
     .filter(({ paths }) => paths.length > 0);
 }
 
-function stricterThresholds(base = {}, head = {}) {
+function stricterThresholds(
+  base: Readonly<Record<string, number>> = {},
+  head: Readonly<Record<string, number>> = {},
+): Record<string, number> {
   return Object.fromEntries(
     union(Object.keys(base), Object.keys(head)).map((key) => [
       key,
-      Math.min(base[key] ?? THRESHOLD_DEFAULTS[key], head[key] ?? THRESHOLD_DEFAULTS[key]),
+      Math.min(
+        base[key] ?? THRESHOLD_DEFAULTS[key] ?? Number.NaN,
+        head[key] ?? THRESHOLD_DEFAULTS[key] ?? Number.NaN,
+      ),
     ]),
   );
 }
 
-function stricterLists(baseConfig, headConfig) {
-  const covering = {};
+function stricterLists(baseConfig: PolicyConfig, headConfig: PolicyConfig): MutableConfig {
+  const covering: MutableConfig = {};
   if (baseConfig.exclude !== undefined) {
     covering.exclude = common(baseConfig.exclude, headConfig.exclude ?? []);
   }
@@ -82,15 +100,24 @@ function stricterLists(baseConfig, headConfig) {
     covering.disable = common(baseConfig.disable, headConfig.disable ?? []);
   }
   if (baseConfig.exceptions !== undefined) {
-    covering.exceptions = commonExceptions(baseConfig.exceptions, headConfig.exceptions);
+    covering.exceptions = commonExceptions(
+      exceptionEntries(baseConfig.exceptions) ?? [],
+      exceptionEntries(headConfig.exceptions),
+    );
   }
   if (baseConfig.thresholds !== undefined || headConfig.thresholds !== undefined) {
-    covering.thresholds = stricterThresholds(baseConfig.thresholds, headConfig.thresholds);
+    covering.thresholds = stricterThresholds(
+      thresholdsOf(baseConfig.thresholds),
+      thresholdsOf(headConfig.thresholds),
+    );
   }
   if (baseConfig.python?.exceptions !== undefined) {
     covering.python = {
       ...baseConfig.python,
-      exceptions: commonExceptions(baseConfig.python.exceptions, headConfig.python?.exceptions),
+      exceptions: commonExceptions(
+        exceptionEntries(baseConfig.python.exceptions) ?? [],
+        exceptionEntries(headConfig.python?.exceptions),
+      ),
     };
   }
   if (baseConfig.python?.entryPoints !== undefined) {
@@ -104,7 +131,10 @@ function stricterLists(baseConfig, headConfig) {
 
 const HEAD_ANALYSIS_KEYS = ['duplicates', 'history'];
 
-function withHeadAnalysisSettings(baseConfig, headConfig) {
+function withHeadAnalysisSettings(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+): PolicyConfig {
   return {
     ...Object.fromEntries(
       Object.entries(baseConfig).filter(
@@ -120,7 +150,10 @@ function withHeadAnalysisSettings(baseConfig, headConfig) {
   };
 }
 
-export function baseConfigCoveringHead(baseConfig, headConfig) {
+export function baseConfigCoveringHead(
+  baseConfig: PolicyConfig,
+  headConfig: PolicyConfig,
+): PolicyConfig {
   const layout = coveringLayout(baseConfig.layout ?? {}, headConfig.layout ?? {});
   const covering = { ...baseConfig, ...stricterLists(baseConfig, headConfig) };
   if (Object.keys(layout).length > 0) {
