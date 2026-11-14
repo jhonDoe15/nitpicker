@@ -1,11 +1,11 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-generic-name.mjs';
 
 const tester = typescriptRuleTester();
 
-const file = (name) => ({ messageId: 'genericFile', data: { name } });
-const folder = (name) => ({ messageId: 'genericFolder', data: { name } });
-const type = (name) => ({ messageId: 'genericType', data: { name } });
+const file = (name: string) => ({ messageId: 'genericFile', data: { name } });
+const folder = (name: string) => ({ messageId: 'genericFolder', data: { name } });
+const type = (name: string) => ({ messageId: 'genericType', data: { name } });
 
 tester.run('no-generic-name', rule, {
   valid: [

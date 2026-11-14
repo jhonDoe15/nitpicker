@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './simpler-boolean-logic.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-simpler-logic-')));
@@ -23,7 +23,7 @@ afterAll(() => {
 const untyped = typescriptRuleTester();
 const typedTester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-function reported(code, ...forms) {
+function reported(code: string, ...forms: string[]) {
   return {
     code,
     errors: forms.map((form) =>
@@ -34,7 +34,12 @@ function reported(code, ...forms) {
   };
 }
 
-function typed(code, ...forms) {
+type TypedCase = { filename: string; code: string };
+type TypedReported = TypedCase & { errors: { messageId: string; data: { form: string } }[] };
+
+function typed(code: string): TypedCase;
+function typed(code: string, form: string, ...forms: string[]): TypedReported;
+function typed(code: string, ...forms: string[]): TypedCase | TypedReported {
   const filename = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(filename, code);
   return { filename, ...(forms.length === 0 ? { code } : reported(code, ...forms)) };

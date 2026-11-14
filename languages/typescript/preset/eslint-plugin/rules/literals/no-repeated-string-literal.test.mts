@@ -1,10 +1,13 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-repeated-string-literal.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/orders/order-labels.ts';
 
-const repeated = (text) => ({ messageId: 'repeated', data: { text: JSON.stringify(text) } });
+const repeated = (text: string) => ({
+  messageId: 'repeated',
+  data: { text: JSON.stringify(text) },
+});
 
 tester.run('no-repeated-string-literal', rule, {
   valid: [

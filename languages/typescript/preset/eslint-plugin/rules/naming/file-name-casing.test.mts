@@ -5,11 +5,13 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../../shared/head-policy.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { ruleModule, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './file-name-casing.mjs';
 
 const ruleTester = typescriptRuleTester();
-const roots = [];
+const roots: string[] = [];
+
+const plugins = { nitpicker: { rules: { 'file-name-casing': ruleModule(rule) } } };
 
 afterAll(() => {
   for (const root of roots) {
@@ -17,7 +19,7 @@ afterAll(() => {
   }
 });
 
-function folderWith(names) {
+function folderWith(names: string[]) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-file-names-'));
   roots.push(root);
   mkdirSync(path.join(root, 'src'));
@@ -128,21 +130,21 @@ ruleTester.run('file-name-casing', rule, {
 });
 
 describe('file-name-casing messages', () => {
-  function messageFor(filename) {
+  function messageFor(filename: string) {
     const cwd = path.isAbsolute(filename) ? path.dirname(path.dirname(filename)) : process.cwd();
-    const [{ message }] = new Linter({ cwd }).verify(
+    const [first] = new Linter({ cwd }).verify(
       code,
       [
         {
           files: ['**/*.ts'],
           languageOptions: { parser: tseslint.parser },
-          plugins: { nitpicker: { rules: { 'file-name-casing': rule } } },
+          plugins,
           rules: { 'nitpicker/file-name-casing': ['error', { casing: 'kebab-case' }] },
         },
       ],
       { filename },
     );
-    return message;
+    return first?.message;
   }
 
   it('names the casing and both ways out', () => {
@@ -163,7 +165,7 @@ describe('file-name-casing and files marked as generated', () => {
     vi.unstubAllEnvs();
   });
 
-  function messagesFor(generatedFiles, relative) {
+  function messagesFor(generatedFiles: string[], relative: string) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-generated-names-'));
     roots.push(root);
     mkdirSync(path.join(root, 'src'));
@@ -179,7 +181,7 @@ describe('file-name-casing and files marked as generated', () => {
           {
             files: ['**/*.ts'],
             languageOptions: { parser: tseslint.parser },
-            plugins: { nitpicker: { rules: { 'file-name-casing': rule } } },
+            plugins,
             rules: { 'nitpicker/file-name-casing': ['error', { casing: 'kebab-case' }] },
           },
         ],
