@@ -1,9 +1,25 @@
-import { RuleTester } from 'eslint';
+import { RuleTester, type Rule } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import { rule as noComments } from '../../../typescript/preset/eslint-plugin/rules/modules/no-comments.mjs';
-import { rule as noHandwrittenBoundaryGuard } from '../../../typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
-import { rule as noUnknownInDomain } from '../../../typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
-import { rule as reportModuleLoadEffects } from '../../../typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs';
+import { rule as untypedNoComments } from '../../../typescript/preset/eslint-plugin/rules/modules/no-comments.mjs';
+import { rule as untypedNoHandwrittenBoundaryGuard } from '../../../typescript/preset/eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
+import { rule as untypedNoUnknownInDomain } from '../../../typescript/preset/eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
+import { rule as untypedReportModuleLoadEffects } from '../../../typescript/preset/eslint-plugin/rules/modules/report-module-load-effects.mjs';
+
+function isRuleModule(candidate: unknown): candidate is Rule.RuleModule {
+  return typeof candidate === 'object' && candidate !== null && 'create' in candidate;
+}
+
+function ruleOf(candidate: unknown): Rule.RuleModule {
+  if (!isRuleModule(candidate)) {
+    throw new TypeError('The imported rule has no create function');
+  }
+  return candidate;
+}
+
+const noComments = ruleOf(untypedNoComments);
+const noHandwrittenBoundaryGuard = ruleOf(untypedNoHandwrittenBoundaryGuard);
+const noUnknownInDomain = ruleOf(untypedNoUnknownInDomain);
+const reportModuleLoadEffects = ruleOf(untypedReportModuleLoadEffects);
 
 Object.assign(RuleTester, {
   afterAll,

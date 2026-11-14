@@ -1,32 +1,52 @@
 import { Linter } from 'eslint';
 import { describe, expect, it } from 'vitest';
-import { strictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
+import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import { strictPresetConfig as untypedStrictPresetConfig } from '../../typescript/preset/eslint-config/strict.mjs';
 import { defaultResolvedLayout } from '../../typescript/preset/layout.mjs';
 import {
   JAVASCRIPT_ONLY_RULES,
   JSDOC_RULE_OPTIONS,
-  applyJavascriptDialect,
+  applyJavascriptDialect as untypedApplyJavascriptDialect,
   scriptRuleEntries,
 } from './eslint-dialect.mjs';
+
+type ConfigEntry = {
+  readonly files?: unknown[];
+  readonly ignores?: string[];
+  readonly rules?: Readonly<Record<string, unknown>>;
+};
+
+const strictPresetConfig: (layout: typeof defaultResolvedLayout, options: object) => ConfigEntry[] =
+  untypedStrictPresetConfig;
+const applyJavascriptDialect: (
+  entries: ConfigEntry[],
+  policy: { readonly preset?: string } | undefined,
+) => ConfigEntry[] = untypedApplyJavascriptDialect;
+
+function isLinterConfig(value: unknown): value is Linter.Config {
+  return typeof value === 'object' && value !== null;
+}
 
 const javascript = { preset: 'javascript' };
 const JAVASCRIPT_FILES = '**/*.{js,mjs,cjs}';
 const TYPESCRIPT_FILES = '**/*.{ts,mts,cts}';
 
-function ruleSettings(entries, rule) {
+function ruleSettings(entries: ConfigEntry[], rule: string): unknown[] {
   return entries.flatMap((entry) =>
     entry.rules !== undefined && rule in entry.rules ? [entry.rules[rule]] : [],
   );
 }
 
-function entriesFor(entries, glob) {
+function entriesFor(entries: ConfigEntry[], glob: string): ConfigEntry[] {
   return entries.filter((entry) =>
-    entry.files?.every((pattern) => [pattern].flat().includes(glob)),
+    entry.files?.every((pattern: unknown) => [pattern].flat().includes(glob)),
   );
 }
 
-function selectors(setting) {
-  return setting.slice(1).map((restriction) => restriction.selector ?? restriction);
+function selectors(setting: unknown): unknown[] {
+  return listOf(setting)
+    .slice(1)
+    .map((restriction) => fieldOf(restriction, 'selector') ?? restriction);
 }
 
 describe('applyJavascriptDialect', () => {
@@ -59,7 +79,7 @@ describe('applyJavascriptDialect', () => {
       [{ rules: { '@typescript-eslint/no-require-imports': 'error' } }],
       javascript,
     );
-    expect(typescript.files).toEqual([TYPESCRIPT_FILES]);
+    expect(typescript?.files).toEqual([TYPESCRIPT_FILES]);
     expect(javascriptEntry).toEqual({ files: [JAVASCRIPT_FILES], rules: {} });
   });
 
@@ -119,7 +139,7 @@ describe('applyJavascriptDialect', () => {
       [{ rules: { 'nitpicker/no-comments': 2, 'nitpicker/no-unknown-in-domain': 'warn' } }],
       javascript,
     );
-    expect(mapped.rules).toEqual({
+    expect(mapped?.rules).toEqual({
       'nitpicker/no-comments': [2, { jsdocTypes: true }],
       'nitpicker/no-unknown-in-domain': ['warn', { jsdoc: true }],
     });
@@ -137,12 +157,12 @@ describe('applyJavascriptDialect', () => {
       'no-restricted-syntax',
     );
     expect(forTypescript).toEqual(before);
-    const typescriptOnly = (text) => /\bTS[A-Z]/.test(text);
+    const typescriptOnly = (text: unknown) => /\bTS[A-Z]/.test(textOf(text));
     expect(forTypescript.flatMap(selectors).some(typescriptOnly)).toBe(true);
     expect(forJavascript.flatMap(selectors).some(typescriptOnly)).toBe(false);
     expect(forJavascript.map((setting) => selectors(setting).length)).toEqual(
       forTypescript.map(
-        (setting) => selectors(setting).filter((text) => !typescriptOnly(text)).length,
+        (setting) => selectors(setting).filter((text: unknown) => !typescriptOnly(text)).length,
       ),
     );
   });
@@ -171,7 +191,7 @@ describe('applyJavascriptDialect', () => {
       },
     ];
     const [, forJavascript] = applyJavascriptDialect(entries, javascript);
-    expect(forJavascript.rules['no-restricted-syntax']).toEqual([
+    expect(forJavascript?.rules?.['no-restricted-syntax']).toEqual([
       'warn',
       'ForStatement',
       { selector: 'WhileStatement', message: 'while' },
@@ -191,9 +211,9 @@ describe('the dialect applied to files', () => {
   const linter = new Linter({ configType: 'flat' });
   const config = applyJavascriptDialect(restrictedSyntax, javascript);
 
-  function messages(filename, code) {
+  function messages(filename: string, code: string) {
     return linter
-      .verify(code, config, { filename })
+      .verify(code, config.filter(isLinterConfig), { filename })
       .filter(({ ruleId }) => ruleId === 'no-restricted-syntax')
       .map(({ message }) => message);
   }

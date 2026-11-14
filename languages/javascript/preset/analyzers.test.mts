@@ -1,13 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
-import { resolveLayout } from '../../typescript/preset/layout.mjs';
-import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mjs';
+import { analyzeEntryPoints as untypedAnalyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
+import { resolveLayout as untypedResolveLayout } from '../../typescript/preset/layout.mjs';
+import { analyzeTestRuntime as untypedAnalyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mjs';
+
+type Layout = ReturnType<typeof untypedResolveLayout>;
+type Edge = [string, string] | [string, string, string[]];
+type Graph = {
+  readonly modules: readonly {
+    readonly source: string;
+    readonly dependencies: readonly { resolved: string; dependencyTypes: string[] }[];
+  }[];
+};
+type EntryReport = {
+  readonly summary: {
+    readonly components?: number;
+    readonly declaredEntryPoints?: number;
+    readonly throughEntryPoint?: number;
+    readonly missingEntryPointImports?: number;
+    readonly publicAlternativeBypasses?: number;
+    readonly concreteCrossBoundaryImports?: number;
+  };
+  readonly publicAlternativeBypasses: readonly {
+    readonly source: string;
+    readonly target: string;
+    readonly publicEntryPoint: string;
+  }[];
+};
+type EntryOptions = {
+  readonly layout?: Layout;
+  readonly foundationDirectories: Set<string>;
+  readonly compositionRoots?: Set<string>;
+};
+type TestRuntimeUsage = { readonly category: string; readonly subprocessBridges: string[] };
+
+const analyzeEntryPoints: (graph: Graph, sourceRoot: string, options: EntryOptions) => EntryReport =
+  untypedAnalyzeEntryPoints;
+const analyzeTestRuntime: (
+  graph: Graph,
+  options: {
+    readonly layout: Layout;
+    readonly productionRoot: string;
+    readonly sourceTexts?: Map<string, string>;
+  },
+) => { readonly tests: TestRuntimeUsage[]; readonly findings: unknown[] } =
+  untypedAnalyzeTestRuntime;
+const resolveLayout: (
+  config?: object,
+  roots?: string[],
+  options?: { javascript: boolean },
+) => Layout = untypedResolveLayout;
 
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
 const typescriptLayout = resolveLayout();
-const noFoundations = new Set();
+const noFoundations = new Set<string>();
 
-function graphOf(edges) {
+function graphOf(edges: Edge[]): Graph {
   const sources = new Set(edges.flatMap(([from, to]) => [from, to]));
   return {
     modules: [...sources].map((source) => ({
@@ -19,7 +66,11 @@ function graphOf(edges) {
   };
 }
 
-function entryPointReport(edges, layout, options = {}) {
+function entryPointReport(
+  edges: Edge[],
+  layout: Layout,
+  options: { compositionRoots?: Set<string> } = {},
+): EntryReport {
   return analyzeEntryPoints(graphOf(edges), 'src/main', {
     layout,
     foundationDirectories: noFoundations,
@@ -27,7 +78,7 @@ function entryPointReport(edges, layout, options = {}) {
   });
 }
 
-const publicImport = [
+const publicImport: Edge[] = [
   ['src/main/composition-root.mjs', 'src/main/greeting/index.js'],
   ['src/main/greeting/index.js', 'src/main/greeting/adapters/run.js', ['export']],
 ];
@@ -73,7 +124,7 @@ describe('entry points of a JavaScript project', () => {
       javascriptLayout,
     );
     expect(report.summary.publicAlternativeBypasses).toBe(1);
-    const { source, target, publicEntryPoint } = report.publicAlternativeBypasses[0];
+    const { source, target, publicEntryPoint } = report.publicAlternativeBypasses[0] ?? {};
     expect({ source, target, publicEntryPoint }).toEqual({
       source: 'src/main/other/use.js',
       target: 'src/main/greeting/adapters/run.js',
@@ -141,10 +192,10 @@ describe('entry points of a JavaScript project', () => {
   });
 
   it('flags a TypeScript client name in both projects and a JavaScript one only in JavaScript', () => {
-    const edges = [['src/main/other/use.js', 'src/main/greeting/client.ts']];
+    const edges: Edge[] = [['src/main/other/use.js', 'src/main/greeting/client.ts']];
     expect(entryPointReport(edges, javascriptLayout).summary.concreteCrossBoundaryImports).toBe(1);
     expect(entryPointReport(edges, typescriptLayout).summary.concreteCrossBoundaryImports).toBe(1);
-    const jsEdges = [['src/main/other/use.ts', 'src/main/greeting/client.js']];
+    const jsEdges: Edge[] = [['src/main/other/use.ts', 'src/main/greeting/client.js']];
     expect(entryPointReport(jsEdges, typescriptLayout).summary.concreteCrossBoundaryImports).toBe(
       0,
     );
@@ -168,12 +219,16 @@ describe('entry points of a JavaScript project', () => {
   });
 });
 
-function bridgeUsage(text, layout) {
+function bridgeUsage(text: string, layout: Layout): TestRuntimeUsage {
   const test = 'test/app.test.js';
-  return analyzeTestRuntime(
+  const [usage] = analyzeTestRuntime(
     { modules: [{ source: test, dependencies: [] }] },
     { layout, productionRoot: 'src/main', sourceTexts: new Map([[test, text]]) },
-  ).tests[0];
+  ).tests;
+  if (usage === undefined) {
+    throw new Error('No test runtime usage was reported');
+  }
+  return usage;
 }
 
 describe('test runtime of a JavaScript project', () => {
