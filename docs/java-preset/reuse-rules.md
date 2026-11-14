@@ -51,7 +51,10 @@ object`. Instance methods are left to the duplicates check, as class methods are
   compares the edited definition with its base copy and its same-named siblings in the module.
 - **`decided-condition`.** The same trees feed `shared/rules/decided/`, which walks each method body
   with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
-  return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`) and asks
+  return, throw, break or continue, earlier `when` arms, the left side of `&&` and `||`, the test of
+  a counted `for` loop or Kotlin `until`, `..` and `downTo` range, the branches of a ternary, and
+  facts about names a lambda captures when they cannot change; `equals` and `Objects.equals` on a
+  string, a boolean or an enum constant count as `==`) and asks
   the solver whether the condition can still be both true and false. Only a proof reports: always
   false is dead code, always true a redundant check, and the message names the guard that decides
   it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets

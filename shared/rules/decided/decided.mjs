@@ -5,6 +5,12 @@ import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { depthFirst } from '../../traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames, namesOf } from './facts.mjs';
 import { conditionChecks } from './flow.mjs';
+import { enumConstants } from './flow/arms/arms.mjs';
+import { withValueEquality } from './flow/values/equals.mjs';
+import { isIntegerLoop } from './flow/loops.mjs';
+import { lambdaStatements } from './flow/nested.mjs';
+import { sitesIn } from './flow/sites.mjs';
+import { declaredTypes, stableNames } from './flow/stability.mjs';
 
 const CHAINS = new Set(['&&', '||']);
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
@@ -26,33 +32,6 @@ function chainOperands(chain) {
 
 function isChain(node) {
   return node.kind === 'binary' && CHAINS.has(node.value);
-}
-
-function whenArms(node) {
-  const [subject, ...arms] = node.children;
-  return node.value === 'when' && subject.kind === 'none'
-    ? arms
-        .filter((arm) => arm.value === 'case' && arm.children.length === 2)
-        .map((arm) => arm.children[0])
-    : [];
-}
-
-function sitesIn(root) {
-  const sites = [];
-  const pending = [{ node: root, within: '' }];
-  for (const { node, within } of pending) {
-    if (node.kind === 'conditional' || (node !== root && node.kind === 'if')) {
-      sites.push({ node: node.children[0] });
-    } else if (isChain(node) && within !== node.value) {
-      sites.push({ node });
-    }
-    const arms = whenArms(node);
-    sites.push(...arms.map((arm, index) => ({ node: arm, earlier: arms.slice(0, index) })));
-    const below = node.children.filter(({ kind }) => kind !== 'block' && kind !== 'lambda');
-    const chain = isChain(node) ? node.value : '';
-    pending.push(...below.map((child) => ({ node: child, within: chain })));
-  }
-  return sites;
 }
 
 function armFacts(scan, earlier = []) {
@@ -120,17 +99,22 @@ function integerNames(tree) {
   );
   const other = new Set(
     declared
-      .filter((node) => !isIntegerType(node.children[0]))
+      .filter((node) => !isIntegerType(node.children[0]) && !isIntegerLoop(node))
       .map((node) => node.children[1].value),
   );
   return new Set(declared.map((node) => node.children[1].value).filter((name) => !other.has(name)));
 }
 
-function bodiesOf(tree) {
-  return nodesOf(tree)
-    .filter((node) => node === tree || node.kind === 'lambda')
-    .map((node) => node.children.find((child) => child.kind === 'block'))
-    .filter((body) => body !== undefined);
+function unitChecks(tree, flow) {
+  const root = tree.children.find((child) => child.kind === 'block');
+  const checks = conditionChecks(root?.children ?? [], flow);
+  for (const lambda of nodesOf(tree).filter((node) => node.kind === 'lambda')) {
+    if (!flow.seen.has(lambda)) {
+      flow.seen.add(lambda);
+      checks.push(...conditionChecks(lambdaStatements(lambda), flow));
+    }
+  }
+  return checks;
 }
 
 /**
@@ -139,16 +123,27 @@ function bodiesOf(tree) {
  * counts as an integer only when every declaration of it in the unit has an integer type.
  * `looseBooleans` (Python, where `True == 1`) leaves `==` against a boolean undecided.
  */
-export function decidedConditions(tree, { looseBooleans = false } = {}) {
-  const scope = { integers: integerNames(tree), looseBooleans };
-  const flow = { scope, mutable: mutableNames(tree), effects: new WeakMap() };
+export function decidedConditions(source, { looseBooleans = false } = {}) {
+  const types = declaredTypes(source);
+  const scope = {
+    integers: integerNames(source),
+    looseBooleans,
+    types,
+    enums: enumConstants(source, types),
+  };
+  const tree = withValueEquality(source, scope);
+  const stable = stableNames(tree);
+  const mutable = new Set([...mutableNames(tree)].filter((name) => !stable.has(name)));
+  const flow = { scope, mutable, effects: new WeakMap(), stable, seen: new WeakSet() };
   const scan = { scope, flow, found: [], checked: new Set() };
-  const checks = bodiesOf(tree).flatMap((body) => conditionChecks(body.children, flow));
-  for (const found of checks) {
+  for (const found of unitChecks(tree, flow)) {
     const sites =
-      found.condition === undefined ? sitesIn(found.expression) : [{ node: found.condition }];
+      found.condition === undefined
+        ? sitesIn(found.expression, flow)
+        : [{ node: found.condition, extra: [] }];
     for (const site of sites) {
-      checkChain(scan, site.node, [...found.facts, ...armFacts(scan, site.earlier)]);
+      const known = [...found.facts, ...armFacts(scan, site.earlier), ...site.extra];
+      checkChain(scan, site.node, known);
     }
   }
   return scan.found.toSorted((left, right) => left.node.start - right.node.start);

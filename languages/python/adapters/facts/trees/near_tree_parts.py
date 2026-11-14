@@ -142,6 +142,8 @@ class BaseConverter:
         if method is None:
             return None
         node = method(source)
+        if node is None:
+            return None
         if node["kind"] in SNIPPET_KINDS and "text" not in node:
             segment = ast.get_source_segment(self.text, source)
             if segment:

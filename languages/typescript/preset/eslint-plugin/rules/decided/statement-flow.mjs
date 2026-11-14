@@ -1,4 +1,5 @@
 import { afterEffects, effectsOf, fact, patternNames } from './facts.mjs';
+import { recordCaptures } from './flow/closures.mjs';
 
 const JUMPS = new Map([
   ['ReturnStatement', 'returns'],
@@ -175,8 +176,9 @@ function otherFlow(node, facts, context) {
       ? facts
       : afterEffects(facts, effectsOf([node], context), mutable);
   const lists = nestedLists(node);
-  const own = OWN_EXPRESSIONS.get(node.type)?.(node) ?? [];
-  const checks = own.filter(Boolean).map((expression) => ({ expression, facts: after }));
+  const own = (OWN_EXPRESSIONS.get(node.type)?.(node) ?? []).filter(Boolean);
+  recordCaptures(own, facts, context);
+  const checks = own.map((expression) => ({ expression, facts: after }));
   const entry = KEPT_ENTRY.has(node.type) ? facts : after;
   return { checks, children: lists.map((statements) => ({ statements, facts: entry })), after };
 }

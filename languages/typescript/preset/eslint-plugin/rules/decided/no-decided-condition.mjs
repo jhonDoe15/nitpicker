@@ -6,6 +6,8 @@ import {
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
+import { recordCaptures } from './flow/closures.mjs';
+import { sitesIn } from './flow/sites.mjs';
 import { conditionChecks } from './statement-flow.mjs';
 import { isNarrowingTest, outsideFunctions } from './syntax.mjs';
 
@@ -62,22 +64,6 @@ function chainOperands(chain) {
   ].filter((node) => node.type !== 'LogicalExpression' || node.operator !== chain.operator);
 }
 
-function isChainHead(node) {
-  const { parent } = node;
-  const continues = parent?.type === 'LogicalExpression' && parent.operator === node.operator;
-  const isTernaryTest = parent?.type === 'ConditionalExpression' && parent.test === node;
-  return CHAINS.has(node.operator) && !continues && !isTernaryTest;
-}
-
-function sitesIn(expression) {
-  return [...outsideFunctions(expression)].flatMap((node) => {
-    if (node.type === 'ConditionalExpression') {
-      return [node.test];
-    }
-    return node.type === 'LogicalExpression' && isChainHead(node) ? [node] : [];
-  });
-}
-
 function report(scan, { node, facts, verdict, query }) {
   const { reason } = reasonFor(facts, query, verdict);
   const condition = scan.sourceCode.getText(node);
@@ -124,15 +110,24 @@ function checkChain(scan, node, facts) {
   }
 }
 
-function checkedConditions(found) {
-  return found.condition === undefined ? sitesIn(found.expression) : [found.condition];
+function sitesOf(scan, found) {
+  return found.condition === undefined
+    ? sitesIn(found.expression, scan)
+    : [{ node: found.condition, extra: [] }];
 }
 
-function analyze(scan, statements) {
+function analyze(scan, statements, initial = []) {
   for (const found of conditionChecks(statements, scan.flow)) {
-    for (const condition of checkedConditions(found)) {
-      checkChain(scan, condition, found.facts);
+    for (const site of sitesOf(scan, found)) {
+      checkChain(scan, site.node, [...initial, ...found.facts, ...site.extra]);
     }
+  }
+}
+
+function analyzeExpression(scan, expression, facts) {
+  recordCaptures([expression], facts, scan.flow);
+  for (const site of sitesIn(expression, scan)) {
+    checkChain(scan, site.node, [...facts, ...site.extra]);
   }
 }
 
@@ -157,11 +152,19 @@ export const rule = {
     if (program === null || program === undefined) {
       return {};
     }
-    const flow = { sourceCode, mutable: mutableNames(sourceCode), effects: new WeakMap() };
+    const flow = {
+      sourceCode,
+      mutable: mutableNames(sourceCode),
+      effects: new WeakMap(),
+      captured: new Map(),
+    };
     const scan = { context, sourceCode, flow };
     function analyzeFunction(node) {
+      const facts = flow.captured.get(node) ?? [];
       if (node.body.type === 'BlockStatement') {
-        analyze(scan, node.body.body);
+        analyze(scan, node.body.body, facts);
+      } else {
+        analyzeExpression(scan, node.body, facts);
       }
     }
     return {
