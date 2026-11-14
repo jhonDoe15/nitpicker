@@ -1,13 +1,20 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../review-finding.mjs';
-import { file, fn, klass, parameter, property } from '../../test-support/facts.mjs';
-import { springFindings } from '../spring-findings.mjs';
+import {
+  file,
+  findingFactory,
+  fixtureFacts,
+  fn,
+  klass,
+  parameter,
+  property,
+  springFindings,
+  type Loose,
+} from '../spring-test-facts.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const PROJECT = path.join(FIXTURES, 'kotlin-spring-project');
-const { files } = JSON.parse(readFileSync(path.join(FIXTURES, 'kotlin-spring-facts.json'), 'utf8'));
+const files = fixtureFacts(path.join(FIXTURES, 'kotlin-spring-facts.json'));
 const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
   (name) => `jakarta.persistence.${name}`,
 );
@@ -16,7 +23,7 @@ const MANIFEST = {
   kotlinAllOpen: { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] },
 };
 
-function lines(projectFiles, { javaRoots = ['src/main/java'] } = {}) {
+function lines(projectFiles: Loose[], { javaRoots = ['src/main/java'] } = {}): string[] {
   return springFindings(projectFiles, {
     finding: findingFactory(),
     manifest: MANIFEST,
@@ -29,11 +36,11 @@ function lines(projectFiles, { javaRoots = ['src/main/java'] } = {}) {
   );
 }
 
-function inFixture(name) {
+function inFixture(name: string): string[] {
   return lines(files).filter((line) => line.startsWith(`${name}:`));
 }
 
-function sourceFile(overrides) {
+function sourceFile(overrides: Loose): Loose {
   return file({
     scopes: [],
     invocations: [],
@@ -47,7 +54,7 @@ function sourceFile(overrides) {
   });
 }
 
-function scope(id, k, overrides = {}) {
+function scope(id: number, k: string, overrides: Loose = {}): Loose {
   return { id, k, ...overrides };
 }
 
@@ -115,7 +122,7 @@ describe('Spring Data rules on the forms the review of the Kotlin port found', (
   });
 });
 
-function reportedIn(suffix) {
+function reportedIn(suffix: string): string[] {
   return springFindings(files, {
     finding: findingFactory(),
     manifest: MANIFEST,
@@ -190,7 +197,7 @@ describe('Spring Data rules on hand-built facts', () => {
       ],
     });
 
-    const enumStrings = (javaRoots) =>
+    const enumStrings = (javaRoots: string[]) =>
       lines([facts], { javaRoots }).filter((line) => line.endsWith(' JpaEnumString'));
 
     expect(enumStrings(['src/main/java'])).toEqual([]);
@@ -234,7 +241,7 @@ describe('Spring Data rules on hand-built facts', () => {
   });
 
   it('applies the Spring Data name pattern only to a repository imported by name', () => {
-    const saver = (imports) =>
+    const saver = (imports: Loose[]) =>
       sourceFile({
         imports,
         classes: [
@@ -273,7 +280,7 @@ describe('Spring Data rules on hand-built facts', () => {
   });
 
   it('keeps an escaped dollar in a query string as one string', () => {
-    const query = (text) =>
+    const query = (text: string) =>
       sourceFile({
         imports: [{ path: 'org.springframework.data.jpa.repository.Query', all: false }],
         functions: [
@@ -285,7 +292,7 @@ describe('Spring Data rules on hand-built facts', () => {
         ],
       });
 
-    expect(lines([query('"select o from Order o where o.price > ${\'$\'}1"')])).toEqual([]);
+    expect(lines([query(`"select o from Order o where o.price > \${'$'}1"`)])).toEqual([]);
     expect(lines([query('"select o from Order o where o.label = \'\\$label\'"')])).toEqual([]);
     expect(lines([query('"select o from Order o where o.label = \\\\$label"')])).toEqual([
       'Sample.kt:1 SpringDataQueryTextBlock',

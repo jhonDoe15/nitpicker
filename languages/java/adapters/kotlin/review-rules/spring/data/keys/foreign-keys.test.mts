@@ -1,12 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { findingFactory } from '../../../review-finding.mjs';
-import { file, klass, parameter } from '../../../test-support/facts.mjs';
-import { springFindings } from '../../spring-findings.mjs';
+import {
+  file,
+  findingFactory,
+  klass,
+  parameter,
+  springFindings,
+  type Loose,
+} from '../../spring-test-facts.mts';
 import { FOREIGN_KEY_RULES } from './foreign-keys.mjs';
 
 const JPA = { path: 'jakarta.persistence', all: true };
 
-function entry(name, args = {}) {
+function entry(name: string, args: Record<string, string> = {}): Loose {
   return {
     name,
     type: name,
@@ -16,7 +21,7 @@ function entry(name, args = {}) {
   };
 }
 
-function column(name, line, entries) {
+function column(name: string, line: number, entries: Loose[]): Loose {
   return parameter(name, 'Customer?', {
     property: 'var',
     line,
@@ -24,7 +29,10 @@ function column(name, line, entries) {
   });
 }
 
-function entity(name, { table, columns, ...rest }) {
+function entity(
+  name: string,
+  { table, columns, ...rest }: { table?: Record<string, string>; columns: Loose[] } & Loose,
+): Loose {
   return klass(name, {
     annotations: [entry('Entity'), ...(table === undefined ? [] : [entry('Table', table)])],
     primaryParameters: columns,
@@ -32,7 +40,7 @@ function entity(name, { table, columns, ...rest }) {
   });
 }
 
-function sourceOf(classes, overrides = {}) {
+function sourceOf(classes: Loose[], overrides: Loose = {}): Loose {
   return file({
     imports: [JPA],
     classes,
@@ -48,7 +56,10 @@ function sourceOf(classes, overrides = {}) {
   });
 }
 
-function reported(files, { checksForeignKeys = () => true } = {}) {
+function reported(
+  files: Loose[],
+  { checksForeignKeys = () => true }: { checksForeignKeys?: () => boolean } = {},
+): string[] {
   return springFindings(files, {
     finding: findingFactory(),
     manifest: { spring: true },
@@ -155,7 +166,7 @@ describe('JpaUnindexedForeignKey in Kotlin entities', () => {
   });
 
   it('follows the hierarchy past a mapped superclass to the root entity and its strategy', () => {
-    const mapped = (name, superClass) =>
+    const mapped = (name: string, superClass: string) =>
       klass(name, { annotations: [entry('MappedSuperclass')], superClass });
     const root = entity('Base', { columns: [] });
     const order = entity('Order', { superClass: 'Middle', columns: [column('customer', 2, [])] });

@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
@@ -6,25 +5,26 @@ import {
   lastSelector,
   normalized,
   parseSelector,
-  splitArguments,
+  splitArguments as untypedSplitArguments,
   unwrapped,
 } from './expressions.mjs';
-import { springViews } from './spring-view.mjs';
+import { fixtureFacts, springViews } from '../spring-test-facts.mts';
 
+const splitArguments: (text: string) => { text: string }[] = untypedSplitArguments;
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
-const { files } = JSON.parse(readFileSync(path.join(FIXTURES, 'kotlin-spring-facts.json'), 'utf8'));
+const files = fixtureFacts(path.join(FIXTURES, 'kotlin-spring-facts.json'));
 
-function typeAt(line, text, source = 'good/Batches.kt') {
+function typeAt(line: number, text: string, source = 'good/Batches.kt'): unknown {
   const view = springViews({
     files,
     projectFiles: files,
     projectRoot: path.join(FIXTURES, 'kotlin-spring-project'),
     javaRoots: ['src/main/java'],
   }).find(({ file }) => file.file.endsWith(source));
-  const scopes = view.file.invocations
+  const scopes = (view?.file.invocations ?? [])
     .filter((entry) => entry.line === line)
     .map(({ scope }) => scope);
-  return view.typeOf(Math.max(...scopes), text);
+  return view?.typeOf(Math.max(...scopes), text);
 }
 
 describe('Kotlin expression text', () => {
