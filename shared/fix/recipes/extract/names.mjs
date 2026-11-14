@@ -16,7 +16,7 @@ export function helperNameFor(label, taken) {
   return taken.has(name) ? undefined : name;
 }
 
-export function freshName(stem, taken) {
+function freshName(stem, taken) {
   const base = /^[\p{L}_$][\p{L}\p{N}_$]*$/u.test(stem ?? '') ? stem : FALLBACK_STEM;
   const candidates = [
     base,
@@ -24,6 +24,20 @@ export function freshName(stem, taken) {
     ...Array.from({ length: 98 }, (_, i) => `${base}Value${i + 2}`),
   ];
   return candidates.find((name) => !taken.has(name));
+}
+
+export function namedHoles(holes, taken, stemOf) {
+  const names = new Set(taken);
+  const named = [];
+  for (const hole of holes) {
+    const name = freshName(stemOf(hole.occurrences[0].a), names);
+    if (name === undefined) {
+      return undefined;
+    }
+    names.add(name);
+    named.push({ ...hole, name });
+  }
+  return named;
 }
 
 export function declineNote({ path, line }, reason) {

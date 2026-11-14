@@ -1,6 +1,6 @@
 import { chainOf } from '../../../../../shared/traversal.mjs';
 import { bindPair } from '../../../../../shared/fix/recipes/extract/bijection.mjs';
-import { freshName } from '../../../../../shared/fix/recipes/extract/names.mjs';
+import { namedHoles } from '../../../../../shared/fix/recipes/extract/names.mjs';
 import { hasModifier } from './class-shape.mjs';
 import {
   codeParts,
@@ -232,15 +232,5 @@ function flowName(node) {
 }
 
 export function nameHoles(holes, taken) {
-  const names = new Set(taken);
-  const named = [];
-  for (const hole of holes) {
-    const name = freshName(flowName(hole.occurrences[0].a), names);
-    if (name === undefined) {
-      return undefined;
-    }
-    names.add(name);
-    named.push({ ...hole, name });
-  }
-  return named;
+  return namedHoles(holes, taken, flowName);
 }

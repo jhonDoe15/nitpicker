@@ -1,5 +1,10 @@
-import { chainOf } from '../../../../../shared/traversal.mjs';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
+import type TypeScript from 'typescript';
+import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+
+type Role = 'other' | 'member' | 'shorthand' | 'declaration' | 'reference';
+
+const ts = typescriptApi();
 
 const MEMBER = 'member';
 const SHORTHAND = 'shorthand';
@@ -31,20 +36,20 @@ const TRANSPARENT_PARENTS = [
   ts.isShorthandPropertyAssignment,
 ];
 
-export function normalizedText(node, sourceFile) {
+export function normalizedText(node: TypeScript.Node, sourceFile: TypeScript.SourceFile): string {
   return node.getText(sourceFile).replaceAll(/\s+/gu, ' ');
 }
 
-export function childrenOf(node) {
-  const found = [];
+export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
+  const found: TypeScript.Node[] = [];
   ts.forEachChild(node, (child) => {
     found.push(child);
   });
   return found;
 }
 
-export function descendants(root) {
-  const found = [];
+export function descendants(root: TypeScript.Node): TypeScript.Node[] {
+  const found: TypeScript.Node[] = [];
   const pending = [root];
   for (const node of pending) {
     found.push(node);
@@ -53,11 +58,11 @@ export function descendants(root) {
   return found;
 }
 
-function isNameOf(parent, node) {
-  return parent.name === node;
+function isNameOf(parent: TypeScript.Node, node: TypeScript.Node): boolean {
+  return fieldOf(parent, 'name') === node;
 }
 
-function isMemberName(node) {
+function isMemberName(node: TypeScript.Node): boolean {
   const parent = node.parent;
   return (
     (ts.isPropertyAccessExpression(parent) && isNameOf(parent, node)) ||
@@ -66,7 +71,7 @@ function isMemberName(node) {
   );
 }
 
-function isOtherName(parent) {
+function isOtherName(parent: TypeScript.Node): boolean {
   return (
     ts.isQualifiedName(parent) ||
     ts.isLabeledStatement(parent) ||
@@ -74,13 +79,13 @@ function isOtherName(parent) {
   );
 }
 
-function bindingRole(parent) {
+function bindingRole(parent: TypeScript.BindingElement): Role {
   return ts.isObjectBindingPattern(parent.parent) && parent.propertyName === undefined
     ? SHORTHAND
     : 'declaration';
 }
 
-export function roleOf(node) {
+export function roleOf(node: TypeScript.Node): Role {
   const parent = node.parent;
   if (isOtherName(parent)) {
     return 'other';
@@ -99,23 +104,26 @@ export function roleOf(node) {
     : 'reference';
 }
 
-export function symbolAt(node, checker) {
+export function symbolAt(
+  node: TypeScript.Node,
+  checker: TypeScript.TypeChecker,
+): TypeScript.Symbol | undefined {
   return roleOf(node) === SHORTHAND && ts.isShorthandPropertyAssignment(node.parent)
     ? checker.getShorthandAssignmentValueSymbol(node.parent)
     : checker.getSymbolAtLocation(node);
 }
 
-function transparentParent(node) {
+function transparentParent(node: TypeScript.Node): TypeScript.Node | undefined {
   const parent = node.parent;
   const assignedValue = ts.isPropertyAssignment(parent) && parent.initializer === node;
   return assignedValue || TRANSPARENT_PARENTS.some((test) => test(parent)) ? parent : undefined;
 }
 
-function isAssignmentOperator(kind) {
+function isAssignmentOperator(kind: TypeScript.SyntaxKind): boolean {
   return kind >= ts.SyntaxKind.FirstAssignment && kind <= ts.SyntaxKind.LastAssignment;
 }
 
-function isAssigned(parent, current) {
+function isAssigned(parent: TypeScript.Node, current: TypeScript.Node): boolean {
   return (
     ts.isBinaryExpression(parent) &&
     parent.left === current &&
@@ -123,7 +131,7 @@ function isAssigned(parent, current) {
   );
 }
 
-function isStepped(parent) {
+function isStepped(parent: TypeScript.Node): boolean {
   const operators = [ts.SyntaxKind.PlusPlusToken, ts.SyntaxKind.MinusMinusToken];
   return (
     (ts.isPrefixUnaryExpression(parent) || ts.isPostfixUnaryExpression(parent)) &&
@@ -131,14 +139,14 @@ function isStepped(parent) {
   );
 }
 
-function isEnumerated(parent, current) {
+function isEnumerated(parent: TypeScript.Node, current: TypeScript.Node): boolean {
   return (
     (ts.isForInStatement(parent) || ts.isForOfStatement(parent)) && parent.initializer === current
   );
 }
 
-export function isWritten(node) {
-  const current = chainOf(node, transparentParent).at(-1);
+export function isWritten(node: TypeScript.Node): boolean {
+  const current = chainOf(node, transparentParent).at(-1) ?? node;
   const parent = current.parent;
   return (
     isAssigned(parent, current) ||
@@ -148,7 +156,7 @@ export function isWritten(node) {
   );
 }
 
-function isCallee(node) {
+function isCallee(node: TypeScript.Node): boolean {
   const parent = node.parent;
   return (
     ((ts.isCallExpression(parent) || ts.isNewExpression(parent)) && parent.expression === node) ||
@@ -156,29 +164,32 @@ function isCallee(node) {
   );
 }
 
-function isMemberAccess(node) {
-  const inner = chainOf(node, (current) =>
-    ts.isParenthesizedExpression(current) ? current.expression : undefined,
-  ).at(-1);
+function isMemberAccess(node: TypeScript.Node): boolean {
+  const inner =
+    chainOf<TypeScript.Node>(node, (current) =>
+      ts.isParenthesizedExpression(current) ? current.expression : undefined,
+    ).at(-1) ?? node;
   return ts.isPropertyAccessExpression(inner) || ts.isElementAccessExpression(inner);
 }
 
-function isConstructed(node) {
+function isConstructed(node: TypeScript.Node): boolean {
   return ts.isNewExpression(node.parent) && node.parent.expression === node;
 }
 
-function isModuleLoad(node) {
+function isModuleLoad(node: TypeScript.Node): boolean {
   const parent = node.parent;
-  const callee = ts.isCallExpression(parent) ? parent.expression : undefined;
+  if (!ts.isCallExpression(parent)) {
+    return false;
+  }
+  const callee = parent.expression;
   return (
-    callee !== undefined &&
     parent.arguments[0] === node &&
     (callee.kind === ts.SyntaxKind.ImportKeyword ||
       (ts.isIdentifier(callee) && callee.text === 'require'))
   );
 }
 
-export function isValuePosition(node) {
+export function isValuePosition(node: TypeScript.Node): boolean {
   const plain = ts.isExpression(node) && !isWritten(node);
   return (
     plain &&
@@ -188,7 +199,7 @@ export function isValuePosition(node) {
   );
 }
 
-function isNumericSign(node) {
+function isNumericSign(node: TypeScript.Node): boolean {
   const signs = [ts.SyntaxKind.MinusToken, ts.SyntaxKind.PlusToken];
   return (
     ts.isPrefixUnaryExpression(node) &&
@@ -197,7 +208,7 @@ function isNumericSign(node) {
   );
 }
 
-export function isLiteralValue(node) {
+export function isLiteralValue(node: TypeScript.Node): boolean {
   const keywords = [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword];
   return (
     isNumericSign(node) ||
@@ -208,6 +219,6 @@ export function isLiteralValue(node) {
   );
 }
 
-export function isTypeScriptFile(name) {
+export function isTypeScriptFile(name: string): boolean {
   return /\.[cm]?tsx?$/u.test(name);
 }

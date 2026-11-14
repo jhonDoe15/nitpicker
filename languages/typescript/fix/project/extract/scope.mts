@@ -1,6 +1,9 @@
-import { chainOf } from '../../../../../shared/traversal.mjs';
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { descendants, roleOf, symbolAt } from './syntax.mjs';
+import type TypeScript from 'typescript';
+import { chainOf, typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import type { Region, TemplateEnv } from './typed/extract-types.mts';
+import { descendants, roleOf, symbolAt } from './syntax.mts';
+
+const ts = typescriptApi();
 
 const IMPORT_DECLARATIONS = [
   ts.isImportSpecifier,
@@ -39,15 +42,17 @@ const TEXT_KINDS = new Set([
 
 const MULTILINE_TEXT = 'the code has a string or template literal that spans lines';
 
-export function declarationsOf(symbol) {
+export function declarationsOf(
+  symbol: TypeScript.Symbol | undefined,
+): readonly TypeScript.Declaration[] {
   return typeof symbol === 'object' ? (symbol.declarations ?? []) : [];
 }
 
-export function isWithin(node, range) {
+export function isWithin(node: Region, range: Region): boolean {
   return node.pos >= range.pos && node.end <= range.end;
 }
 
-function isInside(declaration, unit) {
+function isInside(declaration: TypeScript.Node, unit: TypeScript.Node): boolean {
   return (
     declaration !== unit &&
     declaration.getSourceFile() === unit.getSourceFile() &&
@@ -55,42 +60,48 @@ function isInside(declaration, unit) {
   );
 }
 
-function declaredOnlyWhere(symbol, test) {
+function declaredOnlyWhere(
+  symbol: TypeScript.Symbol | undefined,
+  test: (declaration: TypeScript.Declaration) => boolean,
+): boolean {
   const declarations = declarationsOf(symbol);
   return declarations.length > 0 && declarations.every(test);
 }
 
-export function isLocalSymbol(symbol, unit) {
+export function isLocalSymbol(
+  symbol: TypeScript.Symbol | undefined,
+  unit: TypeScript.Node,
+): boolean {
   return declaredOnlyWhere(symbol, (declaration) => isInside(declaration, unit));
 }
 
-export function isInRegion(symbol, region) {
+export function isInRegion(symbol: TypeScript.Symbol | undefined, region: Region): boolean {
   return declaredOnlyWhere(symbol, (declaration) => isWithin(declaration, region));
 }
 
-function bindingParent(node) {
+function bindingParent(node: TypeScript.Node): TypeScript.Node | undefined {
   const inPattern =
     ts.isBindingElement(node) || ts.isObjectBindingPattern(node) || ts.isArrayBindingPattern(node);
   return inPattern ? node.parent : undefined;
 }
 
-function isModuleVariable(node) {
+function isModuleVariable(node: TypeScript.Node): boolean {
   const statement = node.parent.parent;
   return ts.isVariableStatement(statement) && ts.isSourceFile(statement.parent);
 }
 
-function isModuleLevel(declaration) {
+function isModuleLevel(declaration: TypeScript.Node): boolean {
   if (IMPORT_DECLARATIONS.some((test) => test(declaration))) {
     return true;
   }
-  const node = chainOf(declaration, bindingParent).at(-1);
+  const node = chainOf(declaration, bindingParent).at(-1) ?? declaration;
   if (ts.isVariableDeclaration(node)) {
     return isModuleVariable(node);
   }
   return TOP_LEVEL_DECLARATIONS.some((test) => test(node)) && ts.isSourceFile(node.parent);
 }
 
-function reachesOuterScope(symbol, unit) {
+function reachesOuterScope(symbol: TypeScript.Symbol | undefined, unit: TypeScript.Node): boolean {
   return declarationsOf(symbol).some(
     (declaration) =>
       declaration.getSourceFile() === unit.getSourceFile() &&
@@ -99,7 +110,7 @@ function reachesOuterScope(symbol, unit) {
   );
 }
 
-function referenceProblem(node, env) {
+function referenceProblem(node: TypeScript.Identifier, env: TemplateEnv): string | undefined {
   const readsArguments = node.text === 'arguments';
   const outer = reachesOuterScope(symbolAt(node, env.checker), env.unit);
   return readsArguments || outer
@@ -107,7 +118,7 @@ function referenceProblem(node, env) {
     : undefined;
 }
 
-function nodeProblem(node, env) {
+function nodeProblem(node: TypeScript.Node, env: TemplateEnv): string | undefined {
   if (FORBIDDEN_KINDS.has(node.kind)) {
     return 'the code uses this, super, JSX, decorators or a generator';
   }
@@ -118,7 +129,10 @@ function nodeProblem(node, env) {
   return isValue ? referenceProblem(node, env) : undefined;
 }
 
-export function templateProblem(roots, env) {
+export function templateProblem(
+  roots: readonly TypeScript.Node[],
+  env: TemplateEnv,
+): string | undefined {
   const outsideHoles = roots
     .flatMap((root) => descendants(root))
     .filter((node) => !env.holeNodes.some((hole) => isWithin(node, hole)));
