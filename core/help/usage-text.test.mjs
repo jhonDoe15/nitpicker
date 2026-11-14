@@ -33,6 +33,7 @@ const EXPECTED_USAGE_HEAD = [
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
   '       nitpicker changelog [<version>]',
   '       nitpicker base [--base <ref>]',
+  '       nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]',
   '       nitpicker explain <tool/rule>...',
   '       nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
   '',
@@ -43,6 +44,7 @@ const EXPECTED_USAGE_HEAD = [
   '  nitpicker cache publish  Upload the findings of HEAD to the remote cache.',
   '  nitpicker changelog      Print what changed in a version, from the changelog of the package.',
   '  nitpicker base           Print the base ref a run would compare with.',
+  '  nitpicker projects       List the projects of a monorepo and the ones a run would check.',
   '  nitpicker explain        Print what the rule reference says about the rules named.',
   '  nitpicker rules          List the rules the preset of the project reports.',
   '',
@@ -288,6 +290,7 @@ describe('nitpicker --help', () => {
       'nitpicker cache publish',
       'nitpicker changelog',
       'nitpicker base',
+      'nitpicker projects',
       'nitpicker explain',
       'nitpicker rules',
     ]);

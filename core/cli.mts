@@ -41,6 +41,7 @@ import { printedInformation } from './command/information/printed-information.mt
 import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { runMonorepo } from './projects/run/monorepo.mts';
+import { runProjectsCommand } from './projects/command/projects-command.mts';
 import { runScoped } from './projects/run/refusal.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -80,6 +81,7 @@ const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
       runCacheCommand({ ...cli, ...scope, arguments_: rest }),
     ),
   init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
+  projects: (cli, rest) => runProjectsCommand({ ...cli, arguments_: rest }),
   base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
   explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
   rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),

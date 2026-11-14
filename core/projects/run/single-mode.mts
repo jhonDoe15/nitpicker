@@ -94,10 +94,13 @@ export function singleMode(
   return { extraCli: { repositoryLoosenings: loosenings, repositoryToolErrors: toolErrors } };
 }
 
-export function enclosingRun(cli: MonorepoCli, currentProjectRoot: string): Enclosing | undefined {
-  const found = requestsProjects(cli) ? undefined : memberEnclosing(currentProjectRoot);
-  const { plan, files, member } = found ?? {};
+export function enclosingPlan(directory: string): Enclosing | undefined {
+  const { plan, files, member } = memberEnclosing(directory) ?? {};
   return plan === undefined || files === undefined || member === undefined
     ? undefined
     : { plan, files, member };
+}
+
+export function enclosingRun(cli: MonorepoCli, currentProjectRoot: string): Enclosing | undefined {
+  return requestsProjects(cli) ? undefined : enclosingPlan(currentProjectRoot);
 }
