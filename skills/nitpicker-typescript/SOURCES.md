@@ -130,6 +130,27 @@ there is no `tsconfig.json`, and JavaScript projects are checked with `checkJs` 
 | `eslint/nitpicker/no-dev-dependency-in-production`             | review   | moves the package from `devDependencies` to `dependencies` with the same range and formatting. Declines when the manifest has no such entry The lockfile is not updated, so reinstall afterwards.                       |
 | `dead-code/files`                                              | opt-in   | not a recipe: the knip step deletes the file (see knip), and keeps it when a computed `import()` or a string path could load it                                                                                         |
 
+## Near-duplicate extraction
+
+`typescript-extract-near-duplicate` is a safe recipe for `structure/near-duplicate`. It reads the
+same units and runs the same engine and filters as the rule, so it flags what the rule flags, and
+it works on a `same` or `parameterizable` pair whose copies are in one file. The first copy is the
+template: its body moves to a module-level function placed after the first copy, and both bodies
+become one call, so each signature stays.
+
+- A differing literal, or a parameter of the function that nothing writes, is passed as a value.
+  Any other differing expression is passed as an arrow function that is called where the
+  expression was, so its timing, its count and its `this` do not change.
+- A copy that reads `this`, `super`, `arguments`, a generator or JSX, or a variable of an enclosing
+  scope, is left alone. So is a function with type parameters, defaults, rest or destructured
+  parameters, a differing value that reads a local or a parameter the function writes, a differing
+  module path in `import()` or `require()`, a copy whose second body has a comment the first lacks,
+  a copy in more than one pair, and a name that the file already uses.
+- Type holes are not turned into type parameters: the copies would need `new T()` or a type
+  argument at each call, and the callers could change.
+- The compiler checks the edit before it is written, with the same in-memory comparison as the
+  other project recipes.
+
 ## Not fixed, on purpose
 
 - `eslint/nitpicker/no-unsafe-deserialization`: the Python preset rewrites `yaml.unsafe_load` and

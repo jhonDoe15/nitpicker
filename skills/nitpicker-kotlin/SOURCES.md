@@ -75,3 +75,9 @@ ones.
 The Gradle and Maven Kotlin end-to-end samples were not run in this environment. The recipes have
 unit tests, and `languages/java/fix/recipes/jvm-recipes.test.mjs` runs the fix on a Gradle and a
 Maven Kotlin project with a stubbed formatter.
+
+## Near-duplicate extraction
+
+No recipe extracts the shared function of a `near-duplicate` pair in Kotlin. The extraction needs the
+parameter and return types of the new function, and the Kotlin recipes see only text. The finding
+keeps its fix plan.

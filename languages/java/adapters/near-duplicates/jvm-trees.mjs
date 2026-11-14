@@ -8,12 +8,9 @@ const TREES_PROCESS = fileURLToPath(
 const TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 2 ** 30;
 
-export function readJvmUnits(projectRoot, files) {
-  if (files.length === 0) {
-    return [];
-  }
+function runTrees(request) {
   const result = spawnSync(process.execPath, [TREES_PROCESS], {
-    input: JSON.stringify({ root: projectRoot, files }),
+    input: JSON.stringify(request),
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
     timeout: TIMEOUT_MS,
@@ -25,4 +22,13 @@ export function readJvmUnits(projectRoot, files) {
     );
   }
   return JSON.parse(result.stdout);
+}
+
+export function readJvmUnits(projectRoot, files) {
+  return files.length === 0 ? [] : runTrees({ root: projectRoot, files });
+}
+
+export function readJavaExtractions(projectRoot, texts) {
+  const files = Object.keys(texts);
+  return files.length === 0 ? {} : runTrees({ root: projectRoot, files, texts });
 }

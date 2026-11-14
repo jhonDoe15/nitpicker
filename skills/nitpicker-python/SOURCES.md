@@ -109,3 +109,9 @@ Declined:
   nothing patches or re-exports the wrapper.
 - mypy `unused-ignore`: only mypy knows which ignores are unused, and a recipe has no findings to
   read. The recipe can be added once findings reach the fixer.
+
+## Near-duplicate extraction
+
+No recipe extracts the shared function of a `near-duplicate` pair in Python. The extraction needs the
+parameter and return types of the new function, and the Python recipes see only text. The finding
+keeps its fix plan.

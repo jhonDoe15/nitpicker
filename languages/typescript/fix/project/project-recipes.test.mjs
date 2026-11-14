@@ -43,6 +43,10 @@ const MODULES = {
     './reuse/name-collision.mjs',
     'exportedNameCollisionRecipe',
   ],
+  'typescript-extract-near-duplicate': [
+    './extract/whole/near-duplicate-extract.mjs',
+    'nearDuplicateExtractRecipe',
+  ],
   'typescript-no-forwarding-wrapper': [
     './wrappers/forwarding-wrapper.mjs',
     'noForwardingWrapperRecipe',
