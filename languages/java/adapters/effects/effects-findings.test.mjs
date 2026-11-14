@@ -276,6 +276,40 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('explains both failure windows of a dual write and the after-commit variant', () => {
+    const dual = {
+      rule: 'DualWriteWithoutOutbox',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      method: 'Import.place',
+      write: ['OrderRepository.save()'],
+      path: ['OrderEvents.placed()', 'KafkaTemplate.send()'],
+    };
+    const messages = read([
+      { ...dual, line: 3, detail: 'a', form: 'inline' },
+      { ...dual, line: 4, detail: 'b', form: 'afterCommit' },
+    ]).map((finding) => finding.message);
+    const outbox = sentence(
+      'Write the message to an outbox table in the same transaction and let a relay publish it',
+      '(or use change data capture or a database-backed queue):',
+      '`Import.place()` writes with `OrderRepository.save()` and publishes',
+    );
+    const through = '`OrderEvents.placed()`, which calls `KafkaTemplate.send()`';
+
+    expect(messages).toEqual([
+      sentence(
+        `${outbox} through ${through}, so a rollback after the publish announces a change that never happened,`,
+        'and a crash after the commit loses the message.',
+        exception('DualWriteWithoutOutbox', JAVA_FILE),
+      ),
+      sentence(
+        `${outbox} after the commit through ${through}, which never announces a rolled-back change,`,
+        'but a crash between the commit and the publish loses the message.',
+        exception('DualWriteWithoutOutbox', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 

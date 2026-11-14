@@ -77,6 +77,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/billing/LazyLoads.kt',
         'src/main/kotlin/shop/held/HeldScopes.kt',
         'src/main/kotlin/shop/events/Retries.kt',
+        'src/main/kotlin/shop/events/DualWrites.kt',
         JAVA_LOOP,
       ]),
     );

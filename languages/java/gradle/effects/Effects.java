@@ -19,6 +19,7 @@ import nitpicker.effects.flow.Program;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.rules.AccumulatorCopy;
+import nitpicker.effects.rules.DualWrite;
 import nitpicker.effects.rules.HeldScope;
 import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
@@ -88,6 +89,7 @@ public final class Effects {
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
     new RetryWrite(program, scopes, report).run();
+    new DualWrite(program, report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

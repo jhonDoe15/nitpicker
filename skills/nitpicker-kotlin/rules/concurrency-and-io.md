@@ -41,6 +41,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Retries: a call that retries (`@Retryable`, `RetryTemplate`, resilience4j, `repeat(n) { try { ... } }`) writes
   idempotently: a Stripe idempotency key, an upsert, a message deduplication id, or retry only the read
   (`effects/RetryWithoutIdempotency`).
+- Database and broker: never write a row and publish a message in one function; write the message to an outbox table
+  in the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

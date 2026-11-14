@@ -2295,6 +2295,7 @@
                             "effects/RemoteCallInTransaction",
                             "effects/RemoteCallUnderLock",
                             "effects/RetryWithoutIdempotency",
+                            "effects/DualWriteWithoutOutbox",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",
