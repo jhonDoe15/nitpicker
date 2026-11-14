@@ -1,22 +1,27 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
-import { FAKE_GOFMT, fakeGoFormat } from './test-support/fake-go-format.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { FAKE_GOFMT, fakeGoFormat } from './test-support/fake-go-format.mts';
+import { fixtureGit, useGitFixtures, writeFiles } from './test-support/git-fixtures.mts';
+import type { GitRepository } from './test-support/git-fixtures.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 const GO_MOD = 'module example.com/shop\n\ngo 1.24\n';
 
-function topic(base, changes) {
+function topic(base: Readonly<Record<string, string>>, changes: Readonly<Record<string, string>>) {
   const repository = createGitRepository({ 'go.mod': GO_MOD, ...base }, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
   return repository;
 }
 
-function fix(repository, tools, headPolicy = {}) {
+function fix(
+  repository: GitRepository,
+  tools: ReturnType<typeof fakeGoFormat>,
+  headPolicy: object = {},
+) {
   return fixWorkingTree({
     repositoryRoot: repository.root,
     projectRoot: repository.root,
@@ -25,10 +30,18 @@ function fix(repository, tools, headPolicy = {}) {
     spawnEnvironment: { XDG_CACHE_HOME: temporaryRoot('nitpicker-go-fix-cache-') },
     headPolicy: { exclude: [], conventions: {}, ...headPolicy },
     config: { preset: 'go' },
+    scope: undefined,
+    environment: {},
+    dryRun: false,
+    selectedRules: undefined,
+    allFiles: false,
+    recipes: undefined,
+    analyzeFixes: undefined,
+    verifyMode: 'narrow',
   });
 }
 
-function read(repository, name) {
+function read(repository: GitRepository, name: string) {
   return readFileSync(path.join(repository.root, name), 'utf8');
 }
 
@@ -111,11 +124,11 @@ describe('--fix for Go', () => {
 
     const result = fix(repository, tools);
 
-    expect([result.fixedFiles, result.toolErrors.map(({ tool, rule }) => [tool, rule])]).toEqual([
-      [],
-      [['go-format-fix', 'fix-failed']],
-    ]);
-    expect(result.toolErrors[0].message).toBe(
+    expect([
+      result.fixedFiles,
+      result.toolErrors.map((error) => [fieldOf(error, 'tool'), fieldOf(error, 'rule')]),
+    ]).toEqual([[], [['go-format-fix', 'fix-failed']]]);
+    expect(fieldOf(result.toolErrors[0], 'message')).toBe(
       `${FAKE_GOFMT} exited 1:\ngofmt broke\nSee https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md#fixers-fail`,
     );
     expect(read(repository, 'a.go')).toBe('package  a\n');

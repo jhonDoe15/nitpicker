@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mjs';
+import { fixReport, useFixProject } from '../test-support/git-fixtures.mts';
 
-const enabled = process.env.NITPICKER_GO_E2E === '1';
+const enabled = process.env['NITPICKER_GO_E2E'] === '1';
 const { fix } = useFixProject();
 
 const GO_MOD = 'module example.com/shop\n\ngo 1.24\n';
-const source = (name) => `package shop\n\nfunc  ${name}() int {\n\n\treturn 1\n}\n`;
-const GOFMT = (name) => `package shop\n\nfunc ${name}() int {\n\n\treturn 1\n}\n`;
-const GOFUMPT = (name) => `package shop\n\nfunc ${name}() int {\n\treturn 1\n}\n`;
+const source = (name: string) => `package shop\n\nfunc  ${name}() int {\n\n\treturn 1\n}\n`;
+const GOFMT = (name: string) => `package shop\n\nfunc ${name}() int {\n\n\treturn 1\n}\n`;
+const GOFUMPT = (name: string) => `package shop\n\nfunc ${name}() int {\n\treturn 1\n}\n`;
 const EDITED_LEGACY = `${source('Legacy')}\nvar  limit = 2\n`;
 
-function repository(formatters) {
+function repository(formatters: readonly string[]) {
   return {
     committed: {
       'nitpicker.config.json': JSON.stringify({ preset: 'go', go: { formatters } }),
