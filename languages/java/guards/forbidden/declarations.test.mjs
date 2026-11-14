@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readForbiddenApiFindings } from '../forbidden-apis.mjs';
+import { readForbiddenApiFindings } from '../forbidden-apis.mts';
 import { createGuardProjects, newLines } from '../test-support/guard-project.mjs';
 
 const guardProjects = createGuardProjects();
