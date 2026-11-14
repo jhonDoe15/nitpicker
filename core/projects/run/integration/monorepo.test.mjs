@@ -94,6 +94,22 @@ describe('a run at the top of a monorepo', () => {
     expect(result.headings).toEqual(['== api (python) ==', '== tools/app (java) ==']);
   });
 
+  it('notes a changed file in a language the project preset does not check', () => {
+    const root = monorepo();
+    writeFiles(root, { 'api/scripts/build.ts': 'export const built = 1;\n' });
+    const notice =
+      '1 changed TypeScript file is in a language the python preset does not check, ' +
+      'so nothing checks it: scripts/build.ts. ' +
+      'To leave it unchecked, list it in "exclude" in nitpicker.config.json.';
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json('api/summary.json').notices).toEqual([notice]);
+    expect(readFileSync(`${result.reports}/api/report.txt`, 'utf8')).toContain(notice);
+    expect(run(root, [], { workingDirectory: `${root}/api` }).out).toContain(notice);
+  });
+
   it('exits 2 when a project fails to run, after running the others', () => {
     const root = monorepo();
     writeFiles(root, {
