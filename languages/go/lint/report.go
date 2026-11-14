@@ -112,6 +112,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 	seen := map[Finding]bool{}
 	names := toolNames()
 	objects := unusedObjects{unused: map[string]Finding{}, used: map[string]bool{}}
+	var optionSets optionResults
 	for action := range graph.All() {
 		if !action.IsRoot {
 			continue
@@ -123,8 +124,12 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			seen[found] = true
 		}
 		objects.add(action.Result)
+		optionSets.add(action.Result)
 	}
 	for found := range objects.findings() {
+		seen[found] = true
+	}
+	for _, found := range optionSets.findings() {
 		seen[found] = true
 	}
 	revived, err := reviveFindings(loaded)
