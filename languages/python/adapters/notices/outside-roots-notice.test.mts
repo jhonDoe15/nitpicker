@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { pythonOutsideRootsNotices } from './outside-roots-notice.mjs';
+import { pythonOutsideRootsNotices } from './outside-roots-notice.mts';
 
 const project = {
   projectRoot: '/missing',
   sourceRoots: ['src'],
-  isTestFile: (file) => file.startsWith('tests/') || file.endsWith('_test.py'),
+  isTestFile: (file: string) => file.startsWith('tests/') || file.endsWith('_test.py'),
 };
 
 describe('pythonOutsideRootsNotices', () => {

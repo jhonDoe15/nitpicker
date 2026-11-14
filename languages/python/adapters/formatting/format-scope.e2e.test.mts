@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../test-support/scratch.mjs';
-import { formatCommand } from './format-command.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import { formatCommand as untypedFormatCommand } from './format-command.mjs';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const formatCommand: (context: object) => string[] = untypedFormatCommand;
+
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const scratch = createScratch();
 
 afterEach(scratch.cleanup);
@@ -23,9 +25,9 @@ const PYPROJECT = [
   '',
 ].join('\n');
 
-function checkFormat(formatter, files) {
+function checkFormat(formatter: string, files: Readonly<Record<string, string>>) {
   const root = scratch.write(scratch.directory(), files);
-  const [program, ...args] = formatCommand({
+  const [program = '', ...args] = formatCommand({
     project: { formatter, targetVersion: 'py312' },
     conventions: {},
     policyRoot: root,
@@ -33,7 +35,7 @@ function checkFormat(formatter, files) {
     reportRoot: scratch.directory(),
     exclude: [],
   });
-  return spawnSync(program, args, { cwd: root, encoding: 'utf8' });
+  return spawnSync(program, args, { cwd: root, encoding: 'utf8', timeout: 60_000 });
 }
 
 describe.skipIf(!enabled)('the formatters isolated from the project config', () => {

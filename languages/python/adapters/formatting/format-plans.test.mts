@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../test-support/scratch.mjs';
-import { formatterPlan } from './format-command.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import { formatterPlan as untypedPlan } from './format-command.mjs';
+
+type Row = Readonly<Record<string, unknown>>;
+
+const formatterPlan: (settings: Row) => { options: string[]; command: string } = untypedPlan;
 
 const scratch = createScratch();
 
@@ -22,9 +26,10 @@ const FOLLOWED_FLAGS = [
   'indent-width = 2',
 ];
 
-const project = (files = {}) => scratch.write(scratch.directory(), files);
+const project = (files: Readonly<Record<string, string>> = {}) =>
+  scratch.write(scratch.directory(), files);
 
-const ruffPlan = (root, settings) =>
+const ruffPlan = (root: string, settings: Row) =>
   formatterPlan({
     formatter: 'ruff',
     policyRoot: root,
@@ -33,7 +38,7 @@ const ruffPlan = (root, settings) =>
     ...settings,
   });
 
-const blackPlan = (root, settings) =>
+const blackPlan = (root: string, settings: Row) =>
   formatterPlan({
     formatter: 'black',
     policyRoot: root,
@@ -284,7 +289,7 @@ describe('black without an opt-in', () => {
     const { options } = blackPlan(root, { conventions: followed });
 
     expect(options.slice(0, 1)).toEqual(['--config']);
-    expect(readFileSync(options[1], 'utf8')).toBe('');
+    expect(readFileSync(options[1] ?? '', 'utf8')).toBe('');
     expect(options.slice(2)).toEqual([
       '--line-length',
       '79',
