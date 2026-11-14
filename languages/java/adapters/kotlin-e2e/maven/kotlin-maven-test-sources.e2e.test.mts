@@ -5,7 +5,7 @@ import {
   LEGACY_TEST_MOVED,
   SHOUTING_TEST,
   SUPPRESSED_TEST,
-} from '../test-sources/test-support/test-sources.mjs';
+} from '../test-sources/test-support/test-sources.mts';
 import {
   commitBranch,
   git,
@@ -16,23 +16,26 @@ import {
   removeProject,
   summarize,
   writeAll,
-} from './test-support/kotlin-maven-project.mjs';
+} from './__tests__/kotlin-maven-project.mts';
+import type { DiffResult, KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 
-const maven = process.env.NITPICKER_MAVEN;
+const maven = process.env['NITPICKER_MAVEN'];
 const mavenDiffOf = mavenDiffRunner(maven);
 
 const TESTS = 'src/test/kotlin/demo';
 
-const ofFile = (findings, file) =>
-  summarize(
+function ofFile(findings: readonly Finding[], file: string): string[] {
+  return summarize(
     findings.filter(
       (finding) => path.basename(finding.path) === file && finding.tool !== 'test-runtime',
     ),
   );
+}
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: test sources', () => {
-  let project;
-  let result;
+  let project: KotlinProject;
+  let result: DiffResult;
 
   beforeAll(() => {
     project = initializeMavenProject();

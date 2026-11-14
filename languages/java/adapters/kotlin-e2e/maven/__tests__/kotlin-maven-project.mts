@@ -1,8 +1,15 @@
 import path from 'node:path';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { runJavaDiff } from '../../../java-diff.mjs';
-import { git, kotlinPolicy, writeAll } from '../../test-support/kotlin-e2e-project.mjs';
+import {
+  git,
+  kotlinPolicy,
+  runJavaDiff,
+  writeAll,
+  type DiffOptions,
+  type DiffResult,
+  type KotlinProject,
+} from '../../__tests__/kotlin-e2e-project.mts';
 
 export {
   commitBranch,
@@ -20,11 +27,11 @@ export {
   rulesOf,
   summarize,
   writeAll,
-} from '../../test-support/kotlin-e2e-project.mjs';
+} from '../../__tests__/kotlin-e2e-project.mts';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../maven/fixtures');
 
-export function copyFixture(name) {
+export function copyFixture(name: string): KotlinProject {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-maven-e2e-'));
   const fixture = path.resolve(FIXTURES, name);
   if (!fixture.startsWith(FIXTURES + path.sep)) {
@@ -34,7 +41,7 @@ export function copyFixture(name) {
   return { root };
 }
 
-export function initializeMavenProject(name = 'kotlin-single') {
+export function initializeMavenProject(name = 'kotlin-single'): KotlinProject {
   const project = copyFixture(name);
   writeAll(project, { '.gitignore': 'target/\n' });
   git(project, 'init', '-q', '-b', 'main');
@@ -43,13 +50,23 @@ export function initializeMavenProject(name = 'kotlin-single') {
   return project;
 }
 
-export function mavenDiffRunner(maven) {
+export function mavenDiffRunner(
+  maven: string | undefined,
+): (project: KotlinProject, branch: string, options?: DiffOptions) => DiffResult {
   return function mavenDiffOf(project, branch, { policy = kotlinPolicy, base = 'main' } = {}) {
     git(project, 'checkout', '-q', branch);
-    return runJavaDiff({ repositoryRoot: project.root, requestedBaseRef: base, maven, policy });
+    return runJavaDiff({
+      repositoryRoot: project.root,
+      requestedBaseRef: base,
+      gradle: undefined,
+      maven,
+      spawn: undefined,
+      initScript: undefined,
+      policy,
+    });
   };
 }
 
-export function removeTree(root) {
+export function removeTree(root: string): void {
   rmSync(root, { recursive: true, force: true });
 }

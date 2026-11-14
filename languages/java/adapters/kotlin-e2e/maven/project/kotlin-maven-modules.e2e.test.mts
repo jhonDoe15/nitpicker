@@ -2,21 +2,23 @@ import path from 'node:path';
 import { cpSync, existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../java-diff.mjs';
-import { BAD } from '../../test-support/kotlin-lint-data.mjs';
+import { BAD } from '../../test-support/kotlin-lint-data.mts';
 import {
   copyFixture,
   kotlinE2eEnabled,
   kotlinPolicy,
   kotlinSources,
   removeTree,
-} from '../test-support/kotlin-maven-project.mjs';
+} from '../__tests__/kotlin-maven-project.mts';
+import { collectJavaFindings } from '../../test-support/views/kotlin-e2e-views.mts';
+import type { Finding } from '../../../../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../../../../shared/values/readers.mts';
 
-const maven = process.env.NITPICKER_MAVEN;
+const maven = process.env['NITPICKER_MAVEN'];
 
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const adapters = path.resolve(import.meta.dirname, '../../..');
-const temporary = [];
+const temporary: string[] = [];
 
 const WAITS = `package demo
 
@@ -27,7 +29,9 @@ suspend fun pause() {
 }
 `;
 
-const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
+function comparable(findings: readonly Finding[]): string[] {
+  return findings.map((finding) => JSON.stringify(finding)).sort();
+}
 
 function gradleCopy() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-gradle-e2e-'));
@@ -36,7 +40,7 @@ function gradleCopy() {
   return root;
 }
 
-function mavenCopy(name) {
+function mavenCopy(name: string): string {
   const { root } = copyFixture(name);
   temporary.push(root);
   return root;
@@ -76,10 +80,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
       maven,
       policy: { ...kotlinPolicy, testSeconds: { unitTestSeconds: -1 } },
     });
-    const metrics = (file) =>
+    const metrics = (file: string) =>
       findings
-        .filter((finding) => finding.path === file && finding.metric !== undefined)
-        .map(({ tool, metric }) => `${tool} ${metric.name} ${String(metric.value)}`)
+        .filter((finding) => finding.path === file && finding['metric'] !== undefined)
+        .map(
+          ({ tool, metric }) =>
+            `${tool} ${textOf(fieldOf(metric, 'name'))} ${textOf(fieldOf(metric, 'value'))}`,
+        )
         .sort();
 
     expect(metrics('core/src/main/kotlin/demo/core/Adder.kt')).toEqual([

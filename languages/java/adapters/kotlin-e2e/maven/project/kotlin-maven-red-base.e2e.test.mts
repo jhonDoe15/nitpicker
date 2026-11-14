@@ -5,7 +5,7 @@ import {
   createRepository,
   redBaseCases,
 } from '../../../red-base/test-support/red-base-cases.mjs';
-import { kotlinE2eEnabled } from '../test-support/kotlin-maven-project.mjs';
+import { kotlinE2eEnabled } from '../__tests__/kotlin-maven-project.mts';
 
 const KOTLIN_BAD = `package demo
 
@@ -23,7 +23,8 @@ const mavenFixtures = path.resolve(import.meta.dirname, '../../../../maven/fixtu
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven on a base whose tests fail', () => {
   redBaseCases({
-    maven: process.env.NITPICKER_MAVEN,
+    gradle: undefined,
+    maven: process.env['NITPICKER_MAVEN'],
     environment: process.env,
     policy: { preset: 'kotlin' },
     setup: () => {

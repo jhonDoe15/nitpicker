@@ -1,17 +1,18 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { resolveProjectHeadPolicy } from '../../../../../core/conventions/project-head-policy.mjs';
-import { collectJavaFindings } from '../../java-diff.mjs';
-import { withHeadPolicy } from '../../java-runner.mjs';
-import { BAD } from '../test-support/kotlin-lint-data.mjs';
+import {
+  resolveProjectHeadPolicy,
+  withHeadPolicy,
+} from '../test-support/views/kotlin-e2e-views.mts';
+import { BAD } from '../test-support/kotlin-lint-data.mts';
 import {
   BAD_BRANCH_FINDINGS,
   BAD_DETEKT_FINDINGS,
   BAD_KTLINT_RULES,
   LEGACY_FINDINGS,
   useKotlinLintProject,
-} from '../__tests__/kotlin-lint-project.mjs';
+} from '../__tests__/kotlin-lint-project.mts';
 import {
   fromTool,
   git,
@@ -24,9 +25,11 @@ import {
   ktlintRules,
   mavenDiffRunner,
   summarize,
-} from './test-support/kotlin-maven-project.mjs';
+} from './__tests__/kotlin-maven-project.mts';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 
-const maven = process.env.NITPICKER_MAVEN;
+const maven = process.env['NITPICKER_MAVEN'];
 const mavenDiffOf = mavenDiffRunner(maven);
 
 const SPOTLESS_KTFMT = `<plugin>
@@ -59,12 +62,12 @@ const BOUND_CHECKS = `<plugin>
   </executions>
 </plugin>`;
 
-function mavenLintBranches(project) {
+function mavenLintBranches(project: KotlinProject) {
   const pom = readFileSync(path.join(project.root, 'pom.xml'), 'utf8');
   return {
     'no-formatter': {
       [`${kotlinSources}/Bad.kt`]: BAD,
-      '.editorconfig': null,
+      '.editorconfig': undefined,
       'pom.xml': pom.replace(
         '</properties>',
         '<formatter>com.facebook:ktfmt</formatter><ktlint.rules>ktlint</ktlint.rules></properties>',
@@ -103,9 +106,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(fromTool(result.unchangedFindings, 'ktlint')).toEqual([]);
-    expect(Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location.line))).toBe(
-      3,
-    );
+    expect(
+      Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location?.line ?? 0)),
+    ).toBe(3);
   });
   it('does not lint generated sources registered from the build directory', () => {
     const result = mavenDiffOf(fixture.project, 'clean');
@@ -195,7 +198,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: detekt, ktlint and k
       .filter(({ rule }) => rule === 'format')
       .map(({ tool, path: file }) => `${tool} format ${path.basename(file)}`);
 
-    expect(head.kotlin).toEqual({ formatter: 'ktfmt', build: 'maven', ktfmtStyle: 'kotlinlang' });
+    expect(head['kotlin']).toEqual({
+      formatter: 'ktfmt',
+      build: 'maven',
+      ktfmtStyle: 'kotlinlang',
+    });
     expect(formats).toEqual(['ktfmt format Bad.kt']);
   });
   it('gates a Kotlin-only module, where the Java tools have nothing to analyze', () => {

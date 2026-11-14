@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { BAD } from '../../test-support/kotlin-lint-data.mjs';
+import { BAD } from '../../test-support/kotlin-lint-data.mts';
 import {
   commitBranch,
   initializeMavenProject,
@@ -7,9 +7,10 @@ import {
   mavenDiffRunner,
   removeProject,
   summarize,
-} from '../test-support/kotlin-maven-project.mjs';
+} from '../__tests__/kotlin-maven-project.mts';
+import type { KotlinProject } from '../../__tests__/kotlin-e2e-project.mts';
 
-const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
+const mavenDiffOf = mavenDiffRunner(process.env['NITPICKER_MAVEN']);
 
 const TEST_SUPPORT = `package demo
 
@@ -33,7 +34,7 @@ final class BridgeTest {
 `;
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: what the build compiles', () => {
-  let project;
+  let project: KotlinProject;
 
   beforeAll(() => {
     project = initializeMavenProject();

@@ -8,29 +8,30 @@ import {
   WITHOUT_SELF_CALLS,
   commitBaseThenSpringBranch,
   springLines,
-} from '../../__tests__/kotlin-spring-fixture.mjs';
+} from '../../__tests__/kotlin-spring-fixture.mts';
 import {
   kotlinE2eEnabled,
   kotlinPolicy,
   mavenDiffRunner,
   removeProject,
-} from '../test-support/kotlin-maven-project.mjs';
+} from '../__tests__/kotlin-maven-project.mts';
+import type { KotlinProject } from '../../__tests__/kotlin-e2e-project.mts';
 
-const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
+const mavenDiffOf = mavenDiffRunner(process.env['NITPICKER_MAVEN']);
 const POM = path.resolve(
   import.meta.dirname,
   '../../../../maven/fixtures/kotlin-spring-project/pom.xml',
 );
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin Spring rules on a Maven project end to end', () => {
-  let project;
+  let project: KotlinProject;
 
   beforeAll(() => {
     project = { root: mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-spring-maven-')) };
     commitBaseThenSpringBranch(project, { 'pom.xml': readFileSync(POM, 'utf8') });
   });
   afterAll(() => {
-    if (project !== undefined) {
+    if (typeof project === 'object') {
       removeProject(project);
     }
   });
