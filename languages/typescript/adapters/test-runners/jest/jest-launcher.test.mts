@@ -12,7 +12,7 @@ import { jestArguments, runJest } from './jest.mts';
 import type { RunnerCommand } from '../typed/runner-types.mts';
 import type { QualityAreaOptions } from '../../quality-areas/typed/area-types.mts';
 import { parseJson, fieldOf } from '../../../../../shared/values/readers.mts';
-import { linkSentence } from '../typed/link-sentence.mts';
+import { linkSentence } from '../../test-support/link-sentence.mts';
 
 const projects = createRunnerProjects();
 

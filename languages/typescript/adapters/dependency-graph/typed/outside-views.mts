@@ -4,7 +4,6 @@ import {
   withTroubleshooting as untypedWithTroubleshooting,
 } from '../../../../../shared/messages/troubleshooting.mjs';
 import { withTemporaryWorktree as untypedWithTemporaryWorktree } from '../../../../../core/diff/git/repository/worktree.mjs';
-import { linkSentence as untypedLinkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { projectFilePaths as untypedProjectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 
 export const explainedError: (message: string) => Error = untypedExplainedError;
@@ -22,11 +21,3 @@ export const withTemporaryWorktree: <T>(
   options: { readonly commitSha: string; readonly warn: () => void },
   operation: (worktreeRoot: string) => T,
 ) => T = untypedWithTemporaryWorktree;
-
-export function linkSentence(key: string): string {
-  const sentence = untypedLinkSentence(key);
-  if (sentence === undefined) {
-    throw new Error(`No troubleshooting sentence for ${key}`);
-  }
-  return sentence;
-}

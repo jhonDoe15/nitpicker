@@ -8,7 +8,7 @@ import {
   runArea,
   createRunnerProjects,
 } from '../test-support/runner-project.mts';
-import { linkSentence } from '../typed/link-sentence.mts';
+import { linkSentence } from '../../test-support/link-sentence.mts';
 import type { Finding } from '../../static-checks/shared.mts';
 import { fieldOf } from '../../../../../shared/values/readers.mts';
 

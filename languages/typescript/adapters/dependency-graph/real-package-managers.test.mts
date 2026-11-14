@@ -9,7 +9,8 @@ import {
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import { removeSnapshotDependencies } from '../static-checks/dependencies.mts';
-import { linkSentence, withTemporaryWorktree } from './typed/outside-views.mts';
+import { linkSentence } from '../test-support/link-sentence.mts';
+import { withTemporaryWorktree } from './typed/outside-views.mts';
 import { resolveDependencyHook } from './dependency-hooks.mts';
 import {
   copyProjectFixture,

@@ -1,4 +1,4 @@
-import { createTypescriptProject as untypedCreateTypescriptProject } from '../../../../core/diff/tests/policy/base-red/test-support/typescript-project.mjs';
+import { createTypescriptProject as untypedCreateTypescriptProject } from '../../../../../core/diff/tests/policy/base-red/test-support/typescript-project.mjs';
 
 type GateResult = {
   readonly exitCode: unknown;

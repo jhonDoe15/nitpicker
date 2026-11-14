@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Finding } from '../../static-checks/shared.mts';
-import { linkSentence } from '../../test-runners/typed/link-sentence.mts';
+import { linkSentence } from '../../test-support/link-sentence.mts';
 import { testOptions } from '../../test-runners/typed/test-options.mts';
 import type { CrapReport } from '../typed/reporting.mts';
 import type { TestReport } from '../../test-runners/typed/runner-types.mts';
