@@ -1,5 +1,5 @@
-import { selectAnalyzers } from '../../diff/execution/run-analyzers.mjs';
-import { partialRunOf } from '../../diff/reporting/partial-run/partial-run.mjs';
+import { selectAnalyzers as selectAll } from '../../diff/execution/run-analyzers.mts';
+import { partialRunOf } from '../../diff/reporting/partial-run/partial-run.mts';
 import { selectAnalyzerShard } from '../../diff/sharding/sharding.mts';
 import type { ProfiledAnalyzer } from '../../../shared/values/analyzers.mts';
 
@@ -12,16 +12,8 @@ type AnalyzerSelection = {
   readonly analyzers: readonly ProfiledAnalyzer[];
 };
 
-const runPartOf: (
-  names: readonly string[],
-  analyzers: unknown,
-  selected: readonly unknown[],
-) => unknown = partialRunOf;
-const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
-
 export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelection): {
-  readonly analyzers: readonly unknown[];
+  readonly analyzers: readonly ProfiledAnalyzer[];
   readonly runFields: object;
 } {
   const selectedAnalyzers =
@@ -36,7 +28,7 @@ export function selectComparisonAnalyzers({ options, analyzers }: AnalyzerSelect
   return {
     analyzers: selectedAnalyzers,
     runFields: {
-      partialRun: runPartOf(options.analyzerNames, analyzers, selectedAnalyzers),
+      partialRun: partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers),
       sharded: options.shardCount !== undefined,
     },
   };

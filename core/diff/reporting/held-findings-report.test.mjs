@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { renderConsoleSummary } from './summary.mjs';
-import { renderTextReport } from './text.mjs';
+import { renderConsoleSummary } from './summary.mts';
+import { renderTextReport } from './text.mts';
 import { finding, report } from './test-support/report-builders.mjs';
 
 describe('touched, still over limit', () => {

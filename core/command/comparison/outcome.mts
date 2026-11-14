@@ -1,12 +1,13 @@
-import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
-import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
-import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
+import { absoluteTextReportPath } from '../../diff/reporting/reporters.mts';
+import { renderConsoleSummary } from '../../diff/reporting/summary.mts';
+import { writeGithubOutput } from '../../diff/reporting/github/emit.mts';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mts';
 import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
 import { stagedHeader } from '../../quick/summary.mjs';
-import { comparisonExitCode } from '../../diff/reporting/failing-tests/failing-tests.mjs';
-import { comparisonJson } from '../../diff/reporting/json-output/json-output.mjs';
+import { comparisonExitCode as exitCodeOf } from '../../diff/reporting/failing-tests/failing-tests.mts';
+import { comparisonJson } from '../../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../../cli-context.mts';
+import type { ReportData } from '../../../shared/values/findings.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
 
 type OutcomeCli = {
@@ -26,12 +27,10 @@ type OutcomeCli = {
 
 type Outcome = {
   readonly cli: OutcomeCli;
-  readonly report: unknown;
+  readonly report: ReportData;
   readonly base: { readonly baseRef: unknown; readonly source: unknown };
   readonly outputRoot: string;
 };
-
-const exitCodeOf: (report: unknown) => number = comparisonExitCode;
 
 function isUnchanged(report: unknown): boolean {
   const summary = fieldOf(report, 'summary');

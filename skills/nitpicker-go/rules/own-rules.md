@@ -121,6 +121,10 @@ the allowed form and ends with its exception entry.
 - Skip only on a real condition, with a reason (`go-rules/switched-off-test`,
   `go-rules/skipped-test-without-reason`): `if testing.Short() { t.Skip("needs the database") }`.
   A test that always skips is deleted or fixed.
+- Use a production constant by name, never a copy of its value (`go-rules/copied-constant-in-test`):
+  `Clamp(Limit + 1)`, not `Clamp(51)`. A test that holds the copy keeps checking the old value when
+  the constant changes. Pin a contract value next to the constant on purpose:
+  `if Limit != 50 { t.Fatalf(...) }` or `assert.Equal(t, 50, Limit)`.
 - Never sleep in a test (`go-rules/sleep-in-test`): wait for the event (a channel,
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.

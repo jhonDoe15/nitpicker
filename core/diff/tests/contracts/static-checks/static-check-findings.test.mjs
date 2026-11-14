@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../../languages/typescript/adapters/static-checks-runner.mts';
 import { withDefaultAnalyzerParallelism } from '../../../execution/test-support/analyzer-parallelism.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
   toolRoot,

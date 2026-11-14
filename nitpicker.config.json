@@ -33,7 +33,7 @@
       "core/cli.mts",
       "core/diff/sharding/aggregate-shards.mts",
       "core/diff/execution/analyzer-scheduler.mts",
-      "core/reference/generate.mjs",
+      "core/reference/generate.mts",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
@@ -71,6 +71,11 @@
   ],
   "disable": ["coverage", "crap", "mutation"],
   "exceptions": [
+    {
+      "rule": "nitpicker/no-parameter-mutation",
+      "paths": ["core/diff/execution/report/analyzer-metadata.mts"],
+      "reason": "resolveAnalyzerMetadata fills the version and configuration hash of the analyzer it is handed, lazily and only for analyzers that run: the reports, the findings cache keys and the shard metadata read them from that same analyzer object, and recoverAnalyzerVersion marks a version that failed to resolve as unknown on it."
+    },
     {
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
       "paths": ["shared/logic/sync/decide-sync.mjs"],

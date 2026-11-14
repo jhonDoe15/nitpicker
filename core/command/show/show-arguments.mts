@@ -1,4 +1,4 @@
-import { takeOptionValue, unknownArgumentError } from '../../diff/comparison/cli.mjs';
+import { takeOptionValue, unknownArgumentError } from '../../diff/comparison/cli.mts';
 
 export type ShowOptions = {
   readonly all: boolean;

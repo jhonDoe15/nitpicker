@@ -4,7 +4,7 @@ import {
   fakeAnalyzer,
   useQualityDiffRepositories,
 } from '../../test-support/quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../../comparison/run-diff.mts';
 import { policy } from '../../../../execution/test-support/analyzer-findings.mjs';
 import { readMovesFile } from '../../../../../../shared/rules/facts/baseline.mjs';
 import { commit } from '../../../../git/test-support/git-repository.mjs';

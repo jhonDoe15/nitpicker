@@ -10,8 +10,8 @@ import {
   reportingProgress,
   startLine,
   writeToDescriptor,
-} from './progress.mjs';
-import { runAnalyzers, runScheduler } from './run-analyzers.mjs';
+} from './progress.mts';
+import { runAnalyzers, runScheduler } from './run-analyzers.mts';
 
 const temporaryRoots = [];
 

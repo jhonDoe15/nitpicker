@@ -108,6 +108,7 @@ function createGoAnalyzer(settings) {
       'structure',
       'duplicates',
       'coupling',
+      'entry-points',
       'facts',
       'deadcode',
       'dependencies',

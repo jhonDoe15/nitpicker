@@ -79,7 +79,7 @@ describe.skipIf(!goE2eEnabled)('Go preset gates end to end', () => {
     const result = gate(project, 'unformatted');
     expect(newFindings(result)).toEqual(['gofmt/format shop/shipping.go']);
     expect(newMessages(result)).toEqual([
-      'File is not formatted with gofmt. Run `gofmt -w <file>` to format the file.',
+      'File is not formatted with gofmt. Run `nitpicker --fix`, or format the file with `gofmt -w <file>`.',
     ]);
     expect(result.exitCode).toBe(1);
   });

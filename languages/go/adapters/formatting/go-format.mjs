@@ -27,8 +27,12 @@ function optionsOf(context, formatter) {
   return formatterOptions(context.policyRoot, formatter, context.toolPrecedence?.[formatter]);
 }
 
+export function formatterCommand(context, formatter) {
+  return [...commandOf(context, formatter), ...optionsOf(context, formatter)];
+}
+
 export function unformattedFiles(context, formatter, files) {
-  const command = [...commandOf(context, formatter), ...optionsOf(context, formatter)];
+  const command = formatterCommand(context, formatter);
   const listed = chunks(files).flatMap((chunk) => {
     const result = run(context, [...command, '-l', ...chunk], {
       rule: 'go-format-failed',

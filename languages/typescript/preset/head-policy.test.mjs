@@ -15,7 +15,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mts';
 import {
   defaultLayout,
   prettierPrecedence,

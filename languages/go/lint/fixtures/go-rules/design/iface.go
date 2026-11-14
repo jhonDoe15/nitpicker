@@ -52,7 +52,7 @@ type optionFunc func(*Repository)
 
 func (option optionFunc) apply(target *Repository) { option(target) } // want ptrToRefParam
 
-func WithNothing() Option {
+func WithNothing() Option { // want unused-option
 	return optionFunc(func(*Repository) {})
 }
 
