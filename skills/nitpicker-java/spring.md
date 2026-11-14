@@ -119,6 +119,9 @@ JPA and Spring Data:
 - Index every foreign key in the Flyway or Liquibase migration that adds it:
   `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
   PostgreSQL does not create one (`foreign-key-index`).
+- Give every field that is written from a request a validation bound at or below its column width
+  (`@Size(max = 30)` for a `VARCHAR(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Filter, count, sort and total in the query, not on the rows a repository method returned
   (`findAll()`, `findAllById`, a `@Query` method, a page's content): no `size()`, `isEmpty()` or
   `count()` (use a count or exists query), no `filter`/`anyMatch` on stored fields (a where

@@ -9,7 +9,7 @@ const GLOB_PART = /[*?[\]]/u;
 const ESCAPED = /[.+^${}()|\\]/gu;
 const MYSQL_ENGINE = 'mysql';
 
-function parsedConfig(file, text, parseYaml) {
+export function parsedConfig(file, text, parseYaml) {
   if (!file.endsWith('.json')) {
     return parseYaml?.(text)[0];
   }
