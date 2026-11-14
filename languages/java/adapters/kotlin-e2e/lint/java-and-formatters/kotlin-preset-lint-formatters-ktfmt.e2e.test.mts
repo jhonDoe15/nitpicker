@@ -4,8 +4,8 @@ import {
   fromTool,
   kotlinE2eEnabled,
   summarize,
-} from '../../test-support/kotlin-e2e-project.mjs';
-import { useKotlinLintProject, BAD_FINDINGS } from '../../__tests__/kotlin-lint-project.mjs';
+} from '../../__tests__/kotlin-e2e-project.mts';
+import { useKotlinLintProject, BAD_FINDINGS } from '../../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset ktfmt end to end', () => {
   const fixture = useKotlinLintProject();

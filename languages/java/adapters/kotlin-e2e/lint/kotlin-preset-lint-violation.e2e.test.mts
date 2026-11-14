@@ -5,14 +5,14 @@ import {
   kotlinE2eEnabled,
   ktlintOf,
   ktlintRules,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
 import {
   useKotlinLintProject,
   BAD_DETEKT_FINDINGS,
   BAD_BRANCH_FINDINGS,
   BAD_KTLINT_RULES,
   LEGACY_FINDINGS,
-} from '../__tests__/kotlin-lint-project.mjs';
+} from '../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt and ktlint violations end to end', () => {
   const fixture = useKotlinLintProject();
@@ -25,8 +25,8 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt and ktlint violations e
     expect(ktlintRules(result.newEnforceable)).toEqual(BAD_KTLINT_RULES);
     expect(fromTool(result.unchangedFindings, 'detekt')).toEqual(LEGACY_FINDINGS);
     expect(fromTool(result.unchangedFindings, 'ktlint')).toEqual([]);
-    expect(Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location.line))).toBe(
-      3,
-    );
+    expect(
+      Math.min(...ktlintOf(result.newEnforceable).map(({ location }) => location?.line ?? 0)),
+    ).toBe(3);
   });
 });

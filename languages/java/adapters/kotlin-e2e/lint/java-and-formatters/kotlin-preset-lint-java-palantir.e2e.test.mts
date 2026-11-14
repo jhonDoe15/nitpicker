@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { diffOf, fromTool, kotlinE2eEnabled } from '../../test-support/kotlin-e2e-project.mjs';
-import { useKotlinLintProject } from '../../__tests__/kotlin-lint-project.mjs';
+import { diffOf, fromTool, kotlinE2eEnabled } from '../../__tests__/kotlin-e2e-project.mts';
+import { useKotlinLintProject } from '../../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset palantir-java-format end to end', () => {
   const fixture = useKotlinLintProject();

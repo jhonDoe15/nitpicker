@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
 import {
   diffOf,
   fromTool,
@@ -8,13 +8,13 @@ import {
   kotlinE2eEnabled,
   kotlinPolicy,
   ktlintRules,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
 import {
   useKotlinLintProject,
   BAD_DETEKT_FINDINGS,
   BAD_KTLINT_RULES,
   LEGACY_FINDINGS,
-} from '../__tests__/kotlin-lint-project.mjs';
+} from '../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end to end', () => {
   const fixture = useKotlinLintProject();

@@ -5,12 +5,12 @@ import {
   kotlinE2eEnabled,
   kotlinPolicyWithProjectDetekt,
   ktlintRules,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
 import {
   useKotlinLintProject,
   BAD_BRANCH_FINDINGS,
   BAD_KTLINT_RULES,
-} from '../__tests__/kotlin-lint-project.mjs';
+} from '../__tests__/kotlin-lint-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)(
   'Kotlin preset detekt config laid over defaults end to end',
