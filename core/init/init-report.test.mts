@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { Peers } from './init-types.mts';
 import { renderReport } from './init-report.mts';
 
 const NOTE = 'pyproject.toml allows Python 3.8 (">=3.8"), so the CI job runs Python 3.10.';
@@ -10,6 +11,7 @@ describe('the init report', () => {
       peers: { missing: [], uninstalled: [], undeclared: [], installedOnly: [] },
       config: { relative: 'nitpicker.config.json', status: 'unchanged' },
       workflow: { relative: '.github/workflows/nitpicker.yml', status: 'created', notes: [NOTE] },
+      approval: undefined,
       workflowFile: '.github/workflows/nitpicker.yml',
       agents: undefined,
       offers: { agents: false, workflow: false },
@@ -37,18 +39,30 @@ describe('the init report', () => {
   });
 });
 
-function peerSection(peers) {
+function peerSection(peers: Partial<Peers>): string | undefined {
   const report = renderReport({
     project: {
       family: 'node',
       summary: 'TypeScript, npm, Vitest',
       preset: 'typescript',
       notes: [],
-      packageManager: { run: 'npx nitpicker' },
+      packageManager: {
+        name: 'npm',
+        root: '',
+        locked: false,
+        run: 'npx nitpicker',
+        install: 'npm install',
+        add: 'npm install --save-dev',
+      },
     },
     peers: { missing: [], uninstalled: [], undeclared: [], installedOnly: [], ...peers },
     config: { relative: 'nitpicker.config.json', status: 'unchanged' },
+    workflow: undefined,
+    approval: undefined,
+    workflowFile: '',
+    agents: undefined,
     offers: { agents: false, workflow: false },
+    skillSource: '',
   });
   return report.split('\n\n')[1];
 }

@@ -1,9 +1,12 @@
 import { symlinkSync, writeFileSync } from 'node:fs';
 import { parse } from 'yaml';
+import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
 import { describe, expect, it } from 'vitest';
 import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mts';
+import type { InitProject, Peers, WorkflowContext } from '../init-types.mts';
+import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
 import { describePackageManager } from '../detection/package-manager.mts';
-import { readText, useProjects } from '../test-support/projects.mjs';
+import { readText, useProjects } from '../test-support/projects.mts';
 import { unifiedDiff } from './line-diff.mts';
 import {
   APPROVAL_WORKFLOW,
@@ -16,14 +19,30 @@ import {
 const project = useProjects();
 const VERSION = '1.2.3';
 const ROOT_WORKFLOW = '.github/workflows/nitpicker.yml';
-const NO_PEERS = { missing: [], undeclared: [], installedOnly: [] };
+const NO_PEERS: Peers = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
 const PYTHON = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy' };
 const PYTHON_PEERS = "coverage mypy pytest 'mutmut>=3,<4'";
 const ALL_PYTHON_PEERS = `python -m pip install ${PYTHON_PEERS}`;
 const ACTION = 'jhonDoe15/nitpicker@v1.2.3';
 const PINNED = { package: 'nitpicker@1.2.3' };
 
-function gateStep(inputs) {
+function projectOf(project: Partial<InitProject> & { readonly family: string }): InitProject {
+  return { preset: '', summary: '', notes: [], ...project };
+}
+
+function workflowOf(text: string): unknown {
+  return parse(text);
+}
+
+function jobOf(text: string): unknown {
+  return fieldAt(workflowOf(text), 'jobs', 'nitpicker');
+}
+
+function stepList(text: string): readonly unknown[] {
+  return listOf(fieldAt(jobOf(text), 'steps'));
+}
+
+function gateStep(inputs: object) {
   return {
     name: 'nitpicker',
     uses: ACTION,
@@ -35,29 +54,33 @@ function gateStep(inputs) {
   };
 }
 
-function nodeContext(root, repository = root) {
+function nodeContext(root: string, repository = root): WorkflowContext {
   return {
-    project: { family: 'node', packageManager: describePackageManager(root) },
+    project: projectOf({ family: 'node', packageManager: describePackageManager(root) }),
     peers: NO_PEERS,
     version: VERSION,
     repository,
   };
 }
 
-function pythonContext(root, tool, undeclared = []) {
+function pythonContext(
+  root: string,
+  tool: string,
+  undeclared: readonly string[] = [],
+): WorkflowContext {
   return {
-    project: { ...PYTHON, tool },
+    project: projectOf({ ...PYTHON, tool }),
     peers: { ...NO_PEERS, undeclared },
     version: VERSION,
     repository: root,
   };
 }
 
-function stepsOf(text) {
-  return parse(text).jobs.nitpicker.steps.map((entry) => entry.uses ?? entry.run);
+function stepsOf(text: string): unknown[] {
+  return stepList(text).map((entry) => fieldAt(entry, 'uses') ?? fieldAt(entry, 'run'));
 }
 
-function nodeSteps(files, options) {
+function nodeSteps(files: FileMap, options?: { readonly repository: boolean }) {
   const root = project(files, options);
   return stepsOf(renderWorkflow(root, nodeContext(root))).slice(2);
 }
@@ -65,13 +88,13 @@ function nodeSteps(files, options) {
 describe('workflow for Node projects', () => {
   it('checks out the whole history and runs nitpicker on pull requests with Node 24', () => {
     const root = project({ 'package.json': '{}', 'package-lock.json': '{}' });
-    const workflow = parse(renderWorkflow(root, nodeContext(root)));
+    const workflow = workflowOf(renderWorkflow(root, nodeContext(root)));
 
-    expect(workflow.name).toBe('nitpicker');
-    expect(workflow.on).toEqual({ pull_request: null });
-    expect(workflow.permissions).toEqual({ contents: 'read', statuses: 'read' });
-    expect(workflow.jobs.nitpicker['runs-on']).toBe('ubuntu-latest');
-    expect(workflow.jobs.nitpicker.steps.slice(0, 2)).toEqual([
+    expect(fieldAt(workflow, 'name')).toBe('nitpicker');
+    expect(fieldAt(workflow, 'on')).toEqual({ pull_request: null });
+    expect(fieldAt(workflow, 'permissions')).toEqual({ contents: 'read', statuses: 'read' });
+    expect(fieldAt(workflow, 'jobs', 'nitpicker', 'runs-on')).toBe('ubuntu-latest');
+    expect(listOf(fieldAt(workflow, 'jobs', 'nitpicker', 'steps')).slice(0, 2)).toEqual([
       { uses: 'actions/checkout@v7.0.1', with: { 'fetch-depth': 0 } },
       { uses: 'actions/setup-node@v7.1.0', with: { 'node-version': 24 } },
     ]);
@@ -94,7 +117,9 @@ describe('workflow for Node projects', () => {
   );
 
   it('installs plainly with every manager when there is no lockfile', () => {
-    const declared = (field) => ({ 'package.json': JSON.stringify({ packageManager: field }) });
+    const declared = (field: string) => ({
+      'package.json': JSON.stringify({ packageManager: field }),
+    });
 
     expect(nodeSteps(declared('pnpm@9.1.0')).slice(-2)).toEqual(['pnpm install', ACTION]);
     expect(nodeSteps(declared('yarn@1.22.22')).slice(-2)).toEqual(['yarn install', ACTION]);
@@ -124,7 +149,7 @@ describe('workflow for Node projects', () => {
     const files = { 'package.json': '{"packageManager":"pnpm@9.1.0"}', 'pnpm-lock.yaml': '' };
     const root = project(files, { repository: true });
 
-    expect(parse(renderWorkflow(root, nodeContext(root))).jobs.nitpicker.steps.slice(2)).toEqual([
+    expect(stepList(renderWorkflow(root, nodeContext(root))).slice(2)).toEqual([
       { run: 'corepack enable' },
       { uses: 'pnpm/action-setup@v4.4.0' },
       { run: 'pnpm install --frozen-lockfile' },
@@ -136,7 +161,7 @@ describe('workflow for Node projects', () => {
     const files = { 'apps/web/package.json': '{"packageManager":"pnpm@9.1.0"}' };
     const root = project(files, { repository: true });
     const web = `${root}/apps/web`;
-    const steps = parse(renderWorkflow(web, nodeContext(web, root))).jobs.nitpicker.steps;
+    const steps = stepList(renderWorkflow(web, nodeContext(web, root)));
 
     expect(steps[3]).toEqual({
       uses: 'pnpm/action-setup@v4.4.0',
@@ -152,7 +177,7 @@ describe('workflow for Node projects', () => {
   ])('sets up the pnpm major of the lockfile %j without a declaration', (lockfile, major) => {
     const root = project({ 'package.json': '{}', 'pnpm-lock.yaml': lockfile });
 
-    expect(parse(renderWorkflow(root, nodeContext(root))).jobs.nitpicker.steps[2]).toEqual({
+    expect(stepList(renderWorkflow(root, nodeContext(root)))[2]).toEqual({
       uses: 'pnpm/action-setup@v4.4.0',
       with: { version: major },
     });
@@ -169,14 +194,14 @@ describe('workflow for Python projects', () => {
     with: { 'python-version': '3.13' },
   };
 
-  function pythonSteps(files, tool, undeclared) {
+  function pythonSteps(files: FileMap, tool: string, undeclared?: readonly string[]) {
     const root = project(files);
     return stepsOf(renderWorkflow(root, pythonContext(root, tool, undeclared))).slice(2, -1);
   }
 
   it('sets Python up and runs the action with the pinned package', () => {
     const root = project({ 'pyproject.toml': '' });
-    const steps = parse(renderWorkflow(root, pythonContext(root, 'pip'))).jobs.nitpicker.steps;
+    const steps = stepList(renderWorkflow(root, pythonContext(root, 'pip')));
 
     expect(steps[2]).toEqual(pythonSetup);
     expect(steps.at(-1)).toEqual(gateStep(PINNED));
@@ -230,12 +255,10 @@ describe('workflow for Python projects', () => {
   ])('sets the Python version from %s', (_name, files, settings) => {
     const root = project(files);
 
-    expect(parse(renderWorkflow(root, pythonContext(root, 'pip'))).jobs.nitpicker.steps[2]).toEqual(
-      {
-        uses: 'actions/setup-python@v7.1.0',
-        with: settings,
-      },
-    );
+    expect(stepList(renderWorkflow(root, pythonContext(root, 'pip')))[2]).toEqual({
+      uses: 'actions/setup-python@v7.1.0',
+      with: settings,
+    });
   });
 
   it.each([['pip'], ['conda']])(
@@ -262,10 +285,12 @@ describe('workflow for Python projects', () => {
       { repository: true },
     );
     const context = pythonContext(root, 'conda', ['mypy']);
-    const job = parse(renderWorkflow(`${root}/api`, context)).jobs.nitpicker;
+    const job = jobOf(renderWorkflow(`${root}/api`, context));
 
-    expect(job.defaults).toEqual({ run: { 'working-directory': 'api', shell: 'bash -el {0}' } });
-    expect(job.steps.slice(2)).toEqual([
+    expect(fieldAt(job, 'defaults')).toEqual({
+      run: { 'working-directory': 'api', shell: 'bash -el {0}' },
+    });
+    expect(listOf(fieldAt(job, 'steps')).slice(2)).toEqual([
       {
         uses: 'conda-incubator/setup-miniconda@v3.3.0',
         with: {
@@ -281,15 +306,15 @@ describe('workflow for Python projects', () => {
 
   it('names the conda environment itself when environment.yml has no name', () => {
     const root = project({ 'environment.yaml': 'dependencies:\n  - python\n' });
-    const job = parse(renderWorkflow(root, pythonContext(root, 'conda'))).jobs.nitpicker;
+    const job = jobOf(renderWorkflow(root, pythonContext(root, 'conda')));
 
-    expect(job.defaults).toEqual({ run: { shell: 'bash -el {0}' } });
-    expect(job.steps[2].with).toEqual({
+    expect(fieldAt(job, 'defaults')).toEqual({ run: { shell: 'bash -el {0}' } });
+    expect(fieldAt(job, 'steps', 2, 'with')).toEqual({
       'environment-file': 'environment.yaml',
       'activate-environment': 'nitpicker',
       'auto-activate-base': false,
     });
-    expect(job.steps.slice(3)).toEqual([
+    expect(listOf(fieldAt(job, 'steps')).slice(3)).toEqual([
       { run: `conda install --yes --channel conda-forge ${PYTHON_PEERS}` },
       gateStep(PINNED),
     ]);
@@ -305,14 +330,14 @@ describe('workflow for Python projects', () => {
 describe('workflow for Java and Kotlin projects', () => {
   it('sets Java 21 up', () => {
     const root = project({ 'build.gradle': '' });
-    const context = {
-      project: { family: 'jvm' },
+    const context: WorkflowContext = {
+      project: projectOf({ family: 'jvm' }),
       peers: NO_PEERS,
       version: VERSION,
       repository: root,
     };
 
-    expect(parse(renderWorkflow(root, context)).jobs.nitpicker.steps.slice(2)).toEqual([
+    expect(stepList(renderWorkflow(root, context)).slice(2)).toEqual([
       { uses: 'actions/setup-java@v6.1.0', with: { distribution: 'temurin', 'java-version': 21 } },
       gateStep(PINNED),
     ]);
@@ -324,7 +349,7 @@ describe('workflow action pins', () => {
     const pnpm = project({ 'package.json': '{}', 'pnpm-lock.yaml': '' });
     const bun = project({ 'package.json': '{}', 'bun.lock': '' });
     const python = project({ 'environment.yml': 'name: shop\n', 'pyproject.toml': '' });
-    const jvm = { project: { family: 'jvm' }, peers: NO_PEERS, version: VERSION };
+    const jvm = { project: projectOf({ family: 'jvm' }), peers: NO_PEERS, version: VERSION };
     const workflows = [
       renderWorkflow(pnpm, nodeContext(pnpm)),
       renderWorkflow(bun, nodeContext(bun)),
@@ -364,7 +389,7 @@ describe('workflow location', () => {
     const text = renderWorkflow(`${root}/my app #2`, nodeContext(`${root}/my app #2`, root));
 
     expect(text.split('\n').slice(0, 1)).toEqual(['name: "nitpicker (my app #2)"']);
-    expect(parse(text).jobs.nitpicker.defaults).toEqual({
+    expect(fieldAt(jobOf(text), 'defaults')).toEqual({
       run: { 'working-directory': 'my app #2' },
     });
   });
@@ -372,7 +397,7 @@ describe('workflow location', () => {
   it('adds no defaults at the repository root', () => {
     const root = project({ 'package.json': '{}' });
 
-    expect(parse(renderWorkflow(root, nodeContext(root))).jobs.nitpicker.defaults).toBeUndefined();
+    expect(fieldAt(jobOf(renderWorkflow(root, nodeContext(root))), 'defaults')).toBeUndefined();
   });
 
   it('writes one workflow per project at the repository root', () => {
@@ -387,16 +412,16 @@ describe('workflow location', () => {
     });
     expect(placeWorkflow(`${root}/api`, nodeContext(`${root}/api`, root)).status).toBe('created');
     expect(
-      parse(readText(root, '.github/workflows/nitpicker-web.yml')).jobs.nitpicker.defaults,
+      fieldAt(jobOf(readText(root, '.github/workflows/nitpicker-web.yml')), 'defaults'),
     ).toEqual({
       run: { 'working-directory': 'web' },
     });
   });
 
   it.each([
-    ['Unix line endings', (text) => text],
-    ['Windows line endings', (text) => text.replaceAll('\n', '\r\n')],
-    ['no final newline', (text) => text.trimEnd()],
+    ['Unix line endings', (text: string) => text],
+    ['Windows line endings', (text: string) => text.replaceAll('\n', '\r\n')],
+    ['no final newline', (text: string) => text.trimEnd()],
   ])('is unchanged when the same workflow is already there with %s', (_name, written) => {
     const sample = project({ 'package.json': '{}' });
     const content = written(renderWorkflow(sample, nodeContext(sample)));

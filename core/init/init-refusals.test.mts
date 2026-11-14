@@ -1,13 +1,16 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import type { FileMap } from '../diff/git/test-support/fixture-files.mts';
+import { textOf } from '../../shared/values/readers.mts';
 import { packageVersion } from '../help/package-version.mts';
-import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
+import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
+import { init, initWith, readText, useProjects } from './test-support/projects.mts';
 
 const createProject = useProjects();
-const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
+const TYPESCRIPT: FileMap = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 
-function project(files = TYPESCRIPT) {
+function project(files: FileMap = TYPESCRIPT) {
   return createProject(files, { repository: true });
 }
 
@@ -66,8 +69,12 @@ describe('nitpicker init stops before writing anything', () => {
 });
 
 describe('nitpicker init run again', () => {
-  const JAVA = { 'build.gradle': '', gradlew: '', 'src/main/java/App.java': 'class App {}\n' };
-  const report = (configLine) =>
+  const JAVA: FileMap = {
+    'build.gradle': '',
+    gradlew: '',
+    'src/main/java/App.java': 'class App {}\n',
+  };
+  const report = (configLine: string) =>
     [
       'nitpicker init: Java, Gradle (preset "java")',
       '',
@@ -76,7 +83,7 @@ describe('nitpicker init run again', () => {
       configLine,
       '',
       'Install the agent skill:',
-      `  npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill nitpicker-java`,
+      `  npx skills add jhonDoe15/nitpicker#v${textOf(packageVersion())} --skill nitpicker-java`,
       '',
       'Then run `npx nitpicker` to check a change, or `npx nitpicker --all` to survey the whole project.',
       '',
@@ -111,5 +118,24 @@ describe('nitpicker init run again', () => {
     writeFileSync(path.join(root, workflow), readText(root, workflow).trimEnd());
 
     expect(init(root, '--ci', 'github').exitCode).toBe(0);
+  });
+});
+
+describe('nitpicker init arguments', () => {
+  it('prints its own help', () => {
+    expect(init(project({}), '--help')).toEqual({
+      exitCode: 0,
+      stdoutText: INIT_USAGE_TEXT,
+      stderrText: '',
+    });
+  });
+
+  it('refuses an unknown argument and says where to look', () => {
+    expect(init(project(TYPESCRIPT), '--force')).toEqual({
+      exitCode: 2,
+      stdoutText: '',
+      stderrText:
+        'nitpicker failed: Unknown argument for init: --force. See nitpicker init --help.\n',
+    });
   });
 });
