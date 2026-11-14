@@ -1,21 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  file,
-  fn,
-  klass,
-  parameter,
-  property,
-  routeOf,
-  run,
-  summary,
-} from '../test-support/facts.mjs';
+import type { ClassFact, ParameterFact, PropertyFact } from '../test-support/facts.mts';
+import { routeOf, run, summary } from '../test-support/facts.mts';
+import { file, fn, klass, parameter, property } from '../test-support/loose-facts.mts';
 import { SINGULAR_PLURAL_RULE, singularPluralFindings } from './member-names.mjs';
 
-const member = (name, type, overrides = {}) =>
+const member = (name: string, type: string, overrides = {}) =>
   parameter(name, type, { property: 'val', ...overrides });
-const dataClass = (parameters, overrides = {}) =>
+const dataClass = (parameters: ParameterFact[], overrides = {}) =>
   klass('Query', { data: true, primaryParameters: parameters, ...overrides });
-const findingsFor = (classes, properties = []) =>
+const findingsFor = (classes: ClassFact[], properties: PropertyFact[] = []) =>
   run(singularPluralFindings, [file({ classes, properties })]);
 
 describe('singular and plural members in Kotlin', () => {
@@ -25,8 +18,8 @@ describe('singular and plural members in Kotlin', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${SINGULAR_PLURAL_RULE} Query.tags 7`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(routeOf(findings[0].message)).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/SingularAndPluralMember","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });

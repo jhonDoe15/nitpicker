@@ -2,19 +2,21 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { file, klass, routeOf, routed, run, summary } from '../test-support/facts.mjs';
+import { routeOf, routed, run, summary } from '../test-support/facts.mts';
+import type { Loose } from '../test-support/loose-facts.mts';
+import { file, klass } from '../test-support/loose-facts.mts';
 import { ENUM_PREDICATE_RULE } from '../../../review-rules/enum-predicates.mjs';
 import { enumMessage, enumPredicateFindings } from './enum-predicates.mjs';
 
 const status = klass('Status', { kind: 'enum', entries: ['NEW', 'PAID', 'SHIPPED', 'CANCELLED'] });
-const comparison = (left, right, stability = {}) => ({
+const comparison = (left: string, right: string, stability: Loose = {}) => ({
   left,
   right,
   leftStable: true,
   rightStable: true,
   ...stability,
 });
-const chain = (comparisons, overrides = {}) => ({
+const chain = (comparisons: unknown[], overrides: Loose = {}) => ({
   kind: 'chain',
   line: 4,
   symbol: 'isSettled',
@@ -23,7 +25,7 @@ const chain = (comparisons, overrides = {}) => ({
   comparisons,
   ...overrides,
 });
-const membership = (elements, overrides = {}) => ({
+const membership = (elements: string[], overrides: Loose = {}) => ({
   kind: 'membership',
   line: 6,
   symbol: 'isOpen',
@@ -34,14 +36,14 @@ const membership = (elements, overrides = {}) => ({
   ...overrides,
 });
 
-const roots = [];
+const roots: string[] = [];
 afterAll(() => {
   for (const root of roots) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-function findingsFor(predicates, extra = {}, options = {}) {
+function findingsFor(predicates: unknown[], extra: Loose = {}, options: Loose = {}) {
   const files = [
     file({ file: 'src/main/kotlin/demo/Status.kt', classes: [status] }),
     file({ predicates, ...extra }),
@@ -59,9 +61,9 @@ describe('exhaustive enum predicate in Kotlin', () => {
     const findings = findingsFor([SETTLED]);
 
     expect(summary(findings)).toEqual([`${ENUM_PREDICATE_RULE} isSettled 4`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(routed(enumMessage('Status'), 'ExhaustiveEnumPredicate'));
-    expect(routeOf(findings[0].message)).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.message).toBe(routed(enumMessage('Status'), ENUM_PREDICATE_RULE));
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/ExhaustiveEnumPredicate","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -83,7 +85,7 @@ describe('exhaustive enum predicate in Kotlin', () => {
   });
 
   it('reports a when over some entries whose else yields the other Boolean', () => {
-    const when = (elements, overrides = {}) =>
+    const when = (elements: string[], overrides: Loose = {}) =>
       membership(elements, { kind: 'when', symbol: 'isPending', line: 12, ...overrides });
     const findings = findingsFor([
       when(['Status.NEW', 'Status.PAID']),

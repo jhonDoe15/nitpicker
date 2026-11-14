@@ -1,44 +1,23 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fanOutFindings } from '../fan-out/fan-out.mjs';
+import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
+import type { FanOutFinding } from '../fan-out/fan-out-support.mts';
+import {
+  UNBOUNDED,
+  enforceable,
+  stableIdentities,
+  fixtureProject,
+} from '../fan-out/fan-out-support.mts';
 import { reactiveFanOutMessage } from './reactive-fan-out.mjs';
 
-const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
-const PROJECT = path.join(FIXTURES, 'kotlin-reactive-fan-out-project');
-const { files } = JSON.parse(
-  readFileSync(path.join(FIXTURES, 'kotlin-reactive-fan-out-facts.json'), 'utf8'),
-);
 const RULE = 'UnboundedReactiveFanOut';
-const UNBOUNDED = 'src/main/kotlin/shop/Unbounded.kt';
-const BOUNDED = 'src/main/kotlin/shop/Bounded.kt';
-const FUNCTION = /^\s*fun\s+(\w+)/u;
 
-function sourceLines(file) {
-  return readFileSync(path.join(PROJECT, file), 'utf8').split('\n');
-}
+const { files, coverage, lineOf, run, findingAt } = fixtureProject(
+  'kotlin-reactive-fan-out-project',
+  'kotlin-reactive-fan-out',
+  /^\s*fun\s+(\w+)/u,
+);
 
-function functionAt(file, line) {
-  const lines = sourceLines(file).slice(0, line).toReversed();
-  return lines.map((text) => FUNCTION.exec(text)?.[1]).find(Boolean);
-}
-
-function publicFunctions(file) {
-  return sourceLines(file)
-    .filter((text) => !text.includes('private fun'))
-    .map((text) => FUNCTION.exec(text)?.[1])
-    .filter(Boolean);
-}
-
-function lineOf(file, fragment) {
-  return sourceLines(file).findIndex((text) => text.includes(fragment)) + 1;
-}
-
-function run(own = files) {
-  return fanOutFindings({ own, projectFiles: files, projectRoot: PROJECT, javaRoots: [] });
-}
-
-function reactive(findings) {
+function reactive(findings: FanOutFinding[]) {
   return findings.filter(({ rule }) => rule === RULE);
 }
 
@@ -46,40 +25,36 @@ describe('reactive fan-out on the recorded fixture facts', () => {
   const { findings, calls } = run();
 
   it('reports every unbounded operator of the unbounded file once, and nothing else', () => {
-    const reported = reactive(findings).map(({ path: file, location }) =>
-      functionAt(file, location.line),
-    );
+    const covered = coverage(findings, reactive(findings));
 
-    expect(findings.every(({ path: file }) => file === UNBOUNDED)).toBe(true);
-    expect(reported).toEqual(publicFunctions(UNBOUNDED));
+    expect(covered.unbounded).toEqual(findings);
+    expect(covered.reported).toEqual(covered.expected);
   });
 
   it('leaves concurrency limits, concatMap, buffers, fixed collections and plain lists alone', () => {
-    expect(publicFunctions(BOUNDED).length).toBeGreaterThan(12);
-    expect(findings.filter(({ path: file }) => file === BOUNDED)).toEqual([]);
+    const covered = coverage(findings, findings);
+
+    expect(covered.boundedFunctions).toBeGreaterThan(12);
+    expect(covered.bounded).toEqual([]);
   });
 
   it('names the operator, the helper and the call it reaches, with the default limit', () => {
-    const referenced = findings.find(
-      ({ location }) => location.line === lineOf(UNBOUNDED, 'flatMap(this::load)'),
-    );
+    const referenced = findingAt(findings, 'flatMap(this::load)');
 
-    expect(referenced).toEqual({
-      tool: 'kotlin-source',
-      rule: RULE,
-      path: UNBOUNDED,
-      identity: expect.any(String),
-      message: reactiveFanOutMessage({
-        form: 'operator',
-        operator: 'flatMap',
-        collection: 'ids',
-        limit: 256,
-        work: { helper: 'load', call: 'client.get', kind: 'remote' },
-      }),
-      classification: 'enforceable',
-      location: { line: lineOf(UNBOUNDED, 'flatMap(this::load)') },
-    });
-    expect(referenced.message).toBe(
+    expect(referenced).toEqual(
+      enforceable(
+        RULE,
+        reactiveFanOutMessage({
+          form: 'operator',
+          operator: 'flatMap',
+          collection: 'ids',
+          limit: 256,
+          work: { helper: 'load', call: 'client.get', kind: 'remote' },
+        }),
+        lineOf(UNBOUNDED, 'flatMap(this::load)'),
+      ),
+    );
+    expect(referenced?.message).toBe(
       [
         '`flatMap` subscribes to `load`, which reaches `client.get`, for every element of `ids`, up to 256 at once',
         "(Reactor's default concurrency), so a large collection exhausts the remote service's connections or rate",
@@ -90,10 +65,10 @@ describe('reactive fan-out on the recorded fixture facts', () => {
   });
 
   it('says every element at once for zip, when, a spread merge and flatMapMerge(Int.MAX_VALUE)', () => {
-    const at = (fragment) =>
+    const at = (fragment: string) =>
       findings.find(({ location }) => location.line === lineOf(UNBOUNDED, fragment))?.message;
     const work = { helper: 'fetch', call: 'client.get', kind: 'remote' };
-    const zipped = { form: 'combinator', collection: 'ids', work };
+    const zipped = { form: 'combinator', collection: 'ids', work, limit: undefined };
 
     expect(at('Mono.zip(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.zip' }));
     expect(at('Mono.`when`(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.when' }));
@@ -106,6 +81,7 @@ describe('reactive fan-out on the recorded fixture facts', () => {
         form: 'flow',
         operator: 'flatMapMerge(Int.MAX_VALUE)',
         collection: 'ids.asFlow()',
+        limit: undefined,
         work,
       }),
     );
@@ -125,17 +101,14 @@ describe('reactive fan-out on the recorded fixture facts', () => {
       file.file === UNBOUNDED
         ? {
             ...file,
-            invocations: file.invocations.filter(
-              ({ line, name }) => line !== removed || name !== 'zip',
+            invocations: listOf(file['invocations']).filter(
+              (call: unknown) =>
+                fieldOf(call, 'line') !== removed || fieldOf(call, 'name') !== 'zip',
             ),
           }
         : file,
     );
-    const before = new Set(findings.map(({ identity }) => identity));
-    const after = run(trimmed).findings;
-
-    expect(after).toHaveLength(findings.length - 1);
-    expect(after.every(({ identity }) => before.has(identity))).toBe(true);
+    expect(stableIdentities(findings, run(trimmed).findings)).toBe(true);
   });
 
   it('lists the per-element call lines so the per-item I/O rule leaves them to this one', () => {

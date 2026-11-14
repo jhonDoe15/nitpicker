@@ -1,35 +1,36 @@
 import { describe, expect, it } from 'vitest';
+import type { RuleFinding, SegmentFact } from '../test-support/facts.mts';
+import { routeOf, routed, run } from '../test-support/facts.mts';
+import type { Loose } from '../test-support/loose-facts.mts';
 import {
   argument,
   file,
   fn,
   klass,
   loaded,
-  routeOf,
-  routed,
-  run,
   segment,
   testFile,
-} from '../test-support/facts.mjs';
+} from '../test-support/loose-facts.mts';
 import { loadEffectFindings } from './load-effects.mjs';
 
-const imports = (...paths) =>
+const imports = (...paths: string[]) =>
   paths.map((target) =>
     target.endsWith('.*')
       ? { path: target.slice(0, -2), all: true }
       : { path: target.split(' as ')[0], alias: target.split(' as ')[1], all: false },
   );
-const call = (name, receiver = [], overrides = {}) =>
+const call = (name: string, receiver: SegmentFact[] = [], overrides: Loose = {}) =>
   loaded(
     name,
     {},
     { receiver, text: `${receiver.map((s) => s.name).join('.')}.${name}()`, ...overrides },
   );
-const args = (...texts) => texts.map((text) => argument(text));
-const lines = (findings) =>
+const args = (...texts: string[]) => texts.map((text) => argument(text));
+const lines = (findings: RuleFinding[]) =>
   findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`);
-const findingsOf = (overrides, options = {}) => run(loadEffectFindings, [file(overrides)], options);
-const expected = (callText, place) =>
+const findingsOf = (overrides: Loose, options: Loose = {}) =>
+  run(loadEffectFindings, [file(overrides)], options);
+const expected = (callText: string, place: string) =>
   routed(
     [
       'Do this work in a function that main or the framework calls after startup',
@@ -55,10 +56,10 @@ describe('class-load effects in Kotlin: what is reported', () => {
     });
 
     expect(lines(findings)).toEqual(['database 3']);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       expected('DriverManager.getConnection(...)', 'Sample.kt loads (in top-level database)'),
     );
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -235,7 +236,7 @@ describe('class-load effects in Kotlin: what is reported', () => {
       loads: [call('getConnection', [segment('DriverManager')], { context })],
     });
 
-    expect(findings[0].message).toBe(expected('DriverManager.getConnection()', place));
+    expect(findings[0]?.message).toBe(expected('DriverManager.getConnection()', place));
   });
 });
 
@@ -291,7 +292,7 @@ describe('class-load effects in Kotlin: what is left alone', () => {
   });
 
   it('skips the file with fun main and an object with a @JvmStatic main, but not a plain main', () => {
-    const item = (context) => call('readString', [segment('Files')], { context });
+    const item = (context: Loose) => call('readString', [segment('Files')], { context });
     const loads = [
       item({ kind: 'file', owner: '', member: 'config' }),
       item({ kind: 'object', owner: 'Launcher', member: 'config' }),

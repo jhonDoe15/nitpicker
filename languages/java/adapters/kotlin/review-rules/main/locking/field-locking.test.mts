@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { file, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
+import type { FileFacts } from '../../test-support/facts.mts';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { file, klass, parameter, property } from '../../test-support/loose-facts.mts';
 import { FIELD_LOCKING_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
 import { fieldLockingFindings } from './field-locking.mjs';
 
@@ -14,9 +17,9 @@ const locked = (lock = 'lock') => ({
   k: 'lambda',
   host: 'synchronized',
   argument: lock,
-  qualifier: null,
+  qualifier: undefined,
 });
-const write = (line, member, outer = [], overrides = {}) => ({
+const write = (line: number, member: string, outer: Loose[] = [], overrides: Loose = {}) => ({
   line,
   target: 'count',
   viaThis: false,
@@ -27,23 +30,23 @@ const write = (line, member, outer = [], overrides = {}) => ({
   scopes: [...outer, { k: 'fun', name: member }, CLASS_SCOPE],
   ...overrides,
 });
-const counter = (fieldWrites, overrides = {}) =>
+const counter = (fieldWrites: unknown[], overrides = {}) =>
   file({
     classes: [
       klass('Counter', { primaryParameters: [parameter('size', 'Int', { property: 'var' })] }),
     ],
     properties: [
-      property('lock', 'Counter', { type: null, initializer: 'Any' }),
+      property('lock', 'Counter', { type: undefined, initializer: 'Any' }),
       property('count', 'Counter', { type: 'Int', var: true }),
       property('hits', 'Counter', { type: 'Int', var: true, annotations: ['Volatile'] }),
-      property('atomic', 'Counter', { type: null, var: true, initializer: 'AtomicLong' }),
+      property('atomic', 'Counter', { type: undefined, var: true, initializer: 'AtomicLong' }),
       property('map', 'Counter', { type: 'ConcurrentHashMap<String, Int>', var: true }),
       property('lazy', 'Counter', { type: 'Int', var: true, delegated: true }),
     ],
     fieldWrites,
     ...overrides,
   });
-const findingsFor = (files) => run(fieldLockingFindings, files);
+const findingsFor = (files: FileFacts[]) => run(fieldLockingFindings, files);
 
 describe('inconsistently locked properties in Kotlin', () => {
   it('reports an unlocked write of a property another function writes under a lock', () => {
@@ -52,7 +55,7 @@ describe('inconsistently locked properties in Kotlin', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${FIELD_LOCKING_RULE} Counter.count in reset 8`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       '`reset` writes `count` without a lock, while `increment` writes it holding `lock`: a thread that ' +
         'writes here races with the locked writer, so an update is lost or another thread sees a stale ' +
         'value. Hold the same lock for every write of the property (`synchronized(lock) { }`, ' +
@@ -66,7 +69,7 @@ describe('inconsistently locked properties in Kotlin', () => {
     const findings = findingsFor([
       counter([
         write(4, 'add', [
-          { k: 'lambda', host: 'withLock', qualifier: 'this.lock', argument: null },
+          { k: 'lambda', host: 'withLock', qualifier: 'this.lock', argument: undefined },
         ]),
         write(6, 'bump', [], { viaThis: true, operator: '++', readsTarget: true }),
         write(8, 'name', [], { target: 'size', synchronizedFunction: true }),
