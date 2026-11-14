@@ -7,7 +7,7 @@ const SOURCES = path.resolve(
 );
 const MAIN = 'src/main/kotlin/demo/orders';
 
-export function mapUpdateFiles() {
+export function mapUpdateFiles(): Record<string, string> {
   return {
     [`${MAIN}/InFlight.kt`]: readFileSync(path.join(SOURCES, 'InFlight.kt'), 'utf8'),
     [`${MAIN}/Batches.kt`]: readFileSync(path.join(SOURCES, 'Batches.kt'), 'utf8'),

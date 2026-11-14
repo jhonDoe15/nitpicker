@@ -2,9 +2,9 @@ import {
   kotlinRuleCases,
   fixturePath,
   fixtureSource,
-} from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
+} from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
 
-export function ruleFixtures(variant) {
+export function ruleFixtures(variant: 'banned' | 'allowed'): Record<string, string> {
   return Object.fromEntries(
     kotlinRuleCases.map((testCase) => [
       fixturePath(testCase, variant),

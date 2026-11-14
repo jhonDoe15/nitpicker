@@ -1,12 +1,12 @@
 import {
   CANCELLATION_FILES,
   SWALLOWED_CANCELLATIONS,
-} from './swallowed/kotlin-cancellation-data.mjs';
-import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
-import { LOCKING_FILES, LOCKING_FINDINGS } from './concurrency/kotlin-locking-data.mjs';
-import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
-import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
-import { DEADLINES } from './kotlin-deadlines-data.mjs';
+} from './swallowed/kotlin-cancellation-data.mts';
+import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mts';
+import { LOCKING_FILES, LOCKING_FINDINGS } from './concurrency/kotlin-locking-data.mts';
+import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mts';
+import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mts';
+import { DEADLINES } from './kotlin-deadlines-data.mts';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
