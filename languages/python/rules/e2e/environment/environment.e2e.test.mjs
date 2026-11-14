@@ -150,6 +150,26 @@ describe.skipIf(!enabled)('process-env-access in the roots of the common framewo
     ]);
   });
 
+  it('treats a module with a main guard, or run by a CI step or a pyproject task, as a root', () => {
+    const READ_AT_TOP = 'import os\n\nURL = os.environ["URL"]\n';
+    const guarded = `${READ_AT_TOP}\n\nif __name__ == "__main__":\n    print(URL)\n`;
+    const files = {
+      'src/shop/guarded.py': guarded,
+      'src/shop/jobs/ci_job.py': READ_AT_TOP,
+      'src/shop/jobs/task_job.py': READ_AT_TOP,
+      'src/shop/jobs/module_job.py': READ_AT_TOP,
+      'src/shop/other.py': READ_AT_TOP,
+      '.github/workflows/ci.yml':
+        'jobs:\n  a:\n    steps:\n      - run: python src/shop/jobs/ci_job.py\n',
+      'pyproject.toml':
+        '[tool.poe.tasks]\nmodule = "python -m shop.jobs.module_job"\njob = "python src/shop/jobs/task_job.py"\n',
+    };
+
+    expect(findingsOf(files, { sourceRoots: ['src'] })).toEqual([
+      'process-env-access src/shop/other.py:3 os.environ',
+    ]);
+  });
+
   it('finds the other ways to read the environment', () => {
     const [actual, expected] = outcomes([
       [

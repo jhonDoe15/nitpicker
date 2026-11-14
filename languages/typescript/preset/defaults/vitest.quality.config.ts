@@ -44,8 +44,8 @@ const PROJECT_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
   ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
 );
 
-const perProjectPins = { retry: 0, allowOnly: false, restoreMocks: true };
-
+const unpinned = process.env['NITPICKER_INTERNAL_UNPINNED_MOCKS'] === '1';
+const perProjectPins = { retry: 0, allowOnly: false, ...(unpinned ? {} : { restoreMocks: true }) };
 const MINIMUM_TIMEOUT = 10_000;
 type Timeouts = { testTimeout?: number; hookTimeout?: number };
 

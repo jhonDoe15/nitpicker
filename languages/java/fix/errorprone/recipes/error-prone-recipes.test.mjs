@@ -46,6 +46,8 @@ function run(root, entries, selectedRules = []) {
   });
 }
 
+const DIAGNOSED = { ...OVERRIDE, line: 4 };
+
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -146,5 +148,16 @@ describe('the Error Prone recipes', () => {
       ['java', 'kotlin'],
     ]);
     expect([ownSafe.safety, ownReview.safety]).toEqual(['safe', 'review']);
+  });
+
+  it('report the line of the diagnostic, and one finding for the hunks of one diagnostic', () => {
+    const root = project();
+    const moved = entry('MissingOverride', '+import x.Y;\n', '@@ -0,0 +1,0 @@');
+
+    const result = run(root, [{ ...moved, line: 4 }, DIAGNOSED]);
+
+    expect(result.fixedFindings).toEqual([
+      `${NAME}:4 errorprone/MissingOverride (java-error-prone-safe)`,
+    ]);
   });
 });

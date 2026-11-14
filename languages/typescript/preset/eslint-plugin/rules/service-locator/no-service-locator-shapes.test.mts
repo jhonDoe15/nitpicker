@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import { afterAll, describe, expect, it } from 'vitest';
-import { strictConfig as untypedStrictConfig } from '../../../eslint-config/strict.mjs';
+import { strictConfig as untypedStrictConfig } from '../../../eslint-config/strict.mts';
 import { rule } from './no-service-locator.mjs';
 import { rootFileMatcher } from './root-files.mjs';
 import {

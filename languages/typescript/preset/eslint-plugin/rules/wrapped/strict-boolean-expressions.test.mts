@@ -5,7 +5,7 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { truthinessRuleOptions } from '../../../eslint-config/truthiness/truthiness-rules.mjs';
+import { truthinessRuleOptions } from '../../../eslint-config/truthiness/truthiness-rules.mts';
 import { rule } from './strict-boolean-expressions.mjs';
 import { ruleModule } from '../../test-support/rule-tester.mts';
 

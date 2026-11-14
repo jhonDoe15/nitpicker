@@ -2,6 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, describe, expect, it } from 'vitest';
+import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintWithOxlint } from '../../../adapters/oxlint/oxlint-runner.mts';
 import { createProject } from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
@@ -54,7 +55,7 @@ const PATTERNS = ['src/**/*.{ts,mjs}', 'test/**/*.{ts,mjs}'];
 
 function policySource(kind: PolicyKind, javascript: boolean): string {
   const { module, factory, body } = FACTORIES[kind];
-  const factoryModule = import.meta.resolve(module);
+  const factoryModule = checkoutModuleUrl(new URL(module, import.meta.url)).href;
   const layoutModule = import.meta.resolve('../../layout.mjs');
   const dialect = import.meta.resolve('../../../../javascript/preset/eslint-dialect.mjs');
   return `import { ${factory} } from ${JSON.stringify(factoryModule)};

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import { applyJavascriptDialect as untypedDialect } from '../../../../../../javascript/preset/eslint-dialect.mjs';
-import { strictPresetConfig } from '../../../../eslint-config/strict.mjs';
+import { strictPresetConfig } from '../../../../eslint-config/strict.mts';
 import { defaultResolvedLayout } from '../../../../layout.mjs';
 import { rule } from '../no-unvalidated-schema-field.mjs';
 
