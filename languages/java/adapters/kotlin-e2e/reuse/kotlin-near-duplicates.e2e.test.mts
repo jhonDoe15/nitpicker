@@ -1,4 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   commitBranch,
   diffOf,
@@ -7,19 +9,22 @@ import {
   kotlinPolicy,
   kotlinSources,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import type { DiffOptions, DiffResult, KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 import {
   initializeMavenProject,
   mavenDiffRunner,
-} from '../maven/test-support/kotlin-maven-project.mjs';
+} from '../maven/__tests__/kotlin-maven-project.mts';
 
 const RULE = 'near-duplicate';
-const BUILDS = [
+type Builder = (project: KotlinProject, branch: string, options?: DiffOptions) => DiffResult;
+
+const BUILDS: [string, () => KotlinProject, Builder][] = [
   ['Gradle', initializeProject, diffOf],
-  ['Maven', initializeMavenProject, mavenDiffRunner(process.env.NITPICKER_MAVEN)],
+  ['Maven', initializeMavenProject, mavenDiffRunner(process.env['NITPICKER_MAVEN'])],
 ];
 
-function pricing(name, label) {
+function pricing(name: string, label: string) {
   return [
     'package demo',
     '',
@@ -39,31 +44,32 @@ function pricing(name, label) {
   ].join('\n');
 }
 
-function nearDuplicates(findings) {
+function nearDuplicates(findings: Finding[]) {
   return findings
     .filter(({ rule }) => rule === RULE)
-    .map(({ tool, symbol, path }) => `${tool} ${symbol} ${path}`);
+    .map(({ tool, symbol, path }) => `${tool} ${String(symbol)} ${path}`);
 }
 
 describe.skipIf(!kotlinE2eEnabled).each(BUILDS)(
   'near-duplicate on a Kotlin %s project',
   (_build, initialize, diffOn) => {
-    const state = {};
+    const state: { project?: KotlinProject } = {};
 
     beforeAll(() => {
-      state.project = initialize();
-      commitBranch(state.project, 'near-copy', {
+      const created = initialize();
+      state.project = created;
+      commitBranch(created, 'near-copy', {
         [`${kotlinSources}/OrderPricing.kt`]: pricing('OrderPricing', 'orders'),
         [`${kotlinSources}/InvoicePricing.kt`]: pricing('InvoicePricing', 'invoices'),
       });
     }, 60_000);
 
     afterAll(() => {
-      removeProject(state.project);
+      removeProject(assigned(state.project, 'project'));
     });
 
     it('fails a function copied into another class with one changed literal', () => {
-      const result = diffOn(state.project, 'near-copy');
+      const result = diffOn(assigned(state.project, 'project'), 'near-copy');
 
       expect(nearDuplicates(result.newEnforceable)).toEqual([
         `structure OrderPricing.total(LongArray,Long,StringBuilder) ${kotlinSources}/OrderPricing.kt`,
@@ -77,9 +83,11 @@ describe.skipIf(!kotlinE2eEnabled).each(BUILDS)(
       ];
       const policy = { ...kotlinPolicy, exceptions };
 
-      expect(nearDuplicates(diffOn(state.project, 'near-copy', { policy }).newEnforceable)).toEqual(
-        [],
-      );
+      expect(
+        nearDuplicates(
+          diffOn(assigned(state.project, 'project'), 'near-copy', { policy }).newEnforceable,
+        ),
+      ).toEqual([]);
     }, 180_000);
   },
 );

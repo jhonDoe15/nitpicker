@@ -1,15 +1,16 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
   integrationSuiteFiles,
   publishedFiles,
-} from '../test-support/review/kotlin-build-files-data.mjs';
-import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mjs';
-import { lookupBuild } from '../test-support/review/lookups/kotlin-lookup-data.mjs';
+} from '../test-support/review/kotlin-build-files-data.mts';
+import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mts';
+import { lookupBuild } from '../test-support/review/lookups/kotlin-lookup-data.mts';
 import {
   ALL_FINDINGS,
   reviewBranchFiles,
   reviewFindings,
-} from '../test-support/review/kotlin-review-findings.mjs';
+} from '../test-support/review/kotlin-review-findings.mts';
 import {
   commitBranch,
   commitFromBranch,
@@ -18,8 +19,12 @@ import {
   initializeProject,
   kotlinE2eEnabled,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
+import { assigned } from '../test-support/views/assigned.mts';
+import { helpUriProblems as untypedHelpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
+
+const helpUriProblems: (findings: readonly Finding[]) => string[] = untypedHelpUriProblems;
 
 const CATCH_ONLY_LOGS_LEFT = { cancellations: ['189'], interrupts: ['99'] };
 const INTERNAL_OPTIONS = new Set([
@@ -29,18 +34,18 @@ const INTERNAL_OPTIONS = new Set([
 ]);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () => {
-  let project;
+  let project: KotlinProject | undefined;
 
   beforeAll(() => {
     project = initializeProject();
     commitBranch(project, 'review-rules', reviewBranchFiles(project.root));
   });
   afterAll(() => {
-    removeProject(project);
+    removeProject(assigned(project, 'project'));
   });
 
   it('fails the sleeps, float comparisons, enum predicates, wrapper, plural member, map updates, unused option, unused context, update across a suspension, lock-order inversion, inconsistently locked property and swallowed cancellation or interrupt, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
-    const result = diffOf(project, 'review-rules');
+    const result = diffOf(assigned(project, 'project'), 'review-rules');
 
     expect(result.failed).toBe(true);
     expect(reviewFindings(result.newEnforceable)).toEqual(ALL_FINDINGS);
@@ -56,13 +61,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
   });
 
   it('reports a swallowed catch and a sleep in a suspend test helper once', () => {
-    const result = diffOf(project, 'review-rules');
-    const on = (file) =>
+    const result = diffOf(assigned(project, 'project'), 'review-rules');
+    const on = (file: string) =>
       result.newEnforceable
         .filter(({ path: found }) => found.endsWith(file))
         .map(({ rule, location }) => `${rule} ${String(location?.line)}`)
         .toSorted();
-    const lines = (findings, rule) =>
+    const lines = (findings: string[], rule: string) =>
       findings.filter((entry) => entry.startsWith(`${rule} `)).map((entry) => entry.split(' ')[1]);
     const cancellations = on('/Cancellations.kt');
     const interrupts = on('/Interrupts.kt');
@@ -80,13 +85,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
   });
 
   it('counts the tests of a published module as callers of its public functions', () => {
-    commitFromBranch(project, {
+    commitFromBranch(assigned(project, 'project'), {
       name: 'published',
       from: 'review-rules',
-      files: publishedFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
+      files: publishedFiles(
+        lookupBuild(git(assigned(project, 'project'), 'show', 'main:build.gradle.kts')),
+      ),
     });
 
-    const result = diffOf(project, 'published');
+    const result = diffOf(assigned(project, 'project'), 'published');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
       ALL_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
@@ -94,13 +101,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
   });
 
   it('withholds internal but judges public functions of an unpublished module with an integration suite', () => {
-    commitFromBranch(project, {
+    commitFromBranch(assigned(project, 'project'), {
       name: 'integration-suite',
       from: 'review-rules',
-      files: integrationSuiteFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
+      files: integrationSuiteFiles(
+        lookupBuild(git(assigned(project, 'project'), 'show', 'main:build.gradle.kts')),
+      ),
     });
 
-    const result = diffOf(project, 'integration-suite');
+    const result = diffOf(assigned(project, 'project'), 'integration-suite');
 
     expect(reviewFindings(result.newFindings)).toEqual(
       [

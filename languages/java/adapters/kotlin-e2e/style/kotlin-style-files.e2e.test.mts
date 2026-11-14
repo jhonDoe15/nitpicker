@@ -19,11 +19,12 @@ import {
   kotlinGradleArguments,
   kotlinStyleFile,
   resolveKotlinTools,
-} from '../../kotlin/kotlin-tools.mjs';
-import { gradle, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
+} from '../../kotlin/test-support/kotlin-tools-views.mts';
+import type { ToolOptions } from '../../kotlin/test-support/kotlin-tools-views.mts';
+import { gradle, kotlinE2eEnabled } from '../__tests__/kotlin-e2e-project.mts';
 
 const fixture = fileURLToPath(new URL('../../fixtures/kotlin-style-project', import.meta.url));
-const roots = [];
+const roots: string[] = [];
 const WORKSPACE = 'build/tmp/nitpickerKotlinStyleWorkspace';
 const LAYERS = 'build/tmp/nitpickerDetektLayers';
 
@@ -40,7 +41,7 @@ function copyOfFixture() {
   return root;
 }
 
-function runStyleTasks(root, options) {
+function runStyleTasks(root: string, options: ToolOptions) {
   const resolved = { formatter: 'ktlint', ...options };
   const tools = resolveKotlinTools(root, resolved);
   const styleDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-style-file-'));
@@ -54,7 +55,7 @@ function runStyleTasks(root, options) {
       '--console=plain',
       '--quiet',
       '--offline',
-      ...kotlinGradleArguments(root, { ...resolved, styleFile }, tools),
+      ...kotlinGradleArguments(root, { ...resolved, styleFile }),
       '-I',
       INIT_SCRIPT,
       'nitpickerKotlinStyleWorkspace',
@@ -63,7 +64,7 @@ function runStyleTasks(root, options) {
     { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
   );
   expect(result.status, result.stderr).toBe(0);
-  const read = (file) => readFileSync(path.join(root, file), 'utf8');
+  const read = (file: string) => readFileSync(path.join(root, file), 'utf8');
   const workspace = path.join(root, `${WORKSPACE}/workspace`);
   return {
     editorconfig: existsSync(workspace) ? read(`${WORKSPACE}/workspace/.editorconfig`) : undefined,
@@ -71,7 +72,7 @@ function runStyleTasks(root, options) {
       ? read(`${WORKSPACE}/ktlint-defaults.editorconfig`)
       : undefined,
     mirrored: existsSync(workspace)
-      ? readdirSync(workspace, { recursive: true }).sort()
+      ? readdirSync(workspace, { recursive: true, encoding: 'utf8' }).sort()
       : undefined,
     layers: read(`${LAYERS}/layers.txt`),
     conventionLayer: existsSync(path.join(root, `${LAYERS}/followed-conventions.yml`))
@@ -109,6 +110,7 @@ describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint 
 
   it('writes the conventions as ktlint defaults and as the lowest detekt layer', () => {
     const outcome = runStyleTasks(copyOfFixture(), { conventions: FOLLOWED });
+    const layerPath: unknown = expect.stringMatching(/^\/.*followed-conventions\.yml\n$/u);
 
     expect(outcome).toEqual({
       editorconfig: 'root = true\n',
@@ -121,7 +123,7 @@ describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint 
         '',
       ].join('\n'),
       mirrored: MIRRORED,
-      layers: expect.stringMatching(/^\/.*followed-conventions\.yml\n$/u),
+      layers: layerPath,
       conventionLayer: 'style:\n  WildcardImport:\n    active: false\n',
     });
   });
@@ -149,7 +151,7 @@ describe.skipIf(!kotlinE2eEnabled)('the files the init script writes for ktlint 
       toolPrecedence: { detekt: precedence },
     });
 
-    const named = {
+    const named: Record<string, string> = {
       [path.join(root, 'config/detekt/detekt.yml')]: 'project',
       [path.join(root, LAYERS, 'followed-conventions.yml')]: 'conventions',
       [path.join(root, LAYERS, 'enforced-conventions.yml')]: 'enforced',

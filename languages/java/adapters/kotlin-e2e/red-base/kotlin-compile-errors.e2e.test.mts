@@ -2,7 +2,7 @@ import { describe } from 'vitest';
 import { createRepository } from '../../red-base/test-support/red-base-cases.mjs';
 import { compileErrorCases } from '../../red-base/test-support/compile-error-cases.mjs';
 
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 
 const BROKEN = `package demo
 
@@ -11,7 +11,7 @@ class Greeter {
 }
 `;
 
-describe.skipIf(process.env.NITPICKER_KOTLIN_E2E !== '1')(
+describe.skipIf(process.env['NITPICKER_KOTLIN_E2E'] !== '1')(
   'Kotlin preset on a Gradle change that does not compile',
   () => {
     compileErrorCases({

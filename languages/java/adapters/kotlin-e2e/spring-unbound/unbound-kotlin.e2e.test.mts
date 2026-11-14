@@ -6,9 +6,9 @@ import {
 
 const projects = unboundProjects();
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const maven = process.env.NITPICKER_MAVEN;
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
+const maven = process.env['NITPICKER_MAVEN'];
 const policy = { preset: 'kotlin' };
 
 describe.skipIf(!enabled)('Unbound Spring property keys with the Kotlin preset', () => {

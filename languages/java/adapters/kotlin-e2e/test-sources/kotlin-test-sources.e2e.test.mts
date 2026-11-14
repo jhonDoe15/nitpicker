@@ -2,24 +2,39 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runJavaDiff } from '../../java-diff.mjs';
-import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
+import { assigned } from '../test-support/views/assigned.mts';
+import {
+  commitBranch as commitProjectBranch,
+  git,
+  runJavaDiff,
+  summarize,
+} from '../__tests__/kotlin-e2e-project.mts';
+import type { DiffResult, FileMap, KotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 import {
   LEGACY_TEST,
   LEGACY_TEST_MOVED,
   SHOUTING_TEST,
   SUPPRESSED_TEST,
-} from './test-support/test-sources.mjs';
+} from './test-support/test-sources.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-project');
-const kotlinPolicy = { preset: 'kotlin' };
+const kotlinPolicy: KotlinPolicy = { preset: 'kotlin' };
 const TESTS = 'src/test/kotlin/demo';
 
-let repository;
+let repository: string | undefined;
 
-const ofFile = (findings, file) =>
+function runGitIn(root: string, ...args: string[]) {
+  git({ root }, ...args);
+}
+
+function commitBranch(root: string, name: string, files: FileMap) {
+  commitProjectBranch({ root }, name, files);
+}
+
+const ofFile = (findings: Finding[], file: string) =>
   summarize(
     findings.filter(
       (finding) => path.basename(finding.path) === file && finding.tool !== 'test-runtime',
@@ -43,12 +58,20 @@ describe.skipIf(!enabled)('Kotlin preset on test sources', () => {
   });
 
   afterAll(() => {
-    rmSync(repository, { recursive: true, force: true });
+    rmSync(assigned(repository, 'repository'), { recursive: true, force: true });
   });
 
-  const diffOf = (policy = kotlinPolicy) =>
-    runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
-  let result;
+  const diffOf = (policy: KotlinPolicy = kotlinPolicy) =>
+    runJavaDiff({
+      repositoryRoot: assigned(repository, 'repository'),
+      requestedBaseRef: 'main',
+      gradle,
+      maven: undefined,
+      spawn: undefined,
+      initScript: undefined,
+      policy,
+    });
+  let result: DiffResult | undefined;
   const defaultDiff = () => (result ??= diffOf());
 
   it('lints new test code with detekt and ktlint, keeping the rules detekt itself excludes for tests off', () => {
