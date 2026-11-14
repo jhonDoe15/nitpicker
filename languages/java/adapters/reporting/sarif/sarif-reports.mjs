@@ -29,6 +29,7 @@ import { withPmdLevels } from './pmd-levels.mjs';
 import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
 import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mjs';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
+import { withoutClassesWithoutSource } from './spotbugs-sources.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -142,7 +143,10 @@ export function sarifFindings(context) {
     ...pmdProcessingErrors(pmd, context),
     ...ingestSarif(
       withSecurityMessages(
-        withoutDuplicateSites(dropEntityAssociations(spotbugs, projectRoot), pmd),
+        withoutDuplicateSites(
+          withoutClassesWithoutSource(dropEntityAssociations(spotbugs, projectRoot), projectRoot),
+          pmd,
+        ),
       ),
       { tool: 'spotbugs' },
     ).findings,

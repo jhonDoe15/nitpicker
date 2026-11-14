@@ -52,6 +52,16 @@ export function lintPlan({ module, classpaths, tools, spawn }, projectRoot) {
     workDirectory: path.join(lintDirectory, 'work'),
     cacheDirectory: lintDirectory,
     spawn,
+    test: {
+      sources: javaFiles(module.testSourceRoots),
+      generatedSources: [
+        path.join(module.buildDirectory, 'generated-test-sources/test-annotations'),
+      ],
+      classDirectory: module.testOutputDirectory,
+      classpath: [module.outputDirectory, ...classpaths.testCompile],
+      processorPath: processorPath(classpaths.testCompile, module.compiler, tools),
+      compiler: guardCompiler({ ...module.compiler, ...module.compiler.test }),
+    },
   };
 }
 

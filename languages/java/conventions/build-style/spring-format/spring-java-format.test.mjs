@@ -106,7 +106,7 @@ describe('Spring Java Format in the build files', () => {
         'build.gradle':
           "plugins { id 'io.spring.javaformat' }\nspotless { java { googleJavaFormat() } }",
       }),
-    ).toEqual({ formatter: 'google', aosp: false });
+    ).toEqual({ formatter: 'google', aosp: false, options: ['skipReflowingLongStrings'] });
   });
 
   it('wins over a Spotless formatter that nitpicker does not run', () => {

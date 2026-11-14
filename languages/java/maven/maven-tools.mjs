@@ -47,11 +47,11 @@ export function dependency(coordinates, exclusions = []) {
   ].join('');
 }
 
-export function formatTool(javaStyle, pinned) {
+export function formatTool(javaStyle, pinned, version) {
   const formatter = JAVA_FORMATTERS[javaStyle ?? 'google'];
   return formatter === undefined
     ? []
-    : [{ name: formatter.classpath, coordinates: [formatter.coordinates(pinned)] }];
+    : [{ name: formatter.classpath, coordinates: [formatter.coordinates(pinned, version)] }];
 }
 
 export function archunitTool(runsRules, pinned) {
