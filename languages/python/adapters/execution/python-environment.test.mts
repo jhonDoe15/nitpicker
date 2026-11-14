@@ -1,48 +1,21 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { installFakePoetry } from '../test-support/fake-toolchain.mjs';
-import { detectEnvironment, openEnvironment } from './python-environment.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import { installFakePoetry } from '../test-support/fake-toolchain.mts';
+import { detectEnvironment, openEnvironment } from '../typed/environment/environment-views.mts';
 
-const roots = [];
-const savedEnvironment = new Map();
+const scratch = createScratch();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-env-')));
-  roots.push(root);
-  return root;
+afterEach(scratch.cleanup);
+
+function touch(root: string, relative: string): void {
+  scratch.write(root, { [relative]: '' });
 }
-
-function setEnvironment(name, value) {
-  if (!savedEnvironment.has(name)) {
-    savedEnvironment.set(name, process.env[name]);
-  }
-  if (value === undefined) {
-    Reflect.deleteProperty(process.env, name);
-  } else {
-    process.env[name] = value;
-  }
-}
-
-function touch(root, relative) {
-  mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-  writeFileSync(path.join(root, relative), '');
-}
-
-afterEach(() => {
-  for (const [name, value] of savedEnvironment) {
-    setEnvironment(name, value);
-  }
-  savedEnvironment.clear();
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('environment detection', () => {
   it('prefers uv.lock, then poetry.lock, then .venv, then the PATH', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     expect(detectEnvironment(root)).toEqual({ kind: 'path' });
 
     touch(root, '.venv/bin/python');
@@ -56,7 +29,7 @@ describe('environment detection', () => {
   });
 
   it('detects a member of a uv workspace by the lock file of the workspace root', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'uv.lock');
     touch(root, 'pyproject.toml');
     writeFileSync(path.join(root, 'pyproject.toml'), '[tool.uv.workspace]\nmembers = ["app"]\n');
@@ -66,7 +39,7 @@ describe('environment detection', () => {
   });
 
   it('ignores the lock file of an enclosing directory that is not a uv workspace', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'uv.lock');
     touch(root, 'app/.venv/bin/python');
 
@@ -77,14 +50,14 @@ describe('environment detection', () => {
   });
 
   it.each(['uv', 'poetry', 'path'])('lets the setting name the %s environment', (name) => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'uv.lock');
 
     expect(detectEnvironment(root, name)).toEqual({ kind: name });
   });
 
   it('treats any other setting as a virtual environment directory in the project', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'uv.lock');
 
     expect(detectEnvironment(root, 'envs/ci')).toEqual({
@@ -96,9 +69,9 @@ describe('environment detection', () => {
 
 describe('opening an environment', () => {
   it('launches tools from the virtual environment and puts it first on the PATH', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, '.venv/bin/ruff');
-    setEnvironment('PATH', '/usr/bin');
+    scratch.setEnvironment('PATH', '/usr/bin');
 
     const launcher = openEnvironment({ kind: 'venv', directory: path.join(root, '.venv') }, root);
 
@@ -115,7 +88,7 @@ describe('opening an environment', () => {
   });
 
   it('reports a virtual environment that does not exist', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
 
     expect(() =>
       openEnvironment({ kind: 'venv', directory: path.join(root, 'nope') }, root),
@@ -140,9 +113,9 @@ describe('opening an environment', () => {
   });
 
   it('launches tools through uv run in the project without syncing it', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, '.venv/pyvenv.cfg');
-    setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
 
     const launcher = openEnvironment({ kind: 'uv' }, root);
 
@@ -155,12 +128,12 @@ describe('opening an environment', () => {
   });
 
   it('uses the environment of the workspace root for a member', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, '.venv/pyvenv.cfg');
     touch(root, 'uv.lock');
     writeFileSync(path.join(root, 'pyproject.toml'), '[tool.uv.workspace]\nmembers = ["app"]\n');
     mkdirSync(path.join(root, 'app'));
-    setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
 
     const launcher = openEnvironment({ kind: 'uv' }, path.join(root, 'app'));
 
@@ -172,10 +145,10 @@ describe('opening an environment', () => {
   });
 
   it('does not take an unrelated environment of a parent directory for the uv one', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, '.venv/pyvenv.cfg');
     mkdirSync(path.join(root, 'app'));
-    setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', undefined);
 
     expect(() => openEnvironment({ kind: 'uv' }, path.join(root, 'app'))).toThrow(
       `uv has no environment at ${path.join(root, 'app/.venv')}`,
@@ -183,19 +156,19 @@ describe('opening an environment', () => {
   });
 
   it('honours UV_PROJECT_ENVIRONMENT', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'elsewhere/pyvenv.cfg');
-    setEnvironment('UV_PROJECT_ENVIRONMENT', 'elsewhere');
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', 'elsewhere');
 
     expect(openEnvironment({ kind: 'uv' }, root).description).toBe('uv');
 
-    setEnvironment('UV_PROJECT_ENVIRONMENT', 'missing');
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', 'missing');
     expect(() => openEnvironment({ kind: 'uv' }, root)).toThrow('uv has no environment');
   });
 
   it('asks the user to sync when uv has no environment', () => {
-    const root = temporaryRoot();
-    setEnvironment('UV_PROJECT_ENVIRONMENT', '');
+    const root = scratch.directory();
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', '');
 
     expect(() => openEnvironment({ kind: 'uv' }, path.join(root, 'app'))).toThrow(
       /run `uv sync` first .*"python\.environment"/,
@@ -203,11 +176,11 @@ describe('opening an environment', () => {
   });
 
   it('uses the environment poetry reports', () => {
-    const root = temporaryRoot();
+    const root = scratch.directory();
     touch(root, 'venv/bin/pytest');
-    const tools = temporaryRoot();
+    const tools = scratch.directory();
     installFakePoetry(tools, path.join(root, 'venv'));
-    setEnvironment('PATH', `${tools}${path.delimiter}${process.env.PATH}`);
+    scratch.setEnvironment('PATH', `${tools}${path.delimiter}${process.env['PATH'] ?? ''}`);
 
     const launcher = openEnvironment({ kind: 'poetry' }, root);
 
@@ -216,10 +189,10 @@ describe('opening an environment', () => {
   });
 
   it('reports a poetry project without an environment', () => {
-    const root = temporaryRoot();
-    const tools = temporaryRoot();
+    const root = scratch.directory();
+    const tools = scratch.directory();
     installFakePoetry(tools, '');
-    setEnvironment('PATH', tools);
+    scratch.setEnvironment('PATH', tools);
 
     expect(() => openEnvironment({ kind: 'poetry' }, root)).toThrow(
       `poetry has no environment for ${root}: run \`poetry install\` first`,
@@ -227,8 +200,8 @@ describe('opening an environment', () => {
   });
 
   it('reports a missing poetry binary', () => {
-    const root = temporaryRoot();
-    setEnvironment('PATH', temporaryRoot());
+    const root = scratch.directory();
+    scratch.setEnvironment('PATH', scratch.directory());
 
     expect(() => openEnvironment({ kind: 'poetry' }, root)).toThrow(
       `poetry is not installed, so its environment for ${root} cannot be found: install poetry with \`pipx install poetry\` or \`pip install poetry\`, or set "python.environment"`,
@@ -236,9 +209,9 @@ describe('opening an environment', () => {
   });
 
   it('names how to install uv when it is missing and has no environment', () => {
-    const root = temporaryRoot();
-    setEnvironment('UV_PROJECT_ENVIRONMENT', '');
-    setEnvironment('PATH', temporaryRoot());
+    const root = scratch.directory();
+    scratch.setEnvironment('UV_PROJECT_ENVIRONMENT', '');
+    scratch.setEnvironment('PATH', scratch.directory());
 
     expect(() => openEnvironment({ kind: 'uv' }, root)).toThrow(
       `uv has no environment at ${path.join(root, '.venv')}: run \`uv sync\` first (or set UV_PROJECT_ENVIRONMENT, or set "python.environment"); uv is not installed, install uv with \`curl -LsSf https://astral.sh/uv/install.sh | sh\` or \`pip install uv\``,

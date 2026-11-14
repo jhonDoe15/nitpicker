@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { onlyUnparsableFiles, runPythonTools, unformattedPaths } from '../python-tools.mjs';
+import {
+  FORMAT_REPORT,
+  onlyUnparsableFiles,
+  RUFF_REPORT,
+  runPythonTools,
+  unformattedPaths,
+} from '../python-tools.mjs';
 import {
   callsLog,
   contextFor,
@@ -9,7 +15,7 @@ import {
   project,
   readReport,
   restoreTemporaryState,
-} from './test-support/python-tools-project.mjs';
+} from './test-support/python-tools-project.mts';
 import { fileURLToPath } from 'node:url';
 import { RUFF_CONFIG } from '../configuration/python-ruff-config.mjs';
 
@@ -72,7 +78,7 @@ describe('lint and format arguments', () => {
     const { context, reportRoot } = contextFor(root, {}, ['legacy/**']);
     runPythonTools(context);
 
-    expect(calls('ruff', 'check')[0].args).toEqual([
+    expect(calls('ruff', 'check')[0]?.args).toEqual([
       'check',
       '--config',
       path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../ruff/nitpicker-ruff.toml'),
@@ -87,10 +93,10 @@ describe('lint and format arguments', () => {
       '--output-format',
       'sarif',
       '--output-file',
-      path.join(reportRoot, 'ruff.sarif'),
+      path.join(reportRoot, RUFF_REPORT),
       '.',
     ]);
-    expect(calls('ruff', 'format')[0].args).toEqual([
+    expect(calls('ruff', 'format')[0]?.args).toEqual([
       'format',
       '--check',
       '--diff',
@@ -115,7 +121,7 @@ describe('lint and format arguments', () => {
 
     runPythonTools(contextFor(root, {}, ['legacy/**', 'gen']).context);
 
-    const { args } = calls('black', '--check')[0];
+    const args = calls('black', '--check')[0]?.args ?? [];
     expect(args[args.indexOf('--extend-exclude') + 1]).toBe(
       '^/(?:legacy/.*)(?:/.*)?/?$|^/(?:gen)(?:/.*)?/?$',
     );
@@ -128,7 +134,7 @@ describe('lint and format arguments', () => {
     const { context, reportRoot } = contextFor(root, { formatter });
 
     expect(runPythonTools(context)).toEqual([]);
-    expect(readReport(reportRoot, 'format.txt')).toMatch(/src\/demo\/a\.py$/);
+    expect(readReport(reportRoot, FORMAT_REPORT)).toMatch(/^[\s\S]*src\/demo\/a\.py$/);
   });
   it('still fails when the formatter exits with its failure status for another reason', () => {
     const root = project({ 'fail.json': JSON.stringify({ 'ruff format': 'invalid config' }) });
@@ -156,7 +162,7 @@ describe('formatter arguments from the conventions followed', () => {
 
     runPythonTools(contextWithConventions(root, followed).context);
 
-    expect(calls('ruff', 'format')[0].args).toEqual([
+    expect(calls('ruff', 'format')[0]?.args).toEqual([
       'format',
       '--check',
       '--diff',
@@ -180,7 +186,7 @@ describe('formatter arguments from the conventions followed', () => {
     const { context, reportRoot } = contextWithConventions(root, followed);
     runPythonTools(context);
 
-    const { args } = calls('black', '--check')[0];
+    const args = calls('black', '--check')[0]?.args ?? [];
     expect(args).toEqual([
       '--check',
       '--config',
@@ -202,7 +208,7 @@ describe('formatter arguments from the conventions followed', () => {
 
     runPythonTools(contextWithConventions(root, followed).context);
 
-    expect(calls('ruff', 'format')[0].args.slice(0, 5)).toEqual([
+    expect(calls('ruff', 'format')[0]?.args.slice(0, 5)).toEqual([
       'format',
       '--check',
       '--diff',
@@ -225,7 +231,7 @@ describe('formatter arguments from the conventions followed', () => {
       ).context,
     );
 
-    expect(calls('ruff', 'format')[0].args).toEqual([
+    expect(calls('ruff', 'format')[0]?.args).toEqual([
       'format',
       '--check',
       '--diff',
@@ -248,7 +254,7 @@ describe('formatter arguments from the conventions followed', () => {
       contextWithConventions(root, followed, { ruff: ['project', 'nitpicker'] }).context,
     );
 
-    expect(calls('ruff', 'format')[0].args).toEqual([
+    expect(calls('ruff', 'format')[0]?.args).toEqual([
       'format',
       '--check',
       '--diff',
@@ -268,9 +274,11 @@ describe('formatter arguments from the conventions followed', () => {
   });
 });
 describe('the ruff config for the installed ruff', () => {
-  const rule = (code, status = { Stable: { since: '0.1.0' } }) => ({ code, status });
-  const selected = (path) =>
-    [...readFileSync(path, 'utf8').matchAll(/^\s*"([A-Z]+\d+)",$/gm)].map((match) => match[1]);
+  const rule = (code: string, status = { Stable: { since: '0.1.0' } }) => ({ code, status });
+  const selected = (path: string) =>
+    [...readFileSync(path, 'utf8').matchAll(/^\s*"([A-Z]+\d+)",$/gm)].map(
+      (match) => match[1] ?? '',
+    );
 
   it('keeps the preset file when ruff knows every rule it selects', () => {
     const calls = callsLog();
@@ -279,7 +287,7 @@ describe('the ruff config for the installed ruff', () => {
 
     runPythonTools(contextFor(root).context);
 
-    expect(calls('ruff', 'check')[0].args[2]).toBe(RUFF_CONFIG);
+    expect(calls('ruff', 'check')[0]?.args[2]).toBe(RUFF_CONFIG);
   });
   it('drops the rules the installed ruff still has in preview', () => {
     const everyRule = selected(RUFF_CONFIG).map((code) =>
@@ -308,8 +316,8 @@ describe('the ruff config for the installed ruff', () => {
       .split('\n')
       .filter((line) => !/^\s*"[A-Z]+\d+",$/.test(line) || /RUF00[56]/.test(line))
       .join('\n');
-    expect(calls('ruff', 'check')[0].args[2]).toBe(config);
-    expect(sourceFiles.args[3]).toBe(config);
+    expect(calls('ruff', 'check')[0]?.args[2]).toBe(config);
+    expect(sourceFiles?.args[3]).toBe(config);
     expect(readFileSync(config, 'utf8')).toBe(expected);
   });
 });

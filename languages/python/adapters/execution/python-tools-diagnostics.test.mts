@@ -1,10 +1,11 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { jscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
-import { execute, failure, probe, probeVersion } from './python-process.mjs';
+import { DUPLICATES_REPORT } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
+import { execute, failure, probeVersion } from './python-process.mjs';
 import { PYTEST_SCRIPT } from './python-test-runner.mjs';
-import { mutationVersions, runPythonTools, toolVersions } from '../python-tools.mjs';
+import { mutationVersions, toolVersions } from '../python-tools.mjs';
+import { runPythonTools } from '../typed/runner/runner-views.mts';
 import {
   callsLog,
   contextFor,
@@ -13,8 +14,8 @@ import {
   restoreTemporaryState,
   setEnvironment,
   temporaryRoot,
-} from './test-support/python-tools-project.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+} from './test-support/python-tools-project.mts';
+import { jscpdVersion, linkSentence, probe, runsOf } from '../typed/tests/tools-test-views.mts';
 
 afterEach(restoreTemporaryState);
 
@@ -43,7 +44,7 @@ describe('running the import and duplicate tools', () => {
 
     expect(runPythonTools(context)).toEqual([]);
 
-    expect(JSON.parse(readReport(reportRoot, 'duplicates.json')).runs).toHaveLength(1);
+    expect(runsOf(readReport(reportRoot, DUPLICATES_REPORT))).toHaveLength(1);
     expect(JSON.parse(readReport(reportRoot, 'imports.json'))).toEqual({
       modules: [
         { file: 'src/demo/__init__.py', module: 'demo', isPackage: true },
@@ -61,7 +62,7 @@ describe('running the import and duplicate tools', () => {
 
     expect(runPythonTools(context)).toEqual([]);
 
-    expect(() => readReport(reportRoot, 'import-linter.txt')).toThrow();
+    expect(() => readReport(reportRoot, 'import-linter.txt')).toThrow(/ENOENT/);
   });
   it.each([
     ['python', 'coupling-failed'],
@@ -74,7 +75,7 @@ describe('running the import and duplicate tools', () => {
     });
     const { context } = contextFor(root, { testRunner: 'unittest' });
 
-    expect(runPythonTools(context).map((failure) => failure.rule)).toContain(rule);
+    expect(runPythonTools(context).map((item) => item.rule)).toContain(rule);
   });
   it('says where a missing tool should be installed', () => {
     const root = project({}, { tools: ['black', 'coverage', 'python'] });
@@ -113,7 +114,7 @@ describe('running pytest', () => {
 
     runPythonTools(context);
 
-    expect(calls('coverage', 'run')[0].args.slice(3)).toEqual([
+    expect(calls('coverage', 'run')[0]?.args.slice(3)).toEqual([
       PYTEST_SCRIPT,
       '-q',
       '-o',
@@ -151,7 +152,9 @@ describe('running the Django and nose2 runners', () => {
 
     expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([]);
 
-    const [{ args, cwd }] = calls('coverage', 'run');
+    const [first] = calls('coverage', 'run');
+    const args = first?.args ?? [];
+    const cwd = first?.cwd;
     expect([args.slice(3), cwd]).toEqual([command, path.join(root, directory)]);
   });
   it.each([
@@ -190,6 +193,7 @@ describe('failure messages', () => {
       command: ['coverage', 'run'],
       result: { error: { code: 'ETIMEDOUT' } },
       rule: 'x',
+      timeoutMs: undefined,
     });
 
     expect(error.message).toBe(
@@ -205,6 +209,7 @@ describe('failure messages', () => {
       command: ['coverage', 'run'],
       result: { error: { code: 'ETIMEDOUT' } },
       rule: 'x',
+      timeoutMs: undefined,
     });
 
     expect(error.message).toBe(
@@ -236,7 +241,7 @@ describe('tool versions', () => {
   });
   it('names the Django and nose2 versions, and whether pytest-django can run the mutants', () => {
     const jscpd = `jscpd@${jscpdVersion()}`;
-    const django = (files) =>
+    const django = (files: Readonly<Record<string, string>> = {}) =>
       contextFor(project({ 'manage.py': '', ...files }), { testRunner: 'django' }).context;
 
     expect(toolVersions(django())).toBe(
@@ -293,24 +298,26 @@ describe('tool versions', () => {
       mode: 0o755,
     });
 
-    expect(toolVersions(contextFor(root).context)).toMatch(/^ruff@unknown;/);
+    expect(toolVersions(contextFor(root).context)).toMatch(/^ruff@unknown;[\s\S]*$/);
   });
 });
 
+type SpawnOptions = { readonly cwd: string; readonly env: Readonly<Record<string, string>> };
+
 function recordingSpawn(stdout = 'tool 1.2.3\n') {
-  const calls = [];
-  function spawn(command, args, options) {
+  const calls: { command: string; args: readonly string[]; options: SpawnOptions }[] = [];
+  function spawn(command: string, args: readonly string[], options: SpawnOptions) {
     calls.push({ command, args, options });
     return { status: 0, stdout, stderr: '' };
   }
   return { calls, spawn };
 }
 
-function launch(tool, args) {
+function launch(tool: string, args: readonly string[]) {
   return { command: `/venv/bin/${tool}`, args, env: { VIRTUAL_ENV: '/venv' } };
 }
 
-function contextWith(spawn, overrides = {}) {
+function contextWith(spawn: unknown, overrides: Readonly<Record<string, unknown>> = {}) {
   return {
     spawn,
     projectRoot: '/work/head',
@@ -375,7 +382,7 @@ describe('probing a tool', () => {
       '--version',
     ]);
 
-    expect(calls.map(({ options }) => options.env.PYTHONPATH)).toEqual([
+    expect(calls.map(({ options }) => options.env['PYTHONPATH'])).toEqual([
       '/work/head/src',
       '/work/head/lib',
     ]);

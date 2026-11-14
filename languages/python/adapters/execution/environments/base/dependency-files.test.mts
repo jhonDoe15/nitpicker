@@ -2,13 +2,14 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { dependenciesDiffer } from './dependency-files.mjs';
 import {
   pyproject,
+  createRootTracker,
   removeTemporaryRoots,
   temporaryRoot as registeredTemporaryRoot,
   writeAll,
-} from './test-support/temporary-projects.mjs';
+} from './test-support/temporary-projects.mts';
 
-const roots = [];
-function temporaryRoot() {
+const roots = createRootTracker();
+function temporaryRoot(): string {
   return registeredTemporaryRoot(roots);
 }
 

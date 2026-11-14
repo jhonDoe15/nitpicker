@@ -1,17 +1,26 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import {
+  DJANGO_SCRIPT,
   djangoSettingsModule,
   djangoSubdirectory,
   pytestNamesDjangoSettings,
 } from './python-django.mjs';
-import { detectTestRunner, testCommand, testsRan, UNITTEST_SCRIPT } from './python-test-runner.mjs';
+import {
+  detectTestRunner,
+  NO_TESTS_EXIT,
+  testCommand,
+  testsRan,
+  UNITTEST_SCRIPT,
+} from './python-test-runner.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+
+const { temporaryRoot } = useGitFixtures();
 
 const DJANGO_MANAGE = [
   'import os',
@@ -22,23 +31,11 @@ const DJANGO_MANAGE = [
   '',
 ].join('\n');
 const { gitCheckout } = useGitCheckouts();
-const roots = [];
-
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-runner-detect-'));
-  roots.push(root);
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-python-runner-detect-');
+  writeFiles(root, files);
   return root;
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('test runner detection', () => {
   it.each([
@@ -191,7 +188,7 @@ describe('test runner detection', () => {
   });
 });
 describe('Django and nose2 commands', () => {
-  const contextFor = (root, testRunner) => ({
+  const contextFor = (root: string, testRunner: string) => ({
     projectRoot: root,
     project: { testRunner },
     launcher: {
@@ -201,15 +198,19 @@ describe('Django and nose2 commands', () => {
   });
 
   it.each([
-    ['django', { 'manage.py': DJANGO_MANAGE }, ['manage.py', 'test', '--noinput']],
-    ['django', { 'backend/manage.py': DJANGO_MANAGE }, ['manage.py', 'test', '--noinput']],
+    ['django', { [DJANGO_SCRIPT]: DJANGO_MANAGE }, [DJANGO_SCRIPT, 'test', '--noinput']],
+    [
+      'django',
+      { [`backend/${DJANGO_SCRIPT}`]: DJANGO_MANAGE },
+      [DJANGO_SCRIPT, 'test', '--noinput'],
+    ],
     ['nose2', {}, ['-m', 'nose2']],
   ])('runs %s as the project does', (testRunner, files, command) => {
     expect(testCommand(contextFor(project(files), testRunner))).toEqual(command);
   });
 });
 describe('unittest command', () => {
-  const contextFor = (root) => ({
+  const contextFor = (root: string) => ({
     projectRoot: root,
     reportRoot: '/reports',
     project: { testRunner: 'unittest' },
@@ -250,7 +251,7 @@ describe('unittest command', () => {
 
 describe('detecting a run without tests', () => {
   it.each([
-    [{ status: 5, stderr: '' }, false],
+    [{ status: NO_TESTS_EXIT, stderr: '' }, false],
     [{ status: 0, stderr: 'Ran 0 tests in 0.000s\n\nOK\n' }, false],
     [{ status: 0, stderr: 'Ran 1 test in 0.000s\n\nOK\n' }, true],
     [{ status: 0, stderr: 'Ran 10 tests in 0.1s\n' }, true],

@@ -1,7 +1,5 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   detectFormatter,
   detectSourceRoots,
@@ -9,24 +7,16 @@ import {
   detectTypeCheckers,
   importRoots,
 } from './python-project.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-project-'));
-  roots.push(root);
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-python-project-');
+  writeFiles(root, files);
   return root;
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 describe('type checker detection', () => {
   it.each([
