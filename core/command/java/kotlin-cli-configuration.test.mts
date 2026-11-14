@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import {
+  exceptionHint,
+  kotlinConfig,
+  useGradleFixtures,
+} from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 
 const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
@@ -14,7 +17,8 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     const callRule = 'detekt.style.ForbiddenMethodCall';
     const forbidden =
       'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
-    const withExceptions = (exceptions) => `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
+    const withExceptions = (exceptions: readonly object[]) =>
+      `${JSON.stringify({ preset: 'kotlin', exceptions })}\n`;
     const exception = {
       rule: callRule,
       paths: ['src/main/kotlin/demo/K.kt'],
@@ -93,7 +97,7 @@ describe('nitpicker with "preset": "kotlin" configuration', () => {
     },
   );
   it('reports a raised legacy allowance under the kotlin analyzer', () => {
-    const inventory = (count) =>
+    const inventory = (count: number) =>
       `${JSON.stringify({
         sites: [
           {

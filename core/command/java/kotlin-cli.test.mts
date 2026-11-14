@@ -1,24 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
+import { stringMatching, toolNames } from '../test-support/report-readers.mts';
+import type { PresetRun } from '../test-support/fixture-types.mts';
+import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { kotlinConfig, useGradleFixtures } from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import {
+  exceptionHint,
+  kotlinConfig,
+  useGradleFixtures,
+} from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 
 const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin"', () => {
-  const branchReport = (...lines) =>
+  const branchReport = (...lines: readonly (readonly [number, number, number])[]) =>
     `<report name="demo"><package name="demo"><sourcefile name="K.kt">${lines
       .map(
         ([nr, missed, covered]) =>
-          `<line nr="${nr}" mi="0" ci="1" mb="${missed}" cb="${covered}"/>`,
+          `<line nr="${String(nr)}" mi="0" ci="1" mb="${String(missed)}" cb="${String(covered)}"/>`,
       )
       .join('')}</sourcefile></package></report>`;
-  const pitReport = (className, sourceFile) =>
+  const pitReport = (className: string, sourceFile: string) =>
     `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>${sourceFile}</sourceFile><mutatedClass>${className}</mutatedClass><mutatedMethod>fee</mutatedMethod><methodDescription>(I)I</methodDescription><lineNumber>3</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator><description>Replaced integer multiplication with division</description></mutation></mutations>`;
-  const mutantsOf = (result) =>
-    result.json('new-findings.json').filter(({ rule }) => rule.startsWith('mutant-'));
+  const mutantsOf = (result: Pick<PresetRun, 'json'>) =>
+    listOf(result.json('new-findings.json')).filter((entry) =>
+      textOf(fieldOf(entry, 'rule')).startsWith('mutant-'),
+    );
   const feeSource = 'package demo\n\nfun fee(weight: Int): Int = weight * 2\n';
   const surchargeSource = `${feeSource}\nfun surcharge(weight: Int): Int = if (weight > 10) 5 else 0\n\nval numbers = sequence {\n    yield(1)\n}\n`;
   it('passes when the change adds no finding and keeps the legacy detekt finding baselined', () => {
@@ -31,10 +39,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'kotlin',
-      'repository-hygiene',
-    ]);
+    expect(toolNames(result.json('summary.json'))).toEqual(['kotlin', 'repository-hygiene']);
   });
   it('fails on a new detekt finding and reports it in text and SARIF', () => {
     const root = kotlinRepository();
@@ -62,9 +67,9 @@ describe('nitpicker with "preset": "kotlin"', () => {
       },
     ]);
     expect(
-      result
-        .json('report.sarif')
-        .runs.flatMap((sarifRun) => sarifRun.results.map(({ ruleId }) => ruleId)),
+      listOf(fieldOf(result.json('report.sarif'), 'runs')).flatMap((sarifRun) =>
+        listOf(fieldOf(sarifRun, 'results')).map((entry) => fieldOf(entry, 'ruleId')),
+      ),
     ).toEqual(['detekt/detekt.style.MagicNumber']);
   });
   it('fails on a newly violated ktlint rule of a project that uses ktlint, naming rule and exception', () => {
@@ -185,7 +190,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
         anchor: {
-          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          key: stringMatching(/^mutant:MathMutator\|/u),
           requireUnchangedLine: true,
         },
         location: { line: 3 },
@@ -237,7 +242,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
         anchor: {
-          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          key: stringMatching(/^mutant:MathMutator\|/u),
           requireUnchangedLine: true,
         },
         location: { line: 3 },

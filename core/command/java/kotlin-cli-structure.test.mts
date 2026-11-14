@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { enforceableFindings, stringMatching } from '../test-support/report-readers.mts';
+import type { PresetRun } from '../test-support/fixture-types.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { useGradleFixtures } from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 
 const { kotlinRepository, run } = useGradleFixtures(nitpickerCli);
 
 describe('nitpicker with "preset": "kotlin" and function structure', () => {
-  const wideFunction = (name, parameters, start) => ({
+  const wideFunction = (name: string, parameters: number, start: number) => ({
     file: 'src/main/kotlin/demo/Wide.kt',
     name,
     start,
@@ -18,13 +21,14 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
     parameters,
     complexity: 1,
   });
-  const wideSource = (...signatures) =>
+  const wideSource = (...signatures: readonly string[]) =>
     `package demo\n\n${signatures.map((signature) => `fun ${signature} = 0\n`).join('\n')}`;
-  const metricsOf = (...functions) => `${JSON.stringify({ functions, files: [] })}\n`;
-  const newEnforceable = (result, tool) =>
-    result
-      .json('new-findings.json')
-      .filter((finding) => finding.tool === tool && finding.classification === 'enforceable');
+  const metricsOf = (...functions: readonly object[]) =>
+    `${JSON.stringify({ functions, files: [] })}\n`;
+  const newEnforceable = (result: Pick<PresetRun, 'json'>, tool: string) =>
+    enforceableFindings(result.json('new-findings.json')).filter(
+      (finding) => fieldOf(finding, 'tool') === tool,
+    );
   const FOUR_PARAMETERS = 'sum(a: Int, b: Int, c: Int, d: Int)';
   const legacyWide = () =>
     kotlinRepository({
@@ -72,11 +76,11 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'sum',
-        anchor: { key: expect.stringMatching(/^function:parameters:text:/u) },
+        anchor: { key: stringMatching(/^function:parameters:text:/u) },
         location: { line: 3 },
         ratchet: {
           key: 'function:sum:occurrence:1:parameters',
-          declarationKey: expect.stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
+          declarationKey: stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
           value: 5,
           worseMessage:
             'sum grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"sum","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -118,11 +122,11 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'product',
-        anchor: { key: expect.stringMatching(/^function:parameters:text:/u) },
+        anchor: { key: stringMatching(/^function:parameters:text:/u) },
         location: { line: 5 },
         ratchet: {
           key: 'function:product:occurrence:1:parameters',
-          declarationKey: expect.stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
+          declarationKey: stringMatching(/^function:\w+:declaration:\w+:parameters$/u),
           value: 4,
           worseMessage:
             'product grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/kotlin/demo/Wide.kt"],"function":"product","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -135,11 +139,11 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
   });
   it('fails a new Kotlin clone found by jscpd', () => {
     const root = kotlinRepository();
-    const clone = (name) =>
+    const clone = (name: string) =>
       `package demo\n\nclass ${name} {\n    fun total(a: Int, b: Int): Int {\n        var total = 0\n${Array.from(
         { length: 10 },
         (_, index) =>
-          `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }\n`,
+          `        total += (a * ${String(index + 2)}) + (b - ${String(index)})\n        if (total > ${String(index * 10)}) {\n            total -= ${String(index + 1)}\n        }\n`,
       ).join('')}        return total\n    }\n}\n`;
     writeFiles(root, {
       'src/main/kotlin/demo/Left.kt': clone('Left'),
@@ -274,40 +278,57 @@ const PARCEL_NAMES = {
   item: 'box',
 };
 
-function renamedCopy(names, [low, scale, limit, discount]) {
+type CopyNames = {
+  readonly type: string;
+  readonly fn: string;
+  readonly list: string;
+  readonly sum: string;
+  readonly item: string;
+};
+
+function renamedCopy(
+  names: CopyNames,
+  [low, scale, limit, discount]: readonly [number, number, number, number],
+): string {
   return `package demo
 
 class ${names.type} {
     fun ${names.fn}(${names.list}: List<Entry>, factor: Int): Int {
-        var ${names.sum} = ${low}
+        var ${names.sum} = ${String(low)}
         for (${names.item} in ${names.list}) {
-            if (${names.item}.price > ${low} && ${names.item}.count > ${low}) {
+            if (${names.item}.price > ${String(low)} && ${names.item}.count > ${String(low)}) {
                 ${names.sum} += ${names.item}.price * ${names.item}.count * factor
-            } else if (${names.item}.price < ${low}) {
+            } else if (${names.item}.price < ${String(low)}) {
                 ${names.sum} -= Math.abs(${names.item}.price) * ${names.item}.count
             }
-            if (${names.sum} > ${limit}) {
-                ${names.sum} = ${names.sum} - ${discount}
+            if (${names.sum} > ${String(limit)}) {
+                ${names.sum} = ${names.sum} - ${String(discount)}
             }
         }
-        val rounded = Math.round(${names.sum} * ${scale}.0) / ${scale}
-        return if (rounded > ${limit}) rounded - ${discount} else rounded.toInt()
+        val rounded = Math.round(${names.sum} * ${String(scale)}.0) / ${String(scale)}
+        return if (rounded > ${String(limit)}) rounded - ${String(discount)} else rounded.toInt()
     }
 }
 `;
 }
 
-function importList(names) {
+function importList(names: readonly string[]): string {
   const imports = names.flatMap((name) => [`import demo.${name}.One`, `import demo.${name}.Two`]);
   return `package demo\n\n${imports.join('\n')}\n`;
 }
 
-function dataClass(name, first, second) {
-  const fields = Array.from({ length: 12 }, (_, index) => `    val ${first}${index}: String = "",`);
+function dataClass(name: string, first: string, second: string): string {
+  const fields = Array.from(
+    { length: 12 },
+    (_, index) => `    val ${first}${String(index)}: String = "",`,
+  );
   return `package demo\n\ndata class ${name}(\n${fields.join('\n')}\n    val ${second}: Int = 0,\n)\n`;
 }
 
-function lookupTable(prefix) {
-  const rows = Array.from({ length: 30 }, (_, index) => `    "${prefix}${index}" to ${index * 7},`);
+function lookupTable(prefix: string): string {
+  const rows = Array.from(
+    { length: 30 },
+    (_, index) => `    "${prefix}${String(index)}" to ${String(index * 7)},`,
+  );
   return `package demo\n\nval ${prefix}Table = mapOf(\n${rows.join('\n')}\n)\n`;
 }

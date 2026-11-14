@@ -2,13 +2,15 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-function touch(file, text = '') {
+type MavenAnswer = { readonly status: number; readonly stdout: string; readonly stderr: string };
+
+function touch(file: string, text = ''): void {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, text);
 }
 
-function toolClasspaths(argumentsList) {
-  const directory = path.dirname(argumentsList[argumentsList.indexOf('--file') + 1]);
+function toolClasspaths(argumentsList: readonly string[]): void {
+  const directory = path.dirname(argumentsList[argumentsList.indexOf('--file') + 1] ?? '');
   const jar = path.join(directory, 'fake-tool.jar');
   touch(jar);
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -18,9 +20,9 @@ function toolClasspaths(argumentsList) {
   }
 }
 
-function classesOf(sourceRoot, classesRoot) {
+function classesOf(sourceRoot: string, classesRoot: string): void {
   if (existsSync(sourceRoot)) {
-    for (const file of readdirSync(sourceRoot, { recursive: true })) {
+    for (const file of readdirSync(sourceRoot, { recursive: true, encoding: 'utf8' })) {
       if (file.endsWith('.java')) {
         touch(path.join(classesRoot, file.replace(/\.java$/u, '.class')), 'class');
       }
@@ -28,7 +30,7 @@ function classesOf(sourceRoot, classesRoot) {
   }
 }
 
-function surefireReports(cwd) {
+function surefireReports(cwd: string): void {
   const results = path.join(cwd, 'test-results/test');
   if (existsSync(results)) {
     const reports = path.join(cwd, 'target/surefire-reports');
@@ -38,7 +40,7 @@ function surefireReports(cwd) {
   }
 }
 
-function build(valueOf, cwd) {
+function build(valueOf: (prefix: string) => string | undefined, cwd: string): MavenAnswer {
   if (existsSync(path.join(cwd, 'MAVEN_FAIL'))) {
     return {
       status: 1,
@@ -46,9 +48,9 @@ function build(valueOf, cwd) {
       stderr: '',
     };
   }
-  const output = valueOf('-DoutputFile=')
-    .replace('${project.groupId}', 'demo')
-    .replace('${project.artifactId}', 'demo');
+  const output = (valueOf('-DoutputFile=') ?? '')
+    .replace(/\$\{project\.groupId\}/u, 'demo')
+    .replace(/\$\{project\.artifactId\}/u, 'demo');
   touch(output);
   mkdirSync(path.join(cwd, 'target/classes'), { recursive: true });
   mkdirSync(path.join(cwd, 'target/test-classes'), { recursive: true });
@@ -60,15 +62,21 @@ function build(valueOf, cwd) {
   return { status: 0, stdout: '', stderr: '' };
 }
 
-export function runFakeMaven({ args: argumentsList, cwd }) {
-  function valueOf(prefix) {
+export function runFakeMaven({
+  args: argumentsList,
+  cwd,
+}: {
+  readonly args: readonly string[];
+  readonly cwd: string;
+}): MavenAnswer {
+  function valueOf(prefix: string): string | undefined {
     return argumentsList.find((argument) => argument.startsWith(prefix))?.slice(prefix.length);
   }
-  function mentions(goal) {
+  function mentions(goal: string): boolean {
     return argumentsList.some((argument) => argument.includes(goal));
   }
   if (mentions(':effective-pom')) {
-    touch(valueOf('-Doutput='), readFileSync(path.join(cwd, 'pom.xml'), 'utf8'));
+    touch(valueOf('-Doutput=') ?? '', readFileSync(path.join(cwd, 'pom.xml'), 'utf8'));
   } else if (mentions(':build-classpath')) {
     toolClasspaths(argumentsList);
   } else {
@@ -77,4 +85,4 @@ export function runFakeMaven({ args: argumentsList, cwd }) {
   return { status: 0, stdout: '', stderr: '' };
 }
 
-export const fakeMavenCommand = fileURLToPath(import.meta.url);
+export const fakeMavenCommand: string = fileURLToPath(import.meta.url);
