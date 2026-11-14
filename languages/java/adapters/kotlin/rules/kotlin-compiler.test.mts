@@ -1,25 +1,26 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { parseCompilerWarnings, readCompilerFindings } from './kotlin-compiler.mjs';
+import { describe, expect, it } from 'vitest';
+import { exceptionHint } from './test-support/kotlin-finding-views.mts';
+import { useTempProjects } from './test-support/temp-projects.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import {
+  parseCompilerWarnings as untypedParseCompilerWarnings,
+  readCompilerFindings as untypedReadCompilerFindings,
+} from './kotlin-compiler.mjs';
 
-const roots = [];
+const parseCompilerWarnings: (output: string) => { rule: string; line: number }[] =
+  untypedParseCompilerWarnings;
+const readCompilerFindings: (
+  reports: string,
+  mainRoots: string[],
+  testRoots?: string[],
+) => Finding[] = untypedReadCompilerFindings;
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { projectWith: sourcesIn } = useTempProjects('nitpicker-kotlinc-');
 
-function projectWith(report, files = ['src/main/kotlin/demo/A.kt']) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlinc-'));
-  roots.push(root);
-  for (const file of files) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), 'package demo\n');
-  }
+function projectWith(report: unknown, files = ['src/main/kotlin/demo/A.kt']) {
+  const root = sourcesIn(Object.fromEntries(files.map((file) => [file, 'package demo\n'])));
   mkdirSync(path.join(root, 'reports'));
   if (report !== undefined) {
     writeFileSync(path.join(root, 'reports/kotlinc.json'), JSON.stringify(report));
@@ -51,11 +52,13 @@ describe('readCompilerFindings', () => {
     const root = projectWith({ exitCode: 0, output: OUTPUT });
     const findings = readCompilerFindings(path.join(root, 'reports'), ['src/main/kotlin']);
 
+    const hashed: unknown = expect.stringMatching(/^deprecation:[0-9a-f]+$/);
+
     expect(findings[0]).toEqual({
       tool: 'kotlinc',
       rule: 'deprecation',
       path: 'src/main/kotlin/demo/A.kt',
-      identity: expect.stringMatching(/^deprecation:[0-9a-f]+$/),
+      identity: hashed,
       message:
         "Call the replacement the deprecation names (its `ReplaceWith`, or the Javadoc of a Java API). The compiler warns: 'fun a(): Int' is deprecated. use b.",
       classification: 'enforceable',
@@ -67,8 +70,8 @@ describe('readCompilerFindings', () => {
       'unchecked',
       'unchecked',
     ]);
-    expect(findings[3].identity).toBe(`${findings[2].identity}#2`);
-    expect(findings[1].message).toBe('Remove the cast. The compiler warns: Cast is redundant.');
+    expect(findings[3]?.identity).toBe(`${String(findings[2]?.identity)}#2`);
+    expect(findings[1]?.message).toBe('Remove the cast. The compiler warns: Cast is redundant.');
   });
 
   it('reports a lint compile that failed as not run, naming its first error', () => {

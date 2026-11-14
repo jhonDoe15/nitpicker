@@ -1,32 +1,24 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
+import { gitCheckout, nestedCheckout } from '../test-support/git-checkout-views.mts';
+import { describe, expect, it } from 'vitest';
+import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
+import { exceptionHint } from './test-support/kotlin-finding-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { useTempProjects } from './test-support/temp-projects.mts';
+import { findingsOf } from './test-support/findings-list.mts';
 import {
-  nestedCheckout,
-  useGitCheckouts,
-} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
-import { afterEach, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { kotlinFiles, readSuppressionFindings, suppressionTokens } from './kotlin-suppressions.mjs';
+  kotlinFiles,
+  readSuppressionFindings as untypedReadSuppressionFindings,
+  suppressionTokens,
+} from './kotlin-suppressions.mjs';
 
-const roots = [];
-const { gitCheckout } = useGitCheckouts();
+type Roots = { sourceRoots: string[]; testRoots?: string[] };
+type Files = Record<string, string>;
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-suppressions-'));
-  roots.push(root);
-  for (const [relative, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), text);
-  }
-  return root;
+function readSuppressionFindings(projectRoot: string, roots: Roots): Finding[] {
+  return findingsOf(Reflect.apply(untypedReadSuppressionFindings, undefined, [projectRoot, roots]));
 }
+
+const { projectWith } = useTempProjects('nitpicker-kotlin-suppressions-');
 
 describe('suppressionTokens', () => {
   it.each([
@@ -82,7 +74,7 @@ describe('suppressionTokens', () => {
     ['a quote in a character literal', 'val quote = \'"\'\n@Suppress("A") fun f() = 1'],
     [
       'a template with a nested string',
-      'val s = "${f("x")} // not a comment"\n@Suppress("A") fun f() = 1',
+      `val s = "\${f("x")} // not a comment"\n@Suppress("A") fun f() = 1`,
     ],
     [
       'a block comment nested in a comment',
@@ -219,7 +211,7 @@ describe('readSuppressionFindings', () => {
   });
 
   describe('the suppressions of unused code', () => {
-    const found = (files, roots = {}) =>
+    const found = (files: Files, roots: { testRoots?: string[] } = {}) =>
       readSuppressionFindings(projectWith(files), {
         sourceRoots: ['src/main/kotlin'],
         ...roots,
@@ -277,9 +269,12 @@ describe('readSuppressionFindings', () => {
     });
 
     it('name the parameter and the route for other unused code', () => {
-      const [{ message, allowedForm }] = readSuppressionFindings(
-        projectWith({ [file]: '@Suppress("unused")\nfun a(x: Int) = 1\n' }),
-        { sourceRoots: ['src/main/kotlin'] },
+      const { message, allowedForm } = assigned(
+        readSuppressionFindings(
+          projectWith({ [file]: '@Suppress("unused")\nfun a(x: Int) = 1\n' }),
+          { sourceRoots: ['src/main/kotlin'] },
+        )[0],
+        'finding',
       );
 
       expect(message).toBe(
