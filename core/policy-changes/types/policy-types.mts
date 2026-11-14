@@ -74,6 +74,7 @@ export type AppliedValues = {
   readonly files: readonly string[] | undefined;
   readonly precedence?: readonly string[] | undefined;
   readonly label?: string | undefined;
+  readonly fileByKey?: Readonly<Record<string, string | undefined>> | undefined;
 };
 
 export type ProjectSide = {
@@ -184,6 +185,7 @@ export type AppliedSide =
       readonly config: Readonly<Record<string, unknown>>;
       readonly file?: string | undefined;
       readonly files?: readonly string[] | undefined;
+      readonly fileByKey?: Readonly<Record<string, string | undefined>> | undefined;
     }
   | { readonly kind: 'rejected' };
 

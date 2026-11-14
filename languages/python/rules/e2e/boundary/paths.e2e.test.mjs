@@ -131,4 +131,55 @@ describe.skipIf(!enabled)('unsafe-path-join', () => {
     ]);
     expect(actual).toEqual(expected);
   });
+
+  it('keeps the entries of a directory listing joined onto the directory that was listed', () => {
+    const [actual, expected] = outcomes([
+      [
+        'os.listdir joined onto the same directory',
+        'import os\n\n\ndef read_all(root):\n    return [open(os.path.join(root, n)) for n in os.listdir(root)]\n',
+        [],
+      ],
+      [
+        'a loop over sorted(os.listdir)',
+        'import os\n\n\ndef read_all(root):\n    for n in sorted(os.listdir(root)):\n        open(os.path.join(root, n))\n',
+        [],
+      ],
+      [
+        'os.walk files joined onto the walked folder',
+        'import os\n\n\ndef read_all(root):\n    for folder, _, files in os.walk(root):\n        for n in files:\n            open(os.path.join(folder, n))\n',
+        [],
+      ],
+      [
+        'a Path slash join',
+        'import os\nfrom pathlib import Path\n\n\ndef read_all(root):\n    return [(Path(root) / n).read_text() for n in os.listdir(root)]\n',
+        [],
+      ],
+      [
+        'an f-string with the listed directory first',
+        'import os\n\n\ndef read_all(root):\n    for n in os.listdir(root):\n        open(f"{root}/{n}")\n',
+        [],
+      ],
+      [
+        'a name appended to the listing',
+        'import os\n\n\ndef read_all(root, extra):\n    names = os.listdir(root)\n    names.append(extra)\n    for n in names:\n        open(os.path.join(root, n))\n',
+        ['unsafe-path-join:8 read_all'],
+      ],
+      [
+        'a listdir that is not the os one',
+        'from helpers import listdir\nimport os\n\n\ndef read_all(root):\n    for n in listdir(root):\n        open(os.path.join(root, n))\n',
+        ['unsafe-path-join:7 read_all'],
+      ],
+      [
+        'an entry joined onto another directory',
+        'import os\n\n\ndef read_all(root, other):\n    for n in os.listdir(root):\n        open(os.path.join(other, n))\n',
+        ['unsafe-path-join:6 read_all'],
+      ],
+      [
+        'an entry joined with a parameter',
+        'import os\n\n\ndef read_all(root, extra):\n    for n in os.listdir(root):\n        open(os.path.join(root, n, extra))\n',
+        ['unsafe-path-join:6 read_all'],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
 });

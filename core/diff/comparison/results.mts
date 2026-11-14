@@ -13,6 +13,7 @@ import {
   compareAnalyzers,
 } from './base-red/compare-analyzers.mts';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
 import type { Finding, ReportEntry } from '../../../shared/values/findings.mts';
@@ -76,6 +77,8 @@ const withFixes: (
   recipes: unknown[] | undefined,
 ) => Finding[] = attachFixes;
 const withDependencies: (run: unknown, policy?: object) => AnalyzerRun = withCoChangeDependencies;
+const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
+  withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
 const scopedOutcomes: (
@@ -87,8 +90,14 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
-  const baseRun = withDependencies(context.baseRun, objectOf(policies.base));
-  const headRun = withDependencies(context.headRun, objectOf(policies.head));
+  const baseRun = withSharedDirectives(
+    withDependencies(context.baseRun, objectOf(policies.base)),
+    context.analyzers,
+  );
+  const headRun = withSharedDirectives(
+    withDependencies(context.headRun, objectOf(policies.head)),
+    context.analyzers,
+  );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);

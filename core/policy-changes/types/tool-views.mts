@@ -44,12 +44,21 @@ import {
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions as untypedReplacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { strykerConfigChanges as untypedStrykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
-import { testRunnerConfigChanges as untypedTestRunnerConfigChanges } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config-changes.mjs';
+import { testsConfigChanges as untypedTestsConfigChanges } from '../build-files/applied-values/retry-changes.mjs';
 import { typescriptConfigChanges as untypedTypescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
 import { jscpdConfigChanges as untypedJscpdConfigChanges } from '../../tooling/jscpd/changes/config-changes.mts';
 import { appliedJscpdConfig as untypedAppliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { readImportLinterConfig as untypedReadImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
 import { attempt as untypedAttempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { readPytestRetries as untypedReadPytestRetries } from '../../../languages/python/adapters/test-runs/retries/pytest-retries.mjs';
+import {
+  directorySource as untypedDirectorySource,
+  readDeclaredBuild as untypedReadDeclaredBuild,
+} from '../../../languages/java/adapters/tool-config/declared/declared-build.mjs';
+import {
+  testRetryDeclarations as untypedTestRetryDeclarations,
+  testRetryValues as untypedTestRetryValues,
+} from '../../../languages/java/adapters/tool-config/declared/test-retries-declared.mjs';
 import { GOLANGCI_FILES as UNTYPED_GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import type {
   AppliedValues,
@@ -81,9 +90,29 @@ type ProjectConfigChange = {
 };
 
 type OwnChanges = (applied: OwnApplied) => FileChange[];
+type RetryDeclaration = {
+  readonly file: string;
+  readonly setting: string;
+  readonly value: unknown;
+};
+type DeclaredSource = {
+  readonly paths: () => readonly string[];
+  readonly readMany: (files: readonly string[]) => ReadonlyMap<string, string>;
+};
+
+const readPytestRetries: (root: string) => {
+  readonly values: Values;
+  readonly file: string | undefined;
+} = untypedReadPytestRetries;
+const directorySource: (root: string) => DeclaredSource = untypedDirectorySource;
+const readDeclaredBuild: (source: DeclaredSource) => unknown = untypedReadDeclaredBuild;
+const testRetryDeclarations: (build: unknown) => readonly RetryDeclaration[] =
+  untypedTestRetryDeclarations;
+const testRetryValues: (declarations: readonly RetryDeclaration[]) => Values =
+  untypedTestRetryValues;
 
 const strykerConfigChanges: OwnChanges = untypedStrykerConfigChanges;
-const testRunnerConfigChanges: OwnChanges = untypedTestRunnerConfigChanges;
+const testsConfigChanges: OwnChanges = untypedTestsConfigChanges;
 const typescriptConfigChanges: OwnChanges = untypedTypescriptConfigChanges;
 const jscpdConfigChanges: OwnChanges = untypedJscpdConfigChanges;
 const BUILD_DECLARED_TOOLS: readonly string[] = UNTYPED_BUILD_DECLARED_TOOLS;
@@ -163,6 +192,7 @@ export {
   appliedStrykerConfig,
   appliedTypescriptOptions,
   attempt,
+  directorySource,
   BUILD_DECLARED_TOOLS,
   declaredConfigFiles,
   eslintConfigFiles,
@@ -182,14 +212,18 @@ export {
   precedenceLayers,
   projectConfigChanges,
   readEslintConfigFile,
+  readDeclaredBuild,
   readImportLinterConfig,
   readInside,
+  readPytestRetries,
   readRealInside,
   replacedEslintOptions,
   STRYKER_PROJECT_FILES,
   strykerConfigChanges,
   TESTS_TOOL,
-  testRunnerConfigChanges,
+  testRetryDeclarations,
+  testRetryValues,
   testRunnerProjectFiles,
+  testsConfigChanges,
   typescriptConfigChanges,
 };

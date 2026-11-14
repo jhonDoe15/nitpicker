@@ -61,6 +61,7 @@ const testsFailed: Finding = {
   classification: 'tool-error',
 };
 const skipped = { ...testsFailed, tool: 'mutation', rule: 'tests-failed-skipped' };
+const toolSkipped = { ...testsFailed, tool: 'errorprone', rule: 'tool-skipped' };
 const crashed = { ...testsFailed, rule: 'python-failed' };
 const lint: Finding = {
   tool: 'ruff',
@@ -164,6 +165,10 @@ describe('testFailuresOf', () => {
     ]);
   });
 
+  it('ignores a skipped tool next to the failing tests', () => {
+    expect(testFailuresOf({ findings: [testsFailed, toolSkipped] })).toEqual([testsFailed]);
+  });
+
   it('returns nothing when another tool error comes with them', () => {
     expect(testFailuresOf({ findings: [testsFailed, crashed] })).toEqual([]);
   });
@@ -196,6 +201,30 @@ describe('redBaseAnalyzers', () => {
     const baseRun = run({ reports: { coverage: [testsFailed] } });
 
     expect(redBaseAnalyzers({ names, baseRun, headRun: run(head) })).toEqual(new Map());
+  });
+
+  it('stays red when the base also skipped a tool', () => {
+    const baseRun = run({
+      reports: { coverage: [testsFailed, toolSkipped] },
+      toolErrors: [{ tool: 'coverage', rule: 'tool-skipped' }],
+    });
+    const headRun = run({ reports: { coverage: [] } });
+
+    expect(redBaseAnalyzers({ names, baseRun, headRun })).toEqual(
+      new Map([['coverage', [testsFailed]]]),
+    );
+  });
+
+  it('stays red when only the green head skipped a tool', () => {
+    const baseRun = run({ reports: { coverage: [testsFailed] } });
+    const headRun = run({
+      reports: { coverage: [toolSkipped] },
+      toolErrors: [{ tool: 'coverage', rule: 'tool-skipped' }],
+    });
+
+    expect(redBaseAnalyzers({ names, baseRun, headRun })).toEqual(
+      new Map([['coverage', [testsFailed]]]),
+    );
   });
 
   it('is empty when no test failed on the base, only the analyzers that depend on them', () => {

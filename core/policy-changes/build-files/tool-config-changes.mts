@@ -2,7 +2,7 @@ import {
   jscpdConfigChanges,
   projectConfigChanges,
   strykerConfigChanges,
-  testRunnerConfigChanges,
+  testsConfigChanges,
   typescriptConfigChanges,
 } from '../types/tool-views.mts';
 import type {
@@ -19,7 +19,7 @@ const OWN_APPLIED_CHANGES = new Map([
   ['jscpd', jscpdConfigChanges],
   ['stryker', strykerConfigChanges],
   ['typescript', typescriptConfigChanges],
-  ['tests', testRunnerConfigChanges],
+  ['tests', testsConfigChanges],
 ]);
 
 function appliedChanges({ tool, applied }: { tool: string; applied: AppliedValues }): FileChange[] {

@@ -59,7 +59,9 @@ export function validateConventions(value, definitions) {
 }
 
 export function describeConventions(detected, definitions, note = () => undefined) {
-  return definitions.map((definition) => describeOne(definition, detected[definition.id], note));
+  return definitions
+    .filter(({ hidden }) => hidden !== true)
+    .map((definition) => describeOne(definition, detected[definition.id], note));
 }
 
 function describeOne(definition, { choice, source, counts, files, from, overrides }, note) {

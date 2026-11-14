@@ -13,7 +13,10 @@ import {
 } from '../types/python-views.mts';
 import type { RuntimeConfig } from '../types/python-views.mts';
 import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
-import { attempt, readInside } from '../types/tool-views.mts';
+import { attempt, readInside, readPytestRetries } from '../types/tool-views.mts';
+import type { Fingerprints, GitBlobId, ProjectSide } from '../types/policy-types.mts';
+
+export const PYTHON_PRESET = 'python';
 
 type ConfigRead =
   | { readonly kind: 'read'; readonly part: unknown }
@@ -163,7 +166,7 @@ function candidatesOf(tool: string, root: string): readonly string[] {
   return readFile(tool, root);
 }
 
-export function pythonConfigEntries(
+function pythonConfigEntries(
   tool: string,
   root: string,
 ): { file: string; text: string; content: string }[] {
@@ -173,4 +176,18 @@ export function pythonConfigEntries(
     const text = content === undefined ? undefined : pythonConfigText(tool, file, content);
     return content === undefined || text === undefined ? [] : [{ file, text, content }];
   });
+}
+
+export function pythonEntries(
+  tool: string,
+  side: ProjectSide,
+): { file: string; text: string; content: string }[] {
+  return side.config.preset === PYTHON_PRESET ? pythonConfigEntries(tool, side.root) : [];
+}
+
+export function pytestRetryFingerprints(side: ProjectSide, gitBlobId: GitBlobId): Fingerprints {
+  const { file, values } = attempt(() => readPytestRetries(side.root)).value ?? {};
+  return file === undefined || values === undefined
+    ? new Map()
+    : new Map([[file, gitBlobId(JSON.stringify(values, Object.keys(values).toSorted()))]]);
 }

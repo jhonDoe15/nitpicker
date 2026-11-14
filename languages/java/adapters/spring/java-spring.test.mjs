@@ -93,6 +93,38 @@ describe('readSpringConfigFindings', () => {
     ).toEqual([openInView('conf/config/application.properties')]);
   });
 
+  it('reads a config file once when resource roots overlap or repeat', () => {
+    const root = project({
+      'src/main/resources/application.properties': 'spring.jpa.open-in-view=true',
+      'src/main/resources/config/application.properties': 'spring.jpa.open-in-view=true',
+    });
+    const resourceRoots = [
+      'src/main/resources',
+      'src/main/resources/',
+      './src/main/resources',
+      'src/main/resources/../resources',
+      'src/main/resources/config',
+    ];
+
+    expect(
+      readSpringConfigFindings(root, { sourceRoots, resourceRoots }).map((item) => [
+        item.path,
+        item.identity,
+      ]),
+    ).toEqual([
+      ['src/main/resources/application.properties', 'spring.jpa.openinview'],
+      ['src/main/resources/config/application.properties', 'spring.jpa.openinview'],
+    ]);
+  });
+
+  it('reads a file once when the root is the project and a root names its config folder', () => {
+    const root = project({ 'config/application.properties': 'spring.jpa.open-in-view=true' });
+
+    expect(
+      readSpringConfigFindings(root, { sourceRoots, resourceRoots: ['.', 'config', './config'] }),
+    ).toEqual([openInView('config/application.properties', 1)]);
+  });
+
   it('skips files it cannot read', () => {
     const root = project({ [resource('application.properties')]: 'spring.jpa.open-in-view=true' });
     mkdirSync(path.join(root, 'src/main/resources/application.yml'));
