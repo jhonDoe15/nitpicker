@@ -133,6 +133,7 @@ export function parseRunnerArguments(
       ...parseMode(values.get('--mode')),
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
+      buildTool: values.get('--build-tool'),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
       mutationScope: values.has(MUTATION_SCOPE_OPTION)
@@ -178,6 +179,7 @@ const RUNNER_OPTIONS = [
   '--legacy-inventory',
   '--preset',
   '--kotlin-formatter',
+  '--build-tool',
   '--kotlin-detekt-config',
   '--file-limits',
   '--test-seconds',

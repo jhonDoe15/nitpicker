@@ -127,6 +127,7 @@ function runSteps(settings, steps, mergeBaseSha) {
         ? {}
         : resolveToolClasspaths({
             projectRoot: settings.projectRoot,
+            buildTool: settings.config?.java?.buildTool,
             environment: settings.environment,
             executeFixCommand: settings.executeFixCommand,
             tools: Object.assign({}, ...active.map(({ plan }) => plan.tools)),

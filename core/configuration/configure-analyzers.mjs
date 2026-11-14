@@ -75,6 +75,7 @@ function applyJavaConfig(analyzers, config) {
     names.includes(analyzer.name)
       ? configureJavaAnalyzer(analyzer, {
           kotlin: config.kotlin,
+          java: config.java,
           tools: config.tools,
           testConsole: config.testConsole,
           styleFiles: styleFilesOf(config, analyzer.name),

@@ -58,7 +58,7 @@ never falls back to the project's own tests:
   file name. Gradle gets `--tests <package.Class>` for each; Maven gets the simple names in `-Dtest`.
   Which tool runs is decided by `detectJavaBuild` (`languages/java/builds/java-build.mjs`), the same
   function the gate uses: a `pom.xml` without a Gradle build file is Maven, and with both, `mvnw`
-  without `gradlew` is Maven and anything else is Gradle.
+  without `gradlew` is Maven and anything else is Gradle (unless `java.buildTool` is set).
 
 An acceptance run that exceeds its 30-minute budget ends the run with the outcome `acceptance-timeout`
 (`acceptance.timedOut` in the record), not `acceptance-failed`.

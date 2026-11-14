@@ -7,12 +7,14 @@ import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
 import { rejectMissingBuildFiles } from './project-checks/project-markers.mjs';
+import { rejectMissingConfiguredBuild } from '../../languages/java/builds/build-tool/build-tool-setting.mjs';
 
 export function loadConfig(projectRoot) {
   const config = readConfigFile(projectRoot);
   rejectUnreadableSources(config, projectRoot);
   rejectUndeclaredPreset(config, projectRoot);
   rejectMissingBuildFiles(config, projectRoot);
+  rejectMissingConfiguredBuild(config, projectRoot);
   return config;
 }
 

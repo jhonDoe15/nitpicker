@@ -22,6 +22,7 @@ export type InitProject = {
   readonly typeChecker?: string;
   readonly tool?: string;
   readonly buildTool?: string;
+  readonly settings?: Readonly<Record<string, unknown>>;
   readonly javaSources?: unknown;
 };
 

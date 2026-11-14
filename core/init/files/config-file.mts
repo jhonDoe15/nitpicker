@@ -89,11 +89,11 @@ function revision(text: string, preset: string): Revision | undefined {
   };
 }
 
-export function placeConfig(root: string, preset: string): Placed {
+export function placeConfig(root: string, preset: string, settings: Config = {}): Placed {
   return placeFile({
     root,
     relative: configName,
-    content: renderConfig({ preset }),
+    content: renderConfig({ preset, ...settings }),
     revise: (current) => revision(current, preset),
   });
 }
