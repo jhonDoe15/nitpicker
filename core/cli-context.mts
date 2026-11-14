@@ -18,6 +18,7 @@ export type CliOptions = {
   readonly acceptPolicyChange?: string;
   readonly shardCount?: number | undefined;
   readonly shardIndex?: number | undefined;
+  readonly jobs?: number | undefined;
   readonly paths?: readonly string[];
   readonly all: boolean;
   readonly help: boolean;
@@ -42,6 +43,7 @@ export type CliInput = {
   readonly runTasks?: RunTasks | undefined;
   readonly currentProjectRoot?: string | undefined;
   readonly workingDirectory?: string | undefined;
+  readonly projectWorker?: string | undefined;
 };
 
 export type Cli = CliInput & {

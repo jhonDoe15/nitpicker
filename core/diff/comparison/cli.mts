@@ -8,6 +8,7 @@ export type DrillDownOptions = {
   readonly projectPaths: readonly string[];
   readonly shardCount: number | undefined;
   readonly shardIndex: number | undefined;
+  readonly jobs: number | undefined;
   readonly deferExit: boolean;
   readonly remainingArguments: readonly string[];
 };
@@ -24,6 +25,7 @@ const VALUE_OPTIONS = new Set([
   '--project',
   '--shard-count',
   '--shard-index',
+  '--jobs',
 ]);
 const DEFER_EXIT = '--defer-exit';
 
@@ -64,6 +66,20 @@ function valuesOf(entries: readonly OptionEntry[], name: string): string[] {
   );
 }
 
+function jobsOf(entries: readonly OptionEntry[]): number | undefined {
+  const value = valuesOf(entries, '--jobs').at(-1);
+  if (value === undefined) {
+    return undefined;
+  }
+  const jobs = Number(value);
+  if (!Number.isInteger(jobs) || jobs < 1) {
+    throw new Error(
+      `--jobs takes a whole number of projects to run at once, 1 or more, not ${value}`,
+    );
+  }
+  return jobs;
+}
+
 export function parseDrillDownOptions(commandArguments: readonly string[]): DrillDownOptions {
   const entries = tokenize(commandArguments);
   const analyzerNames = valuesOf(entries, '--analyzer');
@@ -81,6 +97,7 @@ export function parseDrillDownOptions(commandArguments: readonly string[]): Dril
     projectPaths: valuesOf(entries, '--project'),
     shardCount,
     shardIndex,
+    jobs: jobsOf(entries),
     deferExit: entries.some(([argument]) => argument === DEFER_EXIT),
     remainingArguments: entries
       .map(([argument]) => argument)

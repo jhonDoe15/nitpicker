@@ -25,7 +25,7 @@ const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--s
 const USAGE_LINK = docsUrl('docs/usage.md');
 const EXPECTED_USAGE_HEAD = [
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--project <path>]... [--details] [--json] [--quick]',
+  '                 [--rule <substring>]... [--project <path>]... [--jobs <n>] [--details] [--json] [--quick]',
   '                 [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '                 [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
@@ -57,6 +57,7 @@ const EXPECTED_USAGE_HEAD = [
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
   '  --project <path>                 In a monorepo, run only this project: folder, package name or quoted glob (repeatable).',
+  '  --jobs <n>                       In a monorepo, run up to n projects at once (default: a quarter of the CPUs).',
   '  --details                        Print every new and held finding with its full message.',
   '  --json                           Print one compact JSON result on stdout instead of the summary.',
   '  --quick                          Run only the fast checks and skip the tests and what builds on them.',

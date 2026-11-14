@@ -151,7 +151,7 @@ function runCommand(cli: Cli): ExitCode {
   );
 }
 
-function runProjectOf(
+export function runProjectOf(
   cli: ConfiguredCli,
 ): (options: CliOptions, extraCli: { readonly currentProjectRoot: string }) => ExitCode {
   return (options, extraCli) =>

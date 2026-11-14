@@ -72,6 +72,7 @@ export function useMonorepoFixtures() {
       command,
       withoutBase = false,
       analyzers = [fakeAnalyzer()],
+      projectWorker,
     } = {},
   ) {
     const output = captureOutput();
@@ -85,15 +86,17 @@ export function useMonorepoFixtures() {
       stderr: output.stderr,
       progress: { write: () => undefined },
       runTasks: runTasksInProcess,
+      ...(projectWorker === undefined ? {} : { projectWorker }),
     });
-    return {
-      exitCode,
+    const finish = (code) => ({
+      exitCode: code,
       reports,
       json: (name) => readReport(reports, name),
       out: output.stdoutText,
       err: output.stderrText,
       ...sectionsOf(output.stdoutText, reports),
-    };
+    });
+    return typeof exitCode === 'number' ? finish(exitCode) : exitCode.then(finish);
   }
 
   return { repository, run, temporaryRoot: git.temporaryRoot };
