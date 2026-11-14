@@ -12,7 +12,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { classNamesIn, splitJdepsEdges, writeJdepsReports } from './jdeps-reports.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -97,7 +97,7 @@ describe('writeJdepsReports', () => {
       reportDir,
     });
 
-    const report = (name) => readFileSync(path.join(reportDir, name), 'utf8');
+    const report = (name: string): string => readFileSync(path.join(reportDir, name), 'utf8');
     expect(report('jdeps.txt')).toBe(`${mainLine}\n`.repeat(count));
     expect(report('jdeps-test.txt')).toBe(`${testLine}\n`.repeat(count));
     expect(report('jdeps-classes.txt')).toBe('shop.Größe\n');

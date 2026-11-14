@@ -5,8 +5,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { classSummaries, classSummary } from './class-summary.mts';
 
-const roots = [];
-const JAVAC = process.env.JAVA_HOME ? path.join(process.env.JAVA_HOME, 'bin', 'javac') : 'javac';
+const roots: string[] = [];
+const JAVAC = process.env['JAVA_HOME']
+  ? path.join(process.env['JAVA_HOME'], 'bin', 'javac')
+  : 'javac';
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -14,7 +16,7 @@ afterEach(() => {
   }
 });
 
-function compiled(files) {
+function compiled(files: Readonly<Record<string, string>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-class-summary-'));
   roots.push(root);
   const sources = Object.entries(files).map(([name, text]) => {
