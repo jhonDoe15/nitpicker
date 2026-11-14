@@ -100,6 +100,9 @@ export const JAVA_EFFECTS = [
   'JobLoopWithoutItemIsolation 82 NightlyJobs.onBatch @KafkaListener OrderRepository.deleteById()',
   `JobLoopWithoutItemIsolation 89 NightlyJobs.onMessages @SqsListener ${LOAD}`,
   `JobLoopWithoutItemIsolation 96 NightlyJobs.execute Quartz Job ${LOAD}`,
+  'SoftDeleteFilterMissing 26 ProductService.ownedBy Product.deletedAt ProductRepository.findByOwner()',
+  'SoftDeleteFilterMissing 30 ProductService.like Product.deletedAt ProductRepository.matching()',
+  'SoftDeleteFilterMissing 35 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -189,6 +192,9 @@ export const KOTLIN_EFFECTS = [
   'JobLoopWithoutItemIsolation 47 NightlyJobs.onBatch @KafkaListener OrderRepository.deleteById()',
   `JobLoopWithoutItemIsolation 54 NightlyJobs.onMessages @SqsListener ${KOTLIN_LOAD}`,
   `JobLoopWithoutItemIsolation 60 NightlyJobs.execute Quartz Job ${KOTLIN_LOAD}`,
+  'SoftDeleteFilterMissing 17 ProductService.ownedBy Product.deletedAt ProductRepository.findByOwner()',
+  'SoftDeleteFilterMissing 19 ProductService.like Product.deletedAt ProductRepository.matching()',
+  'SoftDeleteFilterMissing 23 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
 ];
 
 function summaryOf(violation) {
@@ -211,7 +217,11 @@ function summaryOf(violation) {
     wrapper,
     async,
     job,
+    column,
   } = violation;
+  if (column !== undefined) {
+    return [rule, line, method, `${entity}.${column}`, read].join(' ');
+  }
   if (job !== undefined) {
     return [rule, line, method, job, calls.join('>')].join(' ');
   }

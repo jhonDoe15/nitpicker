@@ -31,6 +31,7 @@ const KOTLIN_FILES = [
   'races/Registrations.kt',
   'jobs/JobsAllowed.kt',
   'jobs/NightlyJobs.kt',
+  'trash/ProductService.kt',
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {

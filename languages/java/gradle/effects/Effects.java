@@ -16,11 +16,14 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
+import nitpicker.effects.deleted.QueryFilter;
+import nitpicker.effects.deleted.SoftDelete;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.futures.AsyncBlocking;
 import nitpicker.effects.graphql.GraphqlFields;
 import nitpicker.effects.races.CheckThenWrite;
 import nitpicker.effects.graphql.Schema;
+import nitpicker.effects.jobs.JobLoops;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.reactive.ReactiveLookups;
@@ -33,7 +36,6 @@ import nitpicker.effects.retries.StaleRetry;
 import nitpicker.effects.rows.Projections;
 import nitpicker.effects.rows.SetBasedUpdates;
 import nitpicker.effects.rules.RetryWrite;
-import nitpicker.effects.jobs.JobLoops;
 import nitpicker.effects.scopes.Scopes;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -112,6 +114,7 @@ public final class Effects {
     new StaleRetry(program, summaries, report).run();
     new AsyncBlocking(program, summaries, report).run();
     new JobLoops(program, summaries, report).run();
+    new QueryFilter(program, new SoftDelete(program.index), report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

@@ -58,6 +58,10 @@ const SAMPLES = [
     'JobLoopWithoutItemIsolation',
     { method: METHOD, job: '@Scheduled', kind: 'database', path: PATH },
   ],
+  [
+    'SoftDeleteFilterMissing',
+    { entity: '<Entity>', column: 'deletedAt', read: '<query>', filtered: 9, total: 10 },
+  ],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

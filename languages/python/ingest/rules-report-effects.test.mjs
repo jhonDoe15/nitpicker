@@ -104,6 +104,11 @@ describe('effect rules report', () => {
       'sync_all|requests.post()|Celery task',
       '`sync_all` is a Celery task whose loop calls `requests.post()` for each item with no `try` around the work of one item: the first item that raises stops every item after it until the next run, and an item that keeps failing blocks the rest for good',
     ],
+    [
+      'soft-delete-filter-missing',
+      'count_orders|Order|deleted_at|alive()|9 of 10',
+      "`count_orders` reads `Order` without the filter on `deleted_at` that 9 of 10 of the project's `Order` reads apply (`alive()`): deleted or hidden rows reach the caller",
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

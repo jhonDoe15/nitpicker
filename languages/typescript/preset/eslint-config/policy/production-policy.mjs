@@ -106,7 +106,7 @@ function productionRules({ react, routeHandlers }) {
   };
 }
 
-function productionGuardRules({ react, security, databaseWrites }) {
+function productionGuardRules({ react, security, databaseWrites, softDeleteFilters }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
       'error',
@@ -126,6 +126,7 @@ function productionGuardRules({ react, security, databaseWrites }) {
     'nitpicker/no-unatomic-writes': ['error', databaseWrites],
     'nitpicker/no-check-then-write': ['error', databaseWrites],
     'nitpicker/no-unisolated-job-loop': 'error',
+    'nitpicker/no-unfiltered-soft-delete-read': ['error', softDeleteFilters],
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
@@ -196,6 +197,7 @@ export function productionPolicyConfigFor(layout, options = {}) {
           react: options.react === true,
           security: options.security,
           databaseWrites: options.databaseWrites ?? { orms: [], opensTransactions: false },
+          softDeleteFilters: options.softDeleteFilters ?? { orms: [], filters: [] },
         }),
       },
     },

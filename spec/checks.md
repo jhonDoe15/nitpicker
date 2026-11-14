@@ -157,6 +157,10 @@ Python job rule: `job-item-failure-stops-run` (a loop in a Celery task, an APSch
 command that does database or remote I/O per item with no `try` around one item, so the first failing item
 stops the rest). It lives in `languages/python/rules/jobs/`.
 
+Python soft-delete rule: `soft-delete-filter-missing` (a Django or SQLAlchemy read of a model with a soft-delete or
+visibility column that skips the filter or helper at least 80% of the project's reads of that model apply, with at
+least five reads counted). It lives in `languages/python/rules/soft_delete/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
@@ -323,6 +327,11 @@ loop in a scheduled or queue job (NestJS `@Cron`/`@Interval`/`@Timeout`/`@Proces
 `WorkerHost.process` and `Worker`, Agenda `define`, node-cron `schedule`) whose body awaits a database or remote
 call with no `try`/`catch` around it, so one failing item stops the rest. A `try`/`catch` per item, one queued
 job per item and `Promise.allSettled` are the allowed forms.
+
+Soft-delete filters: `nitpicker/no-unfiltered-soft-delete-read` (production source, in `eslint-lint`) reports a changed
+Kysely, Knex, TypeORM, Drizzle, Prisma, Sequelize or MikroORM read or join of a table whose reads mostly (80%, at
+least five reads, measured at the merge base) apply a soft-delete or visibility column or helper and that does not.
+The finding names the column and the project's helper; a project with no majority is not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

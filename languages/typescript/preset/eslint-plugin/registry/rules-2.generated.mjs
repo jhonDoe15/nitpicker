@@ -4,6 +4,7 @@ import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-un
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
+import { rule as ruleNoUnfilteredSoftDeleteRead } from '../rules/queries/soft-delete/no-unfiltered-soft-delete-read.mjs';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mjs';
 import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mjs';
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mjs';
@@ -64,6 +65,7 @@ export const partRules = {
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
+  'no-unfiltered-soft-delete-read': ruleNoUnfilteredSoftDeleteRead,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
   'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,

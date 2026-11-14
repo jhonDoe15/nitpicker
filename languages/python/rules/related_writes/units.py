@@ -67,7 +67,9 @@ def owner_names(node):
     }
     for item in node.items:
         expression = item.context_expr
-        if isinstance(expression, ast.Call) and isinstance(expression.func, ast.Attribute):
+        if isinstance(expression, ast.Call) and isinstance(
+            expression.func, ast.Attribute
+        ):
             owner = base_text(expression.func.value)
             if owner and (words_of(owner.split(".")[-1]) or [""])[-1] != "engine":
                 names.add(owner)

@@ -18,6 +18,13 @@ const databaseConfig = [
   ...productionLayoutConfigFor(defaultResolvedLayout),
 ];
 
+const softDeleteConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    softDeleteFilters: { orms: ['kysely'], filters: ['asset__helper__withDefaultVisibility'] },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
 function casesIn(filename) {
   return function policyCase(name, banned, allowed) {
     return { name: `policy: ${name}`, config, filename, banned, allowed };
@@ -120,6 +127,14 @@ export const policyFailureMessageCases = [
       'callback parameter',
     ),
     config: databaseConfig,
+  },
+  {
+    ...adapterCase(
+      'a read without the soft-delete filter names the project helper',
+      "export function reads(db) { return db.selectFrom('asset').selectAll().execute(); }",
+      'withDefaultVisibility',
+    ),
+    config: softDeleteConfig,
   },
   adapterCase(
     'resolver map query names the DataLoader',

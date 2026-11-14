@@ -1,4 +1,4 @@
-import { codeLines } from '../layout-measures.mjs';
+import { codeLines } from '../../layout-measures.mjs';
 
 const OPENERS = [
   String.raw`\.\s*\$?transaction\s*\(`,
@@ -8,7 +8,7 @@ const OPENERS = [
   String.raw`@Transaction\s*\(`,
 ];
 const OPENS_TRANSACTION = new RegExp(OPENERS.join('|'), 'u');
-const TEST_FILE =
+export const TEST_FILE =
   /(?:\.(?:test|spec)\.[^/]+$|(?:^|\/)(?:__tests__|test|tests|e2e|test-support)\/)/u;
 
 export const TRANSACTIONS_CONVENTION = {

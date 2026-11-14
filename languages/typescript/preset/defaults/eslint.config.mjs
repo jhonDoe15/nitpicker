@@ -41,7 +41,8 @@ import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
 import { detachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
-import { projectOpensTransactions } from '../../conventions/measures/transactions.mjs';
+import { softDeleteFilterEntries } from '../../conventions/measures/database/soft-delete-filters.mjs';
+import { projectOpensTransactions } from '../../conventions/measures/database/transactions.mjs';
 import { ormsOf } from '../eslint-plugin/rules/support/orm/orms.mjs';
 import {
   testEnvironmentConfigFor,
@@ -128,6 +129,10 @@ const presetConfig = defineConfig(
     databaseWrites: {
       orms: ormsOf(readDependencyNames(analyzedProjectRoot())),
       opensTransactions: projectOpensTransactions(policy.conventions),
+    },
+    softDeleteFilters: {
+      orms: ormsOf(readDependencyNames(analyzedProjectRoot())),
+      filters: softDeleteFilterEntries(policy.conventions),
     },
   }),
   ...productionLayoutConfigFor(layout, { react }),
