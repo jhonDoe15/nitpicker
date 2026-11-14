@@ -116,7 +116,12 @@ describe.each([
               "shortDescription": {
                 "text": "Detects when a private field is declared and/or assigned a value, but not used."
               },
-              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)}
+              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)},
+              "properties": {
+                "tags": [
+                  "simplification"
+                ]
+              }
             }
           ]
         }

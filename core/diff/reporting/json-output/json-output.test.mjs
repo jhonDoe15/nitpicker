@@ -122,6 +122,7 @@ const FAILING_FINDINGS = [
       reason: '...',
     },
     helpUri: helpUri('eslint-lint', 'nitpicker/no-magic-numbers'),
+    labels: ['maintainability'],
   },
   {
     tool: 'pmd',
@@ -130,6 +131,7 @@ const FAILING_FINDINGS = [
     line: 7,
     message: 'Avoid unused private fields such as total.',
     helpUri: helpUri('pmd', 'UnusedPrivateField'),
+    labels: ['simplification'],
   },
   {
     tool: 'ruff',
@@ -141,6 +143,7 @@ const FAILING_FINDINGS = [
     exception: { rule: 'PLR2004', paths: ['app/orders.py'], reason: '...' },
     exceptionList: 'python.exceptions',
     helpUri: helpUri('ruff', 'PLR2004'),
+    labels: ['maintainability'],
   },
 ];
 
@@ -213,7 +216,13 @@ describe('nitpicker --json', () => {
       status: 'failed',
       exitCode: 1,
       base: { ref: repository.baseRef, source: 'argument' },
-      counts: { failing: 3, byArea: { lint: 3 }, reportOnly: 1, held: 0 },
+      counts: {
+        failing: 3,
+        byArea: { lint: 3 },
+        byLabel: { simplification: 1, maintainability: 2 },
+        reportOnly: 1,
+        held: 0,
+      },
       findings: FAILING_FINDINGS,
       toolErrors: [
         { ...CRASH, snapshot: 'base' },
@@ -234,7 +243,12 @@ describe('nitpicker --json', () => {
       mode: 'all',
       status: 'failed',
       exitCode: 1,
-      counts: { failing: 3, byArea: { lint: 3 }, reportOnly: 1 },
+      counts: {
+        failing: 3,
+        byArea: { lint: 3 },
+        byLabel: { simplification: 1, maintainability: 2 },
+        reportOnly: 1,
+      },
       findings: FAILING_FINDINGS,
       toolErrors: [{ ...CRASH, snapshot: 'head' }],
       reports: path.resolve(outputRoot),
@@ -256,7 +270,7 @@ describe('nitpicker --json', () => {
       status: 'error',
       exitCode: 2,
       base: { ref: repository.baseRef, source: 'argument' },
-      counts: { failing: 0, byArea: {}, reportOnly: 0, held: 0 },
+      counts: { failing: 0, byArea: {}, byLabel: {}, reportOnly: 0, held: 0 },
       findings: [],
       toolErrors: [
         { ...CRASH, snapshot: 'base' },
@@ -281,7 +295,13 @@ describe('nitpicker --json', () => {
       status: 'failed',
       exitCode: 0,
       base: { ref: repository.baseRef, source: 'argument' },
-      counts: { failing: 3, byArea: { lint: 3 }, reportOnly: 1, held: 0 },
+      counts: {
+        failing: 3,
+        byArea: { lint: 3 },
+        byLabel: { simplification: 1, maintainability: 2 },
+        reportOnly: 1,
+        held: 0,
+      },
       findings: FAILING_FINDINGS,
       toolErrors: [],
       reports: path.resolve(outputRoot),
@@ -302,7 +322,7 @@ describe('nitpicker --json', () => {
       exitCode: 0,
       base: { ref: repository.baseRef, source: 'argument' },
       noChanges: true,
-      counts: { failing: 0, byArea: {}, reportOnly: 0, held: 0 },
+      counts: { failing: 0, byArea: {}, byLabel: {}, reportOnly: 0, held: 0 },
       findings: [],
       toolErrors: [],
       reports: path.resolve(outputRoot),
@@ -337,7 +357,13 @@ describe('nitpicker --json', () => {
       status: 'failed',
       exitCode: 1,
       base: { ref: repository.baseRef, source: 'argument' },
-      counts: { failing: 2, byArea: { mutation: 2 }, reportOnly: 0, held: 0 },
+      counts: {
+        failing: 2,
+        byArea: { mutation: 2 },
+        byLabel: { tests: 2 },
+        reportOnly: 0,
+        held: 0,
+      },
       findings: [
         {
           tool: 'mutation',
@@ -347,6 +373,7 @@ describe('nitpicker --json', () => {
           message:
             'price: 2 mutants on lines 4 to 5 that no test runs. Add a test that reaches this code.',
           helpUri: helpUri('mutation', 'mutant-nocoverage'),
+          labels: ['tests'],
           folded: true,
         },
       ],

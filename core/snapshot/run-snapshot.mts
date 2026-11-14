@@ -7,8 +7,14 @@ import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
+import { findingLabeler, labelCounts } from '../labels/finding-labels.mts';
+import { areaOf } from '../diff/reporting/format/rule-groups/finding-areas.mts';
+import { labeledFindings, labelRun } from '../labels/label-filter.mts';
+import type { LabelFilter } from '../labels/taxonomy.mts';
 
 type Finding = ReportEntry;
+
+const LABELS_OF = findingLabeler({ areaOf });
 
 type Scope = unknown;
 
@@ -27,6 +33,7 @@ type SnapshotRequest = {
   readonly headPolicy?: object | undefined;
   readonly scope: Scope;
   readonly setupErrors?: readonly object[];
+  readonly labels?: LabelFilter | undefined;
   readonly [option: string]: unknown;
 };
 
@@ -76,6 +83,7 @@ export function runQualitySnapshot({
   headPolicy = {},
   scope,
   setupErrors = [],
+  labels,
   ...execution
 }: SnapshotRequest): QualitySnapshot {
   const { reports, toolErrors: runErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
@@ -97,15 +105,19 @@ export function runQualitySnapshot({
   );
 
   const toolErrors = [...entriesOf(setupErrors), ...runErrors];
-  const { findings, tools, outside } = collectSnapshotFindings({
+  const { findings, tools, outside, hidden } = collectSnapshotFindings({
     analyzers,
     reports,
     toolErrors,
     scope,
+    labels,
   });
 
   return {
-    summary: snapshotSummary({ scope, outside, tools, analyzers, findings, toolErrors, startedAt }),
+    summary: {
+      ...snapshotSummary({ scope, outside, tools, analyzers, findings, toolErrors, startedAt }),
+      ...labelSummary(labels, hidden, findings),
+    },
     findings: sortFindings(findings),
     toolErrors: sortFindings(toolErrors.map((error) => ({ ...error, path: error.path ?? '' }))),
   };
@@ -198,14 +210,21 @@ function collectSnapshotFindings({
   reports,
   toolErrors,
   scope,
-}: SnapshotRun & { readonly analyzers: readonly unknown[]; readonly scope: Scope }): {
+  labels,
+}: SnapshotRun & {
+  readonly analyzers: readonly unknown[];
+  readonly scope: Scope;
+  readonly labels: LabelFilter | undefined;
+}): {
   readonly findings: Finding[];
   readonly tools: ToolSummary[];
   readonly outside: number;
+  readonly hidden: number;
 } {
   const findings: Finding[] = [];
   const tools: ToolSummary[] = [];
   let outside = 0;
+  let hidden = 0;
   for (const [index, analyzer] of analyzers.entries()) {
     const name = nameOf(analyzer, index);
     const reported = reports.get(textOf(fieldOf(analyzer, 'name')))?.findings ?? [];
@@ -215,13 +234,14 @@ function collectSnapshotFindings({
         .map((finding) => toSnapshotToolError(finding)),
     );
     const analyzed = reported.filter((finding) => finding.classification !== 'tool-error');
-    const analyzerFindings = analyzed.filter((finding) => inScope(finding.path, scope));
-    outside += analyzed.length - analyzerFindings.length;
-    findings.push(...analyzerFindings);
-    tools.push(summarizeAnalyzer(analyzer, name, analyzerFindings));
+    const focused = inFocus(analyzed, scope, labels);
+    outside += focused.outside;
+    hidden += focused.hidden;
+    findings.push(...focused.findings);
+    tools.push(summarizeAnalyzer(analyzer, name, focused.findings));
   }
 
-  return { findings, tools, outside };
+  return { findings, tools, outside, hidden };
 }
 
 function declaredExclusions(analyzers: readonly unknown[]): string[] {
@@ -235,4 +255,28 @@ function declaredExclusions(analyzers: readonly unknown[]): string[] {
       }),
     ),
   ].sort();
+}
+
+function inFocus(
+  analyzed: readonly Finding[],
+  scope: Scope,
+  labels: LabelFilter | undefined,
+): { readonly findings: Finding[]; readonly outside: number; readonly hidden: number } {
+  const scoped = analyzed.filter((finding) => inScope(finding.path, scope));
+  const labeled = labeledFindings(scoped, labels, LABELS_OF);
+  return { ...labeled, outside: analyzed.length - scoped.length };
+}
+
+function labelSummary(
+  labels: LabelFilter | undefined,
+  hidden: number,
+  findings: readonly Finding[],
+): object {
+  const failing = findings.filter(isEnforceable);
+  return {
+    ...labelRun(labels, hidden),
+    ...(failing.length === 0
+      ? {}
+      : { labelCounts: labelCounts(failing.map((finding) => ({ labels: LABELS_OF(finding) }))) }),
+  };
 }

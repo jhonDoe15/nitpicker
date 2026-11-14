@@ -5,6 +5,7 @@ type OptionEntry = readonly [argument: string, value: string | undefined];
 export type DrillDownOptions = {
   readonly analyzerNames: readonly string[];
   readonly ruleFilters: readonly string[];
+  readonly labelNames: readonly string[];
   readonly shardCount: number | undefined;
   readonly shardIndex: number | undefined;
   readonly deferExit: boolean;
@@ -17,7 +18,13 @@ const closestSuggestion: (
   quote: string,
 ) => string = didYouMean;
 
-const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
+const VALUE_OPTIONS = new Set([
+  '--analyzer',
+  '--rule',
+  '--label',
+  '--shard-count',
+  '--shard-index',
+]);
 const DEFER_EXIT = '--defer-exit';
 
 export const DRILL_DOWN_OPTIONS = [...VALUE_OPTIONS, DEFER_EXIT];
@@ -71,6 +78,7 @@ export function parseDrillDownOptions(commandArguments: readonly string[]): Dril
   return {
     analyzerNames,
     ruleFilters: valuesOf(entries, '--rule'),
+    labelNames: valuesOf(entries, '--label'),
     shardCount,
     shardIndex,
     deferExit: entries.some(([argument]) => argument === DEFER_EXIT),

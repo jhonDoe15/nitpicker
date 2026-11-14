@@ -30,6 +30,10 @@ While you iterate, run `npx nitpicker --quick`: it skips the tests and the check
 read the printed skipped list for what it left out. A quick run is never a pass; finish with the
 full run below.
 
+To focus on one kind of finding, add `--label <label>` (`performance`, `bug`, `simplification`,
+`maintainability` and more; `npx nitpicker --help` lists them): it runs only the checks that can
+report it and lists only those findings. A focused run is never a pass either.
+
 1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
    and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
@@ -49,8 +53,9 @@ full run below.
    `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in `nitpicker.legacy.json`.
    For a finding no recipe fixes, read its plan in `fix-plans.json` (same folder): the target lines, the context and the steps. Follow the steps; they are done when the finding named in `doneWhen` stops.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
-     and you run the gate again without it before you finish.
+   - 0: done, unless you narrowed the run with `--analyzer` or `--label`: then the summary says
+     `Ran only: ...` or `Only findings labeled ...` and you run the gate again without it before
+     you finish.
    - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
      below them. Re-read the files `--fix`
      changed before editing them, then rerun.

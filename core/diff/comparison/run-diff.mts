@@ -6,6 +6,7 @@ import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-po
 import { withMovesFile } from '../git/patches/moves-file.mts';
 import { withComparisonKeys } from '../cache/keys/comparison-keys.mts';
 import { type DiffReport, combineAnalyzerReports, noChangesReport } from './results.mts';
+import type { LabelFilter } from '../../labels/taxonomy.mts';
 import {
   type RunSettings,
   type SnapshotRoots,
@@ -43,6 +44,7 @@ export type DiffOptions = Omit<
   readonly headProjectRoot?: string | undefined;
   readonly requestedBaseRef?: unknown;
   readonly partialRun?: unknown;
+  readonly labels?: LabelFilter | undefined;
   readonly fixRecipes?: unknown;
   readonly includeWorkingTree?: true | undefined;
   readonly captureHead?: unknown;
@@ -242,6 +244,7 @@ function runAndCombine(context: RunContext): DiffReport {
     policies: { base: baseSetup.headPolicy, head: settings.headPolicy },
     acceptPolicyChange: settings.acceptPolicyChange,
     scope: settings.scope,
+    labels: settings.labels,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,

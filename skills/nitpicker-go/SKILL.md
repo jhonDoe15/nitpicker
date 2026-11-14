@@ -23,6 +23,10 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 
 ## Finish with the gate
 
+To focus on one kind of finding, add `--label <label>` (`performance`, `bug`, `simplification`,
+`maintainability` and more; `npx nitpicker --help` lists them): it lists only those findings. A
+focused run is never a pass.
+
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
@@ -35,8 +39,9 @@ whole project, so it takes as long as a full run; finish with the plain run belo
    base and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress
    line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
-     and you run the gate again without it before you finish.
+   - 0: done, unless you narrowed the run with `--analyzer` or `--label`: then the summary says
+     `Ran only: ...` or `Only findings labeled ...` and you run the gate again without it before
+     you finish.
    - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
      below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not load,

@@ -32,6 +32,7 @@ import { runQualityDiff } from './diff/comparison/run-diff.mts';
 import { fixAllFilesIfRequested, fixIfRequested } from './command/fix-request.mts';
 import { runnerOptions } from './command/comparison/runner-options.mts';
 import { applyRunProfile } from './quick/profile.mts';
+import { labeledRun } from './labels/analyzer-labels.mts';
 import { stagedCapture, withIndexFile } from './staged/capture-index.mts';
 import { writeComparisonOutcome } from './command/comparison/outcome.mts';
 import { baseSetupResolver } from './command/policy-review/base-setup.mts';
@@ -184,10 +185,9 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     maven: cli.environment['NITPICKER_MAVEN'],
   });
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const profiled = applyRunProfile(configureAll(presetSet, config, headPolicy), options);
+  const profile = applyRunProfile(configureAll(presetSet, config, headPolicy), options);
   const setup: RunSetup = {
-    analyzers: profiled.analyzers,
-    quick: profiled.quick,
+    ...labeledRun(profile, { ...options, preset: config.preset, stderr: cli.stderr }),
     captureHead: stagedCapture(cli, currentProjectRoot),
     setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };

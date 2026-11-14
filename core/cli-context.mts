@@ -1,6 +1,7 @@
 import type { Analyzer, ProfiledAnalyzer } from '../shared/values/analyzers.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 import type { RunTasks } from './diff/execution/progress.mts';
+import type { LabelFilter } from './labels/taxonomy.mts';
 
 export type TextOutput = {
   write(text: string): unknown;
@@ -8,6 +9,7 @@ export type TextOutput = {
 
 export type CliOptions = {
   readonly analyzerNames: readonly string[];
+  readonly labelNames?: readonly string[];
   readonly ruleFilters: readonly string[];
   readonly fix: boolean;
   readonly dryRun: boolean;
@@ -83,4 +85,5 @@ export type RunSetup = {
   readonly quick: unknown;
   readonly captureHead: unknown;
   readonly setupErrors: readonly object[];
+  readonly labels?: LabelFilter | undefined;
 };
