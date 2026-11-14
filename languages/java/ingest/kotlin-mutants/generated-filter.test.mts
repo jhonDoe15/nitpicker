@@ -216,7 +216,7 @@ describe('generated accessors and members', () => {
     ['the constructor, whose defaults are written code', '<init>', 8],
     ['a written function', 'describe', 40],
     ['a method of another class', 'getItems', 8, { className: 'demo.Other' }],
-  ])('keeps %s', (name, method, line, overrides?: Fields) => {
+  ])('keeps %s', (_name, method, line, overrides?: Fields) => {
     expect(inHolder(method, line, overrides)).toBeUndefined();
   });
 });

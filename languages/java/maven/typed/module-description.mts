@@ -1,7 +1,7 @@
 import { readReactor } from '../maven-project.mjs';
 import type { KotlinRoots } from './kotlin-types.mts';
 
-export type ModuleBase = {
+type ModuleBase = {
   readonly basedir: string;
   readonly pomFile: string;
   readonly coordinates: string;
