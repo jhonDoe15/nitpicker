@@ -2,8 +2,13 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../../maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import { kotlinFiles, lintedRoots } from './kotlin-files.mjs';
-import { relativeRoots } from '../../module/module-paths.mjs';
+import { kotlinFiles, lintedRoots } from './kotlin-files.mts';
+import { relativeRoots } from '../../module/module-paths.mts';
+import { callUntyped } from '../../../adapters/typed/java-values.mts';
+import type { JavaSpawn } from '../../../adapters/typed/java-values.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import type { KotlinPinned } from './kotlin-dependencies.mts';
+import type { KotlinModule, ToolClasspaths } from '../../typed/kotlin-types.mts';
 
 const PSI_DIRECTORY = path.join(GRADLE_DIRECTORY, 'kotlin-psi');
 const PSI_MAIN_CLASS = 'nitpicker.kotlinpsi.KotlinPsi';
@@ -12,11 +17,19 @@ const TEST_PREFIX = 'test:';
 const EMPTY_METRICS = '{"functions":[],"files":[]}';
 const EMPTY_FILES = '{"files":[]}';
 
-function succeeded(result) {
-  return result.status === 0;
+function succeeded(result: unknown): boolean {
+  return fieldOf(result, 'status') === 0;
 }
 
-export function psiArguments({ metrics, facts, module }) {
+export function psiArguments({
+  metrics,
+  facts,
+  module,
+}: {
+  readonly metrics: string;
+  readonly facts: string;
+  readonly module: Pick<KotlinModule, 'basedir' | 'kotlin'>;
+}): string[] {
   return [
     metrics,
     facts,
@@ -26,23 +39,30 @@ export function psiArguments({ metrics, facts, module }) {
   ];
 }
 
-function psiSources() {
+function psiSources(): string[] {
   return readdirSync(PSI_DIRECTORY, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
     .map((entry) => path.join(entry.parentPath, entry.name))
     .sort();
 }
 
-function compilerOptions(pinned) {
+function compilerOptions(pinned: Pick<KotlinPinned, 'kotlinCompiler'>): string[] {
   return ['-Djava.awt.headless=true', `-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}`];
 }
 
-function compilePsi({ classes, tools, spawn, timeoutMs }) {
+type PsiRun = {
+  readonly classes: string;
+  readonly tools: ToolClasspaths;
+  readonly spawn: JavaSpawn | undefined;
+  readonly timeoutMs: unknown;
+};
+
+function compilePsi({ classes, tools, spawn, timeoutMs }: PsiRun): void {
   const marker = path.join(classes, COMPILED_MARKER);
   if (!existsSync(marker)) {
     mkdirSync(classes, { recursive: true });
-    runJava({
-      java: javaCommand('javac'),
+    callUntyped(runJava, {
+      java: textOf(callUntyped(javaCommand, 'javac')),
       tool: 'javac',
       classpath: tools['kotlin-compiler'],
       args: ['-proc:none', '-d', classes, ...psiSources()],
@@ -55,7 +75,19 @@ function compilePsi({ classes, tools, spawn, timeoutMs }) {
   }
 }
 
-export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn, timeoutMs }) {
+export function runKotlinPsi({
+  module,
+  reportDir,
+  tools,
+  pinned,
+  classes,
+  spawn,
+  timeoutMs,
+}: PsiRun & {
+  readonly module: KotlinModule;
+  readonly reportDir: string;
+  readonly pinned: KotlinPinned;
+}): void {
   const metrics = path.join(reportDir, 'kotlin-metrics.json');
   const facts = path.join(reportDir, 'kotlin-facts.json');
   if (kotlinFiles(lintedRoots(module.kotlin)).length === 0) {
@@ -64,9 +96,9 @@ export function runKotlinPsi({ module, reportDir, tools, pinned, classes, spawn,
     return;
   }
   compilePsi({ classes, tools, spawn, timeoutMs });
-  runJava({
+  callUntyped(runJava, {
     tool: 'KotlinPsi',
-    classpath: [...tools['kotlin-compiler'], classes],
+    classpath: [...(tools['kotlin-compiler'] ?? []), classes],
     mainClass: PSI_MAIN_CLASS,
     jvmArgs: compilerOptions(pinned),
     args: psiArguments({ metrics, facts, module }),
