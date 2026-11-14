@@ -3,6 +3,7 @@ import {
   relevantFacts,
   solveFacts,
 } from '../../../../../../shared/logic/sync/solve-facts.mjs';
+import { helperNote } from '../../../../../../shared/logic/models/helper-note.mjs';
 import { hasModels } from '../../../../../../shared/logic/models/models.mjs';
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
@@ -20,12 +21,11 @@ const VERDICTS = new Map([
 ]);
 
 function reasonFor(facts, query, verdict) {
-  return (
-    decidingFact(facts, query, verdict) ?? {
-      reason: 'the conditions before it decide it together',
-      origin: 'path',
-    }
-  );
+  const deciding = decidingFact(facts, query, verdict) ?? {
+    reason: 'the conditions before it decide it together',
+  };
+  const terms = deciding.term === undefined ? [query] : [query, deciding.term];
+  return { reason: `${deciding.reason}${helperNote(terms)}` };
 }
 
 function verdictOf(facts, condition) {

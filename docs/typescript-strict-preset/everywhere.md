@@ -1105,7 +1105,11 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   values are compared; the type checker tells it that `.length` (of a string, array or typed array),
   `.size` (of a `Map` or `Set`) and the result of `indexOf`, `lastIndexOf`, `findIndex` and
   `search` are whole numbers (at least 0, and at least -1), that `Math.abs(x)` is not negative and
-  that `Math.random()` is in `[0, 1)`. An order comparison counts as a number comparison only when both operands
+  that `Math.random()` is in `[0, 1)`. A call of a module-level function (a declaration, or a
+  `const` arrow or function expression) whose body is a single `return` of a side-effect-free
+  expression is read as that expression with the arguments bound, through at most 2 levels and
+  never through recursion, and the message names the helper; methods, helpers that read a variable
+  the call site does not see and helpers in other files stay opaque. An order comparison counts as a number comparison only when both operands
   are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
   value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
   one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and

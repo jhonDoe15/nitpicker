@@ -68,6 +68,8 @@ def declared(node, function):
         return {node.name}
     if isinstance(node, FUNCTIONS + (ast.ClassDef,)) and node is not function:
         return {node.name}
+    if isinstance(node, (ast.Import, ast.ImportFrom)):
+        return {(alias.asname or alias.name.split(".")[0]) for alias in node.names if alias.name != "*"}
     return set()
 
 

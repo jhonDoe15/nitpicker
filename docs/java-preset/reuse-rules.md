@@ -76,7 +76,10 @@ object`. Instance methods are left to the duplicates check, as class methods are
   means a size of 0, `indexOf` returns at least -1, `Math.abs` of a `double` is not negative,
   `Math.random()` is in `[0, 1)`, and a known pure method or a same-file getter that only returns a
   field gives the same value until a write or a call may change it. A project method named `size()`
-  on another type gets no fact. SpotBugs `UC_USELESS_CONDITION` reports a few of
+  on another type gets no fact. A call of a same-file method that cannot be overridden (`private`,
+  `static` or `final`) and only returns a side-effect-free condition is read as that condition with
+  the arguments bound, through at most 2 levels and never through recursion; the message names the
+  helper ("and `valid` tests `n > 0`"). SpotBugs `UC_USELESS_CONDITION` reports a few of
   these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
 - **`duplicate-branch`.** The same trees again: two arms of an `else if` chain, two `switch`
   cases (not one that falls through or that a case falls into; arrow cases never do) or two `when`

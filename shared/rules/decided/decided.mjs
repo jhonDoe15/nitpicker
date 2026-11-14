@@ -12,6 +12,7 @@ import { isIntegerLoop } from './flow/loops.mjs';
 import { lambdaStatements } from './flow/nested.mjs';
 import { isChain, sitesIn } from './flow/sites.mjs';
 import { declaredTypes, stableNames } from './flow/stability.mjs';
+import { helperNote } from '../../logic/models/helper-note.mjs';
 
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const MAX_CHECKS = 200;
@@ -19,7 +20,9 @@ const VERDICTS = new Set(['true', 'false']);
 const TOGETHER = 'the conditions before it decide it together';
 
 function reasonFor(facts, query, verdict) {
-  return decidingFact(facts, query, verdict)?.reason ?? TOGETHER;
+  const deciding = decidingFact(facts, query, verdict);
+  const terms = deciding?.term === undefined ? [query] : [query, deciding.term];
+  return `${deciding?.reason ?? TOGETHER}${helperNote(terms)}`;
 }
 
 function chainOperands(chain) {
@@ -61,7 +64,7 @@ function provingFacts(known, query, verdict) {
 }
 
 function check(scan, node, { facts, part = 'condition' }) {
-  const query = conditionTerm(node, scan.scope);
+  const query = node.viaHelper ? undefined : conditionTerm(node, scan.scope);
   if (query === undefined || scan.checked.has(node) || scan.checked.size >= MAX_CHECKS) {
     return false;
   }

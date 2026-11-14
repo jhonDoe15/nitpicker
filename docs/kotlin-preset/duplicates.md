@@ -38,7 +38,9 @@ of a `when` without a subject, `require`, `check`, `requireNotNull` and `assert`
 lambda captures, forgets what was known. Sizes, `length`, `count()`, `indexOf` results, the absolute
 value of a `Double` and `Math.random()` are known by the declared type of the name they are read
 from (a size is never negative, `isEmpty()` is a size of 0, `indexOf` is at least -1), and a
-same-file getter that only returns a field gives the same value until something may change it.
+same-file getter that only returns a field gives the same value until something may change it. A
+call of a same-file function that cannot be overridden and only returns a side-effect-free condition
+is read as that condition (at most 2 levels, no recursion) and the message names the helper.
 
 `result-slip` (tool `structure`) reads the same trees: the result of `compareTo`, `compare` or
 `compareValues` compared with a value other than 0 (`== 1`, `== -1`, `> 1`) fails, because only its
