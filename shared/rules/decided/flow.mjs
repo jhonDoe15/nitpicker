@@ -1,37 +1,9 @@
 import { afterEffects, effectsOf, fact } from './facts.mjs';
+import { exitOf, statementsOf, textOf } from './flow/exits.mjs';
+import { loopEntry } from './flow/loops.mjs';
+import { nestedFlow } from './flow/nested.mjs';
 
-const JUMPS = new Map([
-  ['return', 'returns'],
-  ['throw', 'throws'],
-  ['break', 'breaks'],
-  ['continue', 'continues'],
-]);
 const LOOPS = new Set(['for', 'foreach', 'while', 'do']);
-
-function statementsOf(node) {
-  if (node === undefined || node.kind === 'none') {
-    return [];
-  }
-  return node.kind === 'block' ? node.children : [node];
-}
-
-function exitOf(node) {
-  const pending = [node];
-  for (const current of pending) {
-    const last = statementsOf(current).at(-1);
-    if (last?.kind === 'if' && last.children[2].kind !== 'none') {
-      pending.push(last.children[1], last.children[2]);
-    } else if (!JUMPS.has(last?.kind)) {
-      return undefined;
-    }
-  }
-  const last = statementsOf(node).at(-1);
-  return JUMPS.get(last.kind) ?? 'leaves';
-}
-
-function textOf(node) {
-  return node.text ?? `the condition on line ${String(node.start)}`;
-}
 
 function guardFact(test, scope, { holds, exit }) {
   const line = String(test.start);
@@ -97,42 +69,12 @@ function ifFlow(node, facts, flow) {
 function loopFlow(node, facts, flow) {
   const inLoop = afterEffects(facts, effectsOf([node], flow), flow.mutable);
   const body = node.kind === 'do' ? node.children[0] : node.children.at(-1);
-  if (node.kind !== 'while') {
-    return {
-      checks: [],
-      children: [{ statements: statementsOf(body), facts: inLoop }],
-      after: inLoop,
-    };
-  }
-  const [test] = node.children;
-  const reason = `the loop on line ${String(node.start)} only runs while \`${textOf(test)}\``;
-  const testFact = fact(test, flow.scope, { holds: true, reason });
-  const entry = [
-    ...inLoop,
-    ...afterEffects(
-      testFact === undefined ? [] : [testFact],
-      effectsOf([test], flow),
-      flow.mutable,
-    ),
-  ];
+  const { test, facts: entry } = loopEntry(node, flow);
   return {
-    checks: [{ condition: test, facts: inLoop }],
-    children: [{ statements: statementsOf(body), facts: entry }],
+    checks: test === undefined ? [] : [{ condition: test, facts: inLoop }],
+    children: [{ statements: statementsOf(body), facts: [...inLoop, ...entry] }],
     after: inLoop,
   };
-}
-
-function blocksIn(node) {
-  const blocks = [];
-  const pending = [...node.children];
-  for (const part of pending) {
-    if (part.kind === 'block') {
-      blocks.push(part);
-    } else if (part.kind !== 'lambda') {
-      pending.push(...part.children);
-    }
-  }
-  return blocks;
 }
 
 function otherFlow(node, facts, flow) {
@@ -140,9 +82,10 @@ function otherFlow(node, facts, flow) {
   if (node.kind === 'block') {
     return { checks: [], children: [{ statements: node.children, facts }], after };
   }
+  const nested = nestedFlow(node, { before: facts, after }, flow);
   return {
-    checks: [{ expression: node, facts: after }],
-    children: blocksIn(node).map((block) => ({ statements: block.children, facts: after })),
+    checks: [{ expression: node, facts: after }, ...nested.checks],
+    children: nested.children,
     after,
   };
 }

@@ -1093,7 +1093,8 @@ express()`, `express.Router()`, `new Router()`, also through a chain such as
   condition that the guards before it in the same function already decide. Reported: an `if`,
   `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
   always true or always false given an earlier `if` that returned, threw, broke or continued, the
-  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  `if` or `else` branch it sits in, the test of the loop it sits in, the branch of a ternary it sits in, a function it
+  sits in (for names that are never reassigned), or the operands before it in
   the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
   decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
   `catch` parameter); a fact that reads a member is dropped on any member write and on any call

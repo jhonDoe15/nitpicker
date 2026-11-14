@@ -33,7 +33,9 @@ platform variants of one Kotlin Multiplatform declaration are not reported (see 
 or `&&`/`||` operand that the guards before it in the same function decide fails, when a solver
 proves it always true (a redundant check) or always false (dead code). The guards are enclosing
 `if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
-of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
+of a `when` without a subject, the left side of `&&` and `||`, the bounds of a `for` over `until`,
+`..` or `downTo`, the branches of an `if` expression, facts about `val` names a lambda captures, and
+`==` or `equals` on a string; a write, or a call on a `var` a
 lambda captures, forgets what was known.
 
 `duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose

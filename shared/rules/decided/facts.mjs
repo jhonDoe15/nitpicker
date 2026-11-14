@@ -106,6 +106,12 @@ function writtenTargets(node) {
   return node.kind === 'statement' ? (STATEMENT_TARGETS[node.value]?.(node.children) ?? []) : [];
 }
 
+export function writtenNames(node) {
+  return writtenTargets(node)
+    .filter(Boolean)
+    .flatMap((target) => [...namesOf(target)]);
+}
+
 function ownEffects(node, below) {
   const own = merged(below);
   for (const target of writtenTargets(node).filter(Boolean)) {
