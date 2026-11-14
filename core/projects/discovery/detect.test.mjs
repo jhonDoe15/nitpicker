@@ -350,3 +350,49 @@ describe('Nx and Angular workspaces', () => {
     ]);
   });
 });
+
+describe('Gradle composite builds', () => {
+  const service = (folder, settings = 'settings.gradle') => ({
+    [`${folder}/${settings}`]: '',
+    [`${folder}/src/main/java/App.java`]: 'class App {}\n',
+  });
+
+  it('gates each included build with code as a project', () => {
+    const result = detect({
+      'settings.gradle': "includeBuild('services/orders')\nincludeBuild('services/users')\n",
+      ...service('services/orders'),
+      ...service('services/users', 'settings.gradle.kts'),
+      'build-logic/settings.gradle': '',
+      'build-logic/src/main/kotlin/Conventions.kt': 'class Conventions\n',
+    });
+
+    expect([result.paths, result.origins, result.undeclared]).toEqual([
+      ['services/orders', 'services/users'],
+      ['Gradle includeBuild'],
+      [],
+    ]);
+  });
+
+  it('keeps the top build a project when it includes subprojects too', () => {
+    const result = detect({
+      'settings.gradle': "include(':app')\nincludeBuild('services/orders')\n",
+      'app/build.gradle': '',
+      ...service('services/orders'),
+    });
+
+    expect(result.paths).toEqual(['.', 'services/orders']);
+  });
+
+  it('names a separate build under a top build that does not include it', () => {
+    const result = detect({
+      'settings.gradle': "include(':app')\n",
+      'app/build.gradle': '',
+      ...service('tools/generator'),
+    });
+
+    expect([result.multiple, result.undeclared]).toEqual([
+      false,
+      ['tools/generator (Gradle build)'],
+    ]);
+  });
+});

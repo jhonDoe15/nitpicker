@@ -1,6 +1,6 @@
 import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { JVM_MARKERS } from './jvm-builds.mjs';
+import { JVM_MARKERS, isBuildModule } from './jvm-builds.mjs';
 import { PYTHON_MARKERS } from './python-projects.mjs';
 import { directoriesWith, isInside, outermost, statInside } from './repository-files.mjs';
 import { detectProjects } from './detect.mjs';
@@ -22,22 +22,15 @@ function isFolder(root, folder) {
   return folder === '.' || statInside(root, folder)?.isDirectory() === true;
 }
 
-function isBuildModule(directory, { ownDirectories, jvmDirectories }) {
-  return (
-    !ownDirectories.includes(directory) &&
-    jvmDirectories.some((other) => other !== directory && isInside(directory, other))
-  );
-}
-
 function globMatches(entry, { root, files }) {
   const matcher = globMatcher(entry.path);
-  const context = {
-    ownDirectories: directoriesWith(root, files, OWN_MARKERS),
-    jvmDirectories: directoriesWith(root, files, JVM_MARKERS),
-  };
+  const ownDirectories = directoriesWith(root, files, OWN_MARKERS);
+  const jvmDirectories = directoriesWith(root, files, JVM_MARKERS);
   const matched = directoriesWith(root, files, PROJECT_FILES).filter(
     (directory) =>
-      directory !== '.' && matcher.test(directory) && !isBuildModule(directory, context),
+      directory !== '.' &&
+      matcher.test(directory) &&
+      (ownDirectories.includes(directory) || !isBuildModule(root, directory, jvmDirectories)),
   );
   return outermost(matched).toSorted((left, right) =>
     left.localeCompare(right, 'en', { numeric: true }),

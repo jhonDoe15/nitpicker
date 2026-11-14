@@ -76,6 +76,32 @@ describe('the projects a config lists', () => {
     ]);
   });
 
+  it('matches the separate builds of a Gradle composite, which are no modules of the top build', () => {
+    const root = repository({
+      'settings.gradle': "includeBuild('services/orders')\nincludeBuild('services/users')\n",
+      'services/orders/settings.gradle': '',
+      'services/orders/build.gradle': '',
+      'services/orders/core/build.gradle': '',
+      'services/users/settings.gradle.kts': '',
+    });
+
+    expect(resolve(root, [{ path: 'services/*' }]).map(({ path: p }) => p)).toEqual([
+      'services/orders',
+      'services/users',
+    ]);
+  });
+
+  it('treats a Maven folder as a module only when an enclosing pom.xml lists it', () => {
+    const root = repository({
+      'pom.xml':
+        '<project><profiles><profile><modules><module>libs/a</module></modules></profile></profiles></project>',
+      'libs/a/pom.xml': '<project/>',
+      'libs/b/pom.xml': '<project/>',
+    });
+
+    expect(resolve(root, [{ path: 'libs/*' }]).map(({ path: p }) => p)).toEqual(['libs/b']);
+  });
+
   it('refuses a folder that does not exist or is a file', () => {
     const root = repository(files);
 

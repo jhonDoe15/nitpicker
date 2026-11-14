@@ -7,7 +7,7 @@ import {
 import { CONFIG_FILE_NAME, configError } from '../../../shared/config.mjs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { angularWorkspace, javascriptWorkspaces, nxWorkspace } from './javascript-workspaces.mjs';
-import { JVM_MARKERS, jvmBuilds } from './jvm-builds.mjs';
+import { JVM_MARKERS, gradleComposite, jvmBuilds } from './jvm-builds.mjs';
 import { PYTHON_MARKERS, PYTHON_PROJECT_MARKERS, pythonWorkspace } from './python-projects.mjs';
 import {
   directoriesWith,
@@ -90,6 +90,7 @@ function workspacesOf(root, files, submodules) {
     javascriptWorkspaces(root, withSubmodules(directoriesWith(root, files, ['package.json']))),
     nxWorkspace(root, nxProjects),
     angularWorkspace(root),
+    gradleComposite(root),
     pythonWorkspace(root, withSubmodules(directoriesWith(root, files, PYTHON_MARKERS))),
   ];
 }
