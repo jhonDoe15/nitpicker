@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { runPermits } from '../../builds/classes/class-permits.mjs';
-import { runJavacLint } from '../../builds/lint/javac-lint-runner.mjs';
+import { runPermits } from '../../builds/classes/class-permits.mts';
+import { runJavacLint } from '../../builds/lint/javac-lint-runner.mts';
 
 const GUARDS_PLAN = 'guards-plan.json';
 

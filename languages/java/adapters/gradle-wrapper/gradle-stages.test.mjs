@@ -2,8 +2,8 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { gradleStages } from './gradle-stages.mjs';
-import { createJavaAnalyzer } from '../java-analyzer.mjs';
+import { gradleStages } from './gradle-stages.mts';
+import { createJavaAnalyzer } from '../java-analyzer.mts';
 import { parseJavaRunnerArguments } from '../java-policy.mjs';
 
 const roots = [];

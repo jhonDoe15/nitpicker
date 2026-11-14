@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe } from 'vitest';
-import { runJavaDiff } from '../../../adapters/java-diff.mjs';
+import { runJavaDiff } from '../../../adapters/java-diff.mts';
 import { commitBranch, runGitIn } from '../../../adapters/test-support/gradle-e2e.mjs';
 import {
   TOUCHED_BASE,

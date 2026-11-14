@@ -1,8 +1,8 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
-import { analyzeJavaSnapshot } from '../../adapters/java-runner.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
+import { analyzeJavaSnapshot } from '../../adapters/java-runner.mts';
 import {
   LIBRARY_CALLS,
   LIBRARY_CALLS_TEST,

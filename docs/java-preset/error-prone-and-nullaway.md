@@ -82,7 +82,7 @@ Part of the [Java preset guide](../java-preset.md).
   project's packages from its classes, and decides the language level and kept options, so the two
   builds cannot drift apart; the Maven e2e test checks that both give the same findings.
 - **Findings.** `languages/java/ingest/errorprone/errorprone.mjs`, through
-  `languages/java/adapters/errorprone/java-errorprone.mjs`: tool `errorprone`, rule the check
+  `languages/java/adapters/errorprone/java-errorprone.mts`: tool `errorprone`, rule the check
   name (`errorprone/FutureReturnValueIgnored`, `errorprone/NullAway`), every finding enforceable.
   The message is the diagnostic's first line plus Error Prone's `Did you mean ...` fix when it has
   one, rewritten by `ingest/errorprone/messages.mjs`: NullAway gets the allowed form (annotate with

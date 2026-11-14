@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   analyzeJavaSnapshot,
   readRunnerPolicy,
-} from '../../languages/java/adapters/java-runner.mjs';
+} from '../../languages/java/adapters/java-runner.mts';
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { withHeadPolicyFile } from '../../shared/head-policy.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';

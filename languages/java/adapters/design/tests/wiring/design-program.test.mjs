@@ -2,7 +2,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compileDesignProgram, runDesignProgram } from '../../producer/design-program.mjs';
+import { compileDesignProgram, runDesignProgram } from '../../producer/design-program.mts';
 
 const VERSION = { status: 0, stdout: '', stderr: 'openjdk version "21"' };
 const work = [];

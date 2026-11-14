@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { readDocCommentFindings } from './doc-comment-findings.mjs';
+import { readDocCommentFindings } from './doc-comment-findings.mts';
 
 const RULE = 'doc-comment-content';
 const roots = [];

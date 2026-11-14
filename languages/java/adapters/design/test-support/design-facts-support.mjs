@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { produceDesignFacts } from '../producer/design-facts.mjs';
+import { produceDesignFacts } from '../producer/design-facts.mts';
 
 const FIXTURES = path.join(import.meta.dirname, '../fixtures');
 const SOURCE_ROOT = 'src/main/java';

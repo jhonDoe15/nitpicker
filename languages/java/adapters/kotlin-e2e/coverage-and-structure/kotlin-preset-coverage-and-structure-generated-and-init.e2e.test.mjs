@@ -2,7 +2,7 @@ import path from 'node:path';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import {
   diffOf,
   git,

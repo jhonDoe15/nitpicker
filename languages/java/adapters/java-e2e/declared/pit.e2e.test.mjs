@@ -1,7 +1,7 @@
 import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import { declaredToolChoices } from '../../tool-config/declared/declared-choices.mjs';
 import { nitpickerPitArguments } from '../../tool-config/declared/pit-declared.mjs';
 import {

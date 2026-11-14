@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const maven = process.env.NITPICKER_MAVEN;

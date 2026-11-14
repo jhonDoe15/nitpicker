@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out/fan-out-details.mjs';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';

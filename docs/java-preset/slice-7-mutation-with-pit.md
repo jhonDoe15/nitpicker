@@ -68,7 +68,7 @@ there, the other checks ran. Fix the tests and rerun:`) instead of Gradle's own 
   redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
   `exceptions` entry for `mutant-survived` narrowed to the mutated `function`.
 - **The `main` method.** A `mutant-nocoverage` on a line inside the body of a
-  `static void main(String[])` method is dropped (`adapters/reporting/main-method.mjs`, after
+  `static void main(String[])` method is dropped (`adapters/reporting/entry-point/main-method.mts`, after
   every report is read, so it is the same on Gradle and Maven): the method only hands the real
   standard streams to code that tests reach through a writer, so no test runs it. Only that method
   and only the not-covered status: a `main` that a test does run keeps its survived mutants, and
@@ -79,7 +79,7 @@ there, the other checks ran. Fix the tests and rerun:`) instead of Gradle's own 
   `review-rules/source-declarations.mjs`): any `void main` declared with no parameter or one
   `String[]` parameter, in any modifier order, so the JDK 25 launch-protocol forms count and
   `main(int)` does not. Java files only: Kotlin sources have their own rules.
-- **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
+- **Ingester.** `languages/java/ingest/pit.mts` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
   descriptive `mutant-timeout`, `mutant-runtimeerror`, `mutant-compileerror`, `mutant-ignored`;

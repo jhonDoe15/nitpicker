@@ -2,7 +2,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 
 const GIT_TIMEOUT_MS = 30_000;

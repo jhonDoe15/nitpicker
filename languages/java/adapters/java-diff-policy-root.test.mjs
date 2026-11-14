@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { commit, fixtureGit } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { runJavaDiff } from './java-diff.mjs';
+import { runJavaDiff } from './java-diff.mts';
 import { fakeGradleRun } from './test-support/in-process-gradle.mjs';
 
 const roots = [];

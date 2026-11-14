@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
 import {
   LEGACY_TEST,

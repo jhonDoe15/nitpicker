@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { runJavaDiff } from '../../../java-diff.mjs';
+import { runJavaDiff } from '../../../java-diff.mts';
 import { git, kotlinPolicy, writeAll } from '../../test-support/kotlin-e2e-project.mjs';
 
 export {

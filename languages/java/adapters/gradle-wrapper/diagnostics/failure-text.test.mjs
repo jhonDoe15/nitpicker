@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { condenseFailure, withoutToolNoise } from './failure-text.mjs';
+import { condenseFailure, withoutToolNoise } from './failure-text.mts';
 
 const NOTICE = 'Picked up JAVA_TOOL_OPTIONS: -Dhttps.proxyHost=127.0.0.1';
 const ROOT = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-failure-text-')));

@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../../adapters/java-diff.mts';
 import { pitStatuses } from '../../../adapters/java-e2e/test-support/pit/pit-statuses.mjs';
 import {
   useMavenPresetProject,

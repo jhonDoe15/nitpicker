@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { runPit } from '../../maven/pit/maven-pit.mjs';
+import { runPit } from '../../maven/pit/maven-pit.mts';
 import { pitFailureFindings } from './pit-failure.mjs';
 import { pitSkippedFindings, unmutatedFailures, unmutatedSummary } from './pit-skipped.mjs';
 

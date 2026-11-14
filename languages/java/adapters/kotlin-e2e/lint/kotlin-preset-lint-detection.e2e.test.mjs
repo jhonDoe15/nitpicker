@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import {
   diffOf,
   fromTool,

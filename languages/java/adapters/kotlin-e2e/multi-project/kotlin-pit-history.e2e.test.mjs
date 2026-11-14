@@ -2,7 +2,7 @@ import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import { pitStatuses } from '../../java-e2e/test-support/pit/pit-statuses.mjs';
 import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
 

@@ -2,9 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mjs';
-import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
-import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
+import { configurationFiles, createJavaAnalyzer } from '../java-analyzer.mts';
+import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mts';
+import { readJavaFindings as readFindings } from '../reporting/java-reports.mts';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
 import { javaLineLength, javaStyle, javaStyleProperties } from './java-style.mjs';

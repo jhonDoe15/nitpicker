@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
+import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mts';
 import {
   INTERNAL_ERROR_RULE,
   analyzeJavaSnapshot,
-} from '../../../languages/java/adapters/java-runner.mjs';
+} from '../../../languages/java/adapters/java-runner.mts';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { fakeGradleRun, useGradleFixtures } from './test-support/java-cli-harness.mjs';

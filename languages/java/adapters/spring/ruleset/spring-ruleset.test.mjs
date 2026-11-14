@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../../java-analyzer.mjs';
+import { configurationFiles } from '../../java-analyzer.mts';
 import { ALLOWED_FORM_FIRST } from '../test-support/allowed-form.mjs';
 import { withRuleMessage } from '../../../messages/rule-messages.mjs';
 import { guidePages, guideText } from '../../../../../shared/reference/build/guide-pages.mjs';

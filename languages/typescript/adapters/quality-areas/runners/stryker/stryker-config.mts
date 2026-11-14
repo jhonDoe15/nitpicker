@@ -133,10 +133,6 @@ function companionPath(
   return path.posix.join(configDirectory, relativePath.replaceAll('\\', '/'));
 }
 
-export function optionalText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
-}
-
 export type CreatedFiles = {
   readonly track: (filePath: string) => void;
   readonly paths: () => readonly string[];

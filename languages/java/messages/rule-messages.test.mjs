@@ -1,6 +1,6 @@
 import { readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { configurationFiles } from '../adapters/java-analyzer.mjs';
+import { configurationFiles } from '../adapters/java-analyzer.mts';
 import {
   CATALOG_TOOLS,
   applyRuleMessages,

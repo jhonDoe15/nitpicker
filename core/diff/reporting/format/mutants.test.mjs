@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ingestPit } from '../../../../languages/java/ingest/pit.mjs';
+import { ingestPit } from '../../../../languages/java/ingest/pit.mts';
 import { ingestMutmut } from '../../../../languages/python/ingest/mutmut.mjs';
 import { normalizeMutation } from '../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { json } from '../reporters.mjs';

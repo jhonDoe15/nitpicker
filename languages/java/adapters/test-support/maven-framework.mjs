@@ -6,7 +6,7 @@ import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../maven/configuration/maven-classpaths.mjs';
+} from '../../maven/configuration/maven-classpaths.mts';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,
@@ -14,11 +14,11 @@ import {
   junitLauncherVersion,
   runJacocoReport,
 } from '../../maven/maven-tests.mjs';
-import { runPit } from '../../maven/pit/maven-pit.mjs';
-import { copyTestResults } from '../../maven/results/maven-test-results.mjs';
+import { runPit } from '../../maven/pit/maven-pit.mts';
+import { copyTestResults } from '../../maven/results/maven-test-results.mts';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
-import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
-import { ingestPit } from '../../ingest/pit.mjs';
+import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mts';
+import { ingestPit } from '../../ingest/pit.mts';
 import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 

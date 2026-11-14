@@ -3,7 +3,9 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
-import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { matchesRule, overlapPairs, withoutOverlaps } from './static-overlaps.mts';
+
+const OVERLAP_PAIRS = overlapPairs();
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
 const NITPICKER_RULESETS = [

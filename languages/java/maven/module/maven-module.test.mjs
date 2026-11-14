@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest } from '../manifest/maven-manifest.mjs';
-import { buildAndTest } from '../maven-build.mjs';
+import { moduleManifest } from '../manifest/maven-manifest.mts';
+import { buildAndTest } from '../quick/maven-test-phase.mts';
 import { readReactor } from '../maven-project.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const roots = [];
 
@@ -151,14 +152,14 @@ describe('buildAndTest', () => {
 describe('the tools a module runs in parallel processes', () => {
   it('names each tool function in the module that a process imports it from', async () => {
     const directory = path.dirname(fileURLToPath(import.meta.url));
-    const source = readFileSync(path.join(directory, 'maven-module.mjs'), 'utf8');
+    const source = readFileSync(path.join(directory, 'maven-module.mts'), 'utf8');
     const urls = Object.fromEntries(
-      [...source.matchAll(/const (\w+_URL) = new URL\('([^']+)'/gu)].map(([, name, file]) => [
+      [...source.matchAll(/const (\w+_URL) =[^']*new URL\('([^']+)'/gu)].map(([, name, file]) => [
         name,
-        pathToFileURL(path.join(directory, file)).href,
+        pathToFileURL(checkoutModulePath(path.join(directory, file))).href,
       ]),
     );
-    const tasks = [...source.matchAll(/sourceTask\((\w+), (\w+_URL)/gu)];
+    const tasks = [...source.matchAll(/sourceTask\(\s*(\w+),\s*(\w+_URL)/gu)];
     const exported = await Promise.all(
       tasks.map(async ([, tool, url]) => [tool, typeof (await import(urls[url]))[tool]]),
     );

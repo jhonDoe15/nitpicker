@@ -2,8 +2,8 @@ import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
-import { collectJavaFindings } from '../../java-diff.mjs';
-import { analyzeJavaSnapshot } from '../../java-runner.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
+import { analyzeJavaSnapshot } from '../../java-runner.mts';
 import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
 import {
   fromTool,

@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mjs';
-import { collectJavaFindings } from '../../adapters/java-diff.mjs';
+import { collectJavaFindings } from '../../adapters/java-diff.mts';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE,

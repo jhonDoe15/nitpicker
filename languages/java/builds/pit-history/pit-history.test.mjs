@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { gradleStages } from '../../adapters/gradle-wrapper/gradle-stages.mjs';
+import { gradleStages } from '../../adapters/gradle-wrapper/gradle-stages.mts';
 import { INIT_SCRIPT } from '../java-build.mjs';
 import {
   PIT_HISTORY_DIRECTORY,

@@ -2,7 +2,7 @@ import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 import {
   HEAD_TESTS_TOOL,
   isTestFailure,
@@ -10,7 +10,7 @@ import {
   testsFailedFinding,
   withRootSourceRoots,
   withTestsFailures,
-} from './tests-failed.mjs';
+} from './tests-failed.mts';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const temporaryRoots = [];

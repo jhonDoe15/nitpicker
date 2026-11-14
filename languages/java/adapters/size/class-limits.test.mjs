@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { readClassLimitFindings } from './class-limits.mjs';
+import { readClassLimitFindings } from './class-limits.mts';
 import {
   compiledMetrics,
   runMetrics,

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertGradleSucceeded } from './gradle-stage.mjs';
+import { assertGradleSucceeded } from './gradle-stage.mts';
 
 const temporaryRoots = [];
 
@@ -39,7 +39,12 @@ describe('assertGradleSucceeded', () => {
 
   function thrownBy(result, reportBase, { projectRoot = '/p', ...extra } = {}) {
     try {
-      assertGradleSucceeded(result, projectRoot, { reportBase, since: 0, ...extra });
+      assertGradleSucceeded(result, projectRoot, {
+        reportBase,
+        since: 0,
+        checkTests: true,
+        ...extra,
+      });
     } catch (error) {
       return error;
     }

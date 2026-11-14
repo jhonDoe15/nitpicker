@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isExplainedError } from '../../../../../shared/messages/troubleshooting.mjs';
-import { gradleSpawnFailure } from './spawn-failure.mjs';
+import { gradleSpawnFailure } from './spawn-failure.mts';
 
 const budget = { commandTimeoutMs: 15 * 60_000 };
 

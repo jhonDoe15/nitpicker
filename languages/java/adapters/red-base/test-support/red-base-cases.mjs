@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
 import { runCli } from '../../../../../core/cli.mts';
-import { runJavaDiff } from '../../java-diff.mjs';
+import { runJavaDiff } from '../../java-diff.mts';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 

@@ -3,10 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readPinnedTools } from '../../builds/java-build.mjs';
-import { runMavenPreset } from '../maven-build.mjs';
+import { runMavenPreset } from '../maven-build.mts';
 import { toolDependencies } from '../maven-tools.mjs';
 import { withoutTestTools } from './maven-quick.mjs';
-import { buildGoals, readTestRuns, runCoverageTools } from './maven-test-phase.mjs';
+import { buildGoals, readTestRuns, runCoverageTools } from './maven-test-phase.mts';
 
 const roots = [];
 const pinned = readPinnedTools();

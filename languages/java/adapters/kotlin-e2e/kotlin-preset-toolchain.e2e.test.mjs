@@ -2,7 +2,7 @@ import path from 'node:path';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../java-diff.mts';
 import { analyzeWithIncludedBuild } from '../test-support/gradle-e2e.mjs';
 import {
   commitBranch,

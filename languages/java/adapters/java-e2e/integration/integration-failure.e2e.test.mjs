@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mts';
 import {
   enabled,
   fixtures,
