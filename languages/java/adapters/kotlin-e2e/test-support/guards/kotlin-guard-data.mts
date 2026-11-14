@@ -1,10 +1,11 @@
 import path from 'node:path';
+import type { Finding } from '../../../../../../shared/values/findings.mts';
 import { SOURCE_RULE_IDS } from '../../../kotlin/rules/kotlin-rules.mjs';
 
 const PACKAGE = 'package demo.guards\n\n';
 const LOGGER = `${PACKAGE}import java.util.logging.Logger\n\n`;
 const LEVELS = `${PACKAGE}import java.util.logging.Level\nimport java.util.logging.Logger\n\n`;
-function parser(handling) {
+function parser(handling: string) {
   return `${LEVELS}class Parser(private val logger: Logger) {\n    fun parse(text: String): Result<Int> {\n        try {\n            return Result.success(text.toInt())\n        } catch (e: NumberFormatException) {\n            ${handling}\n            return Result.failure(e)\n        }\n    }\n}\n`;
 }
 const methods = Array.from(
@@ -14,7 +15,7 @@ const methods = Array.from(
 
 const HTTP = `${PACKAGE}import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport java.time.Duration\nimport java.util.concurrent.CompletableFuture\n`;
 const BODY = `    private fun body(url: URI): String {\n        val request = HttpRequest.newBuilder(url).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
-function prefetch(task, extra = '') {
+function prefetch(task: string, extra = '') {
   return `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<URI>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
 }
 const LIMITED = `    private fun limited(url: URI): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
@@ -119,7 +120,10 @@ const ALLOWED_TESTS = {
   'OrderTest.kt': `${PACKAGE}import kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass OrderTest {\n    @Test\n    fun totals() {\n        assertEquals(1, subtotal())\n        assertEquals("shipping", "shipping")\n        assertEquals("shipping", "shipping")\n    }\n}\n`,
 };
 
-function guardFiles(sources, tests) {
+function guardFiles(
+  sources: Readonly<Record<string, string>>,
+  tests: Readonly<Record<string, string>>,
+) {
   return {
     ...Object.fromEntries(
       Object.entries(sources).map(([name, text]) => [`${GUARD_ROOT}/${name}`, text]),
@@ -195,7 +199,7 @@ const CLASS_RULES = new Set([
 
 const DETEKT_SOURCE_RULES = new Set(SOURCE_RULE_IDS);
 
-export function guardFindings(findings) {
+export function guardFindings(findings: readonly Finding[]): Finding[] {
   return findings.filter(
     ({ tool, rule }) =>
       GUARD_TOOLS.has(tool) ||
@@ -204,11 +208,11 @@ export function guardFindings(findings) {
   );
 }
 
-export function printedRule({ tool, rule }) {
+export function printedRule({ tool, rule }: Finding): string {
   return tool === 'structure' || tool === 'detekt' ? rule : `${tool}/${rule}`;
 }
 
-export function summary(findings) {
+export function summary(findings: readonly Finding[]): string[] {
   return guardFindings(findings)
     .map(({ tool, rule, path: file }) => `${tool}/${rule} ${path.basename(file)}`)
     .toSorted();

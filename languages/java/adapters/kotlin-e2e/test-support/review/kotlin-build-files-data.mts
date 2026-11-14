@@ -1,6 +1,6 @@
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
 
-export function runtimeSerializationFiles(build) {
+export function runtimeSerializationFiles(build: string): Record<string, string | Uint8Array> {
   return {
     'build.gradle.kts': `${build}
 dependencies {
@@ -11,7 +11,7 @@ dependencies {
   };
 }
 
-export function publishedFiles(build) {
+export function publishedFiles(build: string): Record<string, string> {
   return {
     'build.gradle.kts': `${build.replace('kotlin("jvm") version', '`maven-publish`\n    kotlin("jvm") version')}
 publishing {
@@ -25,7 +25,7 @@ publishing {
   };
 }
 
-export function integrationSuiteFiles(build) {
+export function integrationSuiteFiles(build: string): Record<string, string> {
   return {
     'build.gradle.kts': `${build}
 testing {

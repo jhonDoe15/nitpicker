@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readFileSync, rmSync } from 'node:fs';
 import { afterAll, beforeAll } from 'vitest';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   GREETER_TEST_WITHOUT_JAVA,
   BAD,
@@ -11,7 +12,7 @@ import {
   DANGER,
   MAGIC_NUMBER_OFF_WITH_FORMATTING_RULESET,
   META,
-} from '../test-support/kotlin-lint-data.mjs';
+} from '../test-support/kotlin-lint-data.mts';
 import {
   commitBranch,
   git,
@@ -19,10 +20,12 @@ import {
   kotlinSources,
   removeProject,
   writeAll,
-} from '../test-support/kotlin-e2e-project.mjs';
+  type FileMap,
+  type KotlinProject,
+} from './kotlin-e2e-project.mts';
 
 const BAD_DETEKT_FINDINGS = [
-  ...Array(6).fill('detekt detekt.style.MagicNumber Bad.kt'),
+  ...Array.from({ length: 6 }, () => 'detekt detekt.style.MagicNumber Bad.kt'),
   'detekt detekt.style.UnusedPrivateProperty Bad.kt',
 ];
 const BAD_BRANCH_FINDINGS = ['jacoco changed-branch-coverage Bad.kt'];
@@ -60,10 +63,10 @@ const COMMON_BRANCHES = {
   ktfmt: { [`${kotlinSources}/Bad.kt`]: BAD, [`${kotlinSources}/Meta.kt`]: META },
 };
 
-export function gradleLintBranches(project) {
+export function gradleLintBranches(project: KotlinProject): Record<string, FileMap> {
   return {
     'java-palantir': { 'src/main/java/demo/Danger.java': DANGER },
-    'no-formatter': { [`${kotlinSources}/Bad.kt`]: BAD, '.editorconfig': null },
+    'no-formatter': { [`${kotlinSources}/Bad.kt`]: BAD, '.editorconfig': undefined },
     'ktfmt-named': {
       'build.gradle.kts': `${readFileSync(path.join(project.root, 'build.gradle.kts'), 'utf8')}\nval formatter = "com.ncorti.ktfmt.gradle"\n`,
     },
@@ -75,33 +78,38 @@ export function gradleLintBranches(project) {
 export function useKotlinLintProject({
   initialize = initializeProject,
   branches = gradleLintBranches,
-} = {}) {
-  let project;
-  let kotlinOnlyProject;
+}: {
+  initialize?: () => KotlinProject;
+  branches?: (project: KotlinProject) => Record<string, FileMap>;
+} = {}): { readonly project: KotlinProject; readonly kotlinOnlyProject: KotlinProject } {
+  let project: KotlinProject | undefined;
+  let kotlinOnlyProject: KotlinProject | undefined;
   beforeAll(() => {
-    kotlinOnlyProject = initialize();
-    rmSync(path.join(kotlinOnlyProject.root, 'src/main/java'), { recursive: true });
-    writeAll(kotlinOnlyProject, {
+    const kotlinOnly = initialize();
+    kotlinOnlyProject = kotlinOnly;
+    rmSync(path.join(kotlinOnly.root, 'src/main/java'), { recursive: true });
+    writeAll(kotlinOnly, {
       'src/test/kotlin/demo/GreeterTest.kt': GREETER_TEST_WITHOUT_JAVA,
     });
-    git(kotlinOnlyProject, 'add', '-A');
-    git(kotlinOnlyProject, 'commit', '-q', '-m', 'Kotlin only');
-    commitBranch(kotlinOnlyProject, 'kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
-    project = initialize();
-    for (const [name, files] of Object.entries({ ...COMMON_BRANCHES, ...branches(project) })) {
-      commitBranch(project, name, files);
+    git(kotlinOnly, 'add', '-A');
+    git(kotlinOnly, 'commit', '-q', '-m', 'Kotlin only');
+    commitBranch(kotlinOnly, 'kotlin-only-violation', { [`${kotlinSources}/Bad.kt`]: BAD });
+    const created = initialize();
+    project = created;
+    for (const [name, files] of Object.entries({ ...COMMON_BRANCHES, ...branches(created) })) {
+      commitBranch(created, name, files);
     }
   });
   afterAll(() => {
-    removeProject(project);
-    removeProject(kotlinOnlyProject);
+    removeProject(assigned(project, 'project'));
+    removeProject(assigned(kotlinOnlyProject, 'kotlinOnlyProject'));
   });
   return {
     get project() {
-      return project;
+      return assigned(project, 'project');
     },
     get kotlinOnlyProject() {
-      return kotlinOnlyProject;
+      return assigned(kotlinOnlyProject, 'kotlinOnlyProject');
     },
   };
 }

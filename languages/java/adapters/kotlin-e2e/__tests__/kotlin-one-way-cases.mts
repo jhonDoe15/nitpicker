@@ -4,24 +4,58 @@ import {
   expectedMessage,
   fixturePath,
   kotlinRuleCases,
-} from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { withKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
+} from '../../kotlin/rules/test-support/kotlin-rule-cases.mts';
+import { exceptionHint as untypedExceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { withKotlinRuleMessage as untypedWithKotlinRuleMessage } from '../../kotlin/rules/kotlin-messages.mjs';
 import { SUPPRESSION_RULE } from '../../kotlin/rules/kotlin-rules.mjs';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   detektFindingsOf,
   fromTool,
   git,
   kotlinPolicy,
   summarize,
-} from '../test-support/kotlin-e2e-project.mjs';
+  type DiffResult,
+  type KotlinPolicy,
+  type KotlinProject,
+} from './kotlin-e2e-project.mts';
+import type { KotlinRuleCase } from '../../kotlin/rules/test-support/kotlin-guard-cases.mts';
+
+type CaseFixture = { readonly project: KotlinProject };
+type RecordedFinding = {
+  readonly tool: string;
+  readonly rule: string;
+  readonly path: string;
+  readonly message: string | undefined;
+  readonly classification: string;
+};
+
+const withKotlinRuleMessage: (finding: RecordedFinding) => { readonly message: string } =
+  untypedWithKotlinRuleMessage;
+const exceptionHint: (rule: string, file: string) => string = untypedExceptionHint;
 
 const RUN_BLOCKING =
   'The method `kotlinx.coroutines.runBlocking` has been forbidden: Make the caller `suspend` (`suspend fun main()` for an entry point) and use `coroutineScope { ... }` for concurrent work. In a test, use `runTest`.';
 const RUN =
   'The method `kotlin.run` has been forbidden: Use `let` to name a value for a block (`value?.let { ... }` for null), or call the code directly.';
 
-function recordedFinding(testCase, file) {
+function byText(left: readonly string[], right: readonly string[]): number {
+  const leftText = left.join(',');
+  const rightText = right.join(',');
+  if (leftText === rightText) {
+    return 0;
+  }
+  return leftText < rightText ? -1 : 1;
+}
+
+function caseNamed(id: string): KotlinRuleCase {
+  return assigned(
+    kotlinRuleCases.find((testCase) => testCase.id === id),
+    id,
+  );
+}
+
+function recordedFinding(testCase: KotlinRuleCase, file: string) {
   return withKotlinRuleMessage({
     tool: 'detekt',
     rule: testCase.rule,
@@ -31,7 +65,10 @@ function recordedFinding(testCase, file) {
   });
 }
 
-export function defineBannedCases(fixture, runWithPolicy) {
+export function defineBannedCases(
+  fixture: CaseFixture & { readonly bannedResult: DiffResult },
+  runWithPolicy: (project: KotlinProject, policy: KotlinPolicy) => DiffResult,
+): void {
   it.each(kotlinRuleCases.map((testCase) => [testCase.id, testCase]))(
     'fails the banned form %s with a message that names the allowed form',
     (_id, testCase) => {
@@ -48,7 +85,9 @@ export function defineBannedCases(fixture, runWithPolicy) {
         found.map((finding) => [finding.path, message === undefined ? undefined : finding.message]),
         summarize(result.newEnforceable).join('\n'),
       ).toEqual([[file, message]]);
-      expect(found[0].message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
+      expect(assigned(found[0], 'found').message.toLowerCase()).toContain(
+        testCase.allowedForm.toLowerCase(),
+      );
     },
   );
   it('reports the detekt message each case records and the hint that the gate adds', () => {
@@ -57,8 +96,11 @@ export function defineBannedCases(fixture, runWithPolicy) {
     const compared = kotlinRuleCases
       .filter(({ rule }) => rule !== SUPPRESSION_RULE)
       .map((testCase) => {
-        const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
-          ({ rule }) => rule === testCase.rule,
+        const finding = assigned(
+          detektFindingsOf(result.newEnforceable, testCase).find(
+            ({ rule }) => rule === testCase.rule,
+          ),
+          'finding',
         );
         return {
           actual: finding.message,
@@ -70,7 +112,10 @@ export function defineBannedCases(fixture, runWithPolicy) {
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
     const result = fixture.bannedResult;
-    const suppression = kotlinRuleCases.find(({ rule }) => rule === SUPPRESSION_RULE);
+    const suppression = assigned(
+      kotlinRuleCases.find(({ rule }) => rule === SUPPRESSION_RULE),
+      'suppression',
+    );
 
     expect(detektFindingsOf(result.newEnforceable, suppression).map(({ rule }) => rule)).toEqual([
       SUPPRESSION_RULE,
@@ -78,14 +123,13 @@ export function defineBannedCases(fixture, runWithPolicy) {
   });
   it('lifts a rule for the paths of an exception in nitpicker.config.json only', () => {
     git(fixture.project, 'checkout', '-q', 'one-way-banned');
-    const exception = (testCase) => ({
+    const exception = (testCase: KotlinRuleCase) => ({
       rule: testCase.rule,
       paths: [fixturePath(testCase, 'banned')],
       reason: 'The test lifts this rule for one path.',
     });
-    const [scopeRun, scopeWith] = ['scopeRun', 'scopeWith'].map((id) =>
-      kotlinRuleCases.find((testCase) => testCase.id === id),
-    );
+    const scopeRun = caseNamed('scopeRun');
+    const scopeWith = caseNamed('scopeWith');
     const result = runWithPolicy(fixture.project, {
       ...kotlinPolicy,
       exceptions: [exception(scopeRun)],
@@ -98,7 +142,7 @@ export function defineBannedCases(fixture, runWithPolicy) {
   });
 }
 
-export function defineAllowedCases(fixture) {
+export function defineAllowedCases(fixture: { readonly allowedResult: DiffResult }): void {
   it('lets the allowed form of every case through detekt', () => {
     const result = fixture.allowedResult;
 
@@ -106,7 +150,10 @@ export function defineAllowedCases(fixture) {
   });
 }
 
-export function defineHostileConfigCases(fixture, failureRule) {
+export function defineHostileConfigCases(
+  fixture: { readonly hostileConfigResult: DiffResult },
+  failureRule: string,
+): void {
   it('keeps every one-way rule on when the project config switches rulesets off, lowers severities or excludes paths, and still runs with plugin rulesets', () => {
     const result = fixture.hostileConfigResult;
     const missing = kotlinRuleCases
@@ -180,7 +227,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
         (file.includes('/demo/extras/') || file.includes('/demo/scopeRun/')),
     );
 
-    const routed = (file, message) =>
+    const routed = (file: string, message: string) =>
       `${message} ${exceptionHint('detekt.style.ForbiddenMethodCall', file)}`;
     const expected = {
       'Annotated.kt': RUN,
@@ -193,17 +240,17 @@ export function defineHostileConfigCases(fixture, failureRule) {
         'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.',
       'Wildcard.kt': RUN_BLOCKING,
     };
-    const fileOf = (name) =>
+    const fileOf = (name: string) =>
       name === 'Banned.kt'
         ? 'src/main/kotlin/demo/scopeRun/Banned.kt'
         : `src/main/kotlin/demo/extras/${name}`;
 
     expect(
-      forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(),
+      forbidden.map(({ path: file, message }) => [path.basename(file), message]).sort(byText),
     ).toEqual(
       Object.entries(expected)
         .map(([name, message]) => [name, routed(fileOf(name), message)])
-        .sort(),
+        .sort(byText),
     );
   });
   it('does not analyze a Kotlin script among the sources', () => {

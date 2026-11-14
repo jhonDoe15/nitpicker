@@ -1,4 +1,5 @@
 import { afterAll, beforeAll } from 'vitest';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   BROKEN,
   GENERATED,
@@ -12,8 +13,8 @@ import {
   PORTS_TEST,
   SPREAD,
   SPREAD_TEST,
-} from '../test-support/kotlin-branch-coverage-data.mjs';
-import { BOOTER, BOOTER_TEST, BOX_TEST, boxes } from '../test-support/kotlin-initializer-data.mjs';
+} from '../test-support/kotlin-branch-coverage-data.mts';
+import { BOOTER, BOOTER_TEST, BOX_TEST, boxes } from '../test-support/kotlin-initializer-data.mts';
 import {
   COMBINE,
   COMBINE_TEST,
@@ -35,7 +36,7 @@ import {
   clonedClass,
   stabilityClass,
   stabilityFiles,
-} from '../test-support/kotlin-structure-data.mjs';
+} from '../test-support/kotlin-structure-data.mts';
 import {
   commitBranch,
   commitFromBranch,
@@ -43,7 +44,8 @@ import {
   initializeProject,
   kotlinSources,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
+  type KotlinProject,
+} from './kotlin-e2e-project.mts';
 
 const TEST_ONLY_FILES = {
   [`${kotlinSources}/Shouting.kt`]:
@@ -67,8 +69,12 @@ const TEST_ONLY_FILES = {
   ].join('\n'),
 };
 // Each file gets its own fixture tree and retains the original setup and cleanup.
-export function useKotlinCoverageProject({ initialize = initializeProject } = {}) {
-  let project;
+export function useKotlinCoverageProject({
+  initialize = initializeProject,
+}: {
+  initialize?: () => KotlinProject;
+} = {}): { readonly project: KotlinProject } {
+  let project: KotlinProject | undefined;
   beforeAll(() => {
     project = initialize();
     commitBranch(project, 'one-sided-branch', {
@@ -137,11 +143,11 @@ export function useKotlinCoverageProject({ initialize = initializeProject } = {}
     });
   });
   afterAll(() => {
-    removeProject(project);
+    removeProject(assigned(project, 'project'));
   });
   return {
     get project() {
-      return project;
+      return assigned(project, 'project');
     },
   };
 }

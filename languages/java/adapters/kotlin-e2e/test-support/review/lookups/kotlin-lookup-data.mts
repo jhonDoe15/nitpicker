@@ -80,7 +80,7 @@ export const EXPECTED_LOOKUP_FINDINGS = [
   'ServiceLocatorLookup Checkout: Koin inject()',
 ];
 
-export function lookupBuild(build) {
+export function lookupBuild(build: string): string {
   return `${build}
 dependencies {
     compileOnly("io.insert-koin:koin-core:4.0.4")

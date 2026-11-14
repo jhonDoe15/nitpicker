@@ -76,12 +76,16 @@ class DeepTest {
 }
 `;
 
-export function classifier(name, branches, { bump = 1, step = 10 } = {}) {
+export function classifier(
+  name: string,
+  branches: number,
+  { bump = 1, step = 10 }: { bump?: number; step?: number } = {},
+): string {
   return `package demo
 
 fun ${name}(value: Int): Int {
     var result = 0
-${Array.from({ length: branches }, (_, index) => `    if (value > ${index * step}) {\n        result += ${index === 0 ? bump : 1}\n    }`).join('\n')}
+${Array.from({ length: branches }, (_, index) => `    if (value > ${String(index * step)}) {\n        result += ${String(index === 0 ? bump : 1)}\n    }`).join('\n')}
     return result
 }
 `;
@@ -144,20 +148,31 @@ class TiersTest {
 }
 `;
 
-export function clonedClass(name) {
+function clonedSteps(): string {
+  return Array.from({ length: 12 }, (_, index) =>
+    [
+      `        total += (a * ${String(index + 2)}) + (b - ${String(index)})`,
+      `        if (total > ${String(index * 10)}) {`,
+      `            total -= ${String(index + 1)}`,
+      '        }',
+    ].join('\n'),
+  ).join('\n');
+}
+
+export function clonedClass(name: string): string {
   return `package demo
 
 class ${name} {
     fun total(a: Int, b: Int): Int {
         var total = 0
-${Array.from({ length: 12 }, (_, index) => `        total += (a * ${index + 2}) + (b - ${index})\n        if (total > ${index * 10}) {\n            total -= ${index + 1}\n        }`).join('\n')}
+${clonedSteps()}
         return total
     }
 }
 `;
 }
 
-export function stabilityClass(packageName, name, body) {
+export function stabilityClass(packageName: string, name: string, body: string): string {
   return `package ${packageName}
 
 class ${name} {
@@ -166,7 +181,7 @@ class ${name} {
 `;
 }
 
-export function stabilityFiles(suffix) {
+export function stabilityFiles(suffix: string): Record<string, string> {
   return {
     [`src/main/kotlin/client${suffix}/ClientOne.kt`]: stabilityClass(
       `client${suffix}`,
@@ -196,7 +211,7 @@ export const FLATTEN = `package demo
 
 fun flatten(value: Int): Int {
     var result = 0
-${Array.from({ length: 5 }, (_, index) => `    if (value > ${index * 10}) {\n        result += ${index + 1}\n    }`).join('\n')}
+${Array.from({ length: 5 }, (_, index) => `    if (value > ${String(index * 10)}) {\n        result += ${String(index + 1)}\n    }`).join('\n')}
     return result
 }
 `;
