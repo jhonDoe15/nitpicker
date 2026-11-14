@@ -23,13 +23,21 @@ const emptyFile = {
   exhaustiveLastEntries: [],
 };
 
-const generatedFilter: (facts: { files: unknown[] }) => (mutants: unknown[]) => unknown =
+type MutantFilter = (mutant: unknown, filePath?: string) => string | undefined;
+
+const generatedFilter: (facts: {
+  files: unknown[];
+}) => (mutants: unknown[]) => (mutant: unknown, filePath?: string) => unknown =
   createGeneratedFilter;
 
-type Fields = Readonly<Record<string, unknown>>;
+export type Fields = Readonly<Record<string, unknown>>;
 
-export function filterFor(file: Fields = {}, mutants: unknown[] = []): unknown {
-  return generatedFilter({ files: [{ ...emptyFile, ...file }] })(mutants);
+export function filterFor(file: Fields = {}, mutants: unknown[] = []): MutantFilter {
+  const filter = generatedFilter({ files: [{ ...emptyFile, ...file }] })(mutants);
+  return (mutant, filePath) => {
+    const rule = filter(mutant, filePath);
+    return typeof rule === 'string' ? rule : undefined;
+  };
 }
 
 export function mutant(overrides: Fields) {

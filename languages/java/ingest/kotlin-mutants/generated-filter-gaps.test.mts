@@ -10,6 +10,7 @@ import {
   negate,
   removed,
   returns,
+  type Fields,
 } from './test-support/filter-helpers.mts';
 
 const suspendDescription = '(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;';
@@ -76,7 +77,8 @@ describe('the out-of-line copy of an inline function that inlines another one', 
       fn({ name: 'again', start: 22, end: 30, inline: true }),
     ],
   });
-  const inCopy = (method, line) => filter(mutant({ ...boundary, method, line }), FILE);
+  const inCopy = (method: string, line: number) =>
+    filter(mutant({ ...boundary, method, line }), FILE);
 
   it("drops its mutants past the end of the file, also in the $$forInline copy, and keeps a caller's", () => {
     expect([
@@ -109,7 +111,8 @@ describe('suspend lambdas with labeled returns and delegated setters', () => {
       },
     ],
   });
-  const result = (line) => filter(mutant({ method: 'invokeSuspend', ...returns, line }), FILE);
+  const result = (line: number) =>
+    filter(mutant({ method: 'invokeSuspend', ...returns, line }), FILE);
 
   it('keeps an early return@async and the final value, and drops the synthetic return on another line', () => {
     expect([result(12), result(15), result(13)]).toEqual([
@@ -120,7 +123,7 @@ describe('suspend lambdas with labeled returns and delegated setters', () => {
   });
 
   it('keeps the setValue call of a delegated property and drops its getter return', () => {
-    const inDemo = (method, overrides) =>
+    const inDemo = (method: string, overrides: Fields) =>
       filter(mutant({ className: 'demo.Demo', method, line: 20, ...overrides }), FILE);
 
     expect([
@@ -131,7 +134,7 @@ describe('suspend lambdas with labeled returns and delegated setters', () => {
 });
 
 describe('accessor names', () => {
-  const property = (name, overrides) => ({
+  const property = (name: string, overrides?: Fields) => ({
     name,
     start: 20,
     end: 20,
@@ -149,7 +152,7 @@ describe('accessor names', () => {
       },
     ],
   });
-  const inDemo = (method) =>
+  const inDemo = (method: string) =>
     filter(mutant({ className: 'demo.Demo', method, line: 20, ...returns }), FILE);
 
   it('gives the is-form only to names like isActive and strips the module suffix of an internal accessor', () => {
@@ -184,7 +187,7 @@ describe('Unit results', () => {
       lambda({ start: 32, end: 32, valueLines: [32, 32], callee: 'custom' }),
     ],
   });
-  const inDemo = (overrides) => filter(mutant({ ...returns, ...overrides }), FILE);
+  const inDemo = (overrides: Fields) => filter(mutant({ ...returns, ...overrides }), FILE);
 
   it('drops a return mutant of a method whose descriptor returns kotlin.Unit', () => {
     expect([
@@ -240,7 +243,7 @@ describe('@JvmStatic in a companion object', () => {
       }),
     ],
   });
-  const inClass = (className, method) =>
+  const inClass = (className: string, method: string) =>
     filter(mutant({ className, method, line: 8, ...returns }), FILE);
 
   it('drops the static bridge of the outer class and keeps the companion method and other outer methods', () => {
@@ -266,7 +269,7 @@ describe('a serializable class', () => {
       },
     ],
   });
-  const inPoint = (method, line) =>
+  const inPoint = (method: string, line: number) =>
     filter(mutant({ className: 'demo.Point', method, line, ...negate }), FILE);
 
   it('keeps the written function of the class and drops its generated write$Self on the header', () => {
