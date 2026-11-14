@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { analyzeEntryPoints } from '../../typescript/preset/entry-points/analyze.mjs';
 import { resolveLayout } from '../../typescript/preset/layout.mjs';
-import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mjs';
+import { analyzeTestRuntime } from '../../typescript/preset/test-runtime/analyze.mts';
 
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
 const typescriptLayout = resolveLayout();

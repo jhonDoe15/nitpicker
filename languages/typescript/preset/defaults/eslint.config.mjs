@@ -44,7 +44,7 @@ import { detachedWorkRunnerNames } from '../../conventions/measures/detached-wor
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
-} from '../test-environment/test-environment-config.mjs';
+} from '../test-environment/test-environment-config.mts';
 
 const policy = readHeadPolicy();
 
@@ -210,7 +210,7 @@ const presetConfig = defineConfig(
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
     testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
   }),
-  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables()),
+  ...testEnvironmentConfigFor(layout, testEnvironmentsFromVariables(process.env)),
 );
 
 const inactiveRuleIds = [
