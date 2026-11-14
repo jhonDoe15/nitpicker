@@ -1,11 +1,12 @@
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { fieldOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { DUPLICATES_TOOL } from '../../../core/tooling/jscpd/run-jscpd.mjs';
+import { jscpdVersion } from './typed/tests/tools-test-views.mts';
 import { PYTEST_PROBE } from './execution/python-test-runner.mjs';
 import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
-import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
+import { stubCallsLog } from './test-support/runs/calls-log.mts';
+import { installFakeToolchain } from './test-support/fake-toolchain.mts';
 import {
   configurationFiles,
   createMutationAnalyzer,
@@ -14,20 +15,38 @@ import {
   MUTATION_ANALYZER_NAME,
   PYTHON_ANALYZER_NAME,
 } from './python-analyzer.mjs';
+import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-analyzer-')));
-  roots.push(root);
-  return root;
+const NO_EXTRAS = { baselineMovesFile: undefined, mutationScope: undefined };
+
+function analyzerPair(settings: { testRunner: string }) {
+  const [python, mutation] = createPythonAnalyzers(settings);
+  if (python === undefined || mutation === undefined) {
+    throw new Error('both analyzers expected');
+  }
+  return { python, mutation };
+}
+
+type Probe = { tool: string; args: string[]; cwd: string | undefined };
+
+function parseProbe(line: string): Probe {
+  const probe = parseJson(line);
+  const cwd = fieldOf(probe, 'cwd');
+  return {
+    tool: textOf(fieldOf(probe, 'tool')),
+    args: textsOf(fieldOf(probe, 'args')),
+    cwd: cwd === undefined ? undefined : textOf(cwd),
+  };
+}
+
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-analyzer-');
 }
 
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
 });
 
 describe('Python analyzer', () => {
@@ -47,7 +66,7 @@ describe('Python analyzer', () => {
       'crap',
       'python-rules',
       'coverage-py',
-      'duplicates',
+      DUPLICATES_TOOL,
       'coupling',
       'import-linter',
       'tests',
@@ -64,7 +83,10 @@ describe('Python analyzer', () => {
   it('has mutation testing as an analyzer of its own that runs after the others and can be disabled', () => {
     const analyzer = createMutationAnalyzer();
 
-    expect(createPythonAnalyzers().map(({ name }) => name)).toEqual(['python', 'mutation']);
+    expect(createPythonAnalyzers().map(({ name }) => name)).toEqual([
+      PYTHON_ANALYZER_NAME,
+      MUTATION_ANALYZER_NAME,
+    ]);
     expect(analyzer.name).toBe(MUTATION_ANALYZER_NAME);
     expect(analyzer.reportedTools).toEqual(['mutmut']);
     expect(analyzer.dependencies).toEqual([PYTHON_ANALYZER_NAME]);
@@ -79,7 +101,7 @@ describe('Python analyzer', () => {
     const required = [
       'languages/python/ruff/nitpicker-ruff.toml',
       'languages/python/adapters/execution/python-test-runner.mjs',
-      'languages/python/ingest/coverage-reports/coverage-json.mjs',
+      'languages/python/ingest/coverage-reports/coverage-json.mts',
       'shared/ingest/sarif.mjs',
       'shared/policy.mjs',
       'shared/rules/baseline-expansion.mjs',
@@ -87,7 +109,7 @@ describe('Python analyzer', () => {
     ];
     expect(required.filter((file) => !files.includes(file))).toEqual([]);
     expect(
-      files.filter((file) => /\.test\.mjs$|(^|\/)(fixtures|test-support)\//.test(file)),
+      files.filter((file) => /\.test\.m[jt]s$|(^|\/)(fixtures|test-support)\//.test(file)),
     ).toEqual([]);
   });
 
@@ -99,13 +121,14 @@ describe('Python analyzer', () => {
         projectRoot: '/snapshot',
         liveProjectRoot: '/live',
         toolRoot: '/tool',
+        ...NO_EXTRAS,
       }),
     ).toEqual({
       command: process.execPath,
       args: [
-        expect.stringMatching(/python-runner\.mjs$/),
+        expect.stringMatching(/python-runner\.m[jt]s$/),
         '--part',
-        'python',
+        PYTHON_ANALYZER_NAME,
         '--project-root',
         '/snapshot',
         '--live-root',
@@ -121,9 +144,10 @@ describe('Python analyzer', () => {
           projectRoot: '/snapshot',
           liveProjectRoot: '/live',
           toolRoot: '/tool',
+          ...NO_EXTRAS,
         })
         .args.slice(1, 3),
-    ).toEqual(['--part', 'mutation']);
+    ).toEqual(['--part', MUTATION_ANALYZER_NAME]);
   });
 
   it('leaves the settings out when there are none', () => {
@@ -131,12 +155,13 @@ describe('Python analyzer', () => {
       projectRoot: '/snapshot',
       liveProjectRoot: '/live',
       toolRoot: '/tool',
+      ...NO_EXTRAS,
     });
 
     expect(args).toEqual([
-      expect.stringMatching(/python-runner\.mjs$/),
+      expect.stringMatching(/python-runner\.m[jt]s$/),
       '--part',
-      'python',
+      PYTHON_ANALYZER_NAME,
       '--project-root',
       '/snapshot',
       '--live-root',
@@ -150,6 +175,7 @@ describe('Python analyzer', () => {
       liveProjectRoot: '/live',
       toolRoot: '/tool',
       baselineMovesFile: '/m/moves.json',
+      mutationScope: undefined,
     };
 
     expect(createPythonAnalyzer().createInvocation(context).args.slice(-2)).toEqual([
@@ -196,19 +222,16 @@ describe('Python analyzer', () => {
 
   describe('probing the tools', () => {
     function useCallsLog() {
-      const log = path.join(temporaryRoot(), 'calls.jsonl');
-      writeFileSync(log, '');
-      vi.stubEnv('FAKE_PYTHON_LOG', log);
-      return () =>
-        readFileSync(log, 'utf8')
-          .split('\n')
-          .filter(Boolean)
-          .map((line) => JSON.parse(line))
-          .map(({ tool, args, cwd }) => ({ tool, args, cwd }));
+      const lines = stubCallsLog(temporaryRoot());
+      return () => lines().map(parseProbe);
     }
 
-    const probeOf = (command, cwd) => ({ tool: command[0], args: command.slice(1), cwd });
-    const versionOf = (tool, cwd) => probeOf([tool, '--version'], cwd);
+    const probeOf = (command: readonly string[], cwd: string): Probe => ({
+      tool: command[0] ?? '',
+      args: command.slice(1),
+      cwd,
+    });
+    const versionOf = (tool: string, cwd: string) => probeOf([tool, '--version'], cwd);
 
     it('probes each tool once when base and head resolve the versions, and again for another checkout', () => {
       const live = temporaryRoot();
@@ -216,8 +239,8 @@ describe('Python analyzer', () => {
       installFakeToolchain(path.join(live, '.venv/bin'));
       installFakeToolchain(path.join(other, '.venv/bin'));
       const calls = useCallsLog();
-      const [python, mutation] = createPythonAnalyzers({ testRunner: 'pytest' });
-      const pythonProbes = (cwd) => [
+      const { python, mutation } = analyzerPair({ testRunner: 'pytest' });
+      const pythonProbes = (cwd: string) => [
         versionOf('ruff', cwd),
         versionOf('mypy', cwd),
         versionOf('coverage', cwd),
@@ -249,14 +272,18 @@ describe('Python analyzer', () => {
 
     it('probes a tool again once it is installed in the environment', () => {
       const live = temporaryRoot();
-      installFakeToolchain(path.join(live, '.venv/bin'), ['ruff', 'coverage', 'python']);
+      installFakeToolchain(path.join(live, '.venv/bin'), [
+        'ruff',
+        'coverage',
+        PYTHON_ANALYZER_NAME,
+      ]);
       vi.stubEnv('PATH', temporaryRoot());
       const python = createPythonAnalyzer({ typeChecker: 'mypy' });
       const jscpd = `jscpd@${jscpdVersion()}`;
 
-      const before = python.resolveVersion(live);
+      const before: unknown = python.resolveVersion(live);
       installFakeToolchain(path.join(live, '.venv/bin'), ['mypy']);
-      const after = python.resolveVersion(live);
+      const after: unknown = python.resolveVersion(live);
 
       expect([before, after]).toEqual([
         `ruff@0.9.9;mypy@missing;coverage@7.6.1;unittest;${jscpd}`,
@@ -268,8 +295,8 @@ describe('Python analyzer', () => {
   it('reports a missing environment when resolving the version', () => {
     const live = temporaryRoot();
 
-    expect(() => createPythonAnalyzer({ environment: 'nowhere' }).resolveVersion(live)).toThrow(
-      'No Python environment',
-    );
+    expect(() => {
+      createPythonAnalyzer({ environment: 'nowhere' }).resolveVersion(live);
+    }).toThrow('No Python environment');
   });
 });

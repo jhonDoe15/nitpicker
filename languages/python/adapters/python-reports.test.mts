@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ruffFindings } from './python-reports.mjs';
+import { ruffFindings } from './python-reports.mts';
 
 const root = '/work/project';
-const sarif = (...results) => ({
+type Result = { rule: string; text: string; line: number };
+
+const sarif = (...results: Result[]) => ({
   runs: [
     {
       tool: { driver: { name: 'ruff' } },
@@ -22,7 +24,7 @@ const sarif = (...results) => ({
     },
   ],
 });
-const identities = (log) =>
+const identities = (log: unknown) =>
   ruffFindings(log, { roots: [root], projectRoot: root }).map(({ identity }) => identity);
 
 describe('ruff findings', () => {
@@ -48,6 +50,6 @@ describe('ruff findings', () => {
       { roots: [root], projectRoot: root },
     );
 
-    expect(finding.message).toBe('Redefinition of unused `dup` from line 10');
+    expect(finding?.message).toBe('Redefinition of unused `dup` from line 10');
   });
 });
