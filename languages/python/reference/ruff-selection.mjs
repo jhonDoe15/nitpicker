@@ -7,6 +7,9 @@ import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 const CODE = /^([A-Z]+)(\d*)$/u;
 const MAXIMUM_OUTPUT = 64 * 1024 * 1024;
 const SECTION = /^## (.+)$/mu;
+const SAFETY_SECTION = /^## Fix safety\n([\s\S]*?)(?=\n## |(?![\s\S]))/mu;
+const SAFE_WORD = /\bsafe\b/iu;
+const UNSAFE_WORD = /unsafe|display-only/iu;
 const FENCE = /```\w*\n[\s\S]*?```/gu;
 const USE_INSTEAD = /Use instead:\s*```python\n([\s\S]*?)```/u;
 const REFERENCE_LINK = /\[([^\]]+)\](?!\()/gu;
@@ -53,6 +56,15 @@ function explained({ explanation = '' }) {
   );
 }
 
+function hasSafeFix({ fix = '', explanation = '' }) {
+  if (fix.includes('not available')) {
+    return false;
+  }
+  const safety = SAFETY_SECTION.exec(explanation)?.[1];
+  const first = safety === undefined ? '' : (paragraphsOf(safety)[0] ?? '');
+  return safety === undefined || (SAFE_WORD.test(first) && !UNSAFE_WORD.test(first));
+}
+
 function selectedRuffRules(rules) {
   return rules
     .filter(
@@ -63,6 +75,7 @@ function selectedRuffRules(rules) {
       name: rule.name,
       linter: rule.linter,
       summary: rule.summary,
+      ...(hasSafeFix(rule) ? { safeFix: true } : {}),
       ...explained(rule),
     }))
     .toSorted((left, right) => left.code.localeCompare(right.code));

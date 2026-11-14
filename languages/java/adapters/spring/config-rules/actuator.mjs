@@ -32,6 +32,10 @@ const SHUTDOWN_SWITCHES = new Set(
   ['management.endpoint.shutdown.enabled', 'management.endpoints.enabled-by-default'].map(relaxKey),
 );
 
+export function isSensitiveEndpoint(endpoint) {
+  return SENSITIVE_ENDPOINTS.has(endpoint);
+}
+
 function valueOf(entry) {
   return placeholderDefault(entry.value.trim()).toLowerCase();
 }

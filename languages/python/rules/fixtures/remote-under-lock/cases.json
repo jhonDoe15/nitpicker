@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "remote-call-under-lock",
+    "mention": "releasing",
+    "subject": "requests.get()|LOCK"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "remote-call-under-lock",
+    "mention": "fill-once block",
+    "subject": "requests.get()|LOCK"
+  }
+]

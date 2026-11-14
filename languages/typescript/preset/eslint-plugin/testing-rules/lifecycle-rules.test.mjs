@@ -7,6 +7,7 @@ import { rule as noFirstTestChargedSetup } from '../rules/testing/lifecycle/no-f
 import { rule as noIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from '../rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -29,46 +30,50 @@ const ruleTester = new RuleTester({
 const testFile = '/repo/tests/integration/repository.test.ts';
 const lines = (...parts) => parts.join('\n');
 const sourceFile = '/repo/src/service.ts';
-ruleTester.run('container-pause-requires-finally-unpause', containerPauseRequiresFinallyUnpause, {
-  valid: [
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, reason: 'network' }; }",
-    },
-    {
-      filename: '/repo/src/main/feature.ts',
-      code: "try { return { ok: true, value: execute() }; } catch { return { ok: false, reason: 'network' }; }",
-    },
-    {
-      filename: '/repo/tests/integration/paused.test.ts',
-      code: 'try { await container.pause(); } finally { await container.unpause(); }',
-    },
-    {
-      filename: '/repo/tests/integration/paused.test.ts',
-      code: 'await withPausedContainer(container, async () => run());',
-    },
-    { filename: '/repo/tests/fixtures/container-teardown.ts', code: 'await container.pause();' },
-    { filename: '/repo/tests/integration/paused.test.ts', code: 'await container.pause(1);' },
-  ],
-  invalid: [
-    {
-      filename: '/repo/tests/integration/paused.test.ts',
-      code: 'await container.pause();',
-      errors: [{ messageId: 'unguardedPause' }],
-    },
-    {
-      filename: '/repo/tests/integration/paused.test.ts',
-      code: 'try { run(); } finally { await container.pause(); }',
-      errors: [{ messageId: 'unguardedPause' }],
-    },
-    {
-      filename: '/repo/tests/integration/paused.test.ts',
-      code: 'try { run(); } catch (error) { await container.pause(); } finally { cleanup(); }',
-      errors: [{ messageId: 'unguardedPause' }],
-    },
-  ],
-});
-ruleTester.run('bounded-container-teardown', boundedContainerTeardown, {
+ruleTester.run(
+  'container-pause-requires-finally-unpause',
+  withoutFixes(containerPauseRequiresFinallyUnpause),
+  {
+    valid: [
+      {
+        filename: '/repo/src/main/feature.ts',
+        code: "try { return { ok: true, value: execute() }; } catch (error) { return { ok: false, reason: 'network' }; }",
+      },
+      {
+        filename: '/repo/src/main/feature.ts',
+        code: "try { return { ok: true, value: execute() }; } catch { return { ok: false, reason: 'network' }; }",
+      },
+      {
+        filename: '/repo/tests/integration/paused.test.ts',
+        code: 'try { await container.pause(); } finally { await container.unpause(); }',
+      },
+      {
+        filename: '/repo/tests/integration/paused.test.ts',
+        code: 'await withPausedContainer(container, async () => run());',
+      },
+      { filename: '/repo/tests/fixtures/container-teardown.ts', code: 'await container.pause();' },
+      { filename: '/repo/tests/integration/paused.test.ts', code: 'await container.pause(1);' },
+    ],
+    invalid: [
+      {
+        filename: '/repo/tests/integration/paused.test.ts',
+        code: 'await container.pause();',
+        errors: [{ messageId: 'unguardedPause' }],
+      },
+      {
+        filename: '/repo/tests/integration/paused.test.ts',
+        code: 'try { run(); } finally { await container.pause(); }',
+        errors: [{ messageId: 'unguardedPause' }],
+      },
+      {
+        filename: '/repo/tests/integration/paused.test.ts',
+        code: 'try { run(); } catch (error) { await container.pause(); } finally { cleanup(); }',
+        errors: [{ messageId: 'unguardedPause' }],
+      },
+    ],
+  },
+);
+ruleTester.run('bounded-container-teardown', withoutFixes(boundedContainerTeardown), {
   valid: [
     {
       filename: '/repo/tests/integration/cleanup.test.ts',
