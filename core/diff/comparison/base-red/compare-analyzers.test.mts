@@ -47,6 +47,22 @@ function resultOf(outcomes: readonly AnalyzerOutcome[]): FindingComparison {
   return outcome.result;
 }
 
+function comparedRuns(
+  baseFindings: readonly Finding[],
+  headFindings: readonly Finding[],
+  changedLines: ReadonlyMap<string, unknown> = new Map(),
+) {
+  const toolErrors: ReportEntry[] = [];
+  const { outcomes, notes } = compareAnalyzers({
+    analyzers: [{ name: 'java' }],
+    baseRun: run(baseFindings),
+    headRun: run(headFindings),
+    toolErrors,
+    touchedCode: { changedLines, isStrictRule: () => false },
+  });
+  return { result: resultOf(outcomes), notes, toolErrors };
+}
+
 function compared(baseRun: AnalyzerRun) {
   const toolErrors: ReportEntry[] = [...baseRun.toolErrors];
   const { outcomes } = compareAnalyzers({
@@ -122,17 +138,11 @@ describe('a PIT run that failed on one side', () => {
   const ELSEWHERE = mutant('web/src/Page.java', 3);
 
   function comparedSides(baseFindings: readonly Finding[], headFindings: readonly Finding[]) {
-    const toolErrors: ReportEntry[] = [];
-    const { outcomes } = compareAnalyzers({
-      analyzers: [{ name: 'java' }],
-      baseRun: run(baseFindings),
-      headRun: run(headFindings),
-      toolErrors,
-      touchedCode: {
-        changedLines: new Map([['shop/src/Cart.java', { added: false, ranges: [[9, 9]] }]]),
-      },
-    });
-    const result = resultOf(outcomes);
+    const { result, toolErrors } = comparedRuns(
+      baseFindings,
+      headFindings,
+      new Map([['shop/src/Cart.java', { added: false, ranges: [[9, 9]] }]]),
+    );
     return {
       new: result.newFindings.map(({ identity }) => identity),
       unchanged: result.unchangedFindings.map(({ identity }) => identity),
@@ -185,16 +195,9 @@ describe('a head with a tool error of a tool of its own', () => {
   const testsFailed = { ...skipped('tests'), rule: 'tests-failed', identity: 'tests-failed' };
 
   function comparedWith(baseFindings: readonly Finding[], headFindings: readonly Finding[]) {
-    const toolErrors: ReportEntry[] = [];
-    const { outcomes } = compareAnalyzers({
-      analyzers: [{ name: 'java' }],
-      baseRun: run(baseFindings),
-      headRun: run(headFindings),
-      toolErrors,
-      touchedCode: { changedLines: new Map(), isStrictRule: () => false },
-    });
+    const { result, toolErrors } = comparedRuns(baseFindings, headFindings);
     return {
-      new: resultOf(outcomes).newFindings.map(({ identity }) => identity),
+      new: result.newFindings.map(({ identity }) => identity),
       toolErrors: toolErrors.map(({ tool, rule }) => `${String(tool)} ${String(rule)}`),
     };
   }
@@ -255,15 +258,7 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
   const NEW_PMD = finding('UnusedPrivateField', 'shop/src/Order.java');
 
   function comparedSides(baseFindings: readonly Finding[], headFindings: readonly Finding[]) {
-    const toolErrors: ReportEntry[] = [];
-    const { outcomes, notes } = compareAnalyzers({
-      analyzers: [{ name: 'java' }],
-      baseRun: run(baseFindings),
-      headRun: run(headFindings),
-      toolErrors,
-      touchedCode: { changedLines: new Map(), isStrictRule: () => false },
-    });
-    const result = resultOf(outcomes);
+    const { result, notes, toolErrors } = comparedRuns(baseFindings, headFindings);
     return {
       new: result.newFindings.map(({ identity }) => identity),
       unchanged: result.unchangedFindings.map(({ identity }) => identity),
