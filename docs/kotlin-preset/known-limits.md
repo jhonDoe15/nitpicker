@@ -13,10 +13,30 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   project forces on `org.jetbrains.kotlin` (a `resolutionStrategy` rule, Spring's dependency
   management) does not reach that compiler: the pin is applied last.
 - The review rules read syntax only (see [Review rules](review-rules.md)): a call is tied to a
-  declaration by name and imports, so an extension or a same-named function from another module
-  can hide a finding, and generated sources under the build directory are not read.
+  declaration by name, package, imports and the form of its receiver, not by type, so a call on a local
+  value of another type can still count for a same-named extension, member or `object` function, and
+  generated sources under the build directory are not read.
 - `inline` functions are not measured by CRAP (see [CRAP](crap.md)); their structure limits still apply.
-- Kotlin Multiplatform and Android modules are not covered (`org.jetbrains.kotlin.jvm` only).
+- Kotlin Multiplatform and Android modules (a Gradle project with a `kotlin` extension and without the
+  `java` plugin: `org.jetbrains.kotlin.multiplatform`, `org.jetbrains.kotlin.android`) get the steps that read
+  sources only, among them the review rules, the source checks, the test honesty rules, structure and class
+  limits and duplicates, on every Kotlin source set of the project (`commonMain`, `jvmMain`, `androidMain`,
+  `main`, a variant's `debug`, ...; a source set whose name starts with `test` or has `Test` holds tests, such
+  as `commonTest`, `jvmTest`, `test`, `testDebug` and `androidTest`). A descriptive `kotlin/build-note`
+  finding names each such project and what did not run on it. detekt, the format check, the kotlinc lint, coverage, CRAP, mutation and the
+  tests of such a project do not run (they need the compiled classes and the classpath of a target or
+  variant), and its `.java` files are not checked. A Multiplatform project that applies the `java` plugin
+  (`withJava()`) is a Java project with its Kotlin sources not read. The end-to-end tests build a
+  Multiplatform project with a JVM target and an Android library with Android Gradle Plugin 8.
+- Source-set excludes: a `.kt` file under a Kotlin source directory that the build leaves out of its
+  source set (`kotlin.exclude("**/Legacy*.kt")`) and that no other source set keeps is not read by the review
+  rules, duplicates and the reuse checks, and no finding of any tool is reported on it. A Kotlin JVM module reads
+  the excludes of its `main` and `test` source sets, the ones its Kotlin steps check; an Android or
+  Multiplatform module those of every source set. On Maven, `kotlin-maven-plugin` has no excludes and every file
+  is read.
+- When `settings.gradle(.kts)` sets `repositoriesMode` to `FAIL_ON_PROJECT_REPOS`, nitpicker adds no
+  repository to the projects and resolves its tools from the repositories the settings declare, which then
+  must include Maven Central or a mirror of it.
 - detekt's type resolution uses detekt's own Kotlin standard library (see [detekt](detekt.md)), so its
   results can differ from a project's own detekt run, and a library built with a newer Kotlin stays
   unresolved.

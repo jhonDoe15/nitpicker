@@ -1,5 +1,5 @@
 const GO_MOD = 'module example.com/shop\n\ngo 1.22\n';
-const CONFIG = '{ "preset": "go" }\n';
+const CONFIG = '{ "preset": "go", "disable": ["mutation"] }\n';
 
 const PRICE = `package shop
 
@@ -40,7 +40,7 @@ export const BASE_FILES = {
 
 export const DISCOUNT = `package shop
 
-func Discount(price int, percent int) int {
+func Discount(price, percent int) int {
 	if percent <= 0 {
 		return price
 	}
@@ -84,15 +84,26 @@ func Broken() int {
 
 export const NESTED = `package shop
 
-func Grade(score int, bonus int) string {
+func Grade(score, bonus int) string {
 	if score > 0 {
-		for i := 0; i < bonus; i++ {
+		for i := range bonus {
 			if score+i > 90 {
 				return "A"
 			}
 		}
 	}
 	return "B"
+}
+`;
+
+export const NESTED_TEST = `package shop
+
+import "testing"
+
+func TestGrade(t *testing.T) {
+	if Grade(95, 1) != "A" || Grade(10, 1) != "B" || Grade(-1, 0) != "B" {
+		t.Fatal("wrong grade")
+	}
 }
 `;
 
@@ -112,7 +123,8 @@ func TestBroken(t *testing.T) {
 }
 `;
 
-function sleepingTest(header, name, seconds) {
+function sleepingTest(header, name, seconds, guard = '') {
+  const helper = name.replace('Test', 'restock');
   return `${header}package shop
 
 import (
@@ -121,7 +133,14 @@ import (
 )
 
 func ${name}(t *testing.T) {
+${guard}	if got := ${helper}(); got != 1 {
+		t.Fatalf("${helper}() = %d, want 1", got)
+	}
+}
+
+func ${helper}() int {
 	time.Sleep(${String(seconds)} * time.Second)
+	return 1
 }
 `;
 }
@@ -132,11 +151,79 @@ export const SLOW_INTEGRATION_TEST = sleepingTest(
   'TestSlowIntegration',
   6,
 );
+export const SHORT_SKIPPED_TEST = sleepingTest(
+  '',
+  'TestSlowSkipped',
+  6,
+  '\tif testing.Short() {\n\t\tt.Skip("integration")\n\t}\n',
+);
+export const SHORT_LOGGED_TEST = sleepingTest(
+  '',
+  'TestSlowLogged',
+  6,
+  '\tif testing.Short() {\n\t\tt.Log("short")\n\t}\n',
+);
+export const SHORT_DISCARDED_TEST = sleepingTest(
+  '',
+  'TestSlowDiscarded',
+  6,
+  '\t_ = testing.Short()\n',
+);
 
 export const GOFUMPT_ONLY = `package shop
 
 func Rounded(value int) int {
 
 	return value / 10 * 10
+}
+`;
+
+export const DISCOUNT_HALF_TEST = `package shop
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if Discount(200, 10) != 180 {
+		t.Fatal("wrong discount")
+	}
+}
+`;
+
+export const UNTESTED_LEGACY = `package shop
+
+func Fee(weight int) int {
+	if weight > 10 {
+		return 5
+	}
+	return 1
+}
+`;
+
+export const BRANCHY = `package shop
+
+func Size(weight int) string {
+	switch {
+	case weight > 100:
+		return "huge"
+	case weight > 50:
+		return "large"
+	case weight > 10:
+		return "medium"
+	case weight > 0:
+		return "small"
+	}
+	return "none"
+}
+`;
+
+export const DISCOUNT_PANIC_TEST = `package shop
+
+import "testing"
+
+func TestDiscount(t *testing.T) {
+	if Discount(200, 10) != 180 || Discount(200, 0) != 200 {
+		t.Fatal("wrong discount")
+	}
+	panic("crashed after the checks")
 }
 `;

@@ -9,18 +9,16 @@ flags the TypeScript-only keys this preset refuses. A Python project has no `nod
 points at the published file: `"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
 [Editor support](usage.md#editor-support).
 
-Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
+Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, `analyzerTimeoutMinutes`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the [slow test](slow-tests.md) budgets `unitTestSeconds` and
 `integrationTestSeconds`), `testConsole` (see [new console output](new-console-output-from-tests.md)), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
-[change history](../usage.md#change-history) check), and the `python` object below. `layout` takes
-only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
-`co-change` reads); its other keys stay a config error with this preset: the Python preset has no
-feature layout (no `features/` and `shared/` folders to read), so it does not register the one rule
-that reads them, `shared-used-by-one-feature`. The
-top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
+[change history](../usage.md#change-history) check), and the `python` object below. `layout.featureRoots` and `layout.sharedRoots` place the [feature folders](feature-folders.md), which
+`contract-infrastructure-type` reads too, and `featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+TypeScript sources and are an error). The
+top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](feature-folders.md), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -29,7 +27,7 @@ top-level `exceptions` is accepted only for the rules shared with the other lang
 `unused-option`, whose messages name it, the
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), the
 [fact rules](../../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
-`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`), which the Python preset runs over its facts scan, and
+`exported-name-collision`, `sibling-copy-edit`, `near-duplicate`, `doc-comment-content`, `public-alternative-bypass`), which the Python preset runs over its facts scan, and
 `co-change` of the [change history](../usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
@@ -58,9 +56,9 @@ Where each kind of finding is lifted for some paths:
     "sourceRoots": ["src"],
     "exceptions": [
       {
-        "rule": "T201",
-        "paths": ["src/cli/**"],
-        "reason": "Command line entry points print their result."
+        "rule": "PERF203",
+        "paths": ["src/importers/**"],
+        "reason": "Each row is validated on its own and a bad row must not stop the rest."
       }
     ]
   }
@@ -80,9 +78,10 @@ Where each kind of finding is lifted for some paths:
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access` and `import-time-effect`, so the policy-change list
-reports it as a loosening and a removal as a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
-sides declare.
+`process-env-access`, `process-stream-access`, `import-time-effect` and `service-locator-lookup`
+skip a file listed there. Like `layout.entryPoints`, an added or removed entry is listed among the
+policy changes and does not fail the gate, unless another production module imports a file it newly
+covers; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
@@ -116,14 +115,14 @@ yours to fix (generated code) is dropped with `exclude`.
 There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
 in the table below are findings themselves. The way out is `python.exceptions` in
 `nitpicker.config.json` (the top-level `exceptions` for the function, file and size rules, below),
-the same shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+the same shape as in every preset: `rule` (the id printed in the finding, for example `PERF203`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
 when the config loads: a ruff code (or a prefix such as `PTH`, which covers every `PTH` code), a
 `python-rules` id, a mypy error code or a pyright or basedpyright `report*` rule; a typo such as `T210` is a config
 error, not a silent no-op. Prefer fixing the code; an exception is for code that is
-legitimately outside the rule, such as a command line entry point that prints or a module that
+legitimately outside the rule, such as a loop that must handle each item on its own or a module that
 must keep a mutable dataclass.
 
 **Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
@@ -137,11 +136,11 @@ error.
 
 `exclude` is the other way out: it drops every finding under the globs, and the paths are not
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
-`T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a loop that must handle
-each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
-`python.exceptions`, or `exclude` the path, for example
-`"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
+`PERF203` (`try` in a loop that must handle each item) and `F401` (an `__init__.py` that
+re-exports): lift them for the path with `python.exceptions`, or `exclude` the path, for example
+`"exclude": ["src/demo/cli.py", "**/__init__.py"]`. A command-line tool does not need either: it
+writes its result through the `TextIO` form of `process-stream-access` below. The project's own
+ruff configuration (`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
 ["project", "nitpicker"] } }` opts it in; then the rules it selects run next to nitpicker's (never
 instead of them: an `ignore` or `per-file-ignores` entry for a nitpicker rule is dropped, and
 `python.exceptions` lifts those) and its rule options merge with nitpicker's (see

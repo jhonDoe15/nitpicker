@@ -6,6 +6,25 @@ import { PAGES } from '../../shared/reference/pages.mjs';
 import { buildReference } from './build.mjs';
 import { renderReference } from './render.mjs';
 
+export {
+  installedRuffRules,
+  isOlderVersion,
+  withSelectedNewerRules,
+} from '../../languages/python/reference/ruff-selection.mjs';
+export {
+  readRuffSnapshot,
+  RUFF_RULES_FILE,
+} from '../../languages/python/reference/ruff-entries.mjs';
+export {
+  liveToolText,
+  TOOL_TEXT_TOOLS,
+  toolTextFile,
+} from '../../languages/java/reference/tool-text/tool-text.mjs';
+export {
+  liveEslintInventory,
+  writeEslintInventory,
+} from '../../languages/typescript/reference/eslint-inventory.mjs';
+
 const JSON_FILE = /\.json$/u;
 
 function insideRepository(repositoryRoot, file) {

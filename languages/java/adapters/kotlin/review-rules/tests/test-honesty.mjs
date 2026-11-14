@@ -6,16 +6,21 @@ import { ESCAPING_RULE } from './coroutines/escapes/escaping-launches.mjs';
 import { discoverSuites, scanTestFile } from './discovery/test-units.mjs';
 import { GLOBAL_STATE_RULE, globalStateReports } from './global-state/global-state.mjs';
 import { CONTROL_FLOW_RULE } from './honesty/flow/assertion-flow.mjs';
+import { DROPPED_RULE } from './honesty/dropped/dropped-callbacks.mjs';
+import { MESSAGE_RULE } from './honesty/dropped/message-after-assertion.mjs';
 import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
+import { FLOAT_EQUALITY_RULE, floatEqualityReports } from './floats/float-equality.mjs';
+import { WEAK_RULE } from './honesty/weak/weak-reports.mjs';
 import { projectFlags } from './project-flags.mjs';
 import {
   PER_TEST_START_MESSAGE,
   PER_TEST_START_RULE,
   perTestStarts,
 } from './setup/per-test-starts.mjs';
+import { SHARED_STATE_RULE, sharedStateReports } from './shared-state/shared-state.mjs';
 
 export const HONESTY_RULES = [
   DISABLED_RULE,
@@ -24,7 +29,12 @@ export const HONESTY_RULES = [
   PER_TEST_START_RULE,
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
+  FLOAT_EQUALITY_RULE,
+  WEAK_RULE,
+  DROPPED_RULE,
+  MESSAGE_RULE,
   GLOBAL_STATE_RULE,
+  SHARED_STATE_RULE,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -39,10 +49,11 @@ function filesUnder(projectRoot, roots) {
   return [...new Set(roots.flatMap((root) => kotlinFiles(projectRoot, root)))].toSorted();
 }
 
-function scannedFiles(projectRoot, files, keep = () => true) {
+function scannedFiles(projectRoot, files, { keep, assertionNames = [] } = {}) {
   return files.flatMap((file) => {
     const text = readInside(projectRoot, file, 'utf8') ?? '';
-    const scanned = keep(text) ? scanTestFile(text) : undefined;
+    const scanned =
+      keep === undefined || keep(text) ? scanTestFile(text, assertionNames) : undefined;
     return scanned === undefined ? [] : [{ file, scanned }];
   });
 }
@@ -52,7 +63,9 @@ export function fileReports(scanned, project) {
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
+    ...floatEqualityReports(scanned, suites),
     ...globalStateReports(scanned, suites),
+    ...sharedStateReports(scanned, suites, project),
     ...perTestStarts(scanned, suites).map((entry) => ({
       ...entry,
       rule: PER_TEST_START_RULE,
@@ -61,12 +74,18 @@ export function fileReports(scanned, project) {
   ].toSorted((left, right) => left.offset - right.offset);
 }
 
-export function testHonestyFindings({ projectRoot, testRoots = [], contextRoots = [], finding }) {
+export function testHonestyFindings({
+  projectRoot,
+  testRoots = [],
+  contextRoots = [],
+  assertionNames = [],
+  finding,
+}) {
   const testFiles = filesUnder(projectRoot, testRoots);
   const own = new Set(testFiles);
-  const files = scannedFiles(projectRoot, testFiles);
+  const files = scannedFiles(projectRoot, testFiles, { assertionNames });
   const others = filesUnder(projectRoot, contextRoots).filter((file) => !own.has(file));
-  const context = scannedFiles(projectRoot, others, (text) => CONTEXT_MARKERS.test(text));
+  const context = scannedFiles(projectRoot, others, { keep: (text) => CONTEXT_MARKERS.test(text) });
   const project = projectFlags([...files, ...context]);
   return files.flatMap(({ file, scanned }) =>
     fileReports(scanned, project).map((report) =>

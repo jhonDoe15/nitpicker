@@ -4,15 +4,24 @@
   "layout": {
     "sourceRoots": ["core", "languages", "shared", "scripts"],
     "entryPoints": [
-      "core/diff/cache/http-cache-worker.mjs",
+      "core/diff/cache/http-cache-worker.mts",
+      "shared/logic/sync/decide-worker.mts",
+      "languages/java/adapters/near-duplicates/jvm-trees-process.mts",
+      "languages/java/maven/parallel/tool-supervisor.mts",
+      "scripts/typescript/convert.mts",
+      "scripts/typescript/ready.mts",
+      "scripts/check.mts",
+      "scripts/record-eslint-reports.mts",
+      "scripts/test-shards/repository-timeouts.mts",
+      "scripts/shard-weights/measure.mts",
+      "scripts/release/changelog.mts",
       "core/fix/prettier-base-runner.mjs",
       "languages/python/adapters/python-runner.mjs",
-      "core/fix/prettier-write-runner.mjs",
-      "languages/typescript/adapters/entry-points-runner.mjs",
+      "languages/typescript/adapters/entry-points-runner.mts",
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
-      "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
-      "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
-      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
+      "languages/typescript/adapters/oxlint/oxlint-bridge.mts",
+      "languages/typescript/adapters/oxlint/oxlint-plan.mts",
+      "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
       "languages/typescript/preset/defaults/crap.config.mjs",
@@ -20,19 +29,24 @@
       "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
       "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
       "languages/typescript/preset/eslint-config/policies/module-effects.config.mjs",
-      "core/cli.mjs",
-      "core/diff/sharding/aggregate-shards.mjs",
-      "core/diff/execution/analyzer-scheduler.mjs",
+      "core/bin.mts",
+      "core/cli.mts",
+      "core/diff/sharding/aggregate-shards.mts",
+      "core/diff/execution/analyzer-scheduler.mts",
+      "core/reference/generate.mjs",
       "core/diff/execution/test-support/fake-analyzer.mjs",
       "languages/java/adapters/java-runner.mjs",
-      "languages/typescript/adapters/eslint-runner.mjs",
-      "languages/typescript/adapters/quality-areas-runner.mjs",
-      "languages/typescript/adapters/static-checks-runner.mjs",
+      "languages/java/adapters/gradle-reports/gradle-guards.mts",
+      "languages/java/builds/rulesets/write-rules.mts",
+      "languages/java/builds/tools/tool-commands.mjs",
+      "languages/typescript/adapters/eslint-runner.mts",
+      "languages/typescript/adapters/quality-areas-runner.mts",
+      "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
       "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
       "languages/typescript/preset/coding-standards/check.mjs",
-      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs",
+      "languages/java/adapters/gradle-wrapper/gradle-supervisor.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },
@@ -55,8 +69,13 @@
     "languages/typescript/preset/structure/fixtures/**",
     "languages/typescript/preset/test-runtime/fixtures/**"
   ],
-  "disable": ["typescript-typecheck", "coverage", "crap", "mutation"],
+  "disable": ["coverage", "crap", "mutation"],
   "exceptions": [
+    {
+      "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
+      "paths": ["shared/logic/sync/decide-sync.mjs"],
+      "reason": "Lint rules have no composition root: the solver worker is started once, lazily, when a rule first asks a question that needs it, and unref'd so it never keeps the process alive."
+    },
     {
       "rule": "nitpicker/no-node-process-per-test",
       "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
@@ -110,6 +129,11 @@
       "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },
     {
+      "rule": "javascript-in-typescript-project",
+      "paths": ["**/*.mjs"],
+      "reason": "Our own code is converting from .mjs to .mts one area at a time (#147). Until it is done, a module that shipped JavaScript imports must stay .mjs, because the package does not ship the .mts sources, and the package emit script runs on Node.js versions that cannot strip types."
+    },
+    {
       "rule": "@typescript-eslint/no-unsafe-member-access",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
@@ -145,18 +169,8 @@
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
     },
     {
-      "rule": "@typescript-eslint/no-deprecated",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
-    },
-    {
-      "rule": "no-restricted-syntax",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The generated tsconfig must carry an explicit baseUrl: null to unset a baseUrl inherited through extends; undefined is dropped by JSON.stringify and leaves the inherited value in place."
-    },
-    {
       "rule": "nitpicker/no-default-export",
-      "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
+      "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts"],
       "reason": "node --test-reporter loads a reporter only through the module's default export."
     },
     {
@@ -166,6 +180,7 @@
       "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
     }
   ],
+  "analyzerTimeoutMinutes": { "coding-standards": 5, "structure": 5 },
   "tools": {
     "tests": {
       "timeouts": {
@@ -196,7 +211,9 @@
               "languages/java/maven/preset/**",
               "languages/java/maven/__tests__/**",
               "languages/java/maven/errorprone/*.e2e.test.mjs",
-              "languages/java/messages/*.e2e.test.mjs"
+              "languages/java/messages/*.e2e.test.mjs",
+              "languages/java/guards/**/*.e2e.test.mjs",
+              "languages/java/maven/guards/**/*.e2e.test.mjs"
             ],
             "testTimeoutMs": 180000,
             "hookTimeoutMs": 300000

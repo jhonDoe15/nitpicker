@@ -4,7 +4,7 @@ import { readJavaFindings } from '../adapters/reporting/java-reports.mjs';
 import { readProjectDuplicateFindings } from '../adapters/kotlin/kotlin-duplicates.mjs';
 import { retargetSentence } from '../../../shared/messages/exception-sentence.mjs';
 import { inModule } from './module-path.mjs';
-import { projectWideFindings } from './project-wide.mjs';
+import { projectWideReport } from './project-wide.mjs';
 
 const MODULE_ROOT_LISTS = [
   'sourceRoots',
@@ -57,7 +57,7 @@ function readModule(moduleDir, options) {
     ...options,
     requireKotlin: false,
     ...moduleReport(moduleDir, options.reportDirectory),
-  }).findings;
+  });
 }
 
 export function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
@@ -72,7 +72,7 @@ export function mergedRoots(projectRoot, moduleDirs, reportDirectory) {
   return roots;
 }
 
-function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
+export function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
   const prefix = prefixOf(projectRoot, moduleDir);
   const manifest = readManifest(moduleDir, reportDirectory);
   function roots(name) {
@@ -84,33 +84,47 @@ function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
     filePrefix: prefix,
     sourceRoots: roots('sourceRoots'),
     kotlinSourceRoots: roots('kotlinSourceRoots'),
+    testSourceRoots: roots('testSourceRoots'),
+    kotlinTestSourceRoots: roots('kotlinTestSourceRoots'),
     resourceRoots: roots('resourceRoots'),
+    published: manifest.published === true,
   };
 }
 
 export function readModuleFindings(projectRoot, moduleDirs, options) {
+  return readModuleReport(projectRoot, moduleDirs, options).findings;
+}
+
+export function readModuleReport(projectRoot, moduleDirs, options) {
   if (moduleDirs.length === 1 && path.resolve(moduleDirs[0]) === path.resolve(projectRoot)) {
     return readModule(projectRoot, { ...options, modulePath: '' });
   }
   const moduleFindings = moduleDirs.flatMap((moduleDir) => {
     const prefix = prefixOf(projectRoot, moduleDir);
-    return readModule(moduleDir, { ...options, projectWide: false, modulePath: prefix }).map(
-      (finding) => prefixedFinding(finding, prefix),
-    );
+    return readModule(moduleDir, {
+      ...options,
+      projectWide: false,
+      modulePath: prefix,
+      reactorRoot: projectRoot,
+    }).findings.map((finding) => prefixedFinding(finding, prefix));
   });
   const roots = mergedRoots(projectRoot, moduleDirs, options.reportDirectory);
-  return [
-    ...moduleFindings,
-    ...readProjectDuplicateFindings(path.join(projectRoot, options.reportDirectory), {
-      preset: options.preset,
-      projectRoot,
-    }),
-    ...projectWideFindings(projectRoot, {
-      projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
-      mergedRoot: path.join(projectRoot, options.reportDirectory),
-      manifest: roots,
-      kotlin: options.preset === 'kotlin',
-      policy: options,
-    }),
-  ];
+  const wide = projectWideReport(projectRoot, {
+    projects: moduleDirs.map((moduleDir) => moduleProject(projectRoot, moduleDir, options)),
+    mergedRoot: path.join(projectRoot, options.reportDirectory),
+    manifest: roots,
+    kotlin: options.preset === 'kotlin',
+    policy: options,
+  });
+  return {
+    findings: [
+      ...moduleFindings,
+      ...readProjectDuplicateFindings(path.join(projectRoot, options.reportDirectory), {
+        preset: options.preset,
+        projectRoot,
+      }),
+      ...wide.findings,
+    ],
+    imports: wide.imports,
+  };
 }

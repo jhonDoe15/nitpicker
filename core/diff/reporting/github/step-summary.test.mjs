@@ -247,9 +247,12 @@ describe('renderDiffSummary', () => {
       '',
       '### Disagree with a finding?',
       '',
-      '- A loosening of `nitpicker.config.json` fails until a repository admin has reviewed it and ' +
-        'set the repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to `abc123def456`, ' +
-        'then re-run the job. The digest covers exactly the loosenings listed above.',
+      '- A loosening of `nitpicker.config.json` fails until a person with write access has ' +
+        'reviewed it and added the `accept-policy-change` label to the pull request, which ' +
+        'accepts the loosenings of this commit and runs the job again (a later push needs the ' +
+        'label again). Without the approval workflow, set the repository variable ' +
+        '`NITPICKER_ACCEPT_POLICY_CHANGE` to `abc123def456`, which covers exactly the ' +
+        'loosenings listed above, and re-run the job.',
       '',
     ]);
   });

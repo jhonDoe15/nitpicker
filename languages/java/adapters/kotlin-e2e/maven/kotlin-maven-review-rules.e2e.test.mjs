@@ -5,6 +5,7 @@ import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
 } from '../test-support/review/kotlin-review-data.mjs';
+import { reviewFindings } from '../test-support/review/kotlin-review-findings.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -17,7 +18,6 @@ import {
 } from './test-support/kotlin-maven-project.mjs';
 
 const mavenDiffOf = mavenDiffRunner(process.env.NITPICKER_MAVEN);
-const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 const RUNTIME_SERIALIZATION = `    <dependency>
       <groupId>com.fasterxml.jackson.module</groupId>
@@ -34,12 +34,14 @@ const DISTRIBUTION = `  <distributionManagement>
   </distributionManagement>
 </project>`;
 
-function reviewFindings(findings) {
-  return findings
-    .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
-    .map(({ rule, symbol }) => `${rule} ${symbol}`)
-    .sort();
-}
+const LIFTED_RULES = [
+  'FixedSleepInTest',
+  'SpringUnusedContext',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
+  'unused-option',
+  'ClassLoadEffect',
+];
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to end', () => {
   let project;
@@ -66,21 +68,17 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to e
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
+          { rule: 'pmd/MockedSubjectInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/StaticMockOfProjectType', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
       },
     });
 
-    expect(reviewFindings(result.newEnforceable)).toEqual([
-      'ExhaustiveEnumPredicate isLive',
-      'ExhaustiveEnumPredicate isOpen',
-      'ExhaustiveEnumPredicate isSettled',
-      'ExhaustiveEnumPredicate weight',
-      'SingularAndPluralMember Query.tags',
-      'StaticForwardingWrapper absOf',
-      'StaticForwardingWrapper total',
-    ]);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => !LIFTED_RULES.includes(entry.split(' ')[0])),
+    );
   });
 
   it('skips data classes when a serialization library is only on the runtime classpath', () => {

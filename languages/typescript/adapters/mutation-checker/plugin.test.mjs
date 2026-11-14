@@ -2,7 +2,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { strykerPlugins } from './plugin.mjs';
+import { strykerPlugins } from './plugin.mts';
 
 const roots = [];
 afterEach(() => {

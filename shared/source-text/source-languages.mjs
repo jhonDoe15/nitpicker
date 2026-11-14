@@ -118,7 +118,7 @@ const SINGLE_LINE = { multiline: false, escapes: true };
 const MULTILINE = { multiline: true, escapes: true };
 
 const PYTHON_STRINGS = {
-  start: /([rRbBuUfFtT]{0,2})('''|"""|'|")/y,
+  start: /(?<prefix>[rRbBuUfFtT]{0,2})(?<opener>'''|"""|'|")/y,
   kinds: {
     "'": { ...SINGLE_LINE, close: "'" },
     '"': { ...SINGLE_LINE, close: '"' },
@@ -128,7 +128,7 @@ const PYTHON_STRINGS = {
 };
 
 const JAVASCRIPT_STRINGS = {
-  start: /()('|"|`)/y,
+  start: /(?<opener>'|"|`)/y,
   kinds: {
     "'": { ...SINGLE_LINE, close: "'" },
     '"': { ...SINGLE_LINE, close: '"' },
@@ -137,7 +137,7 @@ const JAVASCRIPT_STRINGS = {
 };
 
 const JAVA_STRINGS = {
-  start: /()("""|"|')/y,
+  start: /(?<opener>"""|"|')/y,
   kinds: {
     '"': { ...SINGLE_LINE, close: '"' },
     "'": { ...SINGLE_LINE, close: "'" },
@@ -146,7 +146,7 @@ const JAVA_STRINGS = {
 };
 
 const KOTLIN_STRINGS = {
-  start: /()("""|"|'|`)/y,
+  start: /(?<opener>"""|"|'|`)/y,
   kinds: {
     '"': { ...SINGLE_LINE, close: '"', interpolation: '${' },
     "'": { ...SINGLE_LINE, close: "'" },

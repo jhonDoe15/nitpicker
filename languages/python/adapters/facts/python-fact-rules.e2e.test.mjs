@@ -460,3 +460,30 @@ describe.skipIf(!pythonE2eEnabled)('copy scope', () => {
     ]);
   });
 });
+
+describe.skipIf(!pythonE2eEnabled)('public-alternative-bypass over Python packages', () => {
+  const INIT = 'from .invoice import Invoice\n\n__all__ = ["Invoice"]\n';
+  const DEEP = 'from shop.billing.invoice import Invoice, draft\n\nUSED = (Invoice, draft)\n';
+  const files = {
+    'src/shop/__init__.py': '',
+    'src/shop/billing/__init__.py': INIT,
+    'src/shop/billing/invoice.py': 'class Invoice:\n    pass\n\n\ndef draft():\n    return 1\n',
+    'src/shop/billing/refund.py': 'from shop.billing.invoice import Invoice\n\nREFUND = Invoice\n',
+    'src/shop/orders.py': DEEP,
+    'src/shop/main.py': DEEP,
+    'tests/test_orders.py':
+      'from shop.billing.invoice import Invoice\n\n\ndef test_it():\n    assert Invoice\n',
+  };
+  const bypasses = (project) =>
+    findingsOf('public-alternative-bypass', project).map(({ path, allowedForm }) => [
+      path,
+      allowedForm,
+    ]);
+
+  it('reports an import around a package that lists the name in __all__, and keeps the rest', () => {
+    expect(bypasses(files)).toEqual([['src/shop/orders.py', 'Import Invoice from shop.billing.']]);
+    expect(
+      bypasses({ ...files, 'src/shop/billing/__init__.py': 'from .invoice import Invoice\n' }),
+    ).toEqual([]);
+  });
+});

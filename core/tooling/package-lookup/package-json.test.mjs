@@ -68,7 +68,7 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
     ['@stryker-mutator/core'],
     ['@stryker-mutator/core/package.json'],
     ['nitpicker'],
-    ['./core/cli.mjs'],
+    ['./core/cli.mts'],
     ['./core'],
   ])('finds the same package.json as the native API for %s', (specifier) => {
     const { walked, native } = bothOutcomes(specifier, packageBase);
@@ -87,7 +87,7 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
   it('accepts a path, a file URL object and a directory URL as the base', () => {
     const bases = [
       path.join(PACKAGE_ROOT, 'package.json'),
-      pathToFileURL(path.join(PACKAGE_ROOT, 'core/cli.mjs')),
+      pathToFileURL(path.join(PACKAGE_ROOT, 'core/cli.mts')),
       pathToFileURL(path.join(PACKAGE_ROOT, 'core/')).href,
     ];
     const results = bases.map((base) => bothOutcomes('eslint', base));

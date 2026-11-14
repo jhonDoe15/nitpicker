@@ -1,5 +1,12 @@
+import {
+  CANCELLATION_FILES,
+  SWALLOWED_CANCELLATIONS,
+} from './swallowed/kotlin-cancellation-data.mjs';
+import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './swallowed/kotlin-interrupt-data.mjs';
+import { LOCKING_FILES, LOCKING_FINDINGS } from './concurrency/kotlin-locking-data.mjs';
 import { LIBRARY_STUBS, MOCK_REVIEW_FINDINGS, MOCK_RULE_FILES } from './kotlin-mock-data.mjs';
 import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
+import { DEADLINES } from './kotlin-deadlines-data.mjs';
 
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
@@ -57,6 +64,21 @@ fun absOf(value: Int) = Math.abs(value)
 fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
+
+class Cart {
+    fun sum(items: List<Int>): Int = items.size
+
+    fun count(items: List<Int>): Int = sum(items)
+
+    fun withFee(items: List<Int>): Int = sum(items) + 1
+
+    @JvmName("legacyTotal")
+    fun legacy(items: List<Int>): Int = sum(items)
+
+    private fun hidden(items: List<Int>): Int = items.size
+
+    fun visible(items: List<Int>): Int = hidden(items)
+}
 `;
 
 const FORMATTING = `package demo.orders
@@ -72,6 +94,70 @@ internal class Mailer(private val host: String, private val retries: Int = 3) {
 internal data class Envelope(val id: String, val retries: Int = 3)
 
 fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
+`;
+
+const ARCHIVE = `package demo.orders
+
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.Future
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+
+class Process(private val id: String) {
+    fun waitFor(): Int = id.length
+}
+
+class Archive(
+    private val index: File,
+    private val pending: Future<String>,
+    private val ioDispatcher: CoroutineDispatcher,
+) {
+    suspend fun loadsOnTheCaller(path: Path): String = Files.readString(path)
+
+    suspend fun waitsOnAFuture(): String = pending.get()
+
+    suspend fun timesOutBlockingWork(path: Path): String = withTimeout(1.seconds) { Files.readString(path) }
+
+    suspend fun shieldsWithoutMoving(path: Path): String = withContext(NonCancellable) { Files.readString(path) }
+
+    suspend fun readsEach(paths: List<Path>): List<String> = paths.map { Files.readString(it) }
+
+    fun streamsOnTheCollector(path: Path): Flow<String> = flow { emit(Files.readString(path)) }
+
+    fun streamsOnTheInjectedDispatcher(path: Path): Flow<String> =
+        flow { emit(Files.readString(path)) }.flowOn(ioDispatcher)
+
+    suspend fun offloaded(path: Path): String = withContext(ioDispatcher) { Files.readString(path) }
+
+    suspend fun interruptible(): String = runInterruptible(ioDispatcher) { pending.get() }
+
+    suspend fun timesOutOffloadedWork(path: Path): String =
+        withTimeout(1.seconds) { withContext(ioDispatcher) { Files.readString(path) } }
+
+    suspend fun timesOutAfterADelay(path: Path): Path = withTimeout(1.seconds) { delay(10); path }
+
+    suspend fun waitsForAProjectProcess(process: Process): Int = process.waitFor()
+
+    fun readsOutsideACoroutine(path: Path): String = Files.readString(path)
+
+    fun launchesOnTheInjectedDispatcher(scope: CoroutineScope, path: Path) {
+        scope.launch(ioDispatcher) { Files.readString(path) }
+    }
+
+    fun sizeOfTheIndex(): Long = index.length()
+}
 `;
 
 const PRICING = `package demo.orders
@@ -186,6 +272,116 @@ class WaitingTest {
 }
 `;
 
+const LEDGER = `package demo.orders
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+
+interface Balances {
+    suspend fun fetch(): Int
+}
+
+private val fileGate = Semaphore(1)
+
+class Ledger(private val balances: Balances, private val scope: CoroutineScope) {
+    private val mutex = Mutex()
+    private val single = Semaphore(1)
+    private val pair = Semaphore(2)
+    var total = 0
+
+    suspend fun add() {
+        total += balances.fetch()
+    }
+
+    suspend fun addAfterAwaiting() {
+        val delta = balances.fetch()
+        total += delta
+    }
+
+    suspend fun addFromSaved() {
+        val current = total
+        val delta = balances.fetch()
+        total = current + delta
+    }
+
+    suspend fun addAccumulated() {
+        var current = total
+        current += balances.fetch()
+        total = current
+    }
+
+    suspend fun addSavedBeforeLock() {
+        val current = total
+        mutex.withLock { total = current + 1 }
+    }
+
+    suspend fun addSerialized() {
+        mutex.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addSavedInsideLock() {
+        mutex.withLock {
+            val current = total
+            val delta = balances.fetch()
+            total = current + delta
+        }
+    }
+
+    suspend fun addLaunched() {
+        mutex.withLock { scope.launch { total += balances.fetch() } }
+    }
+
+    suspend fun addUnderLocalMutex() {
+        val local = Mutex()
+        local.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addOneAtATime() {
+        single.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughFileGate() {
+        fileGate.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughCompanionGate() {
+        shared.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addTwoAtATime() {
+        pair.withPermit { total += balances.fetch() }
+    }
+
+    companion object {
+        private val shared = Semaphore(1)
+    }
+}
+`;
+
+const FLOAT_TEST = `package demo.orders
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class FloatTest {
+    @Test
+    fun compares() {
+        val total = 0.5 + 0.25
+        assertEquals(0.75, total)
+        assertTrue(total == 0.75)
+        assertEquals(0.75, total, absoluteTolerance = 1e-9)
+        assertEquals(1.0, total + 0.25)
+        assertTrue(total < 1.0)
+        assertTrue(total + 0.25 == 1.0)
+    }
+}
+`;
+
 const CONTEXT_TEST = `package demo.orders
 
 import kotlin.test.Test
@@ -214,22 +410,36 @@ class UsedContextTest {
 }
 `;
 
+export const ARCHIVE_FILE = `${MAIN}/Archive.kt`;
+
 export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Deadlines.kt`]: DEADLINES,
+  [`${MAIN}/Ledger.kt`]: LEDGER,
+  ...CANCELLATION_FILES,
+  ...INTERRUPT_FILES,
+  [ARCHIVE_FILE]: ARCHIVE,
   [`${MAIN}/Pricing.kt`]: PRICING,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
+  ...LOCKING_FILES,
+  [`${TEST}/FloatTest.kt`]: FLOAT_TEST,
   ...LIBRARY_STUBS,
   ...MOCK_RULE_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'BlockingCallInCoroutine Archive.loadsOnTheCaller.Files.readString',
+  'BlockingCallInCoroutine Archive.readsEach.Files.readString',
+  'BlockingCallInCoroutine Archive.shieldsWithoutMoving.Files.readString',
+  'BlockingCallInCoroutine Archive.streamsOnTheCollector.Files.readString',
+  'BlockingCallInCoroutine Archive.waitsOnAFuture.Future.get',
   'ClassLoadEffect Inventory.workers',
   'ClassLoadEffect Shelf.present',
   'ClassLoadEffect seeded',
@@ -239,66 +449,40 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ExhaustiveEnumPredicate isPending',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addAccumulated',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addFromSaved',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addLaunched',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addSavedBeforeLock',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
+  'ForwardingMethodAlias Cart.count',
+  'ForwardingMethodAlias Cart.visible',
+  'FloatEqualityInTest FloatTest.compares',
+  'FloatEqualityInTest FloatTest.compares',
   ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+  'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+  'timeout-abandons-operation awaitOutside:withTimeout:work',
+  'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+  'timeout-abandons-operation cancelAsyncTask:get:future',
+  'timeout-abandons-operation giveUp:get:future',
+  'timeout-abandons-operation shutDownLetsItFinish:get:future',
+  ...SWALLOWED_CANCELLATIONS,
+  ...SWALLOWED_INTERRUPTS,
+  'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option Outbox.limit',
   'unused-option pad.width',
   'unused-option price.discount',
+  ...LOCKING_FINDINGS,
   ...MOCK_REVIEW_FINDINGS,
 ].toSorted();
-
-const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
-
-export function runtimeSerializationFiles(build) {
-  return {
-    'build.gradle.kts': `${build}
-dependencies {
-    runtimeOnly(files("libs/jackson-module-kotlin-2.17.2.jar"))
-}
-`,
-    'libs/jackson-module-kotlin-2.17.2.jar': EMPTY_JAR,
-  };
-}
-
-export function publishedFiles(build) {
-  return {
-    'build.gradle.kts': `${build.replace('kotlin("jvm") version', '`maven-publish`\n    kotlin("jvm") version')}
-publishing {
-    publications {
-        create<MavenPublication>("library") {
-            from(components["java"])
-        }
-    }
-}
-`,
-  };
-}
-
-export function integrationSuiteFiles(build) {
-  return {
-    'build.gradle.kts': `${build}
-testing {
-    suites {
-        register<JvmTestSuite>("integrationTest") {
-            dependencies {
-                implementation(project())
-            }
-        }
-    }
-}
-`,
-    'src/integrationTest/kotlin/demo/orders/PricingCheck.kt': `package demo.orders
-
-object PricingCheck {
-    fun discounted(): Int = price(100, 10)
-}
-`,
-  };
-}

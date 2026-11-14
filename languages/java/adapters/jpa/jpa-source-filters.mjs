@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const EXPOSURE_RULES = ['EI_EXPOSE_REP', 'EI_EXPOSE_REP2'];
 const MAX_ANCESTORS = 12;
@@ -14,7 +15,7 @@ function blank(text) {
   return text.replaceAll(/[^\n]/g, ' ');
 }
 
-function readSource(file) {
+export function readSource(file) {
   return existsSync(file) ? readFileSync(file, 'utf8').replaceAll(COMMENTS, blank) : undefined;
 }
 
@@ -47,27 +48,13 @@ export function dropEntityAssociations(log, projectRoot) {
   };
 }
 
-export function withExposureAdvice(finding) {
-  return EXPOSURE_RULES.includes(finding.rule)
-    ? {
-        ...finding,
-        message: `${finding.message}. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. An exception fits only when it is right here.`,
-      }
-    : finding;
-}
-
 function javaFilesUnder(projectRoot, sourceRoots) {
-  return sourceRoots.flatMap((root) => {
-    const directory = path.join(projectRoot, root);
-    return existsSync(directory)
-      ? readdirSync(directory, { recursive: true })
-          .filter((name) => name.endsWith('.java'))
-          .map((name) => path.join(directory, name))
-      : [];
-  });
+  return sourceRoots.flatMap((root) =>
+    projectFilesUnder(path.join(projectRoot, root)).filter((file) => file.endsWith('.java')),
+  );
 }
 
-function classIndex(projectRoot, sourceRoots) {
+export function classIndex(projectRoot, sourceRoots) {
   const index = new Map();
   for (const file of javaFilesUnder(projectRoot, sourceRoots)) {
     const name = path.basename(file, '.java');
@@ -76,7 +63,7 @@ function classIndex(projectRoot, sourceRoots) {
   return index;
 }
 
-function superclassOf(source, className) {
+export function superclassOf(source, className) {
   const declaration = new RegExp(
     String.raw`\bclass\s+${escapeRegExp(className)}\b(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)`,
   );
@@ -103,7 +90,7 @@ function superclassAfter(source, line) {
     .split('\n')
     .slice(line - 1)
     .join('\n');
-  return /\bclass\s+\w+\b(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
+  return /\bclass\s+\w+(?:\s*<[^{]*?>)?\s+extends\s+([\w.]+)/.exec(after)?.[1].split('.').at(-1);
 }
 
 export function dropInheritedVersions(findings, { projectRoot, sourceRoots }) {

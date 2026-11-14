@@ -1,6 +1,8 @@
 import ast
 
 from checks.common import dotted_name, finding
+from honesty.switches.marks import mark_sites
+from silent_tests.calls import own_nodes
 
 RULE = "skipped-test-without-reason"
 PYTEST_MARKS = {"skip", "skipif", "xfail"}
@@ -70,15 +72,6 @@ def mark_subject(node, aliases):
     return None if reason_given(node, dotted) else dotted
 
 
-def marks_of_param(call, aliases):
-    if dotted_name(call.func, aliases) != "pytest.param":
-        return []
-    value = keyword_value(call, {"marks"})
-    if isinstance(value, (ast.List, ast.Tuple)):
-        return list(value.elts)
-    return [value] if value is not None else []
-
-
 def reasonless_call(node, aliases):
     name = dotted_name(node.func, aliases)
     if name in PYTEST_CALLS:
@@ -102,49 +95,34 @@ def raised_skip(node, aliases):
     return None if given is not None and has_text(given) else "SkipTest"
 
 
-def decorated_marks(node):
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-        return node.decorator_list
-    if isinstance(node, ast.Assign) and any(
-        isinstance(target, ast.Name) and target.id == "pytestmark"
-        for target in node.targets
-    ):
-        value = node.value
-        return value.elts if isinstance(value, (ast.List, ast.Tuple)) else [value]
-    return []
-
-
 def is_test_function(node):
     return isinstance(
         node, (ast.FunctionDef, ast.AsyncFunctionDef)
     ) and node.name.startswith("test")
 
 
-def early_return(function):
-    body = function.body
-    if (
-        body
-        and isinstance(body[0], ast.Expr)
-        and isinstance(body[0].value, ast.Constant)
-    ):
-        body = body[1:]
-    first = body[0] if body else None
-    if (
-        isinstance(first, ast.If)
-        and not first.orelse
-        and len(first.body) == 1
-        and isinstance(first.body[0], ast.Return)
-        and first.body[0].value is None
-    ):
-        return first
-    return None
+def is_bare_return(statement):
+    if not isinstance(statement, ast.Return):
+        return False
+    value = statement.value
+    return value is None or (isinstance(value, ast.Constant) and value.value is None)
+
+
+def early_returns(function):
+    found = [
+        node
+        for node in own_nodes(function)
+        if isinstance(node, ast.If)
+        and not node.orelse
+        and len(node.body) == 1
+        and is_bare_return(node.body[0])
+    ]
+    return sorted(found, key=lambda node: node.lineno)
 
 
 def node_findings(node, context):
     found = []
-    marks = list(decorated_marks(node))
     if isinstance(node, ast.Call):
-        marks += marks_of_param(node, context.aliases)
         subject = reasonless_call(node, context.aliases)
         if subject:
             found.append(finding(context.path, RULE, subject, node))
@@ -152,21 +130,27 @@ def node_findings(node, context):
         subject = raised_skip(node, context.aliases)
         if subject:
             found.append(finding(context.path, RULE, subject, node))
-    for mark in marks:
-        subject = mark_subject(mark, context.aliases)
-        if subject:
-            found.append(finding(context.path, RULE, subject, mark))
-    if is_test_function(node) and early_return(node) is not None:
-        found.append(
-            finding(context.path, RULE, f"return in {node.name}", early_return(node))
+    if is_test_function(node):
+        found.extend(
+            finding(context.path, RULE, f"return in {node.name}", statement)
+            for statement in early_returns(node)
         )
+    return found
+
+
+def mark_findings(context):
+    found = []
+    for site in mark_sites(context):
+        subject = mark_subject(site.expression, context.aliases)
+        if subject:
+            found.append(finding(context.path, RULE, subject, site.at))
     return found
 
 
 def check(context):
     if not context.tests:
         return []
-    found = []
+    found = mark_findings(context)
     for node in ast.walk(context.tree):
         found.extend(node_findings(node, context))
     return found

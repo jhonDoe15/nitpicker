@@ -48,7 +48,7 @@ const MINIMUM_MINOR = 8;
 const LOWER_BOUND = /^(>=|~=|==|\^|~|>)?\s*v?3\.(\d+)/;
 const REQUIRES_PYTHON = [
   /^\s*requires-python\s*=\s*["']([^"']+)["']/m,
-  /^\s*python_requires\s*=\s*(.+)$/m,
+  /^\s*python_requires\s*=\s*(\S.*)$/m,
   /^\s*python\s*=\s*["']([^"']+)["']/m,
 ];
 export const INSTALLED_DIRECTORIES = ['__pycache__', 'node_modules', 'site-packages'];
@@ -87,7 +87,7 @@ function requirementsInDirectory(projectRoot) {
     : [];
 }
 
-function requirementFiles(projectRoot) {
+export function requirementFiles(projectRoot) {
   return [
     ...readdirSync(projectRoot).filter((name) => REQUIREMENT_FILE.test(name)),
     ...requirementsInDirectory(projectRoot),

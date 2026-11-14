@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "float-equality-in-test",
+    "mention": "pytest.approx"
+  }
+]

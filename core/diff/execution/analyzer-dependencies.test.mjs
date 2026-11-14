@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runTaskGraph } from './analyzer-scheduler.mjs';
+import { runTaskGraph } from './graph/task-graph.mts';
 import { task } from './test-support/analyzer-task.mjs';
 
 describe('analyzer task graph', () => {

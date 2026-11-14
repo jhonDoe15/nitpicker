@@ -7,9 +7,9 @@ import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerpr
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
-import { ingestGoCoverprofile } from './coverage-reports/gocover.mjs';
+import { ingestGoCoverprofile } from './coverage-reports/gocover.mts';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
-import { ingestLcov } from './coverage-reports/lcov.mjs';
+import { ingestLcov } from './coverage-reports/lcov.mts';
 import { ingestPit } from './pit.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -448,6 +448,16 @@ describe('parseXml', () => {
     expect(() => parseXml('<a><b></a>')).toThrow('does not match');
     expect(() => parseXml('<a>')).toThrow('not closed');
     expect(() => parseXml('')).toThrow('no root');
+  });
+
+  it('skips a document type with an internal subset and reads a slash-closed root', () => {
+    const root = parseXml('<!DOCTYPE r [<!ENTITY e "x">] ><r a="1" b=\'/\'/>');
+    expect(root.name).toBe('r');
+    expect(root.attrs).toEqual({ a: '1', b: '/' });
+  });
+
+  it('gives up on a long unclosed tag without backtracking over its name', () => {
+    expect(() => parseXml(`<r><${'a'.repeat(100_000)}`)).toThrow('<r> is not closed');
   });
 
   it('decodes numeric entities and leaves unknown ones', () => {

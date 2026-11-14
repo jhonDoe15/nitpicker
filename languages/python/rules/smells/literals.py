@@ -1,11 +1,10 @@
 import ast
 import re
 
-from checks.common import finding, last_name
+from checks.common import finding, last_name, shown
 
 MINIMUM_LENGTH = 5
 MAXIMUM_USES = 2
-SHOWN_LENGTH = 30
 ALPHANUMERIC = re.compile(r"[A-Za-z0-9]")
 TRANSLATION_CALLS = {
     "_",
@@ -55,6 +54,7 @@ MIME_TYPE = re.compile(r"^[a-z]+/[a-z0-9.+*-]+$")
 TIME_FORMAT = re.compile(r"^(?:%[A-Za-z]|[-:/ T.,_])+$")
 CLASS_BODY_VALUES = (ast.Assign, ast.AnnAssign)
 SEQUENCES = (ast.List, ast.Tuple, ast.Set)
+COMPARISONS = (ast.Eq, ast.NotEq)
 
 
 def annotation_nodes(tree):
@@ -99,6 +99,23 @@ def is_discriminant_value(node, parent):
         if value is node:
             return isinstance(key, ast.Constant) and key.value in DISCRIMINANT_KEYS
     return False
+
+
+def discriminant_operand(node):
+    if isinstance(node, ast.Attribute):
+        return node.attr in DISCRIMINANT_KEYS
+    if isinstance(node, ast.Subscript) and isinstance(node.slice, ast.Constant):
+        return node.slice.value in DISCRIMINANT_KEYS
+    return False
+
+
+def is_discriminant_comparison(node, parent):
+    if not isinstance(parent, ast.Compare):
+        return False
+    if not all(isinstance(op, COMPARISONS) for op in parent.ops):
+        return False
+    operands = [parent.left, *parent.comparators]
+    return node in operands and any(discriminant_operand(other) for other in operands)
 
 
 def real_parent(node, parents):
@@ -163,15 +180,11 @@ def is_countable(node, parents, skipped):
         and parent.args[0] is node
     ):
         return False
-    if is_discriminant_value(node, parent):
+    if is_discriminant_value(node, parent) or is_discriminant_comparison(node, parent):
         return False
     if is_subscript_key(node, parents) or is_listed_constant(node, parents):
         return False
     return not is_literal_subscript(node, parents)
-
-
-def shown(value):
-    return value[:SHOWN_LENGTH] + "..." if len(value) > SHOWN_LENGTH else value
 
 
 def check(context):

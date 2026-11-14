@@ -15,8 +15,31 @@ Part of the [Java preset guide](../java-preset.md).
   NullAway resolve from a detached configuration with their versions pinned in the init script's
   map, so a dependency-management plugin of the project cannot move them. A compile error in this
   second compile fails the task with javac's errors (a `tool-error` on the CLI path); it never
-  becomes an empty report. `module-info.java` is left out, so the sources compile in the unnamed
-  module. Kotlin preset: Java sources only, like PMD and SpotBugs.
+  becomes an empty report. Main sources with a `module-info.java` compile as that module on both
+  builds: jars and class directories that are modules (`module-info.class`, also under
+  `META-INF/versions/`, or an `Automatic-Module-Name`) go on `--module-path`, the rest on the class
+  path, and when that compile fails it is retried with every library on `--module-path`, so a sealed
+  type may permit classes in another package. Test sources compile on the class path, without the
+  descriptor. Kotlin preset: Java sources only, like PMD and SpotBugs.
+- **Report and arguments files.** `ErrorProneReport <report.json> <checks.json> <arguments file>...`
+  reads one arguments file per source set: javac arguments, then `--sources` and the sources, one
+  per line, plus the lines that are not javac's (`--test-only`, `--own-classes=`, `--release=`,
+  `--source=`, `--target=`, `--project-arg=`, `--errorprone-flag=`). The report is a JSON array of
+  `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
+  Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
+  class around it, innermost first.
+- **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
+  the `BugPattern: <Check>` it came from; the runner then turns that check off with
+  `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
+  checks' findings are kept. Each crashed check is one more report entry,
+  `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
+  check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  A crash nitpicker knows as an Error Prone bug is a descriptive notice instead, so it does not
+  change the exit code of a clean project: `UnnecessarilyFullyQualified` throwing a
+  `ClassCastException` (`JCIdent` cannot be cast to `MemberSelectTree`), seen on classes with fully
+  qualified Lombok annotations. Any other crash of that check stays a tool error.
+  The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
+  off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
   Gradle when it is at least 21 and at least the JDK of every compile task's toolchain; otherwise
   it asks Gradle's toolchain service for a launcher of the version it needs (found locally or
@@ -49,7 +72,9 @@ Part of the [Java preset guide](../java-preset.md).
   1.8, by version), which the runner gives javac as `-source 8 -target 8`, the oldest level JDK
   21's javac takes; plugin 4.x has no such default and javac's own applies. An `annotationProcessorPaths` entry without a version takes it from the effective
   `dependencyManagement`, as `maven-compiler-plugin` does; one with no version there, or an
-  unresolved one, is a tool error that names the coordinate, never a guessed version. Without
+  unresolved one, is a tool error that names the module and the coordinate, never a guessed
+  version. Only modules that compile are read: an aggregator (packaging `pom`) compiles nothing,
+  so its unresolved entries do not matter, as in Maven. Without
   `annotationProcessorPaths` the processors come from the classpath, as javac finds them. The main
   classpath ends with `target/classes`, so classes that code generators (protobuf, JAXB, OpenAPI,
   jOOQ, ANTLR) compiled there resolve; the module's own sources are compiled from source and take
@@ -76,8 +101,8 @@ Part of the [Java preset guide](../java-preset.md).
   file as the path). Only findings in main sources of the checks in `certainBugs` in `checks.json` go without it: a
   curated list of ERROR checks whose finding in main code is a bug, not a severity filter (the
   ERROR checks left out, and why, are listed below). Findings in test sources always keep the
-  route, since a test can build the broken case on purpose. The route is added after the identity is computed, so it
-  does not change it. Diagnostics outside the main and test source roots (annotation-processor
+  route, since a test can build the broken case on purpose. `applyRuleMessages` adds the route
+  after the identity is computed, so it does not change it. Diagnostics outside the main and test source roots (annotation-processor
   output) are dropped. Diagnostics with the same check, file, line, column and message are one
   finding, and the `class is an internal JDK API` diagnostic `SunApi` adds at the `.class` of a
   literal it already reported is dropped; different columns or messages on a line stay apart. Identity: a hash of the check and the
@@ -90,11 +115,11 @@ Part of the [Java preset guide](../java-preset.md).
   (`reviewedChecks` in `checks.json`, with the reviewed Error Prone and NullAway versions under
   `reviewed`; a unit test fails when the init script or the Maven path pins other versions, and
   the e2e test fails when the jar's checks differ from the reviewed ones). On: every ERROR and
-  WARNING check Error Prone enables by default except 10, plus 109 of its off-by-default checks (for
+  WARNING check Error Prone enables by default except 10, plus 107 of its off-by-default checks (for
   example `FieldCanBeLocal`, `FieldCanBeFinal`, `IdentifierName`,
   `PrivateConstructorForUtilityClass`, `RedundantThrows`, `CheckedExceptionNotThrown`,
   `ThrowSpecificExceptions`, `NonFinalStaticField`, `BanSerializableRead`,
-  `UseCorrectAssertInTests`): 595 checks. A check is off only when another check that is always on
+  `UseCorrectAssertInTests`): 593 checks. A check is off only when another check that is always on
   reports every case it does at the same place, it fights another tool, needs an annotation library a project would add only for it (Error Prone's own
   annotations, Guava, auto-common), flags legitimate code with no allowed form, or picks one of two
   forms that are both valid conventions (`var` or the explicit type, `final` on parameters and
@@ -207,7 +232,7 @@ Part of the [Java preset guide](../java-preset.md).
   `java-spans.test.mjs` (classes, members and fields at a line), `ingest/errorprone/messages.test.mjs`
   (message rewrites, Guava suggestions without Guava), `adapters/errorprone/lombok/lombok-generated.test.mjs`
   (which positions and checks count as generated),
-  `adapters/errorprone/checks/checks-policy.test.mjs` (reviewed versions equal the pinned ones on
+  `adapters/errorprone/checks/checks-policy.test.mts` (reviewed versions equal the pinned ones on
   Gradle and Maven, every list names reviewed checks, sorted, and every check turned off, kept on
   the exceptions route or spared in annotated classes is documented below),
   `maven/errorprone/maven-compiler.test.mjs` and `maven-jdk.test.mjs` (Maven compiler settings,
@@ -232,10 +257,20 @@ Part of the [Java preset guide](../java-preset.md).
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
   `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
   class compiled into `target/classes` before the regular compile), and
-  `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
+  `maven/preset/maven-preset-parity.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.
+- **Updates across a suspension.** The TypeScript, Python and Kotlin presets report shared state
+  updated from a read made before an `await` or a suspend call (see
+  [the matrix](../spec/checks.md#updates-across-a-suspension)). A Java expression cannot suspend, so
+  that rule has no Java form. The related lost update between threads is covered where one
+  statement shows it: `errorprone/NonAtomicVolatileUpdate` (on, as Error Prone enables it by
+  default) reports `++`, `--` and compound assignments of a `volatile` field, and SpotBugs, which
+  runs at `-effort:default -medium` with no detector excluded, adds `IS2_INCONSISTENT_SYNC` (a field
+  read or written both with and without its lock) and `AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE`;
+  its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
+  updated from a blocking call (`this.total += future.join()`) is reported by none of them.
 
 ## Checks that are off
 
@@ -259,8 +294,10 @@ Part of the [Java preset guide](../java-preset.md).
 | `EmptyIf`                        | off     | errorprone/UnnecessarySemicolon, which is always on, reports every if (c); at the same position with a clearer fix                                                                                                                        |
 | `EqualsGetClass`                 | on      | getClass() and instanceof in equals are both valid conventions, with different semantics for subclasses                                                                                                                                   |
 | `EqualsMissingNullable`          | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
+| `FieldCanBeStatic`               | off     | Crashes Error Prone (2.26 to 2.52) when it rewrites a Lombok @Getter field initialized from a constant; spotbugs/SS_SHOULD_BE_STATIC reports such a field when its initializer is a compile-time constant                                 |
 | `FieldMissingNullable`           | off     | Nullness is NullAway's job here; this check only asks for an annotation                                                                                                                                                                   |
 | `IfChainToSwitch`                | on      | An if-chain and a switch are both valid forms                                                                                                                                                                                             |
+| `ForEachIterable`                | off     | Crashes Error Prone (2.26 to 2.52) on a record pattern with var bindings; pmd/ForLoopCanBeForeach reports the same loops                                                                                                                  |
 | `ImmutableMemberCollection`      | off     | Its allowed form is a Guava immutable type, even in projects without Guava                                                                                                                                                                |
 | `ImmutableRefactoring`           | off     | A migration to Error Prone's @Immutable annotation, a dependency nitpicker does not ask for                                                                                                                                               |
 | `InlineFormatString`             | on      | A format string inline or in a named constant are both valid forms                                                                                                                                                                        |
@@ -376,6 +413,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
   `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
   later one, such as the line of an `@author` tag).
+- `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
+  line of the parameter or the brace of a clause laid out over several lines still meets one on
+  the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -393,7 +433,12 @@ clearest message: usually the Error Prone check with its fix over a SpotBugs pat
 check over the general one (`OptionalEquality` or `BoxedPrimitiveEquality` over
 `ReferenceEquality`, over PMD's `CompareObjectsWithEquals` and SpotBugs `ES_COMPARING_*`), and the fullest switch check over the
 rest (`MissingCasesInEnumSwitch` over `NonExhaustiveSwitch`, `MissingDefault`, Checkstyle's
-`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`).
+`MissingSwitchDefault` and `SF_SWITCH_NO_DEFAULT`). A forbiddenapis signature stands over the
+Error Prone check on the same call: its message names the allowed form at least as clearly
+(`legacy-date-time` lists the java.time classes and the `toInstant()` conversion, where
+`JavaUtilDate` names only `Instant` or `LocalDate`), and its fix also settles the check, which the
+check's own fix does not (`LocalDate.now(zone)` for `JavaTimeDefaultTimeZone` is still a
+`clock-now` call, `Thread.sleep(Duration)` for `PreferJavaTimeOverload` still a `thread-sleep`).
 
 Where the primary covers only some of the secondary's cases, both stay on and the secondary is
 dropped only in the scope the two share: `RV_RETURN_VALUE_IGNORED` on a method Error Prone's
@@ -426,7 +471,7 @@ this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file
 runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
 dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
 The overlap table serves both builds, so both must report the same findings. To probe a new case,
-add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mts
 --check` writes nothing and exits 1 with the added and removed findings when the committed file
 differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
 Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
@@ -468,18 +513,19 @@ The pairs:
 - line: `errorprone/NullAway` over `pmd/NullAssignment`, `pmd/ReturnEmptyCollectionRatherThanNull`
 - line: `errorprone/InvalidPatternSyntax` over `spotbugs/RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION`
 - line: `errorprone/BareDotMetacharacter` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
+- line: `pmd/RegexPartDefect` over `spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN`
 - line: `errorprone/RandomCast` over `spotbugs/RV_01_TO_INT`
 - line: `errorprone/MathAbsoluteNegative` over `spotbugs/RV_ABSOLUTE_VALUE_OF_RANDOM_INT`
 - line: `errorprone/DeadException` over `spotbugs/RV_EXCEPTION_NOT_THROWN`
 - line: `errorprone/CheckReturnValue`, `errorprone/ReturnValueIgnored` over `spotbugs/RV_RETURN_VALUE_IGNORED`, `pmd/UselessOperationOnImmutable`
 - line: `errorprone/SelfAssignment` over `spotbugs/SA_FIELD_SELF_ASSIGNMENT`, `spotbugs/SA_LOCAL_SELF_ASSIGNMENT`, `pmd/IdempotentOperations`
 - line: `pmd/CheckSkipResult` over `spotbugs/SR_NOT_CHECKED`
-- line: `errorprone/FieldCanBeStatic` over `spotbugs/SS_SHOULD_BE_STATIC`
 - line: `errorprone/UnnecessarySemicolon` over `spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE`, `checkstyle/NeedBraces`, `errorprone/MissingBraces`
 - line: `checkstyle/NeedBraces` over `errorprone/MissingBraces`
 - line: `errorprone/LockNotBeforeTry` over `spotbugs/UL_UNRELEASED_LOCK`, `spotbugs/UL_UNRELEASED_LOCK_EXCEPTION_PATH`
 - line: `errorprone/WaitNotInLoop` over `spotbugs/UW_UNCOND_WAIT`, `spotbugs/WA_NOT_IN_LOOP`
 - line: `errorprone/NonAtomicVolatileUpdate` over `spotbugs/VO_VOLATILE_INCREMENT`
+- line: `pmd/InconsistentFieldLocking` over `spotbugs/IS2_INCONSISTENT_SYNC`, `spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE`, `spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE`, `errorprone/NonAtomicVolatileUpdate`
 - line: `errorprone/SubstringOfZero` over `spotbugs/DMI_USELESS_SUBSTRING`
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
@@ -499,12 +545,13 @@ The pairs:
 - line: `errorprone/FallThrough` over `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough`
 - line: `pmd/ImplicitSwitchFallThrough` over `checkstyle/FallThrough`
 - member: `errorprone/FallThrough`, `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough` over `spotbugs/SF_SWITCH_FALLTHROUGH`
-- line: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
-- line: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
+- catch: `pmd/SwallowedInterrupt` over `errorprone/EmptyCatch`, `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
-- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MemberName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
+- line: `errorprone/IdentifierName` over `checkstyle/CatchParameterName`, `checkstyle/GoogleNonConstantFieldName`, `checkstyle/LambdaParameterName`, `checkstyle/LocalVariableName`, `checkstyle/MethodName`, `checkstyle/ParameterName`, `checkstyle/PatternVariableName`, `checkstyle/RecordComponentName`
 - line: `errorprone/TypeParameterNaming` over `checkstyle/ClassTypeParameterName`, `checkstyle/InterfaceTypeParameterName`, `checkstyle/MethodTypeParameterName`, `checkstyle/RecordTypeParameterName`
 - file: `errorprone/WildcardImport` over `checkstyle/AvoidStarImport`
 - line: `errorprone/LongLiteralLowerCaseSuffix` over `checkstyle/UpperEll`
@@ -519,6 +566,13 @@ The pairs:
 - line: `pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
+- line: `errorprone/StreamResourceLeak` over `pmd/StreamResourceNotClosed`
+- line: `errorprone/PatternMatchingInstanceof` over `pmd/InstanceofThenCast`
+- line: `errorprone/ThrowSpecificExceptions` over `pmd/AvoidThrowingRawExceptionTypes`
+- line: `forbiddenapis/legacy-date-time` over `errorprone/JavaUtilDate`
+- line: `forbiddenapis/clock-now` over `errorprone/JavaTimeDefaultTimeZone`
+- line: `forbiddenapis/thread-sleep` over `errorprone/PreferJavaTimeOverload`
+- line: `forbiddenapis/java-deserialization` over `errorprone/BanSerializableRead`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
 - line: `pmd/DefaultLabelNotLastInSwitch` over `errorprone/SwitchDefault`
 - line: `checkstyle/JavadocMethod` over `errorprone/InvalidParam`
@@ -528,14 +582,15 @@ The pairs:
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
 - file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
 - line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`, `pmd/UseArrayListInsteadOfVector`
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
+- line: `pmd/MixedTimeUnits` over `errorprone/TimeUnitMismatch`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`, `forbiddenapis/legacy-date-time`
+- line: `pmd/DefaultTimeZone` over `forbiddenapis/legacy-date-time`
 - line: `pmd/UnclosedInlineResource` over `spotbugs/OS_OPEN_STREAM`, `spotbugs/ODR_OPEN_DATABASE_RESOURCE`, `spotbugs/OBL_UNSATISFIED_OBLIGATION`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
@@ -567,6 +622,20 @@ The pairs:
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
+- line: `kotlin-source/ChildCoroutineOutlivesResource` over `pmd/CoroutineEscapesTest`
+- line: `pmd/SqlConcatenation` over `spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE`, `spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING`
+- line: `checkstyle/MagicNumber` over `pmd/AvoidLiteralsInIfCondition`
+
+## Standard streams and the `main` method
+
+`SystemOut` (and PMD's `SystemPrintln`, so the rule holds if the overlap above changes) flags every
+`System.out` / `System.err` use. The one allowed form is a writer: code outside the entry point takes
+a `PrintStream`, `Writer` or `Appendable` parameter and writes to it, and only the body of a
+`static void main(String[])` method passes `System.out` / `System.err` (`new Cli(System.out).run(args)`,
+`System.out::print`). A finding of either rule on a line inside that body is dropped; the same
+method-level scan drops its `mutant-nocoverage` findings; branch coverage still applies. Nothing else
+in the class is spared. `SystemOut` also reports `printStackTrace()`, which Error Prone gives the
+same message as `System.out`; a line of the body that calls `printStackTrace()` stays a finding.
 
 ## Checks spared in annotated classes
 

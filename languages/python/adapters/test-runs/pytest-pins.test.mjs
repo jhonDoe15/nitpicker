@@ -57,6 +57,12 @@ describe('pinning the pytest options that let a failing run pass', () => {
       ],
     });
   });
+  it('drops the flaky plugin options that rerun every failing test', () => {
+    expect(pinAddopts(['-q', '--force-flaky', '--max-runs', '3', '--min-passes=1'])).toEqual({
+      kept: ['-q'],
+      removed: ['--force-flaky', '--max-runs 3', '--min-passes=1'],
+    });
+  });
   it('drops the -m marker filter, which hides tests the same way -k does', () => {
     expect(pinAddopts(['-q', '-m', 'not slow', '-mfast', '--strict-markers'])).toEqual({
       kept: ['-q', '--strict-markers'],

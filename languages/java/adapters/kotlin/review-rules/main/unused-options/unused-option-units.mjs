@@ -1,4 +1,5 @@
 import { springManagedOwner } from '../../spring/spring-names.mjs';
+import { declarationOf, functionKind } from './call-reach.mjs';
 
 const LIMITED = new Set(['private', 'internal']);
 const SKIPPED_MODIFIERS = new Set([
@@ -34,8 +35,15 @@ function unitOf(file, fn, limited) {
     callee: fn.name,
     label: [fn.owner, fn.name].filter(Boolean).join('.'),
     limited,
+    internal: fn.visibility === 'internal',
     parameters: fn.parameters,
     line: fn.line,
+    declaration: declarationOf(file, {
+      owner: fn.owner,
+      name: fn.name,
+      kind: functionKind(file, fn.owner),
+      extension: fn.receiver !== undefined,
+    }),
   };
 }
 
@@ -98,9 +106,15 @@ function constructorUnits(file, classes, serialization) {
       callee: klass.name,
       label: klass.qualified,
       limited: true,
+      internal: klass.visibility !== 'private' && klass.constructorVisibility !== 'private',
       data: klass.data,
       parameters: klass.primaryParameters,
       line: klass.line,
+      declaration: declarationOf(file, {
+        owner: klass.qualified,
+        name: klass.name,
+        kind: 'constructor',
+      }),
     }));
   const secondary = file.functions
     .filter(
@@ -112,9 +126,11 @@ function constructorUnits(file, classes, serialization) {
       callee: classes.get(fn.owner).name,
       label: fn.owner,
       limited: true,
+      internal: fn.visibility === 'internal' && classes.get(fn.owner).visibility !== 'private',
       data: false,
       parameters: fn.parameters,
       line: fn.line,
+      declaration: declarationOf(file, { owner: fn.owner, name: fn.name, kind: 'constructor' }),
     }));
   return [...primary, ...secondary];
 }

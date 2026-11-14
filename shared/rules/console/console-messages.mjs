@@ -55,10 +55,9 @@ const IDENTIFIER_PATTERN =
   /(?<![A-Za-z0-9])(?=[A-Za-z]*\d)(?=\d*[A-Za-z])[A-Za-z0-9]{6,}(?![A-Za-z0-9])/gu;
 
 const NUMBER_PATTERN =
-  /(?<![A-Za-z_$])\d+(?:[.,]\d+)*(?:%|\s?(?:ms|s|sec|secs|seconds?|min|minutes?|hours?|[kmg]i?b|bytes?)\b)?/giu;
+  /(?<![A-Z_$])\d+(?:[.,]\d+)*(?:%|\s?(?:ms|s|sec|secs|seconds?|min|minutes?|hours?|[kmg]i?b|bytes?)\b)?/giu;
 
-const TEMPORARY_NAME_PATTERN =
-  /(?<![A-Za-z0-9_])tmp(?:[a-z0-9_]{6,}|[.-][A-Za-z0-9]{6,})(?![A-Za-z0-9_])/gu;
+const TEMPORARY_NAME_PATTERN = /\btmp(?:[a-z0-9_]{6,}|[.-][A-Za-z0-9]{6,})\b/gu;
 
 const TEMPORARY_DIRECTORY_PATTERN = /^(?:<tmp>|\/(?:var\/)?tmp)(?:[\\/]|$)/u;
 
@@ -110,7 +109,8 @@ export function normalizeConsoleMessage(line) {
     .replaceAll(NUMBER_PATTERN, '<n>')
     .replaceAll(/\s+/gu, ' ')
     .trim()
-    .slice(0, MAX_MESSAGE_LENGTH);
+    .slice(0, MAX_MESSAGE_LENGTH)
+    .trimEnd();
 }
 
 export function hasSpecificText(text) {

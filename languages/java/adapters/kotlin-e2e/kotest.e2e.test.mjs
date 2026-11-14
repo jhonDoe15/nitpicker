@@ -28,7 +28,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on a Kotest project', () => {
 
     expect(
       findings
-        .filter(({ tool }) => tool === 'test-runtime')
+        .filter(({ rule }) => rule === 'slow-test')
         .map(({ path: file, identity, location }) => ({ file, identity, location }))
         .sort((left, right) => left.identity.localeCompare(right.identity)),
     ).toEqual(

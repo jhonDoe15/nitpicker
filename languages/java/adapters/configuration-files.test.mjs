@@ -2,9 +2,11 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles, createJavaAnalyzer, javaRuntimeVersion } from './java-analyzer.mjs';
+import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'"]+)['"]/g;
+const MODULE = /\.m[jt]s$/u;
 
 const GENERATOR_INPUTS = 'languages/java/gradle/rulesets/';
 
@@ -16,9 +18,15 @@ function resourceFiles(directory) {
 }
 
 function staticImports(file) {
-  const source = readFileSync(path.join(packageRoot, file), 'utf8');
+  const source = readFileSync(checkoutModulePath(path.join(packageRoot, file)), 'utf8');
   return [...source.matchAll(STATIC_IMPORT)].map(([, specifier]) =>
     path.relative(packageRoot, path.resolve(packageRoot, path.dirname(file), specifier)),
+  );
+}
+
+function isHashed(file, hashed) {
+  return [file, file.replace(/\.mts$/u, '.mjs'), file.replace(/\.mjs$/u, '.mts')].some((name) =>
+    hashed.includes(name),
   );
 }
 
@@ -39,12 +47,30 @@ describe('Java analyzer configuration files', () => {
     expect(hashedAmong(expected).sort()).toEqual(expected.sort());
   });
 
+  it('hash every rule, task, guard and lint file, so changing one invalidates cached findings', () => {
+    const unhashed = [
+      'languages/java/gradle/rules',
+      'languages/java/gradle/tasks',
+      'languages/java/guards',
+      'languages/java/adapters/gradle-reports',
+      'languages/java/builds/lint',
+      'languages/java/builds/classes',
+      'languages/java/builds/rulesets',
+      'languages/java/builds/tools',
+    ]
+      .flatMap((directory) => resourceFiles(directory))
+      .filter((file) => !(/\.test\.m[jt]s$/u.test(file) || file.includes('test-support')))
+      .filter((file) => !isHashed(file, configurationFiles()));
+
+    expect(unhashed).toEqual([]);
+  });
+
   it('hash every module that a hashed module imports', () => {
     const hashed = configurationFiles();
-    const modules = hashed.filter((file) => file.endsWith('.mjs'));
+    const modules = hashed.filter((file) => MODULE.test(file));
     const missing = modules.flatMap((file) =>
       staticImports(file)
-        .filter((imported) => !hashed.includes(imported))
+        .filter((imported) => !isHashed(imported, hashed))
         .map((imported) => `${file} imports ${imported}`),
     );
 

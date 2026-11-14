@@ -1,8 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mjs';
-import { runEslint } from '../../../../../languages/typescript/adapters/eslint-runner.mjs';
+import { parseArguments } from '../../../../../languages/typescript/adapters/eslint/arguments.mts';
+import { runEslint } from '../../../../../languages/typescript/adapters/eslint-runner.mts';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import {
   toolRoot,
@@ -15,6 +15,7 @@ import {
 } from './test-support/eslint-fixtures.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { commit } from '../../../git/test-support/git-repository.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const { createRepository, temporaryRoot } = useEslintFixtures();
 
@@ -144,6 +145,32 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('completed');
     expect(report.toolErrors).toEqual([]);
   });
+  it('gives ESLint the configured analyzer deadline, else its own 4 minutes', () => {
+    const root = temporaryRoot('nitpicker-diff-');
+    const projectRoot = path.join(root, 'base/project');
+    writeFiles(projectRoot, { 'package.json': '{"name":"fixture"}\n' });
+    const parse = (environment) =>
+      parseArguments(
+        [
+          '--analyzer-name',
+          'eslint-lint',
+          '--project-root',
+          projectRoot,
+          '--policy-root',
+          projectRoot,
+          '--tool-root',
+          toolRoot,
+          '--config',
+          'eslint.config.mjs',
+          '--pattern',
+          'src/main/**/*.ts',
+        ],
+        environment,
+      ).timeoutMs;
+
+    expect(parse({})).toBe(240_000);
+    expect(parse({ NITPICKER_ANALYZER_TIMEOUT_MS: '1200000' })).toBe(1_200_000);
+  });
   it('rejects direct filesystem roots outside generated worktrees', () => {
     const untrustedRoot = temporaryRoot('eslint-untrusted-root-');
 
@@ -184,7 +211,7 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('tool-error');
     expect(report.toolErrors).toHaveLength(2);
     expect(report.toolErrors[0].message).toEqual(
-      'eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot',
+      `eslint-lint crashed with exit 2: ESLint differential adapter failed: --pattern must stay within the analyzed snapshot. ${linkSentence('typescriptToolFails')}`,
     );
   });
   it.each(['malformed', 'configuration-error', 'crash', 'timeout'])(

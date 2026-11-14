@@ -2,6 +2,7 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { scanImports } from './analysis/python-coupling.mjs';
+import { scanTestStrings } from './analysis/test-runtime/python-test-runtime.mjs';
 import { collectFacts } from './facts/python-facts.mjs';
 import { scanDependencies } from './dependencies/dependency-findings.mjs';
 import { runDuplicates } from './analysis/python-duplicates.mjs';
@@ -32,7 +33,7 @@ export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_DATA = '.coverage';
-const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
+export const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
   ruff: /^error: Failed to parse /,
@@ -51,6 +52,18 @@ function projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRo
   };
 }
 
+function launcherFor({ projectRoot, liveRoot, settings, spawn }) {
+  return openSnapshotEnvironment({ projectRoot, liveRoot, setting: settings.environment, spawn });
+}
+
+function toolEnvironment({ pythonPath, reportRoot }) {
+  return {
+    PYTHONPATH: pythonPath,
+    PYTHONDONTWRITEBYTECODE: '1',
+    ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
+  };
+}
+
 export function createToolContext({
   projectRoot,
   liveRoot,
@@ -61,17 +74,17 @@ export function createToolContext({
   snapshot = 'head',
   baselineRoot,
   conventions = {},
+  layout = {},
   policyRoot,
   toolPrecedence,
   probes = new Map(),
   spawn,
   pytestAddopts,
+  mutationScope,
+  analyzerDeadlineMs,
+  quick = false,
 }) {
-  const launcher = openSnapshotEnvironment({
-    projectRoot,
-    liveRoot,
-    setting: settings.environment,
-  });
+  const launcher = launcherFor({ projectRoot, liveRoot, settings, spawn });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
     .filter((entry) => entry !== undefined && entry !== '')
@@ -83,6 +96,7 @@ export function createToolContext({
     baselineRoot,
     testSeconds: settings.testSeconds,
     conventions,
+    layout,
     policyRoot,
     toolPrecedence,
     probes,
@@ -91,12 +105,11 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
+    mutationScope,
+    analyzerDeadlineMs,
+    quick,
     project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
-    env: {
-      PYTHONPATH: pythonPath,
-      PYTHONDONTWRITEBYTECODE: '1',
-      ...(reportRoot === undefined ? {} : { COVERAGE_FILE: path.join(reportRoot, COVERAGE_DATA) }),
-    },
+    env: toolEnvironment({ pythonPath, reportRoot }),
   };
 }
 
@@ -105,14 +118,14 @@ export function runPythonTools(context) {
   const steps = [
     lint,
     format,
-    test,
-    retimeSlowTests,
+    ...(context.quick ? [] : [test, retimeSlowTests]),
     typeCheck,
     checkRules,
     structure,
     runDuplicates,
     (stepContext) => {
       scanImports(stepContext, run);
+      scanTestStrings(stepContext, run);
       scanDependencies(stepContext, run);
     },
     (stepContext) => {
@@ -141,6 +154,7 @@ export function runPythonTools(context) {
       formatter: context.project.formatter,
       formatterDetected: context.project.formatterDetected,
       sourceRoots: context.project.sourceRoots,
+      ...(context.quick ? { quick: true } : {}),
       testsRan: outcome.testsRan,
       testFailures: outcome.testFailures ?? [],
       testRunner: context.project.testRunner,
@@ -149,23 +163,29 @@ export function runPythonTools(context) {
   return failures;
 }
 
-export function lint(context) {
+export function lintOptions(context) {
   const config = ruffLintConfig(context);
   const style = pytestStyle(context.projectRoot, undefined, context.policyRoot);
+  return [
+    '--config',
+    config.file,
+    ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
+    '--line-length',
+    config.lineLength,
+    ...pytestStyleFlags(style),
+    '--ignore-noqa',
+    '--no-cache',
+    ...ruffExclusions(context),
+  ];
+}
+
+export function lint(context) {
   run(
     context,
     [
       'ruff',
       'check',
-      '--config',
-      config.file,
-      ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
-      '--line-length',
-      config.lineLength,
-      ...pytestStyleFlags(style),
-      '--ignore-noqa',
-      '--no-cache',
-      ...ruffExclusions(context),
+      ...lintOptions(context),
       '--output-format',
       'sarif',
       '--output-file',

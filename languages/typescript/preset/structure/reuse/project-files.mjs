@@ -1,12 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { filesUnder } from '../../../../../shared/filesystem.mjs';
+import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 import { existingRoots } from '../../layout.mjs';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
 import { fileDefinitions } from './syntax/definitions.mjs';
 import { fileDynamicImports, fileExports, fileImports } from '../../syntax/module-facts.mjs';
 import { jsxTagNames, referencePositions } from '../../syntax/references.mjs';
+import { nearDuplicateUnits } from './near-duplicates/units.mjs';
 
 function manifestDirectory(projectRoot, file) {
   const directory = path.posix.dirname(file);
@@ -65,7 +66,7 @@ export function baselineFileReader({ projectRoot, baselineRoot, baselinePaths })
   };
 }
 
-function fileFacts(projectRoot, file, packageRoot) {
+function fileFacts({ projectRoot, moduleOf }, file, packageRoot) {
   const sourceFile = parsedFile(projectRoot, file);
   const references = referencePositions(sourceFile);
   return {
@@ -79,15 +80,18 @@ function fileFacts(projectRoot, file, packageRoot) {
     dynamicImports: fileDynamicImports(sourceFile),
     exports: fileExports(sourceFile),
     jsxTags: jsxTagNames(sourceFile),
+    nearDuplicateUnits: nearDuplicateUnits(sourceFile, file, {
+      moduleOf: (specifier) => moduleOf(specifier, file),
+    }),
   };
 }
 
-export function productionFacts(projectRoot, layout) {
+export function productionFacts(projectRoot, layout, moduleOf) {
   const packageRootOf = packageRootFinder(projectRoot, layout);
   return layout
     .projectCodeFiles(projectRoot, layout.sourceRoots)
     .filter((file) => layout.isSourceFile(file) && isReuseProductionPath(file))
-    .map((file) => fileFacts(projectRoot, file, packageRootOf(file)));
+    .map((file) => fileFacts({ projectRoot, moduleOf }, file, packageRootOf(file)));
 }
 
 const SVG_TAG = /<svg\b[^>]*>/iu;
@@ -126,7 +130,7 @@ export function svgFiles(projectRoot, layout) {
   }
   return existingRoots(projectRoot, layout.sourceRoots)
     .flatMap((root) => [
-      ...filesUnder(path.join(projectRoot, root), {
+      ...projectFilesUnder(path.join(projectRoot, root), {
         skipDirectory: (absolute) => isSkipped(relativePath(projectRoot, absolute)),
       }),
     ])

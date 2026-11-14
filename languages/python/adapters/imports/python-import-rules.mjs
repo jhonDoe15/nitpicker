@@ -1,10 +1,13 @@
+import { isExplainedCycle } from '../../../../shared/graph/explained-cycles.mjs';
+import { stronglyConnected } from '../../../../shared/graph/strongly-connected.mjs';
+import { listed } from '../../../../shared/rules/features/feature-boundaries.mjs';
 import { importEdges } from '../analysis/python-coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const PACKAGE_CYCLE_RULE = 'package-cycle';
 const MODULE_CYCLE_RULE = 'no-production-cycles';
 const OUTSIDE_ROOTS_RULE = 'no-import-outside-roots';
-const LISTED_MEMBERS = 5;
+const NO_FEATURES = { explainedCycles: [], featureOf: () => undefined };
 
 function packageOf(entry) {
   if (entry.isPackage) {
@@ -19,54 +22,6 @@ function isInside(name, owner) {
   return name === owner || name.startsWith(`${owner}.`);
 }
 
-function adjacency(nodes, edges) {
-  const next = new Map(nodes.map((node) => [node, new Set()]));
-  for (const { source, target } of edges.filter((edge) => next.has(edge.target))) {
-    next.get(source)?.add(target);
-  }
-  return next;
-}
-
-function reachable(start, next, within) {
-  const seen = new Set([start]);
-  for (const node of seen) {
-    const targets = [...(next.get(node) ?? [])].filter((target) => within?.has(target) ?? true);
-    for (const target of targets) {
-      seen.add(target);
-    }
-  }
-  return seen;
-}
-
-/** Each component is what a node reaches and is reached by; components of one are left out. */
-export function stronglyConnected(nodes, edges) {
-  const next = adjacency(nodes, edges);
-  const previous = adjacency(
-    nodes,
-    edges.map(({ source, target }) => ({ source: target, target: source })),
-  );
-  const assigned = new Set();
-  const components = [];
-  for (const node of [...nodes].sort()) {
-    if (assigned.has(node)) {
-      continue;
-    }
-    const component = [...reachable(node, previous, reachable(node, next))].sort();
-    for (const member of component) {
-      assigned.add(member);
-    }
-    components.push(component);
-  }
-  return components.filter((component) => component.length > 1);
-}
-
-function listed(members) {
-  const shown = members.slice(0, LISTED_MEMBERS).join(', ');
-  return members.length > LISTED_MEMBERS
-    ? `${shown} and ${String(members.length - LISTED_MEMBERS)} more`
-    : shown;
-}
-
 function runtimeEdges({ modules, imports }) {
   return importEdges(modules, imports).filter(
     ({ source, target, kind }) => kind === 'runtime' && source !== target,
@@ -77,31 +32,43 @@ function reExports(byName, source, target) {
   return byName.get(source).isPackage && isInside(target, source);
 }
 
-function packageCycles(modules, edges) {
-  const byName = new Map(modules.map((entry) => [entry.module, entry]));
-  const packaged = edges
+function packageEdges(byName, edges) {
+  return edges
     .filter(({ source, target }) => !reExports(byName, source, target))
     .map(({ source, target }) => ({
       source: packageOf(byName.get(source)),
       target: packageOf(byName.get(target)),
+      files: `${byName.get(source).file}\0${byName.get(target).file}`,
     }))
     .filter(({ source, target }) => source !== target);
+}
+
+function packageAnchors(modules) {
   const anchor = new Map();
   for (const entry of [...modules].sort((left, right) => left.file.localeCompare(right.file))) {
     if (!anchor.has(packageOf(entry)) || entry.module === packageOf(entry)) {
       anchor.set(packageOf(entry), entry.file);
     }
   }
-  return stronglyConnected([...anchor.keys()], packaged).flatMap((members) =>
-    members.map((member) => ({
-      tool: COUPLING_TOOL,
-      rule: PACKAGE_CYCLE_RULE,
-      path: anchor.get(member),
-      identity: `cycle:${member}`,
-      message: `Package ${member} is in a dependency cycle with ${listed(members.filter((other) => other !== member))}. Move the shared types down into one of them, or invert one dependency behind an interface`,
-      classification: 'enforceable',
-    })),
-  );
+  return anchor;
+}
+
+function packageCycles(modules, edges, features) {
+  const byName = new Map(modules.map((entry) => [entry.module, entry]));
+  const packaged = packageEdges(byName, edges);
+  const anchor = packageAnchors(modules);
+  return stronglyConnected([...anchor.keys()], packaged)
+    .filter((members) => !isExplainedCycle(members, { packaged, anchor, features }))
+    .flatMap((members) =>
+      members.map((member) => ({
+        tool: COUPLING_TOOL,
+        rule: PACKAGE_CYCLE_RULE,
+        path: anchor.get(member),
+        identity: `cycle:${member}`,
+        message: `Package ${member} is in a dependency cycle with ${listed(members.filter((other) => other !== member))}. Move the shared types down into one of them, or invert one dependency behind an interface`,
+        classification: 'enforceable',
+      })),
+    );
 }
 
 function moduleCycles(modules, edges) {
@@ -123,9 +90,12 @@ function moduleCycles(modules, edges) {
   );
 }
 
-export function cycleFindings(report) {
+export function cycleFindings(report, features = NO_FEATURES) {
   const edges = runtimeEdges(report);
-  return [...packageCycles(report.modules, edges), ...moduleCycles(report.modules, edges)];
+  return [
+    ...packageCycles(report.modules, edges, features),
+    ...moduleCycles(report.modules, edges),
+  ];
 }
 
 function outsideTarget(statement, outside) {

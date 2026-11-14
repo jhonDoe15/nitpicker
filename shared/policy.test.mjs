@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { staleFiles } from '../scripts/gen-checks.mjs';
+import { staleFiles } from '../scripts/gen-checks.mts';
 import { applyGeneratedBlock, renderCustomRulesTable } from './checks-catalog.mjs';
 import {
   DEFAULT_CRAP_SCORE_LIMIT,
@@ -63,6 +63,15 @@ describe('shared policy', () => {
     expect(RULES.map((rule) => [rule.id, Object.keys(rule.enforcedBy).sort()])).toEqual(
       RULES.map((rule) => [rule.id, [...LANGUAGES].sort()]),
     );
+  });
+
+  it('gives a reason only for languages that do not enforce the rule', () => {
+    const misplaced = RULES.flatMap((rule) =>
+      Object.entries(rule.notApplicable ?? {})
+        .filter(([language, reason]) => rule.enforcedBy[language] !== false || reason === '')
+        .map(([language]) => `${rule.id}: ${language}`),
+    );
+    expect(misplaced).toEqual([]);
   });
 });
 

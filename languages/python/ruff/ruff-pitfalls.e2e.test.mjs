@@ -17,7 +17,7 @@ import { applyRuleHints } from '../rules/rule-hints.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const fixtures = path.resolve(import.meta.dirname, '../rules/fixtures/ruff-pitfalls');
-const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+const PITFALL = /^(?:(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+|PLR0124|PLR1711|PLR1714)$/u;
 const OWNERS = [
   'clock-now',
   'real-clock-in-test',
@@ -27,6 +27,7 @@ const OWNERS = [
   'LOG015',
   'ASYNC230',
   'ASYNC240',
+  'RET501',
 ];
 const EXCEPTIONS = OWNERS.map((rule) => ({ rule, paths: ['excepted/**'], reason: 'Reviewed' }));
 const BANNED = {
@@ -104,6 +105,9 @@ const BANNED = {
     '71 PLW2101',
     '77 PLW2901',
     '82 PLW3301',
+    '87 PLR1711',
+    '91 PLR0124',
+    '95 PLR1714',
   ],
   'settings.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
   'special/dunders.py': [
@@ -133,6 +137,7 @@ const OVERLAP = {
   'async_files.py': ['5 ASYNC230', '7 ASYNC240'],
   'domain/clock.py': ['6 clock-now', '7 clock-now', '8 clock-now', '9 clock-now'],
   'logs.py': ['3 LOG015'],
+  'returns.py': ['3 RET501'],
   'service.py': ['7 process-env-access', '8 process-env-access', '9 process-env-access'],
   'tests/test_asserts.py': ['2 tautological-assert'],
   'tests/test_faked.py': ['17 ASYNC110'],
@@ -148,6 +153,7 @@ const EXCEPTED = {
   'async_files.py': ['5 PTH123', '7 PTH110'],
   'domain/clock.py': ['6 DTZ005', '7 DTZ003', '8 DTZ002', '9 DTZ011'],
   'logs.py': ['3 G010'],
+  'returns.py': ['3 PLR1711'],
   'service.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
   'tests/test_asserts.py': ['2 PLW0129'],
   'tests/test_faked.py': ['17 ASYNC110'],

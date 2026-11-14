@@ -95,6 +95,7 @@ export function runDetekt({ module, reportDir, tools, classpaths, javaClassDirec
     args: detektArguments({ module, report, options, classpath, home: jdk.home }),
     cwd: module.basedir,
     spawn: options.spawn,
+    timeoutMs: options.timeoutMs,
     accept: (result) =>
       (result.status === 0 || result.status === FINDINGS_EXIT_CODE) && existsSync(report),
   });

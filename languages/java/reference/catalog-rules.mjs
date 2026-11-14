@@ -15,8 +15,11 @@ export const JVM_BUILDS = Object.fromEntries(
 );
 
 const PAGES = { pmd: 'java-pmd', checkstyle: 'java-checkstyle', spotbugs: 'java-spotbugs' };
-const PMD_WHY =
-  "PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.";
+const PMD_WHY = [
+  "PMD's errorprone, bestpractices, performance and multithreading categories, a broad-catch rule",
+  'and the boolean simplification rules run on main and test sources. Each rule names one allowed',
+  'form of something Java allows several ways, or a defect.',
+].join(' ');
 const CHECKSTYLE_WHY = {
   javadoc:
     "Google style asks for Javadoc in the shape it prescribes, and Checkstyle's Google checks report a missing or malformed comment; the formatter does not write Javadoc.",
@@ -26,6 +29,20 @@ const CHECKSTYLE_WHY = {
     "Google style fixes one layout. A layout finding means the file is not formatted, and the project's formatter is the allowed form.",
   coding:
     "Google style bans a coding form that has a clearer equivalent, and Checkstyle's Google checks report it.",
+};
+const CHECKSTYLE_OWN = {
+  ConstantName: {
+    summary: 'A constant named in a form other than UPPER_SNAKE_CASE.',
+    why: "Nitpicker's Checkstyle configuration fixes one form for a constant name, so constants read the same everywhere; a logger may be `log` or `logger`.",
+  },
+  MagicNumber: {
+    summary: 'A number written inline that has no name.',
+    why: "Nitpicker's Checkstyle configuration reports a number whose meaning the code does not say; a named constant says it once.",
+  },
+  VisibilityModifier: {
+    summary: 'A field that is not private.',
+    why: "Nitpicker's Checkstyle configuration keeps state behind the class, so a caller cannot change a field in a way the class does not expect; public final fields are allowed.",
+  },
 };
 const LAYOUT_CATEGORIES = new Set(['whitespace', 'indentation', 'blocks', 'sizes']);
 const CHECKSTYLE_DOCUMENTATION = 'https://checkstyle.org/checks';
@@ -48,8 +65,16 @@ const SPOTBUGS_CATEGORIES = {
 
 const FORMATTER_LABELS = Object.values(JAVA_FORMATTER_TOOLS).map(({ label }) => `\`${label}\``);
 const LAYOUT_ALLOWED = `Run the formatter of the project (${[...new Set(FORMATTER_LABELS)].join(', ')}) on the file; with no formatter, fix the layout by hand. ${NOT_YOUR_JAVA_FORMATTER}`;
-const NO_ROUTE =
-  'The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.';
+const NO_ROUTE = [
+  'The message gives no exception route because the flagged code is a defect or has one exact fix;',
+  'an entry still lifts it if a reviewer agrees.',
+].join(' ');
+
+const CHECKSTYLE_ID_MODULES = {
+  BoxComments: 'TodoComment',
+  TodoFormat: 'TodoComment',
+  singleLineCommentStartWithSpace: 'MatchXpath',
+};
 
 function allowedOf({ fix, layout }) {
   if (layout === true) {
@@ -83,8 +108,9 @@ function pmdText(rule, texts) {
 }
 
 function checkstyleCheck(rule, texts) {
+  const module = CHECKSTYLE_ID_MODULES[rule] ?? rule;
   const name = Object.keys(texts.rules)
-    .filter((check) => rule.startsWith(check))
+    .filter((check) => module.startsWith(check))
     .toSorted((a, b) => b.length - a.length)[0];
   if (name === undefined) {
     throw new Error(`The Checkstyle ${texts.version} snapshot has no check for ${rule}`);
@@ -94,10 +120,11 @@ function checkstyleCheck(rule, texts) {
 
 function checkstyleText(rule, texts, { layout }) {
   const { name, category } = checkstyleCheck(rule, texts);
+  const own = CHECKSTYLE_OWN[name];
   const kind = layout === true || LAYOUT_CATEGORIES.has(category) ? 'layout' : category;
   return {
-    summary: wordsOfCamelCase(name),
-    why: CHECKSTYLE_WHY[kind] ?? CHECKSTYLE_WHY.coding,
+    summary: own?.summary ?? wordsOfCamelCase(name),
+    why: own?.why ?? CHECKSTYLE_WHY[kind] ?? CHECKSTYLE_WHY.coding,
     links: [
       {
         label: 'Checkstyle check documentation',
@@ -140,11 +167,11 @@ function entryOf({ tool, rule, fields }, texts) {
 }
 
 /** The entries of the PMD, Checkstyle and SpotBugs rules that have a message catalog. */
-export function catalogRuleEntries() {
+export function catalogRuleEntries({ skippedPmd = new Set() } = {}) {
   return CATALOG_TOOLS.flatMap((tool) => {
     const texts = readToolText(tool);
-    return Object.entries(readCatalog(tool)).map(([rule, fields]) =>
-      entryOf({ tool, rule, fields }, texts),
-    );
+    return Object.entries(readCatalog(tool))
+      .filter(([rule]) => tool !== 'pmd' || !skippedPmd.has(rule))
+      .map(([rule, fields]) => entryOf({ tool, rule, fields }, texts));
   });
 }

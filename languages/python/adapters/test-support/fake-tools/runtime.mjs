@@ -49,6 +49,13 @@ function rulesScript(call) {
     return false;
   }
   write(call, args[3], readOr(call, 'rules.json', '[]'));
+  if (exists(call, 'design-facts.json')) {
+    write(
+      call,
+      args[3].replace(/rules\.json$/u, 'design-facts.json'),
+      read(call, 'design-facts.json'),
+    );
+  }
   return true;
 }
 
@@ -94,6 +101,14 @@ function importScan(call) {
   }
   const request = JSON.parse(read(call, call.args.at(-1)));
   out(call, request.facts === true ? '{}' : readOr(call, 'import-scan.json', '{}'));
+  return true;
+}
+
+function stringScan(call) {
+  if (!call.args.some((argument) => argument.endsWith('string-scan.py'))) {
+    return false;
+  }
+  out(call, readOr(call, 'string-scan.json', '{}'));
   return true;
 }
 
@@ -155,6 +170,7 @@ const PYTHON_CALLS = [
   executablePath,
   mutmutProbe,
   importScan,
+  stringScan,
   distributionScan,
   importLinterProbe,
   distributionProbe,

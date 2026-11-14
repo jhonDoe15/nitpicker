@@ -7,7 +7,7 @@ import {
   preparePmdProbe,
   readPmdProbeFindings,
   runPmdProbe,
-} from '../../test-support/pmd-probe.mjs';
+} from '../../test-support/pmd/pmd-probe.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -47,6 +47,7 @@ const categories = new Set([
   'DoubleCheckedLocking',
   'NonThreadSafeSingleton',
   'UnsynchronizedStaticFormatter',
+  'UnusedFormalParameter',
   'UseConcurrentHashMap',
   'UseNotifyAllInsteadOfNotify',
   'HardCodedCryptoKey',
@@ -91,6 +92,7 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
       'HardCodedCryptoKey',
       'InsecureCryptoIv',
       'StringInstantiation',
+      'UnusedFormalParameter',
       'UseArraysAsList',
     ]);
   });
@@ -101,6 +103,7 @@ describe.skipIf(!enabled)('pinned PMD additional categories', () => {
       'AvoidFileStream',
       'DontCallThreadRun',
       'StringInstantiation',
+      'UnusedFormalParameter',
       'UseArraysAsList',
     ]);
   });

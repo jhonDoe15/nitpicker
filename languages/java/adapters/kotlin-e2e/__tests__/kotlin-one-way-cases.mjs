@@ -141,8 +141,6 @@ export function defineHostileConfigCases(fixture, failureRule) {
     ]);
     expect(extras.map(({ rule, path: file }) => `${rule} ${path.basename(file)}`).sort()).toEqual([
       'UnsafeCastOperator Compiler.kt',
-      'changed-branch-coverage Qualified.kt',
-      'changed-branch-coverage Wildcard.kt',
       'detekt.style.ForbiddenMethodCall Annotated.kt',
       'detekt.style.ForbiddenMethodCall Exiter.kt',
       'detekt.style.ForbiddenMethodCall Printer.kt',
@@ -165,6 +163,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
         'Compiler',
         'Exiter',
         'Hidden',
+        'Holder',
         'Printer',
         'Qualified',
         'Qualified',
@@ -188,7 +187,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
       'Banned.kt': RUN,
       'Exiter.kt': 'The method `java.lang.System.exit` has been forbidden in the detekt config.',
       'Printer.kt':
-        'The method `kotlin.io.println` has been forbidden: Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+        'The method `kotlin.io.println` has been forbidden: Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.',
       'Qualified.kt': RUN_BLOCKING,
       'Sleeper.kt':
         'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.',

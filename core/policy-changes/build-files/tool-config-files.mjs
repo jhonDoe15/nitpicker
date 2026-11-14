@@ -1,8 +1,10 @@
 import path from 'node:path';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { declaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mjs';
 import { readRealInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
@@ -43,7 +45,8 @@ import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
-const GO_TOOLS = ['gofumpt', 'goimports'];
+const GO_TOOLS = ['gofumpt', 'goimports', 'staticcheck'];
+const STATICCHECK_CONFIG = 'staticcheck.conf';
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 const SCRIPT_TOOL_FILES = new Map([
   ['prettier', () => PRETTIER_PROJECT_FILES],
@@ -118,6 +121,12 @@ function styleFilesOf(tool, side) {
   }
 }
 
+function goToolFiles(tool, files) {
+  return tool === 'staticcheck'
+    ? files.filter((file) => path.posix.basename(file) === STATICCHECK_CONFIG)
+    : GOLANGCI_FILES;
+}
+
 function kotlinFiles(tool, side) {
   return styleFilesOf(tool, side)
     .files.filter((file) => tool === 'detekt' || path.basename(file) === '.editorconfig')
@@ -138,7 +147,7 @@ function candidates(tool, side) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (GO_TOOLS.includes(tool)) {
-    return config.preset === 'go' ? GOLANGCI_FILES : [];
+    return config.preset === 'go' ? goToolFiles(tool, files) : [];
   }
   if (SCRIPT_TOOL_FILES.has(tool) || tool === 'eslint' || isProjectConfigTool(tool)) {
     return SCRIPT_PRESETS.has(config.preset) ? scriptCandidates(tool, side) : [];
@@ -159,13 +168,26 @@ function isOptedIn(tool, config) {
   );
 }
 
+function declaredFingerprints(tool, side, gitBlobId) {
+  if (!GRADLE_PRESETS.includes(side.config.preset)) {
+    return new Map();
+  }
+  const { declarations, files } = declaredConfigFiles(tool, side);
+  return new Map([
+    ...[...declarations].map(([file, text]) => [file, gitBlobId(text)]),
+    ...fingerprints(tool, { root: side.root, files }, gitBlobId),
+  ]);
+}
+
 function sideFingerprints(tool, side, gitBlobId) {
+  if (BUILD_DECLARED_TOOLS.includes(tool)) {
+    return declaredFingerprints(tool, side, gitBlobId);
+  }
   if (!PYTHON_TOOLS.includes(tool)) {
     return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
   }
   return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
 }
-
 function pythonEntries(tool, side) {
   return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
 }
@@ -222,6 +244,7 @@ function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOp
   return [
     'pmd',
     'checkstyle',
+    ...BUILD_DECLARED_TOOLS,
     ...KOTLIN_TOOLS,
     ...GO_TOOLS,
     ...SCRIPT_TOOL_FILES.keys(),

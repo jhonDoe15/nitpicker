@@ -11,7 +11,7 @@ const KEYWORDS = new Set(['if', 'for', 'while', 'switch', 'catch', 'synchronized
 const KOTLIN_NAME = /`([^`]+)`\s*$|(\w+)\s*$/;
 const JAVA_NAME = /(\w+)\s*$/;
 const AFTER_PARAMETERS = {
-  java: /\s*(?:throws[^{;]*)?([{])/y,
+  java: /\s*(?:throws[^{;]*)?(\{)/y,
   kotlin: /\s*(?::[^={]*)?([{=])/y,
 };
 const WRAPPER = /^\s*\w+(?:\s*\((?:[^()]|\([^()]*\))*\))?\s*\{/;

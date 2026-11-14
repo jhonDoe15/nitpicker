@@ -22,7 +22,7 @@ import {
   copyOf,
   twinProjects,
   comparable,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 
 const MODE_TEST = `package demo;
 
@@ -64,6 +64,16 @@ const MAVEN_SYSTEM_PROPERTIES =
   '<nitpicker.provided>yes</nitpicker.provided></systemPropertyVariables></configuration>' +
   '</plugin></plugins></build>';
 
+const FEATURE_FILES = {
+  'src/main/java/demo/shared/Money.java':
+    'package demo.shared;\n\npublic final class Money {\n  private Money() {}\n\n' +
+    '  public static long cents(long units) {\n    return units * 100;\n  }\n}\n',
+  'src/main/java/demo/features/billing/Invoice.java':
+    'package demo.features.billing;\n\nimport demo.shared.Money;\n\npublic final class Invoice {\n' +
+    '  private Invoice() {}\n\n  public static long total(long units) {\n' +
+    '    return Money.cents(units);\n  }\n}\n',
+};
+
 function appendTo(file, text) {
   writeFileSync(file, `${readFileSync(file, 'utf8')}${text}`);
 }
@@ -74,24 +84,36 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     const [gradleProject, mavenProject] = twinProjects();
     for (const root of [gradleProject, mavenProject]) {
       writeFileSync(path.join(root, 'src/main/java/demo/Dated.java'), DATED);
+      for (const [file, text] of Object.entries(FEATURE_FILES)) {
+        mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+        writeFileSync(path.join(root, file), text);
+      }
     }
     const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
     const tools = new Set(fromMaven.map((finding) => finding.tool));
 
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+    expect(
+      fromMaven
+        .filter(({ rule }) => rule === 'shared-used-by-one-feature')
+        .map(({ tool, path: file }) => `${tool} ${file}`),
+    ).toEqual(['coupling src/main/java/demo/shared/Money.java']);
+    expect(fromMaven.some(({ rule }) => rule === 'CollapsibleIfStatements')).toBe(true);
     expect([...tools].sort()).toEqual([
       'archunit',
       'checkstyle',
       'coupling',
       'crap',
       'errorprone',
+      'forbiddenapis',
       'google-java-format',
       'jacoco',
       'pit',
       'pmd',
       'spotbugs',
       'structure',
+      'test-runtime',
     ]);
   }, 180_000);
   it('runs PIT with the JVM arguments the tests of either build need', () => {
@@ -169,19 +191,23 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
-  it('reports a failing test as a tests-failed tool error that names the test', () => {
+  it('reports a failing test as a tests-failed tool error of its module that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
-    const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
+    const finding = analyzeJavaSnapshot(project, { maven, policy: {} }).findings.find(
+      ({ rule }) => rule === 'tests-failed',
+    );
 
     expect(finding).toEqual({
-      tool: 'java',
+      tool: 'tests',
       rule: 'tests-failed',
       path: '.',
-      identity: 'tests-failed',
+      identity: 'tests-failed:core',
+      symbol: 'core',
       classification: 'tool-error',
       message: [
-        '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '1 test fails in core; coverage, CRAP and mutation were skipped there, the other checks ran. ' +
+          'Fix the tests and rerun:',
         '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });

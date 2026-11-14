@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { SUPPORTED_PRESETS } from '../configuration/validate.mjs';
+import { packageVersion } from '../help/package-version.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 
 const skillsRoot = path.join(PACKAGE_ROOT, 'skills');
@@ -82,6 +83,13 @@ describe('agent skills', () => {
     );
     expect(mentionsPreset(description, preset)).toBe(true);
     expect(others.filter((other) => mentionsPreset(description, other))).toEqual([]);
+  });
+
+  it.each(skillNames)('%s opens with the nitpicker version it was written for', (name) => {
+    const opening = /^# .*\n\n(?<paragraph>[\s\S]*?)\n\n/mu.exec(readSkill(name).text)?.groups;
+    expect(opening?.paragraph.replaceAll(/\s+/gu, ' ')).toBe(
+      `Written for nitpicker ${packageVersion()}. If \`npx nitpicker --version\` prints another version, reinstall this skill with the command \`npx nitpicker init\` prints.`,
+    );
   });
 
   it.each(skillNames)('%s links only to files inside its own folder', (name) => {

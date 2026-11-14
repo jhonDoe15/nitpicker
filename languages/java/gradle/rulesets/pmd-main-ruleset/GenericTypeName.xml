@@ -1,0 +1,22 @@
+  <rule name="GenericTypeName" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name this type for what it does (PriceRounder, OrderTotals), not Utils, Helper, Manager, Common or Misc. Pure logic shared between features goes in the shared package under such a name. An exception fits only for a name a framework requires.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $words := 'Utils?|Utilit(?:y|ies)|Helpers?|Managers?|Commons?|Misc(?:ellaneous)?',
+    $containers := '(?:Functions|Funcs|Methods|Modules?|Mixins?|Base|Classes|Impl)?',
+    $generic := '^(?:.*[A-Za-z0-9])?(' || $words || ')' || $containers || '$',
+    $roles := '(?:Authentication|Transaction|Cache|Entity|Session|Connection|Lock|Resource)Managers?' || $containers || '$'
+return
+//(ClassDeclaration | EnumDeclaration | RecordDeclaration | AnnotationTypeDeclaration)
+  [let $name := replace(@SimpleName, '[0-9]+$', ''),
+       $word := replace($name, $generic, '$1')
+   return matches($name, $generic)
+     and not(matches($name, $roles))
+     and not(some $super in (ExtendsList | ImplementsList)/ClassType
+             satisfies replace(replace($super/@SimpleName, '[0-9]+$', ''), $generic, '$1') = $word)]
+]]></value>
+      </property>
+    </properties>
+  </rule>

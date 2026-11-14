@@ -6,6 +6,7 @@ import { runJavaDiff } from '../../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mjs';
 import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const maven = process.env.NITPICKER_MAVEN;
 const gradleFixture = path.join(import.meta.dirname, '../../../adapters/fixtures/gradle-project');
@@ -87,9 +88,9 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
           {
             tool: 'java',
             rule: 'tests-failed',
-            message: testsFailOnBase([
+            message: `${testsFailOnBase([
               'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-            ]),
+            ])}\n${linkSentence('baseTestsFail')}`,
           },
         ],
       });
@@ -116,9 +117,9 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
             snapshot: 'base',
             rule: 'tests-failed',
             path: '.',
-            message: testsFailOnBase([
+            message: `${testsFailOnBase([
               'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-            ]),
+            ])}\n${linkSentence('baseTestsFail')}`,
           },
         ],
       });
@@ -137,10 +138,21 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
       });
     });
 
-    it('fails a head whose tests still fail', () => {
-      expect(() => diffOf(root, 'still-red')).toThrow(
-        /^\d+ tests? fails?(?: in [^;]+)?; the build stopped, so no other check ran\./u,
+    it('fails a head whose tests still fail with a tests error', () => {
+      const result = diffOf(root, 'still-red');
+      const errors = result.newFindings.filter(
+        ({ classification }) => classification === 'tool-error',
       );
+
+      expect([result.failed, errors.map(({ tool, rule }) => `${tool} ${rule}`)]).toEqual([
+        true,
+        ['tests tests-failed'],
+      ]);
+      const [summary, ...tests] = errors[0].message.split('\n');
+      expect(summary).toMatch(
+        /^\d+ tests? fails?[^;]*; coverage, CRAP and mutation were skipped[^,]*, the other checks ran\. Fix[^:]+:$/u,
+      );
+      expect(tests.length > 0 && tests.every((line) => /^ {2}\S/u.test(line))).toBe(true);
     });
   },
 );

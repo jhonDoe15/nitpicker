@@ -59,7 +59,7 @@ The main-only ruleset (`pmd-main-ruleset.xml`, which holds the `security` catego
 project reference to `category/java/security.xml` adds nothing, and a project rule that names one of its
 rules is overlaid on it (`pmd-main-rules.xml`) and still runs on main sources only.
 
-**Additional PMD categories (7.7.0).** The shared ruleset also runs the `performance` and
+**Additional PMD categories (7.16.0).** The shared ruleset also runs the `performance` and
 `multithreading` categories on main and test Java sources, and `pmd-main-ruleset.xml` runs the
 `security` category on main sources only, since a test encrypts with a fixed key and IV to check known
 output. Both hold with Gradle and Maven and for the Java sources of the Kotlin preset. Performance
@@ -92,6 +92,51 @@ The reverse does not work: an `<exclude>` in the project's ruleset cannot turn o
 runs; keep code a rule flags with a path exception or an entry under `exceptions` in
 `nitpicker.config.json`.
 
+**The project's SpotBugs settings.** SpotBugs has no config file of its own: a project sets it up in
+its build, with the `com.github.spotbugs` Gradle plugin (`spotbugs { excludeFilter = file(...);
+effort = ...; reportLevel = ... }`) or `spotbugs-maven-plugin` (`<excludeFilterFile>`, `<effort>`,
+`<threshold>`). With `tools.spotbugs.precedence` listing `"project"`, nitpicker reads those
+declarations from the head checkout's build files (`adapters/tool-config/declared/`, see
+[Settings the build declares](../usage.md#settings-the-build-declares-java-and-kotlin-presets)) and
+runs its own pinned SpotBugs with them, on Gradle and Maven alike and on the Kotlin preset's Java
+classes: every exclude filter is passed as `-exclude`, and a higher effort or a lower threshold
+replaces `-effort:default` and `-medium` unless `"nitpicker"` comes first. The exclude filter is
+the project's list of reviewed suppressions, so it applies as the project's Checkstyle
+`SuppressionFilter` files do, and an edit of it is a policy change. Settings that would drop findings
+of the detectors nitpicker runs are never applied: a lower effort, a higher threshold, an include
+filter, `onlyAnalyze`, `visitors`, `omitVisitors` and a baseline file; the run names the ones it left
+out. Everything SpotBugs reports stays enforceable, the lower-confidence findings a `low` threshold
+adds included.
+
+**The project's Error Prone flags.** A project sets Error Prone up in its build too: the
+`net.ltgt.errorprone` Gradle plugin (`options.errorprone { disable(...); option(...) }`, its
+`nullaway { }` extension, `errorproneArgs`) or the `-Xplugin:ErrorProne ...` argument of
+`maven-compiler-plugin`. With `tools.errorprone.precedence` listing `"project"`, nitpicker reads those
+flags from the head checkout and appends them to the plugin argument its runner builds from
+`checks.json`, after nitpicker's own flags, on Gradle and Maven alike and for the Kotlin preset's Java
+sources (Error Prone takes the last flag for a check or an option, which the e2e test checks). The
+flags are normalized first: a check the project turns on runs as a warning like every other check,
+under every ordering when nitpicker leaves the check at Error Prone's default, and only with the
+project first when `checks.json` turns it off; a check nitpicker already runs is left alone. A
+project never turns a check off, sets NullAway's severity (nitpicker runs it on main code and turns it
+off in tests), replaces the packages nitpicker measures, or narrows NullAway; NullAway's annotation
+lists are joined with nitpicker's, NullAway options that only add findings apply, and `excludedPaths`
+(several declarations become one alternation) applies like the SpotBugs exclude filter when it leaves
+the `src/main` sources checked. The run names every flag
+it left out. Findings of the checks the project adds go through the same messages, exemptions and
+`exceptions` as nitpicker's.
+
+**The project's PIT settings.** With `tools.pit.precedence` listing `"project"`, nitpicker reads the
+`pitest { }` block of the `info.solidsoft.pitest` Gradle plugin or the configuration of `pitest-maven`
+from the head checkout and passes the settings to its own PIT run (`nitpickerPit<Task>` on Gradle,
+`runPit` on Maven, and the Kotlin preset's PIT run, whose Kotlin mutants stay descriptive). Excluded
+classes, methods and test classes, the calls to avoid (after PIT's own logging classes) and the JVM
+arguments are added under every ordering that lists `"project"`, like the SpotBugs exclude filter. A
+timeout longer than PIT's default applies under every ordering, a shorter one never (a timed-out
+mutant counts as killed). The project's mutators are added to the mutators nitpicker names itself (its `--mutators` list is
+always passed), and its `threads` replace nitpicker's 2, only with the project first. The targets, the test classes, `features`, groups,
+reports, thresholds and history stay nitpicker's; the run names what it left out.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -101,6 +146,7 @@ default, and their messages name it:
 | `AvoidFieldNameMatchingMethodName` | `static final` constants, and a method named exactly like its field with at most one parameter: an accessor (`name()`), a fluent setter or builder step (`name(String)`).                          |
 | `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
+| `UnusedFormalParameter`            | Every method and constructor, tests too. Passing: overrides, `main`, annotated methods or parameters, `unused*`/`ignored*` names.                                                                  |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No annotation whose name contains `Generated` on a class, method or constructor (JaCoCo skips them all, PIT skips `@Generated`); put JPA `@GeneratedValue` on the field.                           |
 | `MutationIgnoreMarker` (new)       | No `@DoNotMutate` or `@CoverageIgnore`: PIT does not mutate what they mark.                                                                                                                        |
@@ -108,3 +154,7 @@ default, and their messages name it:
 | `AvoidFileStream`                  | A stream, reader or writer over a `FileDescriptor` (`new FileInputStream(FileDescriptor.in)`), which `Files` has no form for.                                                                      |
 | `AvoidArrayLoops`                  | A copy loop that subtracts the loop variable in an index (a reversed copy), which `System.arraycopy` cannot do.                                                                                    |
 | `UseArraysAsList`                  | A loop that filters, steps by more than one or does more than add each element; the loop that only adds is `Collections.addAll(target, array)`.                                                    |
+| `SimplifiedTernary`                | A ternary whose other branch is not a boolean (`Object o = c ? true : name`), which has no `\|\|` or `&&` form.                                                                                    |
+| `LogicInversion`                   | `!(a < b)` on a `float` or `double`, which differs from `a >= b` when a value is NaN; `!(a == b)` is `a != b` for every type.                                                                      |
+| `ConfusingTernary`                 | Reported only for a negated condition (`if (!c) A else B` is `if (c) B else A`); `if (a != b)` with an else and else-if chains pass.                                                               |
+| `NegatedOperands` (new)            | An `&&` or `\|\|` chain with at least one operand that is not negated (`!a && b`); `!a && !b` is `!(a \|\| b)`.                                                                                    |

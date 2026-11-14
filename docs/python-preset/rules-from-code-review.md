@@ -7,7 +7,7 @@ where Python allows it. Each message names the allowed form and the `python.exce
 lifts the rule for some paths. The per-file rules live in `languages/python/rules/review/`
 and the project-wide ones, which resolve imports across files, in `review/project/`. The
 TypeScript `nitpicker/no-fixed-sleep-synchronization` check is `sleep-in-test` above.
-`singular-and-plural-field`, `exhaustive-enum-predicate` and `forwarding-wrapper` check production
+`singular-and-plural-field`, `exhaustive-enum-predicate`, `generated-member-cycle` and `forwarding-wrapper` check production
 sources only, never test files, as in TypeScript (its production scope) and Java (main sources); a
 test helper that forwards, a fixture factory with `tag` and `tags`, or a test that compares a few
 members is not reported.
@@ -53,6 +53,35 @@ members is not reported.
   `Config`) and every definition of a convention module (`admin.py`, `apps.py`, `urls.py`,
   `signals.py`, `settings`, `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) are
   never compared; an entry point never is.
+- `public-alternative-bypass` reads the same scan, with the components of the TypeScript rule: each
+  top-level package, or each subpackage of it when the source root holds one top-level package
+  (`src/shop/billing`), leaving out `shared` and `utils`. When a component's `__init__.py` lists a
+  name in `__all__` and imports it (`from .invoice import Invoice`), a production module outside
+  the component that imports the name from inside it (`from shop.billing.invoice import Invoice`)
+  is reported, and the message names the import to use (`Import Invoice from shop.billing.`).
+  Packages without `__all__` declare no public API, so they are not judged. Code inside the
+  component, tests, entry modules and the `main.py`, `server.py` and `composition_root.py` of a
+  top-level package (they wire the internals together), imports under `if TYPE_CHECKING:`, imports
+  inside a function or in a `try` that catches `ImportError`, and a module imported whole are left
+  alone; a function-local or type-checking import is how a cycle through the package is broken.
+  Any other import that goes around the package on purpose takes an exception for the importing
+  file.
+- `near-duplicate` (tool `facts`) reads the functions and methods of the same scan: two production
+  functions whose syntax trees are proved copies (the same apart from renamed locals, up to 4
+  changed values, or a shared run of 3 or more statements) fail, at the copy whose `file#name`
+  sorts last, also across distributions; test modules are not compared. A copy large enough for
+  the renamed `duplicate-clone` pass and different only in names and literals is left to it.
+- `decided-condition` (tool `facts`) reads the same trees: an `if`, `elif`, `while`, conditional
+  expression or `and`/`or` operand that the guards before it in the same function decide fails,
+  when a solver proves it always true (a redundant check) or always false (dead code). The guards
+  are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
+  `continue`, and the left side of `and` and `or`; an assignment to a name, or a call when the name
+  is a module name, forgets what was known, and arithmetic is an opaque value.
+- `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
+  conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
+  adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The
+  statements every arm of a complete chain starts or ends with are reported, not failed, when
+  moving them keeps behaviour.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.
@@ -118,6 +147,21 @@ self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Jav
 assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`; a `case _:`
   that returns a boolean keeps the finding. A named constant set declared once (`OPEN = frozenset(...)`,
   then `s in OPEN`) is one classification point and is not flagged.
+- `generated-member-cycle` (Java and Kotlin: `pmd/GeneratedMemberCycle`): a field of a class whose
+  `__eq__` is generated (`@dataclass` without `eq=False`, `pydantic.dataclasses.dataclass`, and the
+  attrs decorators `attrs.define`, `attrs.frozen`, `attrs.mutable`, `attr.s` and `attr.dataclass`
+  without `eq=False`) that closes a cycle of such classes: a class that holds itself both as a
+  single field and in a collection (a parent and its children), or classes that refer to each other.
+  Field types are read through `Optional`, `Union`, `|`, `Annotated` and string annotations, and
+  through the type arguments of any generic (`list[Item]`, `dict[str, Item]`), resolved through
+  imports, `TYPE_CHECKING` imports included. One finding per cycle, on the single field that points
+  back. Fields inherited from dataclass and attrs bases count. A class that writes `__eq__` is left
+  out, unless it is frozen and `hash()` still reads the fields; under `attr.s` without
+  `auto_attribs=True` only `attr.ib()` fields count. `ClassVar`, `InitVar`, `Callable` and `type[...]`
+  fields and fields with `field(compare=False)`
+  (`attrs.field(eq=False)`) are left out. Comparing or hashing two objects of such a cycle recurses
+  until `RecursionError`; the generated `__repr__` is not checked, since `dataclasses` and attrs
+  guard it against recursion. Production sources only.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
 target(...)` in an `async def`, passing its own parameters in order (by position or as

@@ -67,7 +67,7 @@ function lineOutcome(pairs, removed, added) {
   const carried = new Map();
   for (const [removedIndex, addedIndex] of pairs) {
     const { line } = added[addedIndex];
-    if (!changed.has(line) && !carried.has(line)) {
+    if (!(changed.has(line) || carried.has(line))) {
       carried.set(line, removed[removedIndex].line);
     }
   }

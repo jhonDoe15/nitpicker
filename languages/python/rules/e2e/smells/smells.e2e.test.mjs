@@ -86,6 +86,16 @@ describe.skipIf(!enabled)('repeated-string-literal', () => {
         [],
       ],
       [
+        'discriminant comparisons',
+        'def f(n):\n    return n.type == "order-placed" or n.kind != "order-placed" or "order-placed" == n["tag"]\n',
+        [],
+      ],
+      [
+        'comparisons with other attributes',
+        'def f(n):\n    return n.state == "order-placed" or n.name == "order-placed" or n.mode == "order-placed"\n',
+        ['repeated-string-literal:2 order-placed'],
+      ],
+      [
         'other dictionary values',
         'A = {"state": "order-placed"}\nB = {"state": "order-placed"}\nC = {"state": "order-placed"}\n',
         ['repeated-string-literal:3 order-placed'],
@@ -259,7 +269,17 @@ describe.skipIf(!enabled)('io-in-loop', () => {
         'def f(repo):\n    cursor = ""\n    while cursor is not None:\n        page = repo.find_page(cursor)\n        cursor = page.next\n',
         [],
       ],
+      [
+        'a loop over fixed-size chunks',
+        'import itertools\n\n\ndef f(repo, ids):\n    for part in itertools.batched(ids, 1000):\n        repo.delete_many(part)\n    return [repo.find_many(part) for part in itertools.batched(ids, 1000)]\n',
+        [],
+      ],
       ['a test file', inFile('tests/test_a.py', loop('repo.find_by_id(item)', '')), []],
+      [
+        'chunks inside a per-user loop, and chunks of one',
+        'import itertools\n\n\ndef f(repo, users, ids):\n    for user in users:\n        for part in itertools.batched(ids, 10):\n            repo.delete_many(part)\n    for part in itertools.batched(ids, 1):\n        repo.delete_many(part)\n',
+        ['io-in-loop:7 repo.delete_many()', 'io-in-loop:9 repo.delete_many()'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });

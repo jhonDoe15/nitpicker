@@ -12,14 +12,18 @@ runs at any point.
 | Folder      | Contents                                                                                 |
 | ----------- | ---------------------------------------------------------------------------------------- |
 | `extract/`  | TypeScript program (with `allowJs`), binding resolution, canonical model of statements   |
+| `model/`    | Shared types for the model, contracts, inputs and checker state; typed traversal helpers |
+| `mutation/` | Classifies mutations and clobbered bindings of unsupported syntax                        |
+| `dispatch/` | Resolves a call to a helper, an effect contract, a pure global or an unknown call        |
 | `check/`    | Path-sensitive checker: facts, effect outcomes, contracts, bounds, partial reasons       |
 | `oracle/`   | Transpiles and executes trusted sources with injected effects over finite inputs         |
 | `report/`   | Canonical JSON, semantic hashes, cache keys, base/head diff, views, descriptive findings |
 | `fixtures/` | Hand-labeled synthetic cases, soundness regressions and their order contracts            |
 | `real/`     | The reviewed protocol for `lookUpCachedReport` and its seeded and unsupported variants   |
+| `census/`   | Runs the engine without contracts over every production function of this repository      |
 
-`analyze.mjs` is the entry (`analyzeSource({ file, text, entry, contracts, inputs, bounds })`),
-`evaluate.mjs` runs every evaluation, and `run.mjs` writes the artifacts.
+`analyze.mts` is the entry (`analyzeSource({ file, text, entry, contracts, inputs, bounds })`),
+`evaluate.mts` runs every evaluation, and `run.mts` writes the artifacts.
 
 ## Supported subset
 
@@ -72,7 +76,7 @@ written `?`, so a violation that happens in there is still covered by the result
 `extractModel` returns canonical JSON: `{ analyzer, file, entry, functions, missingHelpers }`. Each
 function keeps its parameters and a statement tree; every statement, call and decision carries a
 `loc` (line and column). Local bindings are identified by declaration order (`payOrder:id#2`), not
-by position, so the model is stable under whitespace changes. `report/view.mjs` renders a decision
+by position, so the model is stable under whitespace changes. `report/view.mts` renders a decision
 table and a path table from the same model and check result.
 
 ## Contracts
@@ -125,7 +129,7 @@ each with a source location.
 
 ## Diff, hashes and cache keys
 
-`report/diff.mjs` hashes each function model with locations removed, so a whitespace-only change
+`report/diff.mts` hashes each function model with locations removed, so a whitespace-only change
 keeps the semantic hash and shows no changed function in the diff. The cache key covers the analyzer
 version, the TypeScript version, the file, the entry, the semantic hash of every function in the
 entry's transitive same-file closure, a hash of the same functions with their locations (so a cache
@@ -136,8 +140,8 @@ completions with their locations, plus changed violations and path outcomes.
 
 ## Findings
 
-`report/findings.mjs` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
-`identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mjs` passes every
+`report/findings.mts` emits only descriptive findings with existing fields (`tool`, `rule`, `path`,
+`identity`, `symbol`, `message`, `classification`, `location`, `metric`). `run.mts` passes every
 finding through `parseAnalyzerReport` from `core/diff/comparison/finding-schema.mjs`. The model,
 paths and witnesses stay in separate artifacts. A violation's identity includes its call site, so
 two calls that break the same rule are two findings, and the identity survives whitespace changes.
@@ -195,7 +199,7 @@ unknown recovery call, aliased method dispatch, repeated reads in a loop.
 
 ## Measured results
 
-Measured by `node evals/flow-model/run.mjs`; `summary.json` records the SHA-256 of the analyzed
+Measured by `node evals/flow-model/run.mts`; `summary.json` records the SHA-256 of the analyzed
 source and entry function.
 
 | Measure                             | Synthetic fixtures | `lookUpCachedReport` variants |
@@ -227,6 +231,46 @@ value a guard forks on. These are synthetic or seeded cases, not precision or re
 The model and the views are larger than the source they describe. This measures what the summary
 retains; it is not a token or cost benchmark, and no token or cost savings are claimed.
 
+## Census of this repository
+
+`census/run.mts` runs the engine, without contracts or input domains, on every top-level function
+declaration and function-valued `const` in the production `.mjs` files under `core/`, `shared/` and
+`languages/` (tests, fixtures, test support, `__tests__` and e2e folders left out). It writes
+`reports/flow-model/census.json`. Each function falls in one class:
+
+- `complete`: no partial reason at all. Without contracts this only happens for functions that call
+  nothing the engine cannot see.
+- `contractsOnly`: partial only because of unknown calls, unknown dispatch, missing helpers or
+  guards on values without a declared domain. This is an upper bound on what contracts and input
+  domains could complete without new syntax: a guard on a value with no finite domain stays
+  unknown even with contracts.
+- `needsSyntax`: anything else, that is an unsupported form, a loop, an `async` function, or the
+  call-depth or state-budget limit.
+
+Measured on main at 7d3c5aa2 (2026-11-08):
+
+| Measure                                             |          Count |
+| --------------------------------------------------- | -------------: |
+| Files / functions                                   | 1,406 / 10,388 |
+| Extraction errors                                   |              0 |
+| `complete`                                          |    46 (0.44 %) |
+| `contractsOnly`                                     | 1,480 (14.2 %) |
+| `needsSyntax`                                       | 8,862 (85.3 %) |
+| Functions with an unsupported form                  | 8,559 (82.4 %) |
+| Functions with a closure (arrow function)           |          4,635 |
+| Functions with an array literal                     |          3,521 |
+| Functions with a binary operator (`??`, arithmetic) |          2,151 |
+| Functions with an optional chain                    |          1,454 |
+| Functions with a loop                               |          1,600 |
+
+The per-form rows are lower bounds: a form only counts when the engine reaches it on an explored
+path, so code after an early return or in a pruned branch adds nothing. The `complete` functions are
+trivial: none has a modeled effect, because no contract was supplied. The forms that block most
+functions are the everyday ones of this code base (callbacks passed to `map`/`filter`, array
+literals, `??`, optional chains, loops), not rare constructs. Supporting them means modelling
+closures, collections and iteration, which is a general interpreter, the universal framework this
+spike set out not to build.
+
 ## Limits
 
 - One function and its same-file helpers; imported implementations are not analyzed, only
@@ -251,23 +295,32 @@ retains; it is not a token or cost benchmark, and no token or cost savings are c
 
 ```sh
 node node_modules/vitest/vitest.mjs run --config vitest.config.mts evals/flow-model
-node evals/flow-model/run.mjs
+node evals/flow-model/run.mts
+node evals/flow-model/census/run.mts
 ```
 
-`run.mjs` prints the summary and regenerates `reports/flow-model/` (git-ignored): `summary.json`,
+`run.mts` prints the summary and regenerates `reports/flow-model/` (git-ignored): `summary.json`,
 per-target models and results, `views.md`, `witnesses.md`, `diff.json`, `findings.json`, and the
 generated fixture and variant sources the findings point to.
 
 ## Decision
 
-Go for continuing as a report-only experiment; no-go for an enabled rule or a production analyzer.
-Within the supported subset the extraction is repeatable, every result carries source anchors,
-traversal is bounded and deterministic, and the static results agree with concrete execution on
-every complete case of the fixtures. That agreement covers only guards over declared finite domains;
-any other fork, mutation, unmodelled region, `async` code or unknown call makes the result partial,
-where the oracle can only check that no observed violation is missing, under stand-ins that never
-mutate or invoke effects. The oracle shares the checker's reading of the contracts, so it
-does not validate the contracts. The evidence is one real operation with one supplied contract and
-synthetic cases; it does not show precision on real code, and the model is larger than its source.
-The next step is a second real operation with an independently established contract, recording
-first how much of it this engine leaves partial, before adding syntax or proposing enforcement.
+No-go for a shared flow engine or an enabled rule; the spike is concluded. Within the supported
+subset the extraction is repeatable, every result carries source anchors, traversal is bounded and
+deterministic, and the static results agree with concrete execution on every complete case of the
+fixtures. That agreement covers only guards over declared finite domains; any other fork, mutation,
+unmodelled region, `async` code or unknown call makes the result partial, where the oracle can only
+check that no observed violation is missing, under stand-ins that never mutate or invoke effects.
+The oracle shares the checker's reading of the contracts, so it does not validate the contracts.
+
+The census settles the question the earlier decision left open: 85 % of this repository's
+production functions need more than contracts, 82 % because they use a form the engine does not
+model, and the forms responsible are ordinary callbacks, collections, operators and loops. Widening
+the subset to reach them is building a general JavaScript interpreter. At most 14 % could be
+completed with contracts and input domains alone, but a contract is hand-written per operation, so
+that path pays off only for a specific protocol with several consumers.
+
+What stays useful: the code remains as a reference for focused, contract-driven checks. A focused
+rule that needs path-sensitive facts for one protocol (for example caller-owned protocols, #351, or
+effect ordering, #322) can reuse the extractor's binding resolution, the outcome forking and the
+oracle approach, scoped to that protocol, instead of waiting for a shared engine.

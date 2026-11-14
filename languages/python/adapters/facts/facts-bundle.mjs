@@ -115,6 +115,7 @@ function mergedStatements(entries, statement, { file, role }) {
     line: statement.line,
     typeOnly: statement.typeOnly,
     ...(statement.conditional ? { conditional: true } : {}),
+    ...(statement.local ? { local: true } : {}),
   }));
 }
 
@@ -124,7 +125,8 @@ function withoutWildcards(record) {
 
 function importFacts(file, context) {
   const role = context.roleOf(file);
-  const statements = context.scanned[file].imports.flatMap((statement) => {
+  const written = context.scanned[file].imports.filter(({ exported }) => exported !== true);
+  const statements = written.flatMap((statement) => {
     const entries =
       statement.module === null && statement.level === 0
         ? moduleImports(statement, context.resolver)
@@ -219,8 +221,19 @@ function moduleFact(file, context) {
   };
 }
 
+function isProductionSource(file, context) {
+  return !context.referenceOnly.has(file) && context.roleOf(file) !== 'test';
+}
+
+function nearDuplicateUnits(file, context) {
+  if (!isProductionSource(file, context)) {
+    return [];
+  }
+  return (context.scanned[file].nearDuplicateUnits ?? []).map((unit) => ({ file, ...unit }));
+}
+
 function docCommentFacts(file, context) {
-  if (context.referenceOnly.has(file) || context.roleOf(file) === 'test') {
+  if (!isProductionSource(file, context)) {
     return [];
   }
   return context.scanned[file].docComments.map(({ line, name, qualifier, lines, detailed }) => ({
@@ -271,5 +284,6 @@ export function factsBundle({
     definitions: files.flatMap((file) => definitionFacts(file, context)),
     imports: files.flatMap((file) => importFacts(file, context)),
     docComments: files.flatMap((file) => docCommentFacts(file, context)),
+    nearDuplicateUnits: files.flatMap((file) => nearDuplicateUnits(file, context)),
   };
 }
