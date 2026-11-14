@@ -10,7 +10,8 @@ import {
   installOnlyEnv,
 } from './package-managers/test-support/fake-managers.mts';
 import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
-import { explainedError, linkSentence } from './typed/outside-views.mts';
+import { linkSentence } from '../test-support/link-sentence.mts';
+import { explainedError } from './typed/outside-views.mts';
 
 const git = useGitFixtures();
 const { temporaryRoot } = git;

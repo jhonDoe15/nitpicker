@@ -10,7 +10,7 @@ import {
   git,
   readReport,
   runNitpicker,
-} from './typed/clean-project-views.mts';
+} from './test-support/clean-project-views.mts';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingUrl,

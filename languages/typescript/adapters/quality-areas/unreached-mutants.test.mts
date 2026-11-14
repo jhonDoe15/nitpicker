@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { createTypescriptProject, type TypescriptProject } from './typescript-project-view.mts';
+import {
+  createTypescriptProject,
+  type TypescriptProject,
+} from './test-support/typescript-project-view.mts';
 import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 const enabled = process.env['NITPICKER_TS_RED_BASE'] === '1';
