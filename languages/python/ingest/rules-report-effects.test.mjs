@@ -51,6 +51,16 @@ describe('effect rules report', () => {
       'stripe.PaymentIntent.create()|payment|@retry',
       '`stripe.PaymentIntent.create()` creates a payment object without an idempotency key inside `@retry`: when the server accepts the write and the response times out, the retry runs it a second time',
     ],
+    [
+      'dual-write-without-outbox',
+      'place|repo.save()|producer.send()',
+      '`place` writes to the database with `repo.save()` and publishes a message with `producer.send()` in two separate steps: the message can be sent for a change that is rolled back, or the change can commit and the message never be sent',
+    ],
+    [
+      'dual-write-without-outbox',
+      'place|order.save()|notify.delay()|on-commit',
+      '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

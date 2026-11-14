@@ -8,6 +8,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Relationships: load what a loop reads in the query that fetches the rows (`select_related` or `prefetch_related` in Django, `selectinload` or `joinedload` in SQLAlchemy); never read a lazy relationship on each row (`lazy-relation-in-loop`).
 - Remote calls: none inside a transaction or while a lock is held (`remote-call-in-transaction`, `remote-call-under-lock`); call before the transaction or after the commit (`transaction.on_commit`), copy what you need out of the lock first, or record an outbox row and send it from a worker.
 - Retried writes: a write inside a retry (`@retry`, a `Retrying` loop, a Celery task with `autoretry_for`) carries a stable key: an idempotency key for a payment, a deduplication or message id for a message (`task_id=` for Celery), an upsert for an insert; or retry only the read (`retry-without-idempotency`).
+- A database write and a message publish do not share a function: write an outbox row in the same transaction and let a relay publish it and mark that row sent (`dual-write-without-outbox`).
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`

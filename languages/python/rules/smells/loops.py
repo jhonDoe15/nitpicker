@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import finding
+from dual_write.relays import is_relay_mark
 from effect_kinds.concurrency import is_concurrent, map_is_concurrent
 from effect_kinds.tables import DATABASE, REMOTE
 from kinds.index import io_scope
@@ -203,6 +204,8 @@ def check(context):
         concurrent = bool(submitted) or is_concurrent(node, loop, context)
         kind = reported_kind(effects, concurrent)
         if kind is None or skipped_loop(node, loop, scope, context, verdicts):
+            continue
+        if is_relay_mark(node, effects, loop, scope):
             continue
         subject = subject_of(effects, kind, concurrent)
         found.append(finding(context.path, RULE, subject, node))

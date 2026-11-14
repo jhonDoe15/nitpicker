@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "dual-write-without-outbox",
+    "mention": "outbox",
+    "subject": "place|repository.save()|producer.send()"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "dual-write-without-outbox",
+    "mention": "marks that row sent",
+    "subject": "place|repository.save()|producer.send()"
+  }
+]
