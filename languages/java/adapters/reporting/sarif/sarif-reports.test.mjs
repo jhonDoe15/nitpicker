@@ -106,6 +106,22 @@ describe('sarifFindings', () => {
     ]);
   });
 
+  it('prints no unrendered placeholder of a PMD message', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    writeFileSync(
+      path.join(context.projectRoot, 'src/test/java/shop/CartTest.java'),
+      'class CartTest { String u(String x) { return x.replace("a", "127.0.0.1"); } }\n',
+    );
+    const log = JSON.parse(PMD(context.projectRoot, 'AvoidUsingHardCodedIP'));
+    log.runs[0].results[0].message.text = 'Do not hard code the IP address ${variableName}';
+    log.runs[0].results[0].locations[0].physicalLocation.region = { startLine: 1, startColumn: 59 };
+    writeFileSync(path.join(context.reportRoot, 'pmd.sarif'), JSON.stringify(log));
+
+    expect(sarifFindings(context).map(({ message }) => message)).toEqual([
+      'Do not hard code the IP address "127.0.0.1"',
+    ]);
+  });
+
   it('reads blank reports as empty logs and still rejects a truncated one', () => {
     const context = moduleReports({ 'blank.sarif': ' \n', 'broken.sarif': '{"runs": [' });
 

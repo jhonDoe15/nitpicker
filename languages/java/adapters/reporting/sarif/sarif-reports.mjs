@@ -14,6 +14,8 @@ import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
+import { sourceTextReader } from '../function-locator.mjs';
+import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
 import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
@@ -104,7 +106,11 @@ export function sarifFindings(context) {
               withJpaFilters(
                 withGeneratedMembers(
                   withSpringTransactionFilters(
-                    withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+                    withoutSpringCoveredReads(
+                      withRenderedPlaceholders(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+                        sourceText: sourceTextReader(projectRoot),
+                      }),
+                    ),
                     context,
                   ),
                   { projectRoot },

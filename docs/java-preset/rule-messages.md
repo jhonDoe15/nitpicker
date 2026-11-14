@@ -42,6 +42,11 @@ findings in Kotlin sources get no Java route. An `exceptions` entry that names a
 Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
 gives the name to write instead.
 
+A PMD message that still holds a `${name}` placeholder (PMD fills it only in some forms of a rule, for
+example `AvoidUsingHardCodedIP` for a literal that is a method argument) is rendered before the fix is
+added: that rule names the address literal read from the source at the finding's position, and any
+other placeholder is dropped together with the space before it. The identity is computed from the original text.
+
 Messages that already name `nitpicker.config.json` (the Spring rules) are left as they are, and
 identities are computed before, so neither the new text nor the short Checkstyle name moves a
 finding between base and head. `rule-catalog.e2e.test.mjs` downloads the pinned PMD, Checkstyle and
