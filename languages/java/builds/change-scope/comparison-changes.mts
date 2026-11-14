@@ -4,6 +4,7 @@ import {
 } from '../../../../core/diff/git/patches/changed-lines.mjs';
 import { GitCommandError, runGit } from '../../../../core/diff/git/repository/command.mjs';
 import { diffFromBase } from '../../../../core/tooling/git/base-diff.mjs';
+import { type NameStatus, nameStatusEntries } from '../../../../core/tooling/git/name-status.mts';
 import { isJvmProductionPath, isJvmTestPath } from './jvm-paths.mts';
 import { fieldOf, listOf, numberOr, textOf } from '../../../../shared/values/readers.mts';
 
@@ -15,7 +16,6 @@ export type ComparisonChanges = {
   readonly tests: ChangedTests;
   readonly renames: [string, string][];
 };
-type NameStatus = { readonly status: string; readonly from: string; readonly to: string };
 
 const UNCHANGED_CONTENT = /^[CR]100$/u;
 const DIFF_OPTIONS = ['--find-renames', '--relative', '--no-color', '--no-ext-diff'];
@@ -29,16 +29,6 @@ function diffBetween(roots: ComparisonRoots, format: readonly string[]): string 
       args: [...format, ...DIFF_OPTIONS],
     }),
   );
-}
-
-function nameStatusEntries(output: string): NameStatus[] {
-  return output
-    .split('\n')
-    .filter((line) => line.length > 0)
-    .map((line) => {
-      const [status = '', from = '', to = from] = line.split('\t');
-      return { status, from, to };
-    });
 }
 
 function renamedSources(entries: readonly NameStatus[]): [string, string][] {
