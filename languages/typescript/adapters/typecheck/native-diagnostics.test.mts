@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type TypeScript from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { apiEntry, nativeDiagnostics } from './native-diagnostics.mts';
@@ -10,8 +11,8 @@ const SYNC = 'typescript/unstable/sync';
 const ASYNC = 'typescript/unstable/async';
 const STRICT = { strict: true, noEmit: true, skipLibCheck: true, lib: ['ES2022'] };
 
-let root;
-let ts;
+let root: string;
+let ts: typeof TypeScript;
 
 beforeAll(() => {
   ts = loadTypeScript();
@@ -29,14 +30,21 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function writeConfig(name, compilerOptions) {
+function writeConfig(name: string, compilerOptions: Record<string, unknown>): string {
   const configPath = path.join(root, name);
   writeFileSync(configPath, JSON.stringify({ compilerOptions, include: ['src'] }));
   return configPath;
 }
 
-async function checked(entry, configPath, apiRoot) {
-  const result = await nativeDiagnostics({ ts, configPath, projectRoot: root, apiRoot, entry });
+async function checked(entry: string, configPath: string, apiRoot?: string) {
+  const result = await nativeDiagnostics({
+    ts,
+    configPath,
+    projectRoot: root,
+    apiRoot,
+    engineHint: false,
+    entry,
+  });
   return {
     ...result,
     diagnostics: result.diagnostics?.map((diagnostic) => ({
@@ -66,7 +74,9 @@ describe('the TypeScript 7 API entry', () => {
 
     const sync = await checked(SYNC, configPath);
 
-    expect(sync.diagnostics.map(({ code }) => code)).toEqual([2688, 2322, 9013, 9010, 1109]);
+    expect((sync.diagnostics ?? []).map(({ code }) => code)).toEqual([
+      2688, 2322, 9013, 9010, 1109,
+    ]);
     expect(await checked(ASYNC, configPath)).toEqual(sync);
   });
 
@@ -83,7 +93,7 @@ describe('the TypeScript 7 API entry', () => {
 
     const sync = await checked(SYNC, configPath, own);
 
-    expect(sync.diagnostics.map(({ code }) => code)).toEqual([2322, 1109]);
+    expect((sync.diagnostics ?? []).map(({ code }) => code)).toEqual([2322, 1109]);
     expect(await checked(ASYNC, configPath, own)).toEqual(sync);
   });
 });

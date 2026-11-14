@@ -1,7 +1,6 @@
-import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import {
@@ -10,34 +9,23 @@ import {
   mutationTypecheck,
   nativeCheckerRuntime,
 } from './native-checker.mts';
+import { testOptions } from '../test-runners/typed/test-options.mts';
+import { fieldsOf, parseJson } from '../../../../shared/values/readers.mts';
+import { strictProjects } from './test-support/strict-project.mts';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const projects = strictProjects('nitpicker-native-checker-');
 
-function project(source, compilerOptions = {}, extra = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-native-checker-'));
-  roots.push(root);
-  const files = {
-    'tsconfig.json': JSON.stringify({
-      compilerOptions: { strict: true, types: [], lib: ['ES2022'], ...compilerOptions },
-      include: ['src'],
-    }),
-    'src/main.ts': source,
-    ...extra,
-  };
-  for (const [name, content] of Object.entries(files)) {
-    const file = path.join(root, name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, content);
-  }
-  return root;
+function project(
+  source: string,
+  compilerOptions: object = {},
+  extra: Readonly<Record<string, string>> = {},
+): string {
+  return projects.create(source, compilerOptions, extra);
 }
 
-function typecheck(root, engine = 'native') {
+function typecheck(root: string, engine = 'native'): ReturnType<typeof mutationTypecheck> {
   return mutationTypecheck({
-    options: { projectRoot: root, liveProjectRoot: PACKAGE_ROOT },
+    options: testOptions({ projectRoot: root, liveProjectRoot: PACKAGE_ROOT }),
     tsconfigPath: path.join(root, 'tsconfig.json'),
     engine,
   });
@@ -93,7 +81,7 @@ describe('native mutation checker selection', () => {
         'lib/value.ts': 'export const value = 1;\n',
       },
     );
-    const config = JSON.parse(readFileSync(path.join(root, 'tsconfig.json'), 'utf8'));
+    const config = fieldsOf(parseJson(readFileSync(path.join(root, 'tsconfig.json'), 'utf8')));
     writeFileSync(
       path.join(root, 'tsconfig.json'),
       JSON.stringify({ ...config, references: [{ path: './lib' }] }),

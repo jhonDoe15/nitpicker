@@ -21,8 +21,12 @@ import { normalizeCrap } from './quality-areas/reporting/tests.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
 import { runQualityArea } from './quality-areas-runner.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
+import type { QualityAreaOptions } from './quality-areas/typed/area-types.mts';
+import type { CrapEntry } from './quality-areas/typed/reporting.mts';
+import type { Finding } from './static-checks/shared.mts';
+import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -30,7 +34,7 @@ afterEach(() => {
   }
 });
 
-function snapshotWith(files) {
+function snapshotWith(files: Readonly<Record<string, string>>): string {
   const parent = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
   temporaryRoots.push(parent);
   const root = path.join(parent, 'head');
@@ -42,7 +46,11 @@ function snapshotWith(files) {
   return root;
 }
 
-function optionsFor(kind, projectRoot, extra = []) {
+function optionsFor(
+  kind: string,
+  projectRoot: string,
+  extra: readonly string[] = [],
+): QualityAreaOptions {
   return parseArguments([
     '--analyzer-name',
     kind,
@@ -60,7 +68,11 @@ function optionsFor(kind, projectRoot, extra = []) {
   ]);
 }
 
-function runKind(kind, projectRoot, extra) {
+function runKind(
+  kind: string,
+  projectRoot: string,
+  extra?: readonly string[],
+): Promise<readonly Finding[]> {
   return runQualityArea(optionsFor(kind, projectRoot, extra));
 }
 
@@ -136,7 +148,7 @@ describe('coverage runner invoked as a script', () => {
     const stdout = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
     const stderr = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     process.argv = [
-      originalArguments[0],
+      originalArguments[0] ?? '',
       path.join(import.meta.dirname, 'quality-areas-runner.mts'),
       '--analyzer-name',
       'coverage',
@@ -157,17 +169,20 @@ describe('coverage runner invoked as a script', () => {
 
     expect(stderr).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(originalExitCode);
-    const { findings } = JSON.parse(stdout.mock.calls[0][0]);
-    expect(findings.map(({ rule, classification }) => ({ rule, classification }))).toEqual([
-      { rule: 'tests-failed', classification: 'tool-error' },
-    ]);
-    expect(findings[0].message).toMatch(/returns two/u);
+    const findings = listOf(fieldOf(parseJson(textOf(stdout.mock.calls[0]?.[0])), 'findings'));
+    expect(
+      findings.map((finding) => ({
+        rule: fieldOf(finding, 'rule'),
+        classification: fieldOf(finding, 'classification'),
+      })),
+    ).toEqual([{ rule: 'tests-failed', classification: 'tool-error' }]);
+    expect(textOf(fieldOf(findings[0], 'message'))).toMatch(/^[\s\S]*returns two[\s\S]*$/u);
   });
 });
 
 describe('structure runner with a base checkout', () => {
-  const copy = (tail) =>
-    [
+  function copy(tail: string): string {
+    return [
       'export function total(items: number[], tax: number): number {',
       '  const sum = items.reduce((a, b) => a + b, 0);',
       '  const taxed = sum * (1 + tax);',
@@ -176,11 +191,14 @@ describe('structure runner with a base checkout', () => {
       '}',
       '',
     ].join('\n');
-  const files = (cart) => ({
-    'package.json': '{"name":"p","type":"module"}\n',
-    'src/cart/total.ts': copy(cart),
-    'src/checkout/total.ts': copy('return rounded;'),
-  });
+  }
+  function files(cart: string): Record<string, string> {
+    return {
+      'package.json': '{"name":"p","type":"module"}\n',
+      'src/cart/total.ts': copy(cart),
+      'src/checkout/total.ts': copy('return rounded;'),
+    };
+  }
 
   it('reports the edit of one of two near-identical copies against the base side', async () => {
     const baseRoot = snapshotWith(files('return rounded;'));
@@ -227,7 +245,7 @@ describe('coverage run in a project that configures its own reporters', () => {
 });
 
 describe('structure limit messages', () => {
-  function violations(metrics) {
+  function violations(metrics: Readonly<Record<string, number>>): string[] {
     return normalizeStructure(
       {
         functions: [
@@ -254,22 +272,25 @@ describe('structure limit messages', () => {
 });
 
 describe('numbering of functions that share a name', () => {
-  const site = (start, sourceHash) => ({
-    source: 'src/a.ts',
-    function: 'handler',
-    start,
-    end: start + 1,
-    lines: { start, end: start + 1 },
-    sourceHash,
-    complexity: 1,
-    crap: 30,
-  });
-  const identities = (starts) =>
-    normalizeCrap({ functions: starts.map(([start, hash]) => site(start, hash)) }, 'crap')
+  function site(start: number, sourceHash: string): CrapEntry {
+    return {
+      source: 'src/a.ts',
+      function: 'handler',
+      start,
+      end: start + 1,
+      lines: { start, end: start + 1 },
+      sourceHash,
+      complexity: 1,
+      crap: 30,
+    };
+  }
+  function identities(starts: readonly (readonly [number, string])[]): string[] {
+    return normalizeCrap({ functions: starts.map(([start, hash]) => site(start, hash)) }, 'crap')
       .filter(({ classification }) => classification === 'enforceable')
       .map(({ identity }) => identity);
-  const structureIdentities = (starts) =>
-    normalizeStructure(
+  }
+  function structureIdentities(starts: readonly (readonly [number, string])[]): string[] {
+    return normalizeStructure(
       {
         functions: starts.map(([start, hash]) => ({
           source: 'src/a.ts',
@@ -284,6 +305,7 @@ describe('numbering of functions that share a name', () => {
     )
       .filter(({ classification }) => classification === 'enforceable')
       .map(({ identity }) => identity);
+  }
 
   it('keeps the identity of a CRAP finding when a function of the same name is added above it', () => {
     expect(identities([[20, 'b']])).toEqual(['function:handler:occurrence:1:source:b']);
@@ -363,7 +385,7 @@ function strictFlags({
   noImplicitReturns,
   noFallthroughCasesInSwitch,
   noUncheckedIndexedAccess,
-}) {
+}: Readonly<Record<string, unknown>>): Readonly<Record<string, unknown>> {
   return {
     skipLibCheck,
     strict,
@@ -387,18 +409,20 @@ describe.each([
     },
     include: ['src'],
   })}\n`;
-  const stryker = async (projectRoot) => {
+  async function stryker(
+    projectRoot: string,
+  ): Promise<{ config: unknown; baselineErrors: boolean; native: boolean }> {
     const prepared = await installStrykerTsconfig(optionsFor('mutation', projectRoot), {
       sourceRelativePath: 'tsconfig.stryker.json',
       createdFiles: createdFilesTracker(),
       engine,
     });
     return {
-      config: JSON.parse(readFileSync(prepared.tsconfigPath, 'utf8')),
+      config: parseJson(readFileSync(prepared.tsconfigPath, 'utf8')),
       baselineErrors: prepared.baselineErrors,
       native: prepared.native,
     };
-  };
+  }
 
   it('adds the policy compiler options when the project type-checks with them', async () => {
     const projectRoot = snapshotWith({
@@ -410,7 +434,7 @@ describe.each([
     const prepared = await stryker(projectRoot);
     expect(prepared.baselineErrors).toBe(false);
     expect(prepared.native).toBe(native);
-    expect(strictFlags(prepared.config.compilerOptions)).toEqual({
+    expect(strictFlags(fieldsOf(fieldOf(prepared.config, 'compilerOptions')))).toEqual({
       skipLibCheck: true,
       strict: true,
       noImplicitReturns: true,

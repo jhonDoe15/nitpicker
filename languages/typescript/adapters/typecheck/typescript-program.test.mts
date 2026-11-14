@@ -10,8 +10,9 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type TypeScript from 'typescript';
 import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
+import { typescriptApi } from '../typed/typescript-program.mts';
 import {
   enclosingSymbol,
   formatDiagnostic,
@@ -21,6 +22,7 @@ import {
   withoutProjectRoot,
 } from './typescript-program.mts';
 
+const selectedTypeScript = typescriptApi();
 const ASSIGN_NUMBER = "Type 'string' is not assignable to type 'number'.";
 const UNKNOWN_OPTION = "Unknown compiler option 'fooBar'.";
 const ASSIGN_STRING = "Type 'number' is not assignable to type 'string'.";
@@ -46,8 +48,8 @@ const STRICT = {
   module: 'ESNext',
 };
 
-let root;
-let ts;
+let root: string;
+let ts: typeof TypeScript;
 
 beforeAll(() => {
   ts = loadTypeScript(PACKAGE_ROOT);
@@ -62,35 +64,45 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function writeConfig(name, compilerOptions, include = ['src']) {
+function writeConfig(
+  name: string,
+  compilerOptions: Record<string, unknown>,
+  include = ['src'],
+): string {
   const configPath = path.join(root, name);
   writeFileSync(configPath, JSON.stringify({ compilerOptions, include }));
   return configPath;
 }
 
-async function described(engine, configPath, projectNative) {
+async function described(engine: string, configPath: string, projectNative?: string) {
   const diagnostics = await preEmitDiagnostics({
     ts,
     engine,
     configPath,
+    configName: undefined,
     projectRoot: root,
     projectNative,
   });
   return diagnostics.map((diagnostic) => {
-    const located = diagnostic.file !== undefined && diagnostic.start !== undefined;
+    const { file, start } = diagnostic;
+    const located = file !== undefined && start !== undefined;
     return {
-      file: diagnostic.file === undefined ? undefined : path.basename(diagnostic.file.fileName),
+      file: file === undefined ? undefined : path.basename(file.fileName),
       code: diagnostic.code,
-      symbol: located ? enclosingSymbol(ts, diagnostic.file, diagnostic.start) : undefined,
-      position: located
-        ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start)
-        : undefined,
+      symbol: located ? enclosingSymbol(ts, file, start) : undefined,
+      position: located ? file.getLineAndCharacterOfPosition(start) : undefined,
       message: withoutProjectRoot(formatDiagnostic(ts, diagnostic), root),
     };
   });
 }
 
-function finding(file, code, symbol, [line, character], message) {
+function finding(
+  file: string,
+  code: number,
+  symbol: string | undefined,
+  [line, character]: [number, number],
+  message: string,
+) {
   return { file, code, symbol, position: { line, character }, message };
 }
 
@@ -123,7 +135,7 @@ const SOURCE_FINDINGS = [
   finding('wide.ts', 2322, 'wide', [1, 13], ASSIGN_NUMBER),
 ];
 
-function configNote(code, message) {
+function configNote(code: number, message: string) {
   return { file: undefined, code, symbol: undefined, position: undefined, message };
 }
 
@@ -360,7 +372,9 @@ describe('the default quality config', () => {
         ts,
         engine,
         configPath,
+        configName: undefined,
         projectRoot: project,
+        projectNative: undefined,
       });
       expect(diagnostics.map(({ code }) => code)).toEqual([]);
     },
