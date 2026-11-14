@@ -71,6 +71,7 @@ export type SelectionCli = {
 
 export type ProjectCli = {
   readonly currentProjectRoot: string;
+  readonly currentFolder?: string | undefined;
   readonly configOverlay: ProjectOverlay | undefined;
   readonly singleProject: true;
   readonly sharedBase: ConfiguredCli['sharedBase'];

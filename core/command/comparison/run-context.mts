@@ -11,6 +11,7 @@ export type ConfiguredCli = Cli & {
   readonly options: CliOptions;
   readonly jsonOutput?: TextOutput;
   readonly scope?: unknown;
+  readonly currentFolder?: string | undefined;
   readonly configOverlay?: { readonly inherits?: unknown } | undefined;
   readonly baseConfigOverlay?: unknown;
   readonly repositoryLoosenings?: readonly unknown[];

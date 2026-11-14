@@ -160,7 +160,11 @@ function runProjectOf(
 function runConfigured(cli: ConfiguredCli): ExitCode {
   const target = resolveRunTarget({ ...cli, missingPathHint });
   const currentProjectRoot = textOf(target.currentProjectRoot);
-  const scoped: ConfiguredCli = { ...cli, scope: target.scope };
+  const currentFolder =
+    cli.currentProjectRoot === undefined
+      ? realpathSync(cli.workingDirectory ?? process.cwd())
+      : undefined;
+  const scoped: ConfiguredCli = { ...cli, scope: target.scope, currentFolder };
   const monorepo: { readonly exitCode?: ExitCode; readonly extraCli?: object } = runMonorepo({
     cli: scoped,
     currentProjectRoot,
@@ -212,6 +216,7 @@ function runSnapshot(cli: ConfiguredCli, run: ConfiguredRun): unknown {
   return runSnapshotCli({
     options: cli.options,
     currentProjectRoot,
+    currentFolder: cli.currentFolder,
     ...run.setup,
     headPolicy: snapshotHeadPolicy,
     stdout: cli.stdout,

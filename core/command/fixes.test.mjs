@@ -184,6 +184,7 @@ Full diagnostics: ${outputRoot}/report.txt
       newEnforceableFindings: 0,
       policyChanges: [],
       policyLoosenings: [],
+      projectPath: '.',
       policyChangeAccepted: false,
       notices: [],
       mode: 'full',
