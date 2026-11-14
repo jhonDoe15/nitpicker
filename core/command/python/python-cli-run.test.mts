@@ -2,11 +2,14 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { runCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { enforceableFindings, linkSentence, pickFields } from '../test-support/report-readers.mts';
+import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
+import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+
+const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -39,7 +42,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.output.err).toBe('');
-    expect(result.json('summary.json').overallStatus).toBe('tool-error');
+    expect(fieldOf(result.json('summary.json'), 'overallStatus')).toBe('tool-error');
     expect(result.json('tool-errors.json')).toEqual([
       {
         tool: 'python',
@@ -63,9 +66,11 @@ describe('nitpicker with "preset": "python" running the project', () => {
     expect(result.exitCode).toBe(2);
     const message = `No Python environment at ${path.join(root, 'no-such-venv')} (${path.join(root, 'no-such-venv/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`;
     expect(
-      result
-        .json('tool-errors.json')
-        .sort((a, b) => `${a.tool} ${a.snapshot}`.localeCompare(`${b.tool} ${b.snapshot}`)),
+      listOf(result.json('tool-errors.json')).toSorted((a, b) =>
+        `${textOf(fieldOf(a, 'tool'))} ${textOf(fieldOf(a, 'snapshot'))}`.localeCompare(
+          `${textOf(fieldOf(b, 'tool'))} ${textOf(fieldOf(b, 'snapshot'))}`,
+        ),
+      ),
     ).toEqual(
       ['mutation', 'python'].flatMap((tool) =>
         ['base', 'head'].map((snapshot) => ({ tool, snapshot, message })),
@@ -83,15 +88,14 @@ describe('nitpicker with "preset": "python" running the project', () => {
     expect(result.exitCode, result.text).toBe(0);
     const testRuns = calls().filter(({ tool, args }) => tool === 'coverage' && args[0] === 'run');
     expect(testRuns).toHaveLength(2);
-    const [first, second] = testRuns;
-    expect(first.cwd).not.toBe(second.cwd);
+    expect(testRuns[0]?.cwd).not.toBe(testRuns[1]?.cwd);
     expect(testRuns.map(({ pythonPath }) => pythonPath.split(path.delimiter)[0])).toEqual(
       testRuns.map(({ cwd }) => path.join(cwd, 'src')),
     );
     expect(testRuns.map(({ cwd }) => cwd)).not.toContain(root);
   });
-  it.each([
-    ['in the test process', false],
+  it.each<[string, true | undefined]>([
+    ['in the test process', undefined],
     ['as a child process', true],
   ])(
     'passes the followed conventions to the formatter when the runner runs %s',
@@ -177,7 +181,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
         '  coupling/module-coupling src/demo/a.py fanIn for src/demo/a.py (fanIn 0)',
         `  … 2 more; see ${path.join(reports, 'report.txt')}`,
         '',
-        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );
@@ -207,8 +211,12 @@ describe('nitpicker with "preset": "python" running the project', () => {
         ].join('\n'),
       },
     ]);
-    const ruff = result.json('new-findings.json').filter(({ tool }) => tool === 'ruff');
-    expect(ruff.map(({ rule, path: file }) => `${rule} ${file}`)).toEqual(['F841 src/demo/a.py']);
+    const ruff = listOf(result.json('new-findings.json')).filter(
+      (entry) => fieldOf(entry, 'tool') === 'ruff',
+    );
+    expect(pickFields(ruff, 'rule', 'path').map((pair) => pair.join(' '))).toEqual([
+      'F841 src/demo/a.py',
+    ]);
   });
   it('exits 1 and leads the summary with failing tests that are the only problem', () => {
     const root = pythonRepository({ 'tests/conftest.py': '' });
@@ -219,11 +227,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
     const lines = result.output.out.split('\n');
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(
-      result
-        .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable'),
-    ).toEqual([]);
+    expect(enforceableFindings(result.json('new-findings.json'))).toEqual([]);
     expect(lines[lines.indexOf('Quality gate summary') + 1]).toBe(
       '✖ 1 test fails; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
         'Fix the tests and rerun:',

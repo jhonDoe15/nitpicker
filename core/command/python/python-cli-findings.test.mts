@@ -1,12 +1,18 @@
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { jscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { jscpdVersion as readJscpdVersion } from '../../tooling/jscpd/run-jscpd.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { pickFields } from '../test-support/report-readers.mts';
+import type { PresetRun } from '../test-support/fixture-types.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { RUFF_FORMAT_ADVICE } from '../../../languages/python/adapters/test-support/ruff-format-advice.mjs';
+
+const jscpdVersion: () => string = readJscpdVersion;
 
 const { callsLog, pythonRepository, run, temporaryRoot } = usePythonFixtures(nitpickerCli);
 
@@ -25,12 +31,16 @@ const FAILING_SUMMARY = [
   '',
 ].join('\n');
 
-function summaryOf({ output }) {
+function summaryOf({ output }: Pick<PresetRun, 'output'>): string {
   expect(output.out).toMatch(/^Format with ruff: ruff format --isolated /);
   return output.out
     .replace(/^Format with ruff: .*\n/, '')
     .replace(/Full diagnostics: .*/, 'Full diagnostics: <path>');
 }
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe('nitpicker with "preset": "python"', () => {
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
@@ -41,7 +51,7 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name, version }) => [name, version])).toEqual([
+    expect(pickFields(fieldOf(result.json('summary.json'), 'tools'), 'name', 'version')).toEqual([
       ['python', `ruff@0.9.9;mypy@1.13.0;coverage@7.6.1;unittest;jscpd@${jscpdVersion()}`],
       ['mutation', 'mutmut@3.8.0;pytest@8.3.1;pytest-django@missing'],
       ['repository-hygiene', '1'],
@@ -83,11 +93,10 @@ describe('nitpicker with "preset": "python"', () => {
         classification: 'enforceable',
       },
     ]);
-    const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
-    expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
-      'ruff/B006',
-      'ruff-format/format',
-    ]);
+    const sarif = parseJson(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
+    expect(
+      listOf(fieldAt(sarif, 'runs', 0, 'results')).map((entry) => fieldOf(entry, 'ruleId')),
+    ).toEqual(['ruff/B006', 'ruff-format/format']);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/B006/);
   });
   it('fails on a type error, a one-way rule and an inline ignore, each naming the allowed form', () => {
@@ -106,9 +115,11 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(1);
     expect(
-      result
-        .json('new-findings.json')
-        .map(({ tool, rule, identity, message }) => [`${tool}/${rule}`, identity, message]),
+      listOf(result.json('new-findings.json')).map((entry) => [
+        `${String(fieldOf(entry, 'tool'))}/${String(fieldOf(entry, 'rule'))}`,
+        fieldOf(entry, 'identity'),
+        fieldOf(entry, 'message'),
+      ]),
     ).toEqual([
       [
         'mypy/return-value',
@@ -144,7 +155,7 @@ describe('nitpicker with "preset": "python"', () => {
 
     expect(result.exitCode, result.text).toBe(0);
     expect(result.json('new-findings.json')).toEqual([]);
-    expect(result.json('summary.json').configOverrides).toEqual([
+    expect(fieldOf(result.json('summary.json'), 'configOverrides')).toEqual([
       'preset: "python"',
       'exception: {"rule":"T201","paths":["scripts/**"],"reason":"command line scripts"}',
     ]);
@@ -163,7 +174,7 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
+    expect(pickFields(result.json('new-findings.json'), 'rule', 'message')).toEqual([
       [
         'T201',
         '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
@@ -206,7 +217,7 @@ describe('nitpicker with "preset": "python"', () => {
         location: { line: 4, column: 5 },
       },
     ]);
-    const typeCheckerRuns = calls().filter(({ args = [] }) => !args.includes('--version'));
+    const typeCheckerRuns = calls().filter(({ args }) => !args.includes('--version'));
     expect(typeCheckerRuns.some(({ tool }) => tool === 'pyright')).toBe(true);
     expect(typeCheckerRuns.some(({ tool }) => tool === 'mypy')).toBe(false);
   });
@@ -217,16 +228,14 @@ describe('nitpicker with "preset": "python"', () => {
       rmSync(path.join(root, '.venv/bin', name));
       writeFileSync(path.join(broken, name), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
-    vi.stubEnv('PATH', `${broken}${path.delimiter}${process.env.PATH}`);
+    vi.stubEnv('PATH', `${broken}${path.delimiter}${process.env['PATH'] ?? ''}`);
     writeFiles(root, { 'src/demo/b.py': 'x = 1\n' });
     commit(root, 'change');
 
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(
-      result.json('tool-errors.json').map(({ tool, rule, snapshot }) => [tool, rule, snapshot]),
-    ).toEqual([
+    expect(pickFields(result.json('tool-errors.json'), 'tool', 'rule', 'snapshot')).toEqual([
       ['python', 'types-failed', 'base'],
       ['python', 'types-failed', 'head'],
     ]);
@@ -241,8 +250,8 @@ describe('nitpicker with "preset": "python"', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(
-      result.json('tool-errors.json').map(({ tool, rule, snapshot }) => [tool, rule, snapshot]),
-    ).toEqual([['python', 'design-failed', 'head']]);
+    expect(pickFields(result.json('tool-errors.json'), 'tool', 'rule', 'snapshot')).toEqual([
+      ['python', 'design-failed', 'head'],
+    ]);
   });
 });

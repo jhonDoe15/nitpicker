@@ -5,10 +5,10 @@ import {
   fn,
 } from '../../../languages/python/adapters/test-support/structure-data.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { acceptedDigest } from '../test-support/accepted-digest.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { acceptedDigest } from '../test-support/accepted-digest.mts';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 

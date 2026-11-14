@@ -1,12 +1,21 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, vi } from 'vitest';
+import type { RunTaskOptions } from '../../../diff/execution/progress.mts';
+import type {
+  FakeCall,
+  PresetRun,
+  PythonFixtures,
+  RunNitpickerCli,
+} from '../../test-support/fixture-types.mts';
+import { fakeCallOf } from '../../test-support/report-readers.mts';
+import { fieldOf, listOf, parseJson } from '../../../../shared/values/readers.mts';
 import {
   installFakeToolchain,
   spawnFakeTools,
 } from '../../../../languages/python/adapters/test-support/fake-toolchain.mjs';
-import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
-import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
+import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mts';
+import { usePresetFixtures } from '../../test-support/preset-fixtures.mts';
 
 export const LEGACY_VIOLATION = 'F401|src/demo/a.py|`os` imported but unused\n';
 
@@ -18,15 +27,21 @@ const PYTHON_TEMPLATE_FILES = {
   'violations.txt': LEGACY_VIOLATION,
 };
 
-export function newFindings(result, rule) {
-  return result.json('new-findings.json').filter((finding) => finding.rule === rule);
+export function newFindings(result: Pick<PresetRun, 'json'>, rule: string): unknown[] {
+  return listOf(result.json('new-findings.json')).filter(
+    (finding) => fieldOf(finding, 'rule') === rule,
+  );
 }
 
-function runTasksWithFakeTools(tasks, headPolicyFile, options) {
+function runTasksWithFakeTools(
+  tasks: readonly object[],
+  headPolicyFile: unknown,
+  options: RunTaskOptions,
+): unknown {
   return runTasksInProcess(tasks, headPolicyFile, { ...options, spawn: spawnFakeTools });
 }
 
-export function usePythonFixtures(runNitpickerCli) {
+export function usePythonFixtures(runNitpickerCli: RunNitpickerCli): PythonFixtures {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
@@ -40,7 +55,7 @@ export function usePythonFixtures(runNitpickerCli) {
     },
   });
 
-  function callsLog() {
+  function callsLog(): () => FakeCall[] {
     const log = path.join(fixtures.temporaryRoot('nitpicker-python-log-'), 'calls.jsonl');
     writeFileSync(log, '');
     vi.stubEnv('FAKE_PYTHON_LOG', log);
@@ -48,12 +63,12 @@ export function usePythonFixtures(runNitpickerCli) {
       readFileSync(log, 'utf8')
         .split('\n')
         .filter(Boolean)
-        .map((line) => JSON.parse(line));
+        .map((line) => fakeCallOf(parseJson(line)));
   }
 
   return {
     temporaryRoot: fixtures.temporaryRoot,
-    pythonRepository: (files = {}) => fixtures.repository(files),
+    pythonRepository: (files: Readonly<Record<string, string>> = {}) => fixtures.repository(files),
     run: fixtures.run,
     callsLog,
   };

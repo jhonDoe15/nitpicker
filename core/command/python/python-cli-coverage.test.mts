@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import type { PresetRun } from '../test-support/fixture-types.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
+import { usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { EDITED_LINE_SENTENCE } from '../../diff/comparison/positions/touched-lines.mjs';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
@@ -18,20 +21,23 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     '    return 2',
     '',
   ].join('\n');
-  const coverageData = (executed, missing) =>
+  const coverageData = (
+    executed: readonly (readonly number[])[],
+    missing: readonly (readonly number[])[],
+  ) =>
     JSON.stringify({
       files: { 'src/demo/a.py': { executed_branches: executed, missing_branches: missing } },
     });
   const GAP = coverageData([[5, 6]], [[5, 7]]);
   const branchyRepository = () =>
     pythonRepository({ 'src/demo/a.py': BRANCHY, 'coverage-data.json': GAP });
-  const newBranchFindings = (result) =>
-    result.json('new-findings.json').map(({ tool, rule, path: file, message, location }) => ({
-      tool,
-      rule,
-      path: file,
-      line: location?.line,
-      message,
+  const newBranchFindings = (result: Pick<PresetRun, 'json'>) =>
+    listOf(result.json('new-findings.json')).map((entry) => ({
+      tool: fieldOf(entry, 'tool'),
+      rule: fieldOf(entry, 'rule'),
+      path: fieldOf(entry, 'path'),
+      line: fieldAt(entry, 'location', 'line'),
+      message: fieldOf(entry, 'message'),
     }));
   it('fails an uncovered branch whose line the change touches', () => {
     const root = branchyRepository();
@@ -74,7 +80,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     const failing = run(root);
 
     expect(failing.exitCode, failing.text).toBe(1);
-    expect(newBranchFindings(failing).map(({ line }) => line)).toEqual([11]);
+    expect(newBranchFindings(failing).map((entry) => entry.line)).toEqual([11]);
 
     writeFiles(root, {
       'coverage-data.json': coverageData(
