@@ -1,29 +1,12 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { namedErrorProject } from '../../test-support/projects/typed-ts-project.mts';
 import { rule } from './no-parameter-mutation.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-parameter-mutation-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      allowJs: true,
-      checkJs: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
+const { root, tester, typed } = namedErrorProject(
+  'nitpicker-parameter-mutation-',
+  'parameterMutation',
 );
-mkdirSync(path.join(root, 'src'));
 mkdirSync(path.join(root, 'node_modules/http-lib'), { recursive: true });
 writeFileSync(
   path.join(root, 'node_modules/http-lib/index.d.ts'),
@@ -33,22 +16,6 @@ writeFileSync(
   path.join(root, 'node_modules/http-lib/package.json'),
   JSON.stringify({ name: 'http-lib', types: 'index.d.ts' }),
 );
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-function typed(code, name, extension = 'ts') {
-  const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
-  writeFileSync(file, code);
-  return {
-    filename: file,
-    code,
-    ...(name === undefined ? {} : { errors: [{ messageId: 'parameterMutation', data: { name } }] }),
-  };
-}
 
 tester.run('no-parameter-mutation', rule, {
   valid: [
@@ -143,7 +110,7 @@ tester.run('no-parameter-mutation', rule, {
   ],
 });
 
-function written(code, name, extension = 'ts') {
+function written(code: string, name: string, extension: 'ts' | 'js' = 'ts') {
   return {
     ...typed(code, undefined, extension),
     errors: [{ messageId: 'propertyWrite', data: { name } }],

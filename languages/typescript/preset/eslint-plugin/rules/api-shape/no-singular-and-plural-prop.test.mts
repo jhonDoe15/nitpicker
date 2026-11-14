@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-singular-and-plural-prop.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/ui/panel.tsx';
 
-function pair(singular, plural) {
+function pair(singular: string, plural: string) {
   return { messageId: 'singularAndPlural', data: { singular, plural } };
 }
 

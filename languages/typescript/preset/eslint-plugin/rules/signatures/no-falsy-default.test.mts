@@ -1,46 +1,8 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { namedErrorProject } from '../../test-support/projects/typed-ts-project.mts';
 import { rule } from './no-falsy-default.mjs';
 import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-falsy-default-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      allowJs: true,
-      checkJs: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-function typed(code, name, extension = 'ts') {
-  const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
-  writeFileSync(file, code);
-  return {
-    filename: file,
-    code,
-    ...(name === undefined ? {} : { errors: [{ messageId: 'falsyDefault', data: { name } }] }),
-  };
-}
+const { tester, typed } = namedErrorProject('nitpicker-falsy-default-', 'falsyDefault');
 
 tester.run('no-falsy-default', withoutFixes(rule), {
   valid: [

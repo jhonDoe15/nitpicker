@@ -1,8 +1,9 @@
+import { randomUUID } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-forwarding-wrapper.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-forwarding-wrapper-')));
@@ -52,11 +53,15 @@ afterAll(() => {
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-let counter = 0;
+type CaseErrors = { messageId: string; data: Record<string, string> }[];
 
-function typed(code, errors) {
-  counter += 1;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
+function typed(code: string): { filename: string; code: string };
+function typed(
+  code: string,
+  errors: CaseErrors,
+): { filename: string; code: string; errors: CaseErrors };
+function typed(code: string, errors?: CaseErrors) {
+  const file = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(file, code);
   return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
 }
@@ -64,11 +69,11 @@ function typed(code, errors) {
 const imports =
   "import { api, assertOk, fetchRetry, fetchUser, fetchUsers, fetchWith, findUser, isObject, loadEager, loadRemote, overloaded, pick, useQuery } from './api';\nimport type { Foo, Options, User, UserId } from './api';\n";
 
-function wrapper(name, target, exported = name) {
+function wrapper(name: string, target: string, exported = name) {
   return [{ messageId: 'forwardingWrapper', data: { name, target, exported } }];
 }
 
-function local(name, target) {
+function local(name: string, target: string) {
   return [{ messageId: 'forwardingWrapperLocal', data: { name, target } }];
 }
 

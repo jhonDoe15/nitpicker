@@ -1,62 +1,37 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typedCaseProject } from '../../test-support/projects/typed-ts-project.mts';
 import { rule } from './exhaustive-union-predicate.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-union-predicate-')));
-mkdirSync(path.join(root, 'node_modules/ext-lib'), { recursive: true });
-writeFileSync(
-  path.join(root, 'node_modules/ext-lib/index.d.ts'),
-  [
-    "export type LibKind = 'a' | 'b' | 'c';",
-    'export declare function libKind(): LibKind;',
-    "export declare const lib: { kind: 'a' | 'b' | 'c'; named: LibKind };",
-    '',
-  ].join('\n'),
-);
-writeFileSync(
-  path.join(root, 'node_modules/ext-lib/package.json'),
-  JSON.stringify({ name: 'ext-lib', version: '1.0.0', types: 'index.d.ts' }),
-);
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-writeFileSync(path.join(root, 'src/kinds.ts'), "export type SharedKind = 'x' | 'y' | 'z';\n");
+type Errors = ReturnType<typeof partial>;
 
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
+const { tester, typed } = typedCaseProject<Errors>({
+  prefix: 'nitpicker-union-predicate-',
+  lib: ['ES2022'],
+  prepare(root) {
+    mkdirSync(path.join(root, 'node_modules/ext-lib'), { recursive: true });
+    writeFileSync(
+      path.join(root, 'node_modules/ext-lib/index.d.ts'),
+      [
+        "export type LibKind = 'a' | 'b' | 'c';",
+        'export declare function libKind(): LibKind;',
+        "export declare const lib: { kind: 'a' | 'b' | 'c'; named: LibKind };",
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(
+      path.join(root, 'node_modules/ext-lib/package.json'),
+      JSON.stringify({ name: 'ext-lib', version: '1.0.0', types: 'index.d.ts' }),
+    );
+    writeFileSync(path.join(root, 'src/kinds.ts'), "export type SharedKind = 'x' | 'y' | 'z';\n");
+  },
 });
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
-
-let counter = 0;
-
-function typed(code, errors) {
-  counter += 1;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
-  writeFileSync(file, code);
-  return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
-}
 
 const kind = "type Kind = 'a' | 'b' | 'c' | 'd';\n";
 const event = "type Event = { type: 'a' } | { type: 'b' } | { type: 'c' };\n";
 const lib = "import { lib, libKind } from 'ext-lib';\nimport type { LibKind } from 'ext-lib';\n";
 
-function partial(union) {
+function partial(union: string) {
   return [{ messageId: 'partialUnionTest', data: { union } }];
 }
 

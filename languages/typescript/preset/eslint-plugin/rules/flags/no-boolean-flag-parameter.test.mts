@@ -1,13 +1,15 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-boolean-flag-parameter.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/orders/send-order.ts';
 
-const flagged = (name, owner) => ({
-  messageId: 'booleanFlag',
-  data: { name: `\`${name}\``, owner },
-});
+function flagged(name: string, owner: string) {
+  return {
+    messageId: 'booleanFlag',
+    data: { name: `\`${name}\``, owner },
+  };
+}
 
 tester.run('no-boolean-flag-parameter', rule, {
   valid: [

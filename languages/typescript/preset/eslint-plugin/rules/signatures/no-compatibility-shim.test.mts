@@ -1,9 +1,9 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-compatibility-shim.mjs';
 
 const tester = typescriptRuleTester();
 
-function alias(code, aliasName, target) {
+function alias(code: string, aliasName: string, target: string) {
   return { code, errors: [{ messageId: 'aliasExport', data: { alias: aliasName, target } }] };
 }
 

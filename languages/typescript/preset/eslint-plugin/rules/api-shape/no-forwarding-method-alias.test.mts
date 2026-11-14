@@ -5,12 +5,12 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
+import { compareFindings as untypedCompareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
 import { normalizeEslintResults } from '../../../../adapters/eslint/normalize.mts';
 import { strictPresetConfig } from '../../../eslint-config/strict.mjs';
 import { resolveLayout } from '../../../layout.mjs';
 import { nitpickerRules } from '../../index.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-forwarding-method-alias.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-forwarding-method-')));
@@ -38,7 +38,19 @@ afterAll(() => {
 const parserOptions = { project: './tsconfig.json', tsconfigRootDir: root };
 const tester = typescriptRuleTester(parserOptions);
 
-function typed(code, errors) {
+function typed(code: string): { filename: string; code: string };
+function typed(
+  code: string,
+  errors: { messageId: string; data: { name: string; target: string } }[],
+): {
+  filename: string;
+  code: string;
+  errors: { messageId: string; data: { name: string; target: string } }[];
+};
+function typed(
+  code: string,
+  errors?: { messageId: string; data: { name: string; target: string } }[],
+) {
   const digest = createHash('sha256').update(code).digest('hex').slice(0, 12);
   const file = path.join(root, `src/case-${digest}.ts`);
   writeFileSync(file, code);
@@ -55,11 +67,16 @@ const HEADER = [
 const SUM = '  sum(items: Item[]): number { return items.length; }';
 const TOTAL = '  total(items: Item[]): number { return this.sum(items); }';
 
-function inClass(members, heritage = '') {
+function inClass(members: string, heritage = '') {
   return typed(`${HEADER}export class Cart${heritage} {\n${members}\n}\n`);
 }
 
-function aliasIn(members, [name, target], heritage = '', messageId = 'forwardingMethodAlias') {
+function aliasIn(
+  members: string,
+  [name, target]: readonly [string, string],
+  heritage = '',
+  messageId = 'forwardingMethodAlias',
+) {
   const errors = [{ messageId, data: { name, target } }];
   return typed(`${HEADER}export class Cart${heritage} {\n${members}\n}\n`, errors);
 }
@@ -125,7 +142,7 @@ const inheritedMembers = [
     ' extends Missing',
   ],
   [TOTAL, ' extends Base'],
-];
+] as const;
 
 const mergedInterface = typed(
   `${HEADER}export class Cart {\n${SUM}\n${TOTAL}\n}\nexport interface Cart { total(items: Item[]): number; }\n`,
@@ -240,20 +257,56 @@ tester.run('no-forwarding-method-alias', rule, {
 const ALIAS_SOURCE = `type Item = { id: string };\nexport class Cart {\n${SUM}\n${TOTAL}\n}\n`;
 
 const linter = new Linter({ cwd: root });
+type Finding = ReturnType<typeof normalizeEslintResults>[number];
+type Comparison = { newFindings: Finding[]; unchangedFindings: Finding[] };
+
+function isComparison(value: unknown): value is Comparison {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'newFindings' in value &&
+    'unchangedFindings' in value
+  );
+}
+
+function compareFindings(input: { baseFindings: Finding[]; headFindings: Finding[] }): Comparison {
+  const result: unknown = Reflect.apply(untypedCompareFindings, undefined, [input]);
+  if (isComparison(result)) {
+    return result;
+  }
+  throw new TypeError('The comparison did not return findings.');
+}
+
 const LINTED_FILES = ['src/identity.ts', 'src/cart.ts', 'generated/client.ts', 'src/gen/client.ts'];
 
 for (const file of LINTED_FILES) {
   writeFileSync(path.join(root, file), ALIAS_SOURCE);
 }
 
-function aliasMessages(code, file, config) {
+function isLintMessage(value: unknown): value is Linter.LintMessage {
+  return typeof value === 'object' && value !== null && 'ruleId' in value;
+}
+
+function lintMessages(value: unknown): Linter.LintMessage[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError('The linter did not return messages.');
+  }
+  return value.filter(isLintMessage);
+}
+
+function aliasMessages(code: string, file: string, config: unknown) {
   const filename = path.join(root, file);
   writeFileSync(filename, code);
+  const verified: unknown = Reflect.apply(linter.verify.bind(linter), undefined, [
+    code,
+    config,
+    { filename },
+  ]);
   return {
     filename,
-    messages: linter
-      .verify(code, config, { filename })
-      .filter(({ ruleId }) => ruleId === 'nitpicker/no-forwarding-method-alias'),
+    messages: lintMessages(verified).filter(
+      ({ ruleId }) => ruleId === 'nitpicker/no-forwarding-method-alias',
+    ),
   };
 }
 
@@ -267,7 +320,7 @@ describe('stable identity', () => {
     },
   ];
 
-  function findingsOf(code) {
+  function findingsOf(code: string) {
     const { filename, messages } = aliasMessages(code, 'src/identity.ts', config);
     return normalizeEslintResults({
       value: [{ filePath: filename, messages }],
@@ -282,10 +335,11 @@ describe('stable identity', () => {
     const edited = findingsOf(
       ALIAS_SOURCE.replace('{ return this.sum(items); }', '{ return this.sum(items) }'),
     );
-    const outcome = (head) => compareFindings({ baseFindings: base, headFindings: head });
+    const outcome = (head: Finding[]) =>
+      compareFindings({ baseFindings: base, headFindings: head });
 
     expect(base).toHaveLength(1);
-    expect(base[0].symbol).toBe('Cart.total');
+    expect(base.at(0)?.symbol).toBe('Cart.total');
     expect([moved, edited].map((head) => outcome(head).newFindings)).toEqual([[], []]);
     expect(outcome(moved).unchangedFindings).toHaveLength(1);
   });
