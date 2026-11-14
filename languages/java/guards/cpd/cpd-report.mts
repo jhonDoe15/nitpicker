@@ -4,7 +4,7 @@ import { rootsScope } from '../../builds/module-path.mjs';
 import { reportRootPattern } from '../../builds/tools/tool-commands.mjs';
 import { childrenNamed, parseXml } from '../../../../shared/values/xml.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { listOf, textsOf } from '../../../../shared/values/readers.mts';
+import { listOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
@@ -59,7 +59,7 @@ function failedRun(status: string): string {
 
 function lexErrors(xml: string): string[] {
   return childrenNamed(parseXml(xml), 'error').map(
-    (error) => `${error.attrs['filename']}: ${error.attrs['msg']}`,
+    (error) => `${textOf(error.attrs['filename'])}: ${textOf(error.attrs['msg'])}`,
   );
 }
 

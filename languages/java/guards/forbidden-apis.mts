@@ -45,7 +45,7 @@ function shortName(signature: string): string {
     return textOf(signature.split('.').at(-1));
   }
   const owner = textOf(textOf(method[1]).split('.').at(-1)).replaceAll('$', '.');
-  return method[2] === '<init>' ? `new ${owner}` : `${owner}.${method[2]}`;
+  return method[2] === '<init>' ? `new ${owner}` : `${owner}.${textOf(method[2])}`;
 }
 
 export function parseForbiddenApiUses(text: string): ParsedUse[] {

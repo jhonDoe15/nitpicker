@@ -1,3 +1,4 @@
+import { escapeRegExp as untypedEscape } from '../../../../shared/paths/glob.mjs';
 import { lineAt } from '../../../../shared/conventions/lines.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
 import type { DeclaredUse, ForbiddenUse, TextOf } from './forbidden-types.mts';
@@ -14,14 +15,11 @@ type Naming = RegExp;
 type MethodOptions = { readonly naming: Naming; readonly constructor: boolean };
 type Candidate = { readonly index: number; readonly types: string[] };
 
+const escapeRegExp: (value: string) => string = untypedEscape;
 const lineOfIndex: (text: string, index: number) => number = lineAt;
 
 const DECLARATION_END = /^(?:\{|;|throws\b|default\b)/;
 const NOT_A_DECLARATION = /[=()]|\b(?:return|new|throw|record)\b/;
-
-function escaped(text: string): string {
-  return text.replaceAll(/[$.]/g, String.raw`\$&`);
-}
 
 function simpleName(qualified: string): string {
   return textOf(qualified.split(/[.$]/).at(-1));
@@ -71,7 +69,7 @@ function methodIndexes(
   const declared = constructor ? simpleName(className) : name;
   const descriptor = descriptorTypes(member);
   const inClass = ownMember(text, declaringBody(className, text));
-  return [...text.matchAll(new RegExp(String.raw`(?<![\w$.])${escaped(declared)}\s*\(`, 'g'))]
+  return [...text.matchAll(new RegExp(String.raw`(?<![\w$.])${escapeRegExp(declared)}\s*\(`, 'g'))]
     .filter((match) => inClass(match.index))
     .map((match) => methodCandidate(text, match, { naming, constructor }))
     .filter((candidate) => candidate !== undefined)
@@ -88,7 +86,7 @@ function methodIndexes(
 
 function classIndexes(text: string, className: string, naming: Naming): number[] {
   const pattern = new RegExp(
-    String.raw`\b(?:class|interface|enum|record)\s+${escaped(simpleName(className))}\b`,
+    String.raw`\b(?:class|interface|enum|record)\s+${escapeRegExp(simpleName(className))}\b`,
     'g',
   );
   return [...text.matchAll(pattern)]
@@ -102,7 +100,7 @@ function fieldIndexes(
   type: string,
 ): number[] {
   const pattern = new RegExp(
-    String.raw`\b${type}\b[\w\s<>[\],.?]*\b(${escaped(member)})\b(?!\s*\()`,
+    String.raw`\b${escapeRegExp(type)}\b[\w\s<>[\],.?]*\b(${escapeRegExp(member)})\b(?!\s*\()`,
     'dg',
   );
   const inClass = ownMember(text, declaringBody(className, text));
@@ -112,8 +110,8 @@ function fieldIndexes(
 }
 
 function declarationIndexes(use: DeclaredUse, text: string): number[] {
-  const type = escaped(simpleName(use.signature));
-  const naming = new RegExp(String.raw`\b${type}\b`);
+  const type = simpleName(use.signature);
+  const naming = new RegExp(String.raw`\b${escapeRegExp(type)}\b`);
   const { kind } = use.declaration;
   if (kind === 'class') {
     return classIndexes(text, use.className, naming);
@@ -123,7 +121,7 @@ function declarationIndexes(use: DeclaredUse, text: string): number[] {
 
 function ownClassIndex(className: string, text: string): number | undefined {
   return new RegExp(
-    String.raw`\b(?:class|interface|enum|record)\s+${escaped(simpleName(className))}\b`,
+    String.raw`\b(?:class|interface|enum|record)\s+${escapeRegExp(simpleName(className))}\b`,
   ).exec(text)?.index;
 }
 
