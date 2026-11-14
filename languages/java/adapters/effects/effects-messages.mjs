@@ -1,0 +1,54 @@
+const BOUNDED = {
+  java: [
+    'a bounded executor (`Executors.newFixedThreadPool(n)`, a bounded `ThreadPoolExecutor`)',
+    'or a `Semaphore`',
+  ].join(' '),
+  kotlin:
+    '`Semaphore.withPermit`, `flatMapMerge(concurrency = n)`, `limitedParallelism(n)` or `chunked(n)`',
+};
+const ONE_QUERY = '`findAllById`, `saveAll`, `WHERE id IN (...)`';
+const LOOPS_FINE =
+  'Paging, polling and retry loops are fine; a loop the rule misjudges (a cursor kept in an object or array, a page count read first) goes in `exceptions`.';
+
+function code(text) {
+  return `\`${text}\``;
+}
+
+export function callPath(path) {
+  const [first, ...rest] = path.map(code);
+  return rest.length === 0 ? `calls ${first}` : `calls ${[first, ...rest].join(', which calls ')}`;
+}
+
+const REDIS_BATCH = '`MGET` (`opsForValue().multiGet(keys)`) or a pipeline (`executePipelined`)';
+
+function loopIo({ method, kind, form, path, store }, language) {
+  const where = `${code(`${method}()`)} ${callPath(path)}`;
+  if (store === 'redis') {
+    return [
+      `Read or write all keys in one round trip with ${REDIS_BATCH}:`,
+      `${where} once per loop item, one round trip each. ${LOOPS_FINE}`,
+    ].join(' ');
+  }
+  if (form === 'concurrent') {
+    return [
+      `Fetch or write the items in one query (${ONE_QUERY}): ${where} for each item,`,
+      'and running them concurrently still sends one query per item.',
+    ].join(' ');
+  }
+  if (kind === 'remote') {
+    return [
+      "Use the service's batch endpoint for all items, or, when it has none, bound the concurrency with",
+      `${BOUNDED[language]}: ${where} once per loop item, one request each. ${LOOPS_FINE}`,
+    ].join(' ');
+  }
+  return [
+    'Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAllById`, `WHERE id IN (...)`,',
+    `or a helper that takes the whole list): ${where} once per loop item, one query each. ${LOOPS_FINE}`,
+  ].join(' ');
+}
+
+export const EFFECTS_MESSAGES = {
+  IoCallInLoop: loopIo,
+};
+
+export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

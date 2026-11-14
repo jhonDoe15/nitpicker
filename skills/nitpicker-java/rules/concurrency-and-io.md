@@ -18,6 +18,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Data access: never call a repository, JDBC connection, `EntityManager` or HTTP client once per loop item
   (`ids.forEach(id -> repository.findById(id))`): fetch or write all items at once (`findAllById`, `saveAll`,
   `where id in (...)`, one batched request), `pmd/IoCallInLoop`. Paging, polling and retry loops are fine.
+- Helpers count: a helper that reads or writes through a repository or client is a data access too, so
+  `ids.forEach(id -> loader.load(id))` is reported (`effects/IoCallInLoop`, with the path of calls), also when the helper
+  lives in another module of the build; give the helper the whole list. Writes flushed in steps
+  (`if (++n % 50 == 0) { em.flush(); em.clear(); }`) and a batch filled in the loop and queried when full are fine.
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

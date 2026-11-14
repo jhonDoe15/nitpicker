@@ -26,6 +26,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
   (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
+- Helpers count: a helper that reads or writes through a repository or client is a data access too, so
+  `ids.forEach { loader.load(it) }` is reported (`effects/IoCallInLoop`, with the path of calls); give the helper the
+  whole list.
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).
