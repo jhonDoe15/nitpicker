@@ -80,9 +80,7 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
 function prepareEslint(options: EslintOptions, state: EslintState): LinkedPolicyFile[] {
   const installed: unknown = installedDependencies(options.liveProjectRoot);
   if (typeof installed !== 'string') {
-    const packageManager: { readonly root: string } = detectPackageManager(
-      options.liveProjectRoot,
-    );
+    const packageManager: { readonly root: string } = detectPackageManager(options.liveProjectRoot);
     throw new Error(
       missingDependenciesMessage(packageManager, path.join(packageManager.root, 'node_modules')),
     );
