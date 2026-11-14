@@ -1,37 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { goFactFindings } from './go-fact-findings.mjs';
-import { goFacts } from './go-facts.mjs';
+import { exceptionHint } from '../typed/shared-readers.mts';
+import { goFactFindings } from './go-fact-findings.mts';
+import { goFacts } from './go-facts.mts';
+import { reportDefinition, reportFile, reportUsage } from '../test-support/go-report-fixtures.mts';
+import type { FindingRow } from '../go-types.mts';
 
-function file(path, extra = {}) {
-  return {
-    path,
-    package: extra.package ?? path.split('/').at(-2) ?? 'root',
-    test: path.endsWith('_test.go'),
-    generated: false,
-    constrained: false,
-    ...extra,
-  };
-}
-
-function definition(path, name, extra = {}) {
-  return {
-    file: path,
-    name,
-    kind: 'function',
-    line: 3,
-    lines: 3,
-    exported: /^[A-Z]/u.test(name),
-    entry: false,
-    literal: false,
-    tokens: ['func', name],
-    ...extra,
-  };
-}
-
-function usage(path, extra = {}) {
-  return { file: path, imports: [], names: [], selectors: [], local: [], ...extra };
-}
+const file = reportFile;
+const usage = reportUsage;
+const definition = reportDefinition;
 
 const STORE = 'example.com/shop/internal/store';
 
@@ -68,8 +44,8 @@ const REPORT = {
   ],
 };
 
-function rows(findings) {
-  return findings.map(({ rule, path, symbol }) => `${rule} ${path} ${symbol}`);
+function rows(findings: readonly FindingRow[]) {
+  return findings.map(({ rule, path, symbol }) => `${rule} ${path} ${String(symbol)}`);
 }
 
 describe('Go facts', () => {
@@ -252,7 +228,7 @@ describe('Go facts', () => {
       'feature-internal-import features/cart/cart.go',
       'shared-imports-feature shared/money/round.go',
     ]);
-    expect(findings.find(({ rule }) => rule === 'feature-internal-import').message).toBe(
+    expect(findings.find(({ rule }) => rule === 'feature-internal-import')?.message).toBe(
       `Import feature billing only through the package directly in features/billing/: features/cart/cart.go imports its internal module features/billing/store/store.go. Expose what it needs there, or move the code both use to a shared root. ${exceptionHint('feature-internal-import', 'features/cart/cart.go')}`,
     );
   });
@@ -283,7 +259,7 @@ describe('Go facts', () => {
       policy: { testConsole: { allow: [{ contains: 'other' }] } },
     });
     expect(
-      findings.map(({ tool, rule, path, symbol }) => `${tool} ${rule} ${path} ${symbol}`),
+      findings.map(({ tool, rule, path, symbol }) => `${tool} ${rule} ${path} ${String(symbol)}`),
     ).toEqual([
       'facts doc-comment-content cart/cart.go Close',
       'test-runtime test-console-output cart/cart_test.go undefined',

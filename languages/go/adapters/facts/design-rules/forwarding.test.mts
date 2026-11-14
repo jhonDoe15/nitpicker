@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { designRows, fn, owner } from './support.mjs';
+import { designRows, fn, owner } from './support.mts';
+import type { DesignType } from '../../go-types.mts';
+
+type Fields = { readonly [field: string]: unknown };
 
 const api = owner('api/orders.go');
 const service = owner('service/orders.go');
@@ -9,7 +12,7 @@ const params = [
   { name: 'limit', type: 'int' },
 ];
 
-function forwarder(module, name, target, extra = {}) {
+function forwarder(module: DesignType, name: string, target: string, extra: Fields = {}) {
   return fn(module, name, {
     params,
     returns: 'store/orders.go#Order',
@@ -18,7 +21,7 @@ function forwarder(module, name, target, extra = {}) {
   });
 }
 
-function chain(extra = {}) {
+function chain(extra: { find?: Fields; get?: Fields } = {}) {
   const load = fn(store, 'Load', { params, returns: 'store/orders.go#Order' });
   const find = forwarder(service, 'Find', load.id, extra.find);
   const get = forwarder(api, 'Get', find.id, extra.get);

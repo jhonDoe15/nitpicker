@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { designRows, fn, owner } from './support.mjs';
+import { designRows, fn, owner } from './support.mts';
+import type { DesignCallable } from '../../go-types.mts';
+
+type Fields = { readonly [field: string]: unknown };
 
 const store = owner('store/store.go', 'Store', {
   fields: [{ name: 'readings' }, { name: 'writes' }],
@@ -11,13 +14,13 @@ const members = {
   writeY: fn(store, 'WriteY', { ownFields: ['writes'] }),
 };
 
-function user(file, name, used) {
+function user(file: string, name: string, used: readonly DesignCallable[]) {
   return fn(owner(file), name, {
     calls: used.map(({ id }, line) => ({ target: id, line: line + 3, receiver: 's' })),
   });
 }
 
-function split(extra = {}) {
+function split(extra: Readonly<Record<string, Fields>> = {}) {
   const reports = user('reports/report.go', 'Render', [members.readA, members.readB]);
   const imports = user('imports/load.go', 'Load', [members.writeX, members.writeY]);
   const callables = [...Object.values(members), reports, imports];
@@ -82,7 +85,7 @@ const endpoint = [
   { name: 'secure', type: 'bool' },
 ];
 
-function endpoints(files, params = endpoint) {
+function endpoints(files: readonly string[], params: readonly Fields[] = endpoint) {
   const modules = files.map((file) => owner(file));
   const sites = modules.map((module, line) => fn(module, `F${String(line)}`, { params }));
   return { types: modules, callables: sites };
