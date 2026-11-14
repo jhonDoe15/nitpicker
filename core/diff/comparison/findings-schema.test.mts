@@ -1,27 +1,11 @@
 import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mts';
-import {
-  normalizeCoupling,
-  normalizeStructure,
-  normalizeTestRuntime,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
-import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
-import {
-  normalizeCrap,
-  normalizeMutation,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
-import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
-import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
-import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
-import { fileURLToPath } from 'node:url';
+import { fieldOf, fieldsOf, listOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import { parseAnalyzerReport, parseFinding } from './test-support/parsed-findings.mts';
+import { sampleFindings } from './test-support/sample-findings.mts';
 
-const schema = JSON.parse(
-  readFileSync(
-    path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../../spec/findings.schema.json'),
-    'utf8',
-  ),
+const schema: unknown = parseJson(
+  readFileSync(new URL('../../../spec/findings.schema.json', import.meta.url), 'utf8'),
 );
 
 const SUPPORTED_KEYWORDS = new Set([
@@ -71,53 +55,69 @@ const MALFORMED_FINDINGS = [
   { ...VALID_FINDING, metric: { name: 'm', value: 1 } },
 ];
 
-function assertSupportedKeywords(node) {
-  for (const keyword of Object.keys(node)) {
+function assertSupportedKeywords(node: unknown): void {
+  for (const keyword of Object.keys(fieldsOf(node))) {
     if (!SUPPORTED_KEYWORDS.has(keyword)) {
       throw new Error(`Validator does not support schema keyword: ${keyword}`);
     }
   }
 }
 
-function validateReference(value, node, errors, at) {
-  if (node.$ref === undefined) {
+function validateReference(value: unknown, node: unknown, errors: string[], at: string): void {
+  const reference = fieldOf(node, '$ref');
+  if (reference === undefined) {
     return;
   }
-  const target = node.$ref
+  const target = textOf(reference)
     .replace(/^#\//, '')
     .split('/')
-    .reduce((current, key) => current[key], schema);
+    .reduce<unknown>((current, key) => fieldOf(current, key), schema);
   validate(value, target, errors, at);
 }
 
-function checkNumber(value, node, errors, at) {
-  if (typeof value === 'number' && node.minimum !== undefined && value < node.minimum) {
-    errors.push(`${at} must be >= ${String(node.minimum)}`);
+function checkNumber(value: unknown, node: unknown, errors: string[], at: string): void {
+  const minimum = fieldOf(node, 'minimum');
+  if (typeof value === 'number' && typeof minimum === 'number' && value < minimum) {
+    errors.push(`${at} must be >= ${String(minimum)}`);
   }
 }
 
-function checkAllowedValues(value, node, errors, at) {
-  if (node.enum !== undefined && !node.enum.includes(value)) {
-    errors.push(`${at} must be one of ${node.enum.join(', ')}`);
+function checkAllowedValues(value: unknown, node: unknown, errors: string[], at: string): void {
+  const allowed = fieldOf(node, 'enum');
+  if (allowed !== undefined && !listOf(allowed).includes(value)) {
+    errors.push(`${at} must be one of ${listOf(allowed).join(', ')}`);
   }
-  if (node.const !== undefined && value !== node.const) {
-    errors.push(`${at} must equal ${String(node.const)}`);
+  const constant = fieldOf(node, 'const');
+  if (constant !== undefined && value !== constant) {
+    errors.push(`${at} must equal ${textOf(constant)}`);
   }
 }
 
-function checkCombinators(value, node, errors, at) {
-  for (const part of node.allOf ?? []) {
+function checkCombinators(value: unknown, node: unknown, errors: string[], at: string): void {
+  for (const part of listOf(fieldOf(node, 'allOf'))) {
     validate(value, part, errors, at);
   }
-  if (node.not !== undefined && validate(value, node.not, [], at).length === 0) {
+  const forbidden = fieldOf(node, 'not');
+  if (forbidden !== undefined && validate(value, forbidden, [], at).length === 0) {
     errors.push(`${at} matches a forbidden schema`);
   }
-  if (node.if !== undefined && validate(value, node.if, [], at).length === 0 && node.then) {
-    validate(value, node.then, errors, at);
+  const condition = fieldOf(node, 'if');
+  const consequence = fieldOf(node, 'then');
+  if (
+    condition !== undefined &&
+    validate(value, condition, [], at).length === 0 &&
+    consequence !== undefined
+  ) {
+    validate(value, consequence, errors, at);
   }
 }
 
-function validate(value, node = schema, errors = [], at = '$') {
+function validate(
+  value: unknown,
+  node: unknown = schema,
+  errors: string[] = [],
+  at = '$',
+): string[] {
   assertSupportedKeywords(node);
   validateReference(value, node, errors, at);
   checkType(value, node, errors, at);
@@ -130,23 +130,30 @@ function validate(value, node = schema, errors = [], at = '$') {
   if (isRecord(value)) {
     checkObject(value, node, errors, at);
   }
-  if (Array.isArray(value) && node.minItems !== undefined && value.length < node.minItems) {
-    errors.push(`${at} has fewer than ${String(node.minItems)} items`);
+  const minItems = fieldOf(node, 'minItems');
+  if (Array.isArray(value) && typeof minItems === 'number' && value.length < minItems) {
+    errors.push(`${at} has fewer than ${String(minItems)} items`);
   }
-  if (Array.isArray(value) && node.items !== undefined) {
-    validateItems(value, node.items, errors, at);
+  const itemNode = fieldOf(node, 'items');
+  if (Array.isArray(value) && itemNode !== undefined) {
+    validateItems(value, itemNode, errors, at);
   }
   return errors;
 }
 
-function validateItems(items, node, errors, at) {
+function validateItems(
+  items: readonly unknown[],
+  node: unknown,
+  errors: string[],
+  at: string,
+): void {
   for (const [index, item] of items.entries()) {
     validate(item, node, errors, `${at}[${String(index)}]`);
   }
 }
 
-function checkType(value, node, errors, at) {
-  const checks = {
+function checkType(value: unknown, node: unknown, errors: string[], at: string): void {
+  const checks: Readonly<Record<string, boolean>> = {
     object: isRecord(value),
     array: Array.isArray(value),
     string: typeof value === 'string',
@@ -154,161 +161,51 @@ function checkType(value, node, errors, at) {
     integer: Number.isInteger(value),
     boolean: typeof value === 'boolean',
   };
-  if (node.type !== undefined && !checks[node.type]) {
-    errors.push(`${at} must be ${node.type}`);
+  const type = fieldOf(node, 'type');
+  if (type !== undefined && checks[textOf(type)] !== true) {
+    errors.push(`${at} must be ${textOf(type)}`);
   }
 }
 
-function checkString(value, node, errors, at) {
-  if (node.minLength !== undefined && value.length < node.minLength) {
-    errors.push(`${at} is shorter than ${String(node.minLength)}`);
+function checkString(value: string, node: unknown, errors: string[], at: string): void {
+  const minLength = fieldOf(node, 'minLength');
+  if (typeof minLength === 'number' && value.length < minLength) {
+    errors.push(`${at} is shorter than ${String(minLength)}`);
   }
-  if (node.pattern !== undefined && !new RegExp(node.pattern, 'u').test(value)) {
-    errors.push(`${at} does not match ${node.pattern}`);
+  const pattern = fieldOf(node, 'pattern');
+  if (pattern !== undefined && !new RegExp(textOf(pattern), 'u').test(value)) {
+    errors.push(`${at} does not match ${textOf(pattern)}`);
   }
 }
 
-function checkObject(value, node, errors, at) {
-  for (const key of node.required ?? []) {
+function checkObject(
+  value: Readonly<Record<string, unknown>>,
+  node: unknown,
+  errors: string[],
+  at: string,
+): void {
+  for (const key of listOf(fieldOf(node, 'required')).map(textOf)) {
     if (!(key in value)) {
       errors.push(`${at}.${key} is required`);
     }
   }
-  for (const [key, child] of Object.entries(node.properties ?? {})) {
+  const properties = fieldsOf(fieldOf(node, 'properties'));
+  for (const [key, child] of Object.entries(properties)) {
     if (key in value) {
       validate(value[key], child, errors, `${at}.${key}`);
     }
   }
-  if (node.additionalProperties === false) {
+  if (fieldOf(node, 'additionalProperties') === false) {
     for (const key of Object.keys(value)) {
-      if (!(key in (node.properties ?? {}))) {
+      if (!(key in properties)) {
         errors.push(`${at}.${key} is not allowed`);
       }
     }
   }
 }
 
-function isRecord(value) {
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function sampleFindings() {
-  const crapEntry = (crap) => ({
-    source: 'src/main/value.ts',
-    function: 'value',
-    sourceHash: 'h',
-    lines: { start: 1, end: 3 },
-    complexity: 1,
-    statementCoverage: { percent: 100 },
-    branchCoverage: { percent: 100 },
-    effectiveCoverage: { percent: 100 },
-    crap,
-  });
-  return [
-    ...normalizeCoupling(
-      {
-        summary: { modules: 2 },
-        modules: [{ source: 'src/main/a.ts', fanIn: 1, fanOut: 2 }],
-        stabilityDirection: [{ source: 'stable', target: 'volatile', delta: 0.5 }],
-      },
-      'coupling',
-    ),
-    ...normalizeTestRuntime(
-      {
-        summary: { discoveredTests: 1, categories: { 'no-production-runtime': 1 } },
-        findings: [{ category: 'no-production-runtime', test: 'tests/orphan.test.ts' }],
-      },
-      'test-runtime',
-    ),
-    ...normalizeStructure(
-      {
-        functions: [
-          {
-            source: 'src/main/value.ts',
-            function: 'value',
-            sourceHash: 'f',
-            start: 1,
-            end: 51,
-            lines: 51,
-            statements: 16,
-            maxControlNesting: 3,
-            parameters: 4,
-          },
-        ],
-      },
-      'structure',
-    ),
-    ...normalizeDuplicates(
-      {
-        duplicates: [
-          {
-            firstFile: { name: 'a.ts', start: 2 },
-            secondFile: { name: 'b.ts', start: 7 },
-            lines: 10,
-            tokens: 30,
-          },
-        ],
-      },
-      'duplicates',
-      { configuredPaths: ['src/main'] },
-    ),
-    ...normalizeDeadCode(
-      {
-        files: ['src/main/unused.ts'],
-        issues: [{ file: 'src/main/unused.ts', exports: [{ name: 'x', line: 4, col: 14 }] }],
-      },
-      'dead-code',
-    ),
-    ...normalizeCrap({ functions: [crapEntry(10), crapEntry(null)] }, 'crap'),
-    ...normalizeMutation(
-      {
-        files: {
-          'src/main/value.ts': {
-            mutants: [
-              {
-                status: 'Survived',
-                mutatorName: 'BooleanLiteral',
-                replacement: 'false',
-                location: { start: { line: 4, column: 5 } },
-              },
-            ],
-          },
-        },
-      },
-      'mutation',
-    ),
-    ...normalizeArchitectureViolations(
-      {
-        summary: {
-          violations: [
-            {
-              type: 'cycle',
-              from: 'src/main/a.ts',
-              to: 'src/main/b.ts',
-              rule: { name: 'no-production-cycles', severity: 'error' },
-              cycle: [{ name: 'src/main/a.ts' }, { name: 'src/main/b.ts' }],
-            },
-            {
-              from: 'src/main/a.ts',
-              to: 'src/main/c.ts',
-              rule: { name: 'no-orphans', severity: 'warn' },
-            },
-          ],
-        },
-      },
-      'dependency-architecture',
-    ),
-    ...toEntryPointDiffFindings({
-      publicAlternativeBypasses: [
-        {
-          source: 'src/main/alpha/consumer.ts',
-          target: 'src/main/beta/internal.ts',
-          publicEntryPoint: 'src/main/beta/index.ts',
-          dependencyKind: 'runtime',
-        },
-      ],
-    }),
-  ];
 }
 
 describe('spec/findings.schema.json', () => {
@@ -452,9 +349,9 @@ describe('spec/findings.schema.json', () => {
     const finding = linkedFinding;
 
     expect(parseFinding(finding)).toEqual(finding);
-    expect(parseFinding({ ...finding, helpUri: 'http://example.com/rule' }).helpUri).toBe(
-      'http://example.com/rule',
-    );
+    expect(
+      fieldOf(parseFinding({ ...finding, helpUri: 'http://example.com/rule' }), 'helpUri'),
+    ).toBe('http://example.com/rule');
     expect(validate({ findings: [finding] })).toEqual([]);
   });
 

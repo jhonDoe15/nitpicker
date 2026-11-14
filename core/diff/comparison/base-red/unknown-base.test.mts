@@ -1,15 +1,58 @@
 import { describe, expect, it } from 'vitest';
+import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 import {
-  baseFailuresOf,
-  baseNoteOf,
-  changedByDiff,
-  isTestResultFinding,
-  redBaseAnalyzers,
-  testFailuresOf,
-  unknownOnBaseFor,
+  baseFailuresOf as baseFailuresOfJs,
+  baseNoteOf as baseNoteOfJs,
+  changedByDiff as changedByDiffJs,
+  isTestResultFinding as isTestResultFindingJs,
+  redBaseAnalyzers as redBaseAnalyzersJs,
+  testFailuresOf as testFailuresOfJs,
+  unknownOnBaseFor as unknownOnBaseForJs,
 } from './unknown-base.mjs';
 
-const testsFailed = {
+type RunLike = {
+  readonly reports: Map<string, AnalyzerReport>;
+  readonly toolErrors: readonly ReportEntry[];
+  readonly skipped: Map<string, unknown>;
+};
+
+type RunSpec = {
+  readonly reports?: Readonly<Record<string, readonly Finding[]>>;
+  readonly toolErrors?: readonly ReportEntry[];
+  readonly skipped?: Readonly<Record<string, string>>;
+};
+
+type FindingTest = (finding: Finding) => boolean;
+
+const isTestResultFinding: FindingTest = isTestResultFindingJs;
+const changedByDiff: (finding: Finding, touchedCode: unknown) => boolean = changedByDiffJs;
+const testFailuresOf: (report: AnalyzerReport | undefined) => Finding[] = testFailuresOfJs;
+const redBaseAnalyzers: (request: {
+  readonly names: readonly string[];
+  readonly baseRun: RunLike;
+  readonly headRun: RunLike;
+}) => Map<string, Finding[]> = redBaseAnalyzersJs;
+const baseFailuresOf: (request: {
+  readonly name: string;
+  readonly baseRun: RunLike;
+  readonly headRun: RunLike;
+  readonly redBase: Map<string, Finding[]>;
+}) => Finding[] | undefined = baseFailuresOfJs;
+const unknownOnBaseFor: (
+  failures: readonly Finding[],
+  touchedCode: unknown,
+) => FindingTest | undefined = unknownOnBaseForJs;
+const baseNoteOf: (name: string, finding: Finding) => unknown = baseNoteOfJs;
+
+function coverageOf(failures: readonly Finding[], touchedCode: unknown): FindingTest {
+  const covers = unknownOnBaseFor(failures, touchedCode);
+  if (covers === undefined) {
+    throw new Error('expected the failures to cover findings');
+  }
+  return covers;
+}
+
+const testsFailed: Finding = {
   tool: 'coverage',
   rule: 'tests-failed',
   path: 'test/a.test.ts',
@@ -19,7 +62,7 @@ const testsFailed = {
 };
 const skipped = { ...testsFailed, tool: 'mutation', rule: 'tests-failed-skipped' };
 const crashed = { ...testsFailed, rule: 'python-failed' };
-const lint = {
+const lint: Finding = {
   tool: 'ruff',
   rule: 'F401',
   path: 'a.py',
@@ -28,7 +71,7 @@ const lint = {
   classification: 'enforceable',
 };
 
-function run({ reports = {}, toolErrors = [], skipped: skippedTools = {} }) {
+function run({ reports = {}, toolErrors = [], skipped: skippedTools = {} }: RunSpec): RunLike {
   return {
     reports: new Map(Object.entries(reports).map(([name, findings]) => [name, { findings }])),
     toolErrors,
@@ -68,7 +111,7 @@ describe('changedByDiff', () => {
       ],
     ]),
   };
-  const at = (path, location) => ({
+  const at = (path: string, location?: { line: number; endLine?: number }): Finding => ({
     ...lint,
     path,
     ...(location === undefined ? {} : { location }),
@@ -142,7 +185,7 @@ describe('redBaseAnalyzers', () => {
     );
   });
 
-  it.each([
+  it.each<[string, RunSpec]>([
     ['the head tests fail too', { reports: { coverage: [testsFailed] } }],
     [
       'the head analyzer crashed',
@@ -206,16 +249,16 @@ describe('baseFailuresOf', () => {
 
 describe('unknownOnBaseFor', () => {
   const crap = { ...lint, rule: 'crap-score-limit' };
-  const inModule = (path, finding = crap) => ({ ...finding, path });
+  const inModule = (path: string, finding = crap): Finding => ({ ...finding, path });
 
   it('covers the test results of the whole analyzer when a failure names no module', () => {
-    const unknown = unknownOnBaseFor([testsFailed], { changedLines: new Map() });
+    const unknown = coverageOf([testsFailed], { changedLines: new Map() });
 
     expect([unknown(inModule('a/src/A.java')), unknown(lint)]).toEqual([true, false]);
   });
 
   it('covers only the modules whose tests fail', () => {
-    const unknown = unknownOnBaseFor([{ ...testsFailed, symbol: 'core' }], undefined);
+    const unknown = coverageOf([{ ...testsFailed, symbol: 'core' }], undefined);
 
     expect([
       unknown(inModule('core/src/A.java')),
@@ -225,13 +268,13 @@ describe('unknownOnBaseFor', () => {
   });
 
   it('treats the root module as the whole project', () => {
-    const unknown = unknownOnBaseFor([{ ...testsFailed, symbol: '.' }], undefined);
+    const unknown = coverageOf([{ ...testsFailed, symbol: '.' }], undefined);
 
     expect(unknown(inModule('api/src/A.java'))).toBe(true);
   });
 
   it('covers only the listed directories when a root project fails', () => {
-    const unknown = unknownOnBaseFor(
+    const unknown = coverageOf(
       [{ ...testsFailed, symbol: 'src/main/java,src/test/java' }],
       undefined,
     );

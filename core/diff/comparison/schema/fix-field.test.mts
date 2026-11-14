@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { parseAnalyzerReport, parseFinding } from '../finding-schema.mjs';
-import { findingsSchemaErrors } from '../test-support/findings-schema-check.mjs';
+import { fieldAt } from '../../../../scripts/json/fields.mts';
+import { parseAnalyzerReport, parseFinding } from '../test-support/parsed-findings.mts';
+import { findingsSchemaErrors } from '../test-support/findings-schema-check.mts';
 
 const VALID = {
   tool: 'checkstyle',
@@ -29,19 +30,19 @@ describe('the fix field of a finding', () => {
   ])('is accepted with %s', (_name, fix) => {
     const finding = { ...VALID, fix };
 
-    expect(parseFinding(finding).fix).toEqual(fix);
+    expect(fieldAt(parseFinding(finding), 'fix')).toEqual(fix);
     expect(findingsSchemaErrors([finding])).toEqual([]);
   });
 
   it('keeps a finding without a fix valid', () => {
-    expect(parseFinding(VALID).fix).toBeUndefined();
+    expect(fieldAt(parseFinding(VALID), 'fix')).toBeUndefined();
     expect(findingsSchemaErrors([VALID])).toEqual([]);
   });
 
   it('passes the fix of an ingested analyzer report through unchanged', () => {
     const report = parseAnalyzerReport({ findings: [{ ...VALID, fix: FIX }] }, 'fixture');
 
-    expect(report.findings[0].fix).toEqual(FIX);
+    expect(fieldAt(report.findings, 0, 'fix')).toEqual(FIX);
   });
 
   it.each([
@@ -69,6 +70,6 @@ describe('the fix field of a finding', () => {
     const finding = { ...VALID, fix };
 
     expect(() => parseFinding(finding)).toThrow(TypeError);
-    expect(findingsSchemaErrors([finding])[0].split(' ')[2]).toBe(errorPath);
+    expect(findingsSchemaErrors([finding]).at(0)?.split(' ')[2]).toBe(errorPath);
   });
 });

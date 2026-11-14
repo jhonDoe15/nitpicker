@@ -1,30 +1,23 @@
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { writeFiles } from '../../git/test-support/fixture-files.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../../git/test-support/git-repository.mts';
+import { writeFiles } from '../../git/test-support/fixture-files.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 import { scopeToTouchedFiles } from './scope.mts';
 
-const roots = [];
+const { temporaryRoot: fixtureRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function projectWith(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-quick-scope-'));
-  roots.push(root);
+function projectWith(files: readonly string[]): string {
+  const root = fixtureRoot('nitpicker-quick-scope-');
   writeFiles(root, Object.fromEntries(files.map((file) => [file, 'x\n'])));
   return root;
 }
 
-function analyzer(name, extra = {}) {
+function analyzer(name: string, extra: Partial<ProfiledAnalyzer> = {}): ProfiledAnalyzer {
   return {
     name,
     configurationHash: `${name}-hash`,
-    resolveConfigurationHash: (root) => `${name}-${root}`,
+    resolveConfigurationHash: (root: string) => `${name}-${root}`,
     createInvocation: () => ({
       command: 'node',
       args: ['runner.mjs', '--fix', '--pattern', 'src/**/*.ts', '--pattern', '*.json'],
@@ -32,6 +25,21 @@ function analyzer(name, extra = {}) {
     }),
     ...extra,
   };
+}
+
+function isProfiled(value: unknown): value is ProfiledAnalyzer {
+  return (
+    typeof fieldOf(value, 'name') === 'string' &&
+    typeof fieldOf(value, 'createInvocation') === 'function'
+  );
+}
+
+function scopedFirst(name: string, touched: Set<string>): ProfiledAnalyzer {
+  const [scoped] = scopeToTouchedFiles([analyzer(name)], touched);
+  if (!isProfiled(scoped)) {
+    throw new TypeError(`${name} was not scoped to an analyzer`);
+  }
+  return scoped;
 }
 
 describe('scopeToTouchedFiles', () => {
@@ -45,7 +53,7 @@ describe('scopeToTouchedFiles', () => {
       'package.json',
     ]);
 
-    const [scoped] = scopeToTouchedFiles([analyzer('eslint-errors')], touched);
+    const scoped = scopedFirst('eslint-errors', touched);
 
     expect(scoped.createInvocation({ projectRoot }).args).toEqual([
       'runner.mjs',
@@ -61,7 +69,7 @@ describe('scopeToTouchedFiles', () => {
 
   it('reports no findings without starting the tool when no changed file is covered', () => {
     const projectRoot = projectWith(['docs/b.md']);
-    const [scoped] = scopeToTouchedFiles([analyzer('prettier-format')], new Set(['docs/b.md']));
+    const scoped = scopedFirst('prettier-format', new Set(['docs/b.md']));
 
     const invocation = scoped.createInvocation({ projectRoot });
 
@@ -77,13 +85,13 @@ describe('scopeToTouchedFiles', () => {
   });
 
   it('keys a scoped analyzer by the changed files', () => {
-    const [first] = scopeToTouchedFiles([analyzer('eslint-logging')], new Set(['src/a.ts']));
-    const [second] = scopeToTouchedFiles([analyzer('eslint-logging')], new Set(['src/b.ts']));
+    const first = scopedFirst('eslint-logging', new Set(['src/a.ts']));
+    const second = scopedFirst('eslint-logging', new Set(['src/b.ts']));
 
     expect(first.configurationHash).not.toBe('eslint-logging-hash');
     expect(first.configurationHash).not.toBe(second.configurationHash);
-    expect(first.resolveConfigurationHash('/policy')).not.toBe(
-      second.resolveConfigurationHash('/policy'),
+    expect(first.resolveConfigurationHash?.('/policy')).not.toBe(
+      second.resolveConfigurationHash?.('/policy'),
     );
   });
 
