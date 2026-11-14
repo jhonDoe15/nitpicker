@@ -2,19 +2,18 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { findingFactory } from '../review-finding.mjs';
-import { routeOf } from '../test-support/facts.mjs';
-import { JUNIT_HEAD } from '../test-support/sources.mjs';
+import { routeOf, run, type RuleFinding } from '../test-support/facts.mts';
+import { JUNIT_HEAD } from '../test-support/sources.mts';
 import { HONESTY_RULES, testHonestyFindings } from './test-honesty.mjs';
 
-const roots = [];
+const roots: string[] = [];
 afterAll(() => {
   for (const root of roots) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-honesty-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -24,13 +23,17 @@ function projectWith(files) {
   return root;
 }
 
-function findingsOf(root, testRoots = ['src/test/kotlin'], contextRoots = []) {
-  return testHonestyFindings({
-    projectRoot: root,
-    testRoots,
-    contextRoots,
-    finding: findingFactory(),
-  });
+function findingsOf(
+  root: string,
+  testRoots = ['src/test/kotlin'],
+  contextRoots: string[] = [],
+): RuleFinding[] {
+  return run((_files: never, options: { finding: unknown }): unknown => {
+    const found: unknown = Reflect.apply(testHonestyFindings, undefined, [
+      { projectRoot: root, testRoots, contextRoots, finding: options.finding },
+    ]);
+    return found;
+  }, []);
 }
 
 const SKIPPED = `${JUNIT_HEAD}class OrderTest {
@@ -71,10 +74,11 @@ describe('testHonestyFindings', () => {
       identity: 'DisabledTest:OrderTest.first',
       symbol: 'OrderTest.first',
       location: { line: 11 },
-      message: expect.any(String),
+      message: findings[0]?.message,
       classification: 'enforceable',
     });
-    expect(routeOf(findings[0].message)).toBe(
+    expect(typeof findings[0]?.message).toBe('string');
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/DisabledTest","paths":["src/test/kotlin/OrderTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(HONESTY_RULES).toEqual([
@@ -110,7 +114,7 @@ object ProjectConfig : AbstractProjectConfig() {
     expect(findings.map(({ rule, identity, location }) => [rule, identity, location.line])).toEqual(
       [['RetryInTest', 'RetryInTest:ProjectConfig:retries', 6]],
     );
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/RetryInTest","paths":["src/test/kotlin/ProjectConfig.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -168,22 +172,25 @@ object ProjectConfig : AbstractProjectConfig() {
   });
 
   it('finds a Main dispatcher rule in a shared module and needs the test class to apply it', () => {
-    const delaying = (member) => `${JUNIT_HEAD}class ClockTest {
+    function delaying(member: string): string {
+      return `${JUNIT_HEAD}class ClockTest {
 ${member}    @Test
     fun main() = runTest {
         withContext(Dispatchers.Main) { delay(500) }
     }
 }
 `;
+    }
     const rule = `class MainRule : TestWatcher() {
     override fun starting(description: Description) { Dispatchers.setMain(StandardTestDispatcher()) }
 }
 `;
-    const withRule = (member) =>
-      projectWith({
+    function withRule(member: string): string {
+      return projectWith({
         'src/test/kotlin/ClockTest.kt': delaying(member),
         'test-utils/src/main/kotlin/MainRule.kt': rule,
       });
+    }
     const contextRoots = ['test-utils/src/main/kotlin'];
 
     expect(findingsOf(withRule(''), ['src/test/kotlin'], contextRoots)).toHaveLength(1);
