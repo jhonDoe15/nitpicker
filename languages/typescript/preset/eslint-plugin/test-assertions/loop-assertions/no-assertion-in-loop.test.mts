@@ -1,4 +1,4 @@
-import { runCases } from './test-support/rule-cases.mjs';
+import { runCases } from './test-support/rule-cases.mts';
 
 runCases('no-assertion-in-loop in every loop and iterating callback', {
   valid: [

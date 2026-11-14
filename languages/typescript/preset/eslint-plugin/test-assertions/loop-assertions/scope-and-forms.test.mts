@@ -1,4 +1,4 @@
-import { NODE_TEST, runCases } from './test-support/rule-cases.mjs';
+import { NODE_TEST, runCases } from './test-support/rule-cases.mts';
 
 const IMPORTS = "import { expect, it, test } from 'vitest';\n";
 
