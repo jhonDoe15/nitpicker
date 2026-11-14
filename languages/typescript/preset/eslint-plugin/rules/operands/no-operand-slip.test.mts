@@ -1,9 +1,9 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-operand-slip.mjs';
 
 const tester = typescriptRuleTester();
 
-function error(messageId, data) {
+function error(messageId: string, data?: Record<string, string>) {
   return data === undefined ? { messageId } : { messageId, data };
 }
 

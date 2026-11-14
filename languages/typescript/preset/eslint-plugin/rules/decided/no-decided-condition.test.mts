@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-decided-condition.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-decided-condition-')));
@@ -29,13 +29,21 @@ afterAll(() => {
 
 const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-function typed(code, errors) {
+type ExpectedError = { messageId: string; data: Record<string, string> };
+type TypedCase = { filename: string; code: string };
+
+function typed(code: string): TypedCase;
+function typed(code: string, errors: ExpectedError[]): TypedCase & { errors: ExpectedError[] };
+function typed(
+  code: string,
+  errors?: ExpectedError[],
+): TypedCase | (TypedCase & { errors: ExpectedError[] }) {
   const file = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(file, code);
   return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
 }
 
-function error(messageId, condition, reason) {
+function error(messageId: string, condition: string, reason?: string): ExpectedError {
   return { messageId, data: reason === undefined ? { condition } : { condition, reason } };
 }
 
