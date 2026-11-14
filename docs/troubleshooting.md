@@ -393,6 +393,13 @@ JavaScript, the runner's own command with coverage (`vitest run --coverage`, `je
 Python, the project's test runner under `coverage run`; for Java and Kotlin, `./gradlew test` or
 `mvn test`. The message shows the first failures, with the runner's output.
 
+When a test file fails to load with a message that reads like missing configuration (`Invalid env`, a
+missing environment variable), the message ends with a hint. The cause is usually a git-ignored file such as `.env`: both
+snapshots are built from git, so ignored files are not in them. Export the variables in the
+environment that runs nitpicker; both snapshots inherit it (see
+[Test environment](usage.md#test-environment)). Mutation testing then reports `mutation skipped`
+instead of a second error.
+
 ### Tests fail on the base
 
 **Symptom.** A note, not a tool error: `Tests fail on the base:` (or `Tests fail on the base in
@@ -412,7 +419,9 @@ compile failure, a non-zero exit that names no test, a timeout), there is nothin
 fails, because there is no base result to hold it against: test that code or split it. A change that
 removes tests gets no help from the red base, and a `tests-removed` note says so. When the base tests
 did not run, rebase or merge the base branch once it is green, or compare against a passing ref with
-`--base <ref>`; if the failure is flaky, rerun. `nitpicker --all` has no baseline. See
+`--base <ref>`; if the failure is flaky, rerun. If the base fails on missing configuration (`Invalid env`), the
+cause is an ignored `.env` file that the base checkout does not have: export the variables in the
+environment that runs nitpicker (see [Test environment](usage.md#test-environment)). `nitpicker --all` has no baseline. See
 [A base whose tests fail](usage.md#a-base-whose-tests-fail).
 
 ### The test runner ran no tests

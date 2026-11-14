@@ -254,6 +254,27 @@ describe('mutation skip', () => {
       message: 'mutation skipped: tests fail (see coverage findings)',
     });
   });
+
+  it('skips mutation when no test ran because test files failed to load', () => {
+    expect(
+      mutationSkipFor(
+        'FAIL  src/a.test.ts [ src/a.test.ts ]\nError: Invalid env provided.\n Test Files  1 failed (1)\nConfigError: No tests were executed.',
+      ),
+    ).toEqual({
+      rule: 'tests-failed-skipped',
+      message: 'mutation skipped: tests fail (see coverage findings)',
+    });
+  });
+
+  it('keeps a tool error when no test ran and nothing failed to load', () => {
+    expect(
+      mutationSkipFor('ConfigError: No tests were executed. Stryker will exit prematurely.'),
+    ).toEqual({
+      rule: 'mutation-no-tests',
+      message:
+        'mutation ran no tests: Stryker found no test to execute. Check that the runner config (include or testFiles) matches the test files.',
+    });
+  });
 });
 
 describe('unknown coverage text', () => {

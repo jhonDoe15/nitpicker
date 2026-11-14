@@ -283,6 +283,15 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
   only the mutants the base tests caught. Only mutants that are new on head fail, whichever way the
   results were obtained. `--all` mutates every source file.
 
+### Test environment
+
+Both snapshots are built from git, so a git-ignored file is in neither of them. Tests that read a
+`.env` file (usually created with `cp .env.example .env`) fail on both sides with a message such as
+`Invalid env provided`, and coverage, CRAP and mutation are skipped. Provide the values in the
+environment that runs nitpicker, for example `export VITE_API_URL=http://localhost:3000`
+before `nitpicker`; both snapshots inherit it, and Vite and most runners read their `VITE_*` and
+other variables from the process environment. In CI, set the same variables on the job.
+
 ### A base whose tests fail
 
 A change that repairs a red base is not blocked. A base is red when its tests ran and at least one

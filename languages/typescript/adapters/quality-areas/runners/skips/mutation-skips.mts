@@ -7,6 +7,13 @@ import { TROUBLESHOOTING_ANCHORS } from '../../../../../../shared/messages/troub
 const INITIAL_TEST_RUN_FAILED_PATTERN =
   /failed tests in the initial test run|Something went wrong in the initial test run/u;
 
+const NO_TESTS_EXECUTED_PATTERN = /No tests were executed/u;
+const SUITES_FAILED_PATTERN = /\bFailed Suites\b|\bTest Files\s+\d+ failed\b|^\s*FAIL\s/mu;
+const FILES_NOT_LOADED_PATTERN = /Error collecting tests|Failed to load|Failed to resolve import/u;
+const NO_TESTS_RULE = 'mutation-no-tests';
+const NO_TESTS_MESSAGE =
+  'mutation ran no tests: Stryker found no test to execute. Check that the runner config (include or testFiles) matches the test files.';
+
 const DRY_RUN_TYPECHECK_FAILED_PATTERN = /Typescript error\(s\) found in dry run compilation/u;
 
 type Skip = { readonly message: string; readonly anchor?: string };
@@ -42,6 +49,10 @@ const SKIPS: Readonly<Record<'head' | 'base', { readonly typecheck: Skip; readon
     },
   };
 
+function testFilesFailed(errorMessage: string): boolean {
+  return SUITES_FAILED_PATTERN.test(errorMessage) || FILES_NOT_LOADED_PATTERN.test(errorMessage);
+}
+
 export function mutationSkipFor(
   errorMessage: string,
   snapshot: 'head' | 'base' = 'head',
@@ -50,7 +61,13 @@ export function mutationSkipFor(
   if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
     return { rule: TYPECHECK_FAILED_SKIPPED_RULE, anchor: undefined, ...skips.typecheck };
   }
-  return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
-    ? { rule: TESTS_FAILED_SKIPPED_RULE, anchor: undefined, ...skips.tests }
+  const testsFailed =
+    INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage) ||
+    (NO_TESTS_EXECUTED_PATTERN.test(errorMessage) && testFilesFailed(errorMessage));
+  if (testsFailed) {
+    return { rule: TESTS_FAILED_SKIPPED_RULE, anchor: undefined, ...skips.tests };
+  }
+  return NO_TESTS_EXECUTED_PATTERN.test(errorMessage)
+    ? { rule: NO_TESTS_RULE, message: NO_TESTS_MESSAGE, anchor: undefined }
     : undefined;
 }
