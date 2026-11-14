@@ -2049,7 +2049,7 @@ runs only when `--fix --rule` names one of its rules.
 
 | Preset       | Rule                                                                                                                                                                                                                                                                                                                    | Recipe                                                                                                               | What it does                                                                                                                                                                          |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| java         | `structure/near-duplicate` (copies in one class)                                                                                                                                                                                                                                                                        | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                                                                    |
+| java         | `structure/near-duplicate` (copies in one class, or in two files of one folder)                                                                                                                                                                                                                                         | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                                                                    |
 | java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review)                                                                                  |
 | typescript   | `structure/near-duplicate` (copies in one file)                                                                                                                                                                                                                                                                         | `typescript-extract-near-duplicate`                                                                                  | extracts the shared function of a proved copy and calls it from both copies                                                                                                           |
 | typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review)                                                                                |
@@ -2080,7 +2080,8 @@ runs only when `--fix --rule` names one of its rules.
 | python       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `python-restating-docstring`                                                                                         | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass`                                        |
 
 Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
-whose copies sit in one file (TypeScript, JavaScript) or in one class (Java). The first copy becomes
+whose copies sit in one file (TypeScript, JavaScript), in one class (Java), or in two files of one
+folder (Java, see below). The first copy becomes
 the shared function: a module-level function after the first copy, or a private method (static when
 it reads no instance state). Both bodies become one call, and each signature stays. Differing
 literals become parameters named after what they flow into. Any other differing value is passed as
@@ -2091,11 +2092,16 @@ when its type is written where it flows: a declared local, a `return` or an `if`
 differing type becomes a type parameter (`<T>`, then `<U>` and so on) of the shared function. The
 TypeScript recipe passes the types at each call (`shared<string>(items)`); Java infers them. Java
 extracts the methods of two anonymous classes of one class into a private static method of the
-enclosing class. A recipe leaves the
+enclosing class. A constructor that differs (`new URL(text)` against `new URI(text)`) becomes a method
+reference (`URL::new`) of a small functional interface that declares the exceptions the constructor throws,
+and a catch clause that differs keeps its place and takes the exception class as a parameter. For two
+files of one Java package the shared method goes into a new package-private class beside them, named
+after the words their class names share, and the second copy's own comments stay above its call.
+TypeScript and JavaScript copies in two files are left alone, because the import each file needs
+depends on the module system and the path rules of the project. A recipe leaves the
 finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
 variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
-JavaScript), the helper name is taken, the copies differ in exceptions or the comments one of
-them holds, the copies differ in a type that a type parameter cannot stand for (a type after `new`,
+JavaScript), the helper name is taken, the copies differ in exceptions, the copies differ in a type that a type parameter cannot stand for (a type
 in a cast, in an `instanceof` or in a class literal, a type that names a generic class or a
 primitive, or code that calls a method on a value of that type or passes it to a call, in Java; any
 type that the compiler rejects as a type parameter in TypeScript), a differing Java
@@ -2106,7 +2112,8 @@ the enclosing class, declares more than methods, or sits in a generic method or 
 (TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
 `final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
 name that a superclass may declare, a call with a static and an instance overload), or the copies
-differ in a way a parameter cannot carry. A pair in two files, or in two classes other than anonymous
+differ in a way a parameter cannot carry, or a pair in two Java files uses state of its class that the new class cannot
+reach or has no free class name. A pair in two TypeScript files, in two Java folders, or in two classes other than anonymous
 classes of one class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,

@@ -31,7 +31,6 @@ const MEMBERS =
 
 describe('javaExtractNearDuplicateRecipe declines type holes', () => {
   it.each([
-    ['a constructor call', (type) => ({ tail: `new ${type}("1")` }), CONTEXT],
     ['a cast', (type) => ({ tail: `(${type}) null` }), CONTEXT],
     [
       'a class literal',

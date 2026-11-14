@@ -1,11 +1,27 @@
 import { indentOf } from '../../../../../shared/fix/recipes/extract/text.mjs';
+import { rewritten } from './creation/rewrite.mjs';
 import { supplierOf } from './holes/deferred.mjs';
-import { codeParts, field, parametersOf } from './syntax.mjs';
+import { codeParts, field, parametersOf, suppressions } from './syntax.mjs';
 
 const STEP = '    ';
 
+export const NO_SHAPE = {
+  rules: new Map(),
+  typeParams: [],
+  lead: [],
+  tail: [],
+  throws: [],
+  interfaces: [],
+};
+
 function useOf(hole) {
   return hole.kind === 'deferred' ? `${hole.name}.${supplierOf(hole).accessor}()` : hole.name;
+}
+
+function holeRules(holes) {
+  return new Map(
+    holes.flatMap((hole) => hole.occurrences.map(({ a }) => [a.id, () => useOf(hole)])),
+  );
 }
 
 export function replacedText(body, holes) {
@@ -30,21 +46,33 @@ export function replacedText(body, holes) {
     );
 }
 
-export function throwsText(method) {
-  const clause = codeParts(method).find((child) => child.type === 'throws');
-  return clause === undefined ? '' : ` ${clause.text.replaceAll(/\s+/gu, ' ')}`;
+function renderedText(node, holes, rules) {
+  return rewritten(node, new Map([...holeRules(holes), ...rules]));
 }
 
-function holeParameter(hole, replaced) {
-  if (hole.kind !== 'deferred') {
-    return `${hole.type} ${hole.name}`;
+export function throwsText(method, added = []) {
+  const clause = codeParts(method).find((child) => child.type === 'throws');
+  const own = clause === undefined ? '' : clause.text.replaceAll(/\s+/gu, ' ');
+  if (added.length === 0) {
+    return own === '' ? '' : ` ${own}`;
   }
-  const typeText = hole.typeNode === undefined ? hole.type : squashedText(replaced(hole.typeNode));
-  return `${supplierOf(hole, typeText).type} ${hole.name}`;
+  return own === '' ? ` throws ${added.join(', ')}` : ` ${own}, ${added.join(', ')}`;
 }
 
 function squashedText(text) {
   return text.replaceAll(/\s+/gu, ' ');
+}
+
+function holeExtra(hole, replaced) {
+  function argument(side) {
+    const { text } = hole.occurrences[0][side === 0 ? 'a' : 'b'];
+    return hole.kind === 'deferred' ? `() -> ${text}` : text;
+  }
+  if (hole.kind !== 'deferred') {
+    return { declaration: `${hole.type} ${hole.name}`, argument };
+  }
+  const typeText = hole.typeNode === undefined ? hole.type : squashedText(replaced(hole.typeNode));
+  return { declaration: `${supplierOf(hole, typeText).type} ${hole.name}`, argument };
 }
 
 function outdented(text, width) {
@@ -55,30 +83,51 @@ function outdented(text, width) {
     .join('\n');
 }
 
-export function helperText({ method, holes, typeHoles, name, isStatic, outdent = 0 }) {
-  const all = [...holes, ...typeHoles];
-  function replaced(node) {
-    return replacedText(node, all);
-  }
-  const parameters = [
-    ...parametersOf(method).map((parameter) => squashedText(replaced(parameter))),
-    ...holes.map((hole) => holeParameter(hole, replaced)),
-  ];
-  const generic =
-    typeHoles.length === 0 ? '' : `<${typeHoles.map((hole) => hole.name).join(', ')}> `;
-  const type = replaced(field(method, 'type'));
-  const modifiers = `private ${isStatic ? 'static ' : ''}${generic}`;
-  const head = `${modifiers}${type} ${name}(${parameters.join(', ')})`;
-  return `${head}${throwsText(method)} ${outdented(replaced(field(method, 'body')), outdent)}`;
+function extrasOf({ holes, shape = NO_SHAPE }, replaced) {
+  return [...shape.lead, ...holes.map((hole) => holeExtra(hole, replaced)), ...shape.tail];
 }
 
-function argumentsOf(method, side, holes) {
-  const own = parametersOf(method).map((parameter) => field(parameter, 'name').text);
-  const extra = holes.map((hole) => {
-    const { text } = hole.occurrences[0][side === 0 ? 'a' : 'b'];
-    return hole.kind === 'deferred' ? `() -> ${text}` : text;
-  });
-  return [...own, ...extra].join(', ');
+function replacerOf({ holes, typeHoles, shape = NO_SHAPE }) {
+  return (node) => renderedText(node, [...holes, ...typeHoles], shape.rules);
+}
+
+export function extrasFor(request) {
+  return extrasOf(request, replacerOf(request));
+}
+
+export function helperText(request) {
+  const { method, typeHoles, name, isStatic, outdent = 0, shape = NO_SHAPE } = request;
+  const { visibility = 'private' } = request;
+  const replaced = replacerOf(request);
+  const parameters = [
+    ...parametersOf(method).map((parameter) => squashedText(replaced(parameter))),
+    ...extrasOf(request, replaced).map(({ declaration }) => declaration),
+  ];
+  const params = [
+    ...typeHoles.filter(({ usage }) => usage !== 'exception').map((hole) => hole.name),
+    ...shape.typeParams,
+  ];
+  const generic = params.length === 0 ? '' : `<${params.join(', ')}> `;
+  const type = replaced(field(method, 'type'));
+  const modifiers = [visibility, isStatic ? 'static' : ''].filter((word) => word !== '').join(' ');
+  const suppressed = suppressions(method)
+    .map((annotation) => `${annotation} `)
+    .join('');
+  const lead = `${suppressed}${modifiers} ${generic}${type} ${name}`;
+  const throwing = throwsText(method, shape.throws);
+  const head = signatureText({ lead, parameters, throwing, indent: request.indent ?? '' });
+  return `${head} ${outdented(replaced(field(method, 'body')), outdent)}`;
+}
+
+const WIDTH = 120;
+
+function signatureText({ lead, parameters, throwing, indent }) {
+  const flat = `${lead}(${parameters.join(', ')})${throwing}`;
+  if (indent.length + flat.length + 2 <= WIDTH || parameters.length === 0) {
+    return flat;
+  }
+  const margin = `${indent}${indent === '' ? STEP : indent}${indent === '' ? STEP : indent}`;
+  return `${lead}(\n${margin}${parameters.join(`,\n${margin}`)})${throwing}`;
 }
 
 function bodyIndent(body, text, base) {
@@ -86,16 +135,19 @@ function bodyIndent(body, text, base) {
   return first === undefined ? `${base}${STEP}` : indentOf(text, first.startIndex);
 }
 
-export function bodyEdit({ method, side, name, holes, text }) {
+export function bodyEdit({ method, side, name, text, extras, qualifier = '', moved = [] }) {
   const body = field(method, 'body');
   const base = indentOf(text, method.startIndex);
-  const call = `${name}(${argumentsOf(method, side, holes)});`;
+  const own = parametersOf(method).map((parameter) => field(parameter, 'name').text);
+  const args = [...own, ...extras.map((extra) => extra.argument(side))].join(', ');
+  const call = `${qualifier}${name}(${args});`;
   const isVoid = field(method, 'type').type === 'void_type';
   const inner = bodyIndent(body, text, base);
+  const comments = moved.map((comment) => `${inner}${comment}\n`).join('');
   return {
     start: body.startIndex,
     end: body.endIndex,
-    text: `{\n${inner}${isVoid ? '' : 'return '}${call}\n${base}}`,
+    text: `{\n${comments}${inner}${isVoid ? '' : 'return '}${call}\n${base}}`,
   };
 }
 

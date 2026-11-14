@@ -6,12 +6,16 @@ import { lastSegment } from '../../../../../shared/fix/recipes/extract/names.mjs
 import { collected, outcomeOf } from '../../../../../shared/fix/recipes/extract/outcomes.mjs';
 import { nearDuplicateMatches } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import { javaUnits } from '../tree/units.mjs';
+import { crossOutcomes } from './cross/group.mjs';
 import { wholeExtraction } from './java-extract.mjs';
 import { partialExtraction } from './partial/partial-extract.mjs';
 import { METHOD, descendants, field } from './syntax.mjs';
 
 const STRATEGIES = {
-  whole: { candidatesOf: wholeCandidates, extract: wholeExtraction },
+  whole: {
+    candidatesOf: (matches) => wholeCandidates(matches, { crossFile: true }),
+    extract: wholeExtraction,
+  },
   partial: { candidatesOf: partialCandidates, extract: partialExtraction },
 };
 
@@ -27,31 +31,67 @@ function methodFor(methods, unit) {
   return found.length === 1 ? found[0] : undefined;
 }
 
-function extractionFor(candidate, context) {
-  const nodes = [candidate.first, candidate.second].map((unit) => methodFor(context.methods, unit));
-  if (nodes.includes(undefined)) {
+function nodesOf(candidate, sources) {
+  return [candidate.first, candidate.second].map((unit) =>
+    methodFor(sources.get(unit.file).methods, unit),
+  );
+}
+
+function inFile(candidate, source, context) {
+  const methods = nodesOf(candidate, context.sources);
+  if (methods.includes(undefined)) {
     return { declined: 'a copy is not a plain method' };
   }
-  return context.strategy.extract({
-    methods: nodes,
+  const result = context.strategy.extract({
+    methods,
     runs: candidate.runs,
     label: candidate.first.name,
     engineHoles: candidate.finding.parameters.length,
-    root: context.rootNode,
-    text: context.text,
-    claimed: context.claimed,
+    root: source.rootNode,
+    text: source.text,
+    claimed: context.claimed.get(source.file),
   });
+  const path = source.file;
+  return result.edits === undefined
+    ? result
+    : { edits: result.edits.map((edit) => ({ type: 'replace', path, ...edit })) };
 }
 
-export function javaExtractions(rootNode, file, { text, mode }) {
+function isCrossFile({ first, second }) {
+  return first.file !== second.file;
+}
+
+export function javaExtractions(sources, { mode, root }) {
   const strategy = STRATEGIES[mode];
-  const units = javaUnits(rootNode, file);
+  const units = sources.flatMap(({ rootNode, file }) => javaUnits(rootNode, file));
   const matches = nearDuplicateMatches(units, { isExcepted: () => false });
   const { candidates, notes } = strategy.candidatesOf(matches);
-  const methods = descendants(rootNode).filter(({ type }) => type === METHOD);
-  const context = { methods, rootNode, text, strategy, claimed: new Set() };
-  const outcomes = candidates.map((candidate) =>
-    outcomeOf(candidate, extractionFor(candidate, context)),
+  const byFile = new Map(
+    sources.map((source) => [
+      source.file,
+      { ...source, methods: descendants(source.rootNode).filter(({ type }) => type === METHOD) },
+    ]),
   );
+  const context = {
+    strategy,
+    sources: byFile,
+    claimed: new Map(sources.map(({ file }) => [file, new Set()])),
+  };
+  const here = candidates.filter((candidate) => !isCrossFile(candidate));
+  const across = candidates.filter(isCrossFile).map((candidate) => ({
+    candidate,
+    methods: nodesOf(candidate, byFile),
+    sources: [candidate.first.file, candidate.second.file].map((file) => byFile.get(file)),
+  }));
+  const plain = across.filter(({ methods }) => !methods.includes(undefined));
+  const outcomes = [
+    ...here.map((candidate) =>
+      outcomeOf(candidate, inFile(candidate, byFile.get(candidate.first.file), context)),
+    ),
+    ...across
+      .filter((entry) => !plain.includes(entry))
+      .map(({ candidate }) => outcomeOf(candidate, { declined: 'a copy is not a plain method' })),
+    ...crossOutcomes(plain, root),
+  ];
   return collected(outcomes, notes);
 }
