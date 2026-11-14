@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { resolveLayout } from '../preset/layout.mjs';
-import { fixTargets } from './fix-targets.mjs';
+import { fixTargets } from './fix-targets.mts';
+import type { Layout } from './typed/fix-views.mts';
 
-function selection(layout, files) {
+function selection(layout: Layout, files: readonly string[]) {
   const { isEslintFile, isPrettierFile } = fixTargets(layout);
   return files.map((file) => [file, isEslintFile(file), isPrettierFile(file)]);
 }
