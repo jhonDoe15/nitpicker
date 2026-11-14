@@ -5,6 +5,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
 - Per-item I/O: fetch or write a loop's items in one batch call (`WHERE id IN (...)`, `bulk_create`, `executemany`) or in fixed-size chunks. `asyncio.gather` over one database query per item is still one query per item (`io-in-loop`).
 - Accumulators: `append`, `extend` or `update` one list or dict in the loop, or build it with a comprehension or `itertools.chain.from_iterable`; never rebuild it from a copy of itself (`acc = acc + [x]`, `[*acc, x]`, `{**acc, k: v}`) on every pass (`accumulator-copy`).
+- Relationships: load what a loop reads in the query that fetches the rows (`select_related` or `prefetch_related` in Django, `selectinload` or `joinedload` in SQLAlchemy); never read a lazy relationship on each row (`lazy-relation-in-loop`).
 - Build a pydantic `TypeAdapter`, a jinja2 `Environment` or a `fastjsonschema.compile` validator once, at module level or in `__init__`, not inside a function that runs per call (`reusable-object-per-call`).
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
