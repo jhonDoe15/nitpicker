@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as preserveErrorCause } from '../../rules/errors/preserve-error-cause.mjs';
 import { rule as structuredCatchLogging } from '../../rules/errors/structured-catch-logging.mjs';
 
 const tester = typescriptRuleTester();
 const lost = [{ messageId: 'lostCause' }];
-const wrap = (statement) => `try { run(); } catch (error) { ${statement} }`;
+const wrap = (statement: string) => `try { run(); } catch (error) { ${statement} }`;
 
 tester.run('preserve-error-cause fixes', preserveErrorCause, {
   valid: [],
@@ -68,7 +68,7 @@ tester.run('preserve-error-cause fixes', preserveErrorCause, {
   ],
 });
 
-const shape = (statement) => `try { run(); } catch (error) { ${statement} }`;
+const shape = (statement: string) => `try { run(); } catch (error) { ${statement} }`;
 
 tester.run('structured-catch-logging fixes', structuredCatchLogging, {
   valid: [],
