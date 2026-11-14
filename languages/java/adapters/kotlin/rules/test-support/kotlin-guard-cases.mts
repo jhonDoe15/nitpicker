@@ -8,11 +8,20 @@ const LEGACY_DATE =
   'Use java.time (`Instant`, `LocalDate`, `ZonedDateTime`, `ZoneId` and `DateTimeFormatter`) instead of the legacy date classes. Convert a `Date` another API returns with `toInstant()` in the same expression.';
 const COROUTINES = 'import kotlinx.coroutines.coroutineScope\nimport kotlinx.coroutines.launch\n\n';
 
-function forbidden(call, reason) {
+function forbidden(call: string, reason: string) {
   return `The method \`${call}\` has been forbidden: ${reason}`;
 }
 
-export const kotlinGuardCases = [
+export type KotlinRuleCase = {
+  id: string;
+  rule: string;
+  message: string | undefined;
+  allowedForm: string;
+  banned: string;
+  allowed: string;
+};
+
+export const kotlinGuardCases: KotlinRuleCase[] = [
   {
     id: 'consolePrint',
     rule: 'detekt.style.ForbiddenMethodCall',
