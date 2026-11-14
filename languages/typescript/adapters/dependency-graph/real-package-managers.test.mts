@@ -1,25 +1,24 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
-import { withTemporaryWorktree } from '../../../../core/diff/git/repository/worktree.mjs';
+import { type TestContext, describe, expect, it, vi } from 'vitest';
 import {
   commit,
   fixtureGit,
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
-import { removeSnapshotDependencies } from '../static-checks/dependencies.mjs';
-import { resolveDependencyHook } from './dependency-hooks.mjs';
+import { removeSnapshotDependencies } from '../static-checks/dependencies.mts';
+import { linkSentence, withTemporaryWorktree } from './typed/outside-views.mts';
+import { resolveDependencyHook } from './dependency-hooks.mts';
 import {
   copyProjectFixture,
   managerVersion,
-} from './package-managers/test-support/project-fixtures.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+} from './package-managers/test-support/project-fixtures.mts';
 
 const git = useGitFixtures();
 
-const REQUIRED = Boolean(process.env.CI);
+const REQUIRED = Boolean(process.env['CI']);
 
 const ANY_VERSION = /^\d/u;
 const PNPM = /^10\.28\.0$/u;
@@ -27,7 +26,15 @@ const YARN_CLASSIC = /^1\.22\.22$/u;
 const YARN_BERRY = /^4\.9\.2$/u;
 const BUN = /^1\.4\.2$/u;
 
-const CASES = [
+type ManagerCase = {
+  label: string;
+  fixture: string;
+  binary: string;
+  version: RegExp;
+  members: string[];
+};
+
+const CASES: ManagerCase[] = [
   { label: 'npm', fixture: 'npm', binary: 'npm', version: ANY_VERSION, members: [] },
   { label: 'pnpm', fixture: 'pnpm', binary: 'pnpm', version: PNPM, members: [] },
   { label: 'yarn classic', fixture: 'yarn', binary: 'yarn', version: YARN_CLASSIC, members: [] },
@@ -42,7 +49,20 @@ const CASES = [
   },
 ];
 
-function requireManager({ label, fixture, binary, version }, context) {
+type Installed = ReturnType<ReturnType<typeof resolveDependencyHook>['install']>;
+
+function caseAt(index: number): ManagerCase {
+  const found = CASES[index];
+  if (found === undefined) {
+    throw new RangeError(`No manager case at ${String(index)}`);
+  }
+  return found;
+}
+
+function requireManager(
+  { label, fixture, binary, version }: ManagerCase,
+  context: TestContext,
+): void {
   const found = managerVersion(binary, fixture);
   if (version.test(found)) {
     return;
@@ -55,7 +75,7 @@ function requireManager({ label, fixture, binary, version }, context) {
   context.skip(`${label} is not installed`);
 }
 
-function installFixture(fixture, extraFiles = {}) {
+function installFixture(fixture: string, extraFiles: Record<string, string> = {}): string {
   const projectRoot = copyProjectFixture(fixture, git.createGitRepository().root);
   writeFiles(projectRoot, extraFiles);
   return projectRoot;
@@ -77,7 +97,8 @@ describe('frozen install with the real package managers', () => {
         localPackagePaths: [],
       });
       const libraryFolders = members.length === 0 ? ['node_modules'] : members;
-      const hasFile = (folder, name) => existsSync(path.join(projectRoot, folder, name));
+      const hasFile = (folder: string, name: string) =>
+        existsSync(path.join(projectRoot, folder, name));
       expect(libraryFolders.map((folder) => hasFile(folder, 'fixture-lib/fixture.json'))).toEqual(
         libraryFolders.map(() => true),
       );
@@ -98,7 +119,7 @@ describe('frozen install with the real package managers', () => {
 
 describe('Yarn Plug and Play', () => {
   it('is reported when the install leaves no node_modules folder', (context) => {
-    requireManager(CASES[3], context);
+    requireManager(caseAt(3), context);
     const projectRoot = installFixture('berry', { '.yarnrc.yml': 'nodeLinker: pnp\n' });
 
     expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
@@ -115,7 +136,7 @@ const WRITE_MARKER = "require('fs').writeFileSync(__dirname + '/PWNED', 'ran');\
 
 describe('repository code that a frozen install must not run', () => {
   it('ignores the pnpmfile of the base', (context) => {
-    requireManager(CASES[1], context);
+    requireManager(caseAt(1), context);
     const projectRoot = installFixture('pnpm', {
       '.pnpmfile.cjs': `${WRITE_MARKER}module.exports = {};\n`,
     });
@@ -127,7 +148,7 @@ describe('repository code that a frozen install must not run', () => {
   });
 
   it('ignores the yarn-path of a Yarn 1 base', (context) => {
-    requireManager(CASES[2], context);
+    requireManager(caseAt(2), context);
     const projectRoot = installFixture('yarn', {
       '.yarnrc': 'yarn-path "./evil.js"\n',
       'evil.js': WRITE_MARKER,
@@ -140,7 +161,7 @@ describe('repository code that a frozen install must not run', () => {
   });
 
   it('ignores the yarnPath of a Yarn 2 and later base', (context) => {
-    requireManager(CASES[3], context);
+    requireManager(caseAt(3), context);
     const projectRoot = installFixture('berry', {
       '.yarnrc.yml': 'nodeLinker: node-modules\nyarnPath: ./evil.cjs\n',
       'evil.cjs': WRITE_MARKER,
@@ -153,7 +174,10 @@ describe('repository code that a frozen install must not run', () => {
   });
 });
 
-function baseWorktreeInstall(liveRoot, check) {
+function baseWorktreeInstall(
+  liveRoot: string,
+  check: (worktreeRoot: string, dependencies: Installed) => void,
+) {
   return withTemporaryWorktree(liveRoot, { commitSha: 'HEAD', warn: vi.fn() }, (worktreeRoot) => {
     const dependencies = resolveDependencyHook().install(worktreeRoot, liveRoot);
     try {
@@ -175,7 +199,7 @@ describe('local packages the base checkout does not hold', () => {
 
       const dependencies = baseWorktreeInstall(projectRoot, (worktreeRoot) => {
         const folders = testCase.members.length === 0 ? ['node_modules'] : testCase.members;
-        const installed = (folder) =>
+        const installed = (folder: string) =>
           existsSync(path.join(worktreeRoot, folder, 'fixture-lib/fixture.json'));
         expect(folders.filter((folder) => !installed(folder))).toEqual([]);
       });
@@ -188,7 +212,7 @@ describe('local packages the base checkout does not hold', () => {
   }
 
   it('installs npm folder and tarball packages from outside the repository', (context) => {
-    requireManager(CASES[0], context);
+    requireManager(caseAt(0), context);
     const outside = git.temporaryRoot('nitpicker-local-packages-');
     const liveRoot = path.join(outside, 'app');
     copyProjectFixture('npm-outside', liveRoot);

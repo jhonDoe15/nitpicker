@@ -3,14 +3,14 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
-import { resolveDependencyHook } from './dependency-hooks.mjs';
-import { installDependencies } from './package-managers/install.mjs';
+import { resolveDependencyHook } from './dependency-hooks.mts';
+import { installDependencies } from './package-managers/install.mts';
 import {
   installFakeManagers,
   installOnlyEnv,
-} from './package-managers/test-support/fake-managers.mjs';
-import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
+} from './package-managers/test-support/fake-managers.mts';
+import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
+import { explainedError, linkSentence } from './typed/outside-views.mts';
 
 const git = useGitFixtures();
 const { temporaryRoot } = git;
@@ -19,23 +19,23 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>): string {
   const root = temporaryRoot('dependency-hook-');
   writeFiles(root, { 'package.json': '{"name":"fixture"}\n', ...files });
   return root;
 }
 
-function repositoryWith(files) {
+function repositoryWith(files: Record<string, string>): string {
   return git.createGitRepository({ 'package.json': '{"name":"fixture"}\n', ...files }).root;
 }
 
 function useFakeManagers() {
   const binDirectory = installFakeManagers(temporaryRoot('fake-managers-'));
-  vi.stubEnv('PATH', `${binDirectory}${path.delimiter}${process.env.PATH}`);
+  vi.stubEnv('PATH', `${binDirectory}${path.delimiter}${process.env['PATH'] ?? ''}`);
 }
 
-function recordedCall(projectRoot) {
-  return JSON.parse(readFileSync(path.join(projectRoot, 'fake-install-call.json'), 'utf8'));
+function recordedCall(projectRoot: string): unknown {
+  return parseJson(readFileSync(path.join(projectRoot, 'fake-install-call.json'), 'utf8'));
 }
 
 const BERRY_LOCKFILE = '__metadata:\n  version: 8\n';
@@ -99,7 +99,7 @@ describe('dependency hook install', () => {
 
     resolveDependencyHook().install(projectRoot);
 
-    expect(recordedCall(projectRoot).manager).toBe('pnpm');
+    expect(fieldOf(recordedCall(projectRoot), 'manager')).toBe('pnpm');
   });
 
   it('installs a workspace member from the folder that holds the lockfile', () => {
@@ -112,7 +112,7 @@ describe('dependency hook install', () => {
 
     const dependencies = resolveDependencyHook().install(member);
 
-    expect(recordedCall(repository).manager).toBe('pnpm');
+    expect(fieldOf(recordedCall(repository), 'manager')).toBe('pnpm');
     expect(existsSync(path.join(member, 'fake-install-call.json'))).toBe(false);
     expect(dependencies).toEqual({
       kind: 'installed',

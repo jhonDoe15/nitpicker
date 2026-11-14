@@ -8,6 +8,7 @@ import {
   layeredDependencyCruiserConfig,
   projectExcludePaths,
 } from './dependency-cruiser-layers.mts';
+import type { CruiserConfig } from './dependency-cruiser-layers.mts';
 
 const POLICY = {
   forbidden: [
@@ -50,7 +51,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-function layered(precedence, project = PROJECT) {
+function layered(precedence: string[], project: CruiserConfig = PROJECT): CruiserConfig {
   return layeredDependencyCruiserConfig(POLICY, { precedence, config: project });
 }
 
@@ -82,7 +83,7 @@ describe('layered dependency-cruiser config', () => {
   });
 
   it('keeps the nitpicker values of a shared rule when nitpicker comes first', () => {
-    expect(layered(['nitpicker', 'project']).forbidden[0]).toEqual({
+    expect(layered(['nitpicker', 'project']).forbidden?.[0]).toEqual({
       ...POLICY.forbidden[0],
       comment: 'Ours',
     });
@@ -101,24 +102,35 @@ describe('layered dependency-cruiser config', () => {
       owned,
       owned,
     ]);
-    expect(projectExcludePaths({ config: PROJECT })).toEqual(['^src/legacy', '^src/old']);
-    expect(projectExcludePaths({ config: { options: { exclude: '^dist' } } })).toEqual(['^dist']);
+    expect(projectExcludePaths({ precedence: undefined, config: PROJECT })).toEqual([
+      '^src/legacy',
+      '^src/old',
+    ]);
+    expect(
+      projectExcludePaths({ precedence: undefined, config: { options: { exclude: '^dist' } } }),
+    ).toEqual(['^dist']);
   });
 
   it('reads regular expressions in the project exclusions as their sources', () => {
-    const regExp = (source) => ({ $nitpickerRegExp: [source, 'u'] });
+    const regExp = (source: string) => ({ $nitpickerRegExp: [source, 'u'] });
     const project = {
       options: {
         exclude: { path: [regExp('^gen'), '^old'] },
         doNotFollow: { path: regExp('^vendor') },
       },
     };
-    expect(projectExcludePaths({ config: project })).toEqual(['^gen', '^old']);
-    expect(projectExcludePaths({ config: { options: { exclude: regExp('^dist') } } })).toEqual([
-      '^dist',
+    expect(projectExcludePaths({ precedence: undefined, config: project })).toEqual([
+      '^gen',
+      '^old',
     ]);
+    expect(
+      projectExcludePaths({
+        precedence: undefined,
+        config: { options: { exclude: regExp('^dist') } },
+      }),
+    ).toEqual(['^dist']);
     const revived = { options: { doNotFollow: [/^vendor/u, /^lib/u] } };
-    expect(layered(['project'], revived).options.doNotFollow).toEqual({
+    expect(layered(['project'], revived).options?.doNotFollow).toEqual({
       path: 'node_modules|^vendor|^lib',
     });
   });
@@ -132,7 +144,11 @@ describe('layered dependency-cruiser config', () => {
       'utf8',
     );
     const flags = [...graphSource.matchAll(/'--([a-z-]+)'/gu)]
-      .map(([, flag]) => flag.replaceAll(/-([a-z])/gu, (_match, letter) => letter.toUpperCase()))
+      .map(([, flag]) =>
+        (flag ?? '').replaceAll(/-([a-z])/gu, (_match: string, letter: string) =>
+          letter.toUpperCase(),
+        ),
+      )
       .filter((option) => option !== 'config');
     const set = [
       ...Object.keys(policy.options).filter((key) => !MERGED_OPTIONS.has(key)),

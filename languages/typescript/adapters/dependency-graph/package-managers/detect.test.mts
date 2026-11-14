@@ -3,18 +3,19 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
-import { detectPackageManager, managerRoot } from './detect.mjs';
+import { detectPackageManager, managerRoot } from './detect.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>): string {
   const root = temporaryRoot('package-manager-detect-');
   writeFiles(root, files);
   return root;
 }
 
-const manifest = (packageManager) =>
-  `${JSON.stringify({ name: 'fixture', ...(packageManager && { packageManager }) })}\n`;
+function manifest(packageManager?: string): string {
+  return `${JSON.stringify({ name: 'fixture', ...(packageManager && { packageManager }) })}\n`;
+}
 
 const BERRY_LOCKFILE = '__metadata:\n  version: 8\n';
 
@@ -129,7 +130,7 @@ describe('package manager detection', () => {
 });
 
 describe('workspace root lookup', () => {
-  function workspaceWith(files) {
+  function workspaceWith(files: Record<string, string>) {
     const repository = projectWith({ ...files, '.git/HEAD': 'ref: refs/heads/main\n' });
     const member = path.join(repository, 'packages/app');
     mkdirSync(member, { recursive: true });
