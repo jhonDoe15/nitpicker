@@ -4,18 +4,14 @@ import {
 } from '../diff/reporting/report-model.mts';
 import { withHeadPolicyFile } from '../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
-import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
+import { scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
-import { findingLabeler, labelCounts } from '../labels/finding-labels.mts';
-import { areaOf } from '../diff/reporting/format/rule-groups/finding-areas.mts';
-import { labeledFindings, labelRun } from '../labels/label-filter.mts';
+import { inFocus, isEnforceable, labelSummary } from './snapshot-labels.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
 import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 
 type Finding = ReportEntry;
-
-const LABELS_OF = findingLabeler({ areaOf });
 
 type Scope = unknown;
 
@@ -35,6 +31,19 @@ type SnapshotRequest = {
   readonly scope: Scope;
   readonly setupErrors?: readonly object[];
   readonly labels?: LabelFilter | undefined;
+  readonly [option: string]: unknown;
+};
+
+type HeadRun = {
+  readonly analyzers: readonly unknown[];
+  readonly headPolicy: object;
+  readonly scope: Scope;
+  readonly roots: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: unknown;
+    readonly liveProjectRoot: string;
+  };
   readonly [option: string]: unknown;
 };
 
@@ -65,15 +74,30 @@ const withPolicyFile: (
 ) => SnapshotRun = withHeadPolicyFile;
 const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
   withSharedUnusedDirectives;
-const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
 function sortKey(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-function isEnforceable(finding: Finding): boolean {
-  return finding.classification === 'enforceable';
+function runHead({ analyzers, headPolicy, scope, roots, ...execution }: HeadRun): SnapshotRun {
+  return reconcileDirectives(
+    withPolicyFile(headPolicy, (headPolicyFile) =>
+      runAnalyzers({
+        analyzers,
+        ...roots,
+        headPolicyFile,
+        snapshot: 'head',
+        mutationScope: fieldOf(scope, 'paths'),
+        baselineRoot: execution['baselineRoot'],
+        baselineMovesFile: execution['baselineMovesFile'],
+        logRoot: execution['logRoot'],
+        runTasks: execution['runTasks'],
+        ...execution,
+      }),
+    ),
+    analyzers,
+  );
 }
 
 export function runQualitySnapshot({
@@ -89,26 +113,14 @@ export function runQualitySnapshot({
   labels,
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors: runErrors } = reconcileDirectives(
-    withPolicyFile(headPolicy, (headPolicyFile) =>
-      runAnalyzers({
-        analyzers,
-        projectRoot,
-        policyRoot,
-        toolRoot,
-        liveProjectRoot,
-        headPolicyFile,
-        snapshot: 'head',
-        mutationScope: fieldOf(scope, 'paths'),
-        baselineRoot: execution['baselineRoot'],
-        baselineMovesFile: execution['baselineMovesFile'],
-        logRoot: execution['logRoot'],
-        runTasks: execution['runTasks'],
-        ...execution,
-      }),
-    ),
+  const roots = { projectRoot, policyRoot, toolRoot, liveProjectRoot };
+  const { reports, toolErrors: runErrors } = runHead({
+    ...execution,
     analyzers,
-  );
+    roots,
+    headPolicy,
+    scope,
+  });
 
   const toolErrors = [...entriesOf(setupErrors), ...runErrors];
   const { findings, tools, outside, hidden } = collectSnapshotFindings({
@@ -261,28 +273,4 @@ function declaredExclusions(analyzers: readonly unknown[]): string[] {
       }),
     ),
   ].sort();
-}
-
-function inFocus(
-  analyzed: readonly Finding[],
-  scope: Scope,
-  labels: LabelFilter | undefined,
-): { readonly findings: Finding[]; readonly outside: number; readonly hidden: number } {
-  const scoped = analyzed.filter((finding) => inScope(finding.path, scope));
-  const labeled = labeledFindings(scoped, labels, LABELS_OF);
-  return { ...labeled, outside: analyzed.length - scoped.length };
-}
-
-function labelSummary(
-  labels: LabelFilter | undefined,
-  hidden: number,
-  findings: readonly Finding[],
-): object {
-  const failing = findings.filter(isEnforceable);
-  return {
-    ...labelRun(labels, hidden),
-    ...(failing.length === 0
-      ? {}
-      : { labelCounts: labelCounts(failing.map((finding) => ({ labels: LABELS_OF(finding) }))) }),
-  };
 }
