@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 import { containedPath } from '../common/contained-path.mjs';
+import type { Change, FileState } from './journal-types.mts';
 
 const MAX_PATCH_BYTES = 256 * 1024 * 1024;
 const DIFFERENCES_STATUS = 1;
@@ -22,7 +23,7 @@ const DIFF_ARGUMENTS = [
   'b',
 ];
 
-function place(target, entry) {
+function place(target: string, entry: FileState | undefined): void {
   if (entry === undefined) {
     return;
   }
@@ -31,7 +32,7 @@ function place(target, entry) {
   chmodSync(target, entry.mode);
 }
 
-function stage(root, changes) {
+function stage(root: string, changes: readonly Change[]): void {
   mkdirSync(containedPath(root, 'a'));
   mkdirSync(containedPath(root, 'b'));
   for (const { name, before, after } of changes) {
@@ -40,7 +41,7 @@ function stage(root, changes) {
   }
 }
 
-function diffOf(root) {
+function diffOf(root: string): Buffer {
   const result = spawnSync('git', DIFF_ARGUMENTS, {
     cwd: root,
     timeout: GIT_TIMEOUT_MS,
@@ -55,7 +56,7 @@ function diffOf(root) {
   return result.stdout;
 }
 
-export function unifiedPatch(changes) {
+export function unifiedPatch(changes: readonly Change[]): Buffer {
   if (changes.length === 0) {
     return Buffer.alloc(0);
   }
