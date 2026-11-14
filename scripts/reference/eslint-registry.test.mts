@@ -1,7 +1,11 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ESLINT_REGISTRY, eslintPluginRules, eslintRegistrySource } from './eslint-registry.mjs';
+import {
+  ESLINT_REGISTRY_PARTS,
+  eslintPluginRules,
+  eslintRegistrySources,
+} from './eslint-registry.mjs';
 import { nitpickerRules } from '../../languages/typescript/preset/eslint-plugin/index.mjs';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
@@ -12,8 +16,15 @@ describe("the ESLint plugin's rule map", () => {
 
     expect(Object.keys(nitpickerRules.rules)).toEqual(rules.map(({ id }) => id));
     expect(rules.filter(({ id, file }) => path.basename(file, '.mjs') !== id)).toEqual([]);
-    expect(readFileSync(path.join(REPOSITORY_ROOT, ESLINT_REGISTRY), 'utf8')).toBe(
-      await eslintRegistrySource(REPOSITORY_ROOT),
+    const generated = await eslintRegistrySources(REPOSITORY_ROOT);
+    const committed = [...generated.keys()].map((file) => [
+      file,
+      readFileSync(path.join(REPOSITORY_ROOT, file), 'utf8'),
+    ]);
+    expect(Object.fromEntries(committed)).toEqual(Object.fromEntries(generated));
+    const parts = readdirSync(path.join(REPOSITORY_ROOT, ESLINT_REGISTRY_PARTS));
+    expect(new Set(parts.map((name) => `${ESLINT_REGISTRY_PARTS}/${name}`))).toEqual(
+      new Set([...generated.keys()].filter((file) => file.startsWith(`${ESLINT_REGISTRY_PARTS}/`))),
     );
   });
 });
