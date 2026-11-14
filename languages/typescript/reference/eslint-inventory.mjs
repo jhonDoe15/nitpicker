@@ -15,7 +15,10 @@ const CORE_PLUGIN = '@';
 const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 
 export const ESLINT_CONFIGS = [
-  ['eslint-lint', new URL('../preset/defaults/eslint.config.mjs', import.meta.url)],
+  [
+    'eslint-lint',
+    checkoutModuleUrl(new URL('../preset/defaults/eslint.config.mjs', import.meta.url)),
+  ],
   ['eslint-errors', checkoutModuleUrl(new URL('errors.config.mjs', POLICIES))],
   ['eslint-logging', checkoutModuleUrl(new URL('logging.config.mjs', POLICIES))],
   ['eslint-module-effects', checkoutModuleUrl(new URL('module-effects.config.mjs', POLICIES))],
