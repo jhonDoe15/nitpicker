@@ -1,5 +1,5 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { descendants, normalizedText } from '../syntax.mjs';
+import { normalizedText } from '../syntax.mjs';
 
 const UNIT_TESTS = [
   ts.isFunctionDeclaration,
@@ -56,21 +56,39 @@ export function unitProblem(units, sourceFile) {
   );
 }
 
-function commentTexts(unit, sourceFile) {
+function tokensUnder(root, sourceFile) {
+  const found = [];
+  const pending = [root];
+  for (const node of pending) {
+    found.push(node);
+    pending.push(...node.getChildren(sourceFile));
+  }
+  return found;
+}
+
+function commentsIn(roots, sourceFile, range) {
   const texts = new Set();
-  for (const node of descendants(unit.body)) {
+  for (const node of roots.flatMap((root) => tokensUnder(root, sourceFile))) {
     const ranges = [
       ...(ts.getLeadingCommentRanges(sourceFile.text, node.pos) ?? []),
       ...(ts.getTrailingCommentRanges(sourceFile.text, node.end) ?? []),
     ];
-    for (const range of ranges) {
-      texts.add(sourceFile.text.slice(range.pos, range.end).replaceAll(/\s+/gu, ' '));
+    for (const found of ranges.filter((each) => each.pos >= range.pos && each.end <= range.end)) {
+      texts.add(sourceFile.text.slice(found.pos, found.end).replaceAll(/\s+/gu, ' '));
     }
   }
   return texts;
 }
 
-export function lostComments(units, sourceFile) {
-  const [kept, dropped] = units.map((unit) => commentTexts(unit, sourceFile));
+export function lostCommentsIn(sides, sourceFile) {
+  const [kept, dropped] = sides.map(({ roots, range }) => commentsIn(roots, sourceFile, range));
   return [...dropped].some((text) => !kept.has(text));
+}
+
+export function lostComments(units, sourceFile) {
+  const sides = units.map((unit) => ({
+    roots: [unit.body],
+    range: { pos: unit.body.pos, end: unit.body.end },
+  }));
+  return lostCommentsIn(sides, sourceFile);
 }

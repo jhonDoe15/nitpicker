@@ -10,6 +10,7 @@ type TreesRequest = {
   readonly root: string;
   readonly files: readonly string[];
   readonly texts: Readonly<Record<string, string>> | undefined;
+  readonly mode: string;
 };
 type UnitsOf = (program: unknown, file: string) => unknown;
 type Grammar = { readonly parser: Parser; readonly unitsOf: UnitsOf };
@@ -32,11 +33,15 @@ function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   return undefined;
 }
 
+function modeOf(value: object): string {
+  return 'mode' in value && value.mode === 'partial' ? 'partial' : 'whole';
+}
+
 function treesRequest(value: unknown): TreesRequest {
   if (typeof value === 'object' && value !== null && 'root' in value && 'files' in value) {
     const { root, files } = value;
     if (isText(root) && Array.isArray(files) && files.every(isText)) {
-      return { root, files, texts: textsOf(value) };
+      return { root, files, texts: textsOf(value), mode: modeOf(value) };
     }
   }
   throw new TypeError('The JVM trees request must be { root, files } with text values');
@@ -65,13 +70,15 @@ function unitsOf({ parser, unitsOf: convert }: Grammar, root: string, file: stri
   }
 }
 
-function extractionsOf({ parser }: Grammar, file: string, text: string): unknown {
-  const tree = parser.parse(text);
+type ExtractionSource = { readonly text: string; readonly mode: string };
+
+function extractionsOf({ parser }: Grammar, file: string, source: ExtractionSource): unknown {
+  const tree = parser.parse(source.text);
   if (tree === null) {
     return { fixes: [], notes: [] };
   }
   try {
-    return javaExtractions(tree.rootNode, file, text);
+    return javaExtractions(tree.rootNode, file, source);
   } finally {
     tree.delete();
   }
@@ -84,7 +91,10 @@ async function main(): Promise<unknown> {
   const { texts } = request;
   if (texts !== undefined) {
     return Object.fromEntries(
-      request.files.map((file) => [file, extractionsOf(java, file, texts[file] ?? '')]),
+      request.files.map((file) => [
+        file,
+        extractionsOf(java, file, { text: texts[file] ?? '', mode: request.mode }),
+      ]),
     );
   }
   const kotlin = request.files.some((file) => file.endsWith('.kt'))

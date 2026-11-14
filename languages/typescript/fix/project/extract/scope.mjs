@@ -1,5 +1,6 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { descendants, followed, roleOf, symbolAt } from './syntax.mjs';
+import { descendants, roleOf, symbolAt } from './syntax.mjs';
 
 const IMPORT_DECLARATIONS = [
   ts.isImportSpecifier,
@@ -28,6 +29,16 @@ const FORBIDDEN_KINDS = new Set([
   ts.SyntaxKind.Decorator,
 ]);
 
+const TEXT_KINDS = new Set([
+  ts.SyntaxKind.StringLiteral,
+  ts.SyntaxKind.NoSubstitutionTemplateLiteral,
+  ts.SyntaxKind.TemplateHead,
+  ts.SyntaxKind.TemplateMiddle,
+  ts.SyntaxKind.TemplateTail,
+]);
+
+const MULTILINE_TEXT = 'the code has a string or template literal that spans lines';
+
 export function declarationsOf(symbol) {
   return typeof symbol === 'object' ? (symbol.declarations ?? []) : [];
 }
@@ -36,7 +47,7 @@ export function isWithin(node, range) {
   return node.pos >= range.pos && node.end <= range.end;
 }
 
-export function isInside(declaration, unit) {
+function isInside(declaration, unit) {
   return (
     declaration !== unit &&
     declaration.getSourceFile() === unit.getSourceFile() &&
@@ -68,11 +79,11 @@ function isModuleVariable(node) {
   return ts.isVariableStatement(statement) && ts.isSourceFile(statement.parent);
 }
 
-export function isModuleLevel(declaration) {
+function isModuleLevel(declaration) {
   if (IMPORT_DECLARATIONS.some((test) => test(declaration))) {
     return true;
   }
-  const node = followed(declaration, bindingParent);
+  const node = chainOf(declaration, bindingParent).at(-1);
   if (ts.isVariableDeclaration(node)) {
     return isModuleVariable(node);
   }
@@ -99,6 +110,9 @@ function referenceProblem(node, env) {
 function nodeProblem(node, env) {
   if (FORBIDDEN_KINDS.has(node.kind)) {
     return 'the code uses this, super, JSX, decorators or a generator';
+  }
+  if (TEXT_KINDS.has(node.kind) && /[\r\n]/u.test(node.getText())) {
+    return MULTILINE_TEXT;
   }
   const isValue = ts.isIdentifier(node) && ['reference', 'shorthand'].includes(roleOf(node));
   return isValue ? referenceProblem(node, env) : undefined;

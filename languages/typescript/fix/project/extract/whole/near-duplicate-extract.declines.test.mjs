@@ -30,6 +30,18 @@ function commented() {
   return `${copy('alignTop')}\n${noted}`;
 }
 
+function templated() {
+  return pair().replaceAll("'none:'", `\`none\n  \${limit}:\``);
+}
+
+function endingWithComment() {
+  const noted = copy('alignBottom', { prefix: 'bottom:' }).replace(
+    /\}\n$/u,
+    '  // keep in sync with the server\n}\n',
+  );
+  return `${copy('alignTop')}\n${noted}`;
+}
+
 function moduleLoad(name, path) {
   return loader(name, `require('${path}')`);
 }
@@ -77,6 +89,16 @@ describe('nearDuplicateExtractRecipe declines', () => {
       'a comment',
       commented(),
       note(1, 'the second copy has comments the shared function would drop'),
+    ],
+    [
+      'a comment before the closing brace',
+      endingWithComment(),
+      note(1, 'the second copy has comments the shared function would drop'),
+    ],
+    [
+      'a template literal that spans lines',
+      templated(),
+      note(1, 'the code has a string or template literal that spans lines'),
     ],
     [
       'three copies',

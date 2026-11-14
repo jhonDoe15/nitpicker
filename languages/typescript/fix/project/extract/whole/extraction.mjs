@@ -1,6 +1,9 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { helperNameFor } from '../../../../../../shared/fix/recipes/extract/names.mjs';
-import { dedentedToLeast } from '../../../../../../shared/fix/recipes/extract/text.mjs';
+import {
+  dedentedToLeast,
+  withLineEndingOf,
+} from '../../../../../../shared/fix/recipes/extract/text.mjs';
 import { alignRegions } from '../lockstep.mjs';
 import {
   holeArgumentText,
@@ -110,7 +113,12 @@ function editsFor(plan, env) {
     bodyReplacement(unit, callText(plan, side, env), env),
   );
   const helper = { start: insertAt, end: insertAt, text: `\n\n${helperDeclaration(plan, env)}` };
-  return [...calls, helper].map((edit) => ({ type: 'replace', path: env.path, ...edit }));
+  return [...calls, helper].map((edit) => ({
+    type: 'replace',
+    path: env.path,
+    ...edit,
+    text: withLineEndingOf(env.sourceFile.text, edit.text),
+  }));
 }
 
 function unitProblems(units, env) {
@@ -148,12 +156,13 @@ export function wholeExtraction(input, env) {
   if (aligned.declined !== undefined) {
     return aligned;
   }
-  const taken = identifierTexts(env.sourceFile);
+  const taken = new Set([...identifierTexts(env.sourceFile), ...env.claimed]);
   const name = helperNameFor(input.label, taken);
   const holes =
     name === undefined ? undefined : nameHoles(aligned.holes, new Set([...taken, name]));
   if (holes === undefined) {
     return { declined: 'the name of the shared function would collide' };
   }
+  env.claimed.add(name);
   return { edits: editsFor({ units: input.units, name, holes }, env) };
 }

@@ -428,3 +428,5 @@ Two adversarial reviews of go-critic changed these rules:
 ## Near-duplicate extraction
 
 Go has no `near-duplicate` rule and no `--fix` recipes yet, so there is nothing to extract.
+
+The same holds for a `partial-run` pair: no recipe extracts the shared statements in Go, and the finding keeps its fix plan.

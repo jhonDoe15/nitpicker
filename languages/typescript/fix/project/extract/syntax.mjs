@@ -1,3 +1,4 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const MEMBER = 'member';
@@ -104,17 +105,6 @@ export function symbolAt(node, checker) {
     : checker.getSymbolAtLocation(node);
 }
 
-export function followed(start, next) {
-  const chain = [start];
-  for (const current of chain) {
-    const after = next(current);
-    if (after !== undefined) {
-      chain.push(after);
-    }
-  }
-  return chain.at(-1);
-}
-
 function transparentParent(node) {
   const parent = node.parent;
   const assignedValue = ts.isPropertyAssignment(parent) && parent.initializer === node;
@@ -148,7 +138,7 @@ function isEnumerated(parent, current) {
 }
 
 export function isWritten(node) {
-  const current = followed(node, transparentParent);
+  const current = chainOf(node, transparentParent).at(-1);
   const parent = current.parent;
   return (
     isAssigned(parent, current) ||
@@ -167,9 +157,9 @@ function isCallee(node) {
 }
 
 function isMemberAccess(node) {
-  const inner = followed(node, (current) =>
+  const inner = chainOf(node, (current) =>
     ts.isParenthesizedExpression(current) ? current.expression : undefined,
-  );
+  ).at(-1);
   return ts.isPropertyAccessExpression(inner) || ts.isElementAccessExpression(inner);
 }
 

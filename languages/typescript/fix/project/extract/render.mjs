@@ -1,6 +1,7 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { freshName } from '../../../../../shared/fix/recipes/extract/names.mjs';
-import { descendants, followed } from './syntax.mjs';
+import { descendants } from './syntax.mjs';
 
 export function identifierTexts(sourceFile) {
   return new Set(
@@ -11,7 +12,7 @@ export function identifierTexts(sourceFile) {
 }
 
 export function topLevelStatement(node) {
-  return followed(node, ({ parent }) => (ts.isSourceFile(parent) ? undefined : parent));
+  return chainOf(node, ({ parent }) => (ts.isSourceFile(parent) ? undefined : parent)).at(-1);
 }
 
 function flowName(node) {
@@ -53,7 +54,7 @@ export function replacedText(range, holes, sourceFile) {
     );
 }
 
-export function typeString(checker, type) {
+function typeString(checker, type) {
   const flags = ts.TypeFormatFlags.NoTruncation;
   return checker.typeToString(checker.getBaseTypeOfLiteralType(type), undefined, flags);
 }
