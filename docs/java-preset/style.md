@@ -5,7 +5,8 @@ Part of the [Java preset guide](../java-preset.md).
 The formatter owns layout, and nitpicker follows the formatter the project uses. The
 `java.formatter` convention is `google` (google-java-format, the default), `palantir`
 (palantir-java-format, Apache-2.0, pinned like google-java-format and resolved the same way on Gradle
-and Maven) or `none` (no format check). It comes, in this order, from:
+and Maven), `spring` (Spring Java Format, which the build runs and nitpicker does not) or `none` (no
+format check, and nitpicker's layout checks stay on). It comes, in this order, from:
 
 1. A pin in `"conventions": { "java.formatter": "..." }`.
 2. The build files, with no opt-in: Spotless `googleJavaFormat()` or `palantirJavaFormat()` in
@@ -14,7 +15,10 @@ and Maven) or `none` (no format check). It comes, in this order, from:
    version catalog. `googleJavaFormat().aosp()`, `.style("AOSP")` and a `<style>aosp</style>` read as
    google-java-format with 4 spaces; `palantirJavaFormat().style("GOOGLE")` reads as google (with
    `"AOSP"`, google with 4 spaces); `eclipse()` and `prettier()` in a Spotless `java` block read as
-   `none`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
+   `none`. `io.spring.javaformat:spring-javaformat-maven-plugin` in the `<build><plugins>` of a pom (not only
+   in `pluginManagement`) and the `io.spring.javaformat` Gradle plugin applied (`id`, `apply plugin`,
+   or a version catalog plugin; a dependency on its Checkstyle rules or `apply false` does not
+   count) read as `spring`. The scan covers the root and module `build.gradle(.kts)` and `settings.gradle(.kts)`, the
    `gradle/*.versions.toml` catalogs, the convention plugins under `buildSrc/` and `build-logic/`
    (`.gradle`, `.gradle.kts`, `.kt`, `.groovy`) and every `pom.xml` of the project (module and parent
    poms), at most 200 files, shallowest first. Files under `src/`, `node_modules`, `build`,
@@ -82,8 +86,17 @@ ignored with a printed note. Checkstyle's own `LineLength` stays suppressed, so 
 `line-length-limit`. The run prints each choice and its source. The conventions apply to the Java
 sources of a kotlin-preset project too. They come from the head policy file at run time, and the
 function `javaStyle()` in `languages/java/adapters/style/java-style.mjs` turns them into the style
-(`google`, `aosp`, `palantir` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
+(`google`, `aosp`, `palantir`, `spring` or `none`), which reaches Gradle as `-Pnitpicker.java.style` and Maven
 as `javaStyle`.
+
+Spring Java Format is a formatter the build enforces and nitpicker does not run, so `spring` runs no
+format check and takes the layout side of `google`: the same Checkstyle suppressions
+(`checkstyle-suppressions.xml`, which keeps `RightCurly` and `LeftCurly` out of the way of its
+`}` newline `else {` style) and no Error Prone `AnnotationPosition`, which wants the annotation after
+the modifiers where Spring puts `@Nullable` first (`formatter-owned.mjs` in
+`languages/java/adapters/errorprone/layout/`). `nitpicker --fix` leaves the Java files alone and says
+to run the build's own apply goal or format task. A declared `spring` fixes the indentation at tabs and the line length at 120, as palantir fixes
+them at 4 spaces and 120. Spotless `eclipse()` and `prettier()` projects stay `none`.
 
 A badly formatted file is one `google-java-format`, `google-java-format --aosp` or
 `palantir-java-format` finding (the one that ran), not hundreds. Its message gives the command that
@@ -126,4 +139,4 @@ The style reaches Gradle as the command-line property `-Pnitpicker.java.style=ao
 other policy values, so it is not part of the analyzer's configuration hash; the base run gets the
 same policy file, so a change of style in the same pull request does not fail the files it makes
 differ. The Maven run resolves only the formatter jar its style needs (google-java-format, or
-palantir-java-format, or neither for `none`).
+palantir-java-format, or neither for `none` and `spring`).

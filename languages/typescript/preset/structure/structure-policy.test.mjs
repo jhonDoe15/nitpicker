@@ -41,6 +41,34 @@ describe('structural metrics report', () => {
     });
   });
 
+  it('measures a curried function once, with the statements of its real body', () => {
+    const source = [
+      'export const wrap = (a: number, b: number) => (c: number) => {',
+      '  const sum = a + b + c;',
+      '  return sum;',
+      '};',
+      'export const staged = (a: number) => {',
+      '  const doubled = a * 2;',
+      '  return (b: number) => doubled + b;',
+      '};',
+    ].join('\n');
+
+    expect(
+      analyzeSource(source, 'curried.ts').functions.map(
+        ({ function: name, lines, parameters, statements }) => ({
+          name,
+          lines,
+          parameters,
+          statements,
+        }),
+      ),
+    ).toEqual([
+      { name: 'wrap', lines: 4, parameters: 2, statements: 2 },
+      { name: 'staged', lines: 4, parameters: 1, statements: 2 },
+      { name: 'staged.<anonymous>', lines: 1, parameters: 1, statements: 0 },
+    ]);
+  });
+
   it('counts an else if chain as one level and an if inside an else block or a branch as one deeper', () => {
     const nestingOf = (body) =>
       analyzeSource(`function f(a: number, b: number): number {\n${body}\n  return 0;\n}\n`, 'f.ts')

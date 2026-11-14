@@ -93,6 +93,7 @@ const TOP_LEVEL = {
   testConsole: areas.testConsole,
   protocols,
   kotlin: areas.kotlin,
+  java: areas.java,
   go: areas.go,
   spring,
   history,
@@ -108,7 +109,7 @@ function unavailableKeys(preset) {
     ...(preset === 'python' ? [] : ['python']),
     ...(preset === 'kotlin' ? [] : ['kotlin']),
     ...(preset === 'go' ? [] : ['go']),
-    ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
+    ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring', 'java']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
     ...(factRuleSettings(preset).includes('protocols') ? [] : ['protocols']),
   ];

@@ -191,7 +191,7 @@ function prepare(run, { policy, environment, work }) {
   const tools = resolveTools({
     ...run,
     ...mavenRoot,
-    launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
+    launcherVersions: quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
     extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
   });
   return { modules, built, scope, kotlin, since, analyzed, tools, timedOut };
@@ -214,6 +214,7 @@ export function runMavenPreset(
     timeoutMs,
     pinned,
     quick: policy.quick === true,
+    mutationOff: policy.mutationOff === true,
   };
   try {
     const { modules, built, scope, kotlin, timedOut, ...prepared } = prepare(run, {

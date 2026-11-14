@@ -7,10 +7,11 @@ import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
 import { isExported, scriptKindOf } from '../../../modules/module-sources.mjs';
 import { readStamped } from '../../../modules/stamped-file-cache.mjs';
 import { readLayout } from '../../../head-policy.mjs';
+import { DEFAULT_EXPORT } from '../../../syntax/exported-components.mjs';
 
-const MAX_REEXPORT_DEPTH = 4;
+export const MAX_REEXPORT_DEPTH = 4;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
-const EMPTY = { constants: new Map(), reexports: [] };
+const EMPTY = { constants: new Map(), reexports: [], defined: new Set() };
 const JAVASCRIPT_FILE = /\.[cm]?jsx?$/u;
 const HIDDEN_MEMBERS = [ts.SyntaxKind.PrivateKeyword, ts.SyntaxKind.ProtectedKeyword];
 const layout = readLayout();
@@ -136,11 +137,34 @@ function listedConstants(statements, locals) {
   const listed = statements.filter(isLocalExportList).flatMap(exportedNames);
   return [...locals].flatMap(([name, value]) =>
     listed.flatMap(({ exported, local }) => {
-      const shown = exported === 'default' && name.includes('.') ? local : exported;
+      const shown = exported === DEFAULT_EXPORT && name.includes('.') ? local : exported;
       const renamed = renamedHead(name, (head) => (head === local ? shown : undefined));
       return isConstantPath(renamed) ? [[renamed, value]] : [];
     }),
   );
+}
+
+function declaredNames(statement) {
+  if (ts.isVariableStatement(statement)) {
+    return statement.declarationList.declarations
+      .map(({ name }) => name)
+      .filter(ts.isIdentifier)
+      .map(({ text }) => text);
+  }
+  const named = ts.isFunctionDeclaration(statement) || ts.isClassDeclaration(statement);
+  if (named && hasModifier(statement, ts.SyntaxKind.DefaultKeyword)) {
+    return [DEFAULT_EXPORT];
+  }
+  const own = named || ts.isEnumDeclaration(statement) ? statement.name?.text : undefined;
+  return own === undefined ? [] : [own];
+}
+
+function definedNames(statements) {
+  const declared = statements.filter(isExported).flatMap(declaredNames);
+  const listed = statements.filter(isLocalExportList).flatMap(exportedNames);
+  const assigned = statements.some((statement) => ts.isExportAssignment(statement));
+  const names = [...declared, ...listed.map(({ exported }) => exported)];
+  return new Set(assigned ? [...names, DEFAULT_EXPORT] : names);
 }
 
 function readModule(file) {
@@ -157,6 +181,7 @@ function readModule(file) {
   );
   const exportStatements = sourceFile.statements.filter(isValueExport);
   return {
+    defined: definedNames(sourceFile.statements),
     constants: new Map([
       ...sourceFile.statements
         .filter(isExported)
@@ -170,11 +195,11 @@ function readModule(file) {
 
 const moduleCache = new Map();
 
-function parsedModule(file) {
+export function parsedModule(file) {
   return readStamped(moduleCache, file, readModule) ?? EMPTY;
 }
 
-function isProductionModule(file, root) {
+export function isProductionModule(file, root) {
   const relative = path.relative(root, file).replaceAll('\\', '/');
   if (relative.startsWith('..') || path.isAbsolute(relative) || DECLARATION_FILE.test(file)) {
     return !DECLARATION_FILE.test(file);
@@ -216,7 +241,7 @@ function reexportSteps(step, { aliases }) {
 }
 
 /** The UPPER_SNAKE constants with one literal value that the production module `file` exports. */
-export function exportedConstants(file, { root, aliases = [] }) {
+export function exportedConstants(file, { root, aliases = [], only }) {
   const found = new Map();
   const visited = new Set();
   const pending = [{ file, depth: 0, rename: (name) => name }];
@@ -229,7 +254,8 @@ export function exportedConstants(file, { root, aliases = [] }) {
       renamedHead(name, step.rename),
       value,
     ]);
-    const fresh = named.filter(([name]) => isConstantPath(name) && !found.has(name));
+    const wanted = only === undefined || step.depth === 0 || only.has(step.file);
+    const fresh = named.filter(([name]) => wanted && isConstantPath(name) && !found.has(name));
     for (const [name, value] of fresh) {
       found.set(name, value);
     }

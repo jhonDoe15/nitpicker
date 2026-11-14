@@ -37,6 +37,7 @@ describe('layout-aware tsconfig', () => {
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toEqual({
       allowJs: true,
+      isolatedDeclarations: false,
       noCheck: false,
       noEmit: true,
       skipLibCheck: true,
@@ -139,6 +140,24 @@ describe('layout-aware tsconfig', () => {
       expect(layeredFor(files).layered.extends).toBe('./tsconfig.json');
     });
   });
+  it('turn isolatedDeclarations off next to allowJs, for TypeScript and JavaScript layouts', () => {
+    const projectRoot = temporaryProject({
+      'tsconfig.json': '{"compilerOptions":{"declaration":true,"isolatedDeclarations":true}}',
+    });
+    const target = path.join(projectRoot, '.nitpicker-x.json');
+    const cases = [customLayout, { ...customLayout, javascript: true }].flatMap((layout) =>
+      ['tsconfig.quality.json', 'tsconfig.stryker.json'].map((name) => ({ layout, name })),
+    );
+    expect(
+      cases.map(({ layout, name }) => {
+        const shipped = readFileSync(path.join(defaults, name), 'utf8');
+        const { extends: parent, compilerOptions } = JSON.parse(
+          layoutTransformFor(name, layout)(shipped, target),
+        );
+        return [parent, compilerOptions.isolatedDeclarations];
+      }),
+    ).toEqual(cases.map(() => ['./tsconfig.json', false]));
+  });
   it('type-check mutants with the policy compiler options on top of the project tsconfig', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
     const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
@@ -172,7 +191,7 @@ describe('layout-aware tsconfig', () => {
     })(shipped, target);
     expect(JSON.parse(relaxed)).toEqual({
       extends: './tsconfig.json',
-      compilerOptions: { noCheck: false, skipLibCheck: true },
+      compilerOptions: { isolatedDeclarations: false, noCheck: false, skipLibCheck: true },
     });
   });
   it('ship the mutation tsconfig with the same indexing and return checks as the type check', () => {

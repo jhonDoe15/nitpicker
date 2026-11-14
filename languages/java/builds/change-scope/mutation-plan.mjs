@@ -33,7 +33,10 @@ function cappedNotice(capped) {
 }
 
 export function comparisonMutationPlan(projectRoot, policy = {}) {
-  const roots = policy.quick === true ? undefined : comparisonRoots(projectRoot, policy);
+  const roots =
+    policy.quick === true || policy.mutationOff === true
+      ? undefined
+      : comparisonRoots(projectRoot, policy);
   if (roots === undefined) {
     return undefined;
   }
