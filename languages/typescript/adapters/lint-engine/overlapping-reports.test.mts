@@ -4,7 +4,7 @@ import { withoutSupersededMessages } from './overlapping-reports.mts';
 const RULE = 'nitpicker/no-accumulating-spread';
 const noLet = { ruleId: 'functional/no-let', line: 4, column: 3, endLine: 4, endColumn: 40 };
 
-function spread(messageId, line, column) {
+function spread(messageId: string, line: number, column: number) {
   return { ruleId: RULE, messageId, line, column, endLine: line, endColumn: column + 3 };
 }
 

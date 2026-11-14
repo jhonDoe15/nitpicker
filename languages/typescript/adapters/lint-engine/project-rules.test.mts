@@ -1,14 +1,16 @@
 import { ESLint } from 'eslint';
+import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 import { afterAll, describe, expect, it } from 'vitest';
-import { applyRuleExceptions } from '../../preset/eslint-config/exceptions.mjs';
 import {
+  applyRuleExceptions,
   layeredPolicy,
   layerEntries,
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
-} from './project-layer.mjs';
-import { replacedOptionRules } from './project-rules.mjs';
-import { temporaryProjects } from './test-support/layered-project.mjs';
+  replacedOptionRules,
+  type FlatEntry,
+} from './test-support/engine-views.mts';
+import { temporaryProjects } from './test-support/layered-project.mts';
 
 const projects = temporaryProjects();
 const PROJECT_FIRST = ['project', 'nitpicker'];
@@ -21,7 +23,11 @@ afterAll(() => {
   projects.remove();
 });
 
-async function layered(policy, projectText, { precedence = PROJECT_FIRST, addsRules = true } = {}) {
+async function layered(
+  policy: readonly FlatEntry[],
+  projectText: string,
+  { precedence = PROJECT_FIRST, addsRules = true } = {},
+) {
   const root = projects.create({ 'eslint.config.mjs': projectText });
   const environment = {
     [PROJECT_LAYER_VARIABLE]: projectLayerValue(
@@ -37,9 +43,10 @@ async function layered(policy, projectText, { precedence = PROJECT_FIRST, addsRu
   return {
     root,
     eslint,
-    rules: async (file, ruleIds) => {
-      const config = await eslint.calculateConfigForFile(file);
-      return Object.fromEntries(ruleIds.map((ruleId) => [ruleId, config?.rules?.[ruleId]]));
+    rules: async (file: string, ruleIds: readonly string[]) => {
+      const config: unknown = await eslint.calculateConfigForFile(file);
+      const configured = fieldsOf(fieldOf(config, 'rules'));
+      return Object.fromEntries(ruleIds.map((ruleId) => [ruleId, configured[ruleId]]));
     },
   };
 }
@@ -130,7 +137,12 @@ describe('the options a project sets for a nitpicker rule', () => {
   it('add to list rules, take the lower limit, and otherwise replace nitpicker options', async () => {
     const { root, rules } = await layered(policy, project);
 
-    expect(await rules('src/a.ts', Object.keys(policy[0].rules))).toEqual({
+    expect(
+      await rules(
+        'src/a.ts',
+        policy.flatMap(({ rules }) => Object.keys(rules)),
+      ),
+    ).toEqual({
       'no-restricted-syntax': [
         1,
         { selector: 'WithStatement', message: 'No with.' },
@@ -173,7 +185,8 @@ describe('the rest of a project entry', () => {
 `,
     );
 
-    expect((await eslint.calculateConfigForFile('src/a.ts')).settings).toEqual({
+    const config: unknown = await eslint.calculateConfigForFile('src/a.ts');
+    expect(fieldOf(config, 'settings')).toEqual({
       nitpickerTestTimeoutPolicy: { limit: 5 },
       react: { version: '18' },
       'import/resolver': { node: true },

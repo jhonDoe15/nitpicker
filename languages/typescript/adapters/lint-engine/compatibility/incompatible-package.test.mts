@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { incompatiblePackageMessage, rangeAcceptsMajor } from './incompatible-package.mts';
 import { withEngineHint } from '../../oxlint/oxlint-process.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-incompatible-'));
@@ -13,14 +14,14 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function installPackage(name, manifest) {
+function installPackage(name: string, manifest: Readonly<Record<string, unknown>>) {
   const directory = path.join(root, 'node_modules', name);
   mkdirSync(path.join(directory, 'dist'), { recursive: true });
   writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ name, ...manifest }));
   return path.join(directory, 'dist', 'FlatESLint.js');
 }
 
-function stackAt(location) {
+function stackAt(location: string) {
   return [
     'TypeError: Class extends value undefined is not a constructor or null',
     `    at Object.<anonymous> (${location}:12:49)`,
@@ -41,7 +42,7 @@ const DETAIL =
   '@typescript-eslint/utils 8.46.2 cannot run with ESLint 10 (it supports eslint ^8.57.0 || ^9.0.0). ' +
   'Update it, or the package that depends on it, to a version that supports ESLint 10. ' +
   'It failed with: TypeError: Class extends value undefined is not a constructor or null.';
-const MESSAGE = `${DETAIL} ${linkSentence('incompatibleEslintPackage')}`;
+const MESSAGE = `${DETAIL} ${textOf(linkSentence('incompatibleEslintPackage'))}`;
 
 describe('a project package that cannot run on the running ESLint', () => {
   it('keeps the original error when a package manifest cannot be read', () => {
