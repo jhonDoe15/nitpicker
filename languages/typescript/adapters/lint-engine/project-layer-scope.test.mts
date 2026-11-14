@@ -1,12 +1,12 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { withHeadCheckoutFacts, resolveHeadPolicy } from '../../preset/head-policy.mjs';
+import { withHeadCheckoutFacts, resolveHeadPolicy } from './test-support/engine-views.mts';
 import {
   headPolicyFor,
   lintLayered,
   PROJECT_FILES,
   SOURCES,
   temporaryProjects,
-} from './test-support/layered-project.mjs';
+} from './test-support/layered-project.mts';
 
 const projects = temporaryProjects();
 const PROJECT = ['project', 'nitpicker'];
@@ -18,7 +18,7 @@ const NITPICKER_RULES = [
   'src/strict/locked.ts directive',
 ];
 
-function rulesOf(findings) {
+function rulesOf(findings: readonly { file: string; ruleId: unknown }[]) {
   return [...new Set(findings.map(({ file, ruleId }) => `${file} ${String(ruleId)}`))].toSorted();
 }
 

@@ -1,8 +1,7 @@
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { projectLayerValue } from './project-layer.mjs';
-import { projectEntries } from './project-loader.mjs';
-import { temporaryProjects } from './test-support/layered-project.mjs';
+import { projectEntries, projectLayerValue } from './test-support/engine-views.mts';
+import { temporaryProjects } from './test-support/layered-project.mts';
 
 const projects = temporaryProjects();
 
@@ -10,7 +9,7 @@ afterAll(() => {
   projects.remove();
 });
 
-function loaded(file, text, extra = {}) {
+function loaded(file: string, text: string, extra: Readonly<Record<string, string>> = {}) {
   const root = projects.create({ [file]: text, ...extra });
   return projectEntries(path.join(root, file));
 }
@@ -85,7 +84,10 @@ describe('the layer handed to the lint processes', () => {
   );
 
   it('names the head config, the order and whether rules are added, the same for a lone "project", or nothing without an opt-in', () => {
-    const settings = (precedence) => ({ precedence, projectConfigFile: 'eslint.config.ts' });
+    const settings = (precedence: readonly string[]) => ({
+      precedence,
+      projectConfigFile: 'eslint.config.ts',
+    });
 
     expect(
       JSON.parse(

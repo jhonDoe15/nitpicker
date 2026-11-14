@@ -1,13 +1,15 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.mjs';
-import { resolveHeadPolicy } from '../../../preset/head-policy.mjs';
 import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mjs';
-import { createProject } from '../../oxlint/test-support/oxlint-project.mjs';
+import { createProject } from '../../oxlint/test-support/oxlint-project.mts';
 import { runLintEngine } from '../lint-engine.mts';
+import { resolveHeadPolicy, type TestHeadPolicy } from './engine-views.mts';
+import { fieldOf, listOf, numberOr, textOf } from '../../../../../shared/values/readers.mts';
 
 const TSESLINT = JSON.stringify(import.meta.resolve('typescript-eslint'));
 
@@ -90,10 +92,13 @@ export const PROJECT_FILES = {
   'eslint/house.mjs': HOUSE_PLUGIN,
 };
 
-export function temporaryProjects() {
-  const roots = [];
+export function temporaryProjects(): {
+  create(files: Readonly<Record<string, string>>): string;
+  remove(): void;
+} {
+  const roots: string[] = [];
   return {
-    create(files) {
+    create(files: Readonly<Record<string, string>>) {
       const root = createProject('nitpicker-eslint-layer-', files);
       roots.push(root);
       return root;
@@ -106,7 +111,15 @@ export function temporaryProjects() {
   };
 }
 
-export function headPolicyFor({ engine, precedence, liveProjectRoot }) {
+export function headPolicyFor({
+  engine,
+  precedence,
+  liveProjectRoot,
+}: {
+  readonly engine: string;
+  readonly precedence?: readonly string[] | undefined;
+  readonly liveProjectRoot: string;
+}): TestHeadPolicy {
   const eslint = { engine, ...(precedence === undefined ? {} : { precedence }) };
   return resolveHeadPolicy({ tools: { eslint } }, liveProjectRoot);
 }
@@ -116,10 +129,15 @@ export async function lintLayered({
   liveProjectRoot = projectRoot,
   policy,
   configRelativePath = LINT_CONFIG,
-}) {
-  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-layer-policy-'));
+}: {
+  readonly projectRoot: string;
+  readonly liveProjectRoot?: string;
+  readonly policy: TestHeadPolicy;
+  readonly configRelativePath?: string;
+}): Promise<{ file: string; ruleId: unknown; line: number }[]> {
+  const directory = await mkdtemp(path.join(tmpdir(), 'nitpicker-eslint-layer-policy-'));
   try {
-    writeFileSync(path.join(directory, 'policy.json'), JSON.stringify(policy));
+    await writeFile(path.join(directory, 'policy.json'), JSON.stringify(policy));
     vi.stubEnv(HEAD_POLICY_ENV, path.join(directory, 'policy.json'));
     const results = await runLintEngine({
       options: {
@@ -132,15 +150,15 @@ export async function lintLayered({
       },
       policyConfigPath: path.join(projectRoot, 'policy.mjs'),
     });
-    return results.flatMap((result) =>
-      result.messages.map((message) => ({
-        file: path.relative(projectRoot, result.filePath).replaceAll('\\', '/'),
-        ruleId: message.ruleId ?? 'directive',
-        line: message.line,
+    return listOf(results).flatMap((result) =>
+      listOf(fieldOf(result, 'messages')).map((message) => ({
+        file: path.relative(projectRoot, textOf(fieldOf(result, 'filePath'))).replaceAll('\\', '/'),
+        ruleId: fieldOf(message, 'ruleId') ?? 'directive',
+        line: numberOr(fieldOf(message, 'line'), 0),
       })),
     );
   } finally {
     vi.unstubAllEnvs();
-    rmSync(directory, { recursive: true, force: true });
+    await rm(directory, { recursive: true, force: true });
   }
 }

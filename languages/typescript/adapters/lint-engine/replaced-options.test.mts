@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { replacedEslintOptions } from './replaced-options.mjs';
-import { temporaryProjects } from './test-support/layered-project.mjs';
+import { replacedEslintOptions } from './test-support/engine-views.mts';
+import { temporaryProjects } from './test-support/layered-project.mts';
 
 const projects = temporaryProjects();
 const CONFIG = { tools: { eslint: { precedence: ['project', 'nitpicker'] } } };

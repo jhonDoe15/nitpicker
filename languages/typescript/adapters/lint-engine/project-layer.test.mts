@@ -5,7 +5,9 @@ import {
   PROJECT_FILES,
   SOURCES,
   temporaryProjects,
-} from './test-support/layered-project.mjs';
+} from './test-support/layered-project.mts';
+
+type Finding = { file: string; ruleId: unknown; line: number };
 
 const projects = temporaryProjects();
 const root = projects.create({ ...SOURCES, ...PROJECT_FILES });
@@ -25,7 +27,7 @@ const PROJECT_RULES = [
   { file: 'src/named.ts', ruleId: 'house/no-bar', line: 1 },
 ];
 
-function sorted(findings) {
+function sorted(findings: readonly Finding[]) {
   return findings.toSorted(
     (left, right) =>
       left.file.localeCompare(right.file) ||
@@ -34,7 +36,7 @@ function sorted(findings) {
   );
 }
 
-async function lint(engine, precedence) {
+async function lint(engine: string, precedence: readonly string[] | undefined) {
   return sorted(
     await lintLayered({
       projectRoot: root,
