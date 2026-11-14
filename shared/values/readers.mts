@@ -6,6 +6,10 @@ export function textOf(value: unknown): string {
   return typeof value === 'string' ? value : String(value);
 }
 
+export function optionalText(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined;
+}
+
 export function textsOf(value: unknown): string[] {
   return Array.isArray(value) ? value.map(textOf) : [];
 }

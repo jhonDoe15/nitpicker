@@ -17,6 +17,8 @@ import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
 
 type GuardContext = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
+const FORBIDDEN_APIS = 'forbiddenapis';
+
 function outputOf(module: MavenModule): string {
   return textOf(module['outputDirectory']);
 }
@@ -32,14 +34,14 @@ function runForbiddenApis(context: GuardContext): void {
   if (listOf(classFiles(outputOf(module))).length === 0) {
     return;
   }
-  const command = callUntyped(toolCommand, 'forbiddenapis', {
+  const command = callUntyped(toolCommand, FORBIDDEN_APIS, {
     classDirectories: [outputOf(module)],
     libraries: mainCompileOf(context).filter((entry) => existsSync(entry)),
     signatures: path.join(GRADLE_DIRECTORY, 'rules/forbidden-apis.txt'),
   });
   const result = callUntyped(runJava, {
-    tool: 'forbiddenapis',
-    classpath: fieldOf(context['tools'], 'forbiddenapis'),
+    tool: FORBIDDEN_APIS,
+    classpath: fieldOf(context['tools'], FORBIDDEN_APIS),
     mainClass: 'de.thetaphi.forbiddenapis.cli.CliMain',
     args: fieldOf(command, 'args'),
     cwd: module.basedir,

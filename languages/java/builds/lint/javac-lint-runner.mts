@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { argumentFileToken } from './javac-options.mjs';
 import { lintArguments } from './lint-arguments.mjs';
@@ -11,6 +11,7 @@ import {
 } from './lint-baseline.mjs';
 import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
 import { posix, stageSources } from './lint-staging.mjs';
+import { filesEndingWith } from '../../../../shared/filesystem.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
@@ -67,15 +68,8 @@ function inside(directory: string, file: string): boolean {
   return !(relative.startsWith('..') || path.isAbsolute(relative));
 }
 
-function generatedFiles(directories: readonly string[]): string[] {
-  return directories
-    .filter((directory) => existsSync(directory))
-    .flatMap((directory) =>
-      readdirSync(directory, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-        .map((entry) => path.join(entry.parentPath, entry.name)),
-    )
-    .sort();
+function javaFilesIn(directories: readonly string[]): string[] {
+  return textsOf(filesEndingWith(directories, '.java'));
 }
 
 function compileForLint({ plan, work, args, files }: Compile): Compiled {
@@ -116,7 +110,7 @@ function compiledSources(
   const stagedTree = stageSources({ root: plan.root, sources, staged });
   const files = [
     ...textsOf(fieldOf(stagedTree, 'files')),
-    ...(modular ? generatedFiles(plan.generatedSources).filter((file) => !listed.has(file)) : []),
+    ...(modular ? javaFilesIn(plan.generatedSources).filter((file) => !listed.has(file)) : []),
   ];
   function compile(lookup: boolean | 'all'): Compiled {
     const args = textsOf(lintArguments(plan, { classes, modular: lookup }));

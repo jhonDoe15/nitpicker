@@ -17,7 +17,7 @@ import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
 import { buildOrSkipTests, jacocoExecFiles } from './quick/maven-test-phase.mts';
-import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
   type JavaPolicy,
