@@ -1,11 +1,12 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './release-listeners-on-close.mjs';
+import { type Build, factory, inClass } from '../../../test-support/lifecycle-cases.mts';
 
 const tester = typescriptRuleTester();
-const filename = '/repo/src/main/features/a/adapters/x.ts';
-const inClass = (body) => ({ filename, code: `class Client { ${body} }` });
-const factory = (body) => ({ filename, code: `function createClient() { ${body} }` });
-const bad = (build, body, messageId) => ({ ...build(body), errors: [{ messageId }] });
+const bad = (build: Build, body: string, messageId: string) => ({
+  ...build(body),
+  errors: [{ messageId }],
+});
 
 const LISTEN = 'start() { this.socket.on("data", this.onData); }';
 

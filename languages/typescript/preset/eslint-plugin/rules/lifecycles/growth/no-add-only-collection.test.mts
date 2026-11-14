@@ -1,11 +1,13 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-add-only-collection.mjs';
+
+type Build = (body: string) => { filename: string; code: string };
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/a/adapters/x.ts';
-const inClass = (body) => ({ filename, code: `class SessionService { ${body} }` });
-const factory = (body) => ({ filename, code: `function createSessions() { ${body} }` });
-const bad = (build, body) => ({ ...build(body), errors: [{ messageId: 'grows' }] });
+const inClass = (body: string) => ({ filename, code: `class SessionService { ${body} }` });
+const factory = (body: string) => ({ filename, code: `function createSessions() { ${body} }` });
+const bad = (build: Build, body: string) => ({ ...build(body), errors: [{ messageId: 'grows' }] });
 
 tester.run('no-add-only-collection', rule, {
   valid: [

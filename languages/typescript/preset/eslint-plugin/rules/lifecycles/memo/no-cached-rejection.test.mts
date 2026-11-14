@@ -1,47 +1,27 @@
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typedTsProject } from '../../../test-support/projects/typed-ts-project.mts';
 import { rule } from './no-cached-rejection.mjs';
 
-const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-cached-rejection-')));
-writeFileSync(
-  path.join(root, 'tsconfig.json'),
-  JSON.stringify({
-    compilerOptions: {
-      strict: true,
-      allowJs: true,
-      checkJs: true,
-      module: 'esnext',
-      moduleResolution: 'bundler',
-      noEmit: true,
-      types: [],
-      lib: ['ES2022'],
-    },
-    include: ['src'],
-  }),
-);
-mkdirSync(path.join(root, 'src'));
-
-afterAll(() => {
-  rmSync(root, { recursive: true, force: true });
-});
-
-const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
+const { tester, write } = typedTsProject('nitpicker-cached-rejection-');
 
 const PRELUDE = 'declare function connect(): Promise<string>;\ndeclare function count(): number;\n';
 
-function typed(body, messageId, extension = 'ts') {
-  const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
+type TypedCase = { filename: string; code: string };
+type WithError = TypedCase & { errors: { messageId: string }[] };
+
+function typed(body: string, messageId?: undefined, extension?: 'ts' | 'js'): TypedCase;
+function typed(body: string, messageId: string, extension?: 'ts' | 'js'): WithError;
+function typed(
+  body: string,
+  messageId?: string,
+  extension: 'ts' | 'js' = 'ts',
+): TypedCase | WithError {
   const code = extension === 'ts' ? `${PRELUDE}${body}` : body;
-  writeFileSync(file, code);
+  const file = write(code, extension);
   return { filename: file, code, ...(messageId === undefined ? {} : { errors: [{ messageId }] }) };
 }
 
-const inClass = (body) => `class Client { private conn?: Promise<string>; ${body} }`;
-const inModule = (body) => `let conn: Promise<string> | undefined;\n${body}`;
+const inClass = (body: string) => `class Client { private conn?: Promise<string>; ${body} }`;
+const inModule = (body: string) => `let conn: Promise<string> | undefined;\n${body}`;
 
 const SAFE_CATCH =
   'const attempt = connect(); this.conn = attempt; try { return await attempt; } catch (error) { if (this.conn === attempt) { this.conn = undefined; } throw error; }';
