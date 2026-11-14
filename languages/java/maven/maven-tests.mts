@@ -40,7 +40,10 @@ type JacocoRun = {
 };
 
 const patternMatcher: (pattern: string) => { test(file: string): boolean } = globMatcher;
-const failedCases: (report: string) => TestFailure[] = failedCaseEntries;
+const failedCases: (
+  report: string,
+  options: { readonly retriesPass: boolean },
+) => TestFailure[] = failedCaseEntries;
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -133,13 +136,14 @@ export function collectTestResults({
   reportDir,
   since,
   isArchunit,
+  retriesPass,
   moduleName = '.',
-}: ArchunitRun & { readonly moduleName?: string }): TestOutcome {
+}: ArchunitRun & { readonly retriesPass?: unknown; readonly moduleName?: string }): TestOutcome {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   const failures = reports
     .filter((report) => !isArchunit(suiteNameOf(report)))
-    .flatMap((report) => failedCases(report));
+    .flatMap((report) => failedCases(report, { retriesPass: retriesPass === true }));
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
     moduleName,

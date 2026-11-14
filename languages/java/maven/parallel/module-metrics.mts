@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
+import { skipWithoutJdk, sourceLevel, structureJava } from '../errorprone/maven-jdk.mjs';
+import { STRUCTURE_SKIPPED } from '../../adapters/reporting/skips/skipped-tools.mjs';
 import { relativeTo } from '../module/module-paths.mts';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/classes/jdeps-reports.mts';
@@ -16,21 +17,23 @@ export function runStructure(options: MetricsOptions): void {
   const roots = textsOf(module['sourceRoots'])
     .filter((root) => existsSync(root))
     .map((root) => textOf(relativeTo(module.basedir, root)));
-  const parser = callUntyped(parserJava, { level: callUntyped(sourceLevel, module['compiler']) });
-  callUntyped(runJava, {
-    java: fieldOf(parser, 'java'),
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(options.reportDir, 'structure.json'),
-      path.join(options.reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result: unknown) => fieldOf(result, 'status') === 0,
-    spawn: options['spawn'],
-    timeoutMs: options['timeoutMs'],
+  callUntyped(skipWithoutJdk, { reportDir: options.reportDir, file: STRUCTURE_SKIPPED }, () => {
+    const jdk = callUntyped(structureJava, { level: callUntyped(sourceLevel, module['compiler']) });
+    callUntyped(runJava, {
+      java: fieldOf(jdk, 'java'),
+      tool: 'StructureMetrics',
+      args: [
+        path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
+        path.join(options.reportDir, 'structure.json'),
+        path.join(options.reportDir, 'classes.json'),
+        module.basedir,
+        ...roots,
+      ],
+      cwd: module.basedir,
+      accept: (result: unknown) => fieldOf(result, 'status') === 0,
+      spawn: options['spawn'],
+      timeoutMs: options['timeoutMs'],
+    });
   });
 }
 

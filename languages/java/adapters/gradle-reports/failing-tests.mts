@@ -8,15 +8,19 @@ type FailingTests = {
   readonly tests: readonly string[];
   readonly details: readonly unknown[];
 };
-type ResultsRequest = { readonly reportBase: string; readonly since: number };
+type ResultsRequest = {
+  readonly reportBase: string;
+  readonly since: number;
+  readonly retriesPass?: boolean;
+};
 
 const TEST_RESULTS_FILE = 'test-results.json';
 
-function failingModule(entry: unknown, since: number): FailingTests {
+function failingModule(entry: unknown, since: number, retriesPass: boolean): FailingTests {
   const entries = textsOf(fieldOf(entry, 'results'))
     .flatMap((directory) => textsOf(freshReports(directory, since)))
     .sort()
-    .flatMap((report) => listOf(failedCaseEntries(report)));
+    .flatMap((report) => listOf(failedCaseEntries(report, { retriesPass })));
   return {
     module: textOf(moduleName(fieldOf(entry, 'dir'))),
     tests: entries.map((failure) => textOf(fieldOf(failure, 'text'))),
@@ -24,13 +28,17 @@ function failingModule(entry: unknown, since: number): FailingTests {
   };
 }
 
-export function failingTestsOf({ reportBase, since }: ResultsRequest): FailingTests[] {
+export function failingTestsOf({
+  reportBase,
+  since,
+  retriesPass = false,
+}: ResultsRequest): FailingTests[] {
   const file = path.join(reportBase, TEST_RESULTS_FILE);
   if (!existsSync(file)) {
     return [];
   }
   const modules: unknown = JSON.parse(readFileSync(file, 'utf8'));
   return listOf(modules)
-    .map((entry) => failingModule(entry, since))
+    .map((entry) => failingModule(entry, since, retriesPass))
     .filter(({ tests }) => tests.length > 0);
 }

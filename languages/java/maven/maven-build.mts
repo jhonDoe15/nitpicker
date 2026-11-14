@@ -5,7 +5,13 @@ import { readEffectivePom } from './configuration/effective-pom.mjs';
 import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mts';
-import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
+import { testRerunArguments } from './maven-command.mjs';
+import { usesConfigRetries } from '../../../shared/conventions/tool-precedence.mjs';
+import {
+  checkstyleIndentation,
+  javaFormatterFlags,
+  javaFormatterSettings,
+} from '../adapters/style/java-style.mjs';
 import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
@@ -158,8 +164,11 @@ function analyzeAll({
   effectsOptions: moduleEffects,
   ...shared
 }: AnalyzeRequest): unknown[] {
-  const indentation: unknown = checkstyleIndentation(policy.conventions);
-  const style = { javaStyle: policy.javaStyle, indentation };
+  const style = {
+    javaStyle: policy.javaStyle,
+    indentation: checkstyleIndentation(policy.conventions),
+    formatterFlags: javaFormatterFlags(policy.conventions),
+  };
   const springRoles: unknown = writeSpringRoles(policy['springRoles'], work);
   const springRules: unknown = writeSpringRuleset(shared.projectRoot, work);
   return analyzed
@@ -169,6 +178,7 @@ function analyzeAll({
         module,
         classpaths,
         style,
+        retriesPass: usesConfigRetries(policy['toolPrecedence']),
         pitHistory: pitHistoryOf(policy, shared.projectRoot),
         kotlinOptions: fieldOf(kotlin, 'options'),
         spring: policy['spring'],
@@ -182,12 +192,16 @@ function analyzeAll({
     .filter((failure) => failure !== undefined);
 }
 
+function formatterVersion(policy: JavaPolicy): unknown {
+  return fieldOf(javaFormatterSettings(policy.conventions), 'version');
+}
+
 function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest): unknown[] {
   return [
     ...modules
       .map((module): unknown => processorTool(module['compiler']))
       .filter((tool) => tool !== undefined),
-    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned)),
+    ...listOf(callUntyped(formatTool, policy.javaStyle, pinned, formatterVersion(policy))),
     ...listOf(fieldOf(kotlin, 'extraTools')),
     ...listOf(callUntyped(archunitTool, buildRunsArchRules(policy, analyzed), pinned)),
     ...listOf(callUntyped(effectsTool, pinned)),
@@ -200,6 +214,11 @@ function assertMavenPreset(preset: string | undefined): void {
       `The ${preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
     );
   }
+}
+
+function testReruns(configs: unknown): string[] {
+  const values = fieldOf(fieldOf(configs, 'tests'), 'arguments');
+  return textsOf(callUntyped(testRerunArguments, values));
 }
 
 function presetTools(run: MavenRun, request: ToolsRequest): unknown {
@@ -236,7 +255,7 @@ function presetInWork(
   const setup = { ...run, policy, modules, effectivePom, work, environment };
   const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - CLOCK_SLACK_MS;
-  const timedOut = buildOrSkipTests({ ...run, work, modules }, policy);
+  const timedOut = buildOrSkipTests({ ...run, work, modules, reruns: testReruns(configs) }, policy);
   const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
   const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
   const testsFailures = analyzeAll({

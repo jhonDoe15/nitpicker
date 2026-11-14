@@ -15,12 +15,16 @@ import { DJANGO_SCRIPT, readDjangoScript } from './python-django.mjs';
 import { TEST_FILE_NAME } from './python-test-files.mjs';
 import { JUNIT_REPORT } from '../test-runs/junit-results.mjs';
 import { pinnedEnvironmentAddopts, pinnedPytestArguments } from '../test-runs/pytest-pins.mjs';
+import {
+  CONFIG_RETRIES_ENVIRONMENT,
+  projectRetries,
+} from '../test-runs/retries/pytest-retries.mjs';
 
 export const NO_TESTS_EXIT = 5;
 export const PYTEST_PROBE = [
   'python',
   '-c',
-  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures", "pytest_django")))',
+  'import importlib.util as u, pytest; print(pytest.__version__, *(int(u.find_spec(m) is not None) for m in ("pytest_cov", "xdist", "pytest_rerunfailures", "pytest_django", "pytest_retry")))',
 ];
 const UNITTEST_FILES = 'python_files=test*.py';
 const RUNNER_DISTRIBUTIONS = { django: 'Django', nose2: 'nose2' };
@@ -114,7 +118,7 @@ export function detectTestRunner(projectRoot, setting) {
 
 export function probePytest(context) {
   const result = probe(context, PYTEST_PROBE);
-  const [version, coverage, xdist, rerunfailures, django] =
+  const [version, coverage, xdist, rerunfailures, django, retry] =
     result.error === undefined && result.status === 0 ? result.stdout.trim().split(' ') : [];
   return VERSION_PATTERN.test(version ?? '')
     ? {
@@ -123,6 +127,7 @@ export function probePytest(context) {
         xdist: xdist === '1',
         rerunfailures: rerunfailures === '1',
         django: django === '1',
+        retry: retry === '1',
       }
     : undefined;
 }
@@ -193,13 +198,16 @@ export function pytestCommand(context) {
     'junit_family=xunit1',
     '-o',
     'junit_duration_report=call',
-    ...pinnedPytestArguments(context.projectRoot, probe),
+    ...pinnedPytestArguments(context.projectRoot, probe, projectRetries(context)),
   ];
 }
 
 export function testEnvironment(context) {
   return context.project.testRunner === 'pytest'
-    ? pinnedEnvironmentAddopts(context.pytestAddopts)
+    ? {
+        ...pinnedEnvironmentAddopts(context.pytestAddopts),
+        ...(projectRetries(context) === undefined ? {} : { [CONFIG_RETRIES_ENVIRONMENT]: '1' }),
+      }
     : {};
 }
 
