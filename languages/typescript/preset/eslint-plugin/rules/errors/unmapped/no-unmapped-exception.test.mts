@@ -3,12 +3,12 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-unmapped-exception.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-unmapped-exception-')));
 
-function write(file, lines) {
+function write(file: string, lines: string[]) {
   mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
   writeFileSync(path.join(root, file), [...lines, ''].join('\n'));
 }
@@ -101,7 +101,15 @@ const HEADER = [
   'import { OrdersService } from "./orders.service";',
 ].join('\n');
 
-function typed(body, errors) {
+type ExpectedError = { messageId: string; data: Record<string, string> };
+type TypedCase = { code: string; filename: string };
+
+function typed(body: string): TypedCase;
+function typed(body: string, errors: ExpectedError[]): TypedCase & { errors: ExpectedError[] };
+function typed(
+  body: string,
+  errors?: ExpectedError[],
+): TypedCase | (TypedCase & { errors: ExpectedError[] }) {
   const code = `${HEADER}\n${body}`;
   const file = path.join(
     root,
@@ -111,7 +119,7 @@ function typed(body, errors) {
   return errors === undefined ? { code, filename: file } : { code, filename: file, errors };
 }
 
-const unmapped = (handler, error, through = '') => ({
+const unmapped = (handler: string, error: string, through = ''): ExpectedError => ({
   messageId: 'unmapped',
   data: { handler, error, path: through },
 });

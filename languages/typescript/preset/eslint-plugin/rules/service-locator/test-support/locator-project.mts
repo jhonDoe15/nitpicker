@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester, type TypedRuleTester } from '../../../test-support/rule-tester.mts';
 
 const CASE_NAME_LENGTH = 12;
 const TSCONFIG = {
@@ -98,9 +98,10 @@ const LIBRARIES = {
     'export declare function bind(id: string): { toDynamicValue(factory: () => unknown): void };',
   ],
 };
+const TSYRINGE_IMPORT = "import { container } from 'tsyringe';";
 const SOURCES = {
   'src/shared/mail.ts': [
-    "import { container } from 'tsyringe';",
+    TSYRINGE_IMPORT,
     "import { Mailer } from '../mailer';",
     'export const resolveMailer = (): Mailer => container.resolve(Mailer);',
     'export const resolveService = <T>(token: unknown): T => container.resolve<T>(token);',
@@ -121,7 +122,7 @@ const SOURCES = {
     '',
   ].join('\n'),
   'src/shared/registry.ts': [
-    "import { container } from 'tsyringe';",
+    TSYRINGE_IMPORT,
     "export const registerMailer = () => container.register('a', { useFactory: (c) => c.resolve('b') });",
     '',
   ].join('\n'),
@@ -132,7 +133,7 @@ const SOURCES = {
     '',
   ].join('\n'),
   'src/main.ts': [
-    "import { container } from 'tsyringe';",
+    TSYRINGE_IMPORT,
     "import { Mailer } from './mailer';",
     'export const rootMailer = () => container.resolve(Mailer);',
     'export const rootService = (token: string) => container.resolve(token);',
@@ -144,8 +145,23 @@ const SOURCES = {
   'src/shared/index.ts': "export * from './mail';\nexport * from './two-levels';\n",
 };
 
-function writerFor(root) {
-  return (relative, text) => {
+type Writer = (relative: string, text: string) => string;
+type LocatorError = { messageId?: string; message?: string; data?: Record<string, string> };
+type Extras = { file?: string; options?: unknown[] };
+type LocatorCase = { filename: string; code: string; options?: unknown[] };
+type Typed = {
+  (code: string, errors?: undefined, extras?: Extras): LocatorCase;
+  (code: string, errors: LocatorError[], extras?: Extras): LocatorCase & { errors: LocatorError[] };
+};
+type LocatorProject = {
+  write: Writer;
+  tester: TypedRuleTester;
+  typed: Typed;
+  remove: () => void;
+};
+
+function writerFor(root: string): Writer {
+  return (relative: string, text: string) => {
     const file = path.resolve(root, relative);
     if (!file.startsWith(root + path.sep)) {
       throw new Error(`${relative} is outside ${root}`);
@@ -156,7 +172,7 @@ function writerFor(root) {
   };
 }
 
-function writeProject(write) {
+function writeProject(write: Writer): void {
   write('tsconfig.json', JSON.stringify(TSCONFIG));
   for (const [name, lines] of Object.entries(LIBRARIES)) {
     write(
@@ -170,38 +186,53 @@ function writeProject(write) {
   }
 }
 
-export function createLocatorProject() {
+export function createLocatorProject(): LocatorProject {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-service-locator-')));
   const write = writerFor(root);
   writeProject(write);
+  function typed(
+    code: string,
+    errors?: undefined,
+    extras?: Extras,
+  ): { filename: string; code: string; options?: unknown[] };
+  function typed(
+    code: string,
+    errors: LocatorError[],
+    extras?: Extras,
+  ): { filename: string; code: string; options?: unknown[]; errors: LocatorError[] };
+  function typed(
+    code: string,
+    errors?: LocatorError[],
+    { file, options }: Extras = {},
+  ): { filename: string; code: string; options?: unknown[]; errors?: LocatorError[] } {
+    const name = createHash('sha256').update(code).digest('hex').slice(0, CASE_NAME_LENGTH);
+    const filename = write(file ?? `src/features/case-${name}.ts`, code);
+    return {
+      filename,
+      code,
+      ...(options === undefined ? {} : { options }),
+      ...(errors === undefined ? {} : { errors }),
+    };
+  }
   return {
     write,
     tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
-    typed: (code, errors, { file, options } = {}) => {
-      const name = createHash('sha256').update(code).digest('hex').slice(0, CASE_NAME_LENGTH);
-      const filename = write(file ?? `src/features/case-${name}.ts`, code);
-      return {
-        filename,
-        code,
-        ...(options === undefined ? {} : { options }),
-        ...(errors === undefined ? {} : { errors }),
-      };
-    },
+    typed,
     remove: () => {
       rmSync(root, { recursive: true, force: true });
     },
   };
 }
 
-export function lookup(api) {
+export function lookup(api: string): LocatorError[] {
   return [{ messageId: 'lookup', data: { api } }];
 }
 
-export function lookups(...apis) {
+export function lookups(...apis: string[]): LocatorError[] {
   return apis.map((api) => ({ messageId: 'lookup', data: { api } }));
 }
 
-export function wrapper(name, api, file) {
+export function wrapper(name: string, api: string, file: string): LocatorError[] {
   return [{ messageId: 'wrapper', data: { name, api, file } }];
 }
 

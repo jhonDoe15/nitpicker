@@ -6,7 +6,7 @@ import {
   lookup,
   lookups,
   wrapper,
-} from './test-support/locator-project.mjs';
+} from './test-support/locator-project.mts';
 
 const { tester, typed, remove } = createLocatorProject();
 afterAll(remove);
