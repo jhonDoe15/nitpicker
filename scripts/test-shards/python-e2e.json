@@ -88,6 +88,8 @@
   "languages/python/rules/e2e/honesty/test-switches/switched-off.e2e.test.mjs": 2,
   "languages/python/rules/e2e/honesty/test-switches/test-bodies.e2e.test.mjs": 2,
   "languages/python/rules/e2e/honesty/weak/weak-assertion.e2e.test.mjs": 3,
+  "languages/python/rules/e2e/lazy-relations/lazy-relation-helpers.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/lazy-relations/lazy-relation-in-loop.e2e.test.mjs": 3,
   "languages/python/rules/e2e/locators/service-locator-scopes.e2e.test.mjs": 4,
   "languages/python/rules/e2e/locators/service-locator-values.e2e.test.mjs": 2,
   "languages/python/rules/e2e/locators/service-locator.e2e.test.mjs": 8,

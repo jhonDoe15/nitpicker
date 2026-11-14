@@ -59,6 +59,7 @@ are listed at the end.
 | Lists in queries         | an empty check and fixed-size chunks (`itertools.batched(ids, 1000)`), or one array parameter (`any_(bindparam("ids", ids, type_=ARRAY(Integer)))`)                                    | `unbounded-query-array` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Input or output per item | one batch call or fixed-size chunks; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, `ThreadPoolExecutor(max_workers=n)`)                                | `io-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                               |
 | Accumulator copies       | `append` in the loop, a comprehension, `itertools.chain.from_iterable`, `dict(pairs)`, `collections.defaultdict`                                                                       | `accumulator-copy` (script), ruff `RUF017` for `sum(lists, [])`                                                                                                                                                                                                                                                                                                                     |
+| Lazy relations per item  | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                                                  | `lazy-relation-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Shareable objects        | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows            | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -851,6 +852,29 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   ruff's `RUF017`, which the preset already selects, so the script does not report it twice. Ruff's
   `RUF005` suggests `[*acc, x]` for `acc + [x]`, which is still a copy, so it is dropped on the lines
   where `accumulator-copy` reports.
+- `lazy-relation-in-loop` reports a relationship read for each row of a query the same function runs,
+  when the query does not fetch it, so each row runs one more query. Django: the models of the project
+  give the forward `ForeignKey`, `OneToOneField` and `ManyToManyField` accessors and the reverse ones
+  (`order_set`, a `related_name`); the rows come from `Model.objects.all()`, `filter()`, `exclude()` and
+  the other queryset methods (directly, in a variable, or wrapped in `list()`); a forward or
+  one-to-one accessor counts when it is read, a manager (`order.lines`, `order.tags`) when `all()`,
+  `filter()`, `count()` or another query method is called on it; `select_related(...)`,
+  `prefetch_related(...)` or `Prefetch(...)` naming it (also `a__b`) or a bare `select_related()` (all
+  forward keys) clears it, and `order.customer_id` never loads; the loop may also run over
+  `enumerate(...)` of the rows or a refinement of a queryset variable (`orders.order_by("id")`). SQLAlchemy: a `relationship()` (also
+  SQLModel `Relationship` and `db.relationship`) with the default or `lazy="select"` strategy, read on the
+  rows of `session.scalars(select(M)...)`, `session.execute(select(M)...).scalars()`, SQLModel
+  `session.exec(select(M))` or `session.query(M)...`; `.options(selectinload(...))`, `joinedload`,
+  `subqueryload` or `immediateload` naming it, at any step of a chained option
+  (`selectinload(User.posts).selectinload(Post.comments)` loads both), or another `lazy=` strategy on the
+  relationship, clears it; `defaultload`, `lazyload`, `noload` and `raiseload` load nothing. Rows of unknown origin (a
+  parameter), `values()` queries, a custom `objects` manager and selects of columns are not reported.
+  The read also counts through a project function the row is passed to, as an argument or by keyword
+  (`out.append(to_dto(o))`, `[to_dto(o) for o in orders]`, `self.render(o)`) or as the function of
+  `map(to_dto, orders)`, up to three calls deep; the finding sits on the call and names the function
+  and the relationship. A function that reads only a column (`o.customer_id`) or runs over rows that
+  fetch the relationship stays quiet, and a relationship read both in the loop and in the function is
+  reported once, at the read in the loop.
 - `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
   at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
   comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive

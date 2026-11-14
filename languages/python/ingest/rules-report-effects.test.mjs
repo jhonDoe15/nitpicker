@@ -26,6 +26,16 @@ describe('effect rules report', () => {
       'acc|acc + [...]|reduce',
       '`acc` is replaced by a copy of itself (`acc + [...]`) on every step of the `reduce`, so the work grows with the square of the list',
     ],
+    [
+      'lazy-relation-in-loop',
+      'Order.customer|django|Order.objects.all()',
+      '`Order.customer` is a lazy relationship: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
+    ],
+    [
+      'lazy-relation-in-loop',
+      'Order.customer|django|Order.objects.all()|to_dto()',
+      '`to_dto()` receives each item of the loop and reads its lazy relationship `Order.customer`: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });
@@ -63,10 +73,19 @@ describe('accumulator-copy identity', () => {
   it('keeps a subject that is not a call as it is', () => {
     const report = [
       { rule: 'accumulator-copy', path: 'a.py', subject: 'acc|acc + [...]|loop', line: 3 },
+      { rule: 'lazy-relation-in-loop', path: 'a.py', subject: 'Order.items|django|x', line: 5 },
+      {
+        rule: 'lazy-relation-in-loop',
+        path: 'b.py',
+        subject: 'Order.items|django|x|to_dto()',
+        line: 7,
+      },
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
       'acc',
+      'Order.items',
+      'Order.items',
     ]);
   });
 });
