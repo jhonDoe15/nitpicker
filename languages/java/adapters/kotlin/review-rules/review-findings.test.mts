@@ -4,12 +4,19 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
-import { buildViews } from './build-view.mjs';
-import { REVIEW_TOOL, SOURCE_TOOL, withoutCoveredFindings } from './review-finding.mjs';
+import { buildViews as untypedBuildViews } from './build-view.mjs';
+import {
+  REVIEW_TOOL,
+  SOURCE_TOOL,
+  withoutCoveredFindings as untypedWithoutCovered,
+} from './review-finding.mjs';
 import { readKotlinFacts } from './report/kotlin-report.mjs';
-import { readKotlinReviewFindings } from './review-findings.mjs';
+import { readKotlinReviewFindings as untypedReadFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
+import type { FileFacts } from './test-support/facts.mts';
+import { testMethod } from './test-support/facts.mts';
+import type { Loose } from './test-support/loose-facts.mts';
 import {
   call,
   cleanupCall,
@@ -18,12 +25,36 @@ import {
   klass,
   parameter,
   testFile,
-  testMethod,
   useLaunch,
   wait,
-} from './test-support/facts.mjs';
+} from './test-support/loose-facts.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 
-const temporaryRoots = [];
+type ReviewContext = {
+  reportRoot: string;
+  projectRoot: string;
+  manifest: Loose;
+  modules?: Loose[];
+};
+
+const readKotlinReviewFindings: (context: ReviewContext) => Finding[] = untypedReadFindings;
+const buildViews: () => (input: { reportRoot: string; projectRoot: string; modules: Loose[] }) => {
+  files: FileFacts[];
+} = untypedBuildViews;
+function isFinding(value: unknown): value is Finding {
+  return typeof fieldOf(value, 'rule') === 'string';
+}
+
+function withoutCoveredFindings(
+  findings: Loose[],
+  options?: { exceptions: Loose[]; modulePath: string },
+): Finding[] {
+  const kept: unknown = Reflect.apply(untypedWithoutCovered, undefined, [findings, options]);
+  return listOf(kept).filter(isFinding);
+}
+
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -31,7 +62,7 @@ afterEach(() => {
   }
 });
 
-function projectWith(facts) {
+function projectWith(facts?: Loose) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-review-'));
   temporaryRoots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -155,14 +186,14 @@ describe('readKotlinReviewFindings on the test sources', () => {
     });
 
     expect(
-      findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
+      findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location?.line]),
     ).toEqual([[REVIEW_TOOL, 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
 });
 
 describe('readKotlinReviewFindings across the project', () => {
-  function twoModules(own, sibling) {
+  function twoModules(own: Loose, sibling: Loose) {
     const first = projectWith(own);
     const second = projectWith(sibling);
     return {
@@ -212,7 +243,7 @@ describe('readKotlinReviewFindings across the project', () => {
     );
     const context = { reportRoot: first.reportRoot, projectRoot: first.root, manifest: {} };
     const javaRoot = path.join(first.root, 'billing/src/main/java');
-    const judgedWith = (index, manifest) =>
+    const judgedWith = (index: number, manifest: Loose) =>
       readKotlinReviewFindings({
         ...context,
         modules: modules.map((module, at) =>
@@ -228,7 +259,7 @@ describe('readKotlinReviewFindings across the project', () => {
     expect(
       judgedWith(1, {
         kotlinCallerGaps: [{ label: 'the included build tools', reaches: [':'] }],
-      }).map(({ symbol, classification }) => `${symbol} ${classification}`),
+      }).map(({ symbol, classification }) => `${String(symbol)} ${classification}`),
     ).toEqual(['callers-not-analyzed descriptive']);
   });
 
@@ -237,9 +268,9 @@ describe('readKotlinReviewFindings across the project', () => {
     const views = buildViews();
     const view = views({ reportRoot: first.reportRoot, projectRoot: first.root, modules });
 
-    expect(views({ reportRoot: modules[1].reportRoot, projectRoot: first.root, modules })).toBe(
-      view,
-    );
+    expect(
+      views({ reportRoot: modules[1]?.reportRoot ?? '', projectRoot: first.root, modules }),
+    ).toBe(view);
     expect(view.files.map(({ test }) => test)).toEqual([false, true]);
   });
 
@@ -343,7 +374,7 @@ describe('Kotlin exception rules for the review rules', () => {
     },
   );
 
-  const onKotlinSource = (rule) => ({
+  const onKotlinSource = (rule: string) => ({
     preset: 'kotlin',
     exceptions: [{ rule, paths: ['src/main/kotlin/demo/A.kt'], reason: 'x' }],
   });
@@ -365,7 +396,12 @@ describe('Kotlin exception rules for the review rules', () => {
 });
 
 describe('withoutCoveredFindings', () => {
-  const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
+  const at = (tool: string, rule: string, line: number) => ({
+    tool,
+    rule,
+    path: 'A.kt',
+    location: { line },
+  });
 
   it('keeps one finding when a Spring rule names the allowed form for the same client', () => {
     const findings = [

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SOURCE_TOOL, findingFactory } from '../review-finding.mjs';
-import { file, fn, klass, sourceRouted, summary } from '../test-support/facts.mjs';
+import { SOURCE_TOOL } from '../review-finding.mjs';
+import type { FileFacts } from '../test-support/facts.mts';
+import { run, sourceRouted, summary } from '../test-support/facts.mts';
+import type { Loose } from '../test-support/loose-facts.mts';
+import { file, fn, klass } from '../test-support/loose-facts.mts';
 import { BLOCKING_RULE, blockingFindings, blockingMessage } from './blocking-findings.mjs';
 import { TIMEOUT_RULE, timeoutMessage } from './timeouts.mjs';
 
@@ -10,7 +13,7 @@ const IMPORTS = [
 ];
 const FILES = { path: 'java.nio.file.Files', alias: undefined, all: false };
 
-const call = (name, overrides = {}) => ({
+const call = (name: string, overrides: Loose = {}) => ({
   line: 5,
   name,
   owner: 'Store',
@@ -21,9 +24,9 @@ const call = (name, overrides = {}) => ({
   arguments: 1,
   ...overrides,
 });
-const filesCall = (name = 'readString', overrides = {}) =>
+const filesCall = (name = 'readString', overrides: Loose = {}) =>
   call(name, { qualifier: 'Files', staticOwner: 'Files', ...overrides });
-const timeout = (calls, overrides = {}) => ({
+const timeout = (calls: unknown[], overrides: Loose = {}) => ({
   line: 4,
   builder: 'withTimeout',
   owner: 'Store',
@@ -34,11 +37,11 @@ const timeout = (calls, overrides = {}) => ({
   opaqueLoops: 0,
   ...overrides,
 });
-const source = (coroutines, overrides = {}) => file({ imports: IMPORTS, coroutines, ...overrides });
+const source = (coroutines: unknown, overrides: Loose = {}) =>
+  file({ imports: IMPORTS, coroutines, ...overrides });
 const PROCESS = { path: 'java.lang.Process', alias: undefined, all: false };
-const findingsFor = (coroutines, extra = [], overrides = {}) =>
-  blockingFindings([source(coroutines, overrides)], {
-    finding: findingFactory(),
+const findingsFor = (coroutines: unknown, extra: FileFacts[] = [], overrides: Loose = {}) =>
+  run(blockingFindings, [source(coroutines, overrides)], {
     declaredIn: [source(coroutines, overrides), ...extra],
   });
 
@@ -47,8 +50,8 @@ describe('blocking calls in Kotlin coroutine code', () => {
     const findings = findingsFor({ calls: [filesCall()], timeouts: [] });
 
     expect(summary(findings)).toEqual([`${BLOCKING_RULE} Store.load.Files.readString 5`]);
-    expect(findings[0].tool).toBe(SOURCE_TOOL);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe(SOURCE_TOOL);
+    expect(findings[0]?.message).toBe(
       sourceRouted(
         blockingMessage('Files.readString', 'Files is a blocking API', 'Store.load'),
         BLOCKING_RULE,
@@ -108,13 +111,13 @@ describe('blocking calls in Kotlin coroutine code', () => {
   });
 
   it('does not report a program without recorded coroutine code or a test file', () => {
-    expect(findingsFor(null)).toEqual([]);
+    expect(findingsFor(undefined)).toEqual([]);
     expect(findingsFor({ calls: [filesCall()], timeouts: [] }, [], { test: true })).toEqual([]);
   });
 
   it('keeps the same identity when the call moves to another line', () => {
-    const at = (line) =>
-      findingsFor({ calls: [filesCall('readString', { line })], timeouts: [] })[0].identity;
+    const at = (line: number) =>
+      findingsFor({ calls: [filesCall('readString', { line })], timeouts: [] })[0]?.identity;
 
     expect(at(5)).toBe(at(40));
   });
@@ -142,11 +145,11 @@ describe('blocking calls in Kotlin coroutine code', () => {
       timeouts: [],
     });
 
-    expect([first.symbol, second.symbol]).toEqual([
+    expect([first?.symbol, second?.symbol]).toEqual([
       'Store.load.Files.readString',
       'Other.load.Files.readString',
     ]);
-    expect(first.identity).not.toBe(second.identity);
+    expect(first?.identity).not.toBe(second?.identity);
   });
 
   it('reports a RestClient request and a RestOperations call', () => {
@@ -191,18 +194,17 @@ describe('blocking calls in Kotlin coroutine code', () => {
     ];
     const entry = call('findAll', { qualifier: 'orders', receiverType: 'Orders' });
     const declared = file({ imports, classes: [repository] });
-    const run = (declaredIn) =>
-      blockingFindings([source({ calls: [entry], timeouts: [] }, { imports })], {
-        finding: findingFactory(),
+    const rulesIn = (declaredIn: FileFacts[]) =>
+      run(blockingFindings, [source({ calls: [entry], timeouts: [] }, { imports })], {
         declaredIn,
       }).map(({ rule }) => rule);
 
-    expect(run([declared])).toEqual([BLOCKING_RULE]);
+    expect(rulesIn([declared])).toEqual([BLOCKING_RULE]);
     expect(
-      run([declared, file({ functions: [fn('findAll', { modifiers: ['suspend'] })] })]),
+      rulesIn([declared, file({ functions: [fn('findAll', { modifiers: ['suspend'] })] })]),
     ).toEqual([]);
     expect(
-      run([declared, file({ functions: [fn('findAll', { returnType: 'Flow<Order>' })] })]),
+      rulesIn([declared, file({ functions: [fn('findAll', { returnType: 'Flow<Order>' })] })]),
     ).toEqual([]);
   });
 
@@ -213,14 +215,13 @@ describe('blocking calls in Kotlin coroutine code', () => {
       { path: 'org.springframework.data.repository.reactive.ReactiveCrudRepository', all: false },
     ];
     const entry = call('findAll', { qualifier: 'orders', receiverType: 'Orders' });
-    const run = (supers) =>
-      blockingFindings([source({ calls: [entry], timeouts: [] }, { imports })], {
-        finding: findingFactory(),
+    const rulesIn = (supers: string[]) =>
+      run(blockingFindings, [source({ calls: [entry], timeouts: [] }, { imports })], {
         declaredIn: [file({ imports, classes: [klass('Orders', { kind: 'interface', supers })] })],
       });
 
-    expect(run(['CoroutineCrudRepository'])).toEqual([]);
-    expect(run(['ReactiveCrudRepository'])).toEqual([]);
+    expect(rulesIn(['CoroutineCrudRepository'])).toEqual([]);
+    expect(rulesIn(['ReactiveCrudRepository'])).toEqual([]);
   });
 });
 
@@ -230,7 +231,7 @@ describe('timeout blocks without a suspension point in Kotlin', () => {
     const findings = findingsFor({ calls: [entry], timeouts: [timeout([entry])] });
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} Store.load.withTimeout 4`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       sourceRouted(timeoutMessage('withTimeout', 'Files.readString'), TIMEOUT_RULE),
     );
   });

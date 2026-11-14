@@ -1,14 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  cleanupCall,
-  file,
-  fn,
-  importOf,
-  klass,
-  run,
-  sourceRouted,
-  summary,
-} from '../test-support/facts.mjs';
+import type { Loose } from '../test-support/loose-facts.mts';
+import type { CleanupCallFact } from '../test-support/facts.mts';
+import { run, sourceRouted, summary } from '../test-support/facts.mts';
+import { cleanupCall, file, fn, importOf, klass } from '../test-support/loose-facts.mts';
 import { SUSPEND_CLEANUP_RULE, suspendCleanupFindings } from './suspend-cleanup.mjs';
 
 const BOUNDED =
@@ -16,9 +10,9 @@ const BOUNDED =
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
 const SYNC = importOf('kotlinx.coroutines.sync', { all: true });
 const CHANNELS = importOf('kotlinx.coroutines.channels', { all: true });
-const suspendFun = (name, overrides = {}) =>
+const suspendFun = (name: string, overrides: Loose = {}) =>
   fn(name, { owner: 'Store', modifiers: ['suspend'], ...overrides });
-const findingsFor = (calls, overrides = {}) =>
+const findingsFor = (calls: CleanupCallFact[], overrides: Loose = {}) =>
   run(suspendCleanupFindings, [file({ imports: [COROUTINES], cleanupCalls: calls, ...overrides })]);
 
 describe('suspending cleanup in finally', () => {
@@ -26,8 +20,8 @@ describe('suspending cleanup in finally', () => {
     const findings = findingsFor([cleanupCall('delay', { line: 12 })]);
 
     expect(summary(findings)).toEqual([`${SUSPEND_CLEANUP_RULE} Store.close:delay 12`]);
-    expect(findings[0].tool).toBe('kotlin-source');
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe('kotlin-source');
+    expect(findings[0]?.message).toBe(
       sourceRouted(
         `This \`finally\` block calls the suspending \`delay()\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}`,
         SUSPEND_CLEANUP_RULE,
@@ -143,13 +137,13 @@ describe('suspending cleanup in finally', () => {
   it('words a CancellationException handler on its own and keeps the identity apart', () => {
     const findings = findingsFor([cleanupCall('delay', { section: 'catch' })]);
 
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       sourceRouted(
         `This \`catch (CancellationException)\` block calls the suspending \`delay()\`; when the exception is this coroutine's own cancellation (not a child's or a timeout's), the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}`,
         SUSPEND_CLEANUP_RULE,
       ),
     );
-    expect(findings[0].identity).toBe('SuspendFunInFinallySection:Store.close:catch:delay');
+    expect(findings[0]?.identity).toBe('SuspendFunInFinallySection:Store.close:catch:delay');
   });
 });
 
@@ -261,7 +255,7 @@ describe('cleanup the rule leaves alone', () => {
         cleanupCall('close', { receiver: 'name', qualifier: 'cache', receiverType: 'Cache' }),
       ],
     });
-    const declaring = (path) =>
+    const declaring = (path: string) =>
       file({
         file: path,
         classes: [klass('Cache')],

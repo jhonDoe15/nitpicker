@@ -1,7 +1,10 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { file, klass, routeOf, run, summary, testFile } from '../test-support/facts.mjs';
+import type { FileFacts } from '../test-support/facts.mts';
+import { routeOf, run, summary } from '../test-support/facts.mts';
+import type { Loose } from '../test-support/loose-facts.mts';
+import { file, klass, testFile } from '../test-support/loose-facts.mts';
 import {
   INTERRUPT_MESSAGE,
   INTERRUPT_PROBLEM,
@@ -10,7 +13,7 @@ import {
   swallowedHandlerFindings,
 } from './swallowed-handlers.mjs';
 
-const caught = (type, overrides = {}) => ({
+const caught = (type: string, overrides: Loose = {}) => ({
   line: 4,
   symbol: 'Loader.load',
   type,
@@ -19,8 +22,12 @@ const caught = (type, overrides = {}) => ({
   interrupt: true,
   ...overrides,
 });
-const imp = (importPath, alias = null, all = false) => ({ path: importPath, alias, all });
-const findingsFor = (handlers, overrides = {}, others = []) =>
+const imp = (importPath: string, alias?: string, all = false) => ({
+  path: importPath,
+  alias,
+  all,
+});
+const findingsFor = (handlers: unknown[], overrides: Loose = {}, others: FileFacts[] = []) =>
   run(swallowedHandlerFindings, [file({ handlers, ...overrides })], {
     declaredIn: [file({ handlers, ...overrides }), ...others],
   });
@@ -45,7 +52,7 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     [
       'a wildcard import of kotlinx.coroutines',
       'CancellationException',
-      [imp('kotlinx.coroutines', null, true)],
+      [imp('kotlinx.coroutines', undefined, true)],
     ],
     [
       'a renamed import',
@@ -58,8 +65,8 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     const findings = findingsFor([caught(type)], { imports });
 
     expect(summary(findings)).toEqual([`${SWALLOWED_CANCELLATION_RULE} Loader.load 4`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(routeOf(findings[0].message)).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/SwallowedCancellation","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -104,7 +111,9 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     ['a timeout cancellation', caught('TimeoutCancellationException')],
     ['a wildcard that could be another type', caught('Missing')],
   ])('leaves %s alone', (_name, entry) => {
-    expect(findingsFor([entry], { imports: [imp('kotlinx.coroutines', null, true)] })).toEqual([]);
+    expect(findingsFor([entry], { imports: [imp('kotlinx.coroutines', undefined, true)] })).toEqual(
+      [],
+    );
   });
 
   it('leaves a CancellationException that no import brings in alone', () => {
@@ -135,7 +144,7 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
   it('says the same as the Java rule about an interrupt', () => {
     const gradle = path.resolve(import.meta.dirname, '../../../../gradle/pmd-ruleset.xml');
     const xml = readFileSync(gradle, 'utf8');
-    const javaMessage = /name="SwallowedInterrupt"[^>]*message="([^"]+)"/u.exec(xml)[1];
+    const javaMessage = /name="SwallowedInterrupt"[^>]*message="([^"]+)"/u.exec(xml)?.[1] ?? '';
 
     expect(javaMessage).toBe(INTERRUPT_PROBLEM);
     expect(INTERRUPT_MESSAGE).toBe(

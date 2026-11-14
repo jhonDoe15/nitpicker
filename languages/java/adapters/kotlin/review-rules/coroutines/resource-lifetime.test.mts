@@ -1,20 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  file,
-  fn,
-  importOf,
-  klass,
-  run,
-  sourceRouted,
-  summary,
-  useLaunch,
-} from '../test-support/facts.mjs';
+import type { Loose } from '../test-support/loose-facts.mts';
+import type { UseLaunchFact } from '../test-support/facts.mts';
+import { run, sourceRouted, summary } from '../test-support/facts.mts';
+import { file, fn, importOf, klass, useLaunch } from '../test-support/loose-facts.mts';
 import { CHILD_OUTLIVES_RESOURCE_RULE, childLifetimeFindings } from './resource-lifetime.mjs';
 
 const COROUTINES = importOf('kotlinx.coroutines', { all: true });
-const childMessage = (resource, builder = 'launch', scope = '`scope`') =>
+const childMessage = (resource: string, builder = 'launch', scope = '`scope`') =>
   `\`${builder}\` starts a child coroutine in ${scope}, which keeps running after this \`use\` block, and the child reads \`${resource}\`; \`use\` closes the resource when the block ends, so the child can run on a closed resource. Start the child inside \`coroutineScope { ... }\` or \`supervisorScope { ... }\` in the block, wait for the launched job before the block ends (\`job.join()\`, \`deferred.await()\` or \`joinAll(...)\`, outside any \`if\`, loop or \`catch\` that the launch is not in), or open and close the resource inside the child (\`scope.launch { open().use { ... } }\`).`;
-const findingsFor = (launches, overrides = {}) =>
+const findingsFor = (launches: UseLaunchFact[], overrides: Loose = {}) =>
   run(childLifetimeFindings, [
     file({ imports: [COROUTINES], useLaunches: launches, ...overrides }),
   ]);
@@ -26,8 +20,8 @@ describe('child coroutine started in a use block', () => {
     expect(summary(findings)).toEqual([
       `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:source:launch 14`,
     ]);
-    expect(findings[0].tool).toBe('kotlin-source');
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe('kotlin-source');
+    expect(findings[0]?.message).toBe(
       sourceRouted(childMessage('reader'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
@@ -73,7 +67,7 @@ describe('child coroutine started in a use block', () => {
     expect(summary(findings)).toEqual([
       `${CHILD_OUTLIVES_RESOURCE_RULE} Store.copy:source:launch 9`,
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       sourceRouted(childMessage('reader'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
@@ -91,7 +85,7 @@ describe('child coroutine started in a use block', () => {
   it('reads the resource name `it` for an implicit lambda parameter', () => {
     const findings = findingsFor([useLaunch({ resource: 'it' })]);
 
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       sourceRouted(childMessage('it'), CHILD_OUTLIVES_RESOURCE_RULE),
     );
   });
