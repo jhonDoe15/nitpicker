@@ -1,13 +1,13 @@
 import { rule } from './no-string-as-regex.mjs';
-import { typedRegexProject } from './test-support/typed-project.mjs';
+import { typedRegexProject } from './test-support/typed-project.mts';
 
 const { tester, typed, typedJs } = typedRegexProject('nitpicker-string-regex-');
 
-function stringPattern(method) {
+function stringPattern(method: string) {
   return [{ messageId: 'stringPattern', data: { method } }];
 }
 
-function unescaped(value) {
+function unescaped(value: string) {
   return [{ messageId: 'unescapedValue', data: { value } }];
 }
 

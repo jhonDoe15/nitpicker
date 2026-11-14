@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-local-time-zone.mjs';
 
 const tester = typescriptRuleTester();
@@ -7,7 +7,7 @@ const FNS = "import { format, startOfDay, addDays, addHours, parseISO } from 'da
 const DAYJS = "import dayjs from 'dayjs';\n";
 const MOMENT = "import moment from 'moment-timezone';\n";
 
-function invalid(code, messageId, data) {
+function invalid(code: string, messageId: string, data?: Record<string, string>) {
   return { code, errors: [{ messageId, ...(data === undefined ? {} : { data }) }] };
 }
 

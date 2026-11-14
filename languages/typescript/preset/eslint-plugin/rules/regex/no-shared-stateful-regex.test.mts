@@ -1,9 +1,9 @@
 import { rule } from './no-shared-stateful-regex.mjs';
-import { typedRegexProject } from './test-support/typed-project.mjs';
+import { typedRegexProject } from './test-support/typed-project.mts';
 
 const { tester, typed, typedJs } = typedRegexProject('nitpicker-stateful-regex-');
 
-function shared(name, method, flag = 'g') {
+function shared(name: string, method: string, flag = 'g') {
   return [{ messageId: 'sharedRegex', data: { name, method, flag } }];
 }
 

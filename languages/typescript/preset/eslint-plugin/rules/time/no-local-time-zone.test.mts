@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-local-time-zone.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-local-time-zone-')));
@@ -32,7 +32,17 @@ afterAll(() => {
 const typedTester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 const untypedTester = typescriptRuleTester();
 
-function typed(code, messageId, data, extension = 'ts') {
+type Typed = { filename: string; code: string };
+type Errors = { errors: { messageId: string; data?: Record<string, string> }[] };
+
+function typed(code: string, messageId?: undefined, data?: undefined, extension?: string): Typed;
+function typed(
+  code: string,
+  messageId: string,
+  data?: Record<string, string>,
+  extension?: string,
+): Typed & Errors;
+function typed(code: string, messageId?: string, data?: Record<string, string>, extension = 'ts') {
   const file = path.join(root, `src/case-${randomUUID()}.${extension}`);
   writeFileSync(file, code);
   return {

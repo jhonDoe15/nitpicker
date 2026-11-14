@@ -1,9 +1,9 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-unhandled-url-parse.mjs';
 
 const tester = typescriptRuleTester();
 
-function flagged(code) {
+function flagged(code: string) {
   return { code, errors: [{ messageId: 'unhandledUrlParse' }] };
 }
 
