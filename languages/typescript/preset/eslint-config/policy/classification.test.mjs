@@ -6,7 +6,7 @@ import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs
 import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintFixture } from '../../failure-messages/test-support/harness.mts';
 import { defaultResolvedLayout } from '../../layout.mjs';
-import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mjs';
+import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mts';
 import { UNUSED_PARAMETER_ADVICE } from './unused-parameters.mjs';
 import { productionLayoutConfigFor, productionPolicyConfigFor } from './production-policy.mjs';
 

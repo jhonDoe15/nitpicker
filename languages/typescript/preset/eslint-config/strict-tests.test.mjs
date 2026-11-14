@@ -3,7 +3,7 @@ import { failureMessagesFor } from '../failure-messages/test-support/harness.mts
 import { TEST_TIMEOUT_CEILING_MS } from '../eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs';
 import { testTimeouts } from '../../adapters/test-runners/test-run.mts';
 import { resolveLayout } from '../layout.mjs';
-import { isStrictRule } from '../strict-rules.mjs';
+import { isStrictRule } from '../strict-rules.mts';
 import { strictPresetConfig } from './strict.mjs';
 import {
   strictTestConfigFor,
