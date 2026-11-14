@@ -1,0 +1,80 @@
+package shop;
+
+import java.util.List;
+
+class Many {
+  OrderRepository repo;
+
+  void manyLoops(List<Long> ids) {
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+    for (long id : ids) repo.findById(id);
+  }
+}

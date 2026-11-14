@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "retry-without-idempotency",
+    "mention": "task_id=",
+    "subject": "send_receipt.apply_async()|message|@retry"
+  }
+]

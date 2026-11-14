@@ -26,6 +26,23 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight. Reactor: pass a limit
   (`flatMap({ fetch(it) }, 8)`) or use `concatMap`; never `Mono.zip(items.map { fetch(it) })`.
+- Helpers count: a helper that reads or writes through a repository or client is a data access too, so
+  `ids.forEach { loader.load(it) }` is reported (`effects/IoCallInLoop`, with the path of calls); give the helper the
+  whole list.
+- Accumulators: never rebuild a collection from itself on each step (`acc + x` in `fold`, `reduce` or a loop,
+  `acc += x` on a `var` read-only list); use `map`, `flatMap`, `buildList` or one mutable collection
+  (`effects/AccumulatorCopyInLoop`).
+- Lazy relationships: read the relationship of each element of a query result only after the query fetched it
+  (`@EntityGraph`, `JOIN FETCH`, `@BatchSize`, or a projection), never `invoices.map { it.customer.name }` over
+  `findAll()` (`effects/LazyRelationInLoop`).
+- Remote calls: make an HTTP or RPC call before a `@Transactional` function or `transactionTemplate.execute { }`
+  starts or after it commits, and never inside `withLock { }`, `synchronized` or a `Mutex`: copy what you need out
+  first (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
+- Retries: a call that retries (`@Retryable`, `RetryTemplate`, resilience4j, `repeat(n) { try { ... } }`) writes
+  idempotently: a Stripe idempotency key, an upsert, a message deduplication id, or retry only the read
+  (`effects/RetryWithoutIdempotency`).
+- Database and broker: never write a row and publish a message in one function; write the message to an outbox table
+  in the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

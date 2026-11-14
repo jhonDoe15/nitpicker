@@ -1,4 +1,5 @@
 import { describeRuleFinding, RULES_TOOL } from '../rules/rule-hints.mjs';
+import { identitySubject } from '../rules/hints/effects/identity.mjs';
 import { createIdentities } from './identities.mjs';
 import { withRegexDefects } from '../rules/regexes/regex-defects.mjs';
 
@@ -51,7 +52,7 @@ export function ingestRulesReport(text, libraries) {
         tool: RULES_TOOL,
         rule,
         path,
-        identity: identify({ path, rule, subject }),
+        identity: identify({ path, rule, subject: identitySubject(rule, subject) }),
         subject: shown,
         ...described({ rule, subject: shown, data }, libraries),
         location: { line },

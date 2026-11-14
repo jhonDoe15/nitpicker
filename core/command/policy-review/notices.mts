@@ -1,3 +1,7 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { kotlinRuleAliasNotices } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import {
   availabilityNotices,
   coChangeNotices,
@@ -23,6 +27,7 @@ type Describer = (changedFiles: readonly string[], context?: NoticeContext) => r
 type Notices<Options> = (changedFiles: readonly string[], options: Options) => readonly string[];
 
 const jvmNotices: Notices<object> = jvmOutsideRootsNotices;
+const renamedRuleNotices: (config: unknown) => readonly string[] = kotlinRuleAliasNotices;
 const pythonNotices: Notices<object> = pythonOutsideRootsNotices;
 const typescriptNotices: Notices<unknown> = outsideRootsNotices;
 const layoutNotices: (layout: unknown, files: unknown) => readonly string[] =
@@ -38,17 +43,25 @@ const layoutRootKeys: readonly string[] = LAYOUT_ROOT_KEYS;
 
 const TYPESCRIPT_PRESETS = new Set([undefined, 'typescript']);
 
+function rawConfig(projectRoot: string): unknown {
+  const file = path.join(projectRoot, CONFIG_FILE_NAME);
+  return existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+}
+
 function jvmDescriber(
   config: NitpickerConfig,
   headPolicy: unknown,
   projectRoot: string,
 ): Describer {
-  return (changedFiles) =>
-    jvmNotices(changedFiles, {
+  const renamed = renamedRuleNotices(rawConfig(projectRoot));
+  return (changedFiles) => [
+    ...renamed,
+    ...jvmNotices(changedFiles, {
       preset: config.preset,
       exclude: fieldOf(headPolicy, 'exclude'),
       declaredRoots: declaredSourceRoots(projectRoot),
-    });
+    }),
+  ];
 }
 
 function languageDescriber(

@@ -21,3 +21,7 @@ export function typescriptRuleTester(parserOptions) {
     },
   });
 }
+
+export function cases(codes, extra = {}) {
+  return codes.map((code) => ({ code, ...extra }));
+}

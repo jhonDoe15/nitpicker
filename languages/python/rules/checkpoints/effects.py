@@ -2,8 +2,10 @@ import ast
 import builtins
 
 from checks.common import dotted_name
+from effect_kinds.clients import is_client
 from index.clients import PER_ITEM_CLIENT_FACTORIES
-from smells.io_index import IoScope, chain_names, io_index
+from kinds.index import io_scope
+from kinds.names import chain_names
 
 NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 BUILTIN_CLASSES = {name for name in dir(builtins) if name[:1].isupper()}
@@ -143,7 +145,7 @@ def is_lookup(call):
 class Cheapness:
     def __init__(self, context):
         self.aliases = context.aliases
-        self.scope = IoScope(context, io_index(context.project))
+        self.scope = io_scope(context)
         self.classes = {
             node.name
             for node in ast.walk(context.tree)
@@ -177,7 +179,7 @@ class Cheapness:
         return not (
             root in self.aliases[1]
             or root in self.scope.imported
-            or root in self.scope.clients
+            or is_client(self.scope.clients, root)
             or self.scope.is_io(call)
         )
 

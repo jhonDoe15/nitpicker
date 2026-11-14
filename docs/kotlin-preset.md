@@ -28,6 +28,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [One-way rules](kotlin-preset/one-way-rules.md)
 - [Source checks](kotlin-preset/source-checks.md)
 - [Source scans](kotlin-preset/source-scans.md)
+- [Effects rules](kotlin-preset/effects-rules.md)
 - [Compiler warnings](kotlin-preset/compiler-warnings.md)
 - [Doc comments](kotlin-preset/doc-comments.md)
 - [Frameworks](kotlin-preset/frameworks.md)

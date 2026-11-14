@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "retry-without-idempotency",
+    "mention": "idempotency key",
+    "subject": "stripe.PaymentIntent.create()|payment|@retry"
+  }
+]

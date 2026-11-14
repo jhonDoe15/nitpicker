@@ -1,0 +1,14 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "io-in-loop",
+    "mention": "asyncio.Semaphore",
+    "subject": "requests.get()|remote"
+  },
+  {
+    "tool": "python-rules",
+    "rule": "io-in-loop",
+    "mention": "unbounded-fan-out",
+    "subject": "requests.get()|remote"
+  }
+]

@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "io-in-loop",
+    "mention": "concurrently still sends one query",
+    "subject": "repo.get()|database|concurrent"
+  }
+]

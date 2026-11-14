@@ -1,38 +1,55 @@
 import ast
 
-from checks.common import dotted_name, finding
-from checks.loop_scope import COMPREHENSIONS, enclosing_loop
-from concurrency.bounds import callee_name, is_chunk_call, sized_collection
-from concurrency.fan_out import reported_work
-from concurrency.remote import is_task_call, remote_of
-from smells.io_index import IoScope, chain_names, io_index
+from checks.common import finding
+from dual_write.relays import is_relay_mark
+from effect_kinds.concurrency import is_concurrent, map_is_concurrent
+from effect_kinds.tables import DATABASE, REMOTE
+from kinds.index import io_scope
+from kinds.names import chain_names
+from retries.scopes import attempt_loops
+from smells.chunks import is_chunked
 
-CONCURRENT_COMBINATORS = {"asyncio.gather", "asyncio.wait", "asyncio.as_completed"}
+COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 PAGING_PASSES = 3
+RULE = "io-in-loop"
+GUARDED = True
+EXITS = (ast.Raise, ast.Return, ast.Break)
 
 
-def is_concurrent(comprehension, parents, aliases):
-    node = parents.get(id(comprehension))
-    if isinstance(node, ast.Starred):
-        node = parents.get(id(node))
-    return (
-        isinstance(node, ast.Call)
-        and dotted_name(node.func, aliases) in CONCURRENT_COMBINATORS
+def ancestors(node, parents):
+    chain = [node]
+    while id(chain[-1]) in parents:
+        chain.append(parents[id(chain[-1])])
+    return chain
+
+
+def in_loop_body(parent, child):
+    if isinstance(parent, (ast.For, ast.AsyncFor)):
+        return child in parent.body
+    return isinstance(parent, ast.While) and (
+        child in parent.body or child is parent.test
     )
 
 
-def is_pool_worker(call, loop, context):
-    parent = context.parents.get(id(call))
-    if not (is_task_call(parent, context.aliases) and call in parent.args):
-        return False
-    iterable = loop.generators[0].iter if isinstance(loop, COMPREHENSIONS) else None
-    if isinstance(loop, (ast.For, ast.AsyncFor)):
-        iterable = loop.iter
-    return (
-        isinstance(iterable, ast.Call)
-        and callee_name(iterable) == "range"
-        and sized_collection(iterable, remote_of(context)) is None
-    )
+def is_evaluated_once(comprehension, chain, index):
+    first = comprehension.generators[0]
+    return chain[index - 1] is first and index >= 2 and chain[index - 2] is first.iter
+
+
+def enclosing_loop(node, parents):
+    chain = ancestors(node, parents)
+    for index in range(1, len(chain)):
+        child, parent = chain[index - 1], chain[index]
+        if isinstance(parent, FUNCTIONS):
+            return None
+        if in_loop_body(parent, child):
+            return parent
+        if isinstance(parent, COMPREHENSIONS) and not is_evaluated_once(
+            parent, chain, index
+        ):
+            return parent
+    return None
 
 
 def assigned_pairs(loop):
@@ -76,7 +93,19 @@ def ends_with_exit_statement(body):
     return bool(body) and isinstance(body[-1], (ast.Break, ast.Return))
 
 
+def is_offset_loop(loop):
+    if not (isinstance(loop, (ast.For, ast.AsyncFor)) and isinstance(loop.iter, ast.Call)):
+        return False
+    names = chain_names(loop.iter.func)
+    if names and names[-1] == "count":
+        return exits_loop(loop.body)
+    step = loop.iter.args[2] if len(loop.iter.args) == 3 else None
+    return bool(names) and names[-1] == "range" and step is not None
+
+
 def is_paging_loop(loop, scope):
+    if is_offset_loop(loop):
+        return True
     if not isinstance(loop, ast.While):
         return False
     return bool(tested_names(loop) & input_output_names(loop, scope))
@@ -102,30 +131,14 @@ def runs_each_item(call, loop):
     )
 
 
-def splits_in_chunks(node):
-    if not is_chunk_call(node, None):
-        return False
-    size = node.args[1]
-    return not (
-        isinstance(size, ast.Constant)
-        and isinstance(size.value, int)
-        and size.value < 2
-    )
-
-
-def iterates_chunks(loop, parents):
-    if enclosing_loop(loop, parents) is not None:
-        return False
-    if isinstance(loop, (ast.For, ast.AsyncFor)):
-        return splits_in_chunks(loop.iter)
-    generators = loop.generators if isinstance(loop, COMPREHENSIONS) else []
-    return any(splits_in_chunks(generator.iter) for generator in generators)
-
-
 def exits_loop(statements):
     return any(
         isinstance(n, (ast.Return, ast.Break)) for s in statements for n in ast.walk(s)
     )
+
+
+def handler_retries(handler):
+    return not any(isinstance(statement, EXITS) for statement in handler.body)
 
 
 def is_retry_attempt(call, loop, parents):
@@ -135,58 +148,80 @@ def is_retry_attempt(call, loop, parents):
     while node is not None and node is not loop:
         parent = parents.get(id(node))
         if isinstance(parent, ast.Try) and node in parent.body and parent in loop.body:
-            handlers_continue = all(
-                not any(
-                    isinstance(n, (ast.Raise, ast.Return, ast.Break))
-                    for s in h.body
-                    for n in ast.walk(s)
-                )
-                for h in parent.handlers
-            )
             return (
-                bool(parent.handlers) and handlers_continue and exits_loop(parent.body)
+                bool(parent.handlers)
+                and all(handler_retries(h) for h in parent.handlers)
+                and exits_loop(parent.body + parent.orelse)
             )
         node = parent
     return False
 
 
+def reported_kind(effects, concurrent):
+    if DATABASE in effects:
+        return DATABASE
+    if REMOTE in effects and not concurrent:
+        return REMOTE
+    return None
+
+
+def subject_of(effects, kind, concurrent):
+    parts = [" > ".join(effects[kind]), kind]
+    return "|".join(parts + (["concurrent"] if concurrent else []))
+
+
+def inner_call_ids(tree):
+    return {
+        id(node.func.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+
+
 def check(context):
     if context.tests:
         return []
-    scope = IoScope(context, io_index(context.project))
-    parents = context.parents
+    scope = io_scope(context)
     found = []
-    fanned_out = reported_work(context)
-    inner_calls = {
-        id(node.func.value)
-        for node in ast.walk(context.tree)
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-    }
+    verdicts = {}
+    inner_calls = inner_call_ids(context.tree)
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call) or id(node) in inner_calls:
             continue
-        if scope.maps_io(node) and id(node) not in fanned_out:
-            callee = ".".join(chain_names(node.args[0]))
-            found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
+        mapped, executor = scope.map_effects(node)
+        if mapped:
+            concurrent = executor or map_is_concurrent(node, context)
+            kind = reported_kind(mapped, concurrent)
+            if kind is not None:
+                subject = subject_of(mapped, kind, concurrent)
+                found.append(finding(context.path, RULE, subject, node))
             continue
-        if not scope.is_io(node):
-            continue
-        loop = enclosing_loop(node, parents)
+        submitted = scope.submitted_effects(node)
+        effects = submitted or scope.effects(node)
+        loop = enclosing_loop(node, context.parents) if effects else None
         if loop is None:
             continue
-        if isinstance(loop, COMPREHENSIONS) and is_concurrent(
-            loop, parents, context.aliases
-        ):
+        concurrent = bool(submitted) or is_concurrent(node, loop, context)
+        kind = reported_kind(effects, concurrent)
+        if kind is None or skipped_loop(node, loop, scope, context, verdicts):
             continue
-        if id(node) in fanned_out or is_pool_worker(node, loop, context):
+        if is_relay_mark(node, effects, loop, scope):
             continue
-        if (
-            is_paging_loop(loop, scope)
-            or is_retry_attempt(node, loop, parents)
-            or runs_each_item(node, loop)
-            or iterates_chunks(loop, parents)
-        ):
-            continue
-        callee = ".".join(chain_names(node.func))
-        found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
+        subject = subject_of(effects, kind, concurrent)
+        found.append(finding(context.path, RULE, subject, node))
     return found
+
+
+def skipped_loop(call, loop, scope, context, verdicts):
+    if id(loop) not in verdicts:
+        verdicts[id(loop)] = is_paging_loop(loop, scope)
+    return (
+        verdicts[id(loop)]
+        or is_retry_attempt(call, loop, context.parents)
+        or bool(attempt_loops(loop, context.aliases))
+        or runs_each_item(call, loop)
+        or (
+            enclosing_loop(loop, context.parents) is None
+            and is_chunked(call, loop, loop_variables(loop), context)
+        )
+    )

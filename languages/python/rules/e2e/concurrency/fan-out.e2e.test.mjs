@@ -284,29 +284,34 @@ describe.skipIf(!enabled)('unbounded-fan-out worker pools and resolved limiters'
 });
 
 describe.skipIf(!enabled)('io-in-loop next to unbounded-fan-out', () => {
-  it('drops the loop finding only where the fan-out is reported', () => {
+  it('leaves a concurrent remote call to the fan-out rule and keeps one awaited at once', () => {
     const [actual, expected] = outcomes([
       [
         'a task awaited at once',
         fan('    for u in urls:\n        await asyncio.create_task(client.get(u, timeout=5))'),
-        ['io-in-loop:12 client.get()'],
+        ['io-in-loop:12 client.get()|remote'],
       ],
       [
         'tasks over fixed-size slices',
         fan(
           '    for i in range(0, len(urls), 10):\n        for u in urls[i : i + 10]:\n            asyncio.create_task(client.get(u, timeout=5))',
         ),
-        ['io-in-loop:13 client.get()'],
+        [],
       ],
       [
         'tasks over a literal list',
         fan('    for u in ["a", "b"]:\n        asyncio.create_task(client.get(u, timeout=5))'),
-        ['io-in-loop:12 client.get()'],
+        [],
       ],
       [
         'tasks that take a module semaphore',
         `${HEAD}LIMIT = asyncio.Semaphore(4)\n\n\nasync def one(client: httpx.AsyncClient, url):\n    async with LIMIT:\n        return await client.get(url, timeout=5)\n\n\nasync def run(client, urls):\n    async with asyncio.TaskGroup() as tg:\n        for u in urls:\n            tg.create_task(one(client, u))\n`,
-        ['io-in-loop:17 one()'],
+        [],
+      ],
+      [
+        'a database table read per key, gathered',
+        'import asyncio\n\nimport boto3\n\n\nasync def read_one(table, key):\n    return table.get_item(Key={"id": key})\n\n\nasync def read_all(keys):\n    table = boto3.client("dynamodb")\n    return await asyncio.gather(*(read_one(table, key) for key in keys))\n',
+        ['io-in-loop:12 read_one() > table.get_item()|database|concurrent'],
       ],
       [
         'an unbounded task per element',
@@ -320,5 +325,18 @@ describe.skipIf(!enabled)('io-in-loop next to unbounded-fan-out', () => {
       ],
     ]);
     expect(loopsAndFanOut(actual)).toEqual(expected);
+  });
+});
+
+describe.skipIf(!enabled)('unbounded-fan-out over a task group given a callable name', () => {
+  it('does not crash when the spawned work is an annotated name, not a call', () => {
+    const [actual, expected] = check([
+      [
+        'create_task of an annotated coroutine parameter',
+        'import asyncio\nfrom typing import Any, Coroutine\n\nimport anyio\n\n\nasync def gather(*coros: Coroutine[Any, Any, Any]) -> tuple[Any, ...]:\n    handles: list[Any] = []\n    async with anyio.create_task_group() as tg:\n        handles.extend(tg.create_task(coro) for coro in coros)\n    return tuple(handles)\n',
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
   });
 });

@@ -15,6 +15,25 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
   virtual-thread executor. Reactor: `flatMap(this::fetch, 8)` or `concatMap`, never
   `Flux.fromIterable(items).flatMap(this::fetch)` or `Mono.zip` over a list built per element.
+- Data access: never call a repository, JDBC connection, `EntityManager` or HTTP client once per loop item
+  (`ids.forEach(id -> repository.findById(id))`): fetch or write all items at once (`findAllById`, `saveAll`,
+  `where id in (...)`, one batched request), `pmd/IoCallInLoop`. Paging, polling and retry loops are fine.
+- Helpers count: a helper that reads or writes through a repository or client is a data access too, so
+  `ids.forEach(id -> loader.load(id))` is reported (`effects/IoCallInLoop`, with the path of calls), also when the helper
+  lives in another module of the build; give the helper the whole list. Writes flushed in steps
+  (`if (++n % 50 == 0) { em.flush(); em.clear(); }`) and a batch filled in the loop and queried when full are fine.
+- Accumulators: never rebuild a collection from itself on each step (`all = Stream.concat(all.stream(), ...).toList()`,
+  `byId = new HashMap<>(byId)` in a loop); collect once, or fill one mutable collection (`effects/AccumulatorCopyInLoop`).
+- Lazy relationships: read the relationship of each element of a query result only after the query fetched it
+  (`@EntityGraph`, `JOIN FETCH`, `@BatchSize`, or a projection), never `invoice.getCustomer().getName()` per invoice
+  of `findAll()` (`effects/LazyRelationInLoop`).
+- Remote calls: make an HTTP or RPC call before a `@Transactional` method or `TransactionTemplate` starts or after it
+  commits, and never while holding a lock (`synchronized`, `ReentrantLock`): copy what you need out of the lock first
+  (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
+- Retries: a call that retries (`@Retryable`, `RetryTemplate`, Failsafe, a retry loop) writes idempotently: a Stripe
+  idempotency key, an upsert, a message deduplication id, or retry only the read (`effects/RetryWithoutIdempotency`).
+- Database and broker: never write a row and publish a message in one method; write the message to an outbox table in
+  the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

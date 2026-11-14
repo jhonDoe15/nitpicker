@@ -175,7 +175,6 @@ describe('readKotlinSourceFindings', () => {
         'GenericTypeName',
         'HardcodedSecret',
         'HttpWithoutTimeout',
-        'IoCallInLoop',
         'JvmSyntheticOnHandWrittenCode',
         'LegacyCalendarApi',
         'LinearLookupInLoop',
