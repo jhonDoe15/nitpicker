@@ -110,13 +110,36 @@ Done:
 - `uncollected-tests`: rename the file to a name the collection patterns accept. Review.
 - mutmut `mutant-ignored`: remove the `# pragma: no mutate` comment and the words after it up to the next `#`. Review.
 
-Declined:
+- `forwarding-wrapper`: points every caller at the target and deletes the wrapper. Review, because
+  callers outside the project (other repositories, installed users of a public API) are not seen, so a
+  wrapper with callers only in the project is rewritten and a public one is deleted all the same. The recipe reads every Python file of the project,
+  and declines when a caller cannot be rewritten with certainty: no caller is visible, a caller
+  uses the wrapper as a value (callback, list, `partial`), a module re-exports it or imports it under
+  another name or without calling it, a module star-imports its module, a string in the project
+  names it (`__all__`, `getattr`, `mock.patch`, an entry point such as `"app.api:load"`), a
+  `.toml`, `.cfg`, `.ini`, `.yaml`, `.json`, `.pyi`, `.ipynb` or `.txt` file mentions the name, a caller rebinds the name or already binds the
+  target's name, or a caller sits in a file that `--fix` does not cover. A target in another module
+  is supported only when every caller is in the wrapper's module, because the recipe does not add
+  imports. Callers in files the recipe does not read are not seen. Comment lines directly above the wrapper are deleted with it.
+- `unused-option`: removes the parameter from the signature when it is positional-or-keyword with a
+  default, and replaces its reads in the body with the default when that is a literal. Review. The
+  recipe counts calls in test files as callers (the rule does not for a private project), so a
+  parameter that only tests pass stays. It declines when the default is not a literal and the body
+  reads it, when the body rebinds the name, reads it in an f-string or reads locals by string, when a
+  string in the project names the function, or when a comment sits on the parameter's lines or the line before. The recipe forces `published` on so that test callers count, but callers outside the project are not seen: it also removes a parameter of a public function. Several unused parameters of one function go over several passes. Default alignment includes positional-only parameters, a lambda default is declined, and a negative default is parenthesised in larger expressions. The
+  docstring entry for the parameter is left as it is. Keyword-only and positional-only parameters,
+  methods and decorated functions are declined, as the rule does not report methods.
+- mypy `unused-ignore`: drops the `# type: ignore` comment, or only the codes mypy calls unused from
+  its bracket list, and keeps other comments on the line. Review, because mypy reports an ignore as
+  unused only for the current interpreter, platform and installed packages (an `import-not-found`
+  ignore is unused where the package is installed). The recipe has no findings to
+  read, so with `--fix --rule mypy/unused-ignore` it runs mypy the way the gate does and reads
+  the `unused-ignore` errors; without that rule it does not run mypy. It applies a fix only while
+  the file is as mypy saw it. It declines a comment that sits on a line of its own, one with words
+  after the ignore, and a message that is not a plain unused ignore.
 
-- `forwarding-wrapper` and `unused-option`: the rewrite needs every caller in the project, and a
-  fix sees only the changed files. Retargeting callers also needs import rewrites and a proof that
-  nothing patches or re-exports the wrapper.
-- mypy `unused-ignore`: only mypy knows which ignores are unused, and a recipe has no findings to
-  read. The recipe can be added once findings reach the fixer.
+Declined: nothing in the recipes of issue 788 is declined without a precise reason above. Pyright's
+`# pyright: ignore` comments are not rewritten.
 
 ## Near-duplicate extraction
 
