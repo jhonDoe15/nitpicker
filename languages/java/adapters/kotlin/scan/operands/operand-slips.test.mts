@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { mainOperandSlips, testOperandSlips } from './operand-slips.mjs';
+import {
+  type Check,
+  type Messaged,
+  type Subjected,
+  lineOf,
+  scanKotlinSource,
+} from '../typed/typed-scan.mts';
+import {
+  mainOperandSlips as untypedMainOperandSlips,
+  testOperandSlips as untypedTestOperandSlips,
+} from './operand-slips.mjs';
+
+const mainOperandSlips: Check<Subjected & Messaged> = untypedMainOperandSlips;
+const testOperandSlips: Check<Subjected & Messaged> = untypedTestOperandSlips;
 
 const COPY = 'One side was probably copied: fix the operand that was meant to differ.';
 const IMPOSSIBLE =
@@ -8,38 +20,38 @@ const IMPOSSIBLE =
 const ALWAYS =
   'Together these comparisons of one value always hold, so this `||` is always true. Fix the constant or operator that was copied.';
 
-function inFunction(body) {
+function inFunction(body: string) {
   return `fun check(a: Int, b: Int, x: Double, s: String, t: Int): Any {\n    ${body}\n}\n`;
 }
 
-function found(source, rule = mainOperandSlips) {
+function found(source: string, rule = mainOperandSlips) {
   const scanned = scanKotlinSource(source);
   return rule(scanned)
     .toSorted((left, right) => left.offset - right.offset)
     .map((reported) => [lineOf(scanned, reported.offset), reported.message]);
 }
 
-function both(operand, operator) {
+function both(operand: string, operator: string) {
   return `\`${operand}\` is on both sides of \`${operator}\`. ${COPY}`;
 }
 
-function twice(operand, operator) {
+function twice(operand: string, operator: string) {
   return `\`${operand}\` appears twice in this \`${operator}\` chain. ${COPY}`;
 }
 
-function implied(redundant, deciding) {
+function implied(redundant: string, deciding: string) {
   return `\`${redundant}\` already follows from \`${deciding}\`, so it checks nothing. Remove it, or fix its constant or operator.`;
 }
 
-function covered(redundant, deciding) {
+function covered(redundant: string, deciding: string) {
   return `\`${redundant}\` adds nothing: \`${deciding}\` holds whenever it does. Remove it, or fix its constant or operator.`;
 }
 
-function erases(operator, operand) {
+function erases(operator: string, operand: string) {
   return `\`${operator} 0\` erases \`${operand}\`: a number times 0 is 0 whatever it holds (or -0.0 or NaN for a \`Double\`). Write the value meant, or fix the operand.`;
 }
 
-function reapplied(target, operator) {
+function reapplied(target: string, operator: string) {
   return `\`${target} ${operator}=\` already applies \`${target}\`, and the right side uses it again. Drop \`${target}\` from the right side, or write \`${target} = ...\` with the whole expression.`;
 }
 

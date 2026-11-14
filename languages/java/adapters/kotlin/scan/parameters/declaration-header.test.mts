@@ -2,11 +2,18 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { withFrameworkAllowances } from '../framework-allowances.mjs';
-import { scanKotlinSource } from '../kotlin-source.mjs';
-import { hasCallbackAnnotation } from './declaration-header.mjs';
+import { scanKotlinSource, type Scanned } from '../typed/typed-scan.mts';
+import { withFrameworkAllowances } from '../typed/typed-allowances.mts';
+import {
+  hasCallbackAnnotation as untypedHasCallbackAnnotation,
+  UNUSED_PARAMETER_RULE as UNTYPED_UNUSED_PARAMETER_RULE,
+} from './declaration-header.mjs';
 
-function skipped(source, line) {
+const UNUSED_PARAMETER_RULE: string = UNTYPED_UNUSED_PARAMETER_RULE;
+const hasCallbackAnnotation: (scanned: Scanned, line: number) => boolean =
+  untypedHasCallbackAnnotation;
+
+function skipped(source: string, line: number) {
   return hasCallbackAnnotation(scanKotlinSource(source), line);
 }
 
@@ -62,7 +69,7 @@ describe('hasCallbackAnnotation', () => {
 });
 
 describe('the unused-parameter finding in the framework allowances', () => {
-  const finding = (file, line, rule = 'detekt.style.UnusedParameter') => ({
+  const finding = (file: string, line: number, rule = UNUSED_PARAMETER_RULE) => ({
     tool: 'detekt',
     rule,
     path: file,
