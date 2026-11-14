@@ -1,10 +1,12 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { availableParallelism, tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { createWeightedSemaphore } from '../../../diff/execution/capacity.mts';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf } from '../../report/outcome.mjs';
-import { type Finished, launchProject } from './launch.mts';
+import { type Finished, type Launch, launchProject, type ProjectJob } from './launch.mts';
 import {
   clearReports,
   failedOutcome,
@@ -13,11 +15,13 @@ import {
   type SelectedRun,
   selectedRunOf,
 } from './project-rows.mts';
-import type { ProjectJob } from './project-job.mts';
 import type { MonorepoCli, ProjectOutcome, ProjectRow } from '../../project-types.mts';
 
 const CPUS_PER_PROJECT = 4;
-const WORKER_SCRIPT = path.join(import.meta.dirname, 'project-worker.mts');
+const workerUrl: (url: URL) => URL = checkoutModuleUrl;
+const WORKER_SCRIPT = fileURLToPath(
+  workerUrl(new URL('../../../project-worker.mjs', import.meta.url)),
+);
 
 type InOrder = (index: number, write: () => void) => void;
 
@@ -31,20 +35,33 @@ function parallelJobs(rows: readonly ProjectRow[], cli: MonorepoCli): number {
 function inOrder(): InOrder {
   const waiting = new Map<number, () => void>();
   let next = 0;
+  function flush(): void {
+    const ready = [...waiting.keys()].toSorted((left, right) => left - right);
+    for (const index of ready) {
+      const write = waiting.get(index);
+      if (index !== next || write === undefined) {
+        return;
+      }
+      waiting.delete(index);
+      next += 1;
+      write();
+    }
+  }
   return (index, write) => {
     waiting.set(index, write);
-    for (let ready = waiting.get(next); ready !== undefined; ready = waiting.get(next)) {
-      waiting.delete(next);
-      next += 1;
-      ready();
-    }
+    flush();
   };
 }
 
+function isSet(value: string | undefined): boolean {
+  return (value ?? '') !== '';
+}
+
 function colorEnvironment(cli: MonorepoCli): NodeJS.ProcessEnv {
+  const { environment } = cli;
   const terminal = 'isTTY' in cli.stdout && cli.stdout.isTTY === true;
-  const decided = process.env['NO_COLOR'] !== undefined || process.env['FORCE_COLOR'] !== undefined;
-  return terminal && !decided ? { ...process.env, FORCE_COLOR: '1' } : process.env;
+  const decided = isSet(environment['NO_COLOR']) || isSet(environment['FORCE_COLOR']);
+  return terminal && !decided ? { ...environment, FORCE_COLOR: '1' } : environment;
 }
 
 function jobOf(context: RunContext, run: SelectedRun, resultFile: string): ProjectJob {
@@ -86,6 +103,20 @@ type Pool = {
   readonly resultsRoot: string;
 };
 
+async function launchPooled(pool: Pool, launch: Launch): Promise<Finished> {
+  const release = await pool.acquire();
+  try {
+    launch.progress.write(`nitpicker: [${launch.label}] started\n`);
+    return await launchProject(launch);
+  } finally {
+    release();
+  }
+}
+
+function rejection(reason: unknown): Error {
+  return reason instanceof Error ? reason : new Error(String(reason));
+}
+
 async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<ProjectRow> {
   const { context, ordered } = pool;
   const run = selectedRunOf(row, context);
@@ -94,16 +125,13 @@ async function runInPool(row: ProjectRow, index: number, pool: Pool): Promise<Pr
     ordered(index, () => undefined);
     return row;
   }
-  const release = await pool.acquire();
-  const label = row.project.path;
-  context.cli.progress.write(`nitpicker: [${label}] started\n`);
-  const finished = await launchProject({
-    label,
+  const finished = await launchPooled(pool, {
+    label: row.project.path,
     job: jobOf(context, run, path.join(pool.resultsRoot, `${String(index)}.json`)),
     workerScript: context.cli.projectWorker ?? WORKER_SCRIPT,
     environment: colorEnvironment(context.cli),
     progress: context.cli.progress,
-  }).finally(release);
+  });
   const outcome = outcomeOfFinished(row, run, finished);
   ordered(index, () => {
     writeFinished(row, context, finished);
@@ -117,7 +145,7 @@ async function runRowsInParallel(
   jobs: number,
 ): Promise<readonly ProjectRow[]> {
   const semaphore = createWeightedSemaphore(jobs);
-  const resultsRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-projects-'));
+  const resultsRoot = await mkdtemp(path.join(tmpdir(), 'nitpicker-projects-'));
   const pool: Pool = {
     context,
     acquire: () => semaphore.acquire(1),
@@ -125,9 +153,14 @@ async function runRowsInParallel(
     resultsRoot,
   };
   try {
-    return await Promise.all(rows.map((row, index) => runInPool(row, index, pool)));
+    const settled = await Promise.allSettled(rows.map((row, index) => runInPool(row, index, pool)));
+    const failed = settled.find((result) => result.status === 'rejected');
+    if (failed !== undefined) {
+      throw rejection(failed.reason);
+    }
+    return settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
   } finally {
-    rmSync(resultsRoot, { recursive: true, force: true });
+    await rm(resultsRoot, { recursive: true, force: true });
   }
 }
 

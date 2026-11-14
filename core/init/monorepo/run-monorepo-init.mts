@@ -41,7 +41,7 @@ export function runMonorepoInit(layout: MonorepoLayout, request: Request): Monor
     ci: {
       approval: ci ? placeApprovalWorkflow(repository) : undefined,
       workflowFile,
-      offered: !ci && !hasProjectFile(repository, workflowFile),
+      offered: !(ci || hasProjectFile(repository, workflowFile)),
     },
     offers: { agents: !(options.agentsMd || hasSnippet(root)) },
     skillSource: skillSource(root, { repository, version }),

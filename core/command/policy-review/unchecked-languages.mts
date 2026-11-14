@@ -1,39 +1,23 @@
 import { existsSync } from 'node:fs';
-import path from 'node:path';
-import { JVM_MARKERS } from '../../projects/discovery/jvm-builds.mjs';
-import { PYTHON_PROJECT_MARKERS } from '../../projects/discovery/python-projects.mjs';
+import {
+  checkedLanguages,
+  DEFAULT_PRESET,
+  LANGUAGES,
+  type Language,
+} from '../../projects/plan/preset-languages.mts';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
+import { containedPath } from '../../../shared/paths/contained-path.mjs';
 
-type Language = {
-  readonly name: string;
-  readonly file: RegExp;
-  readonly markers: readonly string[];
-};
 type Request = {
   readonly preset: string | undefined;
   readonly projectRoot: string;
   readonly exclude: readonly string[];
 };
 
+type Matcher = { readonly test: (file: string) => boolean };
+
+const matcherOf: (glob: string) => Matcher = globMatcher;
 const LISTED_FILES = 3;
-const SCRIPT_MARKERS = ['package.json'];
-const LANGUAGES: readonly Language[] = [
-  { name: 'TypeScript', file: /\.(?:ts|tsx|mts|cts)$/u, markers: SCRIPT_MARKERS },
-  { name: 'JavaScript', file: /\.(?:js|jsx|mjs|cjs)$/u, markers: SCRIPT_MARKERS },
-  { name: 'Python', file: /\.py$/u, markers: PYTHON_PROJECT_MARKERS },
-  { name: 'Java', file: /\.java$/u, markers: JVM_MARKERS },
-  { name: 'Kotlin', file: /\.kts?$/u, markers: JVM_MARKERS },
-  { name: 'Go', file: /\.go$/u, markers: ['go.mod'] },
-];
-const SCRIPT_LANGUAGES = ['TypeScript', 'JavaScript'];
-const CHECKED: Readonly<Record<string, readonly string[]>> = {
-  typescript: SCRIPT_LANGUAGES,
-  javascript: SCRIPT_LANGUAGES,
-  python: ['Python'],
-  java: ['Java'],
-  kotlin: ['Java', 'Kotlin'],
-  go: ['Go'],
-};
 const QUIET_FOLDERS = new Set([
   'node_modules',
   'vendor',
@@ -54,11 +38,6 @@ const QUIET_NAME =
   /(?:\.d\.[cm]?ts|\.config\.[cm]?[jt]sx?|\.gradle\.kts|\.(?:generated|gen|pb)\.[^.]+|_pb2?\.py)$/u;
 const TOOL_SCRIPTS = new Set(['setup.py', 'noxfile.py', 'conf.py']);
 
-export function presetChecksFile(preset: string | undefined, file: string): boolean {
-  const checked = CHECKED[preset ?? 'typescript'] ?? [];
-  return LANGUAGES.some(({ name, file: pattern }) => checked.includes(name) && pattern.test(file));
-}
-
 function isQuiet(file: string): boolean {
   const parts = file.split('/');
   const name = parts.at(-1) ?? '';
@@ -71,13 +50,17 @@ function isQuiet(file: string): boolean {
 
 function ownFolder(projectRoot: string, file: string, markers: readonly string[]): string {
   const folders = file.split('/').slice(0, -1);
-  for (let depth = 1; depth <= folders.length; depth += 1) {
-    const folder = folders.slice(0, depth).join('/');
-    if (markers.some((marker) => existsSync(path.join(projectRoot, folder, marker)))) {
-      return folder;
-    }
+  function outside(relative: string): string {
+    return `${relative} leaves ${projectRoot}`;
   }
-  return '.';
+  const owning = folders
+    .map((_, index) => folders.slice(0, index + 1).join('/'))
+    .find((folder) =>
+      markers.some((marker) =>
+        existsSync(containedPath(projectRoot, `${folder}/${marker}`, { outside })),
+      ),
+    );
+  return owning ?? '.';
 }
 
 function projectAdvice(folders: readonly string[], words: { readonly them: string }): string {
@@ -104,7 +87,7 @@ function languageNotice(request: Request, language: Language, files: readonly st
   const leave = `${advice === '' ? 'T' : 't'}o leave ${words.them} unchecked`;
   return (
     `${String(files.length)} changed ${language.name} ${words.files} in a language the ` +
-    `${request.preset ?? 'typescript'} preset does not check, so nothing checks ${words.them}: ` +
+    `${request.preset ?? DEFAULT_PRESET} preset does not check, so nothing checks ${words.them}: ` +
     `${listed}${more}. ${advice}${leave}, list ${words.them} in "exclude" in nitpicker.config.json.`
   );
 }
@@ -113,11 +96,11 @@ export function uncheckedLanguageNotices(
   changedFiles: readonly string[],
   request: Request,
 ): readonly string[] {
-  const checked = CHECKED[request.preset ?? 'typescript'] ?? [];
-  const excluded = request.exclude.map((glob) => globMatcher(glob));
+  const checked = checkedLanguages(request.preset);
+  const excluded = request.exclude.map(matcherOf);
   const candidates = changedFiles
     .map((file) => file.replaceAll('\\', '/'))
-    .filter((file) => !isQuiet(file) && !excluded.some((matcher) => matcher.test(file)))
+    .filter((file) => !(isQuiet(file) || excluded.some((matcher) => matcher.test(file))))
     .sort();
   return LANGUAGES.filter(({ name }) => !checked.includes(name)).flatMap((language) => {
     const files = candidates.filter((file) => language.file.test(file));

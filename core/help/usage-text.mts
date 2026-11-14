@@ -1,5 +1,4 @@
 import { textOf } from '../../shared/values/readers.mts';
-import { PROJECTS_USAGE } from '../projects/command/projects-arguments.mts';
 
 type Row = readonly [name: string, text: string];
 
@@ -87,6 +86,8 @@ export const CACHE_PUBLISH_FLAGS: readonly Row[] = [
 ];
 
 const INIT_USAGE = 'nitpicker init [--agents-md] [--ci github] [--help]';
+export const PROJECTS_USAGE =
+  'nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]';
 const AGGREGATE_USAGE =
   'nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]' +
   ' [--details]';

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { policyAcceptance } from '../../command/policy-review/policy-acceptance.mts';
+import { policyAcceptance } from '../policy/policy-acceptance.mts';
 import { outputRootFor } from '../../diff/reporting/reporters.mts';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
@@ -148,17 +148,25 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   const finish = finisher(planned, prepared, { cli, notices, repository, startedAt });
   const context = { cli, runProject, outputRoot, comparison, analyzers };
   const results = runRowsWithSharedBase(rows, context, plan.repositoryRoot);
-  if (Array.isArray(results)) {
-    return finish(results);
+  if (results instanceof Promise) {
+    return finishedLater(results, finish, cli);
   }
-  return Promise.resolve(results)
-    .then(finish)
-    .catch((error: unknown) => {
-      cli.stderr.write(
-        `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-      return 2;
-    });
+  return finish(results);
+}
+
+async function finishedLater(
+  results: Promise<readonly ProjectRow[]>,
+  finish: Finish,
+  cli: MonorepoCli,
+): Promise<number> {
+  try {
+    return finish(await results);
+  } catch (error) {
+    cli.stderr.write(
+      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+    return 2;
+  }
 }
 
 function runMember(
@@ -205,7 +213,7 @@ export function runMonorepo({
   currentProjectRoot,
   runProject,
 }: Entry & { readonly runProject: RunProject }): MonorepoResult {
-  if (cli.singleProject === true || isGitWorkTree(currentProjectRoot) !== true) {
+  if (cli.singleProject === true || !isGitWorkTree(currentProjectRoot)) {
     return {};
   }
   const inspection = inspect({ root: currentProjectRoot, repositoryRoot: undefined });

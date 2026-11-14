@@ -17,10 +17,8 @@ import {
 } from './eslint/policy.mts';
 import type { LinkedPolicyFile } from './typed/tooling.mts';
 import { validatedContainedFile } from './eslint/paths.mts';
-import {
-  detectPackageManager,
-  installedDependencies,
-} from './dependency-graph/package-managers/detect.mjs';
+import { detectPackageManager } from './dependency-graph/package-managers/detect.mjs';
+import { installedDependencies } from './dependency-graph/installed-dependencies.mjs';
 import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mjs';
 import { runLintEngine } from './lint-engine/lint-engine.mts';
 import { normalizeEslintResults } from './eslint/normalize.mts';
@@ -77,13 +75,16 @@ export async function runEslint(options: EslintOptions): Promise<EslintFinding[]
   }
 }
 
+const missingMessage: (
+  packageManager: { readonly root: string },
+  dependencyPath: string,
+) => string = missingDependenciesMessage;
+
 function prepareEslint(options: EslintOptions, state: EslintState): LinkedPolicyFile[] {
   const installed: unknown = installedDependencies(options.liveProjectRoot);
   if (typeof installed !== 'string') {
     const packageManager: { readonly root: string } = detectPackageManager(options.liveProjectRoot);
-    throw new Error(
-      missingDependenciesMessage(packageManager, path.join(packageManager.root, 'node_modules')),
-    );
+    throw new Error(missingMessage(packageManager, path.join(packageManager.root, 'node_modules')));
   }
   const dependencyRoot = realpathSync(installed);
   if (!statSync(dependencyRoot).isDirectory()) {

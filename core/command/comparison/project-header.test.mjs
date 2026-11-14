@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mts';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
+import {
+  finding,
+  findingLine,
+  policy,
+} from '../../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -51,7 +55,7 @@ describe('the project a run checked', () => {
 
     expect(result.firstLine).toBe('Project: ..');
     expect(result.projectPath).toBe('.');
-    expect(result.reportHead[1]).toMatch(/^Base ref: /u);
+    expect(result.reportHead[1]).toBe('Base ref: comparison-base');
   });
 
   it('is named on the console and in the reports when a nested package becomes the project', () => {
@@ -73,7 +77,7 @@ describe('the project a run checked', () => {
   it('adds no line when the run starts in the project folder', () => {
     const result = runFrom(repositoryWithNestedPackage(), 'e2e');
 
-    expect(result.firstLine).toMatch(/^Base: /u);
+    expect(result.firstLine).toBe('Base: comparison-base (argument)');
     expect(result.projectPath).toBe('e2e');
   });
 });

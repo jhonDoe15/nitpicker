@@ -39,8 +39,9 @@ function globMatches(value: string, named: readonly Named[]): string[] {
 function pathMatch(value: string, request: Request, named: readonly Named[]): string | undefined {
   const fromTop = normalized(value);
   const fromCurrent = relativeToCurrent(value, request);
-  return [fromTop, fromCurrent].find((candidate) =>
-    named.some((entry) => entry.path === candidate),
+  const paths = new Set(named.map((entry) => entry.path));
+  return [fromTop, fromCurrent].find(
+    (candidate) => candidate !== undefined && paths.has(candidate),
   );
 }
 

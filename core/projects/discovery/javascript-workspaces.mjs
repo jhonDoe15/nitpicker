@@ -87,11 +87,19 @@ export function nxWorkspace(root, projectDirectories) {
   };
 }
 
+function existsInside(root, folder) {
+  const full = path.resolve(root, folder);
+  if (!full.startsWith(`${path.resolve(root)}${path.sep}`)) {
+    return false;
+  }
+  return existsSync(full);
+}
+
 export function angularWorkspace(root) {
   const projects = readText(path.join(root, 'angular.json'), JSON.parse).value?.projects;
   const folders = Object.values(projects ?? {})
     .map((project) => workspaceFolder(project?.root))
-    .filter((folder) => folder !== '' && existsSync(path.join(root, folder)));
+    .filter((folder) => folder !== '' && existsInside(root, folder));
   return {
     declared: folders.length > 0,
     members: [...new Set(folders)].map((folder) => ({ path: folder, origin: ANGULAR_ORIGIN })),

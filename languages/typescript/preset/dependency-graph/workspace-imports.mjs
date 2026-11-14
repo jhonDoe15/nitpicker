@@ -1,12 +1,9 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
-import { depthFirst } from '../../../../shared/traversal.mjs';
+import { specifiersOf, stringLeaves } from '../modules/production-imports.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
 import { projectImports, projectSources } from './cruise.mjs';
 
-const requireModule = createRequire(import.meta.url);
 const ENTRY_FIELDS = ['source', 'types', 'typings', 'module', 'main'];
 const OUTPUT_FOLDER = /^(?:dist|build|lib|out)\/(?:(?:esm|cjs|es|types)\/)?/u;
 const SOURCE_EXTENSIONS = new Map([
@@ -20,29 +17,10 @@ const SOURCE_EXTENSIONS = new Map([
 ]);
 const DECLARATION = /\.d\.[cm]?ts$/u;
 
-function specifiersOf(file) {
-  if (!existsSync(file)) {
-    return [];
-  }
-  return requireModule(selectTypeScriptApi().file)
-    .preProcessFile(readFileSync(file, 'utf8'), true, true)
-    .importedFiles.map(({ fileName }) => fileName);
-}
-
-function childValues(node) {
-  return node !== null && typeof node === 'object' ? Object.values(node) : [];
-}
-
-function stringLeaves(value) {
-  return [...depthFirst(value, childValues)].filter((node) => typeof node === 'string');
-}
-
 function ancestors(file) {
-  const folders = [];
-  for (let folder = path.posix.dirname(file); folder !== '.'; folder = path.posix.dirname(folder)) {
-    folders.push(folder);
-  }
-  return [...folders, '.'];
+  const parts = path.posix.dirname(file).split('/');
+  const folders = parts.map((_, index) => parts.slice(0, parts.length - index).join('/'));
+  return [...folders.filter((folder) => folder !== '.'), '.'];
 }
 
 function workspacePackages(projectRoot, sources) {
@@ -119,9 +97,11 @@ function workspaceTarget(entry, subpath, isSource) {
   return { package: entry.folder };
 }
 
-export function workspaceImports(projectRoot, sources) {
+function workspaceImports(projectRoot, sources) {
   const sourceSet = new Set(sources);
-  const isSource = (file) => sourceSet.has(file);
+  function isSource(file) {
+    return sourceSet.has(file);
+  }
   const packages = workspacePackages(projectRoot, sources);
   if (packages.size === 0) {
     return [];

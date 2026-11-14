@@ -3,7 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
-import { detectPackageManager, installedDependencies, managerRoot } from './detect.mjs';
+import { installedDependencies } from '../installed-dependencies.mjs';
+import { detectPackageManager, managerRoot } from './detect.mjs';
 import { missingDependenciesMessage } from './install.mjs';
 
 const { temporaryRoot } = useGitFixtures();

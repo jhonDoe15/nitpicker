@@ -2,6 +2,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { reportFolder } from '../plan/project-entry.mjs';
 
+const TOOL_ERROR = 'tool-error';
+const SKIPPED = 'skipped';
+
 const REPORT_FILE = 'report.txt';
 export const SUMMARY_FILE = 'summary.json';
 
@@ -17,9 +20,7 @@ export function exitCodeOf(summary, { deferExit = false } = {}) {
   const { projects, repositoryPolicy } = summary;
   const incomplete = repositoryIncomplete(repositoryPolicy);
   if (deferExit) {
-    return incomplete || projects.some(({ overallStatus }) => overallStatus === 'tool-error')
-      ? 2
-      : 0;
+    return incomplete || projects.some(({ overallStatus }) => overallStatus === TOOL_ERROR) ? 2 : 0;
   }
   if (repositoryFailed(repositoryPolicy) || projects.some(({ status }) => status === 'failed')) {
     return 1;
@@ -33,7 +34,7 @@ function countOf(results, status) {
 
 function ranFields(outcome, folder) {
   return {
-    overallStatus: outcome.complete ? 'completed' : 'tool-error',
+    overallStatus: outcome.complete ? 'completed' : TOOL_ERROR,
     exitCode: outcome.exitCode,
     newEnforceableFindings: outcome.newEnforceableFindings,
     toolErrors: outcome.toolErrors,
@@ -47,7 +48,7 @@ function entryOf(result) {
   return {
     path: project.path,
     preset: project.preset,
-    status: outcome === undefined ? 'skipped' : outcome.status,
+    status: outcome === undefined ? SKIPPED : outcome.status,
     reason: selection.reason,
     ...(outcome === undefined ? {} : ranFields(outcome, reportFolder(project.path))),
     ...(outcome?.policyDigest === undefined ? {} : { policyDigest: outcome.policyDigest }),
@@ -65,7 +66,7 @@ function repositoryFields(repository) {
 
 export function combinedSummary({ plan, results, outside, notices, repository, elapsedMs }) {
   const projects = results.map(entryOf);
-  const incomplete = projects.filter(({ overallStatus }) => overallStatus === 'tool-error');
+  const incomplete = projects.filter(({ overallStatus }) => overallStatus === TOOL_ERROR);
   const ownFindings = projects.reduce(
     (total, { newEnforceableFindings = 0 }) => total + newEnforceableFindings,
     0,
@@ -73,16 +74,16 @@ export function combinedSummary({ plan, results, outside, notices, repository, e
   return {
     source: plan.source,
     overallStatus:
-      incomplete.length > 0 || repositoryIncomplete(repository) ? 'tool-error' : 'completed',
+      incomplete.length > 0 || repositoryIncomplete(repository) ? TOOL_ERROR : 'completed',
     newEnforceableFindings: ownFindings + (repository?.findings.length ?? 0),
     counts: {
       projects: projects.length,
-      run: projects.length - countOf(projects, 'skipped'),
+      run: projects.length - countOf(projects, SKIPPED),
       passed: countOf(projects, 'passed'),
       failed: countOf(projects, 'failed'),
       errored: countOf(projects, 'error'),
       incomplete: incomplete.length,
-      skipped: countOf(projects, 'skipped'),
+      skipped: countOf(projects, SKIPPED),
     },
     projects,
     ...repositoryFields(repository),

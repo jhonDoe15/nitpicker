@@ -7,13 +7,16 @@ const NPM_LOCKFILES = new Set(['package-lock.json', 'npm-shrinkwrap.json']);
 const DEPENDENCY_FIELDS = ['dependencies', 'optionalDependencies', 'peerDependencies'];
 const YARN_HEADER = /^"?([^\s"].*?)"?:\s*$/u;
 const YARN_VERSION = /^ {2}version:? "?([^"\s]+)"?\s*$/u;
-const YARN_DEPENDENCY = /^ {4}"?(@?[^\s"@:]+(?:\/[^\s"@:]+)?)"?:?\s/u;
+const YARN_DEPENDENCY = /^ {4}"?(@?[^\s"@:/]+(?:\/[^\s"@:/]+)?)"?:?\s/u;
+const PNPM_V5_KEY = /^\/((?:@[^/]+\/)?[^/@]+)\/([^/]+)$/u;
+const PYTHON_NAME_SEPARATORS = /[-_.]+/gu;
+const UV_DEPENDENCY_TABLES = ['optional-dependencies', 'dev-dependencies'];
 
 function emptyLock() {
   return { versions: new Map(), edges: new Map() };
 }
 
-function add(lock, name, version, needs = []) {
+function add(lock, { name, version, needs = [] }) {
   lock.versions.set(name, new Set([...(lock.versions.get(name) ?? []), String(version)]));
   lock.edges.set(name, new Set([...(lock.edges.get(name) ?? []), ...needs]));
 }
@@ -33,13 +36,21 @@ function npmLock(text) {
   for (const [key, entry] of Object.entries(packages)) {
     const at = key.lastIndexOf('node_modules/');
     if (at !== -1 && entry?.version !== undefined) {
-      add(lock, key.slice(at + 'node_modules/'.length), entry.version, dependencyNames(entry));
+      add(lock, {
+        name: key.slice(at + 'node_modules/'.length),
+        version: entry.version,
+        needs: dependencyNames(entry),
+      });
     }
   }
   return lock;
 }
 
 function pnpmName(key) {
+  const older = PNPM_V5_KEY.exec(key);
+  if (older !== null) {
+    return { name: older[1], version: older[2] };
+  }
   const plain = key.replace(/^\//u, '').replace(/\(.*$/u, '');
   const at = plain.indexOf('@', 1);
   return at === -1
@@ -49,14 +60,13 @@ function pnpmName(key) {
 
 function pnpmLock(text) {
   const document = parseYaml(text);
-  if (!isPlainObject(document?.packages) && !isPlainObject(document?.importers)) {
+  if (!(isPlainObject(document?.packages) || isPlainObject(document?.importers))) {
     return undefined;
   }
   const lock = emptyLock();
-  const entries = { ...(document.packages ?? {}), ...(document.snapshots ?? {}) };
+  const entries = { ...document.packages, ...document.snapshots };
   for (const [key, entry] of Object.entries(entries)) {
-    const { name, version } = pnpmName(key);
-    add(lock, name, version, dependencyNames(entry));
+    add(lock, { ...pnpmName(key), needs: dependencyNames(entry) });
   }
   return lock;
 }
@@ -67,28 +77,50 @@ function yarnDescriptorName(descriptor) {
   return at === -1 ? plain : plain.slice(0, at);
 }
 
+function yarnHeader(line) {
+  if (line.startsWith(' ') || line.startsWith('#') || line.startsWith('__metadata')) {
+    return undefined;
+  }
+  return YARN_HEADER.exec(line)?.[1];
+}
+
+function readYarnLine(lock, current, line) {
+  const header = yarnHeader(line);
+  if (header !== undefined) {
+    return { names: header.split(/,\s*/u).map(yarnDescriptorName), version: '' };
+  }
+  if (current === undefined) {
+    return undefined;
+  }
+  const version = YARN_VERSION.exec(line)?.[1];
+  const need = YARN_DEPENDENCY.exec(line)?.[1];
+  const entry = version === undefined ? current : { ...current, version };
+  for (const name of entry.names) {
+    add(lock, { name, version: entry.version, needs: need === undefined ? [] : [need] });
+  }
+  return entry;
+}
+
 function yarnLock(text) {
   const lock = emptyLock();
   let current;
   for (const line of text.split('\n')) {
-    const header =
-      line.startsWith(' ') || line.startsWith('#') ? undefined : YARN_HEADER.exec(line);
-    if (header !== undefined && header !== null && !line.startsWith('__metadata')) {
-      current = { names: header[1].split(/,\s*/u).map(yarnDescriptorName), version: '', needs: [] };
-      continue;
-    }
-    const version = YARN_VERSION.exec(line)?.[1];
-    if (current !== undefined && version !== undefined) {
-      current.version = version;
-      current.names.forEach((name) => add(lock, name, version, []));
-      continue;
-    }
-    const need = YARN_DEPENDENCY.exec(line)?.[1];
-    if (current !== undefined && need !== undefined) {
-      current.names.forEach((name) => add(lock, name, current.version, [need]));
-    }
+    current = readYarnLine(lock, current, line);
   }
   return lock;
+}
+
+export function pythonPackageName(name) {
+  return String(name).toLowerCase().replaceAll(PYTHON_NAME_SEPARATORS, '-');
+}
+
+function uvNeeds(entry) {
+  const groups = UV_DEPENDENCY_TABLES.flatMap((table) =>
+    isPlainObject(entry[table]) ? Object.values(entry[table]) : [],
+  );
+  return [entry.dependencies, ...groups]
+    .flatMap((listed) => (Array.isArray(listed) ? listed : []))
+    .map(({ name }) => pythonPackageName(name));
 }
 
 function uvLock(text) {
@@ -98,10 +130,11 @@ function uvLock(text) {
   }
   const lock = emptyLock();
   for (const entry of packages) {
-    const needs = (Array.isArray(entry.dependencies) ? entry.dependencies : []).map(
-      ({ name }) => name,
-    );
-    add(lock, entry.name, entry.version ?? '', needs);
+    add(lock, {
+      name: pythonPackageName(entry.name),
+      version: entry.version ?? '',
+      needs: uvNeeds(entry),
+    });
   }
   return lock;
 }
@@ -127,12 +160,19 @@ export function parseLockfile(file, text) {
   }
 }
 
+function versionsText(lock, name) {
+  return [...(lock.versions.get(name) ?? [])]
+    .filter(Boolean)
+    .toSorted((left, right) => left.localeCompare(right))
+    .join(', ');
+}
+
 export function changedPackages(base, head) {
   const names = new Set([...base.versions.keys(), ...head.versions.keys()]);
   const changed = new Map();
   for (const name of names) {
-    const before = [...(base.versions.get(name) ?? [])].filter(Boolean).toSorted().join(', ');
-    const after = [...(head.versions.get(name) ?? [])].filter(Boolean).toSorted().join(', ');
+    const before = versionsText(base, name);
+    const after = versionsText(head, name);
     if (before !== after) {
       changed.set(name, `${name} ${before || 'none'} -> ${after || 'none'}`);
     }

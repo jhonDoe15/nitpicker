@@ -8,6 +8,7 @@ import {
 
 const { repository, run } = useMonorepoFixtures();
 const BASE = ['--base', 'comparison-base'];
+const WORKSPACE_PROJECT = { preset: 'typescript', origin: 'package.json workspaces' };
 
 function monorepo() {
   return repository({
@@ -27,17 +28,17 @@ function monorepo() {
   });
 }
 
-function listed(root, extra = []) {
-  const result = run(root, [], { command: ['projects', ...BASE, ...extra] });
+async function listed(root, extra = []) {
+  const result = await run(root, [], { command: ['projects', ...BASE, ...extra] });
   return { ...result, listing: extra.includes('--json') ? JSON.parse(result.out) : undefined };
 }
 
 describe('nitpicker projects', () => {
-  it('lists every project and the ones the change selects, with the reasons', () => {
+  it('lists every project and the ones the change selects, with the reasons', async () => {
     const root = monorepo();
     writeFiles(root, { 'packages/ui/src/a.ts': 'export const a = 2;\n' });
 
-    const result = listed(root);
+    const result = await listed(root);
 
     expect(result.exitCode).toBe(0);
     expect(result.out).toBe(
@@ -48,12 +49,12 @@ describe('nitpicker projects', () => {
     );
   });
 
-  it('prints a job matrix and the details as JSON, matching what a run selects', () => {
+  it('prints a job matrix and the details as JSON, matching what a run selects', async () => {
     const root = monorepo();
     writeFiles(root, { 'packages/ui/src/a.ts': violation('ui-finding') });
 
-    const { listing } = listed(root, ['--json']);
-    const ran = run(root).json('summary.json');
+    const { listing } = await listed(root, ['--json']);
+    const ran = (await run(root)).json('summary.json');
 
     expect(listing.matrix).toEqual({
       include: [
@@ -66,17 +67,32 @@ describe('nitpicker projects', () => {
     );
   });
 
-  it('selects every project with --all and the named ones with --project', () => {
+  it('selects every project with --all and the named ones with --project', async () => {
     const root = monorepo();
 
-    expect(listed(root, ['--all', '--json']).listing.matrix.include).toHaveLength(3);
-    expect(listed(root, ['--project', 'packages/docs', '--json']).listing).toMatchObject({
+    const all = await listed(root, ['--all', '--json']);
+    const named = await listed(root, ['--project', 'packages/docs', '--json']);
+
+    expect(all.listing.matrix.include).toHaveLength(3);
+    expect(named.listing).toEqual({
+      source: 'detected',
       selectedBy: '--project',
       matrix: { include: [{ project: 'packages/docs', preset: 'typescript' }] },
+      projects: [
+        {
+          ...WORKSPACE_PROJECT,
+          path: 'packages/docs',
+          selected: true,
+          reason: 'requested with --project',
+        },
+        { ...WORKSPACE_PROJECT, path: 'packages/ui', selected: false, reason: 'not requested' },
+        { ...WORKSPACE_PROJECT, path: 'packages/web', selected: false, reason: 'not requested' },
+      ],
+      outsideProjects: [],
     });
   });
 
-  it('lists the one project of a repository that is not a monorepo', () => {
+  it('lists the one project of a repository that is not a monorepo', async () => {
     const root = repository({
       ...projectFiles('.', {
         'package.json': '{"name":"one"}',
@@ -84,7 +100,7 @@ describe('nitpicker projects', () => {
       }),
     });
 
-    expect(listed(root, ['--json']).listing).toEqual({
+    expect((await listed(root, ['--json'])).listing).toEqual({
       source: 'single',
       selectedBy: 'a run in a repository of one project',
       matrix: { include: [{ project: '.', preset: 'typescript' }] },
@@ -101,11 +117,13 @@ describe('nitpicker projects', () => {
     });
   });
 
-  it('refuses an unknown option and names the usage', () => {
-    const result = listed(monorepo(), ['--details']);
+  it('refuses an unknown option and names the usage', async () => {
+    const result = await listed(monorepo(), ['--details']);
 
     expect(result.exitCode).toBe(2);
-    expect(result.err).toContain('Unknown argument: --details');
-    expect(result.err).toContain('nitpicker projects [--base <ref>]');
+    expect(result.err).toBe(
+      'nitpicker failed: Unknown argument: --details. ' +
+        'Usage: nitpicker projects [--base <ref>] [--all] [--project <path>]... [--json] [--help]\n',
+    );
   });
 });

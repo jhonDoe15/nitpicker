@@ -8,7 +8,7 @@ const PYTHON_GLOB_KEYS = new Set(['entryPoints']);
 function braceAt(pattern, start) {
   let depth = 0;
   const commas = [];
-  for (const [offset, character] of [...pattern.slice(start)].entries()) {
+  for (const [offset, character] of pattern.slice(start).split('').entries()) {
     const index = start + offset;
     const escaped = pattern[index - 1] === '\\';
     depth += !escaped && character === '{' ? 1 : 0;

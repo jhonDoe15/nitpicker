@@ -151,15 +151,17 @@ describe('a run at the top of a monorepo', () => {
       'packages/svc',
     );
 
-    expect([run(listed).exitCode, run(listed).err]).toEqual([
-      2,
-      expect.stringContaining(
-        '"projects" entry services/* names services/svc, a Git submodule. Nitpicker does not gate a ' +
-          'submodule from the repository around it: leave it out of "projects" and run nitpicker inside services/svc',
-      ),
-    ]);
-    expect(run(workspace).err).toContain(
-      'The package.json workspaces cover packages/svc, a Git submodule',
+    expect(run(listed).exitCode).toBe(2);
+    expect(run(listed).err).toBe(
+      'nitpicker failed: nitpicker.config.json: "projects" entry services/* names services/svc, a Git submodule. ' +
+        'Nitpicker does not gate a submodule from the repository around it: ' +
+        'leave it out of "projects" and run nitpicker inside services/svc\n',
+    );
+    expect(run(workspace).err).toBe(
+      'nitpicker failed: nitpicker.config.json: The package.json workspaces cover packages/svc, a Git submodule, ' +
+        'which nitpicker does not gate from the repository around it. ' +
+        'List the other projects in "projects" of nitpicker.config.json, and run nitpicker inside packages/svc ' +
+        'for its own changes\n',
     );
   });
 
@@ -193,8 +195,11 @@ describe('a run at the top of a monorepo', () => {
     expect(result.exitCode).toBe(2);
     expect(result.err.split(message)).toHaveLength(2);
     expect(result.out.split(message)).toHaveLength(2);
-    expect(result.summary).toContain(
-      `  ! api (python): failed to run: ${message.split('\n')[0]} (api/report.txt)\n`,
+    expect(result.summary).toBe(
+      'Monorepo summary: 1 incomplete, 2 skipped (3 projects)\n' +
+        `  ! api (python): failed to run: ${message.split('\n')[0]} (api/report.txt)\n` +
+        '  - 2 projects: no changed files (--details lists them)\n' +
+        'Combined report: <reports>/summary.json\n',
     );
     expect(readFileSync(`${result.reports}/api/report.txt`, 'utf8')).toContain(message);
   });

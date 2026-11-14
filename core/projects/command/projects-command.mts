@@ -1,5 +1,5 @@
 import { realpathSync } from 'node:fs';
-import { resolveProjectRoot } from '../../configuration/project-checks/project-root.mjs';
+import { resolveProjectRoot as resolveRoot } from '../../configuration/project-checks/project-root.mjs';
 import { noProjectAdvice } from '../plan/suggested-projects.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
@@ -28,6 +28,11 @@ const inspect: (query: { readonly root: string; readonly repositoryRoot: string 
   readonly plan?: MonorepoPlan;
 } = inspectRepository;
 
+const resolveProjectRoot: (
+  workingDirectory: string | undefined,
+  options: { readonly noProjectAdvice: unknown },
+) => string = resolveRoot;
+
 function rootOf(cli: ProjectsCli): string {
   return cli.currentProjectRoot === undefined
     ? resolveProjectRoot(cli.workingDirectory, { noProjectAdvice })
@@ -35,7 +40,7 @@ function rootOf(cli: ProjectsCli): string {
 }
 
 function planAt(root: string): MonorepoPlan | undefined {
-  if (isGitWorkTree(root) !== true) {
+  if (!isGitWorkTree(root)) {
     return undefined;
   }
   return inspect({ root, repositoryRoot: undefined }).plan ?? enclosingPlan(root)?.plan;

@@ -204,13 +204,13 @@ describe('the set of projects', () => {
     expect(result.json('summary.json').notices).toEqual([result.err.slice(11, -1)]);
   });
 
-  it('removes the reports of a project that is no longer listed', () => {
+  it('removes the reports of a project that is no longer listed', async () => {
     const root = listed(['web', 'api']);
     writeFiles(root, { 'api/src/a.ts': violation('a') });
-    const first = run(root);
+    const first = await run(root);
     writeFiles(root, { 'nitpicker.config.json': JSON.stringify({ projects: ['web'] }) });
 
-    run(root, ['--output', first.reports]);
+    await run(root, ['--output', first.reports]);
 
     expect(existsSync(path.join(first.reports, 'api'))).toBe(false);
   });

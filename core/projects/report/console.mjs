@@ -1,6 +1,9 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { DECLARED_ORIGIN } from '../discovery/declared-projects.mjs';
 
+const PROJECT = 'project';
+const SKIPPED = 'skipped';
+
 const MAX_LISTED_FILES = 5;
 const MARKS = { passed: '✓', failed: '✖', error: '!', skipped: '-' };
 
@@ -24,7 +27,7 @@ function expandedOf(plan) {
 }
 
 function introduction(plan) {
-  const total = count(plan.projects.length, 'project');
+  const total = count(plan.projects.length, PROJECT);
   if (plan.source === 'declared') {
     return `Monorepo: ${total} listed in "projects" of ${CONFIG_FILE_NAME}${expandedOf(plan)}.`;
   }
@@ -47,7 +50,7 @@ function skippedLines(entries, reasonOf) {
     byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
   }
   return [...byReason].map(
-    ([reason, total]) => `  skip ${count(total, 'project')}: ${reason} (--details lists them)`,
+    ([reason, total]) => `  skip ${count(total, PROJECT)}: ${reason} (--details lists them)`,
   );
 }
 
@@ -82,7 +85,7 @@ function firstLine(text) {
 }
 
 function resultText({ status, newEnforceableFindings, reason, error, overallStatus, report }) {
-  if (status === 'skipped') {
+  if (status === SKIPPED) {
     return `skipped (${reason})`;
   }
   if (status === 'error') {
@@ -104,11 +107,11 @@ function headline({ counts }) {
     [counts.failed, 'failed'],
     [counts.errored, 'incomplete'],
     [counts.passed, 'passed'],
-    [counts.skipped, 'skipped'],
+    [counts.skipped, SKIPPED],
   ]
     .filter(([total]) => total > 0)
     .map(([total, word]) => `${String(total)} ${word}`);
-  return `Monorepo summary: ${parts.join(', ')} (${count(counts.projects, 'project')})`;
+  return `Monorepo summary: ${parts.join(', ')} (${count(counts.projects, PROJECT)})`;
 }
 
 function repositoryLines(repository) {
@@ -140,7 +143,7 @@ function acceptanceLine(projects, repository) {
   const places =
     pending.length === 0
       ? `${String(own.length)} projects`
-      : ['the repository policy', ...(own.length === 0 ? [] : [count(own.length, 'project')])].join(
+      : ['the repository policy', ...(own.length === 0 ? [] : [count(own.length, PROJECT)])].join(
           ' and ',
         );
   return [
@@ -157,8 +160,8 @@ function summaryLines(projects, details) {
   if (details) {
     return projects.map(summaryLine);
   }
-  const ran = projects.filter(({ status }) => status !== 'skipped');
-  const skipped = projects.filter(({ status }) => status === 'skipped');
+  const ran = projects.filter(({ status }) => status !== SKIPPED);
+  const skipped = projects.filter(({ status }) => status === SKIPPED);
   return [
     ...ran.map(summaryLine),
     ...skippedLines(skipped, ({ reason }) => reason).map((line) =>

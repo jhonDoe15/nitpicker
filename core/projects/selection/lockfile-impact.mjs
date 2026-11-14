@@ -4,11 +4,15 @@ import { runGit } from '../../diff/git/repository/command.mjs';
 import { readPyproject, parseToml } from '../../configuration/project-checks/uv-workspace.mjs';
 import { filesUnder } from '../../../shared/filesystem.mjs';
 import { isPlainObject } from '../../../shared/config.mjs';
+import { containedPath } from '../../../shared/paths/contained-path.mjs';
+import { memoized } from '../../../shared/values/memoized.mjs';
+import { isInside } from '../discovery/repository-files.mjs';
 import {
   changedPackages,
   closureOf,
   isLockfile,
   parseLockfile,
+  pythonPackageName,
 } from './dependencies/lockfiles.mjs';
 
 const CATALOG = /(?:^|\/)gradle\/libs\.versions\.toml$/u;
@@ -33,7 +37,9 @@ function baseText(repositoryRoot, mergeBaseSha, file) {
 }
 
 function headText(repositoryRoot, file) {
-  const full = path.join(repositoryRoot, file);
+  const full = containedPath(repositoryRoot, file, {
+    outside: (relative) => `${relative} is outside the repository`,
+  });
   return existsSync(full) ? readFileSync(full, 'utf8') : undefined;
 }
 
@@ -51,7 +57,7 @@ function manifestNames(directory) {
 function directNeeds(project, lock) {
   if (project.preset === 'python') {
     const name = readPyproject(project.absolute)?.project?.name;
-    return name === undefined ? undefined : [...(lock.edges.get(name) ?? [])];
+    return name === undefined ? undefined : [...(lock.edges.get(pythonPackageName(name)) ?? [])];
   }
   return manifestNames(project.absolute);
 }
@@ -59,9 +65,19 @@ function directNeeds(project, lock) {
 const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
 
 function usesLockfile(file, project) {
-  return path.posix.basename(file) === 'uv.lock'
-    ? project.preset === 'python'
-    : SCRIPT_PRESETS.has(project.preset);
+  const fits =
+    path.posix.basename(file) === 'uv.lock'
+      ? project.preset === 'python'
+      : SCRIPT_PRESETS.has(project.preset);
+  return fits && isInside(project.repoPath ?? project.path, path.posix.dirname(file));
+}
+
+function changeReached(project, { head, changed }) {
+  const direct = directNeeds(project, head);
+  if (direct === undefined) {
+    return { unknown: true };
+  }
+  return { hit: [...closureOf(head, direct)].find((name) => changed.has(name)) };
 }
 
 function lockImpact(file, texts, everyProject) {
@@ -74,31 +90,43 @@ function lockImpact(file, texts, everyProject) {
   if (changed.size === 0) {
     return undefined;
   }
-  const impact = new Map();
-  for (const project of projects) {
-    const direct = directNeeds(project, head);
-    if (direct === undefined) {
-      return undefined;
-    }
-    const hit = [...closureOf(head, direct)].find((name) => changed.has(name));
-    if (hit !== undefined) {
-      impact.set(project.path, `${path.posix.basename(file)}: ${changed.get(hit)}`);
-    }
+  const reached = projects.map((project) => [project, changeReached(project, { head, changed })]);
+  if (reached.some(([, { unknown }]) => unknown === true)) {
+    return undefined;
   }
-  return impact;
+  return new Map(
+    reached.flatMap(([project, { hit }]) =>
+      hit === undefined
+        ? []
+        : [[project.path, `${path.posix.basename(file)}: ${changed.get(hit)}`]],
+    ),
+  );
+}
+
+function accessors(prefix, table, valueOf) {
+  return Object.entries(table ?? {}).map(([alias, entry]) => [
+    `${prefix}.${alias.replaceAll(/[-_]/gu, '.')}`,
+    JSON.stringify(valueOf(entry)),
+  ]);
 }
 
 function catalogEntries(text) {
   const catalog = parseToml(text);
   const versions = catalog.versions ?? {};
-  return ['libraries', 'plugins', 'bundles'].flatMap((table) =>
-    Object.entries(catalog[table] ?? {}).map(([alias, entry]) => {
-      const ref = isPlainObject(entry) ? entry.version?.ref : undefined;
-      const resolved = ref === undefined ? entry : { ...entry, version: versions[ref] };
-      const prefix = table === 'libraries' ? 'libs' : `libs.${table}`;
-      return [`${prefix}.${alias.replaceAll(/[-_]/gu, '.')}`, JSON.stringify(resolved)];
-    }),
-  );
+  const libraries = catalog.libraries ?? {};
+  function resolved(entry) {
+    const ref = isPlainObject(entry) ? entry.version?.ref : undefined;
+    return ref === undefined ? entry : { ...entry, version: versions[ref] };
+  }
+  function bundled(aliases) {
+    return Array.isArray(aliases) ? aliases.map((alias) => resolved(libraries[alias])) : aliases;
+  }
+  return [
+    ...accessors('libs', libraries, resolved),
+    ...accessors('libs.plugins', catalog.plugins, resolved),
+    ...accessors('libs.bundles', catalog.bundles, bundled),
+    ...accessors('libs.versions', versions, (version) => version),
+  ];
 }
 
 function buildText(directory) {
@@ -143,7 +171,7 @@ function weigh(file, texts, projects) {
 }
 
 function impactOf(file, { repositoryRoot, mergeBaseSha, projects }) {
-  if (!CATALOG.test(file) && !isLockfile(file)) {
+  if (!(CATALOG.test(file) || isLockfile(file))) {
     return undefined;
   }
   const texts = [baseText(repositoryRoot, mergeBaseSha, file), headText(repositoryRoot, file)];
@@ -151,11 +179,5 @@ function impactOf(file, { repositoryRoot, mergeBaseSha, projects }) {
 }
 
 export function lockfileImpact(request) {
-  const known = new Map();
-  return (file) => {
-    if (!known.has(file)) {
-      known.set(file, impactOf(file, request));
-    }
-    return known.get(file);
-  };
+  return memoized((file) => impactOf(file, request));
 }

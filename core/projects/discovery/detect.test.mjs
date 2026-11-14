@@ -260,28 +260,24 @@ describe('a mixed repository', () => {
 });
 
 describe('JavaScript and TypeScript folders under another project', () => {
-  it('names a package with sources under a Gradle, Maven or Python root', () => {
-    const roots = [
-      { 'build.gradle': '' },
-      { 'pom.xml': '<project/>' },
-      { 'pyproject.toml': '[project]\nname = "app"\n' },
-    ];
+  it.each([
+    ['Gradle', { 'build.gradle': '' }],
+    ['Maven', { 'pom.xml': '<project/>' }],
+    ['Python', { 'pyproject.toml': '[project]\nname = "app"\n' }],
+  ])('names a package with sources under a %s root', (_kind, top) => {
+    const result = detect({
+      ...top,
+      'frontend/package.json': MANIFEST('frontend'),
+      'frontend/src/index.ts': 'export {};\n',
+      'e2e/package.json': MANIFEST('e2e'),
+      'e2e/src/run.js': 'export {};\n',
+      'tooling/package.json': MANIFEST('tooling'),
+    });
 
-    for (const top of roots) {
-      const result = detect({
-        ...top,
-        'frontend/package.json': MANIFEST('frontend'),
-        'frontend/src/index.ts': 'export {};\n',
-        'e2e/package.json': MANIFEST('e2e'),
-        'e2e/src/run.js': 'export {};\n',
-        'tooling/package.json': MANIFEST('tooling'),
-      });
-
-      expect(result.undeclared).toEqual([
-        'e2e (JavaScript package)',
-        'frontend (TypeScript package)',
-      ]);
-    }
+    expect(result.undeclared).toEqual([
+      'e2e (JavaScript package)',
+      'frontend (TypeScript package)',
+    ]);
   });
 
   it('skips fixture folders and folders the root config excludes', () => {

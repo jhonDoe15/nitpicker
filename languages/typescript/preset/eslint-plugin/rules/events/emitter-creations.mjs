@@ -1,3 +1,4 @@
+import { memoized } from '../../../../../../shared/values/memoized.mjs';
 import { chainOf } from '../analysis/ancestry.mjs';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction, isModuleValue } from '../security/imported-names.mjs';
@@ -14,13 +15,7 @@ const MODULE_PATH = /\/node_modules\/(?:@types\/)?((?:@[^/]+\/)?[^/]+)\//gu;
 const MAX_BASES = 32;
 
 export function createBindings(program) {
-  const cache = new Map();
-  return (modules) => {
-    if (!cache.has(modules)) {
-      cache.set(modules, bindingsOf(program, modules));
-    }
-    return cache.get(modules);
-  };
+  return memoized((modules) => bindingsOf(program, modules));
 }
 
 export function importedName(context, node, bindings) {

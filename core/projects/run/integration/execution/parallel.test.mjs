@@ -72,12 +72,17 @@ describe('projects run at once', () => {
       'error',
       'skipped',
     ]);
-    expect(result.err).toContain('nitpicker failed in web: the project run stopped with exit 1');
+    expect(result.err.split('\n').filter((line) => line.startsWith('nitpicker failed'))).toEqual([
+      'nitpicker failed in web: the project run stopped with exit 1 before it finished',
+      'nitpicker failed in api: the project run stopped with exit 1 before it finished',
+    ]);
   });
   it('refuses a --jobs value that is not a whole number of projects', () => {
     const result = run(monorepo(), ['--jobs', '0']);
 
     expect(result.exitCode).toBe(2);
-    expect(result.err).toContain('--jobs takes a whole number of projects to run at once');
+    expect(result.err).toBe(
+      'nitpicker failed: --jobs takes a whole number of projects to run at once, 1 or more, not 0\n',
+    );
   });
 });

@@ -6,7 +6,7 @@ import { parsedTsconfig } from '../../../../languages/typescript/preset/modules/
 const TSCONFIG = 'tsconfig.json';
 const PATHS_LABEL = 'tsconfig paths';
 const REFERENCES_LABEL = 'tsconfig references';
-const SCRIPT_FILE = /\.(?:[cm]?[jt]sx?)$/u;
+const SCRIPT_FILE = /\.[cm]?[jt]sx?$/u;
 const SKIPPED_FOLDERS = new Set(['node_modules', 'dist', 'build', 'coverage', 'out']);
 
 function relativeFolder(directory, target) {

@@ -17,10 +17,12 @@ import {
   outermost,
 } from './repository-files.mjs';
 
+const MANIFEST = 'package.json';
+
 const ROOT_SOURCES_ORIGIN = 'repository root sources';
 
 function rootJavascript(root, rootConfig) {
-  return existsSync(path.join(root, 'package.json')) && hasScriptSources(rootConfig, root)
+  return existsSync(path.join(root, MANIFEST)) && hasScriptSources(rootConfig, root)
     ? [{ path: '.', origin: ROOT_SOURCES_ORIGIN }]
     : [];
 }
@@ -64,7 +66,7 @@ function candidatesOf(root, files) {
   const jvm = jvmBuilds(root, directoriesWith(root, files, JVM_MARKERS)).filter(
     (build) => build.path !== '.',
   );
-  const scripts = nestedScripts(root, directoriesWith(root, files, ['package.json']));
+  const scripts = nestedScripts(root, directoriesWith(root, files, [MANIFEST]));
   return [...python, ...jvm, ...scripts];
 }
 
@@ -85,9 +87,11 @@ function workspacesOf(root, files, submodules) {
   const nxProjects = directoriesWith(root, files, ['project.json']).filter(
     (directory) => !isSkippedLocation(directory),
   );
-  const withSubmodules = (directories) => [...new Set([...directories, ...submodules])];
+  function withSubmodules(directories) {
+    return [...new Set([...directories, ...submodules])];
+  }
   return [
-    javascriptWorkspaces(root, withSubmodules(directoriesWith(root, files, ['package.json']))),
+    javascriptWorkspaces(root, withSubmodules(directoriesWith(root, files, [MANIFEST]))),
     nxWorkspace(root, nxProjects),
     angularWorkspace(root),
     gradleComposite(root),

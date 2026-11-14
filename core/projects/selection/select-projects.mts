@@ -1,7 +1,7 @@
 import { isInside } from '../discovery/repository-files.mjs';
 import { dependentsOf, deepestProject, edgeLabel } from './dependencies/graph.mts';
 import { isToolchainFileFor } from './toolchain-files.mjs';
-import { presetChecksFile } from '../../command/policy-review/unchecked-languages.mts';
+import { presetChecksFile } from '../plan/preset-languages.mts';
 import type { DependencyGraph } from './dependencies/graph.mts';
 import type { PlanProject, ProjectSelection } from '../project-types.mts';
 
@@ -22,7 +22,7 @@ export type SelectionQuery = {
   readonly graph: DependencyGraph;
   readonly prefix?: string;
   readonly requested?: readonly string[];
-  readonly all?: boolean;
+  readonly all: boolean;
   readonly rootConfigFiles?: readonly string[];
   readonly impactOf?: ToolchainImpact | undefined;
 };
@@ -166,7 +166,7 @@ export function selectProjects({
   graph,
   prefix = '.',
   requested = [],
-  all = false,
+  all,
   rootConfigFiles = [],
   impactOf,
 }: SelectionQuery): Selected {

@@ -127,8 +127,7 @@ function skillLines(project: Project, source: string): string[] {
 
 export function agentsLines(
   agents: AgentsResult | undefined,
-  command: string,
-  offered: boolean,
+  { command, offered }: { readonly command: string; readonly offered: boolean },
 ): string[] {
   if (agents === undefined) {
     return offered
@@ -176,7 +175,7 @@ export function renderReport(placed: Placed): string {
     fileLines(config),
     skillLines(project, skillSource),
     [
-      ...agentsLines(agents, command, offers.agents),
+      ...agentsLines(agents, { command, offered: offers.agents }),
       ...ciLines(workflow, { approval, workflowFile, command, offered: offers.workflow }),
     ],
     [

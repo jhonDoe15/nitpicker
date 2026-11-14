@@ -46,6 +46,10 @@ function sectionsOf(out, reports) {
   };
 }
 
+async function finishLater(exitCode, finish) {
+  return finish(await exitCode);
+}
+
 export function useMonorepoFixtures() {
   const git = useGitFixtures();
 
@@ -88,15 +92,17 @@ export function useMonorepoFixtures() {
       runTasks: runTasksInProcess,
       ...(projectWorker === undefined ? {} : { projectWorker }),
     });
-    const finish = (code) => ({
-      exitCode: code,
-      reports,
-      json: (name) => readReport(reports, name),
-      out: output.stdoutText,
-      err: output.stderrText,
-      ...sectionsOf(output.stdoutText, reports),
-    });
-    return typeof exitCode === 'number' ? finish(exitCode) : exitCode.then(finish);
+    function finish(code) {
+      return {
+        exitCode: code,
+        reports,
+        json: (name) => readReport(reports, name),
+        out: output.stdoutText,
+        err: output.stderrText,
+        ...sectionsOf(output.stdoutText, reports),
+      };
+    }
+    return typeof exitCode === 'number' ? finish(exitCode) : finishLater(exitCode, finish);
   }
 
   return { repository, run, temporaryRoot: git.temporaryRoot };
