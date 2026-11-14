@@ -138,7 +138,7 @@ describe('readForbiddenApiFindings', () => {
       projectRoot: root,
     });
 
-    expect(findings[3]?.identity).toBe(`${findings[1]?.identity}#2`);
+    expect(findings[3]?.identity).toBe(`${textOf(findings[1]?.identity)}#2`);
     expect(
       readForbiddenApiFindings(path.join(root, 'nothing'), { locate, projectRoot: root }),
     ).toEqual([]);

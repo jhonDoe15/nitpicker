@@ -177,9 +177,11 @@ export function cpdClones(xml: string, projectRoot: string): Clone[] {
 
 function byPairAndShape(left: Clone, right: Clone): number {
   return (
-    byFile(left.first, right.first) ||
-    byFile(left.second, right.second) ||
-    left.shape.localeCompare(right.shape)
+    [
+      byFile(left.first, right.first),
+      byFile(left.second, right.second),
+      left.shape.localeCompare(right.shape),
+    ].find((order) => order !== 0) ?? 0
   );
 }
 

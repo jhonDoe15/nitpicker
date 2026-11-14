@@ -1,4 +1,4 @@
-export type Declaration = { readonly kind: string; readonly member: string };
+type Declaration = { readonly kind: string; readonly member: string };
 
 export type ForbiddenUse = {
   readonly signature: string;

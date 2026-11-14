@@ -8,10 +8,10 @@ export type Entry = {
   readonly configuration?: string;
   readonly archives?: readonly unknown[];
   readonly archivePaths?: readonly string[];
-  readonly used?: boolean;
+  readonly used: boolean;
 };
 export type DependencyReport = {
-  readonly analyzed?: boolean;
+  readonly analyzed: boolean;
   readonly build?: Build;
   readonly buildFile?: string;
   readonly declared?: readonly Entry[];

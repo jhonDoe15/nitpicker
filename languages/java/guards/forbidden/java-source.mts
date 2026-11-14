@@ -60,7 +60,7 @@ export function parameterTypes(parameters: string): string[] {
     const match = PARAMETER.exec(bare.trim());
     return match === null
       ? bare.trim()
-      : `${textOf(textOf(match[1]).split('.').at(-1))}${`${match[2]}${match[3]}`.replaceAll(/\s/g, '')}`;
+      : `${textOf(textOf(match[1]).split('.').at(-1))}${`${textOf(match[2])}${textOf(match[3])}`.replaceAll(/\s/g, '')}`;
   });
 }
 

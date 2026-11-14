@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseJson } from '../../../shared/values/readers.mts';
+import { parseJson, textOf } from '../../../shared/values/readers.mts';
 import {
   archiveUsed,
   referenced,
@@ -17,12 +17,12 @@ const DEPENDENCIES_REPORT = 'dependencies.json';
 const WIRING_ONLY = /(?:^|-)starter(?:-|$)|(?:^|-)bom$|-platform$|-dependencies$/;
 
 function isUnused(entry: Entry): boolean {
-  return (entry.archives ?? []).length > 0 && entry.used !== true && !WIRING_ONLY.test(entry.name);
+  return (entry.archives ?? []).length > 0 && !entry.used && !WIRING_ONLY.test(entry.name);
 }
 
 const ALTERNATIVES: Readonly<Record<Build, (entry: Entry) => string>> = {
   gradle: (entry) =>
-    `is declared in ${entry.configuration} but no main class uses it. ` +
+    `is declared in ${textOf(entry.configuration)} but no main class uses it. ` +
     'Remove it, declare it testImplementation if only the tests use it, ' +
     'runtimeOnly if it is only needed at run time, ' +
     'or compileOnly if only its source annotations are needed.',
@@ -48,7 +48,7 @@ function unusedFinding(
 }
 
 export function dependencyFindings(report: DependencyReport): DependencyFinding[] {
-  if (report.analyzed !== true) {
+  if (!report.analyzed) {
     return [];
   }
   const build = report.build ?? 'gradle';
