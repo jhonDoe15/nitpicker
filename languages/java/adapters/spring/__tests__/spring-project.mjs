@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
+import { sourceTextReader } from '../../reporting/function-locator.mjs';
+import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mjs';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -48,9 +50,28 @@ function expectedViolations(sourceRoot) {
     )
     .sort();
 }
+function constrainedBodies(results, sourceRoot) {
+  const projectRoot = path.resolve(sourceRoot, '..', '..', '..');
+  const findings = results.map((result) => {
+    const { artifactLocation, region } = result.locations[0].physicalLocation;
+    return {
+      tool: 'pmd',
+      rule: result.ruleId,
+      path: path.relative(projectRoot, new URL(artifactLocation.uri).pathname),
+      location: { line: region.startLine, column: region.startColumn },
+      result,
+    };
+  });
+  return withoutUnconstrainedBodies(findings, {
+    projectRoot,
+    roots: [path.relative(projectRoot, sourceRoot)],
+    readText: sourceTextReader(projectRoot),
+  }).map(({ result }) => result);
+}
+
 function reportedViolations(sarifFile, sourceRoot) {
   const [run] = JSON.parse(readFileSync(sarifFile, 'utf8')).runs;
-  return run.results
+  return constrainedBodies(run.results, sourceRoot)
     .filter((result) => SPRING_RULE.test(result.ruleId))
     .map((result) => {
       const { artifactLocation, region } = result.locations[0].physicalLocation;
