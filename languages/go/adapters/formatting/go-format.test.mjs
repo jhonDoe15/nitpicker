@@ -36,7 +36,7 @@ describe('formatFindings', () => {
         identity: 'format',
         message:
           "File is not formatted with gofumpt (the project's formatter, from .golangci.yml). " +
-          'Run `gofumpt -extra -w <file>` to format the file.',
+          'Run `nitpicker --fix`, or format the file with `gofumpt -extra -w <file>`.',
         classification: 'enforceable',
       },
     ]);
@@ -46,7 +46,7 @@ describe('formatFindings', () => {
     const context = contextWith({ config: GOFUMPT_EXTRA, precedence: ['nitpicker'] });
 
     expect(formatFindings(context, { formatter: 'gofumpt', files: ['a.go'] })[0].message).toBe(
-      'File is not formatted with gofumpt. Run `gofumpt -w <file>` to format the file.',
+      'File is not formatted with gofumpt. Run `nitpicker --fix`, or format the file with `gofumpt -w <file>`.',
     );
   });
 });

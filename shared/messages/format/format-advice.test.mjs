@@ -9,9 +9,9 @@ describe('formatAdvice', () => {
     expect(FIX_COMMAND).toBe('nitpicker --fix');
   });
 
-  it('names the exact formatter command where nitpicker --fix does not apply', () => {
+  it('names the exact formatter command next to nitpicker --fix', () => {
     expect(formatAdvice('gofumpt -extra -w')).toBe(
-      'Run `gofumpt -extra -w <file>` to format the file.',
+      'Run `nitpicker --fix`, or format the file with `gofumpt -extra -w <file>`.',
     );
   });
 });

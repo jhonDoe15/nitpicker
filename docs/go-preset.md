@@ -146,6 +146,14 @@ re-runs it. Dropping a formatter from `go.formatters` (other than gofmt, which e
 formatter covers) or a tag from `go.buildTags` is a policy loosening a person accepts.
 Generated files (`// Code generated ... DO NOT EDIT.`) are not checked.
 
+`nitpicker --fix` formats the changed `.go` files with the same formatters and options, through
+standard input from the project root (goimports gets the file as `-srcdir`), goimports before
+gofumpt when both are chosen, and writes the formatter's LF line endings, as the check expects. Like
+the other presets' fixers it skips generated files, excluded paths and a file the formatters would
+also change on the merge base, so it never reformats code the change did not touch; a file that does
+not parse is named in the fix notes, and a formatter that fails is a `go-format-fix` tool error. The
+finding's message names `--fix` and the formatter command, for a file `--fix` skips.
+
 Formatter options are read from the golangci-lint file only when the project opts in with
 `"tools": { "goimports": { "precedence": ["project"] } }` (or `gofumpt`), as in the other presets:
 goimports' `local-prefixes` becomes `-local`, and gofumpt's `extra-rules` and `module-path` become

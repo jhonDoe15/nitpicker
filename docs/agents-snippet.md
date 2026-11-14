@@ -23,7 +23,7 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   before you finish. `--quick` works with `--fix`, `--base`, `--analyzer` and `--all`.
 - `npx nitpicker --fix` first applies the preset's fixers to the changed files (ESLint and Prettier;
   `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
-  ktfmt), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
+  ktfmt; gofmt, gofumpt or goimports), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
   cannot be combined with `--all`.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
