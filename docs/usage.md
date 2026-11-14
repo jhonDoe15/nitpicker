@@ -1374,6 +1374,14 @@ an exception.
     around it (`run.<anonymous>`), and the second and later ones of the same function are
     numbered (`run.<anonymous#2>`, `run.<anonymous#3>`, in source order), so an entry never accepts
     a different anonymous function of the file.
+    A curried arrow function whose whole body is another function (`(a) => (b) => {...}`) is one
+    function under the outer name (`wrap`), not `wrap` plus `wrap.<anonymous>`; when the outer
+    function has a body of its own, the returned function is `wrap.<anonymous>` as before. The
+    single function takes the statements and nesting of the innermost body and the largest
+    parameter list of the chain (each link is called on its own). An existing `function` entry
+    (or legacy-inventory entry) for `wrap.<anonymous>` of such a curried arrow no longer matches
+    and is not listed as stale (only `paths` are checked), so the finding shows up again under
+    the outer name: change the entry to `wrap`.
   - Java: `Calc.classify`, `Calc.<clinit>` for a `static { }` block, `Calc.<init>` for an
     instance initializer block and `Calc.field` for a field initializer (lambdas included).
   - Kotlin: `Boot.<init>` for an `init` block, `Boot.table` for a property initializer that holds a
