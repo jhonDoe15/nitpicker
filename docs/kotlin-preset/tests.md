@@ -2,7 +2,7 @@
 
 Part of the [Kotlin preset guide](../kotlin-preset.md).
 
-- `core/command/java/java-cli.test.mjs`: the CLI with the fake `gradle`
+- `core/command/java/java-cli.test.mts`: the CLI with the fake `gradle`
   (`languages/java/adapters/fixtures/fake-gradle.mjs`, which writes the Kotlin reports when it sees
   `-Pnitpicker.kotlin=true`, and a JaCoCo or PIT report the test provides): pass, new detekt finding,
   new unformatted file with each formatter, an uncovered changed Kotlin branch, a Kotlin mutant and a
@@ -45,13 +45,13 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
   (facade, accessor, lambda, `$default`, nested function) and the CRAP score and ratchet on recorded
   data; `java-coupling.test.mjs` (Kotlin classes, file modules, stability direction) and the CLI tests
   with the fake `gradle` (structure ratchet, a clone found by jscpd).
-- `core/configuration/config.test.mjs`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
+- `core/configuration/config.test.mts`, `languages/java/adapters/java-policy.test.mjs`: the config keys (including
   Kotlin `exceptions`) and the runner arguments.
 - `languages/java/adapters/kotlin/rules/kotlin-rules.test.mjs`, `kotlin-suppressions.test.mjs`: every case of
   `kotlin/rules/test-support/kotlin-rule-cases.mjs` gets its message from the recorded detekt text and must name the
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
-  `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
+  `core/command/java/java-cli.test.mts` runs an exception through the CLI.
 - `languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mjs` (its Java twin is
   `java-e2e/red-base/java-red-base.e2e.test.mjs`, under `NITPICKER_JAVA_E2E=1`): a base whose tests
   fail and a head that repairs them. See "A base whose tests fail" in `usage.md`.
