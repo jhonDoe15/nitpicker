@@ -1,35 +1,37 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   callsLog,
   contextFor,
   mutantsData,
   mutmutCalls,
   project,
-} from '../test-support/mutmut-project.mjs';
+} from '../test-support/mutmut-project.mts';
+import type { ToolContext } from '../test-support/typed/tool-context.mts';
 import {
   restoreTemporaryState,
   setEnvironment,
-} from '../execution/test-support/python-tools-project.mjs';
-import { MUTATION_FAILED_RULE, mutationFindings } from './python-mutation.mjs';
+} from '../execution/test-support/python-tools-project.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from './python-mutation.mjs';
 import { MUTATION_SKIPPED_RULE } from './test-run/python-mutation-runner.mjs';
-import { section } from './test-support/mutmut-section.mjs';
+import { section } from './test-support/mutmut-section.mts';
+import { NOTHING_COLLECTED, uncheckedData } from './test-support/nothing-collected.mts';
+import { failureOf } from '../test-support/runs/failure-of.mts';
+
+const mutationFindings: (context: ToolContext, platform?: NodeJS.Platform) => IngestedFinding[] =
+  untypedFindings;
 
 afterEach(restoreTemporaryState);
 
-const NOTHING_COLLECTED = {
-  'mutants-data.json': mutantsData(null),
-  'mutmut-exit.txt': '1\n',
-  'mutmut-output.txt': 'no tests ran in 0.08s\nfailed to collect stats. runner returned 5\n',
-};
+const read = (root: string, file: string): string => readFileSync(path.join(root, file), 'utf8');
 
-const read = (root, file) => readFileSync(path.join(root, file), 'utf8');
-
-const summaries = (findings) =>
+const summaries = (findings: readonly IngestedFinding[]) =>
   findings
     .filter(({ rule }) => rule === 'mutation-summary')
-    .map(({ identity, metric }) => `${identity}=${String(metric.value)}`);
+    .map(({ identity, metric }) => `${identity}=${String(metric?.value)}`);
 
 describe('running mutmut', () => {
   it('turns what mutmut left in mutants/ into findings and cleans the head snapshot', () => {
@@ -85,7 +87,7 @@ describe('running mutmut', () => {
   it('removes mutants/ of a head snapshot even when the run failed', () => {
     const root = project({ 'mutants-data.json': mutantsData(0), 'mutmut-exit.txt': '2\n' });
 
-    expect(() => mutationFindings(contextFor(root))).toThrow();
+    expect(() => mutationFindings(contextFor(root))).toThrow('mutmut run exited 2');
 
     expect(existsSync(path.join(root, 'mutants'))).toBe(false);
   });
@@ -102,7 +104,7 @@ describe('running mutmut', () => {
 
     mutationFindings(contextFor(root));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-n0');
+    expect(mutmutCalls(calls)[0]?.['pytestAddopts']).toBe('-n0');
   });
 
   it('keeps the PYTEST_ADDOPTS of the caller, without the options that let a failing run pass, and puts -n0 after them', () => {
@@ -112,7 +114,7 @@ describe('running mutmut', () => {
 
     mutationFindings(contextFor(root, { pytestAddopts: '-x --lf' }));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('--lf -n0');
+    expect(mutmutCalls(calls)[0]?.['pytestAddopts']).toBe('--lf -n0');
   });
 
   it('leaves PYTEST_ADDOPTS alone without xdist', () => {
@@ -122,7 +124,7 @@ describe('running mutmut', () => {
 
     mutationFindings(contextFor(root));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBeUndefined();
+    expect(mutmutCalls(calls)[0]?.['pytestAddopts']).toBeUndefined();
   });
 
   it('does not run on Windows and says so with a descriptive note', () => {
@@ -146,11 +148,13 @@ describe('running mutmut', () => {
   it('reports a mutmut run that fails as a mutation failure with its output', () => {
     const root = project({ 'mutants-data.json': mutantsData(0), 'mutmut-exit.txt': '2\n' });
 
-    expect(() => mutationFindings(contextFor(root))).toThrow(
-      expect.objectContaining({
-        rule: MUTATION_FAILED_RULE,
-        message: 'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
-      }),
+    const failure = failureOf(() => {
+      mutationFindings(contextFor(root));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe(MUTATION_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
     );
   });
 
@@ -161,12 +165,13 @@ describe('running mutmut', () => {
         'FileNotFoundError: data.txt\nfailed to collect stats. runner returned 1\n',
     });
 
-    expect(() => mutationFindings(contextFor(root))).toThrow(
-      expect.objectContaining({
-        rule: MUTATION_FAILED_RULE,
-        message:
-          'mutmut run exited 1 in the virtualenv environment:\nFileNotFoundError: data.txt\nfailed to collect stats. runner returned 1\nIf the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.',
-      }),
+    const failure = failureOf(() => {
+      mutationFindings(contextFor(root));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe(MUTATION_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      'mutmut run exited 1 in the virtualenv environment:\nFileNotFoundError: data.txt\nfailed to collect stats. runner returned 1\nIf the tests read files outside the source roots, list them under "also_copy" in [tool.mutmut] of pyproject.toml.',
     );
   });
 
@@ -188,7 +193,7 @@ describe('running mutmut', () => {
 
   it('counts every mutant as uncovered when mutmut finds no test for any of them', () => {
     const root = project({
-      'mutants-data.json': mutantsData(null, null),
+      'mutants-data.json': uncheckedData(2),
       'mutmut-exit.txt': '1\n',
     });
 
@@ -201,12 +206,13 @@ describe('running mutmut', () => {
   it('says where mutmut should be installed and how to turn mutation testing off', () => {
     const root = project({ 'no-mutmut.txt': '' });
 
-    expect(() => mutationFindings(contextFor(root))).toThrow(
-      expect.objectContaining({
-        rule: MUTATION_FAILED_RULE,
-        message:
-          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
-      }),
+    const failure = failureOf(() => {
+      mutationFindings(contextFor(root));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe(MUTATION_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
     );
   });
 
@@ -214,11 +220,13 @@ describe('running mutmut', () => {
     const calls = callsLog();
     const root = project({ 'mutmut-version.txt': version });
 
-    expect(() => mutationFindings(contextFor(root))).toThrow(
-      expect.objectContaining({
-        rule: MUTATION_FAILED_RULE,
-        message: `mutmut ${version} is not supported: nitpicker reads the run data of mutmut 3.x. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.`,
-      }),
+    const failure = failureOf(() => {
+      mutationFindings(contextFor(root));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe(MUTATION_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      `mutmut ${version} is not supported: nitpicker reads the run data of mutmut 3.x. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.`,
     );
     expect(mutmutCalls(calls)).toEqual([]);
   });

@@ -1,28 +1,30 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScratch } from '../test-support/scratch.mjs';
-import { readPythonCrapFindings } from './python-crap.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import type { PythonFunctionEntry } from '../../ingest/typed/coverage-types.mts';
+import { readPythonCrapFindings } from './python-crap.mts';
 
 const scratch = createScratch();
+const ANY_STRING: unknown = expect.any(String);
 
 afterEach(scratch.cleanup);
 
 const project = () => scratch.project({ files: { 'src/demo/a.py': 'def f():\n    return 1\n' } });
 
 describe('reading the CRAP inputs', () => {
-  const FUNCTIONS = [
-    {
-      file: 'src/demo/a.py',
-      name: 'f',
-      start: 1,
-      definition: 1,
-      bodyStart: 2,
-      end: 2,
-      complexity: 3,
-    },
-  ];
-  const coverage = (coveredLines) =>
+  const FUNCTION: PythonFunctionEntry = {
+    file: 'src/demo/a.py',
+    name: 'f',
+    start: 1,
+    definition: 1,
+    bodyStart: 2,
+    end: 2,
+    complexity: 3,
+    statementLine: 2,
+  };
+  const FUNCTIONS = [FUNCTION];
+  const coverage = (coveredLines: number): string =>
     JSON.stringify({
       files: {
         'src/demo/a.py': {
@@ -44,7 +46,7 @@ describe('reading the CRAP inputs', () => {
 
   it('flags an untested complex function, and honours the configured limit', () => {
     const { root } = project();
-    const read = (crapLimit, covered = 0) =>
+    const read = (crapLimit: number | undefined, covered = 0) =>
       readPythonCrapFindings({
         functions: FUNCTIONS,
         coverage: coverage(covered),
@@ -59,7 +61,7 @@ describe('reading the CRAP inputs', () => {
         rule: 'crap-score-limit',
         path: 'src/demo/a.py',
         symbol: 'f',
-        identity: expect.any(String),
+        identity: ANY_STRING,
         message:
           'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
@@ -94,7 +96,7 @@ describe('reading the CRAP inputs', () => {
       'src/demo/tests/test_a.py',
       'test_b.py',
       'src/demo/check_c.py',
-    ].map((file) => ({ ...FUNCTIONS[0], file }));
+    ].map((file) => ({ ...FUNCTION, file }));
 
     expect(
       readPythonCrapFindings({
@@ -113,7 +115,7 @@ describe('reading the CRAP inputs', () => {
 
     expect(
       readPythonCrapFindings({
-        functions: [{ ...FUNCTIONS[0], file: 'src/demo/tests.py' }],
+        functions: [{ ...FUNCTION, file: 'src/demo/tests.py' }],
         coverage: coverage(0).replace('src/demo/a.py', 'src/demo/tests.py'),
         projectRoot: root,
         roots: [root],
@@ -129,7 +131,7 @@ describe('reading the CRAP inputs', () => {
         coverage: coverage(0),
         projectRoot: root,
         roots: [root],
-      })[0].identity;
+      })[0]?.identity;
     const before = identityOf();
     writeFileSync(path.join(root, 'src/demo/a.py'), 'def f():\n    return 2\n');
 
