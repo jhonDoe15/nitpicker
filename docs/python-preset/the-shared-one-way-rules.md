@@ -1243,6 +1243,16 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
+- `presence-truthiness` (report-only: its findings print as design notes and never fail the change)
+  reports an optional string or boolean (`Optional[str]`, `str | None`, `bool | None`, known from the
+  annotation of a parameter or an annotated local) tested for truth as a presence check, where `''`
+  or `False` reads as missing: `x if x else d` or `if x:` whose branch uses `x`, `x or d` on an
+  annotated local (a parameter is `falsy-default`'s), `filter(None, items)` and
+  `[v for v in items if v]` over a `list`, `Sequence`, `Iterable` or `set` of such a type. The
+  allowed form tests `None` only (`x is not None`, `x if x is not None else d`). Not reported: a
+  plain `str` or `bool`, `x or ''` and `x or False`, a test that does not use the value, a name the
+  function binds again, and test files. When an empty string or `False` must take the same path as
+  a missing value, add an exception for the rule.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

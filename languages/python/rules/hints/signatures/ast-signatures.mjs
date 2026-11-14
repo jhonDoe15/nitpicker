@@ -52,6 +52,14 @@ export const SIGNATURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['presence-truthiness'],
+    describe: (subject) =>
+      `\`${subject}\` is an optional string or boolean tested for truth, so \`''\` or \`False\` reads as missing`,
+    allowed:
+      'Test for `None` only: `name is not None`, `name if name is not None else DEFAULT`. An exception fits only when an empty string or `False` must take the same path as a missing value.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['parameter-mutation'],
     describe: mutationDescription,
     allowed:

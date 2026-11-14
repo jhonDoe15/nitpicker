@@ -51,6 +51,7 @@ export const STRUCTURE_NOTES = {
   ],
   'decided-condition': [
     'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
+    'The same holds for a coercion of the tested value inside the branch the test decides (`x ? Boolean(x) : d`, `bool(x)` under `if x:`): it is always true there, so either the coercion or the test is wrong.',
     'The dead case is often a real bug: the branch the author meant to run never can.',
     'Remove the check, or fix the condition that was meant. The message names the guard that decides it.',
   ],
