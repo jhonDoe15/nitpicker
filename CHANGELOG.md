@@ -156,11 +156,12 @@ Stricter rules, which can fail code that passed before:
   that mock the class under test, mocks without a spec, relaxed MockK mocks and patches that miss
   the lookup, inverse functions no test round-trips, and containers or servers started for each test
   (#585, #628, #631, #632, #700, #701, #703, #720, #858, #860, #862, #937, #941, #953, #965, #1012).
-- Data access in every preset: rows counted, filtered, sorted or aggregated in memory, streamed rows
-  collected into one collection, unordered pages and unbounded query arrays, two to-many relations
-  joined in one query, foreign keys without an index, eager relations and cascading removes on
-  many-to-many, ORM schema sync at startup and query logging, and migrations added out of order or
-  with hardcoded names (#824, #854, #857, #914, #926, #969, #970, #982, #986, #988, #990, #1026).
+- Data access in every preset: rows counted, filtered, sorted or aggregated in memory (in Java and
+  Kotlin also Spring Data results), streamed rows collected into one collection, unordered pages and
+  unbounded query arrays, two to-many relations joined in one query, foreign keys without an index,
+  eager relations and cascading removes on many-to-many, ORM schema sync at startup and query
+  logging, and migrations added out of order or with hardcoded names (#824, #854, #857, #914, #916,
+  #926, #969, #970, #982, #986, #988, #990, #1026).
 - Correctness: unhandled rejections of void promises, writes to properties of parameter objects,
   recursive map updates, URI parsing of runtime text outside a handled parse, numbers tested for
   truthiness, singular and plural inputs, unchecked schema fields, partial enum and union
