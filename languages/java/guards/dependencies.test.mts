@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../test-support/temporary-trees.mts';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import type { Entry } from './typed/dependency-report.mts';
 import { dependencyFindings, readDependencyFindings } from './dependencies.mts';
@@ -10,12 +10,8 @@ import {
   descriptorOfLength,
 } from '../builds/classes/test-support/class-bytes.mts';
 
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const trees = temporaryTrees('nitpicker-dependencies-');
+afterEach(trees.cleanup);
 
 function declared(group: string, name: string, extra: Partial<Entry> = {}): Entry {
   return {
@@ -93,8 +89,7 @@ describe('dependencyFindings', () => {
 
 describe('readDependencyFindings', () => {
   it('reads dependencies.json and tolerates its absence', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
-    roots.push(root);
+    const root = trees.tree();
     expect(readDependencyFindings(root)).toEqual([]);
     writeFileSync(
       path.join(root, 'dependencies.json'),
@@ -109,8 +104,7 @@ describe('readDependencyFindings', () => {
   });
 
   it('decides usage from the class directories and archives the Gradle task lists', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-dependencies-'));
-    roots.push(root);
+    const root = trees.tree();
     const field = descriptorOfLength(69, 'org/acme/widgets');
     const write = (file: string, bytes: string | Uint8Array): void => {
       mkdirSync(path.dirname(path.join(root, file)), { recursive: true });

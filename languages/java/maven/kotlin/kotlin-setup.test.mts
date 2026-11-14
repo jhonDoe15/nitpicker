@@ -1,7 +1,7 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { readPinnedTools as untypedPinnedTools } from '../../builds/java-build.mjs';
 import { forbiddenMethodsOf as untypedForbiddenMethods } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
 import { textOf } from '../../../../shared/values/readers.mts';
@@ -15,7 +15,7 @@ type SetupResult = ReturnType<typeof kotlinSetup>;
 const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
 const forbiddenMethodsOf: (text: string) => unknown[] = untypedForbiddenMethods;
 
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-kotlin-options-');
 const pinned = readPinnedTools();
 const NITPICKER_DETEKT = path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml');
 const KTLINT_POM = pluginPom(
@@ -67,13 +67,7 @@ function pluginPom(body: string): string {
 }
 
 function directory(files: Readonly<Record<string, string>> = {}): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-options-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return trees.tree(files);
 }
 
 function setup({
@@ -109,11 +103,7 @@ function setup({
   };
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 describe('kotlinSetup', () => {
   it('does nothing under the java preset', () => {

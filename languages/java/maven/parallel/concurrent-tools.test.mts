@@ -1,7 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 import { runToolsConcurrently } from './concurrent-tools.mts';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -16,17 +16,12 @@ type Task = {
   readonly options: Readonly<Record<string, string>>;
 };
 
-const roots: string[] = [];
+const trees = temporaryTrees('nitpicker-concurrent-tools-');
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 function markerTasks(count: number): Task[] {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-concurrent-tools-'));
-  roots.push(root);
+  const root = trees.tree();
   return Array.from({ length: count }, (_, index) => ({
     run: writeMarker,
     url: TOOLS_URL,

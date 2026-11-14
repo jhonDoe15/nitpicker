@@ -1,26 +1,11 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
+import { u16, utf8 } from '../test-support/class-constants.mts';
 import { copyJavaClasses, sourceFileOf } from './java-classes.mts';
 
-const roots: string[] = [];
-
-function utf8(text: string): Buffer {
-  const bytes = Buffer.from(text, 'utf8');
-  const header = Buffer.alloc(3);
-  header[0] = 1;
-  header.writeUInt16BE(bytes.length, 1);
-  return Buffer.concat([header, bytes]);
-}
-
-function u16(...values: number[]): Buffer {
-  const buffer = Buffer.alloc(2 * values.length);
-  for (const [index, value] of values.entries()) {
-    buffer.writeUInt16BE(value, 2 * index);
-  }
-  return buffer;
-}
+const trees = temporaryTrees('nitpicker-kotlin-classes-');
 
 function classFile({
   sourceFile,
@@ -55,20 +40,10 @@ function classFile({
 }
 
 function tree(files: Readonly<Record<string, string | Buffer>>): string {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-classes-'));
-  roots.push(root);
-  for (const [name, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), content);
-  }
-  return root;
+  return trees.tree(files);
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(trees.cleanup);
 
 describe('sourceFileOf', () => {
   it('reads the SourceFile attribute of a class file, with and without members', () => {

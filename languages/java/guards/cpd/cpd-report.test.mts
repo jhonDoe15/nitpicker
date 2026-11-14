@@ -1,24 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { readCpdFindings } from '../cpd-duplicates.mts';
 
-const roots: string[] = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const trees = temporaryTrees('nitpicker-cpd-');
+afterEach(trees.cleanup);
 
 function report(children = ''): string {
   return `<?xml version="1.0"?>\n<pmd-cpd>\n${children}</pmd-cpd>\n`;
 }
 
 function project(): { root: string; reportRoot: string } {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
-  roots.push(root);
+  const root = trees.tree();
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
   return { root, reportRoot };
