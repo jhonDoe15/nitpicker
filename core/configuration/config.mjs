@@ -80,8 +80,16 @@ function turnedOffByDependency(analyzers, disabled) {
   return causes;
 }
 
+function partsOf(analyzers) {
+  return analyzers.flatMap(({ switchableParts = [] }) => switchableParts);
+}
+
+function isPartOnly(analyzers, name) {
+  return partsOf(analyzers).includes(name) && !analyzers.some((analyzer) => analyzer.name === name);
+}
+
 function checkKnown(analyzers, disabled) {
-  const names = new Set(analyzers.map(({ name }) => name));
+  const names = new Set([...analyzers.map(({ name }) => name), ...partsOf(analyzers)]);
   const unknown = disabled.filter((name) => !names.has(name));
   if (unknown.length > 0) {
     throw configError(
@@ -96,21 +104,40 @@ export function applyDisable(analyzers, config) {
     return analyzers;
   }
   checkKnown(analyzers, disabled);
-  const off = turnedOffByDependency(analyzers, disabled);
+  const off = turnedOffByDependency(
+    analyzers,
+    disabled.filter((name) => !isPartOnly(analyzers, name)),
+  );
   return analyzers.filter(({ name }) => !off.has(name));
+}
+
+function describeSwitchedOffParts(analyzers, disabled) {
+  return analyzers
+    .filter(({ switchableParts = [] }) => switchableParts.some((part) => disabled.includes(part)))
+    .flatMap(({ name, switchableParts }) =>
+      switchableParts
+        .filter((part) => disabled.includes(part))
+        .map(
+          (part) =>
+            `${part} is turned off by "disable", so ${name} does not run it on the base or the head`,
+        ),
+    );
 }
 
 export function describeDisableCascade(analyzers, config) {
   const disabled = config.disable ?? [];
   const causes = turnedOffByDependency(analyzers, disabled);
-  return disabled.flatMap((root) => {
-    const dependents = analyzers
-      .map(({ name }) => name)
-      .filter((name) => !disabled.includes(name) && causes.get(name) === root);
-    return dependents.length === 0
-      ? []
-      : [
-          `${root} is disabled, so ${listNames(dependents)} ${dependents.length > 1 ? 'are' : 'is'} off too`,
-        ];
-  });
+  return [
+    ...describeSwitchedOffParts(analyzers, disabled),
+    ...disabled.flatMap((root) => {
+      const dependents = analyzers
+        .map(({ name }) => name)
+        .filter((name) => !disabled.includes(name) && causes.get(name) === root);
+      return dependents.length === 0
+        ? []
+        : [
+            `${root} is disabled, so ${listNames(dependents)} ${dependents.length > 1 ? 'are' : 'is'} off too`,
+          ];
+    }),
+  ];
 }

@@ -156,18 +156,38 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
   ];
 }
 
-export function runMavenPreset(
-  projectRoot,
-  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
-) {
+function resolveRunTools(run, { modules, analyzed, policy, kotlin }) {
+  return resolveTools({
+    ...run,
+    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned: run.pinned, kotlin }),
+  });
+}
+
+function assertMavenPreset(policy) {
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
       `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
     );
   }
+}
+
+export function runMavenPreset(
+  projectRoot,
+  { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
+) {
+  assertMavenPreset(policy);
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
+  const run = {
+    projectRoot,
+    maven,
+    spawn,
+    timeoutMs,
+    pinned,
+    quick: policy.quick === true,
+    mutationOff: policy.mutationOff === true,
+  };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
@@ -177,11 +197,7 @@ export function runMavenPreset(
       module,
       classpaths: readClasspaths(work, module),
     }));
-    const tools = resolveTools({
-      ...run,
-      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
-    });
+    const tools = resolveRunTools(run, { modules, analyzed, policy, kotlin });
     const testsFailures = analyzeAll({
       ...run,
       testsSkipped: timedOut.length > 0,

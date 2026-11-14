@@ -885,6 +885,12 @@ inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limi
 reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
 
+To run the Java or Kotlin gate without mutation testing when PIT is too slow for the project, add
+`"mutation"` to `disable` in `nitpicker.config.json`. PIT then runs on neither the base nor the head,
+no mutation findings are reported, and the run says on stderr that the config turned mutation off.
+Everything else (tests, coverage, CRAP and the other tools) still runs. `--quick` also skips mutation,
+but drops tests and coverage too.
+
 ### Error Prone cannot find a JDK
 
 **Symptom.** `Error Prone needs at least JDK 21 (JDK 21 or newer, and at least the project's own JDK),
