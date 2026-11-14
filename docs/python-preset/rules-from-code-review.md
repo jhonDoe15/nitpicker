@@ -77,7 +77,7 @@ members is not reported.
   are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
   `continue`, the left side of `and` and `or`, the bounds of a `for i in range(...)` loop, the
   branches of a conditional expression, and facts about names a lambda or nested function captures
-  when they cannot change; an assignment to a name, or a call when the name
+  when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
   is a module name, forgets what was known, and arithmetic is an opaque value.
 - `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
   conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the

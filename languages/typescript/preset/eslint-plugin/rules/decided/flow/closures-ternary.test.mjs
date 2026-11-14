@@ -6,11 +6,11 @@ const { tester, typed, error } = decidedTester();
 tester.run('no-decided-condition flow', rule, {
   valid: [
     'export function f(n: number) { return n > 5 ? 1 : n > 3 ? 2 : 3; }',
-    'export function f(n: number) { let m = n; m = 1; if (m > 5) { return () => (m > 3 ? 1 : 0); } return null; }',
+    'export function f(n: number) { let m = n; m = n + 1; if (m > 5) { return () => (m > 3 ? 1 : 0); } return null; }',
     'export function f(o: { n: number }) { if (o.n > 5) { return () => (o.n > 3 ? 1 : 0); } return null; }',
     'export function f(n: number) { if (n > 5) { return (n: number) => (n > 3 ? 1 : 0); } return null; }',
     'export function f(n: number) { if (n > 5) { n = 1; } return () => (n > 3 ? 1 : 0); }',
-    'export function f(n: number, g: () => void) { let m = n; if (m > 5) { g(); } return () => { m = 0; return m > 3 ? 1 : 0; }; }',
+    'export function f(n: number, g: () => void) { let m = n; if (m > 5) { g(); } return () => { m = n; return m > 3 ? 1 : 0; }; }',
   ].map((code) => typed(code)),
   invalid: [
     typed('export function f(x: number) { return x > 5 ? (x > 3 ? 1 : 2) : 3; }', [

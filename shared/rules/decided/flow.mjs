@@ -2,6 +2,7 @@ import { afterEffects, effectsOf, fact } from './facts.mjs';
 import { exitOf, statementsOf, textOf } from './flow/exits.mjs';
 import { loopEntry } from './flow/loops.mjs';
 import { nestedFlow } from './flow/nested.mjs';
+import { statementFacts } from './flow/values/statement-facts.mjs';
 
 const LOOPS = new Set(['for', 'foreach', 'while', 'do']);
 
@@ -86,7 +87,7 @@ function otherFlow(node, facts, flow) {
   return {
     checks: [{ expression: node, facts: after }, ...nested.checks],
     children: nested.children,
-    after,
+    after: [...after, ...statementFacts(node, flow)],
   };
 }
 
