@@ -189,6 +189,29 @@ init has exit codes of its own:
 | 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                                             |
 | 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Yarn Plug'n'Play, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
 
+#### At the top of a monorepo
+
+Run at the top of a repository with several projects (see [Monorepos](#monorepos)), init sets up
+every project a run there would gate, and prints each one's preset, install command and config
+line under its folder:
+
+- When the top config lists `projects`, or the top declares a workspace or a Gradle composite
+  build, init takes the projects from there and writes no top config. A project gets its own
+  `nitpicker.config.json` only where the run would give it the wrong preset (a JavaScript package
+  in an npm workspace would otherwise get the TypeScript preset) or where it needs a setting (the
+  Java build tool when it has both builds).
+- When the top holds no project file but folders below it do (a `web/package.json`, an
+  `api/pyproject.toml` and a `service/build.gradle`), init writes the top `nitpicker.config.json`
+  with a `projects` list of `{ "path", "preset" }` entries. A top config that lists no projects
+  is left as it is; init prints the diff that adds the list and exits 1.
+- `--ci github` writes one workflow for the whole repository: the setup step of every toolchain
+  the projects need (Node.js, Java, Python) once, the install steps of each project with its
+  `working-directory` (a workspace installs once, at its root), and one nitpicker step at the top
+  with `package: nitpicker@<version>`.
+- It prints the skill of every preset involved, and how settings that several projects share can
+  live in one file their configs name with `extends` (see
+  [Shared config with `extends`](#shared-config-with-extends)).
+
 ### From a GitHub release
 
 A release made by following [the release steps](releasing.md) also attaches the package as a
