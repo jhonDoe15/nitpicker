@@ -1,6 +1,3 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
 import { rule as noUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as boundedContainerTeardown } from '../rules/testing/lifecycle/bounded-container-teardown.mjs';
 import { rule as noFirstTestChargedSetup } from '../rules/testing/lifecycle/no-first-test-charged-setup.mjs';
@@ -8,27 +5,12 @@ import { rule as noIntervalPollingInTests } from '../rules/testing/lifecycle/no-
 import { rule as noFixedSleepSynchronization } from '../rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { rule as containerPauseRequiresFinallyUnpause } from '../rules/testing/lifecycle/container-pause-requires-finally-unpause.mjs';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const ruleTester = typescriptRuleTester();
 
 const testFile = '/repo/tests/integration/repository.test.ts';
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 const sourceFile = '/repo/src/service.ts';
 ruleTester.run(
   'container-pause-requires-finally-unpause',

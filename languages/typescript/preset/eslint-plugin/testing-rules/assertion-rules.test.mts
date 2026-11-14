@@ -1,6 +1,3 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
 import { rule as noWaitFor } from '../rules/testing/assertions/no-wait-for-with-fake-timers.mjs';
 import { rule as noInternalMocks } from '../rules/testing/assertions/no-internal-module-mocks.mjs';
 import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
@@ -9,27 +6,12 @@ import { rule as testTsconfigPinsLibAndTypes } from '../rules/testing/types/test
 import { rule as testMustUseProductionRuntime } from '../rules/testing/assertions/test-must-use-production-runtime.mjs';
 import { rule as integrationTestUsesApprovedHarness } from '../rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const ruleTester = typescriptRuleTester();
 
 const testFile = '/repo/tests/integration/repository.test.ts';
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 const filename = '/repo/src/main/feature/__tests__/feature.test.ts';
 ruleTester.run('test-must-use-production-runtime', testMustUseProductionRuntime, {
   valid: [

@@ -1,21 +1,12 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { RuleTester } from 'eslint';
 import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule } from '../rules/testing/environment/no-unused-dom-environment.mjs';
-import { createProject, docblock, lines, logic } from './test-support/environment-project.mjs';
+import { createProject, docblock, lines, logic } from './test-support/environment-project.mts';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
+import { configuredRuleTester } from '../test-support/rule-tester.mts';
 
-RuleTester.afterAll = afterAll;
-RuleTester.afterEach = afterEach;
-RuleTester.beforeAll = beforeAll;
-RuleTester.beforeEach = beforeEach;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
+const ruleTester = configuredRuleTester({
   languageOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -33,14 +24,18 @@ const rendered = lines(
   "it('renders', () => { render(null); expect(screen).toBeDefined(); });",
 );
 
-const inJsdom = (...parts) => ({ filename, code: lines(...parts, logic), options: [jsdom] });
+const inJsdom = (...parts: string[]) => ({
+  filename,
+  code: lines(...parts, logic),
+  options: [jsdom],
+});
 const projectReport = (environment = 'jsdom') => [
   { messageId: 'unusedProjectEnvironment', data: { environment }, line: 1 },
 ];
-const directiveReport = (environment, line = 1, directive = '@vitest-environment') => [
+const directiveReport = (environment: string, line = 1, directive = '@vitest-environment') => [
   { messageId: 'unusedDirectiveEnvironment', data: { environment, directive }, line },
 ];
-const overDomProjectReport = (environment) => [
+const overDomProjectReport = (environment: string) => [
   {
     messageId: 'unusedDirectiveOverDomProject',
     data: { environment, directive: '@vitest-environment' },
@@ -48,7 +43,7 @@ const overDomProjectReport = (environment) => [
   },
 ];
 
-function writeFiles(files) {
+function writeFiles(files: Record<string, string>) {
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
@@ -91,9 +86,9 @@ const wideImports = Array.from(
 const appAlias = { find: '#app', replacement: path.join(root, 'src') };
 const appPattern = { find: { pattern: '^#app/(.*)$', flags: 'u' }, replacement: `${root}/src/$1` };
 const aliasedHelper = "import { reset } from '#app/support/dom-helper';";
-const support = (name) => path.join(root, 'src/support', name);
-const withSetup = (environment, ...setupFiles) => [{ environment, setupFiles }];
-const unusedInJsdom = (...parts) => ({ ...inJsdom(...parts), errors: projectReport() });
+const support = (name: string) => path.join(root, 'src/support', name);
+const withSetup = (environment: string, ...setupFiles: string[]) => [{ environment, setupFiles }];
+const unusedInJsdom = (...parts: string[]) => ({ ...inJsdom(...parts), errors: projectReport() });
 
 ruleTester.run('no-unused-dom-environment', withoutFixes(rule), {
   valid: [

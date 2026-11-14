@@ -1,33 +1,15 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
 import { rule as hermeticGitInTests } from '../rules/testing/processes/hermetic-git-in-tests.mjs';
 import { rule as noNodeProcessPerTest } from '../rules/testing/processes/no-node-process-per-test.mjs';
 import { rule as noGitRepositoryPerTest } from '../rules/testing/processes/no-git-repository-per-test.mjs';
 import { rule as noServerOrWorkerPerTest } from '../rules/testing/processes/no-server-or-worker-per-test.mjs';
 import { rule as noExternalExecutables } from '../rules/testing/processes/no-external-executables-in-unit-tests.mjs';
 import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const ruleTester = typescriptRuleTester();
 
 const testFile = '/repo/tests/integration/repository.test.ts';
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 const childProcess =
   "import { execFileSync, execSync, spawnSync, fork } from 'node:child_process';";
 // Shapes taken from nitpicker's own suite before the 2026-10-09 speed-up (core/diff/diff-policy,
