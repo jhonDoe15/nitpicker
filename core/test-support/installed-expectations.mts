@@ -1,42 +1,68 @@
 import { runCli } from '../cli.mts';
 import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { docsRef, LATEST_RELEASE_TAG } from '../../shared/messages/docs-url.mjs';
-import { indexEntries, readReferenceEntries, referenceUrl } from '../../shared/reference/store.mjs';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import {
+  docsRef as untypedDocsRef,
+  LATEST_RELEASE_TAG as untypedLatestReleaseTag,
+} from '../../shared/messages/docs-url.mjs';
+import {
+  indexEntries as untypedIndexEntries,
+  readReferenceEntries as untypedReadReferenceEntries,
+  referenceUrl as untypedReferenceUrl,
+} from '../../shared/reference/store.mjs';
+import { fieldAt } from '../../scripts/json/fields.mts';
+import { textOf } from '../../shared/values/readers.mts';
 import { usageText } from '../help/usage-text.mts';
 import { projectAnalyzers } from '../command/information/project-analyzers.mts';
 
-/** The links of an installed copy of the package with `manifest`: they point at its release tag. */
-export function installedLinks(manifest) {
-  const repositoryUrl = manifest.repository.url.replace(/^git\+/u, '').replace(/\.git$/u, '');
+export function installedLinks(manifest: unknown): InstalledLinks {
+  const repositoryUrl = textOf(fieldAt(manifest, 'repository', 'url'))
+    .replace(/^git\+/u, '')
+    .replace(/\.git$/u, '');
   return {
     repositoryUrl,
-    tagRoot: `${repositoryUrl}/blob/${docsRef({ version: manifest.version, checkout: false })}`,
+    tagRoot: `${repositoryUrl}/blob/${docsRef({ version: textOf(fieldAt(manifest, 'version')), checkout: false })}`,
     reference: indexEntries(readReferenceEntries()),
   };
 }
 
-/** The helpUri an installed package gives the findings of rule `id`: its entry at the release tag. */
-export function installedHelpUri(links, id) {
-  return referenceUrl(links.reference.exact.get(id)[0], links.tagRoot);
+export function installedHelpUri(links: InstalledLinks, id: string): string | undefined {
+  return referenceUrl(links.reference.exact.get(id)?.[0], links.tagRoot);
 }
 
+const docsRef: (options: { version: string; checkout: boolean }) => string = untypedDocsRef;
+const LATEST_RELEASE_TAG: string = untypedLatestReleaseTag;
+const referenceUrl: (entry: unknown, root: string) => string | undefined = untypedReferenceUrl;
+const indexEntries: (entries: unknown) => ReferenceIndex = untypedIndexEntries;
+const readReferenceEntries: () => unknown = untypedReadReferenceEntries;
+
+type ReferenceIndex = {
+  readonly exact: ReadonlyMap<string, readonly unknown[]>;
+};
+
+export type InstalledLinks = {
+  readonly repositoryUrl: string;
+  readonly tagRoot: string;
+  readonly reference: ReferenceIndex;
+};
+
+const EXAMPLE_PATH = 'src/main/example.ts';
+const ENFORCEABLE = 'enforceable';
 const PRETTIER_MESSAGE =
   'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.';
 const DEBUGGER_MESSAGE =
   '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
   '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
-/** The findings a dirty run of the installed package writes. */
-export function expectedDirtyFindings(links) {
+export function expectedDirtyFindings(links: InstalledLinks): object[] {
   return [
     {
       tool: 'eslint-lint',
       rule: 'no-debugger',
-      path: 'src/main/example.ts',
+      path: EXAMPLE_PATH,
       identity:
         'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
       message: DEBUGGER_MESSAGE,
-      classification: 'enforceable',
+      classification: ENFORCEABLE,
       symbol: 'example',
       location: { line: 2, column: 3 },
       helpUri: installedHelpUri(links, 'eslint-lint/no-debugger'),
@@ -46,33 +72,32 @@ export function expectedDirtyFindings(links) {
         value: 1,
         existingCodeOnly: true,
       },
-      exception: { rule: 'no-debugger', paths: ['src/main/example.ts'], reason: '...' },
+      exception: { rule: 'no-debugger', paths: [EXAMPLE_PATH], reason: '...' },
       exceptionList: 'exceptions',
     },
     {
       tool: 'prettier-format',
       rule: 'prettier/prettier',
-      path: 'src/main/example.ts',
+      path: EXAMPLE_PATH,
       identity: 'format-diff:3021261b8c9abc3d63b74d13',
       message: PRETTIER_MESSAGE,
-      classification: 'enforceable',
+      classification: ENFORCEABLE,
       location: { line: 1, endLine: 1 },
       helpUri: installedHelpUri(links, 'prettier-format/prettier/prettier'),
     },
     {
       tool: 'prettier-format',
       rule: 'prettier/prettier',
-      path: 'src/main/example.ts',
+      path: EXAMPLE_PATH,
       identity: 'format-diff:92772ea69de4f061a708c457',
       message: PRETTIER_MESSAGE,
-      classification: 'enforceable',
+      classification: ENFORCEABLE,
       location: { line: 3, endLine: 3 },
       helpUri: installedHelpUri(links, 'prettier-format/prettier/prettier'),
     },
   ];
 }
-/** What a snapshot run of the installed package prints. */
-export function expectedSnapshotOutput(links) {
+export function expectedSnapshotOutput(links: InstalledLinks): string {
   return [
     "Following this project's conventions:",
     '  Trailing commas: none (used by 1 of 1 measured files)',
@@ -96,8 +121,7 @@ export function expectedSnapshotOutput(links) {
   ].join('\n');
 }
 
-/** What a dirty diff run of the installed package prints from the consumer root. */
-export function expectedDirtyOutput() {
+export function expectedDirtyOutput(): string {
   return `Base: main (argument)
 
 Quality gate summary
@@ -113,8 +137,10 @@ nitpicker: head: running 2 analyzers
 `;
 }
 
-/** What the checkout prints for `args`, with its links moved to the release tag. */
-export async function checkoutOutput(links, args) {
+export async function checkoutOutput(
+  links: InstalledLinks,
+  args: readonly string[],
+): Promise<string> {
   const output = captureOutput();
   await runCli({
     arguments_: args,
@@ -128,8 +154,7 @@ export async function checkoutOutput(links, args) {
     .replaceAll(`${links.repositoryUrl}/blob/${LATEST_RELEASE_TAG}/`, `${links.tagRoot}/`);
 }
 
-/** The help an installed package prints in `projectRoot`: its usage page at its release tag. */
-export function installedHelpText(links, projectRoot) {
+export function installedHelpText(links: InstalledLinks, projectRoot: string): string {
   return usageText({
     analyzers: projectAnalyzers({ options: {}, currentProjectRoot: projectRoot }),
     referenceUrl: `${links.tagRoot}/docs/usage.md`,

@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { fieldAt } from '../scripts/json/fields.mts';
+import { parseJson } from '../shared/values/readers.mts';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
 
-const repoRoot = PACKAGE_ROOT;
-const read = (file) => readFileSync(path.join(repoRoot, file), 'utf8');
+const repoRoot: string = untypedPackageRoot;
+const read = (file: string): string => readFileSync(path.join(repoRoot, file), 'utf8');
 const dockerfile = read('Dockerfile');
 const dockerignore = read('.dockerignore');
 const containerWorkflow = read('.github/workflows/container.yml');
@@ -50,36 +52,38 @@ const JVM_ENVIRONMENT = {
 };
 const EXACT_VERSION_TAG = /^[\w./-]+:\d+(?:\.\d+){1,2}(?:_\d+)?(?:-[a-z0-9-]+)?$/;
 
-function instruction(name) {
+function instruction(name: string): string[] {
   return instructions.filter((line) => line.startsWith(`${name} `));
 }
 
-function stage(name) {
+function stage(name: string): string[] {
   const start = instructions.findIndex((line) => line.endsWith(` AS ${name}`));
   const rest = instructions.slice(start + 1);
   const end = rest.findIndex((line) => line.startsWith('FROM '));
-  return [instructions[start], ...(end === -1 ? rest : rest.slice(0, end))];
+  return [...instructions.slice(start, start + 1), ...(end === -1 ? rest : rest.slice(0, end))];
 }
 
-function stageNames() {
-  return instruction('FROM').map((line) => line.split(' AS ')[1]);
+function stageNames(): string[] {
+  return instruction('FROM').map((line) => line.split(' AS ')[1] ?? '');
 }
 
-function environment(name) {
+function environment(name: string): Record<string, string> {
   const pairs = stage(name)
     .filter((line) => line.startsWith('ENV '))
     .flatMap((line) => line.slice('ENV '.length).split(' '))
     .map((pair) => pair.split('='));
-  return Object.fromEntries(pairs.map(([key, ...value]) => [key, value.join('=')]));
+  return Object.fromEntries(
+    pairs.map(([key = '', ...value]): [string, string] => [key, value.join('=')]),
+  );
 }
 
-function setting(text, pattern) {
-  const [, value] = text.match(pattern) ?? [];
-  expect(typeof value, `${pattern} has no match`).toBe('string');
-  return value;
+function setting(text: string | undefined, pattern: RegExp): string {
+  const [, value] = text?.match(pattern) ?? [];
+  expect(typeof value, `${String(pattern)} has no match`).toBe('string');
+  return value ?? '';
 }
 
-function runSteps(name) {
+function runSteps(name: string): string[] {
   return stage(name).filter((line) => line.startsWith('RUN '));
 }
 
@@ -100,7 +104,7 @@ describe('container image Dockerfile', () => {
 
   it('pins every base image to an exact version', () => {
     const images = instruction('FROM')
-      .map((line) => line.split(' ')[1])
+      .map((line) => line.split(' ')[1] ?? '')
       .filter((image) => image.includes(':'));
     const copied = instruction('COPY')
       .filter((line) => line.includes('--from='))
@@ -170,7 +174,7 @@ describe('container image Dockerfile', () => {
   });
 
   it('labels the image with the repository it is built from, the package repository by default', () => {
-    const repository = JSON.parse(read('package.json')).repository.url;
+    const repository = fieldAt(parseJson(read('package.json')), 'repository', 'url');
     expect(setting(dockerfile, /org\.opencontainers\.image\.source="([^"]+)"/)).toBe(
       `\${SOURCE_URL}`,
     );
@@ -229,8 +233,8 @@ describe('container image toolchains', () => {
 
   it('keeps Poetry environments in the checkout and lets any user add Pythons', () => {
     const variables = environment('python');
-    expect(variables.UV_PYTHON_INSTALL_DIR).toBe('/opt/python');
-    expect(variables.POETRY_VIRTUALENVS_IN_PROJECT).toBe('true');
+    expect(variables['UV_PYTHON_INSTALL_DIR']).toBe('/opt/python');
+    expect(variables['POETRY_VIRTUALENVS_IN_PROJECT']).toBe('true');
     expect(runSteps('python').some((line) => line.includes('chmod -R a+rwX /opt/python'))).toBe(
       true,
     );
@@ -256,7 +260,7 @@ describe('container workflow', () => {
 
   it('builds and smoke-tests every image variant of the Dockerfile', () => {
     const built = [...containerWorkflow.matchAll(/^ {10}- variant: (\S+)$/gm)].map(
-      ([, name]) => name,
+      ([, name]) => name ?? '',
     );
     expect(built.toSorted((left, right) => left.localeCompare(right))).toEqual(variants);
   });

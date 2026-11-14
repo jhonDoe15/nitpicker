@@ -11,9 +11,11 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { fieldAt } from '../scripts/json/fields.mts';
+import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
 
-const root = PACKAGE_ROOT;
+const root: string = untypedPackageRoot;
 
 const TEST_ONLY_PATH =
   /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.m[jt]s$|_test\.go$|\.pyc$/u;
@@ -28,11 +30,11 @@ const GENERATOR_ONLY_PATH = new RegExp(
   'u',
 );
 
-function isNotShipped(relative) {
+function isNotShipped(relative: string): boolean {
   return TEST_ONLY_PATH.test(relative) || GENERATOR_ONLY_PATH.test(relative);
 }
 
-function sourceFiles(directory) {
+function sourceFiles(directory: string): string[] {
   return readdirSync(path.join(root, directory), {
     withFileTypes: true,
   }).flatMap((entry) => {
@@ -48,7 +50,7 @@ function sourceFiles(directory) {
   });
 }
 
-function assertRuntimeFiles(files) {
+function assertRuntimeFiles(files: ReadonlySet<string>): void {
   const expected = ['package.json', ...['core', 'shared', 'languages'].flatMap(sourceFiles)];
   expect(
     expected.filter((relative) => !files.has(relative)),
@@ -58,7 +60,7 @@ function assertRuntimeFiles(files) {
 
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 
-function checkoutCopy() {
+function checkoutCopy(): string {
   const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-pack-contents-'));
   const files = execFileSync(
     'git',
@@ -80,18 +82,18 @@ function checkoutCopy() {
 }
 
 describe('npm package contents', () => {
-  let packedFiles;
-  let copy;
+  let packedFiles: ReadonlySet<string>;
+  let copy: string;
 
   afterAll(() => {
     rmSync(copy, { recursive: true, force: true });
   });
 
   beforeAll(() => {
-    let listing;
+    let listing: unknown;
     copy = checkoutCopy();
     try {
-      listing = JSON.parse(
+      listing = parseJson(
         execFileSync('npm', ['pack', '--dry-run', '--json'], {
           cwd: copy,
           encoding: 'utf8',
@@ -104,7 +106,9 @@ describe('npm package contents', () => {
       });
     }
 
-    packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
+    packedFiles = new Set(
+      listOf(fieldAt(listing, 0, 'files')).map((file) => textOf(fieldAt(file, 'path'))),
+    );
   });
 
   it('fails when a runtime file is omitted from files', () => {

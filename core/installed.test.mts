@@ -15,12 +15,18 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mts';
-import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT as untypedPackageRoot } from './tooling/tool-resolution.mjs';
 import {
-  MINIMUM_NODE,
-  supportsRedirect,
+  MINIMUM_NODE as untypedMinimumNode,
+  supportsRedirect as untypedSupportsRedirect,
 } from '../languages/typescript/typescript-api/api-redirect.mjs';
-import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
+import { fieldAt } from '../scripts/json/fields.mts';
+import { listOf, parseJson, textOf } from '../shared/values/readers.mts';
+import {
+  consumerCommands,
+  eslintVersionOf,
+  type CommandResult,
+} from './test-support/installed-consumer.mts';
 import {
   checkoutOutput,
   installedHelpText,
@@ -29,48 +35,60 @@ import {
   expectedSnapshotOutput,
   installedHelpUri,
   installedLinks,
-} from './test-support/installed-expectations.mjs';
+} from './test-support/installed-expectations.mts';
 
-const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
-const packageRoot = PACKAGE_ROOT;
-const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+const MINIMUM_NODE: readonly number[] = untypedMinimumNode;
+const supportsRedirect: () => boolean = untypedSupportsRedirect;
+const enabled = process.env['NITPICKER_INSTALLED_TEST'] === '1';
+const packageRoot: string = untypedPackageRoot;
+const manifest = readJson(path.join(packageRoot, 'package.json'));
 const links = installedLinks(manifest);
-const layouts = [undefined, 'nested', 'linked'];
+const typedManifest = {
+  version: textOf(fieldAt(manifest, 'version')),
+  dependency: (name: string) => textOf(fieldAt(manifest, 'dependencies', name)),
+};
+const layouts = [undefined, 'nested', 'linked'] as const;
 const explained = ['pmd/UnusedLocalVariable', 'coverage', 'MagicNumber'];
-// npm 10 crashes resolving the peers of Vitest 4.1 ("reading 'edgesOut'"), so
-// the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
-const expectedEslintVersion = eslintVersionOf(manifest);
+const expectedEslintVersion = eslintVersionOf(typedManifest);
 const { command, checked } = consumerCommands({ ...process.env, NO_COLOR: '1' });
 
-function withoutSlowAnalyzerLines(output) {
+function readJson(file: string): unknown {
+  return parseJson(readFileSync(file, 'utf8'));
+}
+
+function withoutSlowAnalyzerLines(output: string): string {
   return output.replaceAll(/^nitpicker: (?:base|head) [\w-]+ done \([^)]*\), \d+ of \d+\n/gmu, '');
 }
 
-function write(root, relative, contents) {
+function manifestText(...keys: string[]): string {
+  return textOf(fieldAt(manifest, ...keys));
+}
+
+function write(root: string, relative: string, contents: string): void {
   const target = path.join(root, relative);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, contents);
 }
 
-function listing(root) {
-  function walk(directory, prefix = '') {
+function listing(root: string): string[] {
+  function walk(directory: string, prefix = ''): string[] {
     return readdirSync(directory).flatMap((name) => {
       const relative = path.posix.join(prefix, name);
       const location = path.join(directory, name);
       if (lstatSync(location).isDirectory()) return walk(location, relative);
-      return [`${relative}:${lstatSync(location).size}`];
+      return [`${relative}:${String(lstatSync(location).size)}`];
     });
   }
   return walk(realpathSync(root)).sort();
 }
 
-function temporaryFiles(root) {
-  const result = [];
-  function walk(directory) {
+function temporaryFiles(root: string): string[] {
+  const result: string[] = [];
+  function walk(directory: string): void {
     for (const item of readdirSync(directory, { withFileTypes: true })) {
       if (item.name === 'node_modules' || item.name === '.git') continue;
       const location = path.join(directory, item.name);
@@ -84,33 +102,40 @@ function temporaryFiles(root) {
 
 const suite = enabled ? describe : describe.skip;
 suite('packed nitpicker in a separate consumer', () => {
-  let packRoot;
-  let tarball;
+  let packRoot: string | undefined;
+  let tarball: string;
   beforeAll(() => {
     packRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-packed-'));
     checked(packageRoot, 'npm', ['pack', '--pack-destination', packRoot]);
     const tarballs = readdirSync(packRoot).filter((file) => file.endsWith('.tgz'));
     if (tarballs.length !== 1)
       throw new Error(`Expected one packed tarball, received ${String(tarballs.length)}`);
-    tarball = path.join(packRoot, tarballs[0]);
+    tarball = path.join(packRoot, tarballs[0] ?? '');
   }, 180_000);
   afterAll(() => {
     if (packRoot) rmSync(packRoot, { recursive: true, force: true });
   });
 
   describe.runIf(supportsRedirect())('a consumer on TypeScript 7', () => {
-    const typeScript7 = manifest.dependencies['@typescript/native'].replace('npm:typescript@', '');
-    const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
-    const twiceSource = (expression) =>
+    const typeScript7 = textOf(fieldAt(manifest, 'dependencies', '@typescript/native')).replace(
+      'npm:typescript@',
+      '',
+    );
+    const jsApi = textOf(fieldAt(manifest, 'dependencies', 'typescript-js-api')).replace(
+      'npm:typescript@',
+      '',
+    );
+    const twiceSource = (expression: string) =>
       `export function twice(value: number): number {\n  return ${expression};\n}\n`;
     const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
       ' ',
     );
     const mergeFile = 'src/main/merge.ts';
-    let root;
-    const runs = {};
-    const output = (name) => path.join(root, 'reports', name);
-    const gate = (name) =>
+    let root: string;
+    let nativeRun: CommandResult | undefined;
+    let projectRun: CommandResult | undefined;
+    const output = (name: string) => path.join(root, 'reports', name);
+    const gate = (name: string) =>
       command(root, 'npx', [
         '--no-install',
         'nitpicker',
@@ -120,18 +145,22 @@ suite('packed nitpicker in a separate consumer', () => {
         '--output',
         output(name),
       ]);
-    const report = (name) =>
-      JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
-    const findings = (name) =>
-      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8'));
-    const added = (name) =>
+    const report = (name: string) => readJson(path.join(output(name), 'summary.json'));
+    const findings = (name: string) =>
+      listOf(readJson(path.join(output(name), 'new-findings.json')));
+    const added = (name: string) =>
       findings(name)
-        .filter(({ path: file }) => file !== mergeFile)
-        .map(({ tool, rule }) => `${tool}/${rule}`);
-    const spreads = (name) =>
+        .filter((finding) => fieldAt(finding, 'path') !== mergeFile)
+        .map(
+          (finding) => `${textOf(fieldAt(finding, 'tool'))}/${textOf(fieldAt(finding, 'rule'))}`,
+        );
+    const spreads = (name: string) =>
       findings(name)
-        .filter(({ rule }) => rule === 'nitpicker/no-accumulating-spread')
-        .map(({ path: file, location }) => `${file}:${location.line}`);
+        .filter((finding) => fieldAt(finding, 'rule') === 'nitpicker/no-accumulating-spread')
+        .map(
+          (finding) =>
+            `${textOf(fieldAt(finding, 'path'))}:${textOf(fieldAt(finding, 'location', 'line'))}`,
+        );
 
     beforeAll(() => {
       root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
@@ -146,7 +175,7 @@ suite('packed nitpicker in a separate consumer', () => {
           type: 'module',
           devDependencies: {
             nitpicker: `file:${tarball}`,
-            vitest: manifest.devDependencies.vitest,
+            vitest: manifestText('devDependencies', 'vitest'),
             typescript: typeScript7,
           },
         }),
@@ -183,34 +212,39 @@ suite('packed nitpicker in a separate consumer', () => {
           '  for (const part of parts) {\n    merged = { ...merged, ...part };\n  }\n' +
           '  return merged;\n}\n',
       );
-      runs.native = gate('native');
+      nativeRun = gate('native');
       write(
         root,
         'nitpicker.config.json',
         '{ "tools": { "typescript": { "engine": "project" } } }\n',
       );
-      runs.project = gate('project');
+      projectRun = gate('project');
     }, 900_000);
     afterAll(() => {
       if (root) rmSync(root, { recursive: true, force: true });
     }, 120_000);
 
     it('type checks, lints and follows imports with no tool error', () => {
-      expect(runs.native.status, runs.native.output).toBe(1);
-      expect(report('native').overallStatus).toBe('completed');
+      expect(nativeRun?.status, nativeRun?.output).toBe(1);
+      expect(fieldAt(report('native'), 'overallStatus')).toBe('completed');
       expect(added('native')).toEqual([
         'dependency-architecture/no-production-cycles',
         'eslint-lint/@typescript-eslint/no-unused-vars',
         'typescript-typecheck/TS2322',
       ]);
       expect(spreads('native')).toEqual([`${mergeFile}:2`]);
-      expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
-        expectedEslintVersion(`js-api-${jsApi}`),
-      );
+      expect(
+        fieldAt(
+          listOf(fieldAt(report('native'), 'tools')).find(
+            (tool) => fieldAt(tool, 'name') === 'eslint-lint',
+          ),
+          'version',
+        ),
+      ).toBe(expectedEslintVersion(`js-api-${jsApi}`));
     });
     it('reports the same findings when it type checks with the project compiler', () => {
-      expect(runs.project.status, runs.project.output).toBe(1);
-      expect(report('project').overallStatus).toBe('completed');
+      expect(projectRun?.status, projectRun?.output).toBe(1);
+      expect(fieldAt(report('project'), 'overallStatus')).toBe('completed');
       expect(added('project')).toEqual(added('native'));
       expect(spreads('project')).toEqual(spreads('native'));
     });
@@ -218,26 +252,35 @@ suite('packed nitpicker in a separate consumer', () => {
 
   for (const strategy of layouts) {
     describe(`dependency layout: ${strategy ?? 'hoisted'}`, () => {
-      let root;
-      let before;
-      let clean;
-      let dirty;
-      let second;
-      let subfolder;
-      let snapshot;
-      let fixed;
-      let initialized;
-      let rules;
-      let explanation;
-      let help;
-      let packageLocation;
-      let withoutTypeScript;
-      const reports = (name) => path.join(root, 'reports', name);
-      const invoke = (args, cwd = root) =>
+      let root: string;
+      let before: string[];
+      let clean: CommandResult | undefined;
+      let dirty: CommandResult | undefined;
+      let second: CommandResult | undefined;
+      let subfolder: CommandResult | undefined;
+      let snapshot: CommandResult | undefined;
+      let fixed: CommandResult | undefined;
+      let initialized: CommandResult | undefined;
+      let rules: CommandResult | undefined;
+      let explanation: CommandResult | undefined;
+      let help: CommandResult | undefined;
+      let packageLocation: string;
+      let withoutTypeScript: CommandResult | undefined;
+      const reports = (name: string) => path.join(root, 'reports', name);
+      const lintArgs = (name: string) => [
+        '--base',
+        'main',
+        '--analyzer',
+        'prettier-format',
+        '--analyzer',
+        'eslint-lint',
+        '--output',
+        reports(name),
+      ];
+      const invoke = (args: readonly string[], cwd = root) =>
         command(cwd, 'npx', ['--no-install', 'nitpicker', ...args]);
-      const summary = (name) => JSON.parse(readFileSync(path.join(reports(name), 'summary.json')));
-      const findings = (name) =>
-        JSON.parse(readFileSync(path.join(reports(name), 'new-findings.json')));
+      const summary = (name: string) => readJson(path.join(reports(name), 'summary.json'));
+      const findings = (name: string) => readJson(path.join(reports(name), 'new-findings.json'));
 
       beforeAll(() => {
         root = mkdtempSync(path.join(tmpdir(), `nitpicker consumer-${strategy ?? 'hoisted'}-`));
@@ -253,9 +296,9 @@ suite('packed nitpicker in a separate consumer', () => {
               type: 'module',
               devDependencies: {
                 nitpicker: `file:${tarball}`,
-                vitest: manifest.devDependencies.vitest,
-                '@vitest/coverage-v8': manifest.devDependencies['@vitest/coverage-v8'],
-                typescript: manifest.devDependencies.typescript,
+                vitest: manifestText('devDependencies', 'vitest'),
+                '@vitest/coverage-v8': manifestText('devDependencies', '@vitest/coverage-v8'),
+                typescript: manifestText('devDependencies', 'typescript'),
               },
             },
             null,
@@ -264,7 +307,6 @@ suite('packed nitpicker in a separate consumer', () => {
         );
         write(root, 'src/main/example.ts', cleanSource);
         write(root, 'test/example.test.ts', 'export const placeholder = true;\n');
-        // The lockfile is committed so the merge-base worktree can `npm ci`.
         checked(root, 'npx', [
           '--yes',
           installer,
@@ -287,50 +329,11 @@ suite('packed nitpicker in a separate consumer', () => {
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
         write(root, 'src/main/example.ts', cleanSource.replace('return 1', 'return 2'));
-        clean = invoke([
-          '--base',
-          'main',
-          '--analyzer',
-          'prettier-format',
-          '--analyzer',
-          'eslint-lint',
-          '--output',
-          reports('clean'),
-        ]);
+        clean = invoke(lintArgs('clean'));
         write(root, 'src/main/example.ts', violation);
-        dirty = invoke([
-          '--base',
-          'main',
-          '--analyzer',
-          'prettier-format',
-          '--analyzer',
-          'eslint-lint',
-          '--output',
-          reports('dirty'),
-        ]);
-        second = invoke([
-          '--base',
-          'main',
-          '--analyzer',
-          'prettier-format',
-          '--analyzer',
-          'eslint-lint',
-          '--output',
-          reports('second'),
-        ]);
-        subfolder = invoke(
-          [
-            '--base',
-            'main',
-            '--analyzer',
-            'prettier-format',
-            '--analyzer',
-            'eslint-lint',
-            '--output',
-            reports('subfolder'),
-          ],
-          path.join(root, 'src'),
-        );
+        dirty = invoke(lintArgs('dirty'));
+        second = invoke(lintArgs('second'));
+        subfolder = invoke(lintArgs('subfolder'), path.join(root, 'src'));
         snapshot = invoke([
           '--all',
           '--analyzer',
@@ -372,12 +375,9 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(readFileSync(path.join(packageLocation, 'LICENSE'), 'utf8')).toBe(
           readFileSync(path.join(packageRoot, 'LICENSE'), 'utf8'),
         );
-        const installedManifest = JSON.parse(
-          readFileSync(path.join(packageLocation, 'package.json'), 'utf8'),
-        );
-        expect(installedManifest.license).toBe('MIT');
-        expect(installedManifest.private).toBeUndefined();
-        // The Java preset's Gradle init script is resolved relative to the installed package.
+        const installedManifest = readJson(path.join(packageLocation, 'package.json'));
+        expect(fieldAt(installedManifest, 'license')).toBe('PolyForm-Noncommercial-1.0.0');
+        expect(fieldAt(installedManifest, 'private')).toBeUndefined();
         expect(
           existsSync(path.join(packageLocation, 'languages/java/gradle/nitpicker.init.gradle')),
         ).toBe(true);
@@ -392,26 +392,30 @@ suite('packed nitpicker in a separate consumer', () => {
         },
       );
       it('exits zero on clean branch and reports both new findings on dirty branch', () => {
-        expect(clean.status, clean.output).toBe(0);
-        expect(dirty.status, dirty.output).toBe(1);
-        expect(summary('dirty').overallStatus).toBe('completed');
+        expect(clean?.status, clean?.output).toBe(0);
+        expect(dirty?.status, dirty?.output).toBe(1);
+        expect(fieldAt(summary('dirty'), 'overallStatus')).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
-        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput());
+        expect(withoutSlowAnalyzerLines(dirty?.output ?? '')).toEqual(expectedDirtyOutput());
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
-          summary('dirty').tools.map(({ name, version }) => [name, version]),
+          listOf(fieldAt(summary('dirty'), 'tools')).map((tool): [string, unknown] => [
+            textOf(fieldAt(tool, 'name')),
+            fieldAt(tool, 'version'),
+          ]),
         );
-        expect(versions['prettier-format']).toBe(manifest.dependencies.prettier);
+        expect(versions['prettier-format']).toBe(manifestText('dependencies', 'prettier'));
         expect(versions['eslint-lint']).toBe(
-          expectedEslintVersion(manifest.devDependencies.typescript),
+          expectedEslintVersion(manifestText('devDependencies', 'typescript')),
         );
         const peers = ['typescript', 'vitest', '@vitest/coverage-v8'];
-        const installedVersions = peers.map(
-          (peer) =>
-            JSON.parse(readFileSync(path.join(root, 'node_modules', peer, 'package.json'))).version,
+        const installedVersions = peers.map((peer) =>
+          fieldAt(readJson(path.join(root, 'node_modules', peer, 'package.json')), 'version'),
         );
-        expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
+        expect(installedVersions).toEqual(
+          peers.map((peer) => manifestText('devDependencies', peer)),
+        );
       });
       it('stops in one line, before any analyzer, when typescript is missing from node_modules', () => {
         const peerCheck = `typescript is not installed in ${realpathSync(root)}. Run npm install (it is in package.json).`;
@@ -420,14 +424,19 @@ suite('packed nitpicker in a separate consumer', () => {
           'or no typescript is installed), so nitpicker reads source files with its own TypeScript 6, ' +
           `which needs Node.js ${MINIMUM_NODE.join('.')} or newer; this is Node.js ${process.versions.node}.`;
         const reasons = supportsRedirect() ? [peerCheck] : [peerCheck, olderNode];
+        const oneOfReasons: unknown = expect.toBeOneOf(
+          reasons.map((reason) => `nitpicker failed: ${reason}\n`),
+        );
         expect(withoutTypeScript).toEqual({
           status: 2,
-          output: expect.toBeOneOf(reasons.map((reason) => `nitpicker failed: ${reason}\n`)),
+          output: oneOfReasons,
         });
       });
       it('keeps the policy hash stable across two runs', () => {
-        expect(second.status, second.output).toBe(1);
-        expect(summary('dirty').policyHash).toBe(summary('second').policyHash);
+        expect(second?.status, second?.output).toBe(1);
+        expect(fieldAt(summary('dirty'), 'policyHash')).toBe(
+          fieldAt(summary('second'), 'policyHash'),
+        );
       });
       it('does not mutate the installed package or leave consumer temporary files/worktrees', () => {
         expect(listing(packageLocation)).toEqual(before);
@@ -437,22 +446,24 @@ suite('packed nitpicker in a separate consumer', () => {
         ).toHaveLength(1);
       });
       it('resolves the consumer root from a subfolder', () => {
-        expect(subfolder.status, subfolder.output).toBe(1);
-        expect(summary('subfolder').overallStatus).toBe('completed');
+        expect(subfolder?.status, subfolder?.output).toBe(1);
+        expect(fieldAt(summary('subfolder'), 'overallStatus')).toBe('completed');
         expect(findings('subfolder')).toEqual(findings('dirty'));
       });
       it('supports --all with the packed prettier analyzer', () => {
-        expect(snapshot.status, snapshot.output).toBe(1);
-        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
+        expect(snapshot?.status, snapshot?.output).toBe(1);
+        expect(withoutSlowAnalyzerLines(snapshot?.output ?? '')).toEqual(
+          expectedSnapshotOutput(links),
+        );
       });
       it('lists and explains rules from the reference data the package ships, linking the release tag', async () => {
-        expect(rules.status, rules.output).toBe(0);
-        expect(rules.output).toBe(await checkoutOutput(links, ['rules', '--preset', 'java']));
-        expect(explanation.status, explanation.output).toBe(0);
-        expect(explanation.output).toBe(await checkoutOutput(links, ['explain', ...explained]));
+        expect(rules?.status, rules?.output).toBe(0);
+        expect(rules?.output).toBe(await checkoutOutput(links, ['rules', '--preset', 'java']));
+        expect(explanation?.status, explanation?.output).toBe(0);
+        expect(explanation?.output).toBe(await checkoutOutput(links, ['explain', ...explained]));
         expect(
-          JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
-            (finding) => finding.helpUri,
+          listOf(readJson(path.join(reports('snapshot'), 'findings.json'))).map((finding) =>
+            fieldAt(finding, 'helpUri'),
           ),
         ).toEqual([
           installedHelpUri(links, 'prettier-format/prettier/prettier'),
@@ -460,11 +471,11 @@ suite('packed nitpicker in a separate consumer', () => {
         ]);
       });
       it('prints help that links the usage page at its own release tag', () => {
-        expect(help.status, help.output).toBe(0);
-        expect(help.output).toBe(installedHelpText(links, root));
+        expect(help?.status, help?.output).toBe(0);
+        expect(help?.output).toBe(installedHelpText(links, root));
       });
       it('sets the consumer up with init from the packed files', () => {
-        expect(initialized.status, initialized.output).toBe(0);
+        expect(initialized?.status, initialized?.output).toBe(0);
         expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
           '{ "preset": "typescript" }\n',
         );
@@ -474,7 +485,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(existsSync(path.join(root, '.github/workflows/nitpicker.yml'))).toBe(true);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
-        expect(fixed.status, fixed.output).toBe(0);
+        expect(fixed?.status, fixed?.output).toBe(0);
         expect(readFileSync(path.join(root, 'src/main/example.ts'), 'utf8')).toBe(
           'export function example() {\n  debugger;\n  return 1;\n}\n',
         );
