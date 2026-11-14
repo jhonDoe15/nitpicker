@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { readRuffSnapshot } from './ruff-entries.mjs';
-import { isOlderVersion, isPresetRule } from './ruff-selection.mjs';
+import { readRuffSnapshot } from './ruff-entries.mts';
+import { isOlderVersion, isPresetRule } from './ruff-selection.mts';
 
 const PINNED_RUFF = /^ruff==(\S+)$/mu;
 
@@ -12,7 +12,7 @@ describe('the ruff snapshot of the rule reference', () => {
       'utf8',
     );
 
-    expect(readRuffSnapshot().version).toBe(PINNED_RUFF.exec(constraints)[1]);
+    expect(readRuffSnapshot().version).toBe(PINNED_RUFF.exec(constraints)?.[1]);
   });
 
   it('holds only rules the ruff config of the preset selects', () => {
@@ -21,7 +21,7 @@ describe('the ruff snapshot of the rule reference', () => {
 });
 
 describe('the safe fixes of the ruff snapshot', () => {
-  const safeFix = (code) =>
+  const safeFix = (code: string) =>
     readRuffSnapshot().rules.find((rule) => rule.code === code)?.safeFix === true;
 
   it('marks the rules whose fix ruff applies by default, and not an unsafe fix or no fix', () => {
