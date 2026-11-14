@@ -1,25 +1,19 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { designFiles } from './design-files.mjs';
+import { textsOf } from '../../../../../shared/values/readers.mts';
 import { designDistributions } from './design-distributions.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+function designFilesOf(request: unknown, sources: readonly string[]): string[] {
+  return textsOf(Reflect.apply(designFiles, undefined, [request, sources]));
+}
 
-function project(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-design-')));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+function project(files: Readonly<Record<string, string>>) {
+  const root = temporaryRoot('nitpicker-python-design-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -40,7 +34,7 @@ describe('choosing the files the design facts cover', () => {
     const sources = Object.keys(files).sort();
 
     expect(
-      designFiles(
+      designFilesOf(
         { projectRoot, project: { sourceRoots: ['app'] }, exclude: ['app/skipped.py'] },
         sources,
       ),

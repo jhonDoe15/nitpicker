@@ -1,11 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createFakeProjects } from '../test-support/fake-project.mjs';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
+import { createFakeProjects } from '../test-support/fake-project.mts';
 import { DEFAULT_NORECURSEDIRS } from '../configuration/pytest/pytest-config.mjs';
-import { checkRules, contractFaces, pythonSources } from './python-ast-rules.mjs';
+import { checkRules, contractFaces, pythonSources, RULES_REPORT } from './python-ast-rules.mjs';
+import { failureOf } from '../test-support/runs/failure-of.mts';
 
 const fakes = createFakeProjects();
+
+function optionsOf(reportRoot: string): unknown {
+  return parseJson(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'));
+}
 
 afterEach(() => {
   fakes.cleanup();
@@ -41,7 +47,7 @@ describe('the Python files the rules look at', () => {
 describe('running the rules script', () => {
   it('hands it the file list and the report path, isolated from the project', () => {
     const logFile = path.join(fakes.temporaryRoot(), 'calls.jsonl');
-    process.env.FAKE_PYTHON_LOG = logFile;
+    process.env['FAKE_PYTHON_LOG'] = logFile;
     const root = fakes.project({ 'src/demo/a.py': '', 'rules.json': '[{"rule":"x"}]' });
     const { context, reportRoot } = fakes.contextFor(root);
 
@@ -53,17 +59,17 @@ describe('running the rules script', () => {
 
     const [call] = fakes
       .calls(logFile)
-      .filter(({ tool, args }) => tool === 'python' && args[0] === '-I');
-    expect(call.args).toEqual([
+      .filter(({ tool, args }) => tool === 'python' && listOf(args)[0] === '-I');
+    expect(call?.['args']).toEqual([
       '-I',
       expect.stringMatching(/rules\/nitpicker_rules\.py$/),
       path.join(reportRoot, 'python-files.txt'),
-      path.join(reportRoot, 'rules.json'),
+      path.join(reportRoot, RULES_REPORT),
       path.join(reportRoot, 'rule-options.json'),
     ]);
-    expect(JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'))).toEqual({
-      sourceRoots: context.project.sourceRoots,
-      testRunner: context.project.testRunner,
+    expect(optionsOf(reportRoot)).toEqual({
+      sourceRoots: fieldOf(fieldOf(context, 'project'), 'sourceRoots'),
+      testRunner: fieldOf(fieldOf(context, 'project'), 'testRunner'),
       pythonFiles: ['test_*.py', '*_test.py'],
       pythonClasses: ['Test'],
       pythonFunctions: ['test'],
@@ -88,7 +94,7 @@ describe('running the rules script', () => {
       contractFaces: {},
     });
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe('src/demo/a.py');
-    expect(readFileSync(path.join(reportRoot, 'rules.json'), 'utf8')).toBe('[{"rule":"x"}]');
+    expect(readFileSync(path.join(reportRoot, RULES_REPORT), 'utf8')).toBe('[{"rule":"x"}]');
   });
 
   it('hands it the production modules and the package facts', () => {
@@ -106,10 +112,14 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    const { modules, testFiles, entryModules, published, entryPoints } = JSON.parse(
-      readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8'),
-    );
-    expect({ modules, testFiles, entryModules, published, entryPoints }).toEqual({
+    const options = optionsOf(reportRoot);
+    expect({
+      modules: fieldOf(options, 'modules'),
+      testFiles: fieldOf(options, 'testFiles'),
+      entryModules: fieldOf(options, 'entryModules'),
+      published: fieldOf(options, 'published'),
+      entryPoints: fieldOf(options, 'entryPoints'),
+    }).toEqual({
       modules: {
         'src/shop/__init__.py': 'shop',
         'src/shop/cli.py': 'shop.cli',
@@ -126,14 +136,12 @@ describe('running the rules script', () => {
     const root = fakes.project({ 'fail.json': JSON.stringify({ python: 'no interpreter' }) });
     const { context } = fakes.contextFor(root);
 
-    expect(() => {
+    const failure = failureOf(() => {
       checkRules(context);
-    }).toThrow(
-      expect.objectContaining({
-        rule: 'rules-failed',
-        message: expect.stringContaining('no interpreter'),
-      }),
-    );
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe('rules-failed');
+    expect(textOf(fieldOf(failure, 'message')).includes('no interpreter')).toBe(true);
   });
 
   it('tells it which imports are the validation boundary, from the declared libraries', () => {
@@ -142,9 +150,11 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    expect(
-      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
-    ).toEqual(['msgspec', 'marshmallow', 'marshmallow_dataclass']);
+    expect(fieldOf(optionsOf(reportRoot), 'boundaryRoots')).toEqual([
+      'msgspec',
+      'marshmallow',
+      'marshmallow_dataclass',
+    ]);
   });
 
   it('defaults the boundary to pydantic when no library is declared', () => {
@@ -153,9 +163,10 @@ describe('running the rules script', () => {
 
     checkRules(context);
 
-    expect(
-      JSON.parse(readFileSync(path.join(reportRoot, 'rule-options.json'), 'utf8')).boundaryRoots,
-    ).toEqual(['pydantic', 'pydantic_settings']);
+    expect(fieldOf(optionsOf(reportRoot), 'boundaryRoots')).toEqual([
+      'pydantic',
+      'pydantic_settings',
+    ]);
   });
 });
 

@@ -1,42 +1,58 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { scanImports } from './python-coupling.mjs';
 import {
   analyzePythonCoupling,
   importEdges,
   readCouplingFindings,
-  scanImports,
-} from './python-coupling.mjs';
+} from './typed/coupling-views.mts';
+import { JSON_NULL } from './typed/json-null.mts';
+import type {
+  ImportsByFile,
+  JsonNull,
+  ImportStatement,
+  PythonModule,
+} from './typed/python-graph-types.mts';
 import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
-import { libraryModules } from './test-support/library-modules.mjs';
+import { recordingRun } from '../test-support/runs/recording-run.mts';
+import { libraryModules } from './test-support/library-modules.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-coupling-')));
-  roots.push(root);
-  return root;
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-coupling-');
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-const module = (name, { isPackage = false } = {}) => ({
+const module = (name: string, { isPackage = false } = {}): PythonModule => ({
   module: name,
   file: `src/${name.replaceAll('.', '/')}${isPackage ? '/__init__' : ''}.py`,
   isPackage,
 });
-const absolute = (moduleName, ...names) => ({ level: 0, module: moduleName, names });
-const plain = (...names) => ({ level: 0, module: null, names });
-const relative = (level, moduleName, ...names) => ({ level, module: moduleName, names });
+const absolute = (moduleName: string, ...names: string[]): ImportStatement => ({
+  level: 0,
+  module: moduleName,
+  names,
+});
+const plain = (...names: string[]): ImportStatement => ({ level: 0, module: JSON_NULL, names });
+const relative = (
+  level: number,
+  moduleName: string | JsonNull,
+  ...names: string[]
+): ImportStatement => ({
+  level,
+  module: moduleName,
+  names,
+});
 
-function edgesOf(modules, importer, ...statements) {
+function edgesOf(
+  modules: readonly PythonModule[],
+  importer: string,
+  ...statements: ImportStatement[]
+) {
   const source = modules.find((entry) => entry.module === importer);
-  return importEdges(modules, { [source.file]: statements });
+  return importEdges(modules, { [source?.file ?? '']: statements });
 }
 
 describe('resolving imports to modules', () => {
@@ -78,11 +94,11 @@ describe('resolving imports to modules', () => {
       edgesOf(
         modules,
         'app.sub.leaf',
-        relative(1, null, 'other'),
+        relative(1, JSON_NULL, 'other'),
         relative(1, 'other', 'Thing'),
         relative(2, 'core', 'run'),
-        relative(2, null, 'core'),
-        relative(1, null, 'missing'),
+        relative(2, JSON_NULL, 'core'),
+        relative(1, JSON_NULL, 'missing'),
       ),
     ).toEqual([
       { source: 'app.sub.leaf', target: 'app.sub.other', kind: 'runtime' },
@@ -95,7 +111,7 @@ describe('resolving imports to modules', () => {
 
   it('resolves relative imports of a package from the package itself', () => {
     expect(
-      edgesOf(modules, 'app.sub', relative(1, 'leaf', 'Thing'), relative(2, null, 'core')),
+      edgesOf(modules, 'app.sub', relative(1, 'leaf', 'Thing'), relative(2, JSON_NULL, 'core')),
     ).toEqual([
       { source: 'app.sub', target: 'app.sub.leaf', kind: 'runtime' },
       { source: 'app.sub', target: 'app.core', kind: 'runtime' },
@@ -109,7 +125,7 @@ describe('resolving imports to modules', () => {
   it('resolves a relative import in a top-level module', () => {
     const flat = [module('script'), module('helpers')];
 
-    expect(edgesOf(flat, 'script', relative(1, null, 'helpers'))).toEqual([
+    expect(edgesOf(flat, 'script', relative(1, JSON_NULL, 'helpers'))).toEqual([
       { source: 'script', target: 'helpers', kind: 'runtime' },
     ]);
   });
@@ -161,12 +177,14 @@ describe('analyzing the import graph', () => {
       'app.domain',
       'app.infra',
     ]);
-    expect(report.modules.find(({ file }) => file === 'src/app/domain/rules.py')).toEqual({
+    const rules = report.modules.find(({ file }) => file === 'src/app/domain/rules.py');
+    expect(rules?.['instability']).toBeCloseTo(0.5, 10);
+    expect(rules).toEqual({
       file: 'src/app/domain/rules.py',
       fanIn: 1,
       fanOut: 1,
       totalCoupling: 2,
-      instability: expect.closeTo(0.5, 10),
+      instability: rules?.['instability'],
     });
   });
 
@@ -204,14 +222,14 @@ describe('analyzing the import graph', () => {
       module('other', { isPackage: true }),
       module('other.o'),
     ];
-    const importsWith = (...baseImports) => ({
+    const importsWith = (...baseImports: ImportStatement[]): ImportsByFile => ({
       'src/feature/a.py': [absolute('base', 'core')],
       'src/feature/b.py': [absolute('base', 'core')],
       'src/base/core.py': baseImports,
       'src/other/o.py': [absolute('feature', 'a')],
     });
-    const typeOnly = { ...absolute('other', 'o'), typeOnly: true };
-    const stabilityEdges = (imports) =>
+    const typeOnly: ImportStatement = { ...absolute('other', 'o'), typeOnly: true };
+    const stabilityEdges = (imports: ImportsByFile): string[] =>
       analyzePythonCoupling({ modules: inversion, imports }).stabilityDirection.map(
         ({ source, target }) => `${source}>${target}`,
       );
@@ -232,12 +250,14 @@ describe('analyzing the import graph', () => {
       const without = analyzePythonCoupling({ modules: inversion, imports: importsWith() });
 
       expect(withTypeOnly.summary.dependencies).toBe(without.summary.dependencies + 1);
-      expect(withTypeOnly.modules.find(({ file }) => file === 'src/base/core.py')).toEqual({
+      const core = withTypeOnly.modules.find(({ file }) => file === 'src/base/core.py');
+      expect(core?.['instability']).toBeCloseTo(0.3333, 10);
+      expect(core).toEqual({
         file: 'src/base/core.py',
         fanIn: 2,
         fanOut: 1,
         totalCoupling: 3,
-        instability: expect.closeTo(0.3333, 10),
+        instability: core?.['instability'],
       });
     });
 
@@ -410,15 +430,15 @@ describe('a feature that reuses three others through their __init__.py', () => {
       ({ classification }) => classification === 'enforceable',
     );
 
-    expect(finding.path).toBe(expectedPath);
-    expect(finding.message).toBe(
+    expect(finding?.path).toBe(expectedPath);
+    expect(finding?.message).toBe(
       `Keep feature dependencies pointing at more stable units: ${pair}. Depend on the other side's public face, or move the code that joins them into the composition root.`,
     );
   });
 });
 
 describe('scanning imports with the project interpreter', () => {
-  function scanContext(files) {
+  function scanContext(files: readonly string[]) {
     const projectRoot = temporaryRoot();
     for (const file of files) {
       mkdirSync(path.dirname(path.join(projectRoot, file)), { recursive: true });
@@ -429,23 +449,17 @@ describe('scanning imports with the project interpreter', () => {
 
   it('asks the interpreter to scan the production modules and stores the answer', () => {
     const context = scanContext(['src/app/a.py', 'src/app/test_a.py']);
-    const calls = [];
-    const run = (_, command, options) => {
-      calls.push({
-        command,
-        options,
-        request: JSON.parse(readFileSync(command.at(-1), 'utf8')),
-      });
-      return { stdout: '{"src/app/a.py":[{"level":0,"module":null,"names":["os"]}]}' };
-    };
+    const { calls, run } = recordingRun(
+      '{"src/app/a.py":[{"level":0,"module":null,"names":["os"]}]}',
+    );
 
     scanImports(context, run);
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].command.slice(0, 2)).toEqual(['python', '-I']);
-    expect(calls[0].command[2]).toMatch(/import-scan\.py$/);
-    expect(calls[0].options).toEqual({ rule: 'coupling-failed' });
-    expect(calls[0].request).toEqual({
+    expect(calls[0]?.command.slice(0, 2)).toEqual(['python', '-I']);
+    expect(calls[0]?.command[2]?.endsWith('import-scan.py')).toBe(true);
+    expect(calls[0]?.options).toEqual({ rule: 'coupling-failed' });
+    expect(calls[0]?.request).toEqual({
       root: context.projectRoot,
       files: ['src/app/a.py', 'src/app/test_a.py'],
     });

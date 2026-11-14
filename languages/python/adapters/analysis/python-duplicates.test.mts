@@ -1,23 +1,37 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
 import { withHint } from '../../rules/rule-hints.mjs';
 import { readDuplicateFindings, runDuplicates } from './python-duplicates.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { failureOf } from '../test-support/runs/failure-of.mts';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-duplicates-')));
-  roots.push(root);
-  return root;
+type Row = Readonly<Record<string, unknown>>;
+type DuplicatesContext = {
+  readonly projectRoot: string;
+  readonly reportRoot: string;
+  readonly project: { readonly sourceRoots: readonly string[] };
+  readonly duplicateSkippedFolders?: readonly string[];
+};
+type Shape = {
+  fn: string;
+  items: string;
+  total: string;
+  item: string;
+  cap: string;
+  scale: string;
+  bonus: string;
+};
+
+const readClones: (reportRoot: string, projectRoot: string) => Row[] = readDuplicateFindings;
+
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-duplicates-');
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 const CLONE = [
   'def order_total(lines, discount):',
@@ -33,18 +47,19 @@ const CLONE = [
   '',
 ].join('\n');
 
-function project(files, sourceRoots = ['src'], under = '.') {
+function project(
+  files: Readonly<Record<string, string>>,
+  sourceRoots: readonly string[] = ['src'],
+  under = '.',
+): DuplicatesContext {
   const projectRoot = path.join(temporaryRoot(), under);
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(projectRoot, relative)), { recursive: true });
-    writeFileSync(path.join(projectRoot, relative), contents);
-  }
+  writeFiles(projectRoot, files);
   return { projectRoot, reportRoot: temporaryRoot(), project: { sourceRoots } };
 }
 
-function clonesOf(context) {
+function clonesOf(context: DuplicatesContext): Row[] {
   runDuplicates(context);
-  return readDuplicateFindings(context.reportRoot, context.projectRoot).filter(
+  return readClones(context.reportRoot, context.projectRoot).filter(
     ({ rule }) => rule === 'duplicate-clone',
   );
 }
@@ -91,9 +106,9 @@ describe('duplicates in Python sources', () => {
     const context = project({ 'src/app/a.py': CLONE, 'src/app/b.py': CLONE });
     runDuplicates(context);
 
-    const metrics = readDuplicateFindings(context.reportRoot, context.projectRoot)
+    const metrics = readClones(context.reportRoot, context.projectRoot)
       .filter(({ rule }) => rule === 'duplicate-clone-size')
-      .map(({ metric }) => metric.name);
+      .map(({ metric }) => fieldOf(metric, 'name'));
 
     expect(metrics).toEqual(['lines', 'tokens']);
   });
@@ -105,7 +120,7 @@ describe('duplicates in Python sources', () => {
       'src/app/b.py': CLONE,
     });
 
-    expect(clonesOf(after)[0].identity).toBe(clonesOf(before)[0].identity);
+    expect(clonesOf(after)[0]?.['identity']).toBe(clonesOf(before)[0]?.['identity']);
   });
 
   it('measures a project whose source root is the project itself', () => {
@@ -143,7 +158,7 @@ describe('duplicates in Python sources', () => {
     );
 
     expect(
-      clonesOf(context).map(({ path: file, message }) => [file, message.slice(0, 40)]),
+      clonesOf(context).map(({ path: file, message }) => [file, textOf(message).slice(0, 40)]),
     ).toEqual([['billing/calc.py', 'This code repeats shipping/calc.py:1 (10']]);
   });
 
@@ -238,13 +253,15 @@ describe('duplicates in Python sources', () => {
     const blocker = path.join(context.reportRoot, 'blocker');
     writeFileSync(blocker, '');
 
-    expect(() => {
+    const failure = failureOf(() => {
       runDuplicates({ ...context, reportRoot: blocker });
-    }).toThrow(expect.objectContaining({ rule: 'duplicates-failed' }));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe('duplicates-failed');
   });
 });
 
-function renamedFunction({ fn, items, total, item, cap, scale, bonus }) {
+function renamedFunction({ fn, items, total, item, cap, scale, bonus }: Shape): string {
   return [
     `def ${fn}(${items}, rate):`,
     `    ${total} = 0`,
@@ -267,23 +284,23 @@ function renamedFunction({ fn, items, total, item, cap, scale, bonus }) {
   ].join('\n');
 }
 
-const INVOICE = {
+const INVOICE: Shape = {
   fn: 'invoice_total',
   items: 'lines',
   total: 'subtotal',
   item: 'line',
-  cap: 1000,
-  scale: 100,
-  bonus: 0,
+  cap: '1000',
+  scale: '100',
+  bonus: '0',
 };
-const PARCEL = {
+const PARCEL: Shape = {
   fn: 'weigh_boxes',
   items: 'boxes',
   total: 'accumulated',
   item: 'box',
-  cap: 5000,
-  scale: 10,
-  bonus: 1,
+  cap: '5000',
+  scale: '10',
+  bonus: '1',
 };
 
 describe('duplicates whose names and literals were renamed', () => {
@@ -325,7 +342,7 @@ describe('duplicates whose names and literals were renamed', () => {
       'src/app/parcel.py': renamedFunction(PARCEL),
     });
 
-    expect(withHint(clonesOf(context)[0]).message).toBe(
+    expect(fieldOf(withHint(clonesOf(context)[0]), 'message')).toBe(
       'This code repeats src/app/parcel.py:1 (17 lines). Keep one copy and call it from both places. ' +
         'If the repetition is intended, add src/app/invoice.py or src/app/parcel.py to "exclude" in nitpicker.config.json. ' +
         'If this is intended, add {"rule":"duplicate-clone","paths":["src/app/invoice.py"],"reason":"..."} to ' +
@@ -340,20 +357,20 @@ describe('duplicates whose names and literals were renamed', () => {
     });
     const after = project({
       'src/app/invoice.py': renamedFunction(INVOICE),
-      'src/app/parcel.py': renamedFunction({ ...PARCEL, total: 'running', cap: 77 }),
+      'src/app/parcel.py': renamedFunction({ ...PARCEL, total: 'running', cap: '77' }),
     });
 
-    expect(clonesOf(after)[0].identity).toBe(clonesOf(before)[0].identity);
+    expect(clonesOf(after)[0]?.['identity']).toBe(clonesOf(before)[0]?.['identity']);
   });
 
   it('stays quiet for short functions, imports, tables, fields and generated files', () => {
-    const imports = (names) =>
+    const imports = (names: readonly string[]): string =>
       `${names.map((name) => `from app.${name} import ${name}_one, ${name}_two, ${name}_three`).join('\n')}\n`;
-    const table = (key) =>
-      `ROWS = [\n${Array.from({ length: 30 }, (_, index) => `    ("${key}${index}", ${index * 3}, True),`).join('\n')}\n]\n`;
-    const fields = (key) =>
-      `@dataclass\nclass Record:\n${Array.from({ length: 20 }, (_, index) => `    ${key}${index}: str = ""`).join('\n')}\n`;
-    const generated = (values) => `# @generated\n${renamedFunction(values)}`;
+    const table = (key: string): string =>
+      `ROWS = [\n${Array.from({ length: 30 }, (_, index) => `    ("${key}${String(index)}", ${String(index * 3)}, True),`).join('\n')}\n]\n`;
+    const fields = (key: string): string =>
+      `@dataclass\nclass Record:\n${Array.from({ length: 20 }, (_, index) => `    ${key}${String(index)}: str = ""`).join('\n')}\n`;
+    const generated = (values: Shape): string => `# @generated\n${renamedFunction(values)}`;
     const context = project({
       'src/app/short_a.py': 'def area(w, h):\n    return w * h\n',
       'src/app/short_b.py': 'def size(a, b):\n    return a * b\n',
@@ -390,13 +407,13 @@ const OTHER_NAMES = (
 
 const IRREGULAR = '3141592653589793238462643383279502884197';
 
-const shapes = {
+const shapes: Record<string, (names: readonly string[]) => string> = {
   mapper: (names) =>
     `def to_dto(source):\n    return Dto(\n${names.map((name) => `        ${name}=source.${name},`).join('\n')}\n    )\n`,
   enumeration: (names) => {
     const values = ['"x"', '1', 'auto()'];
     const members = [...names, ...names.map((name) => `${name}_old`)].map(
-      (name, index) => `    ${name.toUpperCase()} = ${values[Number(IRREGULAR[index]) % 3]}`,
+      (name, index) => `    ${name.toUpperCase()} = ${values[Number(IRREGULAR[index]) % 3] ?? ''}`,
     );
     return `from enum import Enum, auto\n\n\nclass Kind(Enum):\n${members.join('\n')}\n`;
   },
@@ -412,10 +429,10 @@ const shapes = {
 };
 
 describe('code that only shares a shape with other code', () => {
-  it.each(Object.keys(shapes))('stays quiet for a renamed %s', (shape) => {
+  it.each(Object.entries(shapes))('stays quiet for a renamed %s', (_shape, build) => {
     const context = project({
-      'src/app/left.py': shapes[shape](SHAPE_NAMES),
-      'src/app/right.py': shapes[shape](OTHER_NAMES),
+      'src/app/left.py': build(SHAPE_NAMES),
+      'src/app/right.py': build(OTHER_NAMES),
     });
 
     expect(clonesOf(context)).toEqual([]);

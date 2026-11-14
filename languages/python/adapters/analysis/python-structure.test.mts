@@ -6,13 +6,28 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { createScratch } from '../test-support/scratch.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import {
+  fieldOf,
+  fieldsOf,
+  listOf,
+  parseJson,
+  textOf,
+} from '../../../../shared/values/readers.mts';
 import {
   pythonFileLimitFindings,
   readPythonStructureFindings,
   structure,
   STRUCTURE_REPORT,
 } from './python-structure.mjs';
+import { failureOf } from '../test-support/runs/failure-of.mts';
+
+type Row = Readonly<Record<string, unknown>>;
+type Files = Readonly<Record<string, string>>;
+
+const readFindings: (reportRoot: string, projectRoot: string) => IngestedFinding[] =
+  readPythonStructureFindings;
 
 const { gitCheckout } = useGitCheckouts();
 
@@ -31,10 +46,10 @@ const SOURCE = [
   '',
 ].join('\n');
 
-const project = (files = {}) =>
+const project = (files: Files = {}) =>
   scratch.project({ files: { 'src/demo/service.py': SOURCE, ...files } });
 
-const entry = (fields) => ({
+const entry = (fields: Row): Row => ({
   file: 'src/demo/service.py',
   name: 'Service.handle',
   start: 2,
@@ -54,7 +69,7 @@ describe('the structure step', () => {
 
     structure(context);
 
-    expect(JSON.parse(readFileSync(path.join(reportRoot, STRUCTURE_REPORT), 'utf8'))).toEqual([
+    expect(parseJson(readFileSync(path.join(reportRoot, STRUCTURE_REPORT), 'utf8'))).toEqual([
       entry({}),
     ]);
     expect(readFileSync(path.join(reportRoot, 'python-files.txt'), 'utf8')).toBe(
@@ -65,22 +80,20 @@ describe('the structure step', () => {
   it('fails with the structure-failed rule when the script fails', () => {
     const { context } = project({ 'fail.json': '{ "python": "SyntaxError in the script" }' });
 
-    expect(() => {
+    const failure = failureOf(() => {
       structure(context);
-    }).toThrow(
-      expect.objectContaining({
-        rule: 'structure-failed',
-        message: expect.stringContaining('SyntaxError in the script'),
-      }),
-    );
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe('structure-failed');
+    expect(textOf(fieldOf(failure, 'message')).includes('SyntaxError in the script')).toBe(true);
   });
 });
 
 describe('reading the structure report', () => {
-  function findingsFor(entries, files) {
+  function findingsFor(entries: readonly Row[], files?: Files) {
     const { root, reportRoot } = project(files);
     writeFileSync(path.join(reportRoot, STRUCTURE_REPORT), JSON.stringify(entries));
-    return readPythonStructureFindings(reportRoot, root);
+    return readFindings(reportRoot, root);
   }
 
   it('reports only the limit violations, with the shared messages', () => {
@@ -118,10 +131,10 @@ describe('reading the structure report', () => {
     });
     const [edited] = findingsFor([entry({ parameters: 4, end: 2 })]);
 
-    expect(moved.identity).toBe(before.identity);
-    expect(edited.identity).not.toBe(before.identity);
-    expect(edited.ratchet.key).toBe(before.ratchet.key);
-    expect(before.ratchet).toEqual({
+    expect(moved?.identity).toBe(before?.identity);
+    expect(edited?.identity).not.toBe(before?.identity);
+    expect(fieldOf(edited?.['ratchet'], 'key')).toBe(fieldOf(before?.['ratchet'], 'key'));
+    expect(before?.['ratchet']).toEqual({
       key: 'function:Service.handle:occurrence:1:parameters',
       declarationKey: 'function:Service.handle:declaration:6761e5af17ceff276b3e432b:parameters',
       value: 4,
@@ -136,13 +149,14 @@ describe('reading the structure report', () => {
   it('keeps the identity of a property setter when another function of that name is added above it', () => {
     const getter = ['    @property', '    def value(self, a, b, c, d):', '        return a'];
     const setter = ['    @value.setter', '    def value(self, a, b, c, d):', '        self.a = a'];
-    const source = (lines) => `class Service:\n${lines.join('\n')}\n`;
-    const named = (start) => entry({ name: 'Service.value', parameters: 4, start, end: start + 1 });
-    const setterIdentity = (lines, starts) => {
+    const source = (lines: readonly string[]): string => `class Service:\n${lines.join('\n')}\n`;
+    const named = (start: number): Row =>
+      entry({ name: 'Service.value', parameters: 4, start, end: start + 1 });
+    const setterIdentity = (lines: readonly string[], starts: readonly number[]) => {
       const findings = findingsFor(starts.map(named), {
         'src/demo/service.py': source(lines),
       });
-      return findings.at(-1).identity;
+      return findings.at(-1)?.identity;
     };
 
     const before = setterIdentity([...getter, '', ...setter], [3, 7]);
@@ -156,19 +170,19 @@ describe('reading the structure report', () => {
   });
 });
 
-let projectRoot;
+let projectRoot: string;
 
-function write(files, text = 'VALUE = 1\n') {
+function write(files: readonly string[], text = 'VALUE = 1\n'): void {
   for (const file of files) {
     mkdirSync(path.join(projectRoot, path.dirname(file)), { recursive: true });
     writeFileSync(path.join(projectRoot, file), text);
   }
 }
 
-function findingsWith(policy) {
-  return pythonFileLimitFindings(projectRoot, policy).map(
-    ({ rule, path: findingPath, identity }) => [rule, findingPath, identity],
-  );
+function findingsWith(policy: Row): unknown[][] {
+  return listOf(Reflect.apply(pythonFileLimitFindings, undefined, [projectRoot, policy]))
+    .map(fieldsOf)
+    .map(({ rule, path: findingPath, identity }) => [rule, findingPath, identity]);
 }
 
 const limits = { folderFiles: 2 };

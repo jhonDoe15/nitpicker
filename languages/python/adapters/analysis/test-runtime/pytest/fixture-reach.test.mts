@@ -8,11 +8,18 @@ import {
   productionAt,
   scanned,
   SERVICE,
-} from '../test-support/runtime-data.mjs';
+} from '../test-support/runtime-data.mts';
+import type { AnalyzeRequest } from '../test-support/runtime-data.mts';
+import type { OtherModule } from '../../typed/python-graph-types.mts';
 
 const PRODUCTION_IMPORT = { 'tests/conftest.py': [absolute('app.service', 'run')] };
 
-function unit(literals, extra = {}) {
+function unit(
+  literals: Readonly<Record<string, unknown>>,
+  extra: Pick<AnalyzeRequest, 'imports' | 'runner'> & {
+    readonly others?: readonly OtherModule[];
+  } = {},
+) {
   return analyze({
     others: [other('tests/test_a.py'), other('tests/conftest.py'), ...(extra.others ?? [])],
     imports: { 'tests/test_a.py': [], ...PRODUCTION_IMPORT, ...extra.imports },
@@ -63,7 +70,7 @@ describe('reaching a conftest.py through the fixtures a test uses', () => {
       },
     });
 
-    expect(report.tests[0].runtimeProductionModules).toEqual(['src/app/service.py']);
+    expect(report.tests[0]?.runtimeProductionModules).toEqual(['src/app/service.py']);
   });
 
   it('uses the nearest definition, and the next one up when a fixture asks for its own name', () => {
@@ -80,8 +87,8 @@ describe('reaching a conftest.py through the fixtures a test uses', () => {
     const near = scanned({ fixtures: [fixture('thing')] });
     const far = scanned({ fixtures: [fixture('thing')] });
     const requests = scanned({ requests: ['thing'] });
-    const modules = (literals) =>
-      analyze({ others, imports, literals }).tests[0].runtimeProductionModules;
+    const modules = (literals: Readonly<Record<string, unknown>>) =>
+      analyze({ others, imports, literals }).tests[0]?.runtimeProductionModules;
 
     expect(
       modules({
@@ -141,7 +148,7 @@ describe('reaching a conftest.py through the fixtures a test uses', () => {
       },
     );
 
-    expect(report.tests[0].runtimeProductionModules).toEqual(['src/app/service.py']);
+    expect(report.tests[0]?.runtimeProductionModules).toEqual(['src/app/service.py']);
   });
 
   it('reaches a conftest.py at the project root', () => {
