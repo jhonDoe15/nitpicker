@@ -36,9 +36,13 @@ function jsonMessage(plan) {
   );
 }
 
-export function rejectPathScope(plan, scope) {
-  if (scope !== undefined) {
-    throw new Error(pathScopeMessage(plan));
+const GLOB_HINT =
+  " If the shell expanded a --project glob into these paths, quote it: --project 'packages/*'.";
+
+export function rejectPathScope(plan, scope, options) {
+  if (scope !== undefined || (options?.paths ?? []).length > 0) {
+    const expanded = (options?.projectPaths ?? []).length > 0 ? GLOB_HINT : '';
+    throw new Error(`${pathScopeMessage(plan)}${expanded}`);
   }
 }
 

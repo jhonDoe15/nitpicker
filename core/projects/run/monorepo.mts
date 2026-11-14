@@ -26,7 +26,7 @@ import {
   unlistedHint,
 } from './messages.mjs';
 import { comparisonOf, selectionOf } from './selection-plan.mts';
-import { enclosingRun, requestsProjects, singleMode } from './single-mode.mts';
+import { enclosingPlan, requestsProjects, singleMode } from './single-mode.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
   Comparison,
@@ -194,11 +194,11 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
 }
 
 function runMember(
-  planned: Planned,
-  member: PlanProject,
+  planned: Planned & { readonly member: PlanProject },
   cli: MonorepoCli,
   runProject: RunProject,
 ): ExitCode {
+  const { member } = planned;
   const comparison = comparisonOf(planned.plan, cli);
   const extras = extrasOf(member, { comparison, analyzers: new Map() });
   const loosenings = headProjectSet(planned, comparison);
@@ -207,6 +207,29 @@ function runMember(
     repositoryLoosenings: asProjectLoosenings(loosenings, planned.plan.root),
     repositoryToolErrors: comparison.toolErrors ?? [],
   });
+}
+
+function atTop(planned: Planned, entry: Entry, runProject: RunProject): ExitCode {
+  const { cli, currentProjectRoot } = entry;
+  rejectPathScope(planned.plan, cli.scope, cli.options);
+  rejectWholeRunOptions(planned.plan, cli.options);
+  const located = { ...cli, workingDirectory: cli.workingDirectory ?? currentProjectRoot };
+  return execute(planned, located, runProject);
+}
+
+function aroundMember(
+  inspection: Inspection,
+  entry: Entry,
+  runProject: RunProject,
+): MonorepoResult {
+  const { cli, currentProjectRoot } = entry;
+  const enclosing = enclosingPlan(currentProjectRoot);
+  if (enclosing === undefined) {
+    return singleMode(inspection, cli, currentProjectRoot);
+  }
+  return requestsProjects(cli)
+    ? { exitCode: atTop(enclosing, entry, runProject) }
+    : { exitCode: runMember(enclosing, cli, runProject) };
 }
 
 export function runMonorepo({
@@ -220,17 +243,13 @@ export function runMonorepo({
   const inspection = inspect({ root: currentProjectRoot, repositoryRoot: undefined });
   const { plan, files } = inspection;
   if (plan === undefined) {
-    const enclosing = enclosingRun(cli, currentProjectRoot);
-    return enclosing === undefined
-      ? singleMode(inspection, cli, currentProjectRoot)
-      : { exitCode: runMember(enclosing, enclosing.member, cli, runProject) };
+    return aroundMember(inspection, { cli, currentProjectRoot }, runProject);
   }
-  rejectPathScope(plan, cli.scope);
   const member =
     cli.currentProjectRoot === undefined ? memberOf(plan, cli.workingDirectory) : undefined;
   if (member !== undefined && !requestsProjects(cli)) {
-    return { exitCode: runMember({ plan, files }, member, cli, runProject) };
+    rejectPathScope(plan, cli.scope, cli.options);
+    return { exitCode: runMember({ plan, files, member }, cli, runProject) };
   }
-  rejectWholeRunOptions(plan, cli.options);
-  return { exitCode: execute({ plan, files }, cli, runProject) };
+  return { exitCode: atTop({ plan, files }, { cli, currentProjectRoot }, runProject) };
 }

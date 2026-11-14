@@ -1,7 +1,7 @@
-import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';
 import { basePlanOf, planInputsChanged } from '../policy/base-plan.mjs';
 import { changedFiles } from '../selection/changed-files.mjs';
 import { dependencyGraph } from '../selection/dependencies/graph.mts';
+import { requestedProjects } from '../selection/requested-projects.mts';
 import { selectProjects, type Selected } from '../selection/select-projects.mts';
 import { comparisonBase, rootConfigFiles, toolErrorsOf } from './context.mts';
 import type {
@@ -44,7 +44,12 @@ export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison 
 }
 
 function choose(plan: MonorepoPlan, cli: SelectionCli, comparison: Comparison): Selected {
-  const requested: readonly string[] = (cli.options.projectPaths ?? []).map(normalizeProjectPath);
+  const requested = requestedProjects({
+    projects: plan.projects,
+    requested: cli.options.projectPaths ?? [],
+    root: plan.root,
+    workingDirectory: cli.workingDirectory,
+  });
   const byChanges = !cli.options.all && requested.length === 0;
   const projectPaths = plan.projects.map(({ path: folder }) => folder);
   return selectProjects({

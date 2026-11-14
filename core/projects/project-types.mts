@@ -3,7 +3,7 @@ import type { CliOptions, ExitCode } from '../cli-context.mts';
 import type { NitpickerConfig } from '../configuration/config-types.mts';
 import type { ReportEntry } from '../../shared/values/findings.mts';
 
-export type ProjectOverlay = {
+type ProjectOverlay = {
   readonly preset?: string;
   readonly declared?: boolean;
   readonly exclude?: readonly string[];
@@ -66,6 +66,7 @@ export type MonorepoCli = ConfiguredCli & { readonly singleProject?: boolean };
 export type SelectionCli = {
   readonly options: Pick<CliOptions, 'all' | 'baseRef' | 'staged' | 'projectPaths'>;
   readonly environment: NodeJS.ProcessEnv;
+  readonly workingDirectory?: string | undefined;
 };
 
 export type ProjectCli = {

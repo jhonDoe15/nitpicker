@@ -38,18 +38,21 @@ export function requestsProjects(cli: MonorepoCli): boolean {
   return (cli.options.projectPaths ?? []).length > 0;
 }
 
-function configuredBaseOf(root: string): string | undefined {
+function configuredBaseOf(root: string): {
+  readonly base: string | undefined;
+  readonly error?: unknown;
+} {
   try {
     const config: NitpickerConfig = readLayeredConfig(root);
-    return config.base;
-  } catch {
-    return undefined;
+    return { base: config.base };
+  } catch (error) {
+    return { base: undefined, error };
   }
 }
 
 function formerAt({ root, files, cli }: Probe, repositoryRoot: string): Loosenings {
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
-  const configuredBase = configuredBaseOf(root);
+  const configuredBase = configuredBaseOf(root).base;
   const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase, cli });
   if (baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha }) !== true) {
     return { loosenings: [], toolErrors: [] };
@@ -99,8 +102,4 @@ export function enclosingPlan(directory: string): Enclosing | undefined {
   return plan === undefined || files === undefined || member === undefined
     ? undefined
     : { plan, files, member };
-}
-
-export function enclosingRun(cli: MonorepoCli, currentProjectRoot: string): Enclosing | undefined {
-  return requestsProjects(cli) ? undefined : enclosingPlan(currentProjectRoot);
 }
