@@ -335,6 +335,39 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the update or delete statement for rows changed in memory and what it skips', () => {
+    const rows = {
+      rule: 'RowsChangedInMemory',
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      method: 'Import.expire',
+      origin: 'OrderRepository.findByStatus()',
+      entity: 'Order',
+    };
+    const skipped =
+      'An entity with `@Version`, `@PreUpdate`/`@PreRemove`, `@EntityListeners`, auditing, domain events or cascades is not reported, because a bulk statement skips what these run.';
+
+    expect(
+      read([
+        { ...rows, line: 3, detail: 'a', form: 'update' },
+        { ...rows, line: 4, detail: 'b', form: 'delete' },
+      ]).map((finding) => finding.message),
+    ).toEqual([
+      sentence(
+        'Change the rows with one statement (`@Modifying @Query("update Order e set e.status = :to where ...")`)',
+        'instead of loading them: `Import.expire()` loads `Order` rows with `OrderRepository.findByStatus()` only to set the',
+        `same value on each and write them back. ${skipped}`,
+        exception('RowsChangedInMemory', JAVA_FILE),
+      ),
+      sentence(
+        'Delete the rows with one statement (`deleteAllInBatch`, or a `@Modifying` delete query with the same where clause)',
+        'instead of loading them first: `Import.expire()` loads `Order` rows with `OrderRepository.findByStatus()` only to',
+        `delete them. ${skipped}`,
+        exception('RowsChangedInMemory', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('names the batch form of a GraphQL field that queries once per parent', () => {
     const field = {
       rule: 'GraphqlFieldPerParent',

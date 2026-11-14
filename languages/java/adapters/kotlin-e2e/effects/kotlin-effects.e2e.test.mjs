@@ -76,6 +76,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/reports/Accumulators.kt',
         'src/main/kotlin/shop/graphql/OrderFields.kt',
         'src/main/kotlin/shop/reactive/OrderStreams.kt',
+        'src/main/kotlin/shop/rows/TicketUpdates.kt',
         'src/main/kotlin/shop/billing/LazyLoads.kt',
         'src/main/kotlin/shop/held/HeldScopes.kt',
         'src/main/kotlin/shop/events/Retries.kt',

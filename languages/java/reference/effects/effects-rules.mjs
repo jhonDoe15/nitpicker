@@ -31,6 +31,10 @@ const SAMPLES = [
     { method: METHOD, framework: 'spring', kind: 'database', path: PATH },
   ],
   ['ReactiveLookupPerElement', { method: METHOD, kind: 'database', path: PATH }],
+  [
+    'RowsChangedInMemory',
+    { method: METHOD, form: 'update', origin: '<repository>.findBy()', entity: '<Entity>' },
+  ],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

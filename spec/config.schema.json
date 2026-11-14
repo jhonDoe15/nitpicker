@@ -2301,6 +2301,7 @@
                             "effects/DualWriteWithoutOutbox",
                             "effects/GraphqlFieldPerParent",
                             "effects/ReactiveLookupPerElement",
+                            "effects/RowsChangedInMemory",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

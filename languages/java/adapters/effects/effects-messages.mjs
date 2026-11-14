@@ -176,6 +176,24 @@ function reactiveLookup({ method, kind, path, limited }) {
     .join(' ');
 }
 
+const LIFECYCLE =
+  'An entity with `@Version`, `@PreUpdate`/`@PreRemove`, `@EntityListeners`, auditing, domain events or cascades is not reported, because a bulk statement skips what these run.';
+
+function rowsChanged({ method, form, origin, entity }) {
+  if (form === 'delete') {
+    return [
+      'Delete the rows with one statement (`deleteAllInBatch`, or a `@Modifying` delete query with the same where clause)',
+      `instead of loading them first: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to`,
+      `delete them. ${LIFECYCLE}`,
+    ].join(' ');
+  }
+  return [
+    'Change the rows with one statement (`@Modifying @Query("update ' + entity + ' e set e.status = :to where ...")`)',
+    `instead of loading them: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to set the`,
+    `same value on each and write them back. ${LIFECYCLE}`,
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -186,6 +204,7 @@ export const EFFECTS_MESSAGES = {
   DualWriteWithoutOutbox: dualWrite,
   GraphqlFieldPerParent: graphqlField,
   ReactiveLookupPerElement: reactiveLookup,
+  RowsChangedInMemory: rowsChanged,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);
