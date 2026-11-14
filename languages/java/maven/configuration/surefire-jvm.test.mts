@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { childAt, parseXml } from '../../../../shared/ingest/common.mjs';
+import { parseXml } from '../../../../shared/values/xml.mts';
+import { childAt } from '../typed/pom-values.mts';
 import { argLineTokens, testJvmArguments } from './surefire-jvm.mts';
 
-function argumentsOf({ properties = '', plugin = '', execution }) {
+function argumentsOf({
+  properties = '',
+  plugin = '',
+  execution,
+}: {
+  readonly properties?: string;
+  readonly plugin?: string;
+  readonly execution?: string;
+}): string[] {
   const project = parseXml(
     `<project><properties>${properties}</properties><build><plugins><plugin>` +
       `<artifactId>maven-surefire-plugin</artifactId>${plugin}` +
@@ -13,7 +22,9 @@ function argumentsOf({ properties = '', plugin = '', execution }) {
   return testJvmArguments(project, surefire, childAt(surefire, 'executions', 'execution'));
 }
 
-const configuration = (body) => `<configuration>${body}</configuration>`;
+function configuration(body: string): string {
+  return `<configuration>${body}</configuration>`;
+}
 
 describe('argLineTokens', () => {
   it('splits on whitespace and keeps a quoted value whole without its quotes', () => {
@@ -46,7 +57,7 @@ describe('testJvmArguments', () => {
   });
 
   it('fills a late @{...} reference from the POM properties and drops each argument it cannot resolve', () => {
-    const argLine = (line) => configuration(`<argLine>${line}</argLine>`);
+    const argLine = (line: string): string => configuration(`<argLine>${line}</argLine>`);
 
     expect([
       argumentsOf({ plugin: argLine('@{argLine} -XX:+AllowRedefinitionToAddDeleteMethods') }),
