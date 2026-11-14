@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { resolveBase } from './base-ref.mjs';
+import { resolveBase } from './base-ref.mts';
 
 const { createGitRepository } = useGitFixtures();
 

@@ -1,6 +1,7 @@
 const SECRET = 'secret';
 const CREDENTIAL = 'credential';
 const NONE = 'none';
+const OPAQUE_VALUE = 'abc123def456';
 const PASSWORD = 'password';
 const TOKEN = 'token';
 const API_KEY = 'apiKey';
@@ -9,10 +10,16 @@ const FOUR_WORDS = 'CorrectHorseBatteryStaple';
 const GITHUB_TOKEN = `ghp_${'a1B2'.repeat(9)}`;
 const DJANGO_KEY = ['django', 'insecure', 'abcdef'].join('-');
 const AWS_KEY = ['AKIA', 'ABCDEFGHIJKLMNOP'].join('');
-const BEARER = ['Bearer', 'abc123def456'].join(' ');
+const BEARER = ['Bearer', OPAQUE_VALUE].join(' ');
 const DSN = `postgres://${['app', 'Hunter22'].join(':')}@db/app`;
 
 export const SECRET_VALUE_CASES = [
+  ['maskedToken', OPAQUE_VALUE, NONE],
+  ['redactedPassword', OPAQUE_VALUE, NONE],
+  ['nextToken', OPAQUE_VALUE, NONE],
+  ['csrfToken', OPAQUE_VALUE, SECRET],
+  [TOKEN, '2024-01-01T00:00:00Z', NONE],
+  ['url', 'jdbc:postgresql://u:Hunter2x@db/app', CREDENTIAL],
   [PASSWORD, 'Password1!', SECRET],
   [TOKEN, 'Token2024', SECRET],
   [SECRET, 's3cret', SECRET],

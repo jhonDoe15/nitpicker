@@ -6,7 +6,7 @@ import {
   fixtureGit,
   useGitFixtures,
 } from '../../../../../core/diff/git/test-support/git-repository.mjs';
-import { changedTestLines, slowTestFindings } from './slow-tests.mjs';
+import { changedTestLines, slowTestFindings } from './slow-tests.mts';
 
 const temporaryRoots = [];
 const TEST_FILE = [

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runCli } from '../../../../../core/cli.mjs';
+import { runCli } from '../../../../../core/cli.mts';
 import { withDefaultAnalyzerParallelism } from '../../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { copyGitTemplate } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 

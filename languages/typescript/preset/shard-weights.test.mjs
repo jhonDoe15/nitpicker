@@ -3,7 +3,7 @@ import {
   blendReports,
   ownCosts,
   weightsFromSeconds,
-} from '../../../scripts/measure-shard-weights.mjs';
+} from '../../../scripts/shard-weights/weights.mts';
 import { configuredAnalyzers } from './diff/configured-analyzers.mjs';
 
 const packageAnalyzers = configuredAnalyzers();

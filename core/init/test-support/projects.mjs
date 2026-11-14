@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { runCli } from '../../cli.mjs';
+import { runCli } from '../../cli.mts';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { insideProject } from '../support/inside-project.mjs';
+import { insideProject } from '../support/inside-project.mts';
 
 export function readText(root, name) {
   return readFileSync(insideProject(root, name), 'utf8');

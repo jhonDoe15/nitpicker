@@ -97,6 +97,16 @@ function jacocoDestFiles(plugin, basedir) {
   return [...new Set(files.map((file) => path.resolve(basedir, file)))];
 }
 
+function jacocoAgentVersion(plugin) {
+  const version = plugin === undefined ? undefined : textAt(plugin, 'version')?.trim();
+  const agents = (
+    plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal))
+  ).filter((execution) => textAt(execution, 'phase') !== 'none');
+  return agents.length === 0 || version === undefined || version.includes('${')
+    ? undefined
+    : version;
+}
+
 function resolvedText(build, basedir, name) {
   const value = textAt(build, name);
   return value === undefined ? undefined : path.resolve(basedir, value);
@@ -111,6 +121,28 @@ function defaultExecution(plugin, goal) {
 
 function setting(plugin, goal, name) {
   return configured(defaultExecution(plugin, goal), plugin, name);
+}
+
+function jacocoSettings(plugin, basedir) {
+  return {
+    jacocoDestFiles: jacocoDestFiles(plugin, basedir),
+    jacocoAgentVersion: jacocoAgentVersion(plugin),
+  };
+}
+
+function packagingOf(project) {
+  return textAt(project, 'packaging') ?? 'jar';
+}
+
+function moduleCompiler(project) {
+  if (packagingOf(project) === 'pom') {
+    return undefined;
+  }
+  try {
+    return compilerSettings(project);
+  } catch (error) {
+    throw new Error(`Maven module ${coordinates(project)}: ${error.message}`, { cause: error });
+  }
 }
 
 function describeModule(project, { basedir, pomFile }) {
@@ -130,7 +162,7 @@ function describeModule(project, { basedir, pomFile }) {
     basedir,
     pomFile,
     coordinates: coordinates(project),
-    packaging: textAt(project, 'packaging') ?? 'jar',
+    packaging: packagingOf(project),
     buildDirectory,
     outputDirectory:
       resolvedText(build, basedir, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
@@ -158,9 +190,9 @@ function describeModule(project, { basedir, pomFile }) {
     testJvmArgs: testJvmArguments(project, surefire, defaultExecution(surefire, 'test')),
     integrationTestJvmArgs: testJvmArguments(project, failsafe, integrationTests),
     published: isPublished(project, plugins),
-    jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
+    ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
-    compiler: compilerSettings(project),
+    compiler: moduleCompiler(project),
   };
 }
 

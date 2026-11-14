@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { routeProblems } from '../../../../core/exceptions/test-support/route-check.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
-import { eslintRoute } from '../../adapters/hints/eslint-hints.mjs';
+import { eslintRoute } from '../../adapters/hints/eslint-routes.mts';
 import { checkFailureMessageCase, lintFixture, projectRelative } from './test-support/harness.mjs';
 import { failureMessageCases as baseCases } from './test-support/cases.mjs';
 import { testHonestyFailureMessageCases } from './test-support/honesty/test-honesty-cases.mjs';

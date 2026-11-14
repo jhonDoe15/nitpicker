@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { resolveMaxParallel, runTaskGraph } from './analyzer-scheduler.mjs';
+import { resolveMaxParallel, runTaskGraph } from './graph/task-graph.mts';
 import { flushScheduling, task } from './test-support/analyzer-task.mjs';
 
 describe('analyzer scheduler', () => {

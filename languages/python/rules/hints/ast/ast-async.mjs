@@ -79,6 +79,22 @@ export const ASYNC_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['blocking-helper-in-async'],
+    describe: (subject) =>
+      `\`${subject}\`, so this async function blocks the event loop and stalls every other task`,
+    allowed:
+      'Run the helper in a worker thread: `await asyncio.to_thread(fetch_profile, url)` or `await loop.run_in_executor(None, fetch_profile, url)`, or use an async client (`httpx.AsyncClient`, `aiohttp`) and `await asyncio.sleep(...)`. Work done at startup, before the loop serves requests, takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unbounded-wait'],
+    describe: (subject) =>
+      `\`${subject}\` waits without a timeout, so a task that never finishes hangs this thread for good`,
+    allowed:
+      'Pass a timeout in seconds: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`, `thread.join(timeout=30)` (then check `is_alive()`). A program whose purpose is to wait for the work to finish, such as a shutdown that joins the worker it just told to stop, takes an exception.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['timeout-scope-path-without-checkpoint'],
     describe: (subject) => {
       const { scope, call } = parts(subject);
@@ -86,5 +102,13 @@ export const ASYNC_HINTS = [
     },
     allowed:
       'Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['future-without-exception'],
+    describe: (subject) =>
+      `\`${subject}\` is completed only by \`set_result\` from a callback, so when the work behind the callback fails the future never completes and whoever awaits it waits forever`,
+    allowed:
+      'Give the callback a failure path that calls `set_exception` (`register(reply.set_result, reply.set_exception)`, or `except Exception as error: reply.set_exception(error)` around the work), or await a coroutine API that raises by itself, such as `loop.run_in_executor(...)` or `asyncio.to_thread(...)`.',
   },
 ];

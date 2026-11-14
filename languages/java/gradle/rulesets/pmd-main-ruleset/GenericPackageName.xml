@@ -1,0 +1,11 @@
+  <rule name="GenericPackageName" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Name this package for what it holds, not util, helper, manager, common or misc. Pure logic shared between features goes in the shared package under a name that says what it does. An exception fits only for a name a framework requires.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//PackageDeclaration[matches(@Name, '(^|\.)(utils?|utilit(y|ies)|helpers?|managers?|commons?|misc|miscellaneous)(\.|$)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>

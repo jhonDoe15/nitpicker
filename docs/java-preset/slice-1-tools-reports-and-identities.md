@@ -59,7 +59,7 @@ The main-only ruleset (`pmd-main-ruleset.xml`, which holds the `security` catego
 project reference to `category/java/security.xml` adds nothing, and a project rule that names one of its
 rules is overlaid on it (`pmd-main-rules.xml`) and still runs on main sources only.
 
-**Additional PMD categories (7.7.0).** The shared ruleset also runs the `performance` and
+**Additional PMD categories (7.16.0).** The shared ruleset also runs the `performance` and
 `multithreading` categories on main and test Java sources, and `pmd-main-ruleset.xml` runs the
 `security` category on main sources only, since a test encrypts with a fixed key and IV to check known
 output. Both hold with Gradle and Maven and for the Java sources of the Kotlin preset. Performance
@@ -146,6 +146,7 @@ default, and their messages name it:
 | `AvoidFieldNameMatchingMethodName` | `static final` constants, and a method named exactly like its field with at most one parameter: an accessor (`name()`), a fluent setter or builder step (`name(String)`).                          |
 | `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
+| `UnusedFormalParameter`            | Every method and constructor, tests too. Passing: overrides, `main`, annotated methods or parameters, `unused*`/`ignored*` names.                                                                  |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No annotation whose name contains `Generated` on a class, method or constructor (JaCoCo skips them all, PIT skips `@Generated`); put JPA `@GeneratedValue` on the field.                           |
 | `MutationIgnoreMarker` (new)       | No `@DoNotMutate` or `@CoverageIgnore`: PIT does not mutate what they mark.                                                                                                                        |

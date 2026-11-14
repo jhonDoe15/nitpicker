@@ -105,6 +105,9 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
     return { status: failed.length > 0 ? 1 : 0, stdout: '', stderr: failed.join('\n') };
   }
   function executeFixCommand(invocation) {
+    if (invocation.operation === 'java-probe') {
+      return { status: 0, stdout: '', stderr: 'openjdk version "21.0.1"' };
+    }
     calls.push(invocation);
     if (failure[invocation.operation] !== undefined) {
       return failure[invocation.operation];

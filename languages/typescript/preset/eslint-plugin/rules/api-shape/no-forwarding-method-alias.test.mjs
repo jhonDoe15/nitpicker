@@ -6,7 +6,7 @@ import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
-import { normalizeEslintResults } from '../../../../adapters/eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../../../adapters/eslint/normalize.mts';
 import { strictPresetConfig } from '../../../eslint-config/strict.mjs';
 import { resolveLayout } from '../../../layout.mjs';
 import { nitpickerRules } from '../../index.mjs';

@@ -1,17 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mjs';
+import { normalizeArchitectureViolations } from '../../../languages/typescript/adapters/static-checks-runner.mts';
 import {
   normalizeCoupling,
   normalizeStructure,
   normalizeTestRuntime,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mjs';
-import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mjs';
+} from '../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
+import { normalizeDeadCode } from '../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
 import {
   normalizeCrap,
   normalizeMutation,
-} from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+} from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
 import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';

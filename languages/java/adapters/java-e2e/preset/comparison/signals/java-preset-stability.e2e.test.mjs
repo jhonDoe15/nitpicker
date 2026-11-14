@@ -9,7 +9,7 @@ import {
   maven,
   twinProjects,
   useMavenPresetProject,
-} from '../../../../../maven/__tests__/maven-preset-project.mjs';
+} from '../../../../../maven/__tests__/maven-preset-project.mts';
 import { librarySources } from '../../../test-support/library-sources.mjs';
 
 function withLibrary(root) {

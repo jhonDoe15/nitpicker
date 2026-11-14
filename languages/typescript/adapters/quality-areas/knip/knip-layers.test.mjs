@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { layeredKnipConfig, writtenKnipConfig } from './knip-layers.mjs';
+import { layeredKnipConfig, writtenKnipConfig } from './knip-layers.mts';
 
 const NITPICKER = {
   $schema: 'nitpicker',

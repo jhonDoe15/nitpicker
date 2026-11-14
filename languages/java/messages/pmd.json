@@ -307,6 +307,10 @@
     "fix": "Replace x.equals(null) with x == null.",
     "mayBeIntended": false
   },
+  "ExhaustiveSwitchHasDefault": {
+    "fix": "Remove the default branch: the switch already names every constant, and without default the compiler flags the switch when a constant is added.",
+    "mayBeIntended": true
+  },
   "FinalizeDoesNotCallSuperFinalize": {
     "fix": "Delete finalize() and clean up with try-with-resources or Cleaner; if it stays, end it with super.finalize() in a finally.",
     "mayBeIntended": false
@@ -342,6 +346,10 @@
   "IdempotentOperations": {
     "fix": "Delete the self-assignment (x = x), or assign the value you meant.",
     "mayBeIntended": false
+  },
+  "ImplicitFunctionalInterface": {
+    "fix": "Annotate the interface with @FunctionalInterface if lambdas implement it; otherwise give it the second abstract method it is missing.",
+    "mayBeIntended": true
   },
   "ImplicitSwitchFallThrough": {
     "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
@@ -527,6 +535,14 @@
     "fix": "Declare Map and create a HashMap, or a ConcurrentHashMap when threads share it.",
     "mayBeIntended": true
   },
+  "ReplaceJavaUtilCalendar": {
+    "fix": "Use java.time instead of Calendar: ZonedDateTime, LocalDate or Instant, with a Clock for the current time.",
+    "mayBeIntended": true
+  },
+  "ReplaceJavaUtilDate": {
+    "fix": "Use java.time instead of java.util.Date: Instant or LocalDateTime; convert at an old API's boundary with Date.from and toInstant.",
+    "mayBeIntended": true
+  },
   "ReplaceVectorWithList": {
     "fix": "Declare List and create an ArrayList, or use CopyOnWriteArrayList when threads share it.",
     "mayBeIntended": true
@@ -667,6 +683,10 @@
     "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",
     "mayBeIntended": false
   },
+  "UnnecessaryWarningSuppression": {
+    "fix": "Remove the @SuppressWarnings value or NOPMD comment that suppresses nothing.",
+    "mayBeIntended": true
+  },
   "UnsynchronizedStaticFormatter": {
     "fix": "Format dates with a static final DateTimeFormatter; create any other Format (DecimalFormat, MessageFormat) as a local where it is used.",
     "mayBeIntended": true
@@ -676,7 +696,7 @@
     "mayBeIntended": false
   },
   "UnusedFormalParameter": {
-    "fix": "Remove the parameter and update the callers, or use it in the method body.",
+    "fix": "Remove the parameter and update the callers, or use it; when a framework fixes the signature, name it unusedX or ignoredX.",
     "mayBeIntended": true
   },
   "UnusedLocalVariable": {

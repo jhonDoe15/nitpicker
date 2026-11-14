@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { staleFiles } from '../scripts/gen-checks.mjs';
+import { staleFiles } from '../scripts/gen-checks.mts';
 import { applyGeneratedBlock, renderCustomRulesTable } from './checks-catalog.mjs';
 import {
   DEFAULT_CRAP_SCORE_LIMIT,

@@ -2,11 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
-import { runAggregateCli } from './aggregate-shards.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
+import { runAggregateCli } from './aggregate-shards.mts';
 import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mjs';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
 const { createFixture } = useShardFixtures();
 
@@ -174,10 +175,10 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
       [
         '--experimental-loader',
         loaderPath,
-        fileURLToPath(new URL('./aggregate-shards.mjs', import.meta.url)),
+        fileURLToPath(checkoutModuleUrl(new URL('./aggregate-shards.mjs', import.meta.url))),
         '--help',
       ],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', timeout: 60_000 },
     );
 
     expect(result.status, result.stderr).toBe(0);

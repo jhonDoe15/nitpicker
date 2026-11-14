@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "cached-rejection",
+    "mention": "only while it still holds this attempt"
+  }
+]

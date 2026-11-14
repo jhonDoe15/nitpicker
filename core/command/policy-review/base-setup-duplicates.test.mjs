@@ -1,9 +1,9 @@
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { createBaseSetupResolver } from './base-setup.mjs';
+import { createBaseSetupResolver } from './base-setup.mts';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
-import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 
 const { createGitRepository } = useGitFixtures();
