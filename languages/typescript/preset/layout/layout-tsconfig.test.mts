@@ -2,16 +2,27 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { afterAll, describe, expect, it } from 'vitest';
-import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
-import { resolveLayout } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
+import { parseJson } from '../../../../shared/values/readers.mts';
+import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
+import { readDefaultTsconfig } from './test-support/layout-readers.mts';
 import {
   customLayout,
   defaults,
-  readDefault,
   removeTemporaryRoots,
   temporaryProject,
-} from './test-support/layout-config-helpers.mjs';
+} from './test-support/layout-config-helpers.mts';
+import {
+  parseTsconfig,
+  resolveLayout,
+  sortedUnique,
+  tsconfigTransform as layoutTransformFor,
+} from './test-support/layout-views.mts';
+
+const linkPolicyFile: (
+  source: string,
+  target: string,
+  transform: (text: string, targetPath: string) => string,
+) => { readonly targetPath: string; remove(): void } = untypedLinkPolicyFile;
 
 afterAll(removeTemporaryRoots);
 
@@ -24,7 +35,7 @@ describe('layout-aware tsconfig', () => {
     expect(layoutTransformFor('tsconfig.quality.json', defaultLayout)(shipped, target)).toBe(
       shipped,
     );
-    const custom = JSON.parse(
+    const custom = parseTsconfig(
       layoutTransformFor('tsconfig.quality.json', customLayout)(shipped, target),
     );
     expect(custom.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
@@ -33,7 +44,7 @@ describe('layout-aware tsconfig', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
     const transform = layoutTransformFor('tsconfig.quality.json', customLayout);
     const shipped = readFileSync(path.join(defaults, 'tsconfig.quality.json'), 'utf8');
-    const layered = JSON.parse(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')));
+    const layered = parseTsconfig(transform(shipped, path.join(projectRoot, '.nitpicker-x.json')));
     expect(layered.extends).toBe('./tsconfig.json');
     expect(layered.compilerOptions).toEqual({
       allowJs: true,
@@ -61,7 +72,7 @@ describe('layout-aware tsconfig', () => {
     expect(layered.compilerOptions).not.toHaveProperty('module');
     expect(layered.compilerOptions).not.toHaveProperty('jsx');
     expect(layered.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
-    expect([...new Set(layered.exclude)].sort()).toEqual([
+    expect(sortedUnique(layered.exclude)).toEqual([
       '**/node_modules/**',
       'build/**',
       'coverage/**',
@@ -80,15 +91,15 @@ describe('layout-aware tsconfig', () => {
     }`;
     const nodeConfig =
       '{ "compilerOptions": { "module": "ESNext" }, "include": ["vite.config.ts"] }';
-    const solution = (...paths) =>
+    const solution = (...paths: string[]) =>
       JSON.stringify({ files: [], references: paths.map((reference) => ({ path: reference })) });
-    function layeredFor(files, name = 'tsconfig.quality.json') {
+    function layeredFor(files: Readonly<Record<string, string>>, name = 'tsconfig.quality.json') {
       const projectRoot = temporaryProject(files);
       const shipped = readFileSync(path.join(defaults, name), 'utf8');
       const target = path.join(projectRoot, '.nitpicker-x.json');
       const layered = layoutTransformFor(name, defaultLayout)(shipped, target);
       writeFileSync(target, layered);
-      return { layered: JSON.parse(layered), target };
+      return { layered: parseTsconfig(layered), target };
     }
     it('extends the referenced config that includes the source roots, so its compiler options apply', () => {
       const { layered, target } = layeredFor({
@@ -103,7 +114,7 @@ describe('layout-aware tsconfig', () => {
         {},
         { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined },
       );
-      expect(parsed.options.jsx).toBe(ts.JsxEmit.ReactJSX);
+      expect(parsed?.options.jsx).toBe(ts.JsxEmit.ReactJSX);
     });
     it('follows a reference to a directory, for the mutation tsconfig too', () => {
       const projectRoot = temporaryProject({ 'tsconfig.json': solution('./app') });
@@ -111,7 +122,7 @@ describe('layout-aware tsconfig', () => {
       writeFileSync(path.join(projectRoot, 'app', 'tsconfig.json'), appConfig);
       const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
 
-      const mutation = JSON.parse(
+      const mutation = parseTsconfig(
         layoutTransformFor('tsconfig.stryker.json', defaultLayout)(
           shipped,
           path.join(projectRoot, '.nitpicker-x.json'),
@@ -151,10 +162,11 @@ describe('layout-aware tsconfig', () => {
     expect(
       cases.map(({ layout, name }) => {
         const shipped = readFileSync(path.join(defaults, name), 'utf8');
-        const { extends: parent, compilerOptions } = JSON.parse(
+        const { extends: parent, compilerOptions } = parseTsconfig(
           layoutTransformFor(name, layout)(shipped, target),
         );
-        return [parent, compilerOptions.isolatedDeclarations];
+        const { isolatedDeclarations } = compilerOptions;
+        return [parent, isolatedDeclarations];
       }),
     ).toEqual(cases.map(() => ['./tsconfig.json', false]));
   });
@@ -162,7 +174,7 @@ describe('layout-aware tsconfig', () => {
     const projectRoot = temporaryProject({ 'tsconfig.json': '{}' });
     const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
     const target = path.join(projectRoot, '.nitpicker-x.json');
-    const strict = JSON.parse(
+    const strict = parseTsconfig(
       layoutTransformFor('tsconfig.stryker.json', defaultLayout)(shipped, target),
     );
     expect(strict.extends).toBe('./tsconfig.json');
@@ -171,10 +183,11 @@ describe('layout-aware tsconfig', () => {
       noImplicitReturns,
       noFallthroughCasesInSwitch,
       noUncheckedIndexedAccess,
+      strict: strictOption,
     } = strict.compilerOptions;
     expect({
       skipLibCheck,
-      strict: strict.compilerOptions.strict,
+      strict: strictOption,
       noImplicitReturns,
       noFallthroughCasesInSwitch,
       noUncheckedIndexedAccess,
@@ -189,14 +202,14 @@ describe('layout-aware tsconfig', () => {
     const relaxed = layoutTransformFor('tsconfig.stryker.json', defaultLayout, {
       strictMutants: false,
     })(shipped, target);
-    expect(JSON.parse(relaxed)).toEqual({
+    expect(parseJson(relaxed)).toEqual({
       extends: './tsconfig.json',
       compilerOptions: { isolatedDeclarations: false, noCheck: false, skipLibCheck: true },
     });
   });
   it('ship the mutation tsconfig with the same indexing and return checks as the type check', () => {
-    const quality = readDefault('tsconfig.quality.json').compilerOptions;
-    const stryker = readDefault('tsconfig.stryker.json').compilerOptions;
+    const quality = readDefaultTsconfig('tsconfig.quality.json').compilerOptions;
+    const stryker = readDefaultTsconfig('tsconfig.stryker.json').compilerOptions;
     const options = [
       'strict',
       'noImplicitReturns',
@@ -211,14 +224,14 @@ describe('layout-aware tsconfig', () => {
     const projectRoot = temporaryProject({});
     const shipped = readFileSync(path.join(defaults, 'tsconfig.stryker.json'), 'utf8');
     const target = path.join(projectRoot, '.nitpicker-x.json');
-    const relaxed = JSON.parse(
+    const relaxed = parseTsconfig(
       layoutTransformFor('tsconfig.stryker.json', customLayout, { strictMutants: false })(
         shipped,
         target,
       ),
     );
     const { noImplicitReturns, noFallthroughCasesInSwitch, noUncheckedIndexedAccess, ...kept } =
-      readDefault('tsconfig.stryker.json').compilerOptions;
+      readDefaultTsconfig('tsconfig.stryker.json').compilerOptions;
     expect([noImplicitReturns, noFallthroughCasesInSwitch, noUncheckedIndexedAccess]).toEqual([
       true,
       true,
@@ -251,7 +264,7 @@ describe('layout-aware tsconfig', () => {
         },
         include: ['src'],
       });
-      const compileErrors = (source, options) => {
+      const compileErrors = (source: string, options: { readonly strictMutants: boolean }) => {
         const projectRoot = temporaryProject({ 'tsconfig.json': projectTsconfig });
         mkdirSync(path.join(projectRoot, 'src'));
         writeFileSync(path.join(projectRoot, 'src', 'mutated.ts'), source);
@@ -266,7 +279,9 @@ describe('layout-aware tsconfig', () => {
           {},
           { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => undefined },
         );
-        return ts.getPreEmitDiagnostics(ts.createProgram(parsed.fileNames, parsed.options));
+        return ts.getPreEmitDiagnostics(
+          ts.createProgram(parsed?.fileNames ?? [], parsed?.options ?? {}),
+        );
       };
 
       expect(compileErrors(original, { strictMutants: true })).toEqual([]);
@@ -282,7 +297,9 @@ describe('layout-aware tsconfig', () => {
       layoutTransformFor('tsconfig.quality.json', defaultLayout),
     );
     try {
-      expect(JSON.parse(readFileSync(linked.targetPath, 'utf8')).extends).toBe('./tsconfig.json');
+      expect(parseTsconfig(readFileSync(linked.targetPath, 'utf8')).extends).toBe(
+        './tsconfig.json',
+      );
     } finally {
       linked.remove();
     }

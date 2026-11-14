@@ -6,22 +6,29 @@ import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { resolveHeadPolicy } from '../head-policy.mjs';
-import { globMatcher, resolveLayout } from '../layout.mjs';
+import { fieldOf, textsOf } from '../../../../shared/values/readers.mts';
+import { globMatcher as untypedGlobMatcher } from '../layout.mjs';
+import { readDefaultTsconfig } from './test-support/layout-readers.mts';
 import {
+  customLayout,
+  readDefault,
+  removeTemporaryRoots,
+  trackTemporaryRoot,
+} from './test-support/layout-config-helpers.mts';
+import {
+  compareText,
   isCustomLayout,
   layoutJscpdConfig,
   layoutKnipConfig,
   layoutStrykerTsconfig,
   layoutTransformFor,
   layoutTsconfig,
-} from '../tool-configs.mjs';
-import {
-  customLayout,
-  readDefault,
-  removeTemporaryRoots,
-  trackTemporaryRoot,
-} from './test-support/layout-config-helpers.mjs';
+  resolveHeadPolicy,
+  resolveLayout,
+  sortedUnique,
+} from './test-support/layout-views.mts';
+
+const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
 
 const { gitCheckout } = useGitCheckouts();
 
@@ -80,7 +87,7 @@ describe('resolveLayout', () => {
     expect(customLayout.isSourceFile('lib/legacy/old.ts')).toBe(false);
     expect(customLayout.isSourceUnderRoot('lib/legacy/old.ts', 'lib')).toBe(false);
     expect(customLayout.isSourceUnderRoot('lib/live/new.ts', 'lib')).toBe(true);
-    expect([...new Set(customLayout.excludedGlobs)].sort()).toEqual([
+    expect(sortedUnique(customLayout.excludedGlobs)).toEqual([
       '**/node_modules/**',
       'build/**',
       'coverage/**',
@@ -90,8 +97,8 @@ describe('resolveLayout', () => {
       'reports/quality/**',
       'target/**',
     ]);
-    expect(new RegExp(customLayout.excludePattern).test('lib/legacy/old.ts')).toBe(true);
-    expect(new RegExp(customLayout.excludePattern).test('lib/live/new.ts')).toBe(false);
+    expect(new RegExp(customLayout.excludePattern ?? '(?!)').test('lib/legacy/old.ts')).toBe(true);
+    expect(new RegExp(customLayout.excludePattern ?? '(?!)').test('lib/live/new.ts')).toBe(false);
     expect(resolveLayout().excludePattern).toBeUndefined();
   });
   it('lists project code files under the roots without excluded files', () => {
@@ -102,7 +109,10 @@ describe('resolveLayout', () => {
       mkdirSync(path.dirname(filePath), { recursive: true });
       writeFileSync(filePath, 'export {};\n');
     }
-    expect(customLayout.projectCodeFiles(root).sort()).toEqual(['lib/a.ts', 'spec/a.test.ts']);
+    expect(customLayout.projectCodeFiles(root).toSorted(compareText)).toEqual([
+      'lib/a.ts',
+      'spec/a.test.ts',
+    ]);
   });
   it('lists the code files of a Git checkout without ignored folders and nested checkouts', () => {
     const code = 'export {};\n';
@@ -145,7 +155,7 @@ describe('globMatcher', () => {
   });
 });
 describe('layout-aware tool configurations', () => {
-  const sorted = (values) => [...values].sort();
+  const sorted = (values: readonly string[]) => values.toSorted(compareText);
   const defaultLayout = resolveLayout();
   it('reproduce the shipped JSON configurations for the default layout', () => {
     const rewrites = {
@@ -153,7 +163,7 @@ describe('layout-aware tool configurations', () => {
       'tsconfig.stryker.json': layoutStrykerTsconfig,
     };
     const pairs = Object.entries(rewrites).map(([name, rewrite]) => {
-      const base = readDefault(name);
+      const base = readDefaultTsconfig(name);
       return { base, rewritten: rewrite(base, defaultLayout) };
     });
     expect(pairs.map(({ rewritten }) => sorted(rewritten.include))).toEqual(
@@ -165,8 +175,8 @@ describe('layout-aware tool configurations', () => {
     const knip = readDefault('knip.json');
     const rewrittenKnip = layoutKnipConfig(knip, defaultLayout);
     const keys = ['entry', 'project', 'ignore'];
-    expect(keys.map((key) => sorted(rewrittenKnip[key]))).toEqual(
-      keys.map((key) => sorted(knip[key])),
+    expect(keys.map((key) => sorted(textsOf(fieldOf(rewrittenKnip, key))))).toEqual(
+      keys.map((key) => sorted(textsOf(fieldOf(knip, key)))),
     );
     const jscpd = readDefault('jscpd.json');
     expect(layoutJscpdConfig(jscpd, defaultLayout)).toEqual(jscpd);
@@ -180,9 +190,9 @@ describe('layout-aware tool configurations', () => {
     expect(layoutTransformFor('vitest.quality.config.ts', customLayout)).toBeUndefined();
   });
   it('move the roots and add the exclude globs for a custom layout', () => {
-    const tsconfig = layoutTsconfig(readDefault('tsconfig.quality.json'), customLayout);
+    const tsconfig = layoutTsconfig(readDefaultTsconfig('tsconfig.quality.json'), customLayout);
     expect(tsconfig.include).toEqual(['lib/**/*', 'spec/**/*', 'vitest*.ts']);
-    expect([...new Set(tsconfig.exclude)].sort()).toEqual([
+    expect(sortedUnique(tsconfig.exclude)).toEqual([
       '**/node_modules/**',
       'build/**',
       'coverage/**',
@@ -194,7 +204,7 @@ describe('layout-aware tool configurations', () => {
     ]);
 
     const knip = layoutKnipConfig(readDefault('knip.json'), customLayout);
-    expect([...new Set(knip.entry)].sort()).toEqual([
+    expect(sortedUnique(knip.entry)).toEqual([
       'lib/main.ts',
       'lib/main/composition-root.{ts,mts,js,mjs}',
       'lib/main/composition-root/index.{ts,mts,js,mjs}',
@@ -207,13 +217,13 @@ describe('layout-aware tool configurations', () => {
       'vitest.config.ts',
       'vitest.quality.config.ts',
     ]);
-    expect([...new Set(knip.project)].sort()).toEqual([
+    expect(sortedUnique(knip.project)).toEqual([
       '*.config.{ts,mts,mjs}',
       'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
     expect([...knip.entry, ...knip.project, ...knip.ignore].join(' ')).not.toMatch(/\bsrc\//);
-    expect([...new Set(knip.ignore)].sort()).toEqual([
+    expect(sortedUnique(knip.ignore)).toEqual([
       '.nitpicker-*',
       '.stryker-tmp/**',
       'coverage/**',
@@ -224,7 +234,7 @@ describe('layout-aware tool configurations', () => {
 
     const jscpd = layoutJscpdConfig(readDefault('jscpd.json'), customLayout);
     expect(jscpd.path).toEqual(['lib', 'spec']);
-    expect([...new Set(jscpd.ignore)].sort()).toEqual([
+    expect(sortedUnique(jscpd.ignore)).toEqual([
       '**/*.d.ts',
       '**/.stryker-tmp/**',
       '**/node_modules/**',
@@ -242,7 +252,7 @@ describe('layout-aware tool configurations', () => {
 
     const knip = layoutKnipConfig(readDefault('knip.json'), layout);
 
-    expect([...new Set(knip.entry)].sort()).toEqual([
+    expect(sortedUnique(knip.entry)).toEqual([
       'lib/main.ts',
       'lib/main/composition-root.{ts,mts,js,mjs}',
       'lib/main/composition-root/index.{ts,mts,js,mjs}',

@@ -5,10 +5,19 @@ import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repos
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 import {
   checksJavascript,
-  projectTsconfigs,
+  projectTsconfigs as untypedProjectTsconfigs,
   tsconfigChain,
-  tsconfigProblems,
+  tsconfigProblems as untypedTsconfigProblems,
 } from './tsconfig-files.mjs';
+import { functionOf } from './test-support/untyped-function.mts';
+
+type Files = Readonly<Record<string, string>>;
+
+const projectTsconfigs =
+  functionOf<
+    (projectRoot: string, files: readonly string[], isHidden: (file: string) => boolean) => string[]
+  >(untypedProjectTsconfigs);
+const tsconfigProblems: (configFile: string) => string[] = untypedTsconfigProblems;
 
 const { temporaryRoot } = useGitFixtures();
 
@@ -47,12 +56,12 @@ describe('projectTsconfigs', () => {
 });
 
 describe('tsconfigChain', () => {
-  const chainOf = (files, entry = 'tsconfig.json', place = '') => {
+  const chainOf = (files: Files, entry = 'tsconfig.json', place = '') => {
     const root = temporaryRoot('nitpicker-tsconfig-chain-');
     writeFiles(root, files);
     return tsconfigChain(path.join(root, place), entry);
   };
-  const extending = (extended) => JSON.stringify({ extends: extended });
+  const extending = (extended: string | readonly string[]) => JSON.stringify({ extends: extended });
 
   it('follows an extends array and a target written without .json', () => {
     expect(
@@ -110,7 +119,7 @@ describe('tsconfigChain', () => {
 });
 
 describe('tsconfigProblems', () => {
-  const problemsOf = (files) => {
+  const problemsOf = (files: Files) => {
     const root = temporaryRoot('nitpicker-tsconfig-problems-');
     writeFiles(root, files);
     return { root, problems: tsconfigProblems(path.join(root, 'tsconfig.json')) };
