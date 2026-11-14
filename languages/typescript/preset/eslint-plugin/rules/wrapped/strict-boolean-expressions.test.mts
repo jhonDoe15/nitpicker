@@ -7,6 +7,7 @@ import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { truthinessRuleOptions } from '../../../eslint-config/truthiness/truthiness-rules.mjs';
 import { rule } from './strict-boolean-expressions.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-truthiness-')));
 writeFileSync(
@@ -33,25 +34,25 @@ afterAll(() => {
 });
 
 const linter = new Linter({ cwd: root });
-const config = [
+const config: Linter.Config[] = [
   {
     files: ['**/*.{ts,js}'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: { project: './tsconfig.json', tsconfigRootDir: root },
     },
-    plugins: { nitpicker: { rules: { 'strict-boolean-expressions': rule } } },
+    plugins: { nitpicker: { rules: { 'strict-boolean-expressions': ruleModule(rule) } } },
     rules: { 'nitpicker/strict-boolean-expressions': ['error', truthinessRuleOptions] },
   },
 ];
 
-function typed(code, messageId, extension = 'ts') {
+function typed(code: string, messageId?: string, extension = 'ts') {
   const filename = path.join(root, `src/case-${randomUUID()}.${extension}`);
   writeFileSync(filename, code);
   return { filename, code, expected: messageId === undefined ? [] : [messageId] };
 }
 
-function reportedIds({ filename, code }) {
+function reportedIds({ filename, code }: { filename: string; code: string }) {
   return linter
     .verify(code, config, { filename })
     .map((message) => message.messageId ?? message.message);

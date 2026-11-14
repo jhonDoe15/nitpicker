@@ -3,12 +3,12 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './time-unit-mismatch.mjs';
 
 const tester = typescriptRuleTester();
 
-function invalid(code, messageId, data) {
+function invalid(code: string, messageId: string, data?: Record<string, string>) {
   return { code, errors: [{ messageId, ...(data ? { data } : {}) }] };
 }
 
@@ -148,7 +148,11 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function typed(code, messageId) {
+type Typed = { filename: string; code: string };
+
+function typed(code: string, messageId?: undefined): Typed;
+function typed(code: string, messageId: string): Typed & { errors: { messageId: string }[] };
+function typed(code: string, messageId?: string) {
   const filename = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(filename, code);
   return { filename, code, ...(messageId === undefined ? {} : { errors: [{ messageId }] }) };
