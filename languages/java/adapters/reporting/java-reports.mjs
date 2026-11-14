@@ -17,6 +17,7 @@ import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
+import { withEffectsFindings } from '../effects/effects-findings.mjs';
 import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mjs';
@@ -155,7 +156,7 @@ function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
   const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
   const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
-  return [
+  return withEffectsFindings(context, [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
     ...formatFindings(context),
@@ -175,7 +176,7 @@ function readModuleFindings(context, crapLimit) {
       locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
     }),
     ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
-  ];
+  ]);
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {

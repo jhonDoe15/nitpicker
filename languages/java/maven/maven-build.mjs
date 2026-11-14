@@ -7,7 +7,13 @@ import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import {
+  archunitTool,
+  effectsTool,
+  formatTool,
+  MAVEN_PLUGINS,
+  resolveTools,
+} from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
@@ -16,6 +22,7 @@ import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
+import { effectsOptions } from '../adapters/effects/effects-options.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
 import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
@@ -127,7 +134,7 @@ function buildOrSkipTests(run, { work, modules, policy }) {
   }
 }
 
-function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
+function analyzeAll({ analyzed, policy, kotlin, work, effectsOptions, ...shared }) {
   const style = {
     javaStyle: policy.javaStyle,
     indentation: checkstyleIndentation(policy.conventions),
@@ -148,6 +155,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         springRoles,
         springRules,
         mutationScope: policy.mutationScope,
+        effectsOptions,
       }),
     )
     .filter((failure) => failure !== undefined);
@@ -159,6 +167,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
     ...formatTool(policy.javaStyle, pinned),
     ...kotlin.extraTools,
     ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+    ...effectsTool(pinned),
   ];
 }
 
@@ -215,6 +224,7 @@ export function runMavenPreset(
       policy,
       kotlin,
       work,
+      effectsOptions: effectsOptions(projectRoot),
       project: guardProject(projectRoot, policy, modules),
     });
     return {

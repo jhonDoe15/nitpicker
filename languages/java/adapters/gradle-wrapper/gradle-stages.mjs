@@ -4,6 +4,7 @@ import { javaStyleProperties } from '../style/java-style.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mjs';
+import { effectsProperties } from '../effects/effects-options.mjs';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -39,6 +40,7 @@ function headFactProperties(projectRoot, policy, directory) {
   const springRules = writeSpringRuleset(projectRoot, directory);
   return [
     ...javaStyleProperties(policy),
+    ...effectsProperties(projectRoot),
     ...(policy.spring === true ? ['-Pnitpicker.spring=true'] : []),
     ...(policy.featureFolders === true ? ['-Pnitpicker.featureFolders=true'] : []),
     ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${roles}`]),
