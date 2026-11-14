@@ -1,6 +1,5 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as noModuleLevelLet } from './rules/modules/no-module-level-let.mjs';
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as reportModuleLoadEffects } from './rules/modules/report-module-load-effects.mjs';
@@ -9,25 +8,11 @@ import { rule as noBranchInCompositionRoot } from './rules/boundaries/no-branch-
 import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-process-globals-outside-main-guard.mjs';
 import { rule as noManagedResourceConstructionOutsideCompositionRoots } from './rules/boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
+const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const lines = (...parts) => parts.join('\n');
+const lines = (...parts: string[]) => parts.join('\n');
 ruleTester.run('no-unvalidated-schema-field', noUnvalidatedSchemaField, {
   valid: [
     "import { z } from 'zod'; const s = z.object({ name: z.string().trim().min(1), email: z.email() });",

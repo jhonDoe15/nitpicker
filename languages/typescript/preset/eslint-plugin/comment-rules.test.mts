@@ -1,18 +1,9 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as noComments } from './rules/modules/no-comments.mjs';
 import { withoutFixes } from '../eslint-config/rule-hints.mjs';
 
-RuleTester.afterAll = afterAll;
-RuleTester.afterEach = afterEach;
-RuleTester.beforeAll = beforeAll;
-RuleTester.beforeEach = beforeEach;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
+const ruleTester = configuredRuleTester({
   languageOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -71,33 +62,38 @@ ruleTester.run('no-comments', withoutFixes(noComments), {
       errors: [{ messageId: 'internalDocComment' }],
     },
     { code: '/** Trailing doc. */', errors: [{ messageId: 'internalDocComment' }] },
-    ...[
-      ['/** Gets the user name. */\nexport function getUserName() { return 1; }', 'getUserName'],
-      ['/** Button component */\nexport function Button() { return 1; }', 'Button'],
-      ['/** Returns the order total. */\nexport const orderTotal = 1;', 'orderTotal'],
-      ['/** Creates a new user. */\nexport function createUser() { return 1; }', 'createUser'],
-      ['/** Deleted orders */\nexport type DeleteOrder = string;', 'DeleteOrder'],
-      ['/** Is the user active? */\nexport function isUserActive() { return 1; }', 'isUserActive'],
-      ['/** The max retry count. */\nexport const MAX_RETRY_COUNT = 3;', 'MAX_RETRY_COUNT'],
+    ...(
       [
-        '/** Fetches the user-profile. */\nexport function fetchUserProfile() { return 1; }',
-        'fetchUserProfile',
-      ],
-      ['/** Parse the v2 url */\nexport function parseV2Url() { return 1; }', 'parseV2Url'],
-      [
-        '/**\n * Gets the user name.\n * @param {string} id\n * @returns {string}\n * @throws {Error}\n * @deprecated\n */\nexport function getUserName(id: string) { return id; }',
-        'getUserName',
-      ],
-      [
-        '/**\n * Loads the user.\n * @param [id=1] -\n */\nexport function loadUser(id = 1) { return id; }',
-        'loadUser',
-      ],
-      ['/** The {@link User} record. */\nexport type UserRecord = string;', 'UserRecord'],
-      ['/** Order id. */\nexport default function orderId() { return 1; }', 'orderId'],
-      ['/** Order id. */\nexport class OrderId {}', 'OrderId'],
-      ['/** The user. */\nexport interface User {}', 'User'],
-      ['/** Order class. */\nexport class Order {}', 'Order'],
-    ].map(([code, name]) => ({
+        ['/** Gets the user name. */\nexport function getUserName() { return 1; }', 'getUserName'],
+        ['/** Button component */\nexport function Button() { return 1; }', 'Button'],
+        ['/** Returns the order total. */\nexport const orderTotal = 1;', 'orderTotal'],
+        ['/** Creates a new user. */\nexport function createUser() { return 1; }', 'createUser'],
+        ['/** Deleted orders */\nexport type DeleteOrder = string;', 'DeleteOrder'],
+        [
+          '/** Is the user active? */\nexport function isUserActive() { return 1; }',
+          'isUserActive',
+        ],
+        ['/** The max retry count. */\nexport const MAX_RETRY_COUNT = 3;', 'MAX_RETRY_COUNT'],
+        [
+          '/** Fetches the user-profile. */\nexport function fetchUserProfile() { return 1; }',
+          'fetchUserProfile',
+        ],
+        ['/** Parse the v2 url */\nexport function parseV2Url() { return 1; }', 'parseV2Url'],
+        [
+          '/**\n * Gets the user name.\n * @param {string} id\n * @returns {string}\n * @throws {Error}\n * @deprecated\n */\nexport function getUserName(id: string) { return id; }',
+          'getUserName',
+        ],
+        [
+          '/**\n * Loads the user.\n * @param [id=1] -\n */\nexport function loadUser(id = 1) { return id; }',
+          'loadUser',
+        ],
+        ['/** The {@link User} record. */\nexport type UserRecord = string;', 'UserRecord'],
+        ['/** Order id. */\nexport default function orderId() { return 1; }', 'orderId'],
+        ['/** Order id. */\nexport class OrderId {}', 'OrderId'],
+        ['/** The user. */\nexport interface User {}', 'User'],
+        ['/** Order class. */\nexport class Order {}', 'Order'],
+      ] as const
+    ).map(([code, name]) => ({
       code,
       errors: [{ messageId: 'restatingDocComment', data: { name } }],
     })),
@@ -140,16 +136,18 @@ ruleTester.run('no-comments', withoutFixes(noComments), {
       code: '/** @ts-ignore */\nexport const a = 1;',
       errors: [{ messageId: 'typescriptSuppression' }],
     },
-    ...[
-      ['/* istanbul ignore next */', 'istanbul ignore'],
-      ['/* c8 ignore start */', 'c8 ignore'],
-      ['/* v8 ignore next */', 'v8 ignore'],
-      ['// Stryker disable next-line all', 'Stryker disable'],
-      ['// stryker restore all', 'stryker restore'],
-      ['/* istanbul  ignore\tnext */', 'istanbul ignore'],
-      ['/** istanbul ignore next */', 'istanbul ignore'],
-      ['/**\n * c8 ignore next\n */', 'c8 ignore'],
-    ].map(([comment, directive]) => ({
+    ...(
+      [
+        ['/* istanbul ignore next */', 'istanbul ignore'],
+        ['/* c8 ignore start */', 'c8 ignore'],
+        ['/* v8 ignore next */', 'v8 ignore'],
+        ['// Stryker disable next-line all', 'Stryker disable'],
+        ['// stryker restore all', 'stryker restore'],
+        ['/* istanbul  ignore\tnext */', 'istanbul ignore'],
+        ['/** istanbul ignore next */', 'istanbul ignore'],
+        ['/**\n * c8 ignore next\n */', 'c8 ignore'],
+      ] as const
+    ).map(([comment, directive]) => ({
       code: `${comment}\nexport const a = 1;`,
       errors: [{ messageId: 'coverageSuppression', data: { directive } }],
     })),

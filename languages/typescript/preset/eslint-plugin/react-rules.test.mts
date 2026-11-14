@@ -1,29 +1,19 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
 import { rule as reactNoEffectDerivedState } from './rules/react/react-no-effect-derived-state.mjs';
 import { rule as reactSingleStylingApproach } from './rules/react/react-single-styling-approach.mjs';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
+const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 const filename = '/repo/src/main/ui/panel.tsx';
 
-function component(body) {
+function component(body: string) {
   return `function Panel({ a, b }) { ${body} return <div />; }`;
 }
 
-function withState(effect) {
+function withState(effect: string) {
   return component(`const [x, setX] = useState(0); ${effect}`);
 }
 
@@ -169,15 +159,15 @@ const fixedValueForms = {
   [cssInJsAllowed]: 'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`',
 };
 
-function inlineStyleError(allowed) {
+function inlineStyleError(allowed: keyof typeof fixedValueForms) {
   return { messageId: 'inlineStyle', data: { allowed, form: fixedValueForms[allowed] } };
 }
 
-function otherApproachError(allowed, found) {
+function otherApproachError(allowed: string, found: string) {
   return { messageId: 'otherApproach', data: { allowed, found } };
 }
 
-function jsx(markup) {
+function jsx(markup: string) {
   return `export function Panel() { return ${markup}; }`;
 }
 

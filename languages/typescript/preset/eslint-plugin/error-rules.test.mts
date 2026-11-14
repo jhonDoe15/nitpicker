@@ -1,26 +1,11 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
 import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
 import { withoutFixes } from '../eslint-config/rule-hints.mjs';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
+const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
