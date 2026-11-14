@@ -1,6 +1,7 @@
 import { isPublished, isTrue } from './configuration/publishing.mts';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { textOf } from '../../../shared/values/readers.mts';
 import { type XmlElement, childrenNamed, parseXml } from '../../../shared/values/xml.mts';
 import { childAt, childrenAt, executionsWithGoal, pluginsOf, textAt } from './typed/pom-values.mts';
 import type { ModuleBase, ModuleDescription } from './typed/module-description.mts';
@@ -8,6 +9,7 @@ import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mts';
 import { testJvmArguments } from './configuration/surefire-jvm.mts';
 
+const DIRECTORY = 'directory';
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
@@ -36,7 +38,7 @@ const VERIFY_BUILD = [
 
 function coordinates(project: XmlElement): string {
   const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
-  return `${groupId}:${textAt(project, 'artifactId')}`;
+  return `${textOf(groupId)}:${textOf(textAt(project, 'artifactId'))}`;
 }
 
 function configured(
@@ -83,7 +85,7 @@ function groovyTestRoots(plugin: XmlElement | undefined, basedir: string): strin
     plugin === undefined ? [] : [plugin, ...childrenAt(plugin, 'executions', 'execution')]
   )
     .flatMap((element) => childrenAt(element, 'configuration', 'testSources', 'testSource'))
-    .flatMap((source) => textAt(source, 'directory') ?? []);
+    .flatMap((source) => textAt(source, DIRECTORY) ?? []);
   const pluginDefault = plugin !== undefined && configured.length === 0;
   const present = existsSync(path.join(basedir, GROOVY_TEST_ROOT));
   return rootsInside(basedir, [
@@ -155,13 +157,31 @@ function moduleCompiler(project: XmlElement): unknown {
   }
 }
 
+function testRootsOf(
+  build: XmlElement | undefined,
+  plugins: ReadonlyMap<string, XmlElement>,
+  basedir: string,
+): string[] {
+  return [
+    resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
+    ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
+    ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
+  ];
+}
+
+function resourceRootsOf(build: XmlElement | undefined, basedir: string): string[] {
+  return childrenAt(build, 'resources', 'resource')
+    .flatMap((resource) => textAt(resource, DIRECTORY) ?? [])
+    .map((directory) => path.resolve(basedir, directory));
+}
+
 function describeModule(
   project: XmlElement,
   { basedir, pomFile }: { readonly basedir: string; readonly pomFile: string },
 ): ModuleBase {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
-  const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
+  const buildDirectory = resolvedText(build, basedir, DIRECTORY) ?? path.join(basedir, 'target');
   const surefire = plugins.get(SUREFIRE);
   const failsafe = plugins.get(FAILSAFE);
   const reports = setting(surefire, 'test', 'reportsDirectory');
@@ -183,14 +203,8 @@ function describeModule(
       resolvedText(build, basedir, 'testOutputDirectory') ??
       path.join(buildDirectory, 'test-classes'),
     sourceRoots,
-    testSourceRoots: [
-      resolvedText(build, basedir, 'testSourceDirectory') ?? path.join(basedir, 'src/test/java'),
-      ...helperRoots(plugins.get(BUILD_HELPER), 'add-test-source', basedir),
-      ...groovyTestRoots(plugins.get(GMAVENPLUS), basedir),
-    ],
-    resourceRoots: childrenAt(build, 'resources', 'resource')
-      .flatMap((resource) => textAt(resource, 'directory') ?? [])
-      .map((directory) => path.resolve(basedir, directory)),
+    testSourceRoots: testRootsOf(build, plugins, basedir),
+    resourceRoots: resourceRootsOf(build, basedir),
     surefireReports: reports
       ? path.resolve(basedir, reports)
       : path.join(buildDirectory, 'surefire-reports'),
@@ -239,7 +253,7 @@ function matchProject(pomFile: string, candidates: readonly XmlElement[]): XmlEl
   const basedir = path.dirname(pomFile);
   const [nearest] = candidates
     .flatMap((project) => {
-      const build = textAt(project, 'build', 'directory');
+      const build = textAt(project, 'build', DIRECTORY);
       return build !== undefined && insideOf(basedir, build) ? [{ project, build }] : [];
     })
     .sort(

@@ -8,6 +8,7 @@ import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mts';
 import { type KotlinPinned, kotlinTools } from './kotlin-dependencies.mts';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mts';
 import { psiArguments } from './kotlin-programs.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import type { KotlinRoots } from '../kotlin-roots.mts';
 
 const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
@@ -207,7 +208,7 @@ describe('Kotlin tools', () => {
     '<exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>';
   const dependency = (coordinates: string, extra = ''): string => {
     const [groupId, artifactId, version, classifier] = coordinates.split(':');
-    const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><version>${version}</version>`;
+    const id = `<groupId>${textOf(groupId)}</groupId><artifactId>${textOf(artifactId)}</artifactId><version>${textOf(version)}</version>`;
     return `<dependency>${id}${classifier === undefined ? '' : `<classifier>${classifier}</classifier>`}${extra}</dependency>`;
   };
 

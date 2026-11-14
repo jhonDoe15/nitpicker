@@ -166,7 +166,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
       expect(run.text('pmd-guards-main.xml')).toBe(
         ruleset({
           name: 'nitpicker-guards-main',
-          patterns: [`  <exclude-pattern>${run.testSourceRoots[0]}/.*</exclude-pattern>`],
+          patterns: [`  <exclude-pattern>${textOf(run.testSourceRoots[0])}/.*</exclude-pattern>`],
           ref: GUARDS_RULES,
           skipped,
           after,
@@ -198,7 +198,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         name: 'nitpicker-test-honesty',
         patterns: [
           '  <exclude-pattern>.*</exclude-pattern>',
-          `  <include-pattern>${run.testSourceRoots[0]}/.*</include-pattern>`,
+          `  <include-pattern>${textOf(run.testSourceRoots[0])}/.*</include-pattern>`,
         ],
         ref: HONESTY_RULES,
       }),
@@ -264,7 +264,7 @@ describe.skipIf(process.platform === 'win32')('runPmd rulesets', () => {
         name: 'nitpicker-test-honesty',
         patterns: [
           '  <exclude-pattern>.*</exclude-pattern>',
-          `  <include-pattern>${run.testSourceRoots[0]}/.*</include-pattern>`,
+          `  <include-pattern>${textOf(run.testSourceRoots[0])}/.*</include-pattern>`,
         ],
         ref: HONESTY_RULES,
       }),
