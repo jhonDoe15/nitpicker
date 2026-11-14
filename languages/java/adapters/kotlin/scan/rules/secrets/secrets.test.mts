@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { credentialLiterals, hardcodedSecrets } from './hardcoded-secrets.mjs';
+import { type Check, type Ruled, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { foundRuleLines as found } from '../../typed/scan-found.mts';
+import {
+  credentialLiterals as untypedCredentialLiterals,
+  hardcodedSecrets as untypedHardcodedSecrets,
+} from './hardcoded-secrets.mjs';
 import { SECRET_VALUE_CASES } from '../../../../../../../shared/naming/test-support/secret-value-cases.mjs';
 
+const credentialLiterals: Check<Ruled> = untypedCredentialLiterals;
+const hardcodedSecrets: Check<Ruled> = untypedHardcodedSecrets;
 const PRIVATE_KEY_HEADER = ['-----BEGIN', 'RSA', 'PRIVATE KEY-----'].join(' ');
-
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [reported.rule, lineOf(scanned, reported.offset)]);
-}
 
 describe('hardcodedSecrets', () => {
   it.each([
@@ -56,7 +57,7 @@ describe('hardcodedSecrets', () => {
     ['a keyed fallback in a lambda', 'map.getOrPut("token") { "a1b2c3d4e5" }\n'],
     [
       'a property placeholder default',
-      '@Value("\\${db.password:hunter22}") lateinit var pw: String\n',
+      `@Value("\\\${db.password:hunter22}") lateinit var pw: String\n`,
     ],
     ['a keyed default', 'val x = System.getProperty("db.password", "hunter22")\n'],
     ['a bind parameter look-alike with digits', 'val password = ":password1"\n'],
@@ -67,7 +68,7 @@ describe('hardcodedSecrets', () => {
   it('leaves a property placeholder default in a Spring file to SpringValueSecretDefault', () => {
     const source = [
       'import org.springframework.beans.factory.annotation.Value',
-      'class C(@Value("\\${db.password:hunter22}") val pw: String)',
+      `class C(@Value("\\\${db.password:hunter22}") val pw: String)`,
       '',
     ].join('\n');
 
@@ -85,7 +86,7 @@ describe('hardcodedSecrets', () => {
   it.each([
     ['a placeholder', 'val password = "changeme"\n'],
     ['an environment variable name', 'val token = "GITHUB_TOKEN"\n'],
-    ['a template', 'val password = "${prefix}123abc"\n'],
+    ['a template', `val password = "\${prefix}123abc"\n`],
     ['a short value', 'val pwd = "a1"\n'],
     ['a header name', 'val csrfToken = "X-CSRF-TOKEN"\n'],
     ['a URL', 'val tokenUrl = "https://auth.example.com/token1"\n'],
@@ -109,7 +110,7 @@ describe('hardcodedSecrets', () => {
     ['a templated placeholder', 'val password = "{{secrets.DB_PASSWORD}}"\n'],
     [
       'a property placeholder without a default',
-      '@Value("\\${db.password}") lateinit var pw: String\n',
+      `@Value("\\\${db.password}") lateinit var pw: String\n`,
     ],
     ['a credential, which has its own rule', `val token = "ghp_${'a1B2'.repeat(9)}"\n`],
     ['an empty fallback', 'val token = System.getenv("TOKEN") ?: ""\n'],
@@ -135,14 +136,14 @@ describe('credentialLiterals', () => {
     expect(
       found(
         credentialLiterals,
-        'val a = "https://example.com/x"\nval b = "postgres://app:${pw}@db/app"\n',
+        `val a = "https://example.com/x"\nval b = "postgres://app:\${pw}@db/app"\n`,
       ),
     ).toEqual([]);
   });
 });
 
 describe('the shared secret value rules', () => {
-  const RULES = {
+  const RULES: Record<string, (string | number)[][]> = {
     secret: [['HardcodedSecret', 1]],
     credential: [['CredentialLiteral', 1]],
     none: [],

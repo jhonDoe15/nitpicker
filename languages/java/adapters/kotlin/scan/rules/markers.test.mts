@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { annotationMarkers, commentedOutCode, generatedFile } from './markers.mjs';
+import { type Check, type Subjected, scanKotlinSource } from '../typed/typed-scan.mts';
+import { foundRuleLines as found } from '../typed/scan-found.mts';
+import {
+  annotationMarkers as untypedAnnotationMarkers,
+  commentedOutCode as untypedCommentedOutCode,
+  generatedFile as untypedGeneratedFile,
+} from './markers.mjs';
 
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [reported.rule, lineOf(scanned, reported.offset)]);
-}
+const annotationMarkers: Check<Subjected> = untypedAnnotationMarkers;
+const commentedOutCode: Check<Subjected> = untypedCommentedOutCode;
+const generatedFile: (scanned: unknown) => boolean = untypedGeneratedFile;
 
 describe('annotationMarkers', () => {
   it.each([

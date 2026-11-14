@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { testClassesWithoutTests, testHelpersInSource } from './tests.mjs';
+import { type Check, type Subjected } from '../typed/typed-scan.mts';
+import { foundRuleSubjectLines as found } from '../typed/scan-found.mts';
+import {
+  testClassesWithoutTests as untypedTestClassesWithoutTests,
+  testHelpersInSource as untypedTestHelpersInSource,
+} from './tests.mjs';
 
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [
-    reported.rule,
-    lineOf(scanned, reported.offset),
-    reported.subject,
-  ]);
-}
+const testClassesWithoutTests: Check<Subjected> = untypedTestClassesWithoutTests;
+const testHelpersInSource: Check<Subjected> = untypedTestHelpersInSource;
 
 const IMPORT = 'import org.junit.jupiter.api.Test\n\n';
 
