@@ -1,17 +1,26 @@
 import { existsSync, watch } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { AnalyzerTask } from '../tasks.mts';
+
+type TaskOptions = {
+  readonly dependencies?: readonly string[];
+  readonly toleratedDependencyErrors?: readonly string[];
+  readonly concurrencyWeight?: number;
+  readonly concurrencyGroup?: string;
+  readonly executionPriority?: number;
+};
 
 export function task(
-  name,
+  name: string,
   {
     dependencies = [],
     toleratedDependencyErrors,
     concurrencyWeight = 1,
     concurrencyGroup,
     executionPriority,
-  } = {},
-) {
+  }: TaskOptions = {},
+): AnalyzerTask {
   return {
     name,
     dependencies,
@@ -31,17 +40,17 @@ export function task(
 
 const SCHEDULING_TURNS = [1, 2, 3, 4];
 
-export async function flushScheduling() {
+export async function flushScheduling(): Promise<void> {
   for (const turn of SCHEDULING_TURNS) {
     await Promise.resolve(turn);
   }
 }
 
-export function waitForFile(filePath) {
+export function waitForFile(filePath: string): Promise<void> {
   if (existsSync(filePath)) {
     return Promise.resolve();
   }
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     const watcher = watch(path.dirname(filePath), () => {
       if (existsSync(filePath)) {
         watcher.close();

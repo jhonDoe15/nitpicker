@@ -1,26 +1,24 @@
-import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   cacheKey,
   createFindingsCache,
   resolveCacheDirectory,
   runBaseWithCache,
 } from './findings-cache.mts';
+import type { AnalyzerReport } from '../../../shared/values/findings.mts';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { useGitFixtures } from '../git/test-support/git-repository.mts';
 
-const temporaryRoots = [];
+const fixtures = useGitFixtures();
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+function temporaryRoot(): string {
+  return fixtures.temporaryRoot('nitpicker-findings-cache-');
+}
 
-function temporaryRoot() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-findings-cache-'));
-  temporaryRoots.push(root);
-  return root;
+function namesOf(list: readonly unknown[]): string[] {
+  return list.map((item) => textOf(fieldOf(item, 'name')));
 }
 
 const analyzer = { name: 'a', version: '1', configurationHash: 'h' };
@@ -69,19 +67,29 @@ describe('cache directory', () => {
 describe('findings cache', () => {
   it('round-trips a report and treats corrupt entries as misses', () => {
     const directory = path.join(temporaryRoot(), 'cache');
-    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const cache = createFindingsCache({
+      store: undefined,
+      directory,
+      mergeBaseSha: 'abc',
+      projectRelativePath: '.',
+    });
     expect(cache.read(analyzer)).toBeUndefined();
 
     cache.write(analyzer, { findings: [finding] });
     expect(cache.read(analyzer)).toEqual({ findings: [finding] });
 
-    writeFileSync(path.join(directory, readdirSync(directory)[0]), '{not json');
+    writeFileSync(path.join(directory, readdirSync(directory)[0] ?? ''), '{not json');
     expect(cache.read(analyzer)).toBeUndefined();
   });
 
   it('keeps the module imports a publisher reported next to its findings', () => {
     const directory = path.join(temporaryRoot(), 'cache');
-    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const cache = createFindingsCache({
+      store: undefined,
+      directory,
+      mergeBaseSha: 'abc',
+      projectRelativePath: '.',
+    });
     const report = {
       findings: [finding],
       moduleImports: [{ from: 'src/billing/invoice.ts', to: 'src/invoicing' }],
@@ -94,32 +102,38 @@ describe('findings cache', () => {
 
   it('only runs uncached analyzers and their dependencies, and never stores errors', () => {
     const directory = path.join(temporaryRoot(), 'cache');
-    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const cache = createFindingsCache({
+      store: undefined,
+      directory,
+      mergeBaseSha: 'abc',
+      projectRelativePath: '.',
+    });
     const cached = { name: 'cached', version: '1', configurationHash: 'h' };
     const fresh = { name: 'fresh', version: '1', configurationHash: 'h', dependencies: ['dep'] };
     const dep = { name: 'dep', version: '1', configurationHash: 'h' };
     const broken = { name: 'broken', version: '1', configurationHash: 'h' };
     const analyzers = [cached, fresh, dep, broken];
     cache.write(cached, { findings: [{ ...finding, tool: 'cached' }] });
-    const ran = [];
-    const run = (list) => {
-      ran.push(list.map(({ name }) => name));
+    const ran: string[][] = [];
+    function run(list: readonly unknown[]) {
+      const names = namesOf(list);
+      ran.push(names);
       return {
-        reports: new Map(
-          list.filter(({ name }) => name !== 'broken').map(({ name }) => [name, { findings: [] }]),
+        reports: new Map<string, AnalyzerReport>(
+          names.filter((name) => name !== 'broken').map((name) => [name, { findings: [] }]),
         ),
-        timings: new Map(),
-        toolErrors: list.some(({ name }) => name === 'broken')
+        timings: new Map<string, unknown>(),
+        toolErrors: names.includes('broken')
           ? [{ tool: 'broken', snapshot: 'base', message: 'boom' }]
           : [],
       };
-    };
+    }
     const resolveContext = { liveProjectRoot: '.', policyRoot: '.' };
 
     const result = runBaseWithCache({ cache, analyzers, run, resolveContext });
 
     expect(ran).toEqual([['fresh', 'dep', 'broken']]);
-    expect(result.reports.get('cached').findings).toHaveLength(1);
+    expect(result.reports.get('cached')?.findings).toHaveLength(1);
     expect(cache.read(fresh)).toEqual({ findings: [] });
     expect(cache.read(broken)).toBeUndefined();
 
@@ -129,7 +143,12 @@ describe('findings cache', () => {
 
   it('does not store a report built on a dependency that reported a tool error', () => {
     const directory = path.join(temporaryRoot(), 'cache');
-    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    const cache = createFindingsCache({
+      store: undefined,
+      directory,
+      mergeBaseSha: 'abc',
+      projectRelativePath: '.',
+    });
     const coverage = { name: 'coverage', version: '1', configurationHash: 'h' };
     const crap = {
       name: 'crap',
@@ -139,11 +158,11 @@ describe('findings cache', () => {
     };
     const testsFailed = { ...finding, tool: 'coverage', classification: 'tool-error' };
     const run = () => ({
-      reports: new Map([
+      reports: new Map<string, AnalyzerReport>([
         ['coverage', { findings: [testsFailed] }],
         ['crap', { findings: [{ ...finding, tool: 'crap', rule: 'crap-coverage-unknown' }] }],
       ]),
-      timings: new Map(),
+      timings: new Map<string, unknown>(),
       toolErrors: [],
     });
 

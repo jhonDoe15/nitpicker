@@ -5,11 +5,28 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT, isToolInstalled, resolveTool } from '../../tooling/tool-resolution.mjs';
 import { runAnalyzers } from './run-analyzers.mts';
 import { resolveAnalyzerVersion } from '../../../languages/typescript/preset/analyzer-versions.mjs';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { parseJson, textOf } from '../../../shared/values/readers.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
-const roots = [];
-const { peerDependencies } = JSON.parse(
-  readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8'),
+const toolInstalled: (
+  name: string,
+  location: { projectRoot: string; packageRoot?: string },
+) => boolean = isToolInstalled;
+const toolResolved: (
+  name: string,
+  location: { projectRoot: string; packageRoot?: string },
+) => unknown = resolveTool;
+const analyzerVersion: (name: string, liveProjectRoot: string) => unknown = resolveAnalyzerVersion;
+const sentence: (key: string) => string | undefined = linkSentence;
+
+const roots: string[] = [];
+const vitestRange = textOf(
+  fieldAt(
+    parseJson(readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')),
+    'peerDependencies',
+    'vitest',
+  ),
 );
 
 afterEach(() => {
@@ -25,13 +42,13 @@ function projectWithoutPackages() {
   return root;
 }
 
-function missingVitest(root) {
+function missingVitest(root: string): string {
   return (
     `Required tool vitest is not installed from ${root}. ` +
-    `Install vitest ${peerDependencies.vitest} as a dev dependency of the project. ` +
+    `Install vitest ${vitestRange} as a dev dependency of the project. ` +
     `If npm 10 failed to install it with "reading 'edgesOut'", install with npm 11 ` +
     '(`npx npm@11 install`) or use Vitest 5. ' +
-    linkSentence('missingPeer')
+    textOf(sentence('missingPeer'))
   );
 }
 
@@ -39,8 +56,8 @@ describe('a peer tool the project does not have', () => {
   it('is reported as missing by the real resolver, not as a resolution crash', () => {
     const root = projectWithoutPackages();
 
-    expect(isToolInstalled('vitest', { projectRoot: root })).toBe(false);
-    expect(() => resolveTool('vitest', { projectRoot: root })).toThrow(
+    expect(toolInstalled('vitest', { projectRoot: root })).toBe(false);
+    expect(() => toolResolved('vitest', { projectRoot: root })).toThrow(
       new Error(missingVitest(root)),
     );
   });
@@ -54,7 +71,7 @@ describe('a peer tool the project does not have', () => {
         dependencies: [],
         configurationHash: 'test',
         exclusions: [],
-        resolveVersion: (liveProjectRoot) => resolveAnalyzerVersion(name, liveProjectRoot),
+        resolveVersion: (liveProjectRoot: string) => analyzerVersion(name, liveProjectRoot),
         createInvocation: () => {
           throw new Error(`${name} must not start`);
         },
@@ -67,6 +84,12 @@ describe('a peer tool the project does not have', () => {
         toolRoot: PACKAGE_ROOT,
         liveProjectRoot: root,
         snapshot,
+        baselineRoot: undefined,
+        baselineMovesFile: undefined,
+        headPolicyFile: undefined,
+        mutationScope: undefined,
+        logRoot: undefined,
+        runTasks: undefined,
       });
 
       expect(toolErrors).toEqual(

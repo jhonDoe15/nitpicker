@@ -3,15 +3,24 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { readJson } from '../git/test-support/fixture-files.mjs';
-import { useGitFixtures } from '../git/test-support/git-repository.mjs';
-import { exactText } from '../reporting/test-support/output-expectations.mjs';
+import { readJson } from '../git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../git/test-support/git-repository.mts';
+import { exactText } from '../reporting/test-support/output-expectations.mts';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { aggregateShardReports } from './aggregate-shards.mts';
-import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
+import type { AggregateReport, AggregateRequest } from './aggregate-summary.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
+import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mts';
 
 const { createFixture } = useShardFixtures();
 const { createGitRepository } = useGitFixtures();
+
+const anyString: unknown = expect.any(String);
+
+function aggregate(request: Omit<AggregateRequest, 'warn'>): AggregateReport {
+  return aggregateShardReports({ ...request, warn: (message) => message });
+}
 
 const HELD_STRUCTURE_NOTE = [
   'structure/function-lines-limit src/main/invoice.ts',
@@ -27,7 +36,7 @@ describe('quality shard aggregation', () => {
       writeShard(fixture.inputRoot, index, { tools: [], elapsedMs, carried: { noChanges: true } });
     }
 
-    const report = aggregateShardReports({ ...fixture, analyzers, shardCount: 2 });
+    const report = aggregate({ ...fixture, analyzers, shardCount: 2 });
 
     expect(report.summary).toEqual({
       requestedBaseRef: 'origin/master',
@@ -35,7 +44,7 @@ describe('quality shard aggregation', () => {
       mergeBaseSha: 'merge-base',
       headSha: 'head',
       renamedPaths: 0,
-      policyHash: expect.any(String),
+      policyHash: anyString,
       configOverrides: [],
       policyChanges: [],
       policyLoosenings: [],
@@ -58,7 +67,7 @@ describe('quality shard aggregation', () => {
     writeShard(fixture.inputRoot, 1, { tools: ['second'] });
 
     expect(() =>
-      aggregateShardReports({
+      aggregate({
         ...fixture,
         analyzers: [analyzer('first'), analyzer('second')],
         shardCount: 2,
@@ -93,15 +102,17 @@ describe('quality shard aggregation', () => {
       elapsedMs: 20,
     });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers,
       shardCount: 3,
     });
 
-    expect(report.summary.tools.map(({ name }) => name)).toEqual(analyzers.map(({ name }) => name));
-    expect(report.summary.elapsedMs).toBe(40);
-    expect(report.summary.newEnforceableFindings).toBe(1);
+    expect(listOf(fieldOf(report.summary, 'tools')).map((tool) => fieldOf(tool, 'name'))).toEqual(
+      analyzers.map(({ name }) => name),
+    );
+    expect(fieldOf(report.summary, 'elapsedMs')).toBe(40);
+    expect(fieldOf(report.summary, 'newEnforceableFindings')).toBe(1);
     expect(report.newFindings).toEqual([finding]);
     expect(readJson(fixture.outputRoot, 'summary.json')).toEqual(report.summary);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toEqual(
@@ -148,7 +159,7 @@ small/example src/main/example.ts example finding
     writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [loosening], carried });
     writeShard(fixture.inputRoot, 1, { tools: ['second'], carried });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [analyzer('first'), analyzer('second')],
       shardCount: 2,
@@ -158,11 +169,14 @@ small/example src/main/example.ts example finding
     const heading = 'Policy changed in this change (nitpicker.config.json, head against base):';
     const start = text.indexOf(heading);
 
-    const fields = (entry) => Object.keys(carried).map((key) => entry[key]);
+    const fields = (entry: unknown) => Object.keys(carried).map((key) => fieldOf(entry, key));
 
     expect(fields(report.summary)).toEqual(Object.values(carried));
     expect(fields(summary)).toEqual(Object.values(carried));
-    expect([report.newFindings, report.summary.newEnforceableFindings]).toEqual([[loosening], 1]);
+    expect([report.newFindings, fieldOf(report.summary, 'newEnforceableFindings')]).toEqual([
+      [loosening],
+      1,
+    ]);
     expect(text.slice(start, start + 5)).toEqual([
       heading,
       '  exclude added: src/vendor/**',
@@ -187,7 +201,7 @@ small/example src/main/example.ts example finding
     writeShard(fixture.inputRoot, 0, { tools: ['structure'], held: [held] });
     writeShard(fixture.inputRoot, 1, { tools: ['other'] });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [analyzer('structure'), analyzer('other')],
       shardCount: 2,
@@ -221,7 +235,7 @@ ${HELD_STRUCTURE_NOTE}
   });
   it('merges the red-base notes of every shard, in tool order, and writes them out', () => {
     const fixture = createFixture();
-    const note = (tool) => ({
+    const note = (tool: string) => ({
       tool,
       snapshot: 'base',
       rule: 'tests-failed',
@@ -232,7 +246,7 @@ ${HELD_STRUCTURE_NOTE}
     writeShard(fixture.inputRoot, 1, { tools: ['java'], notes: [note('java')] });
     writeShard(fixture.inputRoot, 2, { tools: ['other'] });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [analyzer('python'), analyzer('java'), analyzer('other')],
       shardCount: 3,
@@ -253,7 +267,7 @@ ${HELD_STRUCTURE_NOTE}
 
     const codingStandards = analyzer('coding-standards');
     codingStandards.resolveVersion = () => '1.0.0';
-    codingStandards.resolveConfigurationHash = (root) =>
+    codingStandards.resolveConfigurationHash = (root: string) =>
       readFileSync(path.join(root, 'nitpicker.legacy.json'), 'utf8');
     const headPolicyHash = '{"sites":["head"]}';
     writeShard(fixture.inputRoot, 0, {
@@ -262,15 +276,15 @@ ${HELD_STRUCTURE_NOTE}
       configurationHashes: { 'coding-standards': headPolicyHash },
     });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [codingStandards],
       shardCount: 1,
       liveProjectRoot,
     });
 
-    expect(report.summary.overallStatus).toBe('completed');
-    expect(report.summary.tools[0].configurationHash).toBe(headPolicyHash);
+    expect(fieldOf(report.summary, 'overallStatus')).toBe('completed');
+    expect(fieldAt(report.summary, 'tools', 0, 'configurationHash')).toBe(headPolicyHash);
   });
   it.each([
     ['a repository subfolder', 'project', 'project/src/a.ts'],
@@ -291,18 +305,20 @@ ${HELD_STRUCTURE_NOTE}
     };
     writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [finding] });
 
-    aggregateShardReports({
+    aggregate({
       ...fixture,
       analyzers: [analyzer('first')],
       shardCount: 1,
       liveProjectRoot: path.join(repositoryRoot, folder),
     });
 
-    const [run] = readJson(fixture.outputRoot, 'report.sarif').runs;
+    const [run] = listOf(fieldAt(readJson(fixture.outputRoot, 'report.sarif'), 'runs'));
     expect(
-      run.results.map((result) => result.locations[0].physicalLocation.artifactLocation),
+      listOf(fieldOf(run, 'results')).map((result) =>
+        fieldAt(result, 'locations', 0, 'physicalLocation', 'artifactLocation'),
+      ),
     ).toEqual([{ uri, uriBaseId: '%SRCROOT%' }]);
-    expect(run.originalUriBaseIds).toEqual({
+    expect(fieldOf(run, 'originalUriBaseIds')).toEqual({
       '%SRCROOT%': {
         uri: `${pathToFileURL(repositoryRoot).href}/`,
         description: { text: 'The root of the git repository the findings are in.' },
@@ -313,9 +329,11 @@ ${HELD_STRUCTURE_NOTE}
     const fixture = createFixture();
     writeShard(fixture.inputRoot, 0, { tools: ['first'] });
 
-    aggregateShardReports({ ...fixture, analyzers: [analyzer('first')], shardCount: 1 });
+    aggregate({ ...fixture, analyzers: [analyzer('first')], shardCount: 1 });
 
-    expect(readJson(fixture.outputRoot, 'report.sarif').runs[0].originalUriBaseIds).toBeUndefined();
+    expect(
+      fieldAt(readJson(fixture.outputRoot, 'report.sarif'), 'runs', 0, 'originalUriBaseIds'),
+    ).toBeUndefined();
   });
   it('records shard-classified analyzer tool errors without aborting aggregation', () => {
     const fixture = createFixture();
@@ -336,15 +354,15 @@ ${HELD_STRUCTURE_NOTE}
       overallStatus: 'tool-error',
     });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [missingTool],
       shardCount: 1,
       liveProjectRoot: PACKAGE_ROOT,
     });
 
-    expect(report.summary.overallStatus).toBe('tool-error');
-    expect(report.summary.tools[0].version).toBe('unknown');
+    expect(fieldOf(report.summary, 'overallStatus')).toBe('tool-error');
+    expect(fieldAt(report.summary, 'tools', 0, 'version')).toBe('unknown');
     expect(report.toolErrors).toEqual([error]);
   });
   it('reports a setup error that every shard carries once', () => {
@@ -359,7 +377,7 @@ ${HELD_STRUCTURE_NOTE}
     writeShard(fixture.inputRoot, 0, { tools: ['first'], toolErrors: [error] });
     writeShard(fixture.inputRoot, 1, { tools: ['second'], toolErrors: [error] });
 
-    const report = aggregateShardReports({
+    const report = aggregate({
       ...fixture,
       analyzers: [analyzer('first'), analyzer('second')],
       shardCount: 2,
@@ -373,7 +391,7 @@ ${HELD_STRUCTURE_NOTE}
     writeShard(fixture.inputRoot, 0, { tools: ['a'] });
 
     expect(() =>
-      aggregateShardReports({
+      aggregate({
         ...fixture,
         analyzers,
         shardCount: 2,
@@ -387,7 +405,7 @@ ${HELD_STRUCTURE_NOTE}
     writeShard(fixture.inputRoot, 1, { tools: ['a'] });
 
     expect(() =>
-      aggregateShardReports({
+      aggregate({
         ...fixture,
         analyzers,
         shardCount: 2,
@@ -401,7 +419,7 @@ ${HELD_STRUCTURE_NOTE}
     writeShard(fixture.inputRoot, 1, { tools: ['b'], headSha: 'stale-head' });
 
     expect(() =>
-      aggregateShardReports({
+      aggregate({
         ...fixture,
         analyzers,
         shardCount: 2,

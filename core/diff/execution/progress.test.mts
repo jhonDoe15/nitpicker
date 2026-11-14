@@ -1,8 +1,8 @@
-import { closeSync, mkdtempSync, openSync, readFileSync, rmSync, writeSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { closeSync, openSync, readFileSync, writeSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { runTasksInProcess } from './test-support/in-process-analyzers.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../git/test-support/git-repository.mts';
+import { runTasksInProcess } from './test-support/in-process-analyzers.mts';
 import {
   cachedLine,
   createProgressReporter,
@@ -11,19 +11,16 @@ import {
   startLine,
   writeToDescriptor,
 } from './progress.mts';
-import { runAnalyzers, runScheduler } from './run-analyzers.mts';
+import { type AnalyzerRequest, runAnalyzers, runScheduler } from './run-analyzers.mts';
 
-const temporaryRoots = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function analyzer(
-  name,
-  { script = 'process.stdout.write(\'{"findings":[]}\')', dependencies } = {},
+  name: string,
+  {
+    script = 'process.stdout.write(\'{"findings":[]}\')',
+    dependencies,
+  }: { readonly script?: string; readonly dependencies?: readonly string[] } = {},
 ) {
   return {
     name,
@@ -39,9 +36,35 @@ function analyzer(
   };
 }
 
-function collectingStream() {
-  const stream = { text: '', write: (line) => (stream.text += line) };
+function collectingStream(): { text: string; write: (line: string) => unknown } {
+  const stream = { text: '', write: (line: string) => (stream.text += line) };
   return stream;
+}
+
+const anyError: unknown = expect.any(Error);
+
+type RunOptions = {
+  readonly analyzers: readonly unknown[];
+  readonly runTasks: unknown;
+  readonly snapshot?: string;
+};
+
+function options({ analyzers, runTasks, snapshot = 'head' }: RunOptions): AnalyzerRequest {
+  const root = process.cwd();
+  return {
+    analyzers,
+    projectRoot: root,
+    policyRoot: root,
+    toolRoot: root,
+    liveProjectRoot: root,
+    snapshot,
+    baselineRoot: undefined,
+    baselineMovesFile: undefined,
+    headPolicyFile: undefined,
+    mutationScope: undefined,
+    logRoot: undefined,
+    runTasks,
+  };
 }
 
 describe('progress lines', () => {
@@ -56,7 +79,7 @@ describe('progress lines', () => {
   });
 
   it('labels the phase, counts finished analyzers and leaves out quick successes', () => {
-    const lines = [];
+    const lines: string[] = [];
     const reportSettled = createProgressReporter({
       write: (line) => lines.push(line),
       label: 'head',
@@ -66,7 +89,12 @@ describe('progress lines', () => {
     reportSettled({ name: 'eslint-lint', status: 'done', elapsedMs: 41_000 });
     reportSettled({ name: 'prettier-format', status: 'done', elapsedMs: 9_000 });
     reportSettled({ name: 'coverage', status: 'failed', elapsedMs: 3_000 });
-    reportSettled({ name: 'mutation', status: 'skipped', because: 'coverage' });
+    reportSettled({
+      name: 'mutation',
+      status: 'skipped',
+      elapsedMs: undefined,
+      because: 'coverage',
+    });
 
     expect(lines).toEqual([
       'nitpicker: head eslint-lint done (41s), 1 of 4\n',
@@ -81,7 +109,7 @@ describe('progress lines', () => {
     expect(cachedLine({ label: 'base', count: 7, directory: '/project/cache' })).toBe(
       'nitpicker: base 7 analyzers cached (/project/cache; use --no-cache to rerun)\n',
     );
-    expect(cachedLine({ label: 'base', count: 1 })).toBe(
+    expect(cachedLine({ label: 'base', count: 1, directory: undefined })).toBe(
       'nitpicker: base 1 analyzer cached (remote cache; use --no-cache to rerun)\n',
     );
   });
@@ -97,8 +125,7 @@ describe('progress lines', () => {
 
 describe('progress on a descriptor', () => {
   it('writes the reporter lines to the descriptor it is given', () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-progress-'));
-    temporaryRoots.push(directory);
+    const directory = temporaryRoot('nitpicker-progress-');
     const file = path.join(directory, 'stderr.txt');
     const descriptor = openSync(file, 'w');
     const reportSettled = createProgressReporter({
@@ -108,7 +135,7 @@ describe('progress on a descriptor', () => {
     });
 
     reportSettled({ name: 'lint', status: 'done', elapsedMs: 41_000 });
-    reportSettled({ name: 'mutation', status: 'skipped', because: 'tests' });
+    reportSettled({ name: 'mutation', status: 'skipped', elapsedMs: undefined, because: 'tests' });
     closeSync(descriptor);
 
     expect(readFileSync(file, 'utf8')).toBe(
@@ -119,22 +146,12 @@ describe('progress on a descriptor', () => {
   it('reports a descriptor that is not open instead of throwing', () => {
     expect(writeToDescriptor('line\n', 2_147_483_646)).toEqual({
       written: false,
-      error: expect.any(Error),
+      error: anyError,
     });
   });
 });
 
 describe('progress during runAnalyzers', () => {
-  const root = process.cwd();
-  const options = (extra) => ({
-    projectRoot: root,
-    policyRoot: root,
-    toolRoot: root,
-    liveProjectRoot: root,
-    snapshot: 'head',
-    ...extra,
-  });
-
   it('prints a start line, then a line per failed or skipped analyzer', () => {
     const stream = collectingStream();
 
@@ -171,11 +188,10 @@ describe('progress during runAnalyzers', () => {
   });
 
   it('streams lines from the real scheduler process to the stream descriptor', () => {
-    const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-progress-'));
-    temporaryRoots.push(directory);
+    const directory = temporaryRoot('nitpicker-progress-');
     const file = path.join(directory, 'stderr.txt');
     const descriptor = openSync(file, 'w');
-    const stream = { fd: descriptor, write: (line) => writeSync(descriptor, line) };
+    const stream = { fd: descriptor, write: (line: string) => writeSync(descriptor, line) };
 
     try {
       const run = runAnalyzers(

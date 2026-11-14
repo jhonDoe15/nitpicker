@@ -2,17 +2,17 @@ import { mkdtempSync, renameSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeFiles } from '../git/test-support/fixture-files.mjs';
+import { writeFiles } from '../git/test-support/fixture-files.mts';
 import { fingerprintPackageCode } from './code-fingerprint.mts';
 import { createFindingsCache } from './findings-cache.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function packageRoot() {
+function packageRoot(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-code-fingerprint-'));
   roots.push(root);
   writeFiles(root, {
@@ -40,6 +40,7 @@ describe('package code fingerprint', () => {
   ])('invalidates cached findings after %s changes without an analyzer version bump', (file) => {
     const root = packageRoot();
     const options = {
+      store: undefined,
       directory: path.join(root, 'cache'),
       mergeBaseSha: 'abc',
       projectRelativePath: '.',
