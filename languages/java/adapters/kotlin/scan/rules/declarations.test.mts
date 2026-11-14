@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { genericNames, mutableModuleState } from './declarations.mjs';
+import {
+  type Check,
+  type Scanned,
+  type Subjected,
+  scanKotlinSource,
+} from '../typed/typed-scan.mts';
+import { foundRuleSubjectLines as found } from '../typed/scan-found.mts';
+import {
+  genericNames as untypedGenericNames,
+  mutableModuleState as untypedMutableModuleState,
+} from './declarations.mjs';
 
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [
-    reported.rule,
-    lineOf(scanned, reported.offset),
-    reported.subject,
-  ]);
-}
+const genericNames: (scanned: Scanned, context?: { file: string }) => Subjected[] =
+  untypedGenericNames;
+const mutableModuleState: Check<Subjected> = untypedMutableModuleState;
 
 describe('mutableModuleState', () => {
   it.each([
@@ -134,7 +138,7 @@ describe('genericNames', () => {
     ]);
   });
 
-  function foundIn(file, source) {
+  function foundIn(file: string, source: string) {
     const scanned = scanKotlinSource(source);
     return genericNames(scanned, { file }).map(({ rule, subject }) => [rule, subject]);
   }

@@ -1,18 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { booleanFlags, catchOnlyLogs, swallowedCatchBlocks } from './catches.mjs';
+import { type Check, type Ruled, type Subjected, scanKotlinSource } from '../typed/typed-scan.mts';
+import { foundRuleLines as found } from '../typed/scan-found.mts';
+import {
+  booleanFlags as untypedBooleanFlags,
+  catchOnlyLogs as untypedCatchOnlyLogs,
+  swallowedCatchBlocks as untypedSwallowedCatchBlocks,
+} from './catches.mjs';
 
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [reported.rule, lineOf(scanned, reported.offset)]);
-}
+const booleanFlags: Check<Subjected> = untypedBooleanFlags;
+const catchOnlyLogs: Check<Ruled> = untypedCatchOnlyLogs;
+const swallowedCatchBlocks: (code: string) => Set<number> = untypedSwallowedCatchBlocks;
 
-function guarded(handler, { type = 'IOException', name = 'e' } = {}) {
-  return `fun load(): String? {\n    try {\n        return read()\n    } catch (${name}: ${type}) {\n${handler.map((line) => `        ${line}`).join('\n')}\n    }\n    return null\n}\n`;
+function guarded(handler: string[], { type = 'IOException', name = 'e' } = {}) {
+  return `fun load(): String? {\n    try {\n        return read()\n    } catch (${name}: ${type}) {\n${handler.map((line: string) => `        ${line}`).join('\n')}\n    }\n    return null\n}\n`;
 }
 
 describe('catchOnlyLogs', () => {
-  it.each([
+  it.each<[string, string[], { name: string }?]>([
     ['a log call without the exception', ['log.error("load failed")']],
     ['a log call with the exception', ['log.error("load failed", e)']],
     ['a log and a default', ['logger.warn("load failed: {}", e.message)', 'return ""']],
@@ -25,7 +29,7 @@ describe('catchOnlyLogs', () => {
     ]);
   });
 
-  it.each([
+  it.each<[string, string[], { type: string }?]>([
     ['a rethrow with the cause', ['throw LoadException("load failed", e)']],
     ['a rethrow after logging', ['log.error("load failed", e)', 'throw e']],
     ['a failure result', ['return Result.failure(e).toString()']],

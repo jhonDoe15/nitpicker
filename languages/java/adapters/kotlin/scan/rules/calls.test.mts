@@ -1,20 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { logTemplates, shellCommands, standardStreams } from './calls.mjs';
+import { type Check, type Ruled, type Subjected } from '../typed/typed-scan.mts';
+import { foundRuleLines as found } from '../typed/scan-found.mts';
+import {
+  logTemplates as untypedLogTemplates,
+  shellCommands as untypedShellCommands,
+  standardStreams as untypedStandardStreams,
+} from './calls.mjs';
 
-function found(check, source) {
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => [reported.rule, lineOf(scanned, reported.offset)]);
-}
+const logTemplates: Check<Ruled> = untypedLogTemplates;
+const shellCommands: Check<Subjected> = untypedShellCommands;
+const standardStreams: Check<Ruled> = untypedStandardStreams;
 
-function body(lines) {
-  return `fun f(user: String, repo: Repo, items: List<String>) {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
+function body(lines: string[]) {
+  return `fun f(user: String, repo: Repo, items: List<String>) {\n${lines.map((line: string) => `    ${line}`).join('\n')}\n}\n`;
 }
 
 describe('logTemplates', () => {
   it.each([
     ['a string template', 'log.info("user $user")'],
-    ['a template expression', 'logger.info("user ${user.trim()}")'],
+    ['a template expression', `logger.info("user \${user.trim()}")`],
     ['a warn level', 'log.warn("user $user")'],
     ['a JUL config level', 'log.config("user $user")'],
     ['a constant next to a runtime value', 'log.info("$APP user " + user)'],
@@ -47,7 +51,7 @@ describe('logTemplates', () => {
   it.each([
     ['a concatenated const val', 'log.info("Starting " + APP)'],
     ['a const val in a template', 'log.info("Starting $APP")'],
-    ['a lowercase const val in a template', 'log.info("Starting ${name}")'],
+    ['a lowercase const val in a template', `log.info("Starting \${name}")`],
     ['an object constant', 'log.info("Starting " + Names.APP + " " + 2)'],
   ])('passes %s, a compile-time constant', (_name, line) => {
     const source = `private const val APP = "orders"\nprivate const val name = "orders"\n${body([line])}`;
@@ -82,7 +86,7 @@ describe('standardStreams', () => {
     ['a qualified System.out', 'java.lang.System.out.append(text)'],
     ['a stream passed on', 'show(System.out)'],
     ['a method reference', 'items.forEach(System.out::println)'],
-    ['a string template', 'val text = "${System.out}"'],
+    ['a string template', `val text = "\${System.out}"`],
     ['a safe call', 'System?.out?.append(text)'],
     ['a backticked name', '`System`.out.append(text)'],
     ['an import of the stream', 'import java.lang.System.out'],
