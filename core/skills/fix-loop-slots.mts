@@ -146,21 +146,19 @@ export const SLOTS: readonly FixLoopSlots[] = [
   },
   {
     preset: 'go',
-    hasFix: false,
+    hasFix: true,
     hasQuick: false,
-    fixers: 'none',
+    fixers: 'gofmt, gofumpt or goimports',
     tests:
       "Run the project's tests: `go test ./...` (with the build tags the project's " +
       '`nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool ' +
       'error that names them.',
-    formatStep:
-      'Format every new file, and every file you touched that was formatted before your change ' +
-      '(`gofmt -l <file>` on the base lists it if not), with the formatter printed in the finding ' +
-      '(gofmt, gofumpt or goimports: the gate uses the one the project already uses, so never ' +
-      'switch it). With no other signal it is `gofmt -w`.',
     runDetail:
-      'It runs `go vet`, `go test` and its own checks on the merge base and on head with the Go ' +
-      'toolchain on the `PATH`.',
+      'It first formats the changed `.go` files with the formatter the project already uses (gofmt, ' +
+      'gofumpt or goimports; never switch it) and lists the rewritten ones under "Fixed files:". A ' +
+      'file that was unformatted before your change is left as it is: format the lines you changed ' +
+      'there with the command the finding prints. Then it runs `go vet`, `go test` and its own checks ' +
+      'on the merge base and on head with the Go toolchain on the `PATH`.',
     exit2Cause: 'usually a module that does not load, or Go missing from the `PATH`',
     suppress:
       'no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks, config ' +

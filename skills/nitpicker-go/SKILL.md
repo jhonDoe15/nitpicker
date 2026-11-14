@@ -32,16 +32,17 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
    first formats the changed `.go` files with the formatter the project already uses (gofmt, gofumpt
-   or goimports; never switch it) and lists the rewritten ones under "Fixed files:"; re-read those
-   files before you edit them again. A file that was unformatted before your change is left as it
-   is: format the lines you changed there with the command the finding prints. Then it runs
-   `go vet`, `go test` and its own checks on the merge base and on head with the Go toolchain on the
-   `PATH`. It takes minutes and prints a progress line for each slow analyzer.
+   or goimports; never switch it) and lists the rewritten ones under "Fixed files:". A file that was
+   unformatted before your change is left as it is: format the lines you changed there with the
+   command the finding prints. Then it runs `go vet`, `go test` and its own checks on the merge base
+   and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
+   each slow analyzer.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: the summary then says `Ran only: ...`
      or names the skipped checks, and you run the gate again without them before you finish.
    - 1: fix the failing tests the summary leads with, every new finding (printed as
-     `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Then rerun.
+     `<tool>/<rule> <path>:<line>`) and any tool error listed below them. Re-read the files `--fix`
+     changed before editing them. Then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a module that does not
      load, or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it. When the message links to
