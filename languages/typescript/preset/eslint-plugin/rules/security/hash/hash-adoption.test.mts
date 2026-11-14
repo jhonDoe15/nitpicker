@@ -1,10 +1,10 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-weak-hash.mjs';
 
-const tester = createRuleTester();
-const weak = (algorithm) => [{ messageId: 'weakHash', data: { algorithm } }];
-const hmac = (algorithm) => [{ messageId: 'weakHmac', data: { algorithm } }];
-const pkg = (name) => [{ messageId: 'weakPackage', data: { name } }];
+const tester = typescriptRuleTester();
+const weak = (algorithm: string) => [{ messageId: 'weakHash', data: { algorithm } }];
+const hmac = (algorithm: string) => [{ messageId: 'weakHmac', data: { algorithm } }];
+const pkg = (name: string) => [{ messageId: 'weakPackage', data: { name } }];
 
 tester.run('no-weak-hash with HMAC, exact names and more sources', rule, {
   valid: [

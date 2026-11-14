@@ -1,9 +1,9 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './require-http-timeout.mjs';
 import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
 
-const tester = createRuleTester();
-const missing = (call) => [{ messageId: 'noTimeout', data: { call } }];
+const tester = typescriptRuleTester();
+const missing = (call: string) => [{ messageId: 'noTimeout', data: { call } }];
 
 tester.run('require-http-timeout with signals, defaults and passthrough', withoutFixes(rule), {
   valid: [

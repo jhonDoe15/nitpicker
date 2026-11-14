@@ -1,9 +1,11 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule as noWeakHash } from './no-weak-hash.mjs';
 
-const tester = createRuleTester();
-const weak = (algorithm) => [{ messageId: 'weakHash', data: { algorithm } }];
-const pkg = (name) => [{ messageId: 'weakPackage', data: { name } }];
+const tester = typescriptRuleTester();
+const weak = (algorithm: string) => [{ messageId: 'weakHash', data: { algorithm } }];
+const pkg = (name: string) => [{ messageId: 'weakPackage', data: { name } }];
+const weakCase = (code: string, algorithm: string) => ({ code, errors: weak(algorithm) });
+const pkgCase = (code: string, name: string) => ({ code, errors: pkg(name) });
 const CRYPTO = 'import { createHash, createHmac } from "node:crypto";';
 
 tester.run('no-weak-hash', noWeakHash, {
@@ -103,73 +105,52 @@ tester.run('no-weak-hash', noWeakHash, {
       code: `${CRYPTO} export const id = (s, fast) => createHash(fast ? "md5" : "sha256").update(s).digest();`,
       errors: weak('md5'),
     },
-    {
-      code: `${CRYPTO} export const id = (s, algorithm = "md5") => createHash(algorithm).update(s).digest();`,
-      errors: weak('md5'),
-    },
-    {
-      code: `${CRYPTO} export const id = (s) => createHash("MD5".toLowerCase()).update(s).digest();`,
-      errors: weak('MD5'),
-    },
-    {
-      code: `${CRYPTO} export const id = (s) => createHash(\`sha1\`).update(s).digest();`,
-      errors: weak('sha1'),
-    },
-    {
-      code: 'import { pbkdf2Sync } from "node:crypto"; export const key = (p, s) => pbkdf2Sync(p, s, 1000, 32, "sha1");',
-      errors: weak('sha1'),
-    },
-    {
-      code: 'import { createSign } from "node:crypto"; export const sig = () => createSign("RSA-SHA1");',
-      errors: weak('RSA-SHA1'),
-    },
-    {
-      code: 'import { hash } from "node:crypto"; export const id = (s) => hash("md5", s);',
-      errors: weak('md5'),
-    },
-    {
-      code: 'export async function id(data) { return crypto.subtle.digest("SHA-1", data); }',
-      errors: weak('SHA-1'),
-    },
-    {
-      code: 'export async function id(data) { return globalThis.crypto.subtle.digest({ name: "SHA-1" }, data); }',
-      errors: weak('SHA-1'),
-    },
-    {
-      code: 'import { md5 } from "other"; export const id = (s) => md5(s); export const sums = (s) => hashWith("md5", s);',
-      errors: weak('md5'),
-    },
-    {
-      code: 'export const id = (s) => digest(s, { algorithm: "sha1" });',
-      errors: weak('sha1'),
-    },
-    {
-      code: 'import hash from "object-hash"; export const id = (o) => hash(o, { algorithm: "md5" });',
-      errors: weak('md5'),
-    },
-    {
-      code: 'export const CONFIG = { hashAlgorithm: "md5" };',
-      errors: weak('md5'),
-    },
-    {
-      code: 'import md5 from "md5"; export const id = (s) => md5(s);',
-      errors: pkg('md5'),
-    },
-    {
-      code: 'import { Md5 } from "ts-md5"; export const id = (s) => Md5.hashStr(s);',
-      errors: pkg('ts-md5'),
-    },
-    {
-      code: 'const sha1 = require("sha1"); exports.id = (s) => sha1(s);',
-      errors: pkg('sha1'),
-    },
-    {
-      code: 'import CryptoJS from "crypto-js"; export const id = (s) => CryptoJS.MD5(s).toString();',
-      errors: weak('MD5'),
-    },
-    {
-      code: 'import { SHA1 } from "crypto-js"; export const id = (s) => SHA1(s).toString();',
-      errors: weak('SHA1'),
-    },
+    weakCase(
+      `${CRYPTO} export const id = (s, algorithm = "md5") => createHash(algorithm).update(s).digest();`,
+      'md5',
+    ),
+    weakCase(
+      `${CRYPTO} export const id = (s) => createHash("MD5".toLowerCase()).update(s).digest();`,
+      'MD5',
+    ),
+    weakCase(`${CRYPTO} export const id = (s) => createHash(\`sha1\`).update(s).digest();`, 'sha1'),
+    weakCase(
+      'import { pbkdf2Sync } from "node:crypto"; export const key = (p, s) => pbkdf2Sync(p, s, 1000, 32, "sha1");',
+      'sha1',
+    ),
+    weakCase(
+      'import { createSign } from "node:crypto"; export const sig = () => createSign("RSA-SHA1");',
+      'RSA-SHA1',
+    ),
+    weakCase('import { hash } from "node:crypto"; export const id = (s) => hash("md5", s);', 'md5'),
+    weakCase(
+      'export async function id(data) { return crypto.subtle.digest("SHA-1", data); }',
+      'SHA-1',
+    ),
+    weakCase(
+      'export async function id(data) { return globalThis.crypto.subtle.digest({ name: "SHA-1" }, data); }',
+      'SHA-1',
+    ),
+    weakCase(
+      'import { md5 } from "other"; export const id = (s) => md5(s); export const sums = (s) => hashWith("md5", s);',
+      'md5',
+    ),
+    weakCase('export const id = (s) => digest(s, { algorithm: "sha1" });', 'sha1'),
+    weakCase(
+      'import hash from "object-hash"; export const id = (o) => hash(o, { algorithm: "md5" });',
+      'md5',
+    ),
+    weakCase('export const CONFIG = { hashAlgorithm: "md5" };', 'md5'),
+    pkgCase('import md5 from "md5"; export const id = (s) => md5(s);', 'md5'),
+    pkgCase('import { Md5 } from "ts-md5"; export const id = (s) => Md5.hashStr(s);', 'ts-md5'),
+    pkgCase('const sha1 = require("sha1"); exports.id = (s) => sha1(s);', 'sha1'),
+    weakCase(
+      'import CryptoJS from "crypto-js"; export const id = (s) => CryptoJS.MD5(s).toString();',
+      'MD5',
+    ),
+    weakCase(
+      'import { SHA1 } from "crypto-js"; export const id = (s) => SHA1(s).toString();',
+      'SHA1',
+    ),
   ],
 });

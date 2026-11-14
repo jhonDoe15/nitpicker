@@ -1,8 +1,12 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
-import { rule as noSqlStringBuilding, taggedForm } from './no-sql-string-building.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
+import {
+  rule as noSqlStringBuilding,
+  taggedForm as untypedTaggedForm,
+} from './no-sql-string-building.mjs';
 
-const tester = createRuleTester();
-const built = (kind) => [{ messageId: 'sqlBuilt', data: { kind, tagged: taggedForm() } }];
+const taggedForm: (library?: string) => string = untypedTaggedForm;
+const tester = typescriptRuleTester();
+const built = (kind: string) => [{ messageId: 'sqlBuilt', data: { kind, tagged: taggedForm() } }];
 const template = built('a template literal');
 const concatenation = built('concatenation');
 

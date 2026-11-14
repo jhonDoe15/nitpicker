@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-hardcoded-secret.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/adapters/billing-client.ts';
 
-const secret = (name) => ({ messageId: 'hardcodedSecret', data: { name: `\`${name}\`` } });
+const secret = (name: string) => ({ messageId: 'hardcodedSecret', data: { name: `\`${name}\`` } });
 const credential = { messageId: 'credentialLiteral' };
 
 tester.run('no-hardcoded-secret', rule, {
