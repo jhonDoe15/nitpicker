@@ -250,6 +250,7 @@ export function javascriptUnits(source, { file = 'sample.js', commutes = false }
       name: item.id.name,
       start: item.loc.start.line,
       end: item.loc.end.line,
+      final: true,
       tree: convertFunction(item, { bound: declaredNames(item), commutes }),
     }));
 }

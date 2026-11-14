@@ -42,5 +42,5 @@ export function canonicalTree(tree) {
     return sameTree(next, current) ? undefined : { tree: next, round: round + 1 };
   });
   const current = rounds.at(-1).tree;
-  return { tree: current, rewritten: !sameTree(current, start) };
+  return { tree: current, original, rewritten: !sameTree(current, start) };
 }

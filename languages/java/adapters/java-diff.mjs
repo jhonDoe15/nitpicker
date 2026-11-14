@@ -88,12 +88,8 @@ export function collectJavaReport(root, options = {}) {
   ];
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
-  const parsed = parseAnalyzerReportKeepingValid(
-    {
-      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
-    },
-    preset,
-  ).findings;
+  const columns = withJavaColumns(findings, { projectRoot, policy: options.policy, readSource });
+  const parsed = parseAnalyzerReportKeepingValid({ findings: columns }, preset).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
       withProjectSourceRules(withoutGeneratedSources(parsed, projectRoot), projectRoot),
@@ -103,7 +99,11 @@ export function collectJavaReport(root, options = {}) {
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
-  return { findings: withTestsFailures(policed, preset, testsFailures), imports };
+  const snapshot = options.policy?.snapshot === 'base' ? 'base' : 'head';
+  return {
+    findings: withTestsFailures(policed, { preset, failures: testsFailures, snapshot }),
+    imports,
+  };
 }
 
 function collectBothSnapshots({

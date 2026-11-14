@@ -70,12 +70,15 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   if (error.code !== 'ETIMEDOUT') {
     return missingMaven(error, command);
   }
-  return explainedError(
+  const stopped = explainedError(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
       'started may still be running. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven ' +
       'command more time',
   );
+  return Object.defineProperty(stopped, 'timedOut', {
+    value: { build: 'Maven', minutes: timeoutMs / MILLISECONDS_PER_MINUTE },
+  });
 }
 
 export function runMaven({
@@ -167,7 +170,12 @@ export function runJava({
         .filter((line) => line.trim() !== '' && !JVM_NOISE.test(line))
         .slice(0, MAX_ERROR_LINES)
         .join('\n');
-      throw new Error(`${tool} failed with exit code ${String(result.status)}: ${detail}`);
+      const failure = new Error(
+        `${tool} failed with exit code ${String(result.status)}: ${detail}`,
+      );
+      throw Object.defineProperty(failure, 'output', {
+        value: `${result.stderr}\n${result.stdout}`,
+      });
     }
     return result;
   } finally {

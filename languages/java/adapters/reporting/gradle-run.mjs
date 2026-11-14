@@ -15,7 +15,7 @@ import { gradleStages } from '../gradle-wrapper/gradle-stages.mjs';
 import { gradleDesignFindings } from '../design/design-modules.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache'];
+const GRADLE_FLAGS = ['--console=plain', '--quiet', '--no-configuration-cache', '--continue'];
 
 export function lintBaselineProperties({ snapshot, baselineRoot } = {}) {
   return snapshot === 'head' && baselineRoot !== undefined
@@ -34,6 +34,7 @@ function runJavaPreset(
     kotlinRun,
     budget = gradleBudget(),
     testsFailedModules = [],
+    testsSkipped = false,
   } = {},
 ) {
   const withKotlin = kotlinRun?.withArguments ?? ((run) => run([]));
@@ -41,7 +42,6 @@ function runJavaPreset(
   withKotlin((kotlinArguments) => {
     const common = [
       ...GRADLE_FLAGS,
-      ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
       `-Pnitpicker.node=${process.execPath}`,
       ...lintBaselineProperties(policy),
@@ -53,9 +53,10 @@ function runJavaPreset(
       policy,
       directory: path.join(reportBase, 'tool-config'),
       testsFailedModules,
+      testsSkipped,
       budget,
     });
-    const checkTests = testsFailedModules.length === 0;
+    const checkTests = testsFailedModules.length === 0 && !testsSkipped;
     const options = { projectRoot, gradle, budget, reportBase, since, checkTests, policy, spawn };
     for (const stage of stages) {
       runGradleStage({ args: stage(), ...options });

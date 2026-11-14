@@ -89,7 +89,7 @@ export function analyzeModule(options) {
   });
   const reactor = usesReactor(classpaths);
   const kotlin = analyzeSources({ ...options, reportDir, spring, springArch, reactor });
-  if (failure === undefined) {
+  if (failure === undefined && options.testsSkipped !== true) {
     runCoverageTools({
       ...options,
       module: kotlin.coverageModule,
@@ -103,6 +103,10 @@ export function analyzeModule(options) {
     ...kotlin.manifest,
     sourceJava: parserJava({ level: sourceLevel(module.compiler) }),
   };
-  writeManifest({ reportDir, manifest: written, testsFailed: failure !== undefined });
+  writeManifest({
+    reportDir,
+    manifest: written,
+    testsFailed: failure !== undefined || options.testsSkipped === true,
+  });
   return failure && { ...failure, roots: ownSourceRoots(written) };
 }

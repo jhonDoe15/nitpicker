@@ -48,6 +48,7 @@ type SnapshotRequest = {
   readonly startedAt?: number;
   readonly headPolicy?: object | undefined;
   readonly scope: Scope;
+  readonly setupErrors?: readonly Finding[];
   readonly [option: string]: unknown;
 };
 
@@ -96,9 +97,10 @@ export function runQualitySnapshot({
   startedAt = Date.now(),
   headPolicy = {},
   scope,
+  setupErrors = [],
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors } = withoutOverlaps(
+  const { reports, toolErrors: runErrors } = withoutOverlaps(
     withPolicyFile(headPolicy, (headPolicyFile) =>
       runAll({
         analyzers,
@@ -118,6 +120,7 @@ export function runQualitySnapshot({
     ),
   );
 
+  const toolErrors = [...setupErrors, ...runErrors];
   const { findings, tools, outside } = collectSnapshotFindings({
     analyzers,
     reports,

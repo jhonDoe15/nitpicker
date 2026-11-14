@@ -1085,6 +1085,41 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="RedundantStreamStep" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This builds an Optional, a count or a list only to ask whether anything matched or how many items there are, or copies a collection only to ask its size. Ask the stream or the collection itself: anyMatch(p) or noneMatch(p) instead of filter(p).findFirst().isPresent() or filter(p).count() &gt; 0, count() instead of toList().size(), and no copy before size() or isEmpty().">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $filtered := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'filter'][pmd-java:typeIs('java.util.stream.Stream')]]
+    },
+    $listed := function($call) {
+      $call/*[1][self::MethodCall[@MethodName = 'toList' and ArgumentList/@Size = 0
+                                  or @MethodName = 'collect'
+                                     and ArgumentList[@Size = 1]/MethodCall[@MethodName = ('toList', 'toUnmodifiableList')]]
+                                 [*[1][pmd-java:typeIs('java.util.stream.Stream')]]]
+    },
+    $copied := function($call) {
+      $call/*[1][self::ConstructorCall[ClassType/@SimpleName = ('ArrayList', 'LinkedList', 'ArrayDeque')]
+                                      [ArgumentList[@Size = 1]/*[pmd-java:typeIs('java.util.Collection')]]]
+    }
+return //MethodCall[@MethodName = ('isPresent', 'isEmpty')][ArgumentList/@Size = 0]
+          [*[1][self::MethodCall[@MethodName = ('findFirst', 'findAny')][ArgumentList/@Size = 0][exists($filtered(.))]]]
+  | //InfixExpression[@Operator = ('!=', '==')][NumericLiteral[@ValueAsInt = 0]]
+          [MethodCall[@MethodName = 'count'][ArgumentList/@Size = 0][exists($filtered(.))]]
+  | //InfixExpression[@Operator = '>'][*[2][self::NumericLiteral[@ValueAsInt = 0]]]
+          [*[1][self::MethodCall[@MethodName = 'count'][ArgumentList/@Size = 0][exists($filtered(.))]]]
+  | //InfixExpression[@Operator = '<'][*[1][self::NumericLiteral[@ValueAsInt = 0]]]
+          [*[2][self::MethodCall[@MethodName = 'count'][ArgumentList/@Size = 0][exists($filtered(.))]]]
+  | //InfixExpression[@Operator = '>='][*[2][self::NumericLiteral[@ValueAsInt = 1]]]
+          [*[1][self::MethodCall[@MethodName = 'count'][ArgumentList/@Size = 0][exists($filtered(.))]]]
+  | //MethodCall[@MethodName = ('size', 'isEmpty')][ArgumentList/@Size = 0][exists($listed(.))]
+  | //MethodCall[@MethodName = ('size', 'isEmpty')][ArgumentList/@Size = 0][exists($copied(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ReusableObjectPerCall" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Build this once and reuse it: once built it is safe to share between threads, and building it costs far more than using it. Keep it in a static final constant, a final field set in the constructor, or a @Bean.">
     <priority>2</priority>

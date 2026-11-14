@@ -1,0 +1,32 @@
+def notPassing = ~/testClass=([^,\s]+), name=(.+?)\]? did not pass without mutation/
+
+project.ext.nitpickerPitExecRerun = { JavaExec pitTask, execOperations ->
+    { ->
+        def retryOutput = new ByteArrayOutputStream()
+        def result = execOperations.javaexec { spec ->
+            spec.executable = pitTask.javaLauncher.get().executablePath.asFile.absolutePath
+            spec.classpath = pitTask.classpath
+            spec.mainClass = pitTask.mainClass.get()
+            spec.args = pitTask.args + ['--skipFailingTests']
+            spec.jvmArgs = pitTask.jvmArgs
+            spec.workingDir = pitTask.workingDir
+            spec.ignoreExitValue = true
+            spec.standardOutput = retryOutput
+            spec.errorOutput = retryOutput
+        }
+        [exitValue: result.exitValue, output: retryOutput.toString('UTF-8')]
+    }
+}
+
+project.ext.nitpickerPitRetry = { File pitDir, String firstOutput, Closure rerun ->
+    def lines = firstOutput.readLines().findAll { notPassing.matcher(it).find() }
+    if (lines.isEmpty()) {
+        return null
+    }
+    new File(pitDir, 'unmutated-failures.txt').text = lines.join('\n') + '\n'
+    def result = rerun()
+    if (result.exitValue == 0 && !result.timedOut && !result.notStarted) {
+        new File(pitDir, 'skipped-tests.txt').text = lines.join('\n') + '\n'
+    }
+    result
+}

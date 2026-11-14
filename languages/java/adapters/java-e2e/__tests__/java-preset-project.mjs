@@ -24,7 +24,12 @@ import {
 } from '../test-support/java-preset-data.mjs';
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
 import { DOMAIN_FILES, FEATURE_FILES } from '../test-support/boundaries/feature-sources.mjs';
-import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from '../test-support/wide-sources.mjs';
+import {
+  WIDE,
+  WIDE_EXTENDED,
+  WIDE_REFORMATTED,
+  pricingClass,
+} from '../test-support/wide-sources.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
@@ -121,6 +126,10 @@ export function useJavaPresetProject() {
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
     branchWith('structure-new', { 'Wide.java': WIDE_EXTENDED });
     branchWith('structure-moved', { 'Wide.java': WIDE_REFORMATTED });
+    branchWith('near-copy', {
+      'OrderPricing.java': pricingClass('OrderPricing', 'orders'),
+      'InvoicePricing.java': pricingClass('InvoicePricing', 'invoices'),
+    });
     // --- coupling (SH6) branches ---
     branchWith('stability', STABILITY_FILES);
     runGitIn(repository, 'checkout', '-q', '-b', 'stability-edited', 'stability');

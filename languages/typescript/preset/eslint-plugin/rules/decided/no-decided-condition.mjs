@@ -1,5 +1,8 @@
-import { decideByTruthTable, needsValues } from '../../../../../../shared/logic/propositional.mjs';
-import { decideSync } from '../../../../../../shared/logic/sync/decide-sync.mjs';
+import {
+  decidingFact,
+  relevantFacts,
+  solveFacts,
+} from '../../../../../../shared/logic/sync/solve-facts.mjs';
 import { key } from '../../../../../../shared/logic/terms.mjs';
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { afterEffects, conditionTerm, effectsOf, fact, mutableNames } from './facts.mjs';
@@ -7,59 +10,25 @@ import { conditionChecks } from './statement-flow.mjs';
 import { isNarrowingTest, outsideFunctions } from './syntax.mjs';
 
 const CHAINS = new Set(['&&', '||']);
-const MAX_FACTS = 24;
-const REASON_TRIES = 6;
 const VERDICTS = new Map([
   ['true', 'alwaysTrue'],
   ['false', 'alwaysFalse'],
 ]);
 
-function sharesName(known, reached) {
-  return [...known.names].some((name) => reached.has(name));
-}
-
-function relevant(facts, names) {
-  const reached = new Set(names);
-  const kept = new Set();
-  const rounds = [facts];
-  for (const round of rounds) {
-    const joined = round.filter((known) => !kept.has(known) && sharesName(known, reached));
-    for (const known of joined) {
-      kept.add(known);
-    }
-    for (const name of joined.flatMap((known) => [...known.names])) {
-      reached.add(name);
-    }
-    if (joined.length > 0) {
-      rounds.push(facts);
-    }
-  }
-  return facts.filter((known) => kept.has(known)).slice(-MAX_FACTS);
-}
-
-function solve(conditions, query) {
-  const quick = decideByTruthTable(conditions, query);
-  if (quick !== 'open' && quick !== undefined) {
-    return quick;
-  }
-  return quick === undefined || needsValues(conditions, query)
-    ? decideSync(conditions, query)
-    : 'open';
-}
-
 function reasonFor(facts, query, verdict) {
-  const single = facts
-    .toReversed()
-    .slice(0, REASON_TRIES)
-    .find((known) => solve([known.term], query) === verdict);
-  return single ?? { reason: 'the conditions before it decide it together', origin: 'path' };
+  return (
+    decidingFact(facts, query, verdict) ?? {
+      reason: 'the conditions before it decide it together',
+      origin: 'path',
+    }
+  );
 }
 
 function verdictOf(facts, condition) {
   if (facts.length === 0) {
     return undefined;
   }
-  const result = solve(
+  const result = solveFacts(
     facts.map(({ term }) => term),
     condition.term,
   );
@@ -121,7 +90,7 @@ function check(scan, node, facts) {
     return false;
   }
   const query = conditionTerm(node, sourceCode);
-  const known = relevant(facts, fact(node, sourceCode, { holds: true }).names);
+  const known = relevantFacts(facts, fact(node, sourceCode, { holds: true }).names);
   const verdict = verdictOf(known, { term: query });
   if (verdict === undefined || !isNarrowed(node, sourceCode.parserServices)) {
     return false;

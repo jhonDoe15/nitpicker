@@ -6,6 +6,7 @@ import { executionsWithGoal, pluginsOf, textAt } from './configuration/pom-eleme
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mjs';
 import { testJvmArguments } from './configuration/surefire-jvm.mjs';
+import { coordinates, requiredCoordinates } from './reactor/required-coordinates.mjs';
 
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
@@ -33,42 +34,7 @@ const VERIFY_BUILD = [
   '-Djapicmp.skip=true',
 ];
 
-const GROUP_ID = 'groupId';
-const DEPENDENCIES = 'dependencies';
-const DEPENDENCY = 'dependency';
 const DIRECTORY = 'directory';
-function coordinates(project) {
-  const groupId = textAt(project, GROUP_ID) ?? textAt(project, 'parent', GROUP_ID);
-  return `${groupId}:${textAt(project, 'artifactId')}`;
-}
-
-function coordinatesOf(element) {
-  const groupId = textAt(element, GROUP_ID);
-  const artifactId = textAt(element, 'artifactId');
-  return groupId === undefined || artifactId === undefined ? [] : [`${groupId}:${artifactId}`];
-}
-
-function importedCoordinates(project) {
-  return childrenAt(project, 'dependencyManagement', DEPENDENCIES, DEPENDENCY)
-    .filter((dependency) =>
-      ['import', 'pom'].includes(textAt(dependency, 'scope') ?? textAt(dependency, 'type')),
-    )
-    .flatMap(coordinatesOf);
-}
-
-function requiredCoordinates(project, plugins, pomFile) {
-  const parent = childAt(project, 'parent');
-  return [
-    ...(parent === undefined ? [] : coordinatesOf(parent)),
-    ...childrenAt(project, DEPENDENCIES, DEPENDENCY).flatMap(coordinatesOf),
-    ...importedCoordinates(project),
-    ...(existsSync(pomFile) ? importedCoordinates(parseXml(readFileSync(pomFile, 'utf8'))) : []),
-    ...[...plugins.entries()].flatMap(([key, plugin]) => [
-      key,
-      ...childrenAt(plugin, DEPENDENCIES, DEPENDENCY).flatMap(coordinatesOf),
-    ]),
-  ];
-}
 
 function configured(execution, plugin, name) {
   return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
@@ -169,6 +135,21 @@ function resourceRootsOf(build, basedir) {
     .map((directory) => path.resolve(basedir, directory));
 }
 
+function packagingOf(project) {
+  return textAt(project, 'packaging') ?? 'jar';
+}
+
+function moduleCompiler(project) {
+  if (packagingOf(project) === 'pom') {
+    return undefined;
+  }
+  try {
+    return compilerSettings(project);
+  } catch (error) {
+    throw new Error(`Maven module ${coordinates(project)}: ${error.message}`, { cause: error });
+  }
+}
+
 function describeModule(project, { basedir, pomFile }) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
@@ -186,7 +167,7 @@ function describeModule(project, { basedir, pomFile }) {
     basedir,
     pomFile,
     coordinates: coordinates(project),
-    packaging: textAt(project, 'packaging') ?? 'jar',
+    packaging: packagingOf(project),
     buildDirectory,
     outputDirectory:
       resolvedText(build, basedir, 'outputDirectory') ?? path.join(buildDirectory, 'classes'),
@@ -213,7 +194,7 @@ function describeModule(project, { basedir, pomFile }) {
     published: isPublished(project, plugins),
     ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
-    compiler: compilerSettings(project),
+    compiler: moduleCompiler(project),
     requires: [...new Set(requiredCoordinates(project, plugins, pomFile))],
   };
 }
