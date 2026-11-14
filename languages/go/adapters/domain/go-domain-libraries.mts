@@ -84,35 +84,38 @@ const VALUE_NAMES = new Map([
   ['net/http', /^(?:Status\w*|Method\w+|Header|CanonicalHeaderKey|TimeFormat|ParseTime)$/u],
 ]);
 
-function isValueName(importPath, name) {
+function isValueName(importPath: string, name: string) {
   return VALUE_NAMES.get(importPath)?.test(name) ?? false;
 }
 
-function within(importPath, packages) {
+function within(importPath: string, packages: readonly string[]) {
   return packages.some(
-    (listedPath) => importPath === listedPath || importPath.startsWith(`${listedPath}/`),
+    (listedPath: string) => importPath === listedPath || importPath.startsWith(`${listedPath}/`),
   );
 }
 
-function generatorNames(importPath, names) {
+function generatorNames(importPath: string, names: readonly string[]) {
   const base = [...ID_GENERATORS.keys()].find((listedPath) => within(importPath, [listedPath]));
-  return base === undefined ? [] : names.filter((name) => ID_GENERATORS.get(base).test(name));
+  return base === undefined ? [] : names.filter((name) => ID_GENERATORS.get(base)?.test(name));
 }
 
-const WHOLE_PACKAGE_RULES = [
+const WHOLE_PACKAGE_RULES: readonly (readonly [string, readonly string[]])[] = [
   [RULE_IDS.domainImportsClient, CLIENT_PACKAGES],
   [RULE_IDS.domainImportsLogger, LOGGER_PACKAGES],
   [RULE_IDS.domainImportsRandom, RANDOM_PACKAGES],
 ];
 
-function wholePackageRule(importPath) {
+function wholePackageRule(importPath: string) {
   if (IO_PACKAGES.has(importPath)) {
     return RULE_IDS.domainImportsIo;
   }
   return WHOLE_PACKAGE_RULES.find(([, packages]) => within(importPath, packages))?.[0];
 }
 
-export function libraryConcern(importPath, names) {
+export function libraryConcern(
+  importPath: string,
+  names: readonly string[],
+): { rule: string; names: string[] } | undefined {
   const rule = wholePackageRule(importPath);
   if (rule !== undefined) {
     const used = names.filter((name) => !isValueName(importPath, name));

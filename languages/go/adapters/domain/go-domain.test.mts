@@ -1,25 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { goDomainFindings } from './go-domain.mjs';
+import { exceptionHint } from '../typed/shared-readers.mts';
+import { goDomainFindings } from './go-domain.mts';
+import type { FindingRow, GoFile, GoSelector } from '../go-types.mts';
 
 const MODULE = 'example.com/shop';
 const ORDER = 'internal/orders/domain/order.go';
 
-function file(path, extra = {}) {
+function file(path: string, extra: Partial<GoFile> = {}) {
   return { path, package: 'domain', test: false, generated: false, constrained: false, ...extra };
 }
 
-function usage(path, imports, selectors = []) {
+function usage(path: string, imports: readonly string[], selectors: readonly GoSelector[] = []) {
   return {
     file: path,
-    imports: imports.map((importPath, index) => ({ path: importPath, name: '', line: index + 3 })),
+    imports: imports.map((importPath: string, index: number) => ({
+      path: importPath,
+      name: '',
+      line: index + 3,
+    })),
     names: [],
     selectors,
     local: [],
   };
 }
 
-function rows(findings) {
+function rows(findings: readonly FindingRow[]) {
   return findings.map(({ rule, path, identity }) => `${rule} ${path} ${identity}`);
 }
 
@@ -61,7 +66,7 @@ describe('domain rules on Go imports', () => {
       `domain-imports-random ${ORDER} library:math/rand/v2`,
       `domain-imports-random ${ORDER} library:github.com/google/uuid`,
     ]);
-    expect(findings.at(-1).message).toBe(
+    expect(findings.at(-1)?.message).toBe(
       `Pass ids and random values into order.go: it uses uuid.NewString (github.com/google/uuid). Take them as parameters, or through an id or random source port the domain declares and an adapter implements. ${exceptionHint('coupling/domain-imports-random', ORDER)}`,
     );
   });
@@ -117,7 +122,7 @@ describe('domain rules on Go imports', () => {
       `domain-imports-random ${ORDER} library:github.com/satori/go.uuid`,
       `domain-imports-random ${ORDER} library:math/rand/v2`,
     ]);
-    expect(findings.at(-1).message).toBe(
+    expect(findings.at(-1)?.message).toBe(
       `Pass ids and random values into order.go: it uses rand.IntN (math/rand/v2). Take them as parameters, or through an id or random source port the domain declares and an adapter implements. ${exceptionHint('coupling/domain-imports-random', ORDER)}`,
     );
     const named = usage(

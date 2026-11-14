@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { goCouplingFindings } from './go-coupling.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { goCouplingFindings } from './go-coupling.mts';
 
-function file(path, test = false) {
+function file(path: string, test = false) {
   return { path, package: 'x', test, generated: false, constrained: false };
 }
 
-function importing(path, ...imports) {
+function importing(path: string, ...imports: string[]) {
   return {
     file: path,
     imports: imports.map((importPath) => ({ path: importPath, name: '', line: 3 })),
@@ -60,7 +61,7 @@ describe('Go package coupling', () => {
       ({ classification }) => classification === 'enforceable',
     );
     expect(
-      findings.map(({ cause, ...finding }) => ({ ...finding, folders: cause.folders })),
+      findings.map(({ cause, ...finding }) => ({ ...finding, folders: fieldOf(cause, 'folders') })),
     ).toEqual([
       {
         tool: 'coupling',
@@ -82,7 +83,7 @@ describe('Go package coupling', () => {
       findings
         .filter(({ rule }) => rule === 'package-coupling')
         .filter(({ identity }) => identity.endsWith(':fanIn'))
-        .map(({ identity, metric }) => `${identity} ${String(metric.value)}`),
+        .map(({ identity, metric }) => `${identity} ${String(fieldOf(metric, 'value'))}`),
     ).toEqual(['package:.:fanIn 0', 'package:adapters:fanIn 2', 'package:core:fanIn 1']);
   });
 

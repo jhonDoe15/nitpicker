@@ -1,28 +1,32 @@
 import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
-import { directoryOf, goPackages } from '../facts/go-packages.mjs';
+import { directoryOf, goPackages } from '../typed/go-readers.mts';
+import { buildCouplingReport, evaluateCoupling } from '../typed/shared-readers.mts';
+import type { FindingRow, GoFile, InspectReport } from '../go-types.mts';
+
+type CouplingReport = Pick<InspectReport, 'files' | 'usages'>;
 
 const COUPLING_TOOL = 'coupling';
 const ROOT_PACKAGE = '.';
 const PACKAGE_DOC = 'doc.go';
 const STABILITY_HINT = 'Depend on an interface the more stable package owns instead.';
 
-function unitOf(directory) {
+function unitOf(directory: string) {
   return directory === '' ? ROOT_PACKAGE : directory;
 }
 
-function anchorRank(file) {
+function anchorRank(file: GoFile) {
   if (path.posix.basename(file.path) === PACKAGE_DOC) {
     return 0;
   }
   return file.generated ? 2 : 1;
 }
 
-function anchors(files) {
-  const byPackage = new Map();
+function anchors(files: readonly GoFile[]) {
+  const byPackage = new Map<string, string>();
   const ranked = files.toSorted(
-    (left, right) => anchorRank(left) - anchorRank(right) || left.path.localeCompare(right.path),
+    (left: GoFile, right: GoFile) =>
+      anchorRank(left) - anchorRank(right) || left.path.localeCompare(right.path),
   );
   for (const file of ranked) {
     const unit = unitOf(directoryOf(file.path));
@@ -33,7 +37,7 @@ function anchors(files) {
   return byPackage;
 }
 
-function goCouplingReport(report, module) {
+function goCouplingReport(report: CouplingReport, module: string) {
   const packages = goPackages(report, module);
   const production = report.files.filter(({ test }) => !test);
   const productionPaths = new Set(production.map(({ path: file }) => file));
@@ -51,13 +55,14 @@ function goCouplingReport(report, module) {
   const coupling = buildCouplingReport({
     modules: [...anchorOf.keys()].toSorted((left, right) => left.localeCompare(right)),
     edges,
-    packageOf: (unit) => unit,
-    fileOf: (unit) => anchorOf.get(unit),
+    roleOf: undefined,
+    packageOf: (unit: string) => unit,
+    fileOf: (unit: string) => anchorOf.get(unit),
   });
   return { coupling, anchorOf };
 }
 
-export function goCouplingFindings(report, module) {
+export function goCouplingFindings(report: CouplingReport, module: string): FindingRow[] {
   const { coupling, anchorOf } = goCouplingReport(report, module);
   return evaluateCoupling(coupling, COUPLING_TOOL).map((finding) => {
     if (finding.rule !== RULE_IDS.stabilityDirection) {
@@ -66,9 +71,12 @@ export function goCouplingFindings(report, module) {
     const direction = coupling.stabilityDirection.find(
       ({ source, target }) => finding.identity === `package-edge:${source}->${target}`,
     );
+    if (direction === undefined) {
+      return finding;
+    }
     return {
       ...finding,
-      path: anchorOf.get(direction.source),
+      path: anchorOf.get(direction.source) ?? finding.path,
       message: `Package ${finding.message}. ${STABILITY_HINT}`,
     };
   });

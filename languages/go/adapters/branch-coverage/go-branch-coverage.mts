@@ -1,30 +1,47 @@
-import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { hashIdentity } from '../../../../shared/ingest/common.mjs';
-import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
-import { blockAt, blockStartingIn } from './coverage-profile.mjs';
+import { blockAt, blockStartingIn } from '../typed/go-readers.mts';
+import {
+  branchCoverageFindings,
+  formatAgnosticText,
+  hashIdentity,
+} from '../typed/shared-readers.mts';
+import type {
+  Arm,
+  Branch,
+  CoverBlock,
+  CoverProfile,
+  FindingRow,
+  Outcome,
+  Position,
+} from '../go-types.mts';
 
 const TOOL = 'coverage';
 const LABEL_LIMIT = 60;
 
-function shortLabel(label) {
+function shortLabel(label: string) {
   return label.length > LABEL_LIMIT ? `${label.slice(0, LABEL_LIMIT)}…` : label;
 }
 
-function matchedCount(arms) {
+type KnownArm = { label: string; count: number; fellThrough: number };
+
+function matchedCount(arms: readonly KnownArm[]) {
   return arms.reduce((sum, { count, fellThrough }) => sum + count - fellThrough, 0);
 }
 
-export function branchOutcomes(branch, blocks, counted) {
-  const arms = branch.arms.map((arm) => ({
+export function branchOutcomes(
+  branch: Branch,
+  blocks: readonly CoverBlock[],
+  profile: Pick<CoverProfile, 'counted'>,
+): Outcome[] {
+  const arms = branch.arms.map((arm: Arm) => ({
     label: `${shortLabel(arm.label)} (line ${String(arm.from.line)})`,
     count: blockStartingIn(blocks, arm.from, arm.to)?.count,
     fellThrough: arm.fallthrough === undefined ? 0 : (blockAt(blocks, arm.fallthrough)?.count ?? 0),
   }));
   const evaluations = blockAt(blocks, branch.at)?.count;
-  const known = arms.filter(({ count }) => count !== undefined);
+  const known = arms.filter((arm): arm is KnownArm => arm.count !== undefined);
   const implicit =
     branch.implicit === undefined ||
-    !counted ||
+    !profile.counted ||
     evaluations === undefined ||
     known.length < arms.length
       ? []
@@ -37,14 +54,22 @@ export function branchOutcomes(branch, blocks, counted) {
   return [...known.map(({ label, count }) => ({ label, count })), ...implicit];
 }
 
-function sourceLine(lines, { file, at }) {
+function sourceLine(lines: readonly string[], { file, at }: { file: string; at: Position }) {
   return formatAgnosticText(lines[at.line - 1] ?? '', file);
 }
 
-export function goBranchFindings({ branches, profile, sourceLines }) {
+export function goBranchFindings({
+  branches,
+  profile,
+  sourceLines,
+}: {
+  branches: readonly Branch[];
+  profile: CoverProfile;
+  sourceLines: (file: string) => readonly string[];
+}): FindingRow[] {
   const measured = branches.flatMap((branch) => {
     const blocks = profile.files.get(branch.file);
-    const outcomes = blocks === undefined ? [] : branchOutcomes(branch, blocks, profile.counted);
+    const outcomes = blocks === undefined ? [] : branchOutcomes(branch, blocks, profile);
     const source = sourceLine(sourceLines(branch.file), branch);
     if (outcomes.length === 0 || source === '') {
       return [];
@@ -64,6 +89,7 @@ export function goBranchFindings({ branches, profile, sourceLines }) {
   });
   return branchCoverageFindings(measured, {
     tool: TOOL,
-    identify: (key, occurrence) => (occurrence === 1 ? key : `${key}#${String(occurrence)}`),
+    identify: (key: string, occurrence: number) =>
+      occurrence === 1 ? key : `${key}#${String(occurrence)}`,
   });
 }
