@@ -738,8 +738,8 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 
 ```text
 nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]]
-          [--analyzer <name>]... [--rule <substring>]... [--project <path>]... [--details]
-          [--json] [--quick] [--staged]
+          [--analyzer <name>]... [--rule <substring>]... [--project <path>]... [--jobs <n>]
+          [--details] [--json] [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help] [--version]
 nitpicker init [--agents-md] [--ci github] [--help]
@@ -838,6 +838,8 @@ nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
   (`--project 'packages/*'`). Inside a project it still picks from the whole monorepo. A value
   that matches nothing names the closest projects, and a name and a folder that point at different
   projects are an error. Without a monorepo it is an error.
+- `--jobs <n>`: in a [monorepo](#monorepos), run up to `n` of the selected projects at once (see
+  [Projects at once](#projects-at-once)). The default is a quarter of the CPUs, at least one.
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -2257,6 +2259,17 @@ jobs:
 
 A job that runs one project with `--project` still checks the repository policy (see
 [The set of projects is policy](#the-set-of-projects-is-policy)).
+
+### Projects at once
+
+The selected projects run at the same time, up to a quarter of the CPUs (at least one), since each
+project already runs its own analyzers in parallel. `--jobs <n>` sets how many run at once; `--jobs 1`
+runs them one after another. While they run, stderr shows one progress line per step, labelled with
+the project (`nitpicker: [web] head: running 6 analyzers`). Each project's console output is printed
+as one block when it finishes, in the order of the plan, so the console reads the same as a run one
+project at a time, and the summary and exit code are the same. A project runs in its own process
+with its own run lock, report folder and snapshot worktrees, so projects share no state. A
+programmatic run that passes its own analyzers runs its projects one after another.
 
 ### Reports and exit code
 

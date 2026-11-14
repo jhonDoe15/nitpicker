@@ -46,6 +46,7 @@ export const FLAGS: readonly Row[] = [
     '--project <path>',
     'In a monorepo, run only this project: folder, package name or quoted glob (repeatable).',
   ],
+  ['--jobs <n>', 'In a monorepo, run up to n projects at once (default: a quarter of the CPUs).'],
   ['--details', 'Print every new and held finding with its full message.'],
   ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
@@ -93,7 +94,7 @@ const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
-  '          [--rule <substring>]... [--project <path>]... [--details] [--json] [--quick]',
+  '          [--rule <substring>]... [--project <path>]... [--jobs <n>] [--details] [--json] [--quick]',
   '          [--staged] [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
   INIT_USAGE,

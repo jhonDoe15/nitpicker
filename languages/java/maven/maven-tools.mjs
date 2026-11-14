@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
@@ -171,13 +179,8 @@ export function publishDirectory(staging, target) {
   }
 }
 
-export function resolveToolSet({ projectRoot, maven, tools, spawn, timeoutMs }) {
-  const directory = cacheDirectory(`maven-tools-${toolsKey(tools)}`);
-  const cached = readClasspaths(directory, Object.keys(tools));
-  if (missing(cached).length === 0) {
-    return cached;
-  }
-  writeToolsProject(directory, tools);
+function resolveInto(staging, { projectRoot, maven, tools, spawn, timeoutMs }) {
+  writeToolsProject(staging, tools);
   runMaven({
     projectRoot,
     maven,
@@ -186,19 +189,35 @@ export function resolveToolSet({ projectRoot, maven, tools, spawn, timeoutMs }) 
     args: [
       '--quiet',
       '--file',
-      path.join(directory, 'pom.xml'),
+      path.join(staging, 'pom.xml'),
       `${MAVEN_PLUGINS.dependency}:build-classpath`,
       '-Dmdep.outputFile=classpath.txt',
     ],
   });
-  const resolved = readClasspaths(directory, Object.keys(tools));
-  const unresolved = missing(resolved);
-  if (unresolved.length > 0) {
-    throw new Error(
-      `Maven resolved no jars for ${unresolved.join(', ')} under ${directory}. Check that Maven can download from its repositories, then rerun`,
-    );
+  return readClasspaths(staging, Object.keys(tools));
+}
+
+export function resolveToolSet(request) {
+  const directory = cacheDirectory(`maven-tools-${toolsKey(request.tools)}`);
+  const cached = readClasspaths(directory, Object.keys(request.tools));
+  if (missing(cached).length === 0) {
+    return cached;
   }
-  return resolved;
+  const staging = mkdtempSync(`${directory}.staging-`);
+  try {
+    const resolved = resolveInto(staging, request);
+    const unresolved = missing(resolved);
+    if (unresolved.length > 0) {
+      throw new Error(
+        `Maven resolved no jars for ${unresolved.join(', ')} under ${directory}. Check that Maven can download from its repositories, then rerun`,
+      );
+    }
+    rmSync(directory, { recursive: true, force: true });
+    publishDirectory(staging, directory);
+    return resolved;
+  } finally {
+    rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 export function resolveTools({
