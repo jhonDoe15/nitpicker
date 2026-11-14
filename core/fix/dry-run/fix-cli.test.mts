@@ -2,49 +2,42 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mjs';
-import { fakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakePythonTools } from '../../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
-import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
+import { policy } from '../../diff/execution/test-support/analyzer-findings.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { spawnInvocation } from '../run-fix.mts';
-import { defineRecipes } from '../engine/recipes.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { applyPatch, treeOf } from './test-support/tree.mjs';
+import { defineRecipes } from '../test-support/engine-views.mts';
+import {
+  fakeJvmTools,
+  fakePythonTools,
+  jvmRecipes,
+  todoRecipe,
+} from '../test-support/tool-views.mts';
+import type { FixCliInput, ToolSet } from '../test-support/tool-views.mts';
+import type { FixtureRepository } from '../../command/test-support/fixture-types.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { applyPatch, treeOf } from './test-support/tree.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 
 const JAVA = 'src/main/java/demo';
-const REVIEWED = {
-  id: 'java-review-todo',
-  rules: [{ tool: 'checkstyle', rule: 'ReviewTodo' }],
-  presets: ['java'],
-  scope: 'file',
-  safety: 'review',
-  plan: ({ files }) => ({
-    fixes: files.flatMap(({ path: name, text }) => {
-      const start = text.indexOf('TODO');
-      return name.endsWith('.java') && start !== -1
-        ? [
-            {
-              finding: { tool: 'checkstyle', rule: 'ReviewTodo', path: name, line: 1 },
-              edits: [{ type: 'replace', path: name, start, end: start + 4, text: 'DONE' }],
-            },
-          ]
-        : [];
-    }),
-  }),
-};
-const FIX_RECIPES = defineRecipes([...JVM_RECIPES, REVIEWED]);
+const REVIEWED = todoRecipe('java-review-todo', 'ReviewTodo', 'review');
+const FIX_RECIPES = defineRecipes([...jvmRecipes, REVIEWED]);
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
 
-function run(repository, extra, tools, fixRecipes) {
+function run(
+  repository: FixtureRepository,
+  extra: readonly string[],
+  tools?: ToolSet,
+  fixRecipes?: unknown,
+) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
-  const exitCode = runCli({
+  const input: FixCliInput = {
     arguments_: [...extra, '--base', repository.baseRef, '--output', outputRoot],
     currentProjectRoot: repository.root,
     environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
@@ -53,14 +46,18 @@ function run(repository, extra, tools, fixRecipes) {
     fixRecipes,
     stdout: output.stdout,
     stderr: output.stderr,
-  });
+  };
+  const exitCode = runCli(input);
   return {
     exitCode,
     stdout: output.stdoutText,
     stderr: output.stderrText,
     outputRoot,
     patch: path.join(outputRoot, 'fix.patch'),
-    fixes: () => JSON.parse(readFileSync(path.join(outputRoot, 'fixes.json'), 'utf8')).fixes,
+    fixes: () =>
+      listOf(
+        fieldAt(parseJson(readFileSync(path.join(outputRoot, 'fixes.json'), 'utf8')), 'fixes'),
+      ),
   };
 }
 
@@ -106,7 +103,7 @@ function typescriptRepository() {
   return repository;
 }
 
-function comparison(make, extra, tools) {
+function comparison(make: () => FixtureRepository, extra: readonly string[], tools: () => ToolSet) {
   const dry = make();
   const before = treeOf(dry.root);
   const dryRun = run(dry, [...extra, '--dry-run'], tools());
@@ -127,9 +124,12 @@ describe('nitpicker --fix --dry-run', () => {
     expect(result.applied).not.toEqual(result.before);
     expect(result.dryRun.exitCode).toBe(result.realRun.exitCode);
     expect(
-      result.dryRun
-        .fixes()
-        .map(({ recipe, tool, safety, files }) => ({ recipe, tool, safety, files })),
+      result.dryRun.fixes().map((fix) => ({
+        recipe: fieldOf(fix, 'recipe'),
+        tool: fieldOf(fix, 'tool'),
+        safety: fieldOf(fix, 'safety'),
+        files: fieldOf(fix, 'files'),
+      })),
     ).toEqual([
       { recipe: 'java-upper-ell', safety: 'safe', files: [`${JAVA}/A.java`] },
       ...['A', 'B', 'C'].map((name) => ({
@@ -171,9 +171,9 @@ Fix notes (from the dry run):
   it('leaves a TypeScript tree as it was and writes the patch that gives the real --fix tree', () => {
     const result = comparison(typescriptRepository, ['--fix'], () => ({
       executeFixCommand: (invocation) =>
-        invocation.operation === 'knip-fix'
+        fieldOf(invocation, 'operation') === 'knip-fix'
           ? { status: 0, stdout: '', stderr: '' }
-          : spawnInvocation(invocation),
+          : spawnInvocation(invocation, undefined),
     }));
 
     expect(result.unchanged).toEqual(result.before);
@@ -185,7 +185,7 @@ Fix notes (from the dry run):
     const dry = run(repository, ['--fix', '--dry-run'], fakeJvmTools());
 
     const output = captureOutput();
-    runCli({
+    void runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', dry.outputRoot],
       currentProjectRoot: repository.root,
       environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
@@ -214,7 +214,8 @@ describe('nitpicker --fix --rule', () => {
     const result = run(repository, ['--fix', '--rule', 'checkstyle/UpperEll'], fakeJvmTools());
 
     expect(result.exitCode).toBe(0);
-    const read = (name) => readFileSync(path.join(repository.root, `${JAVA}/${name}`), 'utf8');
+    const read = (name: string) =>
+      readFileSync(path.join(repository.root, `${JAVA}/${name}`), 'utf8');
     expect(read('A.java')).toBe('class A { long a = 1L; }\n');
     expect(read('B.java')).toBe('class  B { String s = "TODO"; }\n');
     expect(read('C.java')).toBe('class  C {}\n');
@@ -231,7 +232,9 @@ describe('nitpicker --fix --rule', () => {
       FIX_RECIPES,
     );
 
-    expect(safeOnly.fixes().some(({ recipe }) => recipe === 'java-review-todo')).toBe(false);
+    expect(safeOnly.fixes().some((fix) => fieldOf(fix, 'recipe') === 'java-review-todo')).toBe(
+      false,
+    );
     expect(named.fixes()).toEqual([
       {
         recipe: 'java-review-todo',
@@ -255,7 +258,7 @@ describe('nitpicker --fix --rule', () => {
     expect(exitCode).toBe(0);
     expect(readFileSync(path.join(repository.root, 'a.py'), 'utf8')).toBe('x = 1\n');
     expect(readFileSync(path.join(repository.root, 'b.py'), 'utf8')).toBe('y  =  2\n');
-    const { args } = tools.callsOf('ruff-fix')[0];
+    const args = tools.callsOf('ruff-fix')[0]?.args ?? [];
     expect(args[args.indexOf('--fixable') + 1]).toBe('F401');
     expect(tools.callsOf('ruff-format-fix')).toHaveLength(1);
   });

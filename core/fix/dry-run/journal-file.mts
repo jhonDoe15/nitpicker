@@ -2,29 +2,33 @@ import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { realTemporaryDirectory } from '../../tooling/temporary-files.mjs';
-import { createJournal } from './journal.mjs';
-import { restoreJournal } from './restore.mjs';
+import { createJournal } from './journal.mts';
+import { restoreJournal } from './restore.mts';
+import { errorCode } from '../typed/error-text.mts';
+import { messageOf } from '../../../shared/values/readers.mts';
+import {
+  decodedFixed,
+  decodedOriginal,
+  savedJournal,
+  type FixedState,
+  type Journal,
+  type Original,
+} from './journal-types.mts';
 
 const NAME_DIGITS = 20;
 const SUFFIX_BYTES = 4;
 const PRIVATE_MODE = 0o600;
 
-export function journalPath(projectRoot) {
+export function journalPath(projectRoot: string): string {
   const digest = createHash('sha256').update(projectRoot).digest('hex').slice(0, NAME_DIGITS);
   return path.join(realTemporaryDirectory(), `nitpicker-fix-dry-run-${digest}.json`);
 }
 
-function encoded(state) {
-  return state?.bytes === undefined ? state : { ...state, bytes: state.bytes.toString('base64') };
+function encoded(state: Original | FixedState) {
+  return 'bytes' in state ? { ...state, bytes: state.bytes.toString('base64') } : state;
 }
 
-function decoded(state) {
-  return state?.bytes === undefined
-    ? state
-    : { ...state, bytes: Buffer.from(state.bytes, 'base64') };
-}
-
-export function saveJournal(file, journal) {
+export function saveJournal(file: string, journal: Journal): void {
   const text = JSON.stringify({
     projectRoot: journal.projectRoot,
     originals: [...journal.originals].map(([name, original]) => [name, encoded(original)]),
@@ -36,37 +40,37 @@ export function saveJournal(file, journal) {
   renameSync(temporary, file);
 }
 
-export function dropJournal(file) {
+export function dropJournal(file: string): void {
   rmSync(file, { force: true });
 }
 
-function loadJournal(file) {
+function loadJournal(file: string): Journal | { readonly unreadable: string } | undefined {
   try {
-    const saved = JSON.parse(readFileSync(file, 'utf8'));
+    const saved = savedJournal(readFileSync(file, 'utf8'));
     const journal = createJournal(saved.projectRoot);
     for (const [name, original] of saved.originals) {
-      journal.originals.set(name, decoded(original));
+      journal.originals.set(name, decodedOriginal(original));
     }
     for (const [name, state] of saved.fixed) {
-      journal.fixed.set(name, decoded(state));
+      journal.fixed.set(name, decodedFixed(state));
     }
     for (const [name, listing] of saved.indexListings) {
       journal.indexListings.set(name, listing);
     }
     return journal;
   } catch (error) {
-    return error.code === 'ENOENT' ? undefined : { unreadable: error.message };
+    return errorCode(error) === 'ENOENT' ? undefined : { unreadable: messageOf(error) };
   }
 }
 
-export function recoverInterruptedRun(projectRoot) {
+export function recoverInterruptedRun(projectRoot: string): string[] {
   const file = journalPath(projectRoot);
   const journal = loadJournal(file);
   if (journal === undefined) {
     return [];
   }
   dropJournal(file);
-  if (journal.unreadable !== undefined) {
+  if ('unreadable' in journal) {
     return [
       `--fix --dry-run ignored an unreadable record of an interrupted run: ${journal.unreadable}`,
     ];

@@ -10,16 +10,20 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { createSnapshot } from '../engine/edits/snapshot.mjs';
-import { defineRecipes } from '../engine/recipes.mjs';
-import { runRecipes } from '../engine/run-recipes.mjs';
-import { writeTexts } from '../engine/write-texts.mjs';
-import { dryRun } from './dry-run.mjs';
-import { createJournal, journalWriter } from './journal.mjs';
-import { journalPath } from './journal-file.mjs';
-import { applyPatch, treeOf } from './test-support/tree.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import {
+  createSnapshot,
+  defineRecipes,
+  runRecipes,
+  writeTexts,
+} from '../test-support/engine-views.mts';
+import type { FixWriter } from '../typed/fix-types.mts';
+import type { JournalEntry } from './journal-types.mts';
+import { dryRun } from './dry-run.mts';
+import { createJournal, journalWriter } from './journal.mts';
+import { journalPath } from './journal-file.mts';
+import { applyPatch, treeOf } from './test-support/tree.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -32,7 +36,7 @@ const FILES = {
   'keep.bin': 'unchanged\n',
 };
 
-function finding(name) {
+function finding(name: string) {
   return { ...RULE, path: name, line: 1 };
 }
 
@@ -86,19 +90,21 @@ function sample() {
   return root;
 }
 
-function fixTree(root, writer) {
+function fixTree(root: string, writer?: FixWriter) {
   const files = Object.keys(FILES).map((name) => ({ path: name }));
   return runRecipes({
     projectRoot: root,
     files,
     recipes,
     preset: 'java',
+    selectedRules: undefined,
     accepts: () => true,
     writer,
+    inputs: undefined,
   });
 }
 
-function dry(root, run) {
+function dry(root: string, run: (writer: FixWriter) => unknown) {
   const journal = createJournal(root);
   return dryRun({
     repositoryRoot: root,
@@ -127,17 +133,18 @@ describe('dryRun', () => {
       'sub/gone.txt',
       'sub/old.txt',
     ]);
-    expect(outcome.fixes.map(({ recipe, safety }) => [recipe, safety]).toSorted()).toEqual([
+    expect(
+      outcome.fixes
+        .map(({ recipe, safety }) => [recipe, safety])
+        .toSorted((left, right) => String(left[0]).localeCompare(String(right[0]))),
+    ).toEqual([
       ['restructure', 'safe'],
       ['shout', 'safe'],
       ['shout', 'safe'],
     ]);
-    expect(outcome.fixes.find(({ recipe }) => recipe === 'restructure').files).toEqual([
-      'sub/old.txt',
-      'deep/er/new.txt',
-      'sub/gone.txt',
-      'created/file.txt',
-    ]);
+    expect(
+      outcome.fixes.filter(({ recipe }) => recipe === 'restructure').map(({ files }) => files),
+    ).toEqual([['sub/old.txt', 'deep/er/new.txt', 'sub/gone.txt', 'created/file.txt']]);
     fixTree(real);
     const patchFile = path.join(temporaryRoot('nitpicker-dry-run-patch-'), 'fix.patch');
     writeFileSync(patchFile, outcome.patch);
@@ -170,8 +177,9 @@ describe('dryRun', () => {
   it('puts a path an untrack edit removed back into the git index', () => {
     const { root } = createGitRepository({ '.env': 'A=1\n', 'a.txt': 'a\n' });
     const journal = createJournal(root);
-    const entries = [
+    const entries: JournalEntry[] = [
       {
+        name: '.env',
         recipe: 'untrack',
         safety: 'review',
         fix: {
@@ -180,7 +188,7 @@ describe('dryRun', () => {
         },
       },
     ];
-    let during;
+    let during: string | undefined;
 
     const outcome = dryRun({
       repositoryRoot: root,
@@ -251,7 +259,7 @@ describe('dryRun', () => {
   it('puts the files back that an interrupted dry run left changed, on the next run', () => {
     const root = sample();
     const record = path.join(temporaryRoot('nitpicker-dry-run-record-'), 'journal.json');
-    const fixed = {};
+    const fixed: Record<string, Buffer> = {};
     dry(root, (writer) => {
       fixTree(root, writer);
       copyFileSync(journalPath(root), record);
