@@ -28,6 +28,7 @@ type BuildRequest = {
   readonly quick: boolean;
   readonly work: string;
   readonly modules: readonly MavenModule[];
+  readonly reruns?: readonly string[] | undefined;
 };
 type PhaseOptions = Readonly<Record<string, unknown>>;
 type GoalRequest = {
@@ -73,6 +74,7 @@ function moduleNameOf(module: MavenModule, projectRoot: unknown): unknown {
 
 export function readTestRuns(context: PhaseOptions): TestRuns {
   const { module, reportDir, since, isArchunit, testRuntime } = context;
+  const retriesPass = context['retriesPass'];
   if (context['quick'] === true || context['testsSkipped'] === true) {
     callUntyped(collectArchunitResults, { module, reportDir, since, isArchunit });
     return { testsRan: false, failure: undefined };
@@ -82,6 +84,7 @@ export function readTestRuns(context: PhaseOptions): TestRuns {
     reportDir,
     since,
     isArchunit,
+    retriesPass,
     moduleName: moduleNameOf(mavenModuleOf(module), context['projectRoot']),
   });
   callUntyped(requireTestngRun, { module, since, isArchunit, testRuntime });
@@ -117,6 +120,7 @@ export function buildAndTest({
   spawn,
   timeoutMs,
   quick,
+  reruns = textsOf(TEST_RERUNS_OFF),
 }: BuildRequest): void {
   callUntyped(runMaven, {
     projectRoot,
@@ -130,7 +134,7 @@ export function buildAndTest({
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
-      ...TEST_RERUNS_OFF,
+      ...reruns,
       ...PROJECT_CHECKS_OFF,
       ...textsOf(callUntyped(springAotSkip, modules)),
     ],

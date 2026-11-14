@@ -36,17 +36,21 @@ export function blankComments(text) {
   );
 }
 
-export function withoutGenerics(text) {
+export function withoutNested(text, open, close) {
   let depth = 0;
   return text
     .split('')
     .filter((character) => {
-      depth += character === '<' ? 1 : 0;
+      depth += character === open ? 1 : 0;
       const kept = depth === 0;
-      depth -= character === '>' ? 1 : 0;
-      return kept && character !== '>';
+      depth -= character === close ? 1 : 0;
+      return kept && character !== close;
     })
     .join('');
+}
+
+export function withoutGenerics(text) {
+  return withoutNested(text, '<', '>');
 }
 
 function blankedBlocks(text, keeps) {

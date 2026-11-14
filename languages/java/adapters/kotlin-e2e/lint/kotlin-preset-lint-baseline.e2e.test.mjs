@@ -23,6 +23,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset lint baseline end to end', () 
         .sort(),
     ).toEqual([
       '.',
+      'build.gradle.kts',
       'src/main/java/demo/Api.java',
       'src/main/java/demo/Bridge.java',
       'src/main/kotlin/demo/Farewell.kt',

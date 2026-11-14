@@ -32,6 +32,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `if (!c) B else A` (and `c ? b : a`, not `!c ? a : b`); `!(a || b)`, not `!a && !b`. These stay:
   `if (a != b)` with an else, an else-if chain, and `!(a < b)` on a `float` or `double` (NaN).
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
+- Remove a `@SuppressWarnings("PMD.SpringDataNativeQuery")` the method no longer
+  needs (`pmd/UnnecessaryWarningSuppression`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
   It says what the name cannot (a unit, a limit, an edge case or why), never only restates the

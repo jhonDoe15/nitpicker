@@ -1,4 +1,4 @@
-import type { AreaResult, QualityAreaOptions } from './typed/area-types.mts';
+import type { AreaResult, QualityAreaOptions, TextOutput } from './typed/area-types.mts';
 import { runPolicyTests, runCoverage, runCrap } from './runners/tests.mts';
 import {
   runCodingStandards,
@@ -11,7 +11,10 @@ import { runDuplicates } from './runners/duplicates/duplicates.mts';
 import { runMutation } from './runners/mutation.mts';
 import { runTestConsole } from './runners/console/test-console.mts';
 
-type AreaRunner = (options: QualityAreaOptions) => AreaResult | Promise<AreaResult>;
+type AreaRunner = (
+  options: QualityAreaOptions,
+  output: TextOutput,
+) => AreaResult | Promise<AreaResult>;
 
 export const QUALITY_AREA_RUNNERS: ReadonlyMap<string, AreaRunner> = new Map<string, AreaRunner>([
   ['policy-tests', runPolicyTests],

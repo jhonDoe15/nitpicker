@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { argumentFileToken } from './javac-options.mjs';
-import { lintArguments } from './lint-arguments.mjs';
+import { TEST_CATEGORIES, lintArguments } from './lint-arguments.mjs';
 import {
   LINT_CACHE,
   LINT_FINGERPRINT,
@@ -26,6 +26,8 @@ type LintPlan = Readonly<Record<string, unknown>> & {
   readonly cacheDirectory: string;
 };
 type LintRun = { readonly reportDir: string; readonly baselineRoot?: unknown };
+type LintFiles = { readonly report: string; readonly failure: string };
+type SourceSet = { readonly baselineRoot: unknown; readonly files: LintFiles };
 type Compiled = { readonly code: unknown; readonly log: string };
 type Compile = {
   readonly plan: LintPlan;
@@ -41,8 +43,11 @@ type Reused = {
   readonly fingerprint: string;
 };
 
-const LINT_REPORT = 'javac-lint.txt';
-const LINT_FAILURE = 'javac-lint-failed.txt';
+const MAIN_REPORT = 'javac-lint.txt';
+const MAIN_FAILURE = 'javac-lint-failed.txt';
+const TEST_REPORT = 'javac-lint-test.txt';
+const TEST_FAILURE = 'javac-lint-test-failed.txt';
+const TEST_LINT = 'test';
 const UNREAD_WARNINGS = 'error: javac printed warnings in a form nitpicker cannot read';
 const ENGLISH_OUTPUT = ['-J-Duser.language=en', '-J-Duser.country=US'];
 const MODULE_INFO = 'module-info.java';
@@ -146,14 +151,14 @@ function writeReports({ plan, output, fingerprint }: Reports, text: string): voi
   writeFileSync(path.join(plan.cacheDirectory, LINT_FINGERPRINT), fingerprint);
 }
 
-function clearReports(plan: LintPlan, reportDir: string): void {
-  const files = [
-    path.join(reportDir, LINT_REPORT),
-    path.join(reportDir, LINT_FAILURE),
+function clearReports(plan: LintPlan, files: LintFiles): void {
+  const stale = [
+    files.report,
+    files.failure,
     path.join(plan.cacheDirectory, LINT_CACHE),
     path.join(plan.cacheDirectory, LINT_FINGERPRINT),
   ];
-  for (const file of files) {
+  for (const file of stale) {
     rmSync(file, { force: true });
   }
 }
@@ -184,9 +189,8 @@ function reusedWarnings(
   };
 }
 
-export function runJavacLint(planValue: unknown, { reportDir, baselineRoot }: LintRun): void {
-  const plan = lintPlanOf(planValue);
-  clearReports(plan, reportDir);
+function lintSourceSet(plan: LintPlan, { baselineRoot, files }: SourceSet): void {
+  clearReports(plan, files);
   const { moduleInfo, all } = lintedSources(plan);
   const fingerprint = textOf(lintFingerprint(plan));
   const { unchanged, kept } =
@@ -197,7 +201,7 @@ export function runJavacLint(planValue: unknown, { reportDir, baselineRoot }: Li
     ...all.filter((file) => !unchanged.has(file)),
     ...(moduleInfo === undefined ? [] : [moduleInfo]),
   ];
-  const reports = { plan, output: path.join(reportDir, LINT_REPORT), fingerprint };
+  const reports = { plan, output: files.report, fingerprint };
   if (sources.length === 0) {
     writeReports(reports, kept);
     return;
@@ -206,6 +210,35 @@ export function runJavacLint(planValue: unknown, { reportDir, baselineRoot }: Li
   if (result.code === 0) {
     writeReports(reports, kept + result.log);
   } else {
-    writeFileSync(path.join(reportDir, LINT_FAILURE), result.log);
+    writeFileSync(files.failure, result.log);
   }
+}
+
+function testPlan(planValue: unknown): LintPlan {
+  const { test, ...plan } = fieldsOf(planValue);
+  return lintPlanOf({
+    ...plan,
+    ...fieldsOf(test),
+    lintCategories: TEST_CATEGORIES,
+    workDirectory: `${textOf(plan['workDirectory'])}-${TEST_LINT}`,
+    cacheDirectory: path.join(textOf(plan['cacheDirectory']), TEST_LINT),
+  });
+}
+
+export function runJavacLint(planValue: unknown, { reportDir, baselineRoot }: LintRun): void {
+  const main = {
+    report: path.join(reportDir, MAIN_REPORT),
+    failure: path.join(reportDir, MAIN_FAILURE),
+  };
+  const test = {
+    report: path.join(reportDir, TEST_REPORT),
+    failure: path.join(reportDir, TEST_FAILURE),
+  };
+  lintSourceSet(lintPlanOf(planValue), { baselineRoot, files: main });
+  const tests = testPlan(planValue);
+  if (fieldOf(planValue, 'test') === undefined) {
+    clearReports(tests, test);
+    return;
+  }
+  lintSourceSet(tests, { baselineRoot, files: test });
 }

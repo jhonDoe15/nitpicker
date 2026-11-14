@@ -145,12 +145,12 @@ function reportRootOf(module: unknown): string {
 }
 
 export function readModuleJacoco(module: unknown, preset: string): string | undefined {
-  if (fieldOf(manifestOf(module), 'kotlinSourceModule') === true) {
-    return undefined;
-  }
   const file = path.join(reportRootOf(module), JACOCO_FILE);
   if (existsSync(file)) {
     return readFileSync(file, 'utf8');
+  }
+  if (fieldOf(manifestOf(module), 'kotlinSourceModule') === true) {
+    return undefined;
   }
   if (!hasMainClasses(reportRootOf(module))) {
     return EMPTY_JACOCO_REPORT;

@@ -108,12 +108,18 @@ export function branchFindings(context: ModuleContext, jacoco: unknown): Finding
   return findingsIn(branches);
 }
 
-export function coverageFindings(context: ModuleContext, crapLimit: unknown): Findings {
+export function coverageFindings(
+  context: ModuleContext,
+  crapLimit: unknown,
+  structureSkipped = false,
+): Findings {
   return [
     ...ifTested(context['jacoco'], (report) => jacocoFindings(context, report)),
     ...findingsFrom(archunitFindings, context),
     ...findingsFrom(springArchFindings, context),
-    ...ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit)),
+    ...(structureSkipped
+      ? []
+      : ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit))),
     ...(context.quick || context['mutationOff'] === true ? [] : pitFindings(context)),
   ];
 }
