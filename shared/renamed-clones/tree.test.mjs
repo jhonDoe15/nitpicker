@@ -7,7 +7,7 @@ import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../core/tooling/temporary-files.mjs';
-import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mjs';
+import { nestedCheckout, useGitCheckouts } from '../../core/diff/git/test-support/git-checkout.mts';
 import { sourceFilesUnder } from './files.mjs';
 import { withNormalizedTree } from './tree.mjs';
 

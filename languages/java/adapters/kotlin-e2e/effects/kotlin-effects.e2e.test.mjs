@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { loadConfig } from '../../../../../core/configuration/config.mjs';
+import { loadConfig } from '../../../../../core/configuration/config.mts';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import { readEffectsFindings } from '../../effects/effects-findings.mjs';

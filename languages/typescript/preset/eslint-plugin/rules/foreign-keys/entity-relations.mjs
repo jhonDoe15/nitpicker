@@ -3,6 +3,7 @@ import { stringValue } from '../analysis/constant-resolution.mjs';
 import {
   MIKRO_ORM,
   TYPEORM,
+  mergedProperties,
   objectOf,
   ormOf,
   propertiesOf,
@@ -33,13 +34,9 @@ function decoratorsOf(sourceCode, node, names) {
 }
 
 function optionsOf(sourceCode, call) {
-  const merged = new Map();
-  for (const argument of call.arguments) {
-    for (const [key, property] of propertiesOf(sourceCode, objectOf(sourceCode, argument))) {
-      merged.set(key, valueOf(sourceCode, property.value));
-    }
-  }
-  return merged;
+  return mergedProperties(sourceCode, call.arguments, (property) =>
+    valueOf(sourceCode, property.value),
+  );
 }
 
 function literalOf(value) {

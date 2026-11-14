@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges } from '../../../../core/policy-changes/describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from '../../../../core/policy-changes/policy-scope.mjs';
+import { describePolicyChanges } from '../../../../core/policy-changes/describe-policy-changes.mts';
+import { createPolicyScope, rootSets } from '../../../../core/policy-changes/policy-scope.mts';
 
 function changes(baseConfig, headConfig) {
   return describePolicyChanges(

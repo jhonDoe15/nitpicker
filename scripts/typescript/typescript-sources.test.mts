@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../core/diff/git/test-support/fixture-files.mts';
 import { printConversion } from './convert.mts';
 import { clean, emit, isShippedPath, transpiled } from './emit.mjs';
 import {

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mts';
 import { withHeadCheckoutFacts } from '../../head-policy.mjs';
 import { vitestRetryArguments } from './test-retry.mjs';
 import { runArea } from '../../../adapters/test-runners/test-support/runner-project.mjs';

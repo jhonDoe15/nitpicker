@@ -7,8 +7,8 @@ import {
   commit,
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { removeSnapshotDependencies } from '../static-checks/dependencies.mjs';
 import { resolveDependencyHook } from './dependency-hooks.mjs';
 import {

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../core/configuration/validate.mts';
 import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mts';
 import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
 import { strykerIgnoredNotices } from './ignored-notices.mjs';

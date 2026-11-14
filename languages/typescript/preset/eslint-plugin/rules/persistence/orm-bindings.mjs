@@ -121,3 +121,13 @@ export function propertiesOf(sourceCode, object) {
       .filter(([key]) => key !== undefined),
   );
 }
+
+export function mergedProperties(sourceCode, argumentsList, pick = (property) => property) {
+  const merged = new Map();
+  for (const argument of argumentsList) {
+    for (const [key, property] of propertiesOf(sourceCode, objectOf(sourceCode, argument))) {
+      merged.set(key, pick(property));
+    }
+  }
+  return merged;
+}

@@ -1,7 +1,7 @@
 import {
   createGitTemplate,
   copyGitTemplate,
-} from '../../../core/diff/git/test-support/git-repository.mjs';
+} from '../../../core/diff/git/test-support/git-repository.mts';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +9,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mts';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
-import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mts';
 import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mts';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../preset/head-policy.mjs';

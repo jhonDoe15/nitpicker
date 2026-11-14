@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { containedPath } from '../../../../../core/fix/common/contained-path.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 import { runRecipes } from '../../../../../core/fix/engine/run-recipes.mjs';
 import { scriptRecipes } from '../python-recipes.mjs';
 import { localRunScript } from '../script-edits.mjs';

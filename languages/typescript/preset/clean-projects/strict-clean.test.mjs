@@ -2,8 +2,8 @@ import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../core/diff/comparison/positions/touched-lines.mjs';
-import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
+import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mts';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mts';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,

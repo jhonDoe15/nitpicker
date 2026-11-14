@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { resolveProjectHeadPolicy } from '../../../../../core/conventions/project-head-policy.mjs';
+import { resolveProjectHeadPolicy } from '../../../../../core/conventions/project-head-policy.mts';
 import { collectJavaFindings } from '../../java-diff.mjs';
 import { withHeadPolicy } from '../../java-runner.mjs';
 import { BAD } from '../test-support/kotlin-lint-data.mjs';

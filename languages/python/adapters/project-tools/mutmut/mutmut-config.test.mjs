@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeMutmutConfig } from './mutmut-config.mjs';
 import { section, TEST_PATTERNS } from '../../mutation/test-support/mutmut-section.mjs';
-import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mts';
 
 const roots = [];
 

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mjs';
+import { acceptedDigest } from '../../../../../core/command/test-support/accepted-digest.mts';
 import { ONE_WAY_VIOLATIONS } from '../test-support/python-preset-data.mjs';
 import {
   commitBranch,

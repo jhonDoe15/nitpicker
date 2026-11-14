@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 import {
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+} from '../../../../core/diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mts';
 import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
 import { fakePythonTools } from '../test-support/fake-python-fix.mjs';
 import { REVIEW_CODES, reviewCodesSelected } from './review-rules.mjs';

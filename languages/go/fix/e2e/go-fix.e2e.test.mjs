@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mjs';
+import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mts';
 
 const enabled = process.env.NITPICKER_GO_E2E === '1';
 const { fix } = useFixProject();
