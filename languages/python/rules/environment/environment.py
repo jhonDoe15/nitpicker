@@ -1,7 +1,7 @@
 import ast
 
 from checks.common import dotted_name, finding, overlap_sites
-from environment.roots import is_composition_root
+from environment.roots import is_composition_root, is_main_guard
 
 ENVIRONMENT_OVERLAPS = {"process-env-access": ("PLE1507", "PLW1507", "PLW1508")}
 ENVIRONMENT_NAMES = {
@@ -26,29 +26,6 @@ HARMLESS_DEFAULTS = {"DJANGO_SETTINGS_MODULE"}
 MODULE_LOADERS = {"importlib.import_module", "__import__"}
 STREAM_NAMES = {"sys.stdout", "sys.stderr", "sys.__stdout__", "sys.__stderr__"}
 STREAM_ATTRIBUTES = {"stdout", "stderr", "__stdout__", "__stderr__"}
-
-
-def is_name_check(test):
-    if not (isinstance(test, ast.Compare) and len(test.comparators) == 1):
-        return False
-    if not isinstance(test.ops[0], ast.Eq):
-        return False
-    sides = [test.left, test.comparators[0]]
-    names = [side for side in sides if isinstance(side, ast.Name)]
-    texts = [side for side in sides if isinstance(side, ast.Constant)]
-    return (
-        len(names) == 1
-        and names[0].id == "__name__"
-        and len(texts) == 1
-        and texts[0].value == "__main__"
-    )
-
-
-def is_main_guard(node):
-    test = node.test
-    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.And):
-        return any(is_name_check(value) for value in test.values)
-    return is_name_check(test)
 
 
 def guarded_nodes(tree):
