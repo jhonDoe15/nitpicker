@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseForbiddenApiUses, readForbiddenApiFindings } from './forbidden-apis.mts';
-import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mjs';
+import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mts';
 
 const guardProjects = createGuardProjects();
 

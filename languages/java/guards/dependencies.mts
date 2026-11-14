@@ -1,17 +1,26 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { referencedNames, usesArchive } from '../builds/classes/class-references.mjs';
+import { parseJson } from '../../../shared/values/readers.mts';
+import {
+  archiveUsed,
+  referenced,
+  reportOf,
+  type Build,
+  type DependencyFinding,
+  type DependencyReport,
+  type Entry,
+} from './typed/dependency-report.mts';
 
 const DEPENDENCIES_TOOL = 'dependencies';
 const UNUSED_RULE = 'unused-declared-dependency';
 const DEPENDENCIES_REPORT = 'dependencies.json';
 const WIRING_ONLY = /(?:^|-)starter(?:-|$)|(?:^|-)bom$|-platform$|-dependencies$/;
 
-function isUnused(entry) {
+function isUnused(entry: Entry): boolean {
   return (entry.archives ?? []).length > 0 && entry.used !== true && !WIRING_ONLY.test(entry.name);
 }
 
-const ALTERNATIVES = {
+const ALTERNATIVES: Readonly<Record<Build, (entry: Entry) => string>> = {
   gradle: (entry) =>
     `is declared in ${entry.configuration} but no main class uses it. ` +
     'Remove it, declare it testImplementation if only the tests use it, ' +
@@ -23,7 +32,10 @@ const ALTERNATIVES = {
     'or provided scope if only its source annotations are needed.',
 };
 
-function unusedFinding(entry, { buildFile, build }) {
+function unusedFinding(
+  entry: Entry,
+  { buildFile, build }: { readonly buildFile: string; readonly build: Build },
+): DependencyFinding {
   const id = `${entry.group}:${entry.name}`;
   return {
     tool: DEPENDENCIES_TOOL,
@@ -35,7 +47,7 @@ function unusedFinding(entry, { buildFile, build }) {
   };
 }
 
-export function dependencyFindings(report) {
+export function dependencyFindings(report: DependencyReport): DependencyFinding[] {
   if (report.analyzed !== true) {
     return [];
   }
@@ -46,23 +58,23 @@ export function dependencyFindings(report) {
   return [...byId.values()].map((entry) => unusedFinding(entry, { buildFile, build }));
 }
 
-function withUsage(report) {
+function withUsage(report: DependencyReport): DependencyReport {
   if (report.classDirectories === undefined) {
     return report;
   }
-  const names = referencedNames(report.classDirectories);
+  const names = referenced(report.classDirectories);
   return {
     ...report,
     declared: (report.declared ?? []).map((entry) => ({
       ...entry,
-      used: (entry.archivePaths ?? []).some((archive) => usesArchive(archive, names)),
+      used: (entry.archivePaths ?? []).some((archive) => archiveUsed(archive, names)),
     })),
   };
 }
 
-export function readDependencyFindings(reportRoot) {
+export function readDependencyFindings(reportRoot: string): DependencyFinding[] {
   const report = path.join(reportRoot, DEPENDENCIES_REPORT);
   return existsSync(report)
-    ? dependencyFindings(withUsage(JSON.parse(readFileSync(report, 'utf8'))))
+    ? dependencyFindings(withUsage(reportOf(parseJson(readFileSync(report, 'utf8')))))
     : [];
 }

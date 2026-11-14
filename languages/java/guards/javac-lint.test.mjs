@@ -6,7 +6,7 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { parseLintWarnings, readLintFindings } from './javac-lint.mjs';
-import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mjs';
+import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mts';
 
 const guardProjects = createGuardProjects();
 
