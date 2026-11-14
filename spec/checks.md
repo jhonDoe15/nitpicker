@@ -225,6 +225,11 @@ A fill-once block under a lock (`if (!token) token = await refresh()`) is left a
 release in a guard clause does not end the scope for the calls after it. Broker publishes belong to the
 dual-write rule.
 
+Retried writes: `nitpicker/no-retry-without-idempotency` (production source, in `eslint-lint`, type-aware)
+reports a Stripe `create` without an idempotency key, a broker publish without a deduplication id or a plain
+SQL `INSERT` inside a retry wrapper (`p-retry`, `async-retry`, `exponential-backoff`, cockatiel) or a
+hand-written retry loop, direct or through project helpers.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic
