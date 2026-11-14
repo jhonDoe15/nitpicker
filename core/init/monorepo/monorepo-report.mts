@@ -90,7 +90,7 @@ export function renderMonorepoReport(placed: MonorepoPlaced): string {
     skillLines(placed),
     sharedOffer(setups),
     [
-      ...agentsLines(agents, COMMAND, offers.agents),
+      ...agentsLines(agents, { command: COMMAND, offered: offers.agents }),
       ...ciLines(workflow, { ...ci, command: COMMAND }),
     ],
     [

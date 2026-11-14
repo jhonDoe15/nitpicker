@@ -41,7 +41,7 @@ import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { runMonorepo } from './projects/run/monorepo.mts';
 import { runProjectsCommand } from './projects/command/projects-command.mts';
-import { runScoped } from './projects/run/refusal.mjs';
+import { runScoped as runScopedCommand } from './projects/run/refusal.mjs';
 import { noProjectAdvice } from './projects/plan/suggested-projects.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -67,6 +67,9 @@ import type {
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
+
+const runScoped: (cli: object, command: string, run: (scope: object) => ExitCode) => ExitCode =
+  runScopedCommand;
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {

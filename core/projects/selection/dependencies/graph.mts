@@ -17,7 +17,7 @@ export type DependencyGraph = ReadonlyMap<string, ReadonlySet<string>> & {
 type Edges = ReadonlyMap<string, string | undefined>;
 type UnitReader = (directory: string) => DependencyUnit | undefined;
 type Lookup = {
-  readonly byName: ReadonlyMap<string, string>;
+  readonly byName: ReadonlyMap<string, readonly string[]>;
   readonly projectPaths: readonly string[];
   readonly folderOf: (projectPath: string) => string;
 };
@@ -71,8 +71,12 @@ function edgesOf(
   { byName, projectPaths, folderOf }: Lookup,
 ): Edges {
   const folders = projectPaths.map(folderOf);
-  const label = (key: string): string | undefined => unit.labels?.get(key);
-  const named = unit.needs.map((need) => [byName.get(need), label(need)] as const);
+  function label(key: string): string | undefined {
+    return unit.labels?.get(key);
+  }
+  const named = unit.needs.flatMap((need) =>
+    (byName.get(need) ?? []).map((other) => [other, label(need)] as const),
+  );
   const located = unit.folders
     .map((folder) => [path.posix.normalize(path.posix.join(folderOf(projectPath), folder)), folder])
     .filter(([resolved]) => resolved !== undefined && !resolved.startsWith('..'))
@@ -84,7 +88,7 @@ function edgesOf(
     });
   const edges = new Map<string, string | undefined>();
   for (const [other, via] of [...named, ...located]) {
-    if (other !== undefined && other !== projectPath && !edges.has(other)) {
+    if (other !== projectPath && !edges.has(other)) {
       edges.set(other, via);
     }
   }
@@ -96,18 +100,21 @@ export function dependencyGraph(
   projectPaths: readonly string[],
   folders: ReadonlyMap<string, string> = new Map(),
 ): DependencyGraph {
-  const folderOf = (projectPath: string): string => folders.get(projectPath) ?? projectPath;
+  function folderOf(projectPath: string): string {
+    return folders.get(projectPath) ?? projectPath;
+  }
   const units = new Map(
     projectPaths.map((projectPath) => [
       projectPath,
       unitOf(path.join(root, folderOf(projectPath))),
     ]),
   );
-  const byName = new Map(
-    [...units].flatMap(([projectPath, unit]) =>
-      unit.names.map((name): [string, string] => [name, projectPath]),
-    ),
-  );
+  const byName = new Map<string, string[]>();
+  for (const [projectPath, unit] of units) {
+    for (const name of unit.names) {
+      byName.set(name, [...(byName.get(name) ?? []), projectPath]);
+    }
+  }
   const edges = new Map(
     [...units].map(([projectPath, unit]) => [
       projectPath,

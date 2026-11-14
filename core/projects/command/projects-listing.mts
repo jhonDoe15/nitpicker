@@ -1,6 +1,6 @@
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 
-export type ListedProject = {
+type ListedProject = {
   readonly path: string;
   readonly preset: string;
   readonly origin: string;

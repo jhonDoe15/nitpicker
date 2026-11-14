@@ -12,7 +12,7 @@ const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
 const ENTRY_FIELDS = ['main', 'bin', 'exports'];
 const UNLIMITED = { maxDepth: Number.POSITIVE_INFINITY, maxFiles: Number.POSITIVE_INFINITY };
 
-function specifiersOf(file) {
+export function specifiersOf(file) {
   return existsSync(file)
     ? requireModule(selectTypeScriptApi().file)
         .preProcessFile(readFileSync(file, 'utf8'), true, true)
@@ -24,7 +24,7 @@ function childValues(node) {
   return node !== null && typeof node === 'object' ? Object.values(node) : [];
 }
 
-function stringLeaves(value) {
+export function stringLeaves(value) {
   return [...depthFirst(value, childValues)].filter((node) => typeof node === 'string');
 }
 

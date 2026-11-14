@@ -44,19 +44,30 @@ describe('a repository whose top folder is no project', () => {
       ]),
     );
 
-    expect(failureAt(files)).toContain('apps/a10 (Python project), and 2 more.');
-    expect(failureAt(files)).toContain('(the first ten; add the rest the same way).');
+    const names = Array.from({ length: 10 }, (_, index) => `apps/a${String(index + 1)}`);
+    const found = names.map((name) => `${name} (Python project)`).join(', ');
+    const entries = names.map((name) => `{"path": "${name}", "preset": "python"}`).join(', ');
+
+    expect(failureAt(files)).toBe(
+      'No package.json or nitpicker.config.json found in the repository root <root>. ' +
+        `The repository holds projects of its own: ${found}, and 2 more. ` +
+        'To gate each in one run, create nitpicker.config.json at the repository root with ' +
+        `{"projects": [${entries}]} (the first ten; add the rest the same way).`,
+    );
   });
 
   it('keeps the preset advice in a folder of its own', () => {
-    expect(failureAt(SERVICES, 'services/orders')).toContain(
-      'The current folder has pom.xml: create nitpicker.config.json with {"preset": "java"}',
+    expect(failureAt(SERVICES, 'services/orders')).toBe(
+      'No package.json or nitpicker.config.json found between <root>/services/orders and repository root <root>. ' +
+        'The current folder has pom.xml: create nitpicker.config.json with {"preset": "java"} (or run nitpicker init).',
     );
   });
 
   it('keeps the general advice when nothing looks like a project', () => {
-    expect(failureAt({ 'notes.txt': 'x\n' })).toContain(
-      'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset',
+    expect(failureAt({ 'notes.txt': 'x\n' })).toBe(
+      'No package.json or nitpicker.config.json found in the repository root <root>. ' +
+        'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset, ' +
+        'for example {"preset": "java"}.',
     );
   });
 });

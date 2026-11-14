@@ -14,17 +14,21 @@ function textName(value: unknown): string[] {
   return typeof value === 'string' && value !== '' ? [value] : [];
 }
 
+function manifestOf(text: string): { readonly value: unknown } | { readonly malformed: true } {
+  try {
+    return { value: JSON.parse(text) };
+  } catch {
+    return { malformed: true };
+  }
+}
+
 function packageName(directory: string): string[] {
   const text = textInside(directory, 'package.json');
   if (text === '') {
     return [];
   }
-  try {
-    const manifest: unknown = JSON.parse(text);
-    return textName(fieldOf(manifest, 'name'));
-  } catch {
-    return [];
-  }
+  const manifest = manifestOf(text);
+  return 'malformed' in manifest ? [] : textName(fieldOf(manifest.value, 'name'));
 }
 
 function pythonName(directory: string): string[] {

@@ -48,7 +48,7 @@ function enclosingBuilds(directory, jvmDirectories) {
   return jvmDirectories.filter((other) => other !== directory && isInside(directory, other));
 }
 
-export function isSeparateBuild(root, directory, jvmDirectories) {
+function isSeparateBuild(root, directory, jvmDirectories) {
   if (hasGradleSettings(path.join(root, directory))) {
     return true;
   }

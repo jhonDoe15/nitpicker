@@ -120,8 +120,8 @@ export function withSnapshotRoots<T>(
     settings.sharedBaseWorktree?.commitSha === comparison.mergeBaseSha
       ? settings.sharedBaseWorktree
       : undefined;
-  const withHead = (baseWorktreeRoot: string): T =>
-    inNamedWorktree(
+  function withHead(baseWorktreeRoot: string): T {
+    return inNamedWorktree(
       repositoryRoot,
       { commitSha: comparison.headSha, directoryName: 'head', warn },
       (headWorktreeRoot) =>
@@ -131,6 +131,7 @@ export function withSnapshotRoots<T>(
           sharedBase: shared,
         }),
     );
+  }
   return shared === undefined
     ? inWorktree(repositoryRoot, { commitSha: comparison.mergeBaseSha, warn }, withHead)
     : withHead(shared.root);

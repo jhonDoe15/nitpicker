@@ -26,7 +26,7 @@ type PlanMember = {
   readonly folder?: string;
   readonly absolute: string;
   readonly preset: string;
-  readonly overlay?: { readonly declared?: boolean };
+  readonly overlay?: { readonly declared?: true };
 };
 
 type Inspection = {

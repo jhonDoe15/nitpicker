@@ -1,4 +1,6 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { linkSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { fieldOf } from '../../shared/values/readers.mts';
 
 export type FileLock =
@@ -10,8 +12,16 @@ type LockOwner = {
   readonly isAlive?: (pid: number) => boolean;
 };
 
-const ATTEMPTS = Array.from({ length: 5 }, (_, attempt) => attempt);
+const LOCK_ATTEMPTS = 5;
+const READ_ATTEMPTS = 4;
+const INT32_BYTES = 4;
+const SUFFIX_BYTES = 4;
 const PARTIAL_READ_WAIT_MS = 20;
+const WAIT_STEP_MS = 100;
+
+function attempts(count: number): readonly number[] {
+  return Array.from({ length: count }, (_, attempt) => attempt);
+}
 
 export function isProcessAlive(pid: number): boolean {
   try {
@@ -22,15 +32,19 @@ export function isProcessAlive(pid: number): boolean {
   }
 }
 
+function pause(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(INT32_BYTES)), 0, 0, milliseconds);
+}
+
 function parsePid(text: string): number | undefined {
   const pid = Number.parseInt(text, 10);
   return Number.isInteger(pid) && pid > 0 ? pid : undefined;
 }
 
 function readHolderPid(lockPath: string): number | undefined {
-  for (const attempt of ATTEMPTS.slice(0, 4)) {
+  for (const attempt of attempts(READ_ATTEMPTS)) {
     if (attempt > 0) {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, PARTIAL_READ_WAIT_MS);
+      pause(PARTIAL_READ_WAIT_MS);
     }
     const pid = parsePid(readFileSync(lockPath, 'utf8'));
     if (pid !== undefined) {
@@ -40,15 +54,31 @@ function readHolderPid(lockPath: string): number | undefined {
   return undefined;
 }
 
+function siblingFile(lockPath: string, suffix: string): string {
+  const directory = path.dirname(path.resolve(lockPath));
+  const full = path.resolve(directory, `${path.basename(lockPath)}.${suffix}`);
+  if (path.dirname(full) !== directory) {
+    throw new Error(`${suffix} does not name a file next to ${lockPath}`);
+  }
+  return full;
+}
+
 function createLockFile(lockPath: string, pid: number): boolean {
+  const written = siblingFile(
+    lockPath,
+    `${String(pid)}-${randomBytes(SUFFIX_BYTES).toString('hex')}`,
+  );
+  writeFileSync(written, `${String(pid)}\n`, { flag: 'wx' });
   try {
-    writeFileSync(lockPath, `${String(pid)}\n`, { flag: 'wx' });
+    linkSync(written, lockPath);
     return true;
   } catch (error) {
     if (fieldOf(error, 'code') === 'EEXIST') {
       return false;
     }
     throw error;
+  } finally {
+    rmSync(written, { force: true });
   }
 }
 
@@ -90,13 +120,32 @@ function heldLock(lockPath: string, pid: number): FileLock {
   return { acquired: true, release };
 }
 
+function removeStaleLock(lockPath: string, owner: Required<LockOwner>): void {
+  const guardPath = siblingFile(lockPath, 'steal');
+  if (!createLockFile(guardPath, owner.pid)) {
+    if (readLiveHolder(guardPath, owner) === undefined) {
+      rmSync(guardPath, { force: true });
+    } else {
+      pause(PARTIAL_READ_WAIT_MS);
+    }
+    return;
+  }
+  try {
+    if (readLiveHolder(lockPath, owner) === undefined) {
+      rmSync(lockPath, { force: true });
+    }
+  } finally {
+    rmSync(guardPath, { force: true });
+  }
+}
+
 export function acquireFileLock(
   lockPath: string,
   { pid = process.pid, isAlive = isProcessAlive }: LockOwner = {},
 ): FileLock {
-  for (const attempt of ATTEMPTS) {
+  for (const attempt of attempts(LOCK_ATTEMPTS)) {
     if (attempt > 0) {
-      rmSync(lockPath, { force: true });
+      removeStaleLock(lockPath, { pid, isAlive });
     }
     if (createLockFile(lockPath, pid)) {
       return heldLock(lockPath, pid);
@@ -109,19 +158,18 @@ export function acquireFileLock(
   throw new Error(`Could not take the lock ${lockPath}`);
 }
 
-const WAIT_STEP_MS = 100;
-
-function pause(milliseconds: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds);
-}
-
 export function withWaitedLock<Result>(
   lockPath: string,
   { timeoutMs, describe }: { readonly timeoutMs: number; readonly describe: string },
   operation: () => Result,
 ): Result {
   const deadline = Date.now() + timeoutMs;
-  for (let lock = acquireFileLock(lockPath); ; lock = acquireFileLock(lockPath)) {
+  let holder = 0;
+  for (const attempt of attempts(Math.ceil(timeoutMs / WAIT_STEP_MS) + 1)) {
+    if (attempt > 0) {
+      pause(WAIT_STEP_MS);
+    }
+    const lock = acquireFileLock(lockPath);
     if (lock.acquired) {
       try {
         return operation();
@@ -129,9 +177,10 @@ export function withWaitedLock<Result>(
         lock.release();
       }
     }
+    holder = lock.holder;
     if (Date.now() > deadline) {
-      throw new Error(`${describe}: pid ${String(lock.holder)} still holds ${lockPath}`);
+      break;
     }
-    pause(WAIT_STEP_MS);
   }
+  throw new Error(`${describe}: pid ${String(holder)} still holds ${lockPath}`);
 }

@@ -77,19 +77,21 @@ function gateInputs({ root, repository, version }: Workflow): string[] {
   );
 }
 
+function unique(blocks: readonly string[]): string[] {
+  return [...new Set(blocks)].flatMap((block) => block.split('\n'));
+}
+
 export function placeMonorepoWorkflow(
   setups: readonly MemberSetup[],
   workflow: Workflow,
 ): PlacedFile {
   const steps = setups.map((setup) => memberSteps(setup, workflow));
-  const unique = (blocks: readonly string[]): string[] =>
-    [...new Set(blocks)].flatMap((block) => block.split('\n'));
   const notes = [...new Set(steps.flatMap((step) => step.notes))];
   const content = filledWorkflow({
     ...namedParts(
       workflow.root,
       workflow.repository,
-      Object.assign({}, ...steps.map((step) => step.runDefaults)),
+      Object.fromEntries(steps.flatMap((step) => Object.entries(step.runDefaults))),
     ),
     ENVIRONMENT_STEPS: unique(steps.flatMap((step) => step.environment)),
     INSTALL_STEPS: unique(steps.flatMap((step) => step.install)),

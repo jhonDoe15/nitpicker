@@ -18,7 +18,7 @@ const prepare: (options: {
   readonly projectRoot: string;
   readonly liveProjectRoot: string;
   readonly toolRoot: string;
-  readonly reuseExisting?: boolean;
+  readonly reuseExisting: boolean;
 }) => unknown = prepareSnapshotDependencies;
 
 const SHARED_PREPARATION_TIMEOUT_MS = 10 * 60 * 1000;
@@ -29,7 +29,7 @@ function prepareBase({
   toolRoot,
   sharedBase,
 }: PreparedRoots): unknown {
-  const options = { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot };
+  const options = { projectRoot: baseProjectRoot, liveProjectRoot, toolRoot, reuseExisting: false };
   if (sharedBase === undefined) {
     return prepare(options);
   }
@@ -53,7 +53,12 @@ function withPreparedAnalyzerDependencies<T>(roots: PreparedRoots, operation: ()
     if (baseDependencies !== undefined) {
       preparedDependencies.push(baseDependencies);
     }
-    const headDependencies = prepare({ projectRoot: headSnapshotRoot, liveProjectRoot, toolRoot });
+    const headDependencies = prepare({
+      projectRoot: headSnapshotRoot,
+      liveProjectRoot,
+      toolRoot,
+      reuseExisting: false,
+    });
     if (headDependencies !== undefined) {
       preparedDependencies.push(headDependencies);
     }

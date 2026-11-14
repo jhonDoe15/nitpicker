@@ -47,6 +47,32 @@ describe('the projects a config lists', () => {
     expect(resolve(root, [{ path: 'services/*' }])[0]).not.toHaveProperty('preset');
   });
 
+  it('gives the members of a listed workspace the preset and settings of its entry', () => {
+    const root = repository({
+      'tools/package.json': JSON.stringify({ workspaces: ['packages/*'] }),
+      'tools/packages/a/package.json': '{"name":"a"}',
+      'tools/packages/b/package.json': '{"name":"b"}',
+    });
+    const settings = { disable: ['coverage'] };
+
+    expect(resolve(root, [{ path: 'tools', preset: 'typescript', settings }])).toEqual([
+      {
+        path: 'tools/packages/a',
+        preset: 'typescript',
+        settings,
+        origin: 'tools/package.json',
+        workspace: 'tools',
+      },
+      {
+        path: 'tools/packages/b',
+        preset: 'typescript',
+        settings,
+        origin: 'tools/package.json',
+        workspace: 'tools',
+      },
+    ]);
+  });
+
   it('lists a folder once when two entries reach it', () => {
     const root = repository(files);
 

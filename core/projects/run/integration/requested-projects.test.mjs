@@ -97,6 +97,12 @@ describe('--project in a monorepo', () => {
     });
 
     expect(result.exitCode).toBe(2);
-    expect(result.err).toContain("quote it: --project 'packages/*'");
+    expect(result.err).toBe(
+      'nitpicker failed: Paths narrow one project, and these paths belong to the top folder of a monorepo ' +
+        'of 5 projects (packages/p1, packages/p2, packages/p3, packages/p5, packages/p10). ' +
+        'Choose projects with --project <path>, or give paths in a project folder that has its own ' +
+        'package.json or nitpicker.config.json. If the shell expanded a --project glob into these paths, ' +
+        "quote it: --project 'packages/*'.\n",
+    );
   });
 });

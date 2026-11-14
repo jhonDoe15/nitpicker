@@ -3,10 +3,21 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mts';
 import { inspectRepository } from '../../projects/plan/inspect.mjs';
+import * as expected from '../test-support/monorepo-expected.mjs';
 import { init, readText, useProjects } from '../test-support/projects.mjs';
 
 const createProject = useProjects();
 const WORKFLOW = '.github/workflows/nitpicker.yml';
+
+function normalized(text) {
+  return text
+    .replaceAll(packageVersion(), '<version>')
+    .replace(/(uses: actions\/[\w-]+)@v[\d.]+/gu, '$1@<pin>');
+}
+
+function lines(expectedLines) {
+  return expectedLines.join('\n');
+}
 
 const POLYGLOT = {
   'web/package.json': '{"name":"web"}\n',
@@ -51,17 +62,8 @@ describe('init at the top of a repository with several projects', () => {
       { folder: 'service', preset: 'java', configError: undefined },
       { folder: 'web', preset: 'typescript', configError: undefined },
     ]);
-    const workflow = readText(root, WORKFLOW);
-    expect(workflow).toContain('uses: actions/setup-python@');
-    expect(workflow).toContain('uses: actions/setup-java@');
-    expect(workflow).toContain('working-directory: api');
-    expect(workflow).toContain(`package: nitpicker@${packageVersion()}`);
-    expect(workflow.match(/uses: jhonDoe15\/nitpicker@/gu)).toHaveLength(1);
-    expect(result.stdoutText).toContain(
-      'nitpicker init: a monorepo of 3 projects, found from their project files',
-    );
-    expect(result.stdoutText).toContain('created nitpicker.config.json');
-    expect(result.stdoutText).toContain(`created ${WORKFLOW}`);
+    expect(normalized(readText(root, WORKFLOW))).toBe(lines(expected.POLYGLOT_WORKFLOW));
+    expect(normalized(result.stdoutText)).toBe(lines(expected.POLYGLOT_OUTPUT));
   });
   it('leaves every file it wrote as it is on a second run', () => {
     const root = createProject(POLYGLOT, { repository: true });
@@ -70,8 +72,7 @@ describe('init at the top of a repository with several projects', () => {
     const again = init(root, '--ci', 'github');
 
     expect(again.exitCode).toBe(0);
-    expect(again.stdoutText).toContain('nitpicker.config.json already lists the projects.');
-    expect(again.stdoutText).toContain(`${WORKFLOW} is already set up`);
+    expect(normalized(again.stdoutText)).toBe(lines(expected.REPEATED_OUTPUT));
   });
   it('shows the projects list as a diff and keeps a top config that lists none', () => {
     const root = createProject(
@@ -83,10 +84,7 @@ describe('init at the top of a repository with several projects', () => {
 
     expect(result.exitCode).toBe(1);
     expect(readText(root, 'nitpicker.config.json')).toBe('{ "exclude": ["docs/**"] }\n');
-    expect(result.stdoutText).toContain(
-      'nitpicker.config.json exists and was not changed. It lists no projects, so a run here would not gate the projects below it.',
-    );
-    expect(result.stdoutText).toContain('+  "projects": [');
+    expect(normalized(result.stdoutText)).toBe(lines(expected.KEPT_TOP_CONFIG_OUTPUT));
   });
   it('declares the preset only for a workspace package the run would get wrong', () => {
     const root = createProject(
@@ -109,8 +107,8 @@ describe('init at the top of a repository with several projects', () => {
     expect(JSON.parse(readText(root, 'packages/b/nitpicker.config.json'))).toEqual({
       preset: 'javascript',
     });
-    expect(readText(root, WORKFLOW).match(/run: npm ci/gu)).toHaveLength(1);
-    expect(result.stdoutText).toContain('the top config needs no "projects" list');
+    expect(normalized(readText(root, WORKFLOW))).toBe(lines(expected.WORKSPACE_WORKFLOW));
+    expect(normalized(result.stdoutText)).toBe(lines(expected.WORKSPACE_OUTPUT));
   });
   it('keeps a member config that declares another preset and shows the diff', () => {
     const root = createProject(
@@ -129,8 +127,6 @@ describe('init at the top of a repository with several projects', () => {
 
     expect(result.exitCode).toBe(1);
     expect(readText(root, 'packages/b/nitpicker.config.json')).toBe('{ "exclude": [] }\n');
-    expect(result.stdoutText).toContain(
-      'packages/b/nitpicker.config.json exists and was not changed.',
-    );
+    expect(normalized(result.stdoutText)).toBe(lines(expected.KEPT_MEMBER_CONFIG_OUTPUT));
   });
 });

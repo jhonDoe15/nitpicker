@@ -1,5 +1,5 @@
 import { resolveBase } from '../../diff/git/repository/base-ref.mts';
-import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
+import { policyAcceptance } from '../../projects/policy/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
 import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
 import { fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';

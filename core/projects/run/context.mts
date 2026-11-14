@@ -82,7 +82,8 @@ export function analyzersByProject(
 export function rootConfigFiles(plan: MonorepoPlan): string[] {
   const own = path.posix.join(plan.prefix, CONFIG_FILE_NAME);
   const shared = sharedConfigFiles(plan.root, { repositoryRoot: plan.repositoryRoot }).map(
-    ({ file }) => path.relative(plan.repositoryRoot, file).split(path.sep).join('/'),
+    ({ file }: { readonly file: string }) =>
+      path.relative(plan.repositoryRoot, file).split(path.sep).join('/'),
   );
   return [own, ...shared];
 }

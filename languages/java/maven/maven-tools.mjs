@@ -20,6 +20,7 @@ export const MAVEN_PLUGINS = {
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
 };
 const TOOLS_KEY_LENGTH = 16;
+const POM = 'pom.xml';
 const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.junit.platform',
   'org.junit.jupiter',
@@ -142,14 +143,14 @@ function writeToolsProject(directory, tools) {
   for (const [name, dependencies] of Object.entries(tools)) {
     mkdirSync(path.join(directory, name), { recursive: true });
     writeFileSync(
-      path.join(directory, name, 'pom.xml'),
+      path.join(directory, name, POM),
       pom(name, `<dependencies>${dependencies.join('')}</dependencies>`),
     );
   }
   const modules = Object.keys(tools)
     .map((name) => `<module>${name}</module>`)
     .join('');
-  writeFileSync(path.join(directory, 'pom.xml'), pom('tools', `<modules>${modules}</modules>`));
+  writeFileSync(path.join(directory, POM), pom('tools', `<modules>${modules}</modules>`));
 }
 
 export function readClasspaths(directory, names) {
@@ -202,7 +203,7 @@ function resolveInto(staging, { projectRoot, maven, tools, spawn, timeoutMs }) {
     args: [
       '--quiet',
       '--file',
-      path.join(staging, 'pom.xml'),
+      path.join(staging, POM),
       `${MAVEN_PLUGINS.dependency}:build-classpath`,
       '-Dmdep.outputFile=classpath.txt',
     ],

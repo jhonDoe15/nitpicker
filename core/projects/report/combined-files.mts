@@ -3,7 +3,7 @@ import path from 'node:path';
 import { chainOf as untypedChainOf } from '../../../shared/traversal.mjs';
 import { renderJunitReport } from '../../diff/reporting/junit.mts';
 import { renderSarifReport } from '../../diff/reporting/sarif.mts';
-import { reportFolder } from '../plan/project-entry.mjs';
+import { reportFolder as untypedReportFolder } from '../plan/project-entry.mjs';
 import { SUMMARY_FILE } from './combined-summary.mjs';
 import type { ReportData } from '../../../shared/values/findings.mts';
 import type { MonorepoPlan, PlanProject, RepositoryPolicy } from '../project-types.mts';
@@ -61,9 +61,12 @@ function repositoryReport(repository: RepositoryPolicy | undefined): ReportData 
   };
 }
 
+const reportFolder: (projectPath: string) => string = untypedReportFolder;
+const parseSarif: (text: string) => { readonly runs: SarifRun[] } = JSON.parse;
+const parseLog: (text: string) => object = JSON.parse;
+
 function runsOf(text: string): SarifRun[] {
-  const log: { readonly runs: SarifRun[] } = JSON.parse(text);
-  return log.runs;
+  return parseSarif(text).runs;
 }
 
 function projectRuns(
@@ -92,7 +95,7 @@ function combinedSarif(
   if (runs.length === 0 && policy.length === 0) {
     return undefined;
   }
-  const log: object = JSON.parse(renderSarifReport(repositoryReport(undefined), options));
+  const log = parseLog(renderSarifReport(repositoryReport(undefined), options));
   const repositoryRuns = policy.map((run) => relocatedRun(run, REPOSITORY_CATEGORY));
   return `${JSON.stringify({ ...log, runs: [...runs, ...repositoryRuns] }, null, 2)}\n`;
 }

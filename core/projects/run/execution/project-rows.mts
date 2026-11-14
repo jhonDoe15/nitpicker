@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { clearDiffReports } from '../../../diff/reporting/reporters.mts';
 import { clearSnapshotReports } from '../../../snapshot/reporters.mts';
-import { reportFolder } from '../../plan/project-entry.mjs';
+import { reportFolder as untypedReportFolder } from '../../plan/project-entry.mjs';
 import { projectHeading } from '../../report/console.mjs';
 import { outcomeOf, writeFailureReport } from '../../report/outcome.mjs';
 import type { SharedWorktree } from '../../../diff/comparison/quick/head-run.mts';
@@ -14,6 +14,8 @@ import type {
   ProjectRow,
   RunProject,
 } from '../../project-types.mts';
+
+const reportFolder: (projectPath: string) => string = untypedReportFolder;
 
 export type SharedBase = {
   readonly worktree: SharedWorktree;

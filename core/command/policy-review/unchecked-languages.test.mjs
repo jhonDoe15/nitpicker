@@ -48,17 +48,19 @@ describe('uncheckedLanguageNotices', () => {
     ]);
   });
 
-  it('describes a Java file in a Python and a TypeScript project', () => {
+  it.each([
+    ['python', 'python'],
+    ['typescript', 'typescript'],
+    [undefined, 'typescript'],
+  ])('describes a Java file in a %s project', (preset, named) => {
     const root = projectRoot({ 'tools/pom.xml': '' });
 
-    for (const preset of ['python', 'typescript', undefined]) {
-      expect(notices(['tools/src/main/java/A.java'], { preset, root })).toEqual([
-        `1 changed Java file is in a language the ${preset ?? 'typescript'} preset does not check, ` +
-          'so nothing checks it: tools/src/main/java/A.java. To check it, list that folder in "projects" ' +
-          'of nitpicker.config.json, for example "projects": [".", "tools"]; ' +
-          'to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
-      ]);
-    }
+    expect(notices(['tools/src/main/java/A.java'], { preset, root })).toEqual([
+      `1 changed Java file is in a language the ${named} preset does not check, ` +
+        'so nothing checks it: tools/src/main/java/A.java. To check it, list that folder in "projects" ' +
+        'of nitpicker.config.json, for example "projects": [".", "tools"]; ' +
+        'to leave it unchecked, list it in "exclude" in nitpicker.config.json.',
+    ]);
   });
 
   it.each([
@@ -95,8 +97,9 @@ describe('uncheckedLanguageNotices', () => {
   it('lists three files and counts the rest', () => {
     const files = ['a/1.py', 'a/2.py', 'a/3.py', 'a/4.py', 'a\\5.py'];
 
-    expect(notices(files, { preset: 'go' })[0]).toContain(
-      'nothing checks them: a/1.py, a/2.py, a/3.py, and 2 more. To leave them unchecked',
-    );
+    expect(notices(files, { preset: 'go' })).toEqual([
+      '5 changed Python files are in a language the go preset does not check, so nothing checks them: ' +
+        'a/1.py, a/2.py, a/3.py, and 2 more. To leave them unchecked, list them in "exclude" in nitpicker.config.json.',
+    ]);
   });
 });

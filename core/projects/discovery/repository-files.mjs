@@ -77,11 +77,16 @@ export function outermost(directories, { rootContainsAll = false } = {}) {
   );
 }
 
-const SUBMODULE_PATH = /^\s*path\s*=\s*(?<folder>.+?)\s*$/gmu;
+const SUBMODULE_PATH = /^\s*path\s*=(?<folder>.*)$/gmu;
 
 export function listSubmodules(repositoryRoot) {
   const text = readTextInside(repositoryRoot, '.gitmodules');
   return [...text.matchAll(SUBMODULE_PATH)]
-    .map((match) => match.groups.folder.replace(/^"(.*)"$/u, '$1').replace(/\/+$/u, ''))
+    .map((match) =>
+      match.groups.folder
+        .trim()
+        .replace(/^"(.*)"$/u, '$1')
+        .replace(/\/+$/u, ''),
+    )
     .toSorted(byText);
 }

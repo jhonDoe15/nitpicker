@@ -36,12 +36,14 @@ type Target = readonly [root: string, relative: string];
 
 type Targets = { readonly repository: string; readonly workflowFile: string };
 
-export function runInitCommand(cli: InitCli): number {
-  const options = parseInitArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(INIT_USAGE_TEXT);
-    return 0;
-  }
+type InitRun = {
+  readonly projectRoot: string;
+  readonly repository: string;
+  readonly nodeVersion: string;
+  readonly options: InitOptions;
+};
+
+function prepared(cli: InitCli, options: InitOptions): InitRun {
   const nodeVersion = cli.nodeVersion ?? process.versions.node;
   assertSupportedNode(nodeVersion);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
@@ -50,12 +52,13 @@ export function runInitCommand(cli: InitCli): number {
     repository,
     workflowFile: workflowPath(projectRoot, repository),
   });
-  const layout = monorepoLayout(projectRoot, repository);
-  if (layout !== undefined) {
-    const result = runMonorepoInit(layout, { root: projectRoot, repository, nodeVersion, options });
-    cli.stdout.write(result.text);
-    return result.exitCode;
-  }
+  return { projectRoot, repository, nodeVersion, options };
+}
+
+function initProject(
+  cli: InitCli,
+  { projectRoot, repository, nodeVersion, options }: InitRun,
+): number {
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
@@ -63,6 +66,23 @@ export function runInitCommand(cli: InitCli): number {
   cli.stdout.write(renderReport({ project, peers, ...files, skillSource: source }));
   const placed = [files.config, files.workflow, files.approval];
   return placed.some((result) => result?.status === 'differs') ? 1 : 0;
+}
+
+export function runInitCommand(cli: InitCli): number {
+  const options = parseInitArguments(cli.arguments_);
+  if (options.help) {
+    cli.stdout.write(INIT_USAGE_TEXT);
+    return 0;
+  }
+  const run = prepared(cli, options);
+  const layout = monorepoLayout(run.projectRoot, run.repository);
+  if (layout === undefined) {
+    return initProject(cli, run);
+  }
+  const { projectRoot: root, repository, nodeVersion } = run;
+  const result = runMonorepoInit(layout, { root, repository, nodeVersion, options });
+  cli.stdout.write(result.text);
+  return result.exitCode;
 }
 
 function checkTargets(

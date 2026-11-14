@@ -88,7 +88,7 @@ function workspaceMembersOf(entry, { root, files }) {
   }
   const declaring = nested.entries.map(({ origin }) => DECLARING_FILES.get(origin)).find(Boolean);
   return nested.entries.map((member) => ({
-    ...(entry.preset === undefined ? {} : { preset: entry.preset }),
+    ...entry,
     path: member.path === '.' ? entry.path : `${entry.path}/${member.path}`,
     origin: `${entry.path}/${declaring}`,
     workspace: entry.path,

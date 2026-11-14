@@ -54,7 +54,7 @@ function formerAt({ root, files, cli }: Probe, repositoryRoot: string): Loosenin
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
   const configuredBase = configuredBaseOf(root).base;
   const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase, cli });
-  if (baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha }) !== true) {
+  if (!baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha })) {
     return { loosenings: [], toolErrors: [] };
   }
   const { plan: basePlan, error } = basePlanAt({ repositoryRoot, prefix, mergeBaseSha });
@@ -90,10 +90,9 @@ export function singleMode(
   for (const notice of undeclaredHint(inspection.undeclared ?? [])) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
   }
-  const { loosenings, toolErrors } =
-    cli.options.all === true
-      ? { loosenings: [], toolErrors: [] }
-      : formerProjectLoosenings({ root: currentProjectRoot, files: inspection.files, cli });
+  const { loosenings, toolErrors } = cli.options.all
+    ? { loosenings: [], toolErrors: [] }
+    : formerProjectLoosenings({ root: currentProjectRoot, files: inspection.files, cli });
   return { extraCli: { repositoryLoosenings: loosenings, repositoryToolErrors: toolErrors } };
 }
 

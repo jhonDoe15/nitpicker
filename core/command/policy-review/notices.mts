@@ -23,6 +23,8 @@ import { uncheckedLanguageNotices } from './unchecked-languages.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
 import { fieldOf, objectOf, textsOf } from '../../../shared/values/readers.mts';
 
+const EXCLUDE_KEY = 'exclude';
+
 type NoticeContext = { readonly mergeBaseSha?: unknown; readonly touchedPaths?: readonly string[] };
 type Describer = (changedFiles: readonly string[], context?: NoticeContext) => readonly string[];
 type Notices<Options> = (changedFiles: readonly string[], options: Options) => readonly string[];
@@ -59,7 +61,7 @@ function jvmDescriber(
     ...renamed,
     ...jvmNotices(changedFiles, {
       preset: config.preset,
-      exclude: fieldOf(headPolicy, 'exclude'),
+      exclude: fieldOf(headPolicy, EXCLUDE_KEY),
       declaredRoots: declaredSourceRoots(projectRoot),
     }),
   ];
@@ -78,7 +80,7 @@ function languageDescriber(
       pythonNotices(changedFiles, {
         projectRoot,
         sourceRoots: sourceRootsOf(projectRoot, fieldOf(config.python, 'sourceRoots')),
-        exclude: fieldOf(headPolicy, 'exclude'),
+        exclude: fieldOf(headPolicy, EXCLUDE_KEY),
         isTestFile: testFileMatcher(projectRoot),
       });
   }
@@ -95,7 +97,7 @@ function uncheckedDescriber(
   const request = {
     preset: config.preset,
     projectRoot,
-    exclude: textsOf(fieldOf(headPolicy, 'exclude')),
+    exclude: textsOf(fieldOf(headPolicy, EXCLUDE_KEY)),
   };
   return (changedFiles) => uncheckedLanguageNotices(changedFiles, request);
 }

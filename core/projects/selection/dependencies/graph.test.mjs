@@ -192,6 +192,8 @@ describe('deepestProject', () => {
 describe('TypeScript compiler dependencies', () => {
   const base = JSON.stringify({
     compilerOptions: {
+      types: [],
+      lib: ['ES2022'],
       baseUrl: '.',
       paths: { '@acme/ui': ['libs/ui/src/index.ts'], '@acme/data/*': ['libs/data/src/*'] },
     },
@@ -224,7 +226,9 @@ describe('TypeScript compiler dependencies', () => {
   it('follows project references', () => {
     const files = {
       'apps/web/tsconfig.json': JSON.stringify({ references: [{ path: '../../libs/ui' }] }),
-      'libs/ui/tsconfig.json': JSON.stringify({ compilerOptions: { composite: true } }),
+      'libs/ui/tsconfig.json': JSON.stringify({
+        compilerOptions: { types: [], lib: ['ES2022'], composite: true },
+      }),
     };
     const graph = dependencyGraph(layout(files), ['apps/web', 'libs/ui']);
 
@@ -262,6 +266,26 @@ describe('JVM dependencies by coordinates', () => {
     expect(edgeLabel(graph, 'services/orders', 'libs/common')).toBe('com.acme:common');
   });
 
+  it('resolves property references in Maven coordinates', () => {
+    const files = {
+      'lib/pom.xml': `<project>
+  <parent><groupId>com.acme</groupId><artifactId>parent</artifactId></parent>
+  <artifactId>lib</artifactId>
+</project>`,
+      'app/pom.xml': `<project>
+  <groupId>com.acme</groupId>
+  <artifactId>app</artifactId>
+  <properties><lib.group>com.acme</lib.group></properties>
+  <dependencies>
+    <dependency><groupId>\${project.groupId}</groupId><artifactId>lib</artifactId></dependency>
+    <dependency><groupId>\${lib.group}</groupId><artifactId>lib</artifactId></dependency>
+  </dependencies>
+</project>`,
+    };
+
+    expect(edges(files, ['app', 'lib'])).toEqual({ app: ['lib'], lib: [] });
+  });
+
   it('follows Gradle dependencies, substitutions and version catalog entries', () => {
     const files = {
       'libs/common/settings.gradle': "rootProject.name = 'common'\n",
@@ -278,4 +302,27 @@ describe('JVM dependencies by coordinates', () => {
     expect([...(graph.get('services/orders') ?? [])]).toEqual(['libs/common']);
     expect([...(graph.get('services/users') ?? [])]).toEqual(['libs/model']);
   });
+});
+
+describe('one folder gated by two presets', () => {
+  const files = {
+    'lib/package.json': manifest('@x/lib'),
+    'app/package.json': manifest('app', { '@x/lib': '*' }),
+  };
+  const folders = new Map([
+    ['lib@typescript', 'lib'],
+    ['lib@java', 'lib'],
+  ]);
+
+  it.each([[['lib@typescript', 'lib@java', 'app']], [['lib@java', 'lib@typescript', 'app']]])(
+    'links a dependent to every preset of the folder, listed as %j',
+    (order) => {
+      const graph = dependencyGraph(layout(files), order, folders);
+
+      expect([...(graph.get('app') ?? [])].toSorted(byText)).toEqual([
+        'lib@java',
+        'lib@typescript',
+      ]);
+    },
+  );
 });

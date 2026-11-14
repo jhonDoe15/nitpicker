@@ -1,14 +1,18 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../../shared/filesystem.mjs';
+import { containedPath } from '../../../../shared/paths/contained-path.mjs';
 import { readTextInside } from '../../discovery/repository-files.mjs';
 import { includedBuilds } from '../../../../languages/java/builds/gradle-scripts/included-builds.mjs';
+import { projectFiles } from '../../../../languages/java/builds/gradle-scripts/kotlin-plugin.mjs';
 
 const MAVEN_PATHS = /<(?:module|relativePath)>\s*([^<\s]+)\s*<\/(?:module|relativePath)>/gu;
 const BUILD_FILE = /^(?:pom\.xml|build\.gradle(?:\.kts)?)$/u;
-const SKIPPED_FOLDERS = new Set(['build', 'target', 'out', 'node_modules', 'buildSrc']);
+const POM = 'pom.xml';
+const GROUP_ID = 'groupId';
+const ARTIFACT_ID = 'artifactId';
+const PLACEHOLDER = /^\$\{([\w.-]+)\}$/u;
 const COORDINATE = /["']([\w.-]+):([\w.-]+)(?::[^"'\s]*)?["']/gu;
-const GRADLE_GROUP = /^\s*group\s*=?\s*["']([\w.-]+)["']/mu;
+const GRADLE_GROUP = /^\s*group\s*(?:=\s*)?["']([\w.-]+)["']/mu;
 const ROOT_NAME = /rootProject\.name\s*=\s*["']([\w.-]+)["']/u;
 const CATALOG_MODULE = /^\s*([\w-]+)\s*=\s*\{[^}\n]*module\s*=\s*["']([\w.-]+):([\w.-]+)["']/gmu;
 const CATALOG_PARTS =
@@ -25,30 +29,44 @@ function tagOf(text, tag) {
 }
 
 function mavenFolder(target) {
-  return target.endsWith('pom.xml') ? path.posix.dirname(target) : target;
+  return target.endsWith(POM) ? path.posix.dirname(target) : target;
 }
 
 function coordinate(group, artifact) {
   return `maven:${group}:${artifact}`;
 }
 
-function buildFiles(directory) {
-  const files = filesUnder(directory, {
-    skipDirectory: (_absolute, entry) =>
-      entry.name.startsWith('.') || SKIPPED_FOLDERS.has(entry.name),
-  });
-  return [...files].filter((file) => BUILD_FILE.test(path.basename(file)));
+function placeholderValues(own, parent, text) {
+  const properties = /<properties>([\s\S]*?)<\/properties>/u.exec(text)?.[1] ?? '';
+  const group = tagOf(own, GROUP_ID) ?? tagOf(parent, GROUP_ID);
+  const known = new Map([
+    ['project.groupId', group],
+    ['pom.groupId', group],
+    ['groupId', group],
+    ['project.parent.groupId', tagOf(parent, GROUP_ID)],
+    ['parent.groupId', tagOf(parent, GROUP_ID)],
+    ['project.artifactId', tagOf(own, ARTIFACT_ID)],
+  ]);
+  return (value) => {
+    const key = value === undefined ? undefined : PLACEHOLDER.exec(value)?.[1];
+    if (key === undefined) {
+      return value;
+    }
+    return known.get(key) ?? tagOf(properties, key);
+  };
 }
 
 function pomCoordinates(text) {
   const own = text.replaceAll(OWN_BLOCKS, '');
   const parent = /<parent>([\s\S]*?)<\/parent>/u.exec(text)?.[1] ?? '';
-  const group = tagOf(own, 'groupId') ?? tagOf(parent, 'groupId');
-  const artifact = tagOf(own, 'artifactId');
+  const resolve = placeholderValues(own, parent, text);
+  const group = resolve(tagOf(own, GROUP_ID) ?? tagOf(parent, GROUP_ID));
+  const artifact = resolve(tagOf(own, ARTIFACT_ID));
   const managed = text.replace(/<dependencyManagement>[\s\S]*?<\/dependencyManagement>/gu, '');
   const needs = [...managed.matchAll(/<dependency>([\s\S]*?)<\/dependency>/gu)].flatMap(
     ([, block]) => {
-      const [needGroup, needArtifact] = [tagOf(block, 'groupId'), tagOf(block, 'artifactId')];
+      const needGroup = resolve(tagOf(block, GROUP_ID));
+      const needArtifact = resolve(tagOf(block, ARTIFACT_ID));
       return needGroup === undefined || needArtifact === undefined
         ? []
         : [coordinate(needGroup, needArtifact)];
@@ -87,7 +105,7 @@ function gradleCoordinates(directory, file, text) {
 }
 
 const JVM_ROOT_FILES = [
-  'pom.xml',
+  POM,
   'build.gradle',
   'build.gradle.kts',
   'settings.gradle',
@@ -95,14 +113,15 @@ const JVM_ROOT_FILES = [
 ];
 
 function coordinatesOf(directory) {
-  if (!JVM_ROOT_FILES.some((file) => existsSync(path.join(directory, file)))) {
+  function outside(relative) {
+    return `${relative} leaves ${directory}`;
+  }
+  if (!JVM_ROOT_FILES.some((file) => existsSync(containedPath(directory, file, { outside })))) {
     return { names: [], needs: [] };
   }
-  const read = buildFiles(directory).map((file) => {
+  const read = projectFiles(directory, BUILD_FILE).map((file) => {
     const text = readTextInside(directory, path.relative(directory, file));
-    return file.endsWith('pom.xml')
-      ? pomCoordinates(text)
-      : gradleCoordinates(directory, file, text);
+    return file.endsWith(POM) ? pomCoordinates(text) : gradleCoordinates(directory, file, text);
   });
   const names = read.flatMap((entry) => entry.names);
   const needs = [...new Set(read.flatMap((entry) => entry.needs))].filter(
@@ -113,7 +132,7 @@ function coordinatesOf(directory) {
 
 export function jvmUnit(directory) {
   const gradle = includedBuilds(directory);
-  const maven = matches(readTextInside(directory, 'pom.xml'), MAVEN_PATHS).map(mavenFolder);
+  const maven = matches(readTextInside(directory, POM), MAVEN_PATHS).map(mavenFolder);
   const { names, needs } = coordinatesOf(directory);
   return {
     names,

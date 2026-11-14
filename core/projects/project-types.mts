@@ -5,9 +5,9 @@ import type { ReportEntry } from '../../shared/values/findings.mts';
 
 type ProjectOverlay = {
   readonly preset?: string;
-  readonly companion?: boolean;
+  readonly companion?: true;
   readonly settings?: object;
-  readonly declared?: boolean;
+  readonly declared?: true;
   readonly exclude?: readonly string[];
   readonly inherits?: string;
 };
@@ -66,7 +66,7 @@ export type RepositoryPolicy = {
   readonly toolErrors?: readonly ReportEntry[];
 };
 
-export type MonorepoCli = ConfiguredCli & { readonly singleProject?: boolean };
+export type MonorepoCli = ConfiguredCli & { readonly singleProject?: true };
 
 export type SelectionCli = {
   readonly options: Pick<CliOptions, 'all' | 'baseRef' | 'staged' | 'projectPaths'>;

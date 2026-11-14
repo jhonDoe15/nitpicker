@@ -128,4 +128,45 @@ describe('lockfiles', () => {
     expect(parseLockfile('package-lock.json', '{').lock).toBeUndefined();
     expect(parseLockfile('package-lock.json', '{"dependencies":{}}').lock).toBeUndefined();
   });
+
+  it('reads the package keys of pnpm lockfile version 5', () => {
+    const text = `lockfileVersion: 5.4
+packages:
+  /lodash/4.17.21:
+    resolution: {integrity: sha512-x}
+  /@acme/ui/1.0.0:
+    dependencies:
+      lodash: 4.17.21
+`;
+
+    expect(versionsOf(lockOf('pnpm-lock.yaml', text))).toEqual({
+      lodash: ['4.17.21'],
+      '@acme/ui': ['1.0.0'],
+    });
+    expect([...closureOf(lockOf('pnpm-lock.yaml', text), ['@acme/ui'])]).toEqual([
+      '@acme/ui',
+      'lodash',
+    ]);
+  });
+
+  it('normalises uv package names and follows optional and development dependencies', () => {
+    const text = `version = 1
+
+[[package]]
+name = "My_Api"
+version = "0.1.0"
+
+[package.optional-dependencies]
+http = [{ name = "HTTPX" }]
+
+[package.dev-dependencies]
+dev = [{ name = "pytest" }]
+`;
+
+    expect([...closureOf(lockOf('uv.lock', text), ['my-api'])]).toEqual([
+      'my-api',
+      'httpx',
+      'pytest',
+    ]);
+  });
 });

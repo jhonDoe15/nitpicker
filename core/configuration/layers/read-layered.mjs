@@ -1,6 +1,11 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError, isPlainObject } from '../../../shared/config.mjs';
+import {
+  CONFIG_FILE_NAME,
+  SCHEMA_KEY,
+  configError,
+  isPlainObject,
+} from '../../../shared/config.mjs';
 import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
 import { withKotlinRuleAliases } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { SUPPORTED_PRESETS, validateConfig, validateKeys } from '../validate.mjs';
@@ -63,9 +68,13 @@ function culprit(layers, merged) {
   return layers.find((layer) => failureOf(layer, merged) !== undefined);
 }
 
+function withoutSchemaKey(config) {
+  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== SCHEMA_KEY));
+}
+
 function validateMerged(merged, layers) {
   try {
-    return validateConfig(merged);
+    return withoutSchemaKey(validateConfig(merged));
   } catch (error) {
     const source = layers.length > 0 ? culprit(layers, merged) : undefined;
     throw source === undefined ? error : relabel(error, source.label);

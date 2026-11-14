@@ -92,4 +92,27 @@ describe('a version catalog change', () => {
       '  skip services/users (java): no changed files',
     ]);
   });
+
+  it('runs the projects that reach a changed library through a bundle or read its version', () => {
+    const catalog = (guava) =>
+      `[versions]\nguava = "${guava}"\n\n[libraries]\n` +
+      'guava = { module = "com.google.guava:guava", version.ref = "guava" }\n\n' +
+      '[bundles]\ncore = ["guava"]\n';
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['services/*'] }),
+      'gradle/libs.versions.toml': catalog('33.0.0-jre'),
+      ...projectFiles('services/billing', {
+        'build.gradle': 'dependencies { implementation libs.bundles.core }\n',
+      }),
+      ...projectFiles('services/tools', {
+        'build.gradle': 'println(libs.versions.guava.get())\n',
+      }),
+    });
+    writeFiles(root, { 'gradle/libs.versions.toml': catalog('33.2.0-jre') });
+
+    expect(run(root, ['--details']).plan.split('\n').slice(1)).toEqual([
+      '  run  services/billing (java): libs.versions.toml: libs.bundles.core',
+      '  run  services/tools (java): libs.versions.toml: libs.versions.guava',
+    ]);
+  });
 });

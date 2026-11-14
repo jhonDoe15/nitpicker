@@ -230,8 +230,9 @@ describe('one folder gated by two presets', () => {
       ...projectFiles('.', { 'pom.xml': '<project/>\n' }),
     });
 
-    expect(run(root).err).toContain(
-      '"projects" lists . twice. To gate one folder with two presets, give each entry its own "preset"',
+    expect(run(root).err).toBe(
+      'nitpicker failed: nitpicker.config.json: "projects" lists . twice. ' +
+        'To gate one folder with two presets, give each entry its own "preset"\n',
     );
   });
 });
@@ -241,7 +242,12 @@ describe('TypeScript projects wired through tsconfig paths', () => {
     const root = repository({
       'package.json': JSON.stringify({ name: 'root', workspaces: ['apps/*', 'libs/*'] }),
       'tsconfig.base.json': JSON.stringify({
-        compilerOptions: { baseUrl: '.', paths: { '@acme/ui': ['libs/ui/src/index.ts'] } },
+        compilerOptions: {
+          types: [],
+          lib: ['ES2022'],
+          baseUrl: '.',
+          paths: { '@acme/ui': ['libs/ui/src/index.ts'] },
+        },
       }),
       ...projectFiles('apps/web', {
         'package.json': manifest('web'),

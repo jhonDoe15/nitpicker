@@ -28,16 +28,7 @@ export function normalizeProjectPath(value) {
   return normalized === '' ? '.' : normalized;
 }
 
-function entryOf(entry, label, presets) {
-  if (typeof entry === 'string') {
-    validateProjectRelativePath(entry, label);
-    return { path: normalizeProjectPath(entry) };
-  }
-  if (!isPlainObject(entry)) {
-    throw configError(
-      `"${label}" must be a path or an object with "path" and optional "preset", "expand" and "settings"`,
-    );
-  }
+function validateEntryFields(entry, label, presets) {
   for (const key of Object.keys(entry)) {
     if (!PROJECT_ENTRY_KEYS.includes(key)) {
       throw configError(
@@ -55,6 +46,19 @@ function entryOf(entry, label, presets) {
   if (entry.settings !== undefined && !isPlainObject(entry.settings)) {
     throw configError(`"${label}.settings" must be an object of config settings`);
   }
+}
+
+function entryOf(entry, label, presets) {
+  if (typeof entry === 'string') {
+    validateProjectRelativePath(entry, label);
+    return { path: normalizeProjectPath(entry) };
+  }
+  if (!isPlainObject(entry)) {
+    throw configError(
+      `"${label}" must be a path or an object with "path" and optional "preset", "expand" and "settings"`,
+    );
+  }
+  validateEntryFields(entry, label, presets);
   return {
     path: normalizeProjectPath(entry.path),
     ...(entry.preset === undefined ? {} : { preset: entry.preset }),

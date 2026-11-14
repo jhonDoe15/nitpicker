@@ -69,7 +69,7 @@ function installWebPackages(root, folder = 'web', manager = 'npm') {
   });
   if (result.status !== 0 || !existsSync(path.join(root, folder, 'node_modules'))) {
     throw new Error(
-      `${manager} install failed: ${result.error?.message ?? ''}${result.stderr ?? ''}${result.stdout ?? ''}`,
+      `${manager} install failed: ${result.error?.message ?? ''}${result.stderr}${result.stdout}`,
     );
   }
 }

@@ -6,6 +6,7 @@ import { parseConfigFile } from '../../configuration/layers/layers.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { sharedConfigFiles } from '../../configuration/layers/shared-files.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
+import { containedPath } from '../../../shared/paths/contained-path.mjs';
 
 const ROOT_REPORT_FOLDER = '_root';
 
@@ -57,8 +58,11 @@ function companionSettings(entry, { absolute, companion }) {
   if (!companion || !SCRIPT_PRESETS.has(entry.preset) || entry.settings?.layout !== undefined) {
     return entry.settings;
   }
+  function outside(folder) {
+    return `${folder} leaves ${absolute}`;
+  }
   const sourceRoots = WEB_SOURCE_FOLDERS.filter((folder) =>
-    existsSync(path.join(absolute, folder)),
+    existsSync(containedPath(absolute, folder, { outside })),
   );
   return sourceRoots.length === 0
     ? entry.settings
