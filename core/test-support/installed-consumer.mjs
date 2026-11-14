@@ -6,6 +6,7 @@ const ESLINT_PLUGINS = [
   '@vitest/eslint-plugin',
   'eslint-plugin-formatjs',
   'eslint-plugin-functional',
+  'eslint-plugin-jest',
   'eslint-plugin-jsx-a11y-x',
   'eslint-plugin-react-dom',
   'eslint-plugin-react-hooks',
