@@ -11,7 +11,7 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 
 ## [Unreleased]
 
-## [0.1.0-rc.2] - 2026-11-13
+## [0.1.0-rc.2] - 2026-11-14
 
 ### Added
 
@@ -81,6 +81,7 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   `go test -overlay`, the test-honesty rules, gosec security rules, and GORM and ent foreign keys
   without an index, with sqlc schema files read (#938, #984, #996, #1065, #1066).
 - Container images per preset, smoke-tested in CI and published to GHCR with each release (#561).
+- Go: the go-critic checkers, 80 of its 108, each finding named by its checker (#1005).
 
 ### Changed
 
@@ -155,11 +156,12 @@ Stricter rules, which can fail code that passed before:
   that mock the class under test, mocks without a spec, relaxed MockK mocks and patches that miss
   the lookup, inverse functions no test round-trips, and containers or servers started for each test
   (#585, #628, #631, #632, #700, #701, #703, #720, #858, #860, #862, #937, #941, #953, #965, #1012).
-- Data access in every preset: rows counted, filtered, sorted or aggregated in memory, streamed rows
-  collected into one collection, unordered pages and unbounded query arrays, two to-many relations
-  joined in one query, foreign keys without an index, eager relations and cascading removes on
-  many-to-many, ORM schema sync at startup and query logging, and migrations added out of order or
-  with hardcoded names (#824, #854, #857, #914, #926, #969, #970, #982, #986, #988, #990, #1026).
+- Data access in every preset: rows counted, filtered, sorted or aggregated in memory (in Java and
+  Kotlin also Spring Data results), streamed rows collected into one collection, unordered pages and
+  unbounded query arrays, two to-many relations joined in one query, foreign keys without an index,
+  eager relations and cascading removes on many-to-many, ORM schema sync at startup and query
+  logging, and migrations added out of order or with hardcoded names (#824, #854, #857, #914, #916,
+  #926, #969, #970, #982, #986, #988, #990, #1026).
 - Correctness: unhandled rejections of void promises, writes to properties of parameter objects,
   recursive map updates, URI parsing of runtime text outside a handled parse, numbers tested for
   truthiness, singular and plural inputs, unchecked schema fields, partial enum and union
@@ -193,6 +195,21 @@ Stricter rules, which can fail code that passed before:
   null or undefined (#917, #925).
 - Python: a negated `if`/`else`, a negated ternary and an all-negated chain (#980).
 - Python and Kotlin: imports around public entry points (#971).
+- Feature boundaries and domain purity in every preset, Go included: imports of another feature's
+  internals, shared code that imports a feature, feature cycles, using another feature's entities or
+  repositories instead of its services, and domain code that reaches adapters, I/O, clients, loggers
+  or randomness. Java and Kotlin read the features from a class graph; Go also gets the deep-module
+  design signals, most of them report-only (#1158).
+- Tests, review comments and concurrency in every preset: assertions in iterating callbacks, dropped
+  test callbacks, messages after assertions, repeated string literals, unused parameters of public
+  methods, generic names, hardcoded secrets and secrets in logs, TODOs without an issue and
+  commented-out code in Java, boolean flag parameters, cleanup that stops at the first failed
+  release, close functions that leave requests pending or listeners and timers attached, cached
+  failed promises, long-lived maps that only grow, unbounded waits, blocking calls reached from
+  async code and unhandled root coroutines (#1163).
+- Near-duplicate copies, proved equal from syntax trees, in every preset except Go; collection steps
+  whose result is thrown away; conditions that earlier guards decide, now in Java, Kotlin and Python
+  too; and duplicate branches in every preset (#1191).
 
 Other changes:
 
@@ -308,6 +325,14 @@ Other changes:
   other findings are kept (#1051, #1073).
 - `.ts` imports are graphed as runtime imports when the tsconfig rewrites extensions (#1080).
 - `sibling-copy-edit` ignores type-only syntax when it compares copies (#1105).
+- Java and Kotlin runs keep going when head tests fail, the build times out or tests fail only under
+  PIT, and report what happened instead of dropping every finding; a Maven aggregator pom with a
+  versionless annotation processor no longer aborts the run (#1164, #1169, #1172, #1178).
+- A test console line longer than 300 characters no longer drops every Java finding (#1162).
+- PMD regex findings are no longer dropped, Error Prone's known crash on Lombok classes is a notice
+  instead of a tool error, an ESLint plugin that does not support the running ESLint is named, and a
+  TypeScript or JavaScript run with no files under its source roots says so (#1168, #1174, #1180,
+  #1181).
 
 ### Upgrade notes
 
