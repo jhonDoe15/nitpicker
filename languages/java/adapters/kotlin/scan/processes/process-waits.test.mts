@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { processWaitsWithoutTimeout } from './process-waits.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { processWaitsWithoutTimeout as untypedProcessWaitsWithoutTimeout } from './process-waits.mjs';
 
-function lines(source) {
+const processWaitsWithoutTimeout: Check<Ruled> = untypedProcessWaitsWithoutTimeout;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return processWaitsWithoutTimeout(scanned).map(({ offset }) => lineOf(scanned, offset));
 }

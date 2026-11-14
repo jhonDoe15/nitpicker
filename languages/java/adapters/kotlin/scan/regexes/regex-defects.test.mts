@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { regexDefects } from './regex-defects.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { regexDefects as untypedRegexDefects } from './regex-defects.mjs';
 
-function found(line) {
+const regexDefects: Check<Subjected> = untypedRegexDefects;
+
+function found(line: string) {
   const scanned = scanKotlinSource(`class Routes {\n    ${line}\n}\n`);
   return regexDefects(scanned).map((reported) => [
     lineOf(scanned, reported.offset),

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { unclosedInlineResources } from './inline-closeables.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { unclosedInlineResources as untypedUnclosedInlineResources } from './inline-closeables.mjs';
 
-function found(source) {
+const unclosedInlineResources: Check<Subjected> = untypedUnclosedInlineResources;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return unclosedInlineResources(scanned).map((reported) => [
     lineOf(scanned, reported.offset),
