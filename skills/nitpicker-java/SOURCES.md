@@ -61,9 +61,12 @@ already covers it, and its edit overlaps the Error Prone one, so the second is s
 
 `java-extract-near-duplicate` is a review recipe for `structure/near-duplicate`: it runs only with `--fix --rule`, because nothing compiles the result. It parses each main
 source file with the tree-sitter grammar of the rule, finds the pairs with the engine and filters of
-the rule, and works on a `same` or `parameterizable` pair of methods in one class. The first copy
+the rule, and works on a `same` or `parameterizable` pair of methods in one class, or in two files
+of one folder (see below). The first copy
 becomes a private method placed after it, static when the body reads no instance state, and both
-bodies become one call. Signatures, `throws` clauses and annotations stay.
+bodies become one call. Signatures, `throws` clauses and annotations stay. A `@SuppressWarnings`
+annotation of the first copy moves to the new method. Imports that only the moved code used are
+removed from the files that lose them.
 
 - A differing literal becomes a parameter named after what it flows into. A differing call or name read
   becomes a `Supplier` parameter named `<name>Supplier` (`IntSupplier`, `LongSupplier`,
@@ -79,12 +82,32 @@ bodies become one call. Signatures, `throws` clauses and annotations stay.
 - A differing type becomes a type parameter (`<T>`, `<U>`, ...) of the helper, which stays callable with the
   signatures of both copies: the callers infer it. The type must be a plain class name, alone or as the
   argument of a generic type or an array, and sit in a parameter, return or local declaration or in a type
-  argument. The finding stays for a primitive, for a generic class that differs in its own name,
-  for a type after `new`, in a cast, in an `instanceof`, in a class literal or in a `throws` or
-  `catch`, and when the body calls a method on a value of the type, passes it to a call, or reads it
+  argument. A type may be qualified (`java.sql.Date` against `Time`). The finding stays for a primitive,
+  for a generic class that differs in its own name, for a type in a cast, in an `instanceof`, in a class
+  literal or in a `throws`, and when the body calls a method on a value of the type, passes it to a call, or reads it
   through a lambda: without the compiler the recipe cannot tell that the call still means the same for a
   type parameter. A collection of the type may be iterated, sized, and filled with `add`, `put` and
   the like, and its elements may be returned, assigned or compared with `==`.
+- A type that differs after `new` (`new URL(text)` against `new URI(text)`) becomes a constructor
+  parameter: a method reference (`URL::new`) of a nested functional interface that the recipe
+  writes (`StringCreator<T, E extends Exception>`, named after the argument types, with a `create`
+  method that `throws E`). The helper calls `creator.create(text)` where the copy called the
+  constructor, so the arguments are evaluated at the same place, once. `E` is inferred at each call
+  from the constructor, so a checked exception of the constructor reaches the same callers as before,
+  and the helper declares it. The arguments must have a type the recipe can write: a literal, a local
+  or a parameter with a declared type, or a call of a few JDK getters (`Date.getTime`,
+  `String.length`, `trim`). The constructor must be returned, assigned or declared into a local that is
+  not `var`: as a receiver or an argument its type would change the overload a call picks. The interface
+  is private in the enclosing class, and the finding stays when its name is taken.
+- A catch clause whose exception type differs (`MalformedURLException` against `URISyntaxException`) keeps
+  its place in the helper, which takes the class (`Class<E> failure`) and catches `Exception`: an
+  exception that is not a `failure` is rethrown as it was, the others reach the original handler as `E`.
+  The recipe does this only when the `try` block holds nothing that can throw another checked exception
+  (no call, `new` or `throw` besides the differing constructors), the clause is the last one of the
+  `try`, and the handler uses the exception only for `Throwable` methods or as an argument of a `new`:
+  the argument then has the type `E` instead of the exception, so a constructor that overloads on
+  that type would pick another overload. When javac rejects the result, `--fix` rolls it back.
+- A comment that only the second copy has moves above the call in the second copy.
 - A literal in a `case` label, an annotation or a loop condition, in a `final` local (a constant
   that a `case` label or a narrowing could use), in a sum or other expression that is narrowed to
   `byte`, `short` or `char`, an `int` literal that could narrow to them, a method with type parameters or varargs, copies with different
@@ -100,10 +123,23 @@ bodies become one call. Signatures, `throws` clauses and annotations stay.
   a class, not an enum, record or interface, and the anonymous classes must not sit in a generic method or
   next to a local class. The rule only reports anonymous classes declared as fields, so the method-local
   shape is never offered to the recipe.
-- Pairs in two named classes or two files are not looked at. On gson, the URL and URI adapters are
-  anonymous classes of one class, but they construct different classes (`new URL(text)` against
-  `new URI(text)`), which no type parameter can do, so they keep their fix plan. The SqlDate and SqlTime
-  adapters are in two files, so the recipe changes nothing there either.
+- Two methods in two files of one folder (one package) become a static method of a new package-private
+  final class with a private constructor, in that folder, named after the words the two class names
+  share (`SqlDateTypeAdapter` and `SqlTimeTypeAdapter` give `SqlTypeAdapters`). It matches the fix
+  plan, which puts the function beside copies that sit in one folder. The new file starts with the
+  header comment, the package line and the imports the code needs, and carries the
+  `@SuppressWarnings` of the first class. Both copies call `SharedClass.sharedName(...)`. All the pairs of
+  the same two files go into the same class. The state of a class is passed in: `this` as the lock of a
+  `synchronized` block becomes an `Object` parameter, and a `final` instance field both copies read (the
+  same name and type) becomes a parameter of its type. The recipe leaves the finding when the copies
+  use any other `this`, a non-`final` field, a static member or a method of the class, a type nested in
+  the class, two packages, a class that has type parameters or is not top-level, or when the class
+  name is taken: the file exists, or another file of the package uses the name. Copies in two
+  folders are left alone, and so is a pair in two named classes of one file.
+- On gson, the `read` methods of the URL and URI adapters, and of the SqlDate and SqlTime adapters, are
+  extracted this way. The `write` methods of the Sql adapters stay: the rule finds them only after
+  it rewrites their code, and the shared type would need a bound (`java.util.Date`) that the recipe
+  cannot know.
 
 `java-extract-partial-run` is a review recipe too, for the `partial-run` verdict, for two methods of one class.
 The new method is private, static when the run reads no instance state, and placed after the first
