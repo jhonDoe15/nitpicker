@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const MARKER = 'nitpicker-fix-tool';
@@ -8,11 +9,36 @@ const TOOL_PROPERTY = '-Pnitpicker.fix.tools=';
 const DEFAULTS_OPTION = '--editorconfig=';
 const CLASS_ARGUMENTS_OFFSET = 3;
 
-function squeezed(source) {
+interface Invocation {
+  readonly operation: string;
+  readonly cwd: string;
+  readonly args: readonly string[];
+}
+
+interface Launch {
+  readonly jvmArgs: string[];
+  readonly classpath: string | undefined;
+  readonly mainClass: string | undefined;
+  readonly args: string[];
+}
+
+interface CommandResult {
+  readonly status: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+interface FakeOptions {
+  readonly transform?: (content: string, file: string) => string;
+  readonly failure?: Readonly<Record<string, CommandResult>>;
+  readonly unparsable?: string;
+}
+
+function squeezed(source: string): string {
   return source.replaceAll(/ {2,}/g, ' ');
 }
 
-function parseArgumentFile(file) {
+function parseArgumentFile(file: string): string[] {
   return readFileSync(file, 'utf8')
     .split('\n')
     .filter((line) => line !== '')
@@ -24,9 +50,8 @@ function parseArgumentFile(file) {
     );
 }
 
-function gradleClasspaths(args) {
-  const specs = args
-    .find((argument) => argument.startsWith(TOOL_PROPERTY))
+function gradleClasspaths(args: readonly string[]): string {
+  const specs = (args.find((argument) => argument.startsWith(TOOL_PROPERTY)) ?? '')
     .slice(TOOL_PROPERTY.length)
     .split(',');
   return specs
@@ -34,8 +59,8 @@ function gradleClasspaths(args) {
     .join('\n');
 }
 
-function mavenClasspaths(args) {
-  const pom = args[args.indexOf('--file') + 1];
+function mavenClasspaths(args: readonly string[]): void {
+  const pom = textOf(args[args.indexOf('--file') + 1]);
   const directory = path.dirname(pom);
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const moduleDirectory = containedPath(directory, entry.name);
@@ -45,7 +70,7 @@ function mavenClasspaths(args) {
   }
 }
 
-function workspaceOf(directory) {
+function workspaceOf(directory: string): string {
   const chain = [directory];
   for (const current of chain) {
     if (path.basename(current).startsWith('nitpicker-fix-')) {
@@ -59,14 +84,14 @@ function workspaceOf(directory) {
   return directory;
 }
 
-function parseError(operation, file) {
+function parseError(operation: string, file: string): string {
   return operation === 'ktlint-fix'
     ? `${file}:1:1: Not a valid Kotlin file (1:1 expecting a name) ()`
     : `${file}:1:1: error: expecting a name`;
 }
 
-function launched(invocation) {
-  const tokens = parseArgumentFile(invocation.args[0].slice(1));
+function launched(invocation: Invocation): Launch {
+  const tokens = parseArgumentFile(textOf(invocation.args[0]).slice(1));
   const classpathIndex = tokens.indexOf('-cp');
   return {
     jvmArgs: tokens.slice(0, classpathIndex),
@@ -76,10 +101,14 @@ function launched(invocation) {
   };
 }
 
-export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 'BROKEN' } = {}) {
-  const calls = [];
-  const launches = [];
-  function format(invocation) {
+export function fakeJvmTools({
+  transform = squeezed,
+  failure = {},
+  unparsable = 'BROKEN',
+}: FakeOptions = {}) {
+  const calls: Invocation[] = [];
+  const launches: (Launch & Record<string, unknown>)[] = [];
+  function format(invocation: Invocation): CommandResult {
     const launch = launched(invocation);
     const defaults = launch.args.find((argument) => argument.startsWith(DEFAULTS_OPTION));
     launches.push({
@@ -104,13 +133,14 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
     }
     return { status: failed.length > 0 ? 1 : 0, stdout: '', stderr: failed.join('\n') };
   }
-  function executeFixCommand(invocation) {
+  function executeFixCommand(invocation: Invocation): CommandResult {
     if (invocation.operation === 'java-probe') {
       return { status: 0, stdout: '', stderr: 'openjdk version "21.0.1"' };
     }
     calls.push(invocation);
-    if (failure[invocation.operation] !== undefined) {
-      return failure[invocation.operation];
+    const failed = failure[invocation.operation];
+    if (failed !== undefined) {
+      return failed;
     }
     if (invocation.operation !== 'fix-tools') {
       return format(invocation);

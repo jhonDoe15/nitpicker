@@ -23,11 +23,16 @@ const emptyFile = {
   exhaustiveLastEntries: [],
 };
 
-export function filterFor(file = {}, mutants = []) {
-  return createGeneratedFilter({ files: [{ ...emptyFile, ...file }] })(mutants);
+const generatedFilter: (facts: { files: unknown[] }) => (mutants: unknown[]) => unknown =
+  createGeneratedFilter;
+
+type Fields = Readonly<Record<string, unknown>>;
+
+export function filterFor(file: Fields = {}, mutants: unknown[] = []): unknown {
+  return generatedFilter({ files: [{ ...emptyFile, ...file }] })(mutants);
 }
 
-export function mutant(overrides) {
+export function mutant(overrides: Fields) {
   return {
     status: 'SURVIVED',
     className: 'demo.DemoKt',
@@ -55,15 +60,15 @@ export const boundary = {
   mutatorName: 'ConditionalsBoundaryMutator',
   description: 'changed conditional boundary',
 };
-export function removed(call) {
+export function removed(call: string) {
   return { description: `removed call to ${call}` };
 }
 
-export function lambda(fields) {
+export function lambda(fields: Fields) {
   return { returnLines: [], discarded: false, projectCallee: false, unitCallee: false, ...fields };
 }
 
-export function fn(fields) {
+export function fn(fields: Fields) {
   return {
     class: 'demo.DemoKt',
     suspend: false,

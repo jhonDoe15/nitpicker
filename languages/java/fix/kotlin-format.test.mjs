@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
-import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
+import { fakeJvmTools } from './test-support/fake-jvm-tools.mts';
 
 const PINNED = { ktlint: '1.8.0', ktfmt: '0.64' };
 const SOURCES = new Map([['app/src/A.kt', 'class  A\n']]);

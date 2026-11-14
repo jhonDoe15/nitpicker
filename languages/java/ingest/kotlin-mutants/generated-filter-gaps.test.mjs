@@ -10,7 +10,7 @@ import {
   negate,
   removed,
   returns,
-} from './test-support/filter-helpers.mjs';
+} from './test-support/filter-helpers.mts';
 
 const suspendDescription = '(ILkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 const unitDescription = '()Lkotlin/Unit;';
