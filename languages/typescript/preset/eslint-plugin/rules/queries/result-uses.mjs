@@ -44,13 +44,13 @@ function isWrapper(node) {
   return isTypeWrapper(node) || node?.type === 'ChainExpression';
 }
 
-function outerOf(node) {
+export function outerOf(node) {
   return chainOf(node, (current) => (isWrapper(current.parent) ? current.parent : undefined)).at(
     -1,
   );
 }
 
-function homeOf(node) {
+export function homeOf(node) {
   return ancestorsOf(node).find((ancestor) => isFunctionNode(ancestor) || ancestor.parent === null);
 }
 

@@ -66,6 +66,11 @@ describe('effect rules report', () => {
       'Order.customer|strawberry|database|services.load() > session.get()',
       'The resolver `customer` of `Order` runs once per parent and sends a database query with `services.load()` (which calls `session.get()`) each time, so a list of N parents costs N queries',
     ],
+    [
+      'in-memory-update',
+      'Order|status,total|django',
+      '`Order` rows are loaded only to set `status`, `total` to the same value on each and save them back, which one update statement does without loading the rows',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

@@ -47,6 +47,7 @@ import { rule as ruleNoInternalModuleMocks } from '../rules/testing/assertions/n
 import { rule as ruleNoIntervalPollingInTests } from '../rules/testing/lifecycle/no-interval-polling-in-tests.mjs';
 import { rule as ruleNoIoInLoop } from '../rules/loops/no-io-in-loop.mjs';
 import { rule as ruleNoLazyRelationInLoop } from '../rules/effects/no-lazy-relation-in-loop.mjs';
+import { rule as ruleNoLoadedRowsSavedBack } from '../rules/queries/rows/no-loaded-rows-saved-back.mjs';
 import { rule as ruleNoLocalTimeZone } from '../rules/time/no-local-time-zone.mjs';
 import { rule as ruleNoLookupPerElement } from '../rules/concurrency/reactive/no-lookup-per-element.mjs';
 import { rule as ruleNoMagicNumbers } from '../rules/wrapped/no-magic-numbers.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
-import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -149,6 +149,7 @@ export const partRules = {
   'no-interval-polling-in-tests': ruleNoIntervalPollingInTests,
   'no-io-in-loop': ruleNoIoInLoop,
   'no-lazy-relation-in-loop': ruleNoLazyRelationInLoop,
+  'no-loaded-rows-saved-back': ruleNoLoadedRowsSavedBack,
   'no-local-time-zone': ruleNoLocalTimeZone,
   'no-lookup-per-element': ruleNoLookupPerElement,
   'no-magic-numbers': ruleNoMagicNumbers,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
-  'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
 };

@@ -24,7 +24,7 @@ export function queryScope(context) {
   return { context, families: scope.families, orm: scope.families.size > 0 || prisma };
 }
 
-function callChain(node) {
+export function callChain(node) {
   return chainOf(unwrapped(node), (current) =>
     current.type === 'CallExpression' && current.callee.type === 'MemberExpression'
       ? unwrapped(current.callee.object)
@@ -69,7 +69,7 @@ function memberNameOf(step) {
   return step.type === 'MemberExpression' ? memberName(step) : undefined;
 }
 
-function receiverNames(receiver) {
+export function receiverNames(receiver) {
   const steps = chainOf(unwrapped(receiver), (current) => {
     if (current.type === 'CallExpression') {
       return unwrapped(current.callee);
@@ -81,7 +81,7 @@ function receiverNames(receiver) {
     .filter((name) => name !== undefined);
 }
 
-function isRepositoryLike(names) {
+export function isRepositoryLike(names) {
   const [last] = names;
   return (
     (last !== undefined && MODEL_NAME.test(last)) ||
