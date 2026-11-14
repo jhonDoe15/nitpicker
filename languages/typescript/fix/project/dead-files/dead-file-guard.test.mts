@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { guardDeletions } from './dead-file-guard.mjs';
+import { guardDeletions } from './dead-file-guard.mts';
 
 const projects = useFixtureProjects();
 
-function plannedDeletion(name) {
+function plannedDeletion(name: string) {
   return { name, edit: { type: 'delete', path: name }, deleted: true };
 }
 
@@ -41,7 +41,9 @@ describe('guardDeletions', () => {
   });
 
   it('passes other edits through untouched', () => {
-    const planned = [{ name: 'a.ts', edit: { type: 'write', path: 'a.ts', text: '' } }];
+    const planned = [
+      { name: 'a.ts', edit: { type: 'write', path: 'a.ts', text: '' }, deleted: false },
+    ];
     expect(guardDeletions('/nowhere', planned)).toEqual({ planned, notes: [] });
   });
 });
