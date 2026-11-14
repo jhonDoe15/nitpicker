@@ -7,7 +7,7 @@ import { lintMessage, lintRule } from './lint-rules.mjs';
 const LINT_FIXTURES = path.join(import.meta.dirname, '../../lint/fixtures');
 
 function gosecFixtureRules() {
-  const files = readdirSync(LINT_FIXTURES, { recursive: true }).filter((file) =>
+  const files = readdirSync(LINT_FIXTURES, { recursive: true, encoding: 'utf8' }).filter((file) =>
     file.endsWith('.go'),
   );
   return new Set(
@@ -212,7 +212,7 @@ describe('Go lint messages', () => {
   });
 
   it('words a copied constant with the shared message and the Go pinning form', () => {
-    const message = (names, kind, value) =>
+    const message = (names: readonly string[], kind: string, value: string): unknown =>
       lintMessage({
         tool: 'go-rules',
         rule: 'copied-constant-in-test',

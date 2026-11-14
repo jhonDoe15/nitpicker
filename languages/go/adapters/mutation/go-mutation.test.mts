@@ -3,13 +3,14 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGoAnalyzers, GO_MUTATION_ANALYZER_NAME } from '../go-analyzer.mjs';
-import { readMutationFindings } from './go-mutation.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { readMutationFindings } from '../typed/go-run-readers.mts';
 import { runMutant } from './mutation-run.mjs';
 import { onChangedLine } from './mutation-scope.mjs';
 
-const roots = [];
+const roots: string[] = [];
 
-function snapshot(results, weakened = []) {
+function snapshot(results: readonly object[], weakened: readonly object[] = []) {
   const root = mkdtempSync(path.join(tmpdir(), 'go-mutation-'));
   roots.push(root);
   mkdirSync(path.join(root, 'shop'));
@@ -21,7 +22,7 @@ function snapshot(results, weakened = []) {
   return { projectRoot: root, reportRoot: root };
 }
 
-function mutant(overrides) {
+function mutant(overrides: object) {
   return {
     file: 'shop/fee.go',
     line: 4,
@@ -63,7 +64,7 @@ describe('Go mutation findings', () => {
           identity,
           symbol,
           location,
-          anchored: anchor?.requireUnchangedLine,
+          anchored: fieldOf(anchor, 'requireUnchangedLine'),
         })),
     ).toEqual([
       {
@@ -91,7 +92,7 @@ describe('Go mutation findings', () => {
     expect(
       findings
         .filter(({ rule }) => rule === 'mutation-summary')
-        .map(({ identity, metric }) => `${identity} ${String(metric.value)}`),
+        .map(({ identity, metric }) => `${identity} ${String(fieldOf(metric, 'value'))}`),
     ).toEqual([
       'status:Survived 2',
       'status:Killed 1',
@@ -144,8 +145,8 @@ describe('Go mutation findings', () => {
   it('mutates every line without a base and only the changed lines with one', () => {
     const scope = { all: false, changed: new Map([['shop/fee.go', [[4, 5]]]]) };
     expect(
-      [mutant({ line: 4 }), mutant({ line: 6 }), mutant({ file: 'shop/rate.go' })].map((entry) =>
-        onChangedLine(scope, entry),
+      [mutant({ line: 4 }), mutant({ line: 6 }), mutant({ file: 'shop/rate.go' })].map(
+        (entry): unknown => onChangedLine(scope, entry),
       ),
     ).toEqual([true, false, false]);
     expect(onChangedLine({ all: true }, mutant({ line: 6 }))).toBe(true);
@@ -154,19 +155,17 @@ describe('Go mutation findings', () => {
 
   it('runs mutation as an analyzer of its own after the go analyzer, so it can be disabled', () => {
     const [go, mutation] = createGoAnalyzers({});
-    expect([go.name, mutation.name, mutation.dependencies, mutation.reportedTools]).toEqual([
-      'go',
-      GO_MUTATION_ANALYZER_NAME,
-      ['go'],
-      [GO_MUTATION_ANALYZER_NAME],
-    ]);
-    expect(mutation.createInvocation({ projectRoot: '/p', toolRoot: '/t' }).args.slice(1)).toEqual([
-      'go-analyzer',
-      '--project-root',
-      '/p',
-      '--part',
-      GO_MUTATION_ANALYZER_NAME,
-    ]);
+    expect([
+      go?.name,
+      mutation?.name,
+      fieldOf(mutation, 'dependencies'),
+      mutation?.reportedTools,
+    ]).toEqual(['go', GO_MUTATION_ANALYZER_NAME, ['go'], [GO_MUTATION_ANALYZER_NAME]]);
+    expect(
+      mutation
+        ?.createInvocation({ projectRoot: '/p', toolRoot: '/t', baselineMovesFile: undefined })
+        .args.slice(1),
+    ).toEqual(['go-analyzer', '--project-root', '/p', '--part', GO_MUTATION_ANALYZER_NAME]);
   });
 
   it('reads a timeout from any test of the run, since parallel tests print the panic elsewhere', () => {
@@ -182,8 +181,8 @@ describe('Go mutation findings', () => {
       { Action: 'pass', Package: 'example.com/shop/shop', Test: 'TestSpin' },
       { Action: 'fail', Package: 'example.com/shop/shop' },
     ];
-    const calls = [];
-    const spawn = (program, args) => {
+    const calls: string[][] = [];
+    const spawn = (_program: string, args: readonly string[]) => {
       calls.push(args.filter((arg) => !arg.startsWith('-overlay=')));
       return { status: 1, stdout: events.map((event) => JSON.stringify(event)).join('\n') };
     };
@@ -194,6 +193,7 @@ describe('Go mutation findings', () => {
         directory: '0',
         packages: ['example.com/shop/shop'],
         seconds: new Map([['example.com/shop/shop', 12]]),
+        root: undefined,
       },
     );
     expect([status, calls]).toEqual([

@@ -1,11 +1,8 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { pathInside } from '../../../../../shared/filesystem.mjs';
-import { withoutGatedForeignKeys } from './key-gate.mjs';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures, writeFiles } from '../../../fix/test-support/git-fixtures.mts';
+import { withoutGatedForeignKeys } from '../../typed/go-report-readers.mts';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 const MODEL_FILE = 'models/pet.go';
 const KEY = { tool: 'go-rules', rule: 'unindexed-foreign-key', file: MODEL_FILE, line: 6 };
 const OTHER = { tool: 'go-rules', rule: 'io-in-loop', file: MODEL_FILE, line: 9 };
@@ -21,24 +18,13 @@ const COMMENTED = 'package main\n\n// migrate.WithForeignKeys(false) would drop 
 const ENT_OFF =
   'package main\n\nfunc run() { client.Schema.Create(ctx, migrate.WithForeignKeys(false)) }\n';
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'go-keys-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries({ [MODEL_FILE]: MODEL, ...files })) {
-    const file = pathInside(root, name);
-    mkdirSync(path.dirname(file), { recursive: true });
-    writeFileSync(file, text);
-  }
+function project(files: Readonly<Record<string, string>>) {
+  const root = temporaryRoot('go-keys-');
+  writeFiles(root, { [MODEL_FILE]: MODEL, ...files });
   return root;
 }
 
-function kept(files) {
+function kept(files: Readonly<Record<string, string>>) {
   return withoutGatedForeignKeys(project(files), [KEY, OTHER]).map(({ rule }) => rule);
 }
 

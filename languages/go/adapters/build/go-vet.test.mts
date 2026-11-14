@@ -2,7 +2,9 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { buildFlags, vet, VET_REPORT, vetFindings } from './go-vet.mjs';
+import { buildFlags, vet, VET_REPORT } from './go-vet.mjs';
+import { vetFindings } from '../typed/go-report-readers.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-vet-'));
 mkdirSync(path.join(root, 'shop'));
@@ -15,7 +17,7 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const diagnostic = (line) => `{
+const diagnostic = (line: number) => `{
 \t"example.com/shop": {
 \t\t"printf": [
 \t\t\t{
@@ -39,7 +41,12 @@ describe('vetFindings', () => {
     ].join('\n');
     const findings = vetFindings(root, text);
     expect(
-      findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
+      findings.map(({ tool, rule, path: file, location }) => [
+        tool,
+        rule,
+        file,
+        fieldOf(location, 'line'),
+      ]),
     ).toEqual([
       ['build', 'compile-error', 'broken/b.go', 4],
       ['vet', 'printf', 'shop/price.go', 6],
@@ -51,8 +58,8 @@ describe('vetFindings', () => {
       'occurrence:1',
       'occurrence:2',
     ]);
-    expect(identities[1][0]).toBe(identities[2][0]);
-    expect(findings[0].message).toBe(
+    expect(identities[1]?.[0]).toBe(identities[2]?.[0]);
+    expect(findings[0]?.message).toBe(
       'undefined: missing. The code does not compile; fix it before anything else is checked.',
     );
   });

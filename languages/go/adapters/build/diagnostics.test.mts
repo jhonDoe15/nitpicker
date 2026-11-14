@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { diagnosticFindings } from './diagnostics.mjs';
+import { diagnosticFindings } from '../typed/go-report-readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-diagnostics-'));
 writeFileSync(
@@ -14,7 +14,7 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-const diagnostic = (line) => ({
+const diagnostic = (line: number) => ({
   tool: 'go-rules',
   rule: 'todo-without-issue',
   file: 'notes.go',

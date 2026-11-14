@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { tidyFindings } from './go-mod-tidy.mjs';
+import { tidyFindings } from '../typed/go-report-readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-tidy-'));
 writeFileSync(

@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { lintFindings } from './go-lint.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { lintFindings } from '../typed/go-run-readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-lint-'));
 const projectRoot = path.join(root, 'project');
@@ -12,7 +13,7 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function findingsFor(entries) {
+function findingsFor(entries: readonly object[]) {
   mkdirSync(path.join(projectRoot, 'util'), { recursive: true });
   mkdirSync(reportRoot, { recursive: true });
   writeFileSync(path.join(projectRoot, 'util', 'clamp.go'), 'package util\n\nfunc Clamp() {}\n');
@@ -23,11 +24,11 @@ function findingsFor(entries) {
   return lintFindings({ projectRoot, reportRoot }).map(({ rule, path: file, location }) => ({
     rule,
     file,
-    line: location.line,
+    line: fieldOf(location, 'line'),
   }));
 }
 
-function entry(tool, rule, line) {
+function entry(tool: string, rule: string, line: number) {
   return {
     tool,
     rule,

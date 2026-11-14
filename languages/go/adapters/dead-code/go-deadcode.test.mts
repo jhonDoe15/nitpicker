@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { unreachableFindings } from './go-deadcode.mjs';
+import { unreachableFindings } from '../typed/go-report-readers.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-deadcode-'));
 const FILES = {
@@ -34,7 +35,7 @@ const REPORT = {
   ],
 };
 
-function dead(file, line, name) {
+function dead(file: string, line: number, name: string) {
   return { Name: name, Position: { File: file, Line: line, Col: 6 } };
 }
 
@@ -80,7 +81,7 @@ describe('deadcode findings', () => {
       findings.map(({ rule, path: file, location, message }) => [
         rule,
         file,
-        location.line,
+        fieldOf(location, 'line'),
         message,
       ]),
     ).toEqual([

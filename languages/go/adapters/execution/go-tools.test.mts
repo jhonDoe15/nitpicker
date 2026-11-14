@@ -22,7 +22,7 @@ describe('the toolchain the lint program builds with', () => {
 });
 
 describe('the cache key of a Go program', () => {
-  const roots = [];
+  const roots: string[] = [];
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
@@ -33,12 +33,13 @@ describe('the cache key of a Go program', () => {
   function program() {
     const root = mkdtempSync(path.join(tmpdir(), 'go-source-'));
     roots.push(root);
-    for (const [name, text] of [
+    const files: [string, string][] = [
       ['main.go', 'package main\n'],
       ['catalog/catalog.go', 'package catalog\n'],
       ['fixtures/a/a.go', 'package a\n'],
       ['main_test.go', 'package main\n'],
-    ]) {
+    ];
+    for (const [name, text] of files) {
       mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
       writeFileSync(path.join(root, name), text);
     }

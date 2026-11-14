@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { describePolicyChanges } from '../../../../core/policy-changes/describe-policy-changes.mjs';
 import { createPolicyScope, rootSets } from '../../../../core/policy-changes/policy-scope.mjs';
 
-function changes(baseConfig, headConfig) {
+function changes(baseConfig: object, headConfig: object): unknown {
   return describePolicyChanges(
     baseConfig,
     headConfig,
@@ -12,6 +12,9 @@ function changes(baseConfig, headConfig) {
       baseRoots: rootSets(baseConfig, '.'),
       headRoots: rootSets(headConfig, '.'),
       headConfig,
+      moves: undefined,
+      tsconfigs: undefined,
+      buildSources: undefined,
     }),
   );
 }
