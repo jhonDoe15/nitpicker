@@ -585,6 +585,14 @@ the spec for Mocha.
   `before(() => sinon.stub(...))` with `after(() => sinon.restore())` idiom). `sinon.restore()`
   restores a clock made with `sinon.useFakeTimers()` as well, so only a clock made with
   `@sinonjs/fake-timers` directly needs its own `clock.uninstall()` in `afterEach`.
+- A test that creates a spy once (in `beforeAll` or a `describe` body) and asserts on it in later
+  tests passes in the project and fails under the pin. When the coverage run has failing tests on
+  Vitest or Jest, nitpicker reruns only those test files once without the pin (the project's own
+  `restoreMocks` setting applies). If they then pass, the `tests-failed` message says the tests fail
+  only because of the `restoreMocks` pin and gives the fix: create the spy in `beforeEach` or
+  inside the test. Coverage, CRAP and mutation are still skipped for that run: the pin is the one way
+  tests run, so a pass without it is not a result nitpicker can measure. Tests that also fail
+  without the pin keep the plain failure message.
 - Vitest versions: nitpicker works with Vitest 3.2 or newer (3, 4 and 5). Vitest 3 needs
   `coverage.experimentalAstAwareRemapping: true`, which `vitest.quality.config.ts` sets, so that
   coverage reports branches in the Istanbul shapes the changed-branch check reads; without it

@@ -75,9 +75,14 @@ export function assertProjectPeers(run: PeerRun): void {
   const { projectRoot, analyzers, configuredRunner, packageRoot = PACKAGE_ROOT } = run;
   const names = neededPeers(projectRoot, analyzers, configuredRunner);
   const needs = nodePeerNeeds(projectRoot, names, { loadedFrom: { [TYPESCRIPT]: packageRoot } });
-  if (needs.add.length === 0 && needs.uninstalled.length === 0) {
+  if (needs.add.length === 0 && needs.uninstalled.length === 0 && needs.blockers.length === 0) {
     return;
   }
   const manager = describePackageManager(projectRoot);
-  throw new Error(`${problems(projectRoot, needs).join('; ')}. Run ${remedy(needs, manager)}.`);
+  const blockers = needs.blockers.map((blocker) => ` ${blocker}`).join('');
+  const install =
+    needs.add.length === 0 && needs.uninstalled.length === 0
+      ? ''
+      : ` Run ${remedy(needs, manager)}.`;
+  throw new Error(`${problems(projectRoot, needs).join('; ')}.${install}${blockers}`);
 }

@@ -49,6 +49,7 @@ ruleTester.run('no-unused-dom-environment under Jest', rule, {
     {
       filename,
       code: lines(docblock('jsdom', 'jest'), logic),
+      output: lines(docblock('node', 'jest'), logic),
       options: [jestDom],
       errors: report('unusedDirectiveOverDomProject', {
         environment: 'jsdom',

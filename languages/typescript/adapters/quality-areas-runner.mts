@@ -4,12 +4,19 @@ import type {
   AreaReport,
   AreaResult,
   QualityAreaOptions,
+  TextOutput,
 } from './quality-areas/typed/area-types.mts';
 import { parseArguments } from './quality-areas/arguments.mts';
 import { isInvokedModule, writeAdapterReport } from './typed/static-checks.mts';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mts';
 import { hasProjectTests } from './test-runners/test-run.mts';
 import type { Finding } from './static-checks/shared.mts';
+
+const STDERR_OUTPUT: TextOutput = {
+  write(text: string): void {
+    process.stderr.write(text);
+  },
+};
 
 function areaResult(options: QualityAreaOptions): AreaResult | Promise<AreaResult> {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
@@ -38,7 +45,7 @@ function areaResult(options: QualityAreaOptions): AreaResult | Promise<AreaResul
       return [];
     }
   }
-  return runner(options);
+  return runner(options, STDERR_OUTPUT);
 }
 
 export async function runQualityAreaReport(options: QualityAreaOptions): Promise<AreaReport> {

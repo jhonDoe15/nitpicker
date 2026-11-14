@@ -2,7 +2,7 @@ import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-r
 import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
 
 const ruleTester = typescriptRuleTester();
-const filename = '/repo/tests/integration/slow.test.ts';
+const filename = '/repo/tests/slow/slow.test.ts';
 
 ruleTester.run('no-raised-test-timeout across runners', noRaisedTestTimeout, {
   valid: [
@@ -39,11 +39,32 @@ ruleTester.run('no-raised-test-timeout across runners', noRaisedTestTimeout, {
       code: "describe('suite', () => {}).timeout(compute());",
       errors: [{ messageId: 'unknownTimeout' }],
     },
-    { code: 'before(async () => setup(), 60_000);', errors: [{ messageId: 'raisedTimeout' }] },
-    { code: 'after(async () => teardown(), 60_000);', errors: [{ messageId: 'raisedTimeout' }] },
+    {
+      code: 'before(async () => setup(), 60_000);',
+      errors: [
+        {
+          messageId: 'raisedTimeout',
+          suggestions: [{ messageId: 'dropTimeout', output: 'before(async () => setup());' }],
+        },
+      ],
+    },
+    {
+      code: 'after(async () => teardown(), 60_000);',
+      errors: [
+        {
+          messageId: 'raisedTimeout',
+          suggestions: [{ messageId: 'dropTimeout', output: 'after(async () => teardown());' }],
+        },
+      ],
+    },
     {
       code: 'before(() => setup(), { timeout: 60_000 });',
-      errors: [{ messageId: 'raisedTimeout' }],
+      errors: [
+        {
+          messageId: 'raisedTimeout',
+          suggestions: [{ messageId: 'dropTimeout', output: 'before(() => setup(), {});' }],
+        },
+      ],
     },
     {
       code: 'const options = { timeout: 60_000 }; after(() => teardown(), options);',
@@ -51,7 +72,12 @@ ruleTester.run('no-raised-test-timeout across runners', noRaisedTestTimeout, {
     },
     {
       code: "it('runs', async () => {}, { timeout: 60_000 });",
-      errors: [{ messageId: 'raisedTimeout' }],
+      errors: [
+        {
+          messageId: 'raisedTimeout',
+          suggestions: [{ messageId: 'dropTimeout', output: "it('runs', async () => {}, {});" }],
+        },
+      ],
     },
   ].map((entry) => ({ filename, ...entry })),
 });
@@ -64,7 +90,7 @@ const namedProjectSettings = {
           languages: {
             java: { testDeclarationCeilingMs: 120_000, hookDeclarationCeilingMs: 180_000 },
           },
-          projects: { jvm: { language: 'java', include: ['**/tests/integration/**'] } },
+          projects: { jvm: { language: 'java', include: ['**/tests/slow/**'] } },
         },
       },
     },
@@ -85,7 +111,13 @@ ruleTester.run('named timeout tiers across runners', noRaisedTestTimeout, {
     },
     {
       code: 'before(() => setup(), { timeout: 180_001 });',
-      errors: [{ messageId: 'raisedTimeout', data: { ceiling: '180000', kind: 'hook' } }],
+      errors: [
+        {
+          messageId: 'raisedTimeout',
+          data: { ceiling: '180000', kind: 'hook' },
+          suggestions: [{ messageId: 'dropTimeout', output: 'before(() => setup(), {});' }],
+        },
+      ],
     },
   ].map((entry) => ({ filename, settings: namedProjectSettings, ...entry })),
 });

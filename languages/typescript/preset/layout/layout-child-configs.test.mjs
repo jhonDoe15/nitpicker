@@ -38,6 +38,8 @@ describe('package-owned child configs', () => {
         '**/*.mts',
         '**/*.ts',
         '**/*.tsx',
+        '**/*.{js,mjs,cjs,jsx}',
+        '**/*.{test,spec}-d.?(c|m)[jt]s?(x)',
         'lib/**/*.config.*',
         'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
         'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',

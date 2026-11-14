@@ -100,7 +100,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit, tests${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
       );
       const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
       expect(validateConfig(layered)).toEqual(layered);
@@ -138,7 +138,7 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, tests, jscpd',
       ),
     );
   });
@@ -166,20 +166,20 @@ describe('tool precedence', () => {
     );
   });
 
-  it.each(['java', 'kotlin'])('rejects the test runner tool under the %s preset', (preset) => {
+  it.each(['java', 'kotlin'])('rejects a test runner under the %s preset', (preset) => {
     expect(() => validateConfig({ preset, tools: { tests: { runner: 'jest' } } })).toThrow(
       new Error(
-        `nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
+        'nitpicker.config.json: "tools.tests" has unknown key "runner". Allowed keys: precedence',
       ),
     );
   });
 
-  it('rejects the test runner tool under the Python preset', () => {
+  it('rejects a test runner under the Python preset', () => {
     expect(() =>
       validateConfig({ preset: 'python', tools: { tests: { runner: 'jest' } } }),
     ).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "tests". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
+        'nitpicker.config.json: "tools.tests" has unknown key "runner". Allowed keys: precedence',
       ),
     );
   });

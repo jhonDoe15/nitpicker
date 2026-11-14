@@ -26,6 +26,9 @@ import {
   projectTypeScript,
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
+import { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+
+export { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -34,6 +37,41 @@ type TypeScriptDiagnostics = {
   readonly configRelativePath: string;
   readonly ts: typeof TypeScript;
 };
+
+type DiagnosticFilter = {
+  readonly layout: ReturnType<typeof readLayout>;
+  readonly contextOnly: ReadonlySet<string>;
+  readonly projectRoot: string;
+  readonly runner: unknown;
+  readonly untyped: boolean;
+};
+
+function diagnosticFilter(
+  targetPath: string,
+  projectRoot: string,
+  ts: typeof TypeScript,
+): DiagnosticFilter {
+  const layout = readLayout();
+  const contextOnly = contextOnlyFiles(targetPath, projectRoot, { layout, ts });
+  const runner: unknown = policyTestRunner(readHeadPolicy(), projectRoot);
+  const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
+  return { layout, contextOnly, projectRoot, runner, untyped };
+}
+
+function isReportedDiagnostic(
+  diagnostic: TypeScript.Diagnostic,
+  filter: DiagnosticFilter,
+): boolean {
+  if (diagnostic.file === undefined) {
+    return true;
+  }
+  const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
+  const untypedGlobal =
+    filter.untyped &&
+    filter.layout.isTestFile(file) &&
+    isUntypedRunnerGlobal(diagnostic, filter.runner);
+  return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file) || untypedGlobal);
+}
 
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
@@ -52,12 +90,12 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectRoot: options.projectRoot,
       projectNative: native,
     });
+    const filter = diagnosticFilter(targetPath, options.projectRoot, ts);
     return normalizeTypeScriptDiagnostics({
       ts,
-      diagnostics: gatedDiagnostics(
-        diagnostics.map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options)),
-        options.projectRoot,
-      ),
+      diagnostics: diagnostics
+        .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
+        .filter((diagnostic) => isReportedDiagnostic(diagnostic, filter)),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
       configRelativePath,
@@ -69,24 +107,6 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       removeSnapshotDependencies(preparedDependencies);
     }
   }
-}
-
-function gatedDiagnostics(
-  diagnostics: readonly TypeScript.Diagnostic[],
-  projectRoot: string,
-): TypeScript.Diagnostic[] {
-  const layout = readLayout();
-  const runner: unknown = policyTestRunner(readHeadPolicy(), projectRoot);
-  const untyped = missingRunnerTypes(runner, projectRoot) !== undefined;
-  return diagnostics.filter((diagnostic) => {
-    if (diagnostic.file === undefined) {
-      return true;
-    }
-    const file = projectFile(projectRoot, diagnostic.file.fileName);
-    const untypedGlobal =
-      untyped && layout.isTestFile(file) && isUntypedRunnerGlobal(diagnostic, runner);
-    return !(layout.isExcluded(file) || untypedGlobal);
-  });
 }
 
 export function normalizeTypeScriptDiagnostics({
@@ -141,7 +161,7 @@ function installTypeScriptConfig(options: StaticCheckOptions): LinkedPolicyFile 
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
-    layoutTransformFor(options.configRelativePath, readLayout()),
+    layoutTransformFor(options.configRelativePath, readLayout(), { projectRootFiles: true }),
   );
 }
 
