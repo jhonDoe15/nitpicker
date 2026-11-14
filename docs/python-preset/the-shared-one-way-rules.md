@@ -834,7 +834,10 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   or an executor: running one query per item concurrently is still one query per item, so fetch them
   in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in those
   concurrent forms is left to `unbounded-fan-out`, which checks the bound, so one remote call has one
-  owner. In a sequential loop, or a task awaited at once, it is reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
+  owner. A query function handed to a task group or a thread once per item counts the same way:
+  `group.start_soon(find, item)` of AnyIO and Trio, `asyncio.to_thread(find, item)` and
+  `loop.run_in_executor(None, find, item)`, when the item reaches the call (a fixed pool of workers that
+  all get the same queue is not one call per item). In a sequential loop, or a task awaited at once, it is reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
   endpoint, bounded concurrency (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or a
   `ThreadPoolExecutor(max_workers=n)`). A `message` call (Kafka `send` and `produce`, pika
   `basic_publish`, aio-pika, SQS `send_message`, SNS `publish`, Pub/Sub, NATS, Celery `delay`,

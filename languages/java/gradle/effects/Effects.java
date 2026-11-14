@@ -21,6 +21,7 @@ import nitpicker.effects.graphql.GraphqlFields;
 import nitpicker.effects.graphql.Schema;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
+import nitpicker.effects.reactive.ReactiveLookups;
 import nitpicker.effects.rules.AccumulatorCopy;
 import nitpicker.effects.rules.DualWrite;
 import nitpicker.effects.rules.HeldScope;
@@ -94,6 +95,7 @@ public final class Effects {
     new AccumulatorCopy(program, report).run();
     new GraphqlFields(program, summaries, listTypes, report).run();
     new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
+    new ReactiveLookups(program, summaries, report).run();
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
     new RetryWrite(program, scopes, report).run();

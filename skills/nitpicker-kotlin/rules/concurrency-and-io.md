@@ -45,6 +45,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   in the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
 - GraphQL fields: a `@SchemaMapping` or `@DgsData` function of a non-root type runs once per parent, so it never calls
   a repository or client itself; use `@BatchMapping` or a `DataLoader` (`effects/GraphqlFieldPerParent`).
+- Reactive pipelines: never look up each element of a list inside `Flux.fromIterable(items).flatMap(...)`; fetch all
+  elements with one call and join in memory (`effects/ReactiveLookupPerElement`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

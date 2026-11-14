@@ -104,6 +104,11 @@ export const policyFailureMessageCases = [
     'DataLoader',
   ),
   adapterCase(
+    'reactive lookup per element names the batched query',
+    "import { from, concatMap } from 'rxjs';\nexport const owners = (ids: string[]) => from(ids).pipe(concatMap((id) => from(ownerRepository.findOne(id))));",
+    'one batched query',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

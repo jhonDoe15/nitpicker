@@ -119,8 +119,8 @@ Database calls per element are left to the per-item I/O rules (`io-in-loop` in t
 `go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
-In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather` and task
-groups (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
+In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather`, task
+groups and callables handed to `start_soon`, `to_thread` or `run_in_executor` (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
 `unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
 
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
@@ -256,6 +256,11 @@ reports a database or remote call made by a NestJS `@ResolveField`, type-graphql
 field function (Apollo Server, Mercurius, graphql-yoga) whose parent type is returned as a list somewhere in the
 schema: N parents cost N queries. The allowed forms are a DataLoader, a request-scoped cache and data already on
 the parent; a parent type that is only returned alone is not reported.
+
+Reactive lookups: `nitpicker/no-lookup-per-element` (production source, in `eslint-lint`, type-aware) reports an
+RxJS `mergeMap`, `concatMap`, `switchMap`, `exhaustMap` or `flatMap` over `from(items)` whose function makes a
+database or remote call per element, directly or through a helper: fetch the rows in one batched query and join them in
+memory. A grouping operator before the lookup (`bufferCount`, `toArray`) and a fixed collection are not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
