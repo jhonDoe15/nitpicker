@@ -1,14 +1,14 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-runtime-exclusive-props-check.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/ui/panel.tsx';
 
-function component(parameter, body) {
+function component(parameter: string, body: string) {
   return `function Panel(${parameter}) { ${body} return <div />; }`;
 }
 
-function exclusive(...props) {
+function exclusive(...props: string[]) {
   return {
     messageId: 'exclusiveProps',
     data: { props: props.map((prop) => `\`${prop}\``).join(', ') },

@@ -1,18 +1,8 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
+import { configuredRuleTester } from '../../../test-support/rule-tester.mts';
 import tseslint from 'typescript-eslint';
 import { rule as reactNoHardcodedColors } from './react-no-hardcoded-colors.mjs';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
+const tester = configuredRuleTester({
   languageOptions: {
     ecmaVersion: 'latest',
     sourceType: 'module',
@@ -22,11 +12,13 @@ const tester = new RuleTester({
 });
 const component = '/repo/src/main/ui/panel.tsx';
 
-function reported(color) {
+function reported(color: string) {
   return [{ messageId: 'hardcodedColor', data: { color } }];
 }
 
-function invalid(cases, filename = component) {
+type ColorCase = [string, string | string[]];
+
+function invalid(cases: ColorCase[], filename = component) {
   return cases.map(([code, color]) => ({
     filename,
     code,
@@ -104,7 +96,7 @@ const valid = [
   "const style = { color: 'red' } as Layout;",
 ].map((code) => ({ filename: component, code }));
 
-const hexAndFunctions = [
+const hexAndFunctions: ColorCase[] = [
   ["const style = { color: '#fff' };", '#fff'],
   ["const style = { color: '#FFF' };", '#FFF'],
   ["const style = { color: '#ffff' };", '#ffff'],
@@ -131,7 +123,7 @@ const hexAndFunctions = [
   ["const color = 'color(display-p3 1 0 0)';", 'color(display-p3 1 0 0)'],
 ];
 
-const styleContexts = [
+const styleContexts: ColorCase[] = [
   ["const x = <div style={{ border: '1px solid #ccc' }} />;", '#ccc'],
   ["const x = <div style={{ boxShadow: '0 0 4px rgba(0, 0, 0, 0.2)' }} />;", 'rgba(0, 0, 0, 0.2)'],
   ["const x = <div style={{ outline: '#add' }} />;", '#add'],
@@ -161,7 +153,7 @@ const styleContexts = [
   ["const style = { color: 'red' } as React.CSSProperties;", 'red'],
 ];
 
-const attributesAndDeclarations = [
+const attributesAndDeclarations: ColorCase[] = [
   ["const icon = <svg fill='red' />;", 'red'],
   ["const icon = <Text color='gray' />;", 'gray'],
   ["const icon = <Text color={active ? 'red' : 'blue'} />;", ['red', 'blue']],
@@ -184,7 +176,7 @@ const attributesAndDeclarations = [
   ["const classes = <div className='bg-[#336699]' />;", '#336699'],
 ];
 
-const templates = [
+const templates: ColorCase[] = [
   ['const note = other`color: #fff;`;', '#fff'],
   ['const Title = styled.h1`color: #fff;`;', '#fff'],
   ['const Title = styled.h1`color: #add;`;', '#add'],

@@ -5,6 +5,7 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
 import { rule } from './react-no-effect-data-fetching.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-async-effects-'));
 const ruleName = 'nitpicker/react-no-effect-data-fetching';
@@ -16,7 +17,7 @@ const eslint = new ESLint({
     {
       files: ['**/*.tsx'],
       languageOptions: { parser: tseslint.parser },
-      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': rule } } },
+      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': ruleModule(rule) } } },
       rules: { [ruleName]: 'error' },
     },
   ],
@@ -35,7 +36,7 @@ const typed = new ESLint({
           tsconfigRootDir: root,
         },
       },
-      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': rule } } },
+      plugins: { nitpicker: { rules: { 'react-no-effect-data-fetching': ruleModule(rule) } } },
       rules: { [ruleName]: 'error' },
     },
   ],
@@ -45,13 +46,13 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-async function lint(body) {
+async function lint(body: string) {
   const code = `import { useEffect, useState } from 'react';\nexport function Panel({ id }: { id: string }) {\n  const [name, setName] = useState('');\n  useEffect(() => {\n    ${body}\n  }, [id]);\n  return <div>{name}</div>;\n}`;
   const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
-  return result.messages;
+  return result?.messages ?? [];
 }
 
-async function messageIds(body) {
+async function messageIds(body: string) {
   return (await lint(body)).map((message) => message.messageId);
 }
 
@@ -106,13 +107,13 @@ describe('async work in an effect', () => {
     const code = `import { useState } from 'react';\nexport function Panel({ id }: { id: string }) { const [name, setName] = useState(''); const save = async () => { setName(await load(id)); }; return <button onClick={save}>{name}</button>; }`;
     const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
 
-    expect(result.messages).toEqual([]);
+    expect(result?.messages).toEqual([]);
   });
 
   it('names the handler and the redirect form next to the query', async () => {
     const [message] = await lint('void load(id).then(setName);');
 
-    expect(message.message).toBe(
+    expect(message?.message).toBe(
       'Do not load state asynchronously in `useEffect` (a state setter after `await` or in a `.then` callback): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. An exception fits only when this effect only synchronizes with an external system.',
     );
   });
@@ -145,6 +146,6 @@ describe('promise-returning calls with type information', () => {
     const code = `import { useEffect } from 'react';\ndeclare function changeLanguage(locale: string): Promise<string>;\ndeclare function animate(target: unknown, to: object): Promise<void> & { stop(): void };\nexport function Panel({ id }: { id: string }) { useEffect(() => { void changeLanguage(id); void animate(id, { opacity: 1 }); }, [id]); return <div />; }`;
     const [result] = await typed.lintText(code, { filePath: path.join(root, 'src/locale.tsx') });
 
-    expect(result.messages).toEqual([]);
+    expect(result?.messages).toEqual([]);
   });
 });

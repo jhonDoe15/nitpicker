@@ -1,14 +1,14 @@
 import { rule as reactControlledInput } from './react-controlled-input.mjs';
 import { rule as reactFieldHasLabel } from './react-field-has-label.mjs';
-import { createReactRuleTester, filename } from '../test-support/tester.mjs';
+import { createReactRuleTester, filename } from '../test-support/tester.mts';
 
 const tester = createReactRuleTester();
 
-function valid(code) {
+function valid(code: string) {
   return { filename, code };
 }
 
-function invalid(code, ...messageIds) {
+function invalid(code: string, ...messageIds: string[]) {
   return { filename, code, errors: messageIds.map((messageId) => ({ messageId })) };
 }
 
