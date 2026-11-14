@@ -79,7 +79,9 @@ members is not reported.
   branches of a conditional expression, and facts about names a lambda or nested function captures
   when they cannot change, and a name set to a literal until it is written again; an assignment to a name, or a call when the name
   is a module name, forgets what was known, and arithmetic is an opaque value. `len(x)` is a whole
-  number that is never negative and `abs(x)` is not below 0.
+  number that is never negative and `abs(x)` is not below 0. A call of a module function that only
+  returns a side-effect-free condition is read as that condition (at most 2 levels, no recursion),
+  and the message names the helper; methods stay opaque.
 - `result-slip` (tool `facts`) reads the same trees: `text.find(x) > 0` (also `rfind`, and `>= 1`,
   `<= 0`, `< 1`) misses a match at index 0; test `>= 0`, or use `in`.
 - `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a

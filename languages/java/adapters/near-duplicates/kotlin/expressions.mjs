@@ -9,6 +9,7 @@ import {
   textOf,
   typeNode,
 } from '../tree/nodes.mjs';
+import { withSnippet } from '../../../../../shared/near-duplicates/unit-parts.mjs';
 import { bodyOf } from './statements.mjs';
 
 const RIGHT_FIELD = 'right';
@@ -63,8 +64,30 @@ function calleeOf(callee, context) {
   return context.get(callee);
 }
 
+const PREFIX_OPERATORS = new Set(['!', '-', '+']);
+const CALLEES = new Set(['identifier', 'navigation_expression']);
+
+function prefixedOperand(callee) {
+  if (callee.type !== 'unary_expression' || !PREFIX_OPERATORS.has(operatorText(callee))) {
+    return undefined;
+  }
+  const operand = field(callee, 'argument') ?? codeChildren(callee)[0];
+  return CALLEES.has(operand?.type) ? operand : undefined;
+}
+
+function prefixedCall(source, operand, { parts, context }) {
+  const call = at('call', source, [calleeOf(operand, context), ...argumentsOf(parts, context)]);
+  const text = source.text.slice(operand.startIndex - source.startIndex);
+  return withSnippet(call, text);
+}
+
 function callOf(source, context) {
   const [callee, ...parts] = codeChildren(source);
+  const operand = prefixedOperand(callee);
+  if (operand !== undefined && !parts.some((part) => part.type === 'type_arguments')) {
+    const call = prefixedCall(source, operand, { parts, context });
+    return at({ kind: 'unary', value: operatorText(callee) }, source, [call]);
+  }
   const typeArguments = parts.find((part) => part.type === 'type_arguments');
   const call = at('call', source, [calleeOf(callee, context), ...argumentsOf(parts, context)]);
   return typeArguments === undefined

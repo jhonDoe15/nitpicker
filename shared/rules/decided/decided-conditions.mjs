@@ -1,4 +1,5 @@
 import { decidedConditions } from './decided.mjs';
+import { predicateTable, withPredicates } from './helpers/predicates.mjs';
 import { getterTable, gettersOfFile } from './models/getters.mjs';
 import { modelledTree } from './models/annotate.mjs';
 import { declaredTypes } from './models/types.mjs';
@@ -14,7 +15,8 @@ const OUTCOMES = {
   operand: { consequence: '', fix: 'Remove the operand, or fix the condition that was meant.' },
 };
 
-function modelled(unit, getters) {
+function modelled(unit, shared) {
+  const getters = shared.getters;
   const scope = {
     types: declaredTypes(unit.tree),
     getters: gettersOfFile(getters, unit.file),
@@ -22,12 +24,12 @@ function modelled(unit, getters) {
     python: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
   };
-  return modelledTree(unit.tree, scope);
+  return modelledTree(withPredicates(unit.tree, { table: shared.helpers, unit }), scope);
 }
 
-function unitFindings(unit, analyzerName, getters) {
+function unitFindings(unit, analyzerName, shared) {
   const seen = new Map();
-  const tree = modelled(unit, getters);
+  const tree = modelled(unit, shared);
   return decidedConditions(tree, {
     looseBooleans: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
@@ -48,9 +50,9 @@ function unitFindings(unit, analyzerName, getters) {
 }
 
 export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
-  const getters = getterTable(units);
+  const shared = { getters: getterTable(units), helpers: predicateTable(units) };
   return units
     .filter((unit) => unit.tree?.kind === 'function')
     .filter((unit) => !isExcepted(RULE_IDS.decidedCondition, unit.file))
-    .flatMap((unit) => unitFindings(unit, analyzerName, getters));
+    .flatMap((unit) => unitFindings(unit, analyzerName, shared));
 }

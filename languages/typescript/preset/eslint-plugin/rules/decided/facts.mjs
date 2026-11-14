@@ -11,7 +11,9 @@ import { foldTree } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 import { toTerm } from '../analysis/logic/estree-terms.mjs';
+import { withPredicateCalls } from './helpers/predicate-calls.mjs';
 import { withModels } from './models/value-models.mjs';
+import { unsteadyReads, withUnsteadyReads } from './models/property-kinds.mjs';
 import { inside, isFunction, syntaxChildren } from './syntax.mjs';
 
 const EFFECTS = new Set([
@@ -34,7 +36,7 @@ function isNumberTyped(services, node) {
 }
 
 function untypedComparisons(node, services) {
-  const typed = services?.program !== null && services?.program !== undefined;
+  const typed = hasTypes(services);
   return new Set(
     [...inside(node)]
       .filter((child) => child.type === 'BinaryExpression' && RELATIONS.has(child.operator))
@@ -46,11 +48,11 @@ function untypedComparisons(node, services) {
   );
 }
 
-/**
- * The condition as a logic term. An order comparison whose operands are not both numbers becomes a
- * named atom, because the solver orders numbers and strings would break transitivity.
- */
-export function conditionTerm(node, sourceCode) {
+function hasTypes(services) {
+  return services?.program !== null && services?.program !== undefined;
+}
+
+function baseTerm(node, sourceCode) {
   const untyped = untypedComparisons(node, sourceCode.parserServices);
   const built = foldTerm(toTerm(node, sourceCode), (current, children) => {
     const rebuilt = { ...current, children };
@@ -59,7 +61,18 @@ export function conditionTerm(node, sourceCode) {
     }
     return withRange(term('name', `#compare ${key(rebuilt)}`), current.range);
   });
-  return withModels(built, node, sourceCode.parserServices);
+  const services = sourceCode.parserServices;
+  const modelled = withModels(built, node, services);
+  return hasTypes(services) ? withUnsteadyReads(modelled, unsteadyReads(node, services)) : modelled;
+}
+
+/**
+ * The condition as a logic term. An order comparison whose operands are not both numbers becomes a
+ * named atom, because the solver orders numbers and strings would break transitivity.
+ */
+export function conditionTerm(node, sourceCode) {
+  const build = (part) => baseTerm(part, sourceCode);
+  return withPredicateCalls(baseTerm(node, sourceCode), node, { sourceCode, build });
 }
 
 function namesOf(root) {
@@ -78,7 +91,8 @@ function readsMembers(root) {
 
 /** What `conditionNode` tells when it held (`holds`) or failed, and `reason` to name it by. */
 export function fact(conditionNode, sourceCode, { holds, reason }) {
-  const raw = toTerm(conditionNode, sourceCode);
+  const build = (part) => toTerm(part, sourceCode);
+  const raw = withPredicateCalls(build(conditionNode), conditionNode, { sourceCode, build });
   const condition = conditionTerm(conditionNode, sourceCode);
   return {
     term: holds ? condition : not(condition),
@@ -123,6 +137,14 @@ function written(node) {
   }
 }
 
+function isUnsteadyRead(node, services) {
+  return (
+    node.type === 'MemberExpression' &&
+    hasTypes(services) &&
+    unsteadyReads(node, services).length > 0
+  );
+}
+
 function addEffect(effects, node, sourceCode) {
   const write = written(node);
   if (write !== undefined) {
@@ -134,7 +156,10 @@ function addEffect(effects, node, sourceCode) {
     );
   }
   const isCall = node.type === 'CallExpression' || node.type === 'TaggedTemplateExpression';
-  effects.call ||= EFFECTS.has(node.type) || (isCall && !isPureCall(node, sourceCode));
+  effects.call ||=
+    EFFECTS.has(node.type) ||
+    (isCall && !isPureCall(node, sourceCode)) ||
+    isUnsteadyRead(node, sourceCode.parserServices);
 }
 
 const NO_EFFECTS = Object.freeze({ writes: new Set(), memberWrite: false, call: false });

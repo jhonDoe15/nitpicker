@@ -151,13 +151,20 @@ const TERMS = {
   conditional: (_node, children) => term('conditional', undefined, children),
 };
 
+function pick(node, field) {
+  return node[field] === undefined ? {} : { [field]: node[field] };
+}
+
 function termOf(node, children, context) {
   const convert = Object.hasOwn(TERMS, node.kind) ? TERMS[node.kind] : undefined;
   if (convert === undefined || children.some((child) => child === undefined)) {
     return undefined;
   }
   const built = convert(node, children, context);
-  return node.model === undefined || built === undefined ? built : { ...built, model: node.model };
+  if (built === undefined) {
+    return built;
+  }
+  return { ...built, ...pick(node, 'model'), ...pick(node, 'helper') };
 }
 
 export function logicTerm(root, context) {
