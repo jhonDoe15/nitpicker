@@ -16,7 +16,10 @@ import { planPeers } from './peers/peer-plan.mts';
 import { skillSource } from './skill/skill-source.mts';
 import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mts';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mts';
+import { monorepoLayout } from './monorepo/monorepo-layout.mts';
+import { runMonorepoInit } from './monorepo/run-monorepo-init.mts';
 import type { TextOutput } from '../cli-context.mts';
+import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
 
 type InitCli = {
   readonly arguments_: readonly string[];
@@ -43,6 +46,16 @@ export function runInitCommand(cli: InitCli): number {
   assertSupportedNode(nodeVersion);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
   const repository = requireRepository(projectRoot);
+  checkTargets(projectRoot, options, {
+    repository,
+    workflowFile: workflowPath(projectRoot, repository),
+  });
+  const layout = monorepoLayout(projectRoot, repository);
+  if (layout !== undefined) {
+    const result = runMonorepoInit(layout, { root: projectRoot, repository, nodeVersion, options });
+    cli.stdout.write(result.text);
+    return result.exitCode;
+  }
   const project = detectProject(projectRoot);
   const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
@@ -67,7 +80,7 @@ function checkTargets(
   const agentTargets = options.agentsMd
     ? INSTRUCTION_FILES.map((name): Target => [projectRoot, name])
     : [];
-  const targets = [...ciTargets, ...agentTargets];
+  const targets = [[projectRoot, CONFIG_FILE_NAME] as const, ...ciTargets, ...agentTargets];
   for (const [root, relative] of targets) {
     assertNothingInTheWay(root, relative);
   }
@@ -80,7 +93,6 @@ function placeFiles(
 ): Omit<Placed, 'project' | 'peers' | 'skillSource'> {
   const context = { project, peers, version: packageVersion(), repository };
   const workflowFile = workflowPath(projectRoot, repository);
-  checkTargets(projectRoot, options, { repository, workflowFile });
   return {
     config: placeConfig(projectRoot, project.preset, project.settings),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
