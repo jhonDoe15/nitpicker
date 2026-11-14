@@ -89,6 +89,11 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
+  `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
+  into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
+  before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
+  `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
 - Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
   `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
   shared folder under such a name (`nitpicker/no-generic-name`).

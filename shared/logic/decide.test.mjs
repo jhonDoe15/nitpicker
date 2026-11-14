@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decide } from './decide.mjs';
+import { counterexample, decide } from './decide.mjs';
 import { term } from './terms.mjs';
 import { and, binary, call, number, member, name, not, or, text } from './test-support/build.mjs';
 
@@ -120,5 +120,38 @@ describe('deciding a condition under earlier guards', () => {
     const query = binary('<', a, number(100));
 
     await expect(decide(noPositiveCubeSum, query, { resourceLimit: 50_000 })).resolves.toBe('open');
+  });
+});
+
+describe('deciding over integers and explaining a refusal', () => {
+  const amount = name('amount');
+  const limit = name('limit');
+  const doubled = binary('*', limit, number(2));
+  const between = and(binary('>', amount, limit), binary('<=', amount, doubled));
+
+  it('proves a fact that holds only for whole numbers in integer mode', async () => {
+    const query = or(binary('<=', amount, number(1)), binary('>=', amount, number(2)));
+
+    await expect(decide([], query, { integers: true })).resolves.toBe('true');
+  });
+
+  it('keeps the same fact open over real numbers', async () => {
+    const query = or(binary('<=', amount, number(1)), binary('>=', amount, number(2)));
+
+    await expect(decide([], query)).resolves.toBe('open');
+  });
+
+  it('names the values of a counterexample to a refuted claim', async () => {
+    const query = or(not(between), binary('>', amount, doubled));
+
+    await expect(counterexample([], query, { integers: true })).resolves.toBe(
+      'name:"amount" = 0, name:"limit" = -1',
+    );
+  });
+
+  it('has no counterexample for a claim that holds', async () => {
+    const query = or(not(between), binary('>', amount, limit));
+
+    await expect(counterexample([], query, { integers: true })).resolves.toBeUndefined();
   });
 });

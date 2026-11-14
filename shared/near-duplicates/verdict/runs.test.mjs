@@ -123,4 +123,33 @@ describe('partly shared statement runs', () => {
       expect(finding?.verdict).toBe(verdict);
     },
   );
+
+  it('spans a run from its first line to its last when the canonical order moves a statement', () => {
+    const loop = `
+    const toRemove = new BitSet();
+    for (let i = 0; i < array.length; i++) {
+      const count = occurrences.get(array[i]);
+      if (count != null) {
+        if (count.decrementAndGet() === 0) {
+          occurrences.delete(array[i]);
+        }
+        toRemove.set(i);
+      }
+    }`;
+    const finding = proveSource(
+      functions(
+        `
+    const occurrences = new Map();
+    for (const v of request) { increment(occurrences, Boolean(v)); }${loop}
+    return removeAt(request, toRemove);`,
+        `
+    const occurrences = new Map(request.length);
+    for (const v of request) { increment(occurrences, v); }${loop}
+    return toArray(removeAt(request, toRemove), name);`,
+      ),
+    );
+
+    expect(finding.verdict).toBe('partial-run');
+    expect(finding.run.every(({ start, end }) => start <= end)).toBe(true);
+  });
 });
