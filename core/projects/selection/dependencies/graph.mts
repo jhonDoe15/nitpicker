@@ -3,13 +3,18 @@ import { isInside } from '../../discovery/repository-files.mjs';
 import { javascriptUnit, nxUnit } from './javascript.mjs';
 import { jvmUnit } from './jvm.mjs';
 import { pythonUnit } from './python.mjs';
+import { typescriptUnit } from './typescript.mjs';
 
 type DependencyUnit = {
   readonly names: readonly string[];
   readonly needs: readonly string[];
   readonly folders: readonly string[];
+  readonly labels?: ReadonlyMap<string, string>;
 };
-export type DependencyGraph = ReadonlyMap<string, ReadonlySet<string>>;
+export type DependencyGraph = ReadonlyMap<string, ReadonlySet<string>> & {
+  readonly labels?: ReadonlyMap<string, string>;
+};
+type Edges = ReadonlyMap<string, string | undefined>;
 type UnitReader = (directory: string) => DependencyUnit | undefined;
 type Lookup = {
   readonly byName: ReadonlyMap<string, string>;
@@ -17,7 +22,13 @@ type Lookup = {
   readonly folderOf: (projectPath: string) => string;
 };
 
-const READERS: readonly UnitReader[] = [javascriptUnit, nxUnit, pythonUnit, jvmUnit];
+const READERS: readonly UnitReader[] = [
+  javascriptUnit,
+  nxUnit,
+  typescriptUnit,
+  pythonUnit,
+  jvmUnit,
+];
 
 function unitOf(directory: string): DependencyUnit {
   const units = READERS.map((read) => read(directory)).filter((unit) => unit !== undefined);
@@ -25,7 +36,16 @@ function unitOf(directory: string): DependencyUnit {
     names: units.flatMap((unit) => unit.names),
     needs: units.flatMap((unit) => unit.needs),
     folders: units.flatMap((unit) => unit.folders),
+    labels: new Map(units.flatMap((unit) => [...(unit.labels ?? [])])),
   };
+}
+
+function edgeKey(from: string, to: string): string {
+  return `${from}\u0000${to}`;
+}
+
+export function edgeLabel(graph: DependencyGraph, from: string, to: string): string | undefined {
+  return graph.labels?.get(edgeKey(from, to));
 }
 
 function depthOf(projectPath: string): number {
@@ -49,19 +69,26 @@ function edgesOf(
   projectPath: string,
   unit: DependencyUnit,
   { byName, projectPaths, folderOf }: Lookup,
-): Set<string> {
+): Edges {
   const folders = projectPaths.map(folderOf);
-  const named = unit.needs.map((need) => byName.get(need));
+  const label = (key: string): string | undefined => unit.labels?.get(key);
+  const named = unit.needs.map((need) => [byName.get(need), label(need)] as const);
   const located = unit.folders
-    .map((folder) => path.posix.normalize(path.posix.join(folderOf(projectPath), folder)))
-    .filter((resolved) => !resolved.startsWith('..'))
-    .map((resolved) => deepestProject(folders, resolved))
-    .flatMap((folder) => projectPaths.filter((other) => folderOf(other) === folder));
-  return new Set(
-    [...named, ...located].filter(
-      (other): other is string => other !== undefined && other !== projectPath,
-    ),
-  );
+    .map((folder) => [path.posix.normalize(path.posix.join(folderOf(projectPath), folder)), folder])
+    .filter(([resolved]) => resolved !== undefined && !resolved.startsWith('..'))
+    .flatMap(([resolved = '', folder = '']) => {
+      const deepest = deepestProject(folders, resolved);
+      return projectPaths
+        .filter((other) => folderOf(other) === deepest)
+        .map((other) => [other, label(folder)] as const);
+    });
+  const edges = new Map<string, string | undefined>();
+  for (const [other, via] of [...named, ...located]) {
+    if (other !== undefined && other !== projectPath && !edges.has(other)) {
+      edges.set(other, via);
+    }
+  }
+  return edges;
 }
 
 export function dependencyGraph(
@@ -81,12 +108,21 @@ export function dependencyGraph(
       unit.names.map((name): [string, string] => [name, projectPath]),
     ),
   );
-  return new Map(
+  const edges = new Map(
     [...units].map(([projectPath, unit]) => [
       projectPath,
       edgesOf(projectPath, unit, { byName, projectPaths, folderOf }),
     ]),
   );
+  const labels = new Map(
+    [...edges].flatMap(([from, targets]) =>
+      [...targets].flatMap(([to, via]) =>
+        via === undefined ? [] : [[edgeKey(from, to), via] as const],
+      ),
+    ),
+  );
+  const graph = new Map([...edges].map(([from, targets]) => [from, new Set(targets.keys())]));
+  return Object.assign(graph, { labels });
 }
 
 function newDependents(
