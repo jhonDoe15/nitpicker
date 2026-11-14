@@ -1,36 +1,39 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { detectFrameworks, withoutFrameworkForms } from './python-frameworks.mjs';
+import { describe, expect, it } from 'vitest';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type { ImportsReport, PythonModule } from '../analysis/typed/python-graph-types.mts';
+import { detectFrameworks as untypedDetect, withoutFrameworkForms } from './python-frameworks.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function project(files = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-frameworks-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+const detectFrameworks: (projectRoot: string, imports: ImportsReport) => Set<string> =
+  untypedDetect;
+
+function project(files: Readonly<Record<string, string>> = {}) {
+  const root = temporaryRoot('nitpicker-python-frameworks-');
+  writeFiles(root, files);
   return root;
 }
 
-const module = (file, name) => ({ file, module: name, isPackage: false });
-const finding = (rule, file) => ({ tool: 'x', rule, path: file });
+const module = (file: string, name: string): PythonModule => ({
+  file,
+  module: name,
+  isPackage: false,
+});
+const finding = (rule: string, file: string) => ({ tool: 'x', rule, path: file });
 
 describe('Python frameworks', () => {
   it('detects Django, FastAPI and Flask from the dependencies or the production imports', () => {
     const root = project({ 'requirements.txt': 'djangorestframework\n' });
     const imports = {
       modules: [module('src/app/a.py', 'app.a')],
-      imports: { 'src/app/a.py': [{ level: 0, module: null, names: ['flask'] }] },
+      imports: { 'src/app/a.py': [{ level: 0, module: JSON_NULL, names: ['flask'] }] },
     };
 
-    expect([...detectFrameworks(root, imports)].sort()).toEqual(['django', 'flask']);
+    expect(
+      [...detectFrameworks(root, imports)].sort((left, right) => left.localeCompare(right)),
+    ).toEqual(['django', 'flask']);
   });
   it('allows environment reads, import-time effects and star imports in Django settings, and the same plus missing tests in its entry points', () => {
     const root = project({

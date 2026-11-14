@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { cycleFindings, outsideRootsFindings } from './python-import-rules.mjs';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type { ImportStatement, PythonModule } from '../analysis/typed/python-graph-types.mts';
+import { cycleFindings, outsideRootsFindings } from './python-import-rules.mts';
 
-const module = (file, name, isPackage = false) => ({ file, module: name, isPackage });
-const from = (name, names) => ({ level: 0, module: name, names });
+const module = (file: string, name: string, isPackage = false): PythonModule => ({
+  file,
+  module: name,
+  isPackage,
+});
+const from = (name: string, names: string[]): ImportStatement => ({
+  level: 0,
+  module: name,
+  names,
+});
 
 describe('import cycles', () => {
   it('reports a package cycle on each package anchor and ignores type-only imports', () => {
@@ -27,7 +37,7 @@ describe('import cycles', () => {
       ['package-cycle', 'src/app/billing/invoice.py', 'cycle:app.billing'],
       ['package-cycle', 'src/app/orders/__init__.py', 'cycle:app.orders'],
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       'Package app.billing is in a dependency cycle with app.orders. Move the shared types down into one of them, or invert one dependency behind an interface',
     );
   });
@@ -38,7 +48,7 @@ describe('import cycles', () => {
       module('src/app/b.py', 'app.b'),
     ];
     const imports = {
-      'src/app/__init__.py': [{ level: 1, module: null, names: ['a'] }],
+      'src/app/__init__.py': [{ level: 1, module: JSON_NULL, names: ['a'] }],
       'src/app/a.py': [from('app.b', ['x']), from('app', ['VERSION'])],
       'src/app/b.py': [from('app.a', ['y'])],
     };
@@ -69,7 +79,7 @@ describe('imports from outside the source roots', () => {
       imports: {
         'src/app/a.py': [
           from('scripts.helpers', ['run']),
-          { level: 0, module: null, names: ['scripts.helpers'] },
+          { level: 0, module: JSON_NULL, names: ['scripts.helpers'] },
         ],
       },
     };

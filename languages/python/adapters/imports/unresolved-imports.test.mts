@@ -1,21 +1,40 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { probedTops, unresolvedImportFindings } from './unresolved-imports.mjs';
+import { describe, expect, it } from 'vitest';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type {
+  ImportsByFile,
+  ImportsReport,
+  ImportStatement,
+  JsonNull,
+  OtherModule,
+  PythonModule,
+} from '../analysis/typed/python-graph-types.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import { probedTops, unresolvedImportFindings as untypedFindings } from './unresolved-imports.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function directory(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-unresolved-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+type Row = Readonly<Record<string, unknown>>;
+type Files = Readonly<Record<string, string>>;
+type FindingsOptions = {
+  readonly files?: Files;
+  readonly scan?: Row;
+  readonly modules?: readonly PythonModule[];
+  readonly others?: readonly OtherModule[];
+  readonly declared?: Row;
+};
+
+const unresolvedImportFindings: (request: {
+  projectRoot: string;
+  imports: ImportsReport;
+  scan: Row;
+  declared: Row;
+}) => IngestedFinding[] = untypedFindings;
+
+function directory(files: Files): string {
+  const root = temporaryRoot('nitpicker-python-unresolved-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -31,24 +50,24 @@ const FILES = {
   'tests/test_orders.py': '',
   'noxfile.py': '',
 };
-const MODULES = [
+const MODULES: PythonModule[] = [
   { file: 'src/app/__init__.py', module: 'app', isPackage: true },
   { file: 'src/app/orders.py', module: 'app.orders', isPackage: false },
   { file: 'src/app/billing/__init__.py', module: 'app.billing', isPackage: true },
   { file: 'src/app/billing/invoice.py', module: 'app.billing.invoice', isPackage: false },
   { file: 'noxfile.py', module: 'noxfile', isPackage: false },
 ];
-const OTHERS = [
+const OTHERS: OtherModule[] = [
   { file: 'tests/__init__.py', module: 'tests', kind: 'other', inRoots: false },
   { file: 'tests/helpers.py', module: 'tests.helpers', kind: 'other', inRoots: false },
   { file: 'tests/test_orders.py', module: 'tests.test_orders', kind: 'test', inRoots: false },
 ];
-const SCAN = {
+const SCAN: Row = {
   stdlib: ['os', 'json', 'logging'],
   modules: { requests: ['requests'], yaml: ['PyYAML'] },
   importable: ['editable_tool'],
 };
-const DECLARED = {
+const DECLARED: Row = {
   manifest: 'pyproject.toml',
   dependencies: [
     { name: 'scikit-learn', normalized: 'scikit-learn', group: 'optional' },
@@ -57,13 +76,34 @@ const DECLARED = {
   ],
 };
 
-const plain = (names, line = 1) => ({ level: 0, module: null, names, line });
-const from = (module, names = ['x'], line = 1) => ({ level: 0, module, names, line });
-const relative = (level, module, names = ['x'], line = 1) => ({ level, module, names, line });
+const plain = (names: string[], line = 1): ImportStatement => ({
+  level: 0,
+  module: JSON_NULL,
+  names,
+  line,
+});
+const from = (module: string, names = ['x'], line = 1): ImportStatement => ({
+  level: 0,
+  module,
+  names,
+  line,
+});
+const relative = (
+  level: number,
+  module: string | JsonNull,
+  names = ['x'],
+  line = 1,
+): ImportStatement => ({ level, module, names, line });
 
 function findingsFor(
-  imports,
-  { files = FILES, scan = SCAN, modules = MODULES, others = OTHERS, declared = DECLARED } = {},
+  imports: ImportsByFile,
+  {
+    files = FILES,
+    scan = SCAN,
+    modules = MODULES,
+    others = OTHERS,
+    declared = DECLARED,
+  }: FindingsOptions = {},
 ) {
   return unresolvedImportFindings({
     projectRoot: directory(files),
@@ -73,7 +113,7 @@ function findingsFor(
   });
 }
 
-function summary(findings) {
+function summary(findings: readonly IngestedFinding[]) {
   return findings.map(({ path: file, identity, location }) => [file, identity, location?.line]);
 }
 
@@ -88,7 +128,7 @@ describe('Python unresolved imports', () => {
         from('app.billing', ['invoice']),
         plain(['app.native._speedups', 'app.data']),
         relative(1, 'billing.invoice'),
-        relative(1, null, ['anything']),
+        relative(1, JSON_NULL, ['anything']),
         from('logging.handlers'),
       ],
       'tests/test_orders.py': [from('tests.helpers'), plain(['helpers']), from('app.orders')],
@@ -183,7 +223,7 @@ describe('Python unresolved imports', () => {
     ).toEqual([]);
   });
   it('checks nothing without the environment probe of an older scan', () => {
-    const scan = { stdlib: SCAN.stdlib, modules: SCAN.modules };
+    const scan = { stdlib: SCAN['stdlib'], modules: SCAN['modules'] };
 
     expect(findingsFor({ 'src/app/orders.py': [plain(['reqeusts'])] }, { scan })).toEqual([]);
   });
@@ -205,11 +245,17 @@ describe('Python unresolved imports', () => {
   it('leaves test data, tool configuration and tool-run files alone', () => {
     const others = [
       ...OTHERS,
-      { file: 'tests/data/test_sample.py', module: 'tests.data.test_sample', kind: 'test' },
+      {
+        file: 'tests/data/test_sample.py',
+        module: 'tests.data.test_sample',
+        kind: 'test',
+        inRoots: false,
+      },
       {
         file: 'tests/fixtures/pkg/main_test.py',
         module: 'tests.fixtures.pkg.main_test',
         kind: 'test',
+        inRoots: false,
       },
     ];
     const modules = [

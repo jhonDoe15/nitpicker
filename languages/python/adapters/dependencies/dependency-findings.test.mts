@@ -1,22 +1,42 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
-import { readDependencyFindings, scanDependencies } from './dependency-findings.mjs';
+import { readDependencyFindings as untypedRead, scanDependencies } from './dependency-findings.mjs';
+import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import type { ImportsReport, ImportStatement } from '../analysis/typed/python-graph-types.mts';
+import { recordingRun } from '../test-support/runs/recording-run.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function directory(files = {}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-dependency-findings-'));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+type Row = Readonly<Record<string, unknown>>;
+type DependencyRequest = {
+  readonly reportRoot: string;
+  readonly projectRoot: string;
+  readonly snapshot?: string;
+};
+
+const readFindings: (request: {
+  reportRoot: string;
+  projectRoot: string;
+  snapshot: string | undefined;
+}) => IngestedFinding[] = untypedRead;
+
+function readDependencyFindings({
+  reportRoot,
+  projectRoot,
+  snapshot,
+}: DependencyRequest): IngestedFinding[] {
+  return readFindings({ reportRoot, projectRoot, snapshot });
+}
+
+function directory(files: Readonly<Record<string, string>> = {}): string {
+  const root = temporaryRoot('nitpicker-python-dependency-findings-');
+  writeFiles(root, files);
   return root;
 }
 
@@ -47,13 +67,21 @@ const SCAN = {
   references: [],
 };
 
-const from = (module, names = ['x']) => ({ level: 0, module, names });
+const from = (module: string, names: string[] = ['x']): ImportStatement => ({
+  level: 0,
+  module,
+  names,
+});
 
-function reports(projectRoot, { scan = SCAN, imports }) {
+function reports(
+  projectRoot: string,
+  { scan = SCAN, imports }: { scan?: Row; imports: ImportsReport },
+): { reportRoot: string; projectRoot: string } {
+  const declared: unknown = readPythonDependencies(projectRoot);
   const reportRoot = directory({
     'imports.json': JSON.stringify(imports),
     'dependencies.json': JSON.stringify({
-      declared: readPythonDependencies(projectRoot),
+      declared,
       scan,
       environment: 'virtualenv',
     }),
@@ -61,13 +89,13 @@ function reports(projectRoot, { scan = SCAN, imports }) {
   return { reportRoot, projectRoot };
 }
 
-const IMPORTS = {
+const IMPORTS: ImportsReport = {
   modules: [{ file: 'src/app/a.py', module: 'app.a', isPackage: false }],
   others: [{ file: 'tests/test_a.py', module: 'tests.test_a', kind: 'test', inRoots: false }],
   imports: {
     'src/app/a.py': [
       from('requests'),
-      { level: 0, module: null, names: ['attr', 'os', 'app.b'] },
+      { level: 0, module: JSON_NULL, names: ['attr', 'os', 'app.b'] },
       from('yaml'),
       from('freezegun'),
       { ...from('rich'), typeOnly: true },
@@ -95,7 +123,7 @@ describe('Python dependency findings', () => {
       'Package pyyaml is imported (as yaml) but not listed in pyproject.toml. Add it to the project dependencies (a dev dependency group for tests and tooling)',
       'Unused dependency tabulate: nothing imports or runs it. Remove it from pyproject.toml',
     ]);
-    expect(findings.at(-1).location).toEqual({ line: 2 });
+    expect(findings.at(-1)?.location).toEqual({ line: 2 });
   });
   it('counts entry points, string references and the optional backends of a declared package as use', () => {
     const scan = {
@@ -127,7 +155,7 @@ describe('Python dependency findings', () => {
     const models =
       'from django.db import models\n\n\nclass Photo(models.Model):\n    image = models.ImageField(upload_to="photos/")\n';
     const settings = 'PASSWORD_HASHERS = ["django.contrib.auth.hashers.Argon2PasswordHasher"]\n';
-    const run = (files) => {
+    const run = (files: Readonly<Record<string, string>>) => {
       const projectRoot = directory({ 'pyproject.toml': declared, ...files });
       const imports = {
         modules: Object.keys(files).map((file) => ({
@@ -206,21 +234,15 @@ describe('Python dependency findings', () => {
   it('scans the project and test files with the project interpreter and stores the answer', () => {
     const projectRoot = directory({ 'requirements.txt': 'requests\n' });
     const reportRoot = directory({ 'imports.json': JSON.stringify(IMPORTS) });
-    const calls = [];
+    const { calls, run } = recordingRun(JSON.stringify(SCAN));
 
-    scanDependencies(
-      { reportRoot, projectRoot, launcher: { description: 'uv' } },
-      (_, command, options) => {
-        calls.push({ command, options, request: JSON.parse(readFileSync(command.at(-1), 'utf8')) });
-        return { stdout: JSON.stringify(SCAN) };
-      },
-    );
+    scanDependencies({ reportRoot, projectRoot, launcher: { description: 'uv' } }, run);
 
-    expect(calls[0].command.slice(0, 2)).toEqual(['python', '-I']);
-    expect(calls[0].command[2]).toMatch(/distribution-scan\.py$/u);
-    expect(calls[0].options).toEqual({ rule: 'dependencies-failed' });
-    expect(calls[0].request.files).toEqual(['src/app/a.py', 'tests/test_a.py']);
-    expect(calls[0].request.tops).toEqual([
+    expect(calls[0]?.command.slice(0, 2)).toEqual(['python', '-I']);
+    expect(calls[0]?.command[2]?.endsWith('distribution-scan.py')).toBe(true);
+    expect(calls[0]?.options).toEqual({ rule: 'dependencies-failed' });
+    expect(fieldOf(calls[0]?.request, 'files')).toEqual(['src/app/a.py', 'tests/test_a.py']);
+    expect(fieldOf(calls[0]?.request, 'tops')).toEqual([
       'app',
       'attr',
       'freezegun',
@@ -230,8 +252,8 @@ describe('Python dependency findings', () => {
       'requests',
       'yaml',
     ]);
-    const stored = JSON.parse(readFileSync(path.join(reportRoot, 'dependencies.json'), 'utf8'));
-    expect(stored.environment).toBe('uv');
-    expect(stored.declared.runtime).toEqual(['requests']);
+    const stored = parseJson(readFileSync(path.join(reportRoot, 'dependencies.json'), 'utf8'));
+    expect(fieldOf(stored, 'environment')).toBe('uv');
+    expect(fieldOf(fieldOf(stored, 'declared'), 'runtime')).toEqual(['requests']);
   });
 });
