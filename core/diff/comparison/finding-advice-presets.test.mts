@@ -1,29 +1,28 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020.js';
+import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
-import { applyRuleHints } from '../../../languages/python/rules/rule-hints.mjs';
-import { withRuleMessage } from '../../../languages/java/messages/rule-messages.mjs';
-import { ingestErrorProne } from '../../../languages/java/ingest/errorprone/errorprone.mjs';
-import { withKotlinRuleMessage } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
+import { applyRuleHints as applyRuleHintsJs } from '../../../languages/python/rules/rule-hints.mjs';
+import { withRuleMessage as withRuleMessageJs } from '../../../languages/java/messages/rule-messages.mjs';
+import { ingestErrorProne as ingestErrorProneJs } from '../../../languages/java/ingest/errorprone/errorprone.mjs';
+import { withKotlinRuleMessage as withKotlinRuleMessageJs } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
 import { messagesFor, ratchetedFinding } from '../../../shared/rules/file-limits.mjs';
-import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
-import { parseFinding } from './finding-schema.mjs';
+import { exceptionHint as exceptionHintJs } from '../../../shared/rules/exceptions.mjs';
+import { fieldOf, textOf } from '../../../shared/values/readers.mts';
+import { schemaAccepts } from './test-support/findings-schema-check.mts';
+import { type ParsedFinding, parseFinding } from './test-support/parsed-findings.mts';
 
-const schema = JSON.parse(
-  readFileSync(
-    path.resolve(
-      fileURLToPath(new URL('.', import.meta.url)),
-      '../../../spec/findings.schema.json',
-    ),
-    'utf8',
-  ),
-);
-const validates = new Ajv2020({ strict: false }).compile(schema);
+type Fields = Readonly<Record<string, unknown>>;
+type Builder = (path: string) => Fields;
+type Sample = readonly [string, string, Builder, string, string, string];
 
-const identified = (finding, path = 'src/a') => ({
+const applyRuleHints: (findings: readonly Fields[]) => Fields[] = applyRuleHintsJs;
+const withRuleMessage: (finding: Fields) => Fields = withRuleMessageJs;
+const withKotlinRuleMessage: (finding: Fields) => Fields = withKotlinRuleMessageJs;
+const ingestErrorProne: (text: string) => { readonly findings: readonly Fields[] } =
+  ingestErrorProneJs;
+const exceptionHint: (rule: string, path: string) => string = exceptionHintJs;
+
+const identified = (finding: Fields, path = 'src/a') => ({
   tool: 'x',
   path,
   identity: 'id',
@@ -31,17 +30,19 @@ const identified = (finding, path = 'src/a') => ({
   ...finding,
 });
 
-const typescript = (path) => ({
+const typescript: Builder = (path) => ({
   ...routedEslintFields({
     ruleId: 'vitest/expect-expect',
     text: 'Test has no assertions',
     relativePath: path,
+    node: undefined,
+    sourceFile: ts.createSourceFile('a.ts', '', ts.ScriptTarget.Latest),
   }),
   tool: 'eslint',
   rule: 'vitest/expect-expect',
 });
 
-const fileLines = (path) =>
+const fileLines: Builder = (path) =>
   ratchetedFinding(
     { analyzerName: 'structure' },
     {
@@ -56,15 +57,17 @@ const fileLines = (path) =>
         base: '{base}',
         exception: JSON.stringify({ rule: 'file-lines-limit', paths: [path], reason: '...' }),
       }),
+      pathIsFolder: undefined,
+      folderFiles: undefined,
     },
   );
 
-const python = (path) =>
+const python: Builder = (path) =>
   applyRuleHints([
     { tool: 'ruff', rule: 'T201', path, message: '`print` found', classification: 'enforceable' },
-  ])[0];
+  ])[0] ?? {};
 
-const java = (path) =>
+const java: Builder = (path) =>
   withRuleMessage({
     tool: 'pmd',
     rule: 'UnusedPrivateField',
@@ -73,7 +76,7 @@ const java = (path) =>
     classification: 'enforceable',
   });
 
-const javaSpring = (path) =>
+const javaSpring: Builder = (path) =>
   withRuleMessage({
     tool: 'pmd',
     rule: 'SpringConstructorInjection',
@@ -82,7 +85,7 @@ const javaSpring = (path) =>
     classification: 'enforceable',
   });
 
-const javaErrorProne = (path) => {
+const javaErrorProne: Builder = (path) => {
   const diagnostic = {
     file: path,
     line: 3,
@@ -93,11 +96,11 @@ const javaErrorProne = (path) => {
   const [finding] = ingestErrorProne(JSON.stringify([diagnostic])).findings;
   return {
     ...finding,
-    message: `${finding.message} ${exceptionHint('errorprone/NullAway', path)}`,
+    message: `${textOf(fieldOf(finding, 'message'))} ${exceptionHint('errorprone/NullAway', path)}`,
   };
 };
 
-const kotlin = (path) =>
+const kotlin: Builder = (path) =>
   withKotlinRuleMessage({
     tool: 'detekt',
     rule: 'detekt.potential-bugs.UnsafeCallOnNullableType',
@@ -118,7 +121,7 @@ const NULL_SAFE_FORM =
 const JAVA = 'src/main/java/A.java';
 const KOTLIN = 'src/main/kotlin/A.kt';
 
-const SAMPLES = [
+const SAMPLES: readonly Sample[] = [
   ['typescript', 'src/a.test.ts', typescript, 'exceptions', 'vitest/expect-expect', EXPECT_FORM],
   ['typescript', 'src/a.ts', fileLines, 'exceptions', 'file-lines-limit', SPLIT_FORM],
   ['javascript', 'src/a.test.js', typescript, 'exceptions', 'vitest/expect-expect', EXPECT_FORM],
@@ -153,21 +156,24 @@ describe('the allowed form and the exception of a finding', () => {
       const finding = parseFinding(identified(build(path), path));
 
       expect({
-        allowedForm: finding.allowedForm,
-        exception: finding.exception,
-        exceptionList: finding.exceptionList,
+        allowedForm: fieldOf(finding, 'allowedForm'),
+        exception: fieldOf(finding, 'exception'),
+        exceptionList: fieldOf(finding, 'exceptionList'),
       }).toEqual({
         allowedForm,
         exception: { rule, paths: [path], reason: '...' },
         exceptionList: list,
       });
-      expect(finding.message.includes(allowedForm)).toBe(true);
-      expect(finding.message.endsWith(exceptionSentenceOf(finding))).toBe(true);
-      expect(validates({ findings: [finding] })).toBe(true);
+      const message = textOf(fieldOf(finding, 'message'));
+      expect(message.includes(allowedForm)).toBe(true);
+      expect(message.endsWith(exceptionSentenceOf(finding))).toBe(true);
+      expect(schemaAccepts([finding])).toBe(true);
     },
   );
 });
 
-function exceptionSentenceOf({ exception, exceptionList }) {
+function exceptionSentenceOf(finding: ParsedFinding): string {
+  const exception = fieldOf(finding, 'exception');
+  const exceptionList = textOf(fieldOf(finding, 'exceptionList'));
   return `If this is intended, add ${JSON.stringify(exception)} to "${exceptionList}" in nitpicker.config.json.`;
 }

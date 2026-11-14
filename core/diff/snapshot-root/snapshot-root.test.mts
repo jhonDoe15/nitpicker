@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runAnalyzers } from '../execution/run-analyzers.mts';
 import { LOG_DIRECTORY, clearDiffReports } from '../reporting/reporters.mts';
+import { fieldOf, fieldsOf } from '../../../shared/values/readers.mts';
 import { withoutSnapshotRoot } from './snapshot-root.mjs';
 
 const WORKTREE = path.join(path.sep, 'tmp', 'nitpicker-diff-Ab.c1', 'head');
@@ -18,8 +19,17 @@ const analyzer = {
   createInvocation: () => ({ command: 'java', args: [] }),
 };
 
-function runWith(projectRoot, schedule) {
+const NO_OPTIONS = {
+  baselineRoot: undefined,
+  baselineMovesFile: undefined,
+  headPolicyFile: undefined,
+  mutationScope: undefined,
+  logRoot: undefined,
+};
+
+function runWith(projectRoot: string, schedule: () => unknown) {
   return runAnalyzers({
+    ...NO_OPTIONS,
     analyzers: [analyzer],
     projectRoot,
     policyRoot: projectRoot,
@@ -77,10 +87,9 @@ describe('runAnalyzers tool errors', () => {
     expect(run.toolErrors.map(({ message }) => message)).toEqual([
       `Java preset failed in head: ${path.join('services', 'Handler.java')}:44: error`,
     ]);
-    expect(run.reports.get('java').findings.map(({ message }) => message)).toEqual([
-      `missing ${path.join('services', 'Handler.java')}`,
-      `kept ${SOURCE}`,
-    ]);
+    expect(
+      (run.reports.get('java')?.findings ?? []).map((finding) => fieldOf(finding, 'message')),
+    ).toEqual([`missing ${path.join('services', 'Handler.java')}`, `kept ${SOURCE}`]);
   });
 
   it('keeps the paths of a run on the live project', () => {
@@ -95,13 +104,14 @@ describe('runAnalyzers tool errors', () => {
 });
 
 describe('runAnalyzers log folder', () => {
-  function invocationContext(logRoot) {
-    const seen = [];
+  function invocationContext(logRoot: string | undefined): unknown {
+    const seen: unknown[] = [];
     runAnalyzers({
+      ...NO_OPTIONS,
       analyzers: [
         {
           ...analyzer,
-          createInvocation: (context) => {
+          createInvocation: (context: unknown) => {
             seen.push(context);
             return analyzer.createInvocation();
           },
@@ -121,7 +131,7 @@ describe('runAnalyzers log folder', () => {
   it('names a log folder inside the live project by its relative path', () => {
     const logRoot = path.join(LIVE, 'reports', 'quality', 'diff', LOG_DIRECTORY);
 
-    const { logLabel } = invocationContext(logRoot);
+    const logLabel = fieldOf(invocationContext(logRoot), 'logLabel');
 
     expect(logLabel).toBe(`reports/quality/diff/${LOG_DIRECTORY}`);
   });
@@ -131,8 +141,8 @@ describe('runAnalyzers log folder', () => {
 
     const outside = invocationContext(logRoot);
 
-    expect([outside.logRoot, outside.logLabel]).toEqual([logRoot, logRoot]);
-    expect('logRoot' in invocationContext(undefined)).toBe(false);
+    expect([fieldOf(outside, 'logRoot'), fieldOf(outside, 'logLabel')]).toEqual([logRoot, logRoot]);
+    expect('logRoot' in fieldsOf(invocationContext(undefined))).toBe(false);
   });
 });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseFinding } from './finding-schema.mjs';
-import { findingsSchemaErrors } from './test-support/findings-schema-check.mjs';
+import { parseFinding } from './test-support/parsed-findings.mts';
+import { findingsSchemaErrors } from './test-support/findings-schema-check.mts';
 
 const VALID = {
   tool: 'tool',
@@ -13,11 +13,12 @@ const VALID = {
 const DESCRIPTIVE = { ...VALID, classification: 'descriptive' };
 const NOT_RUN = { ...DESCRIPTIVE, toolNotRun: true };
 
-function firstErrorPath(finding) {
-  return findingsSchemaErrors([finding])[0].split(' ')[2];
+function firstErrorPath(finding: unknown): string | undefined {
+  const [first = ''] = findingsSchemaErrors([finding]);
+  return first.split(' ')[2];
 }
 
-const MALFORMED = [
+const MALFORMED: readonly (readonly [unknown, string])[] = [
   [{ ...VALID, toolNotRun: true }, '/findings/0/classification'],
   [{ ...DESCRIPTIVE, toolNotRun: false }, '/findings/0/toolNotRun'],
   [{ ...DESCRIPTIVE, notRunScope: ['core'] }, '/findings/0'],
@@ -50,7 +51,7 @@ describe('tool-not-run notices and kept line ranges in the findings schema', () 
         mustKeepUnchangedLines: [{ path: 'a.java', startLine: 3, endLine: 9 }],
       },
     };
-    const withLines = (mustKeepUnchangedLines) => ({
+    const withLines = (mustKeepUnchangedLines: readonly unknown[]) => ({
       ...finding,
       ratchet: { ...finding.ratchet, mustKeepUnchangedLines },
     });

@@ -1,24 +1,12 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
 import {
   exceptionEntryText,
   exceptionSentence,
 } from '../../../shared/messages/exception-sentence.mjs';
-import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
-
-const schema = JSON.parse(
-  readFileSync(
-    path.resolve(
-      fileURLToPath(new URL('.', import.meta.url)),
-      '../../../spec/findings.schema.json',
-    ),
-    'utf8',
-  ),
-);
-const validates = new Ajv2020({ strict: false }).compile(schema);
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import { schemaAccepts } from './test-support/findings-schema-check.mts';
+import { parseAnalyzerReport, parseFinding } from './test-support/parsed-findings.mts';
 
 const ENTRY = { rule: 'file-lines-limit', paths: ['src/a.ts'], reason: '...' };
 const BASE = {
@@ -28,26 +16,38 @@ const BASE = {
   identity: 'file-lines',
   classification: 'enforceable',
 };
-const withSentence = (list) =>
-  `File has 400 lines. Split it. ${exceptionSentence(exceptionEntryText({ rule: ENTRY.rule, path: 'src/a.ts' }), list)}`;
+function entryText(): string {
+  return exceptionEntryText({
+    rule: ENTRY.rule,
+    path: 'src/a.ts',
+    glob: undefined,
+    function: undefined,
+    name: undefined,
+    packages: undefined,
+  });
+}
 
-function accepted(finding) {
-  return validates({ findings: [finding] });
+function withSentence(list: string): string {
+  return `File has 400 lines. Split it. ${exceptionSentence(entryText(), list)}`;
+}
+
+function accepted(finding: unknown): boolean {
+  return schemaAccepts([finding]);
 }
 
 describe('exception of a parsed finding', () => {
   it('is read from the sentence the message ends with, with the list that takes it', () => {
     const parsed = parseFinding({ ...BASE, message: withSentence('exceptions') });
 
-    expect(parsed.exception).toEqual(ENTRY);
-    expect(parsed.exceptionList).toBe('exceptions');
+    expect(fieldOf(parsed, 'exception')).toEqual(ENTRY);
+    expect(fieldOf(parsed, 'exceptionList')).toBe('exceptions');
     expect(accepted(parsed)).toBe(true);
   });
 
   it('names the Python list for a Python rule', () => {
     const parsed = parseFinding({ ...BASE, message: withSentence('python.exceptions') });
 
-    expect(parsed.exceptionList).toBe('python.exceptions');
+    expect(fieldOf(parsed, 'exceptionList')).toBe('python.exceptions');
   });
 
   it('is absent for a message without the sentence', () => {
@@ -66,7 +66,10 @@ describe('exception of a parsed finding', () => {
       exceptionList: 'exceptions',
     });
 
-    expect([parsed.exception, parsed.exceptionList]).toEqual([exception, 'exceptions']);
+    expect([fieldOf(parsed, 'exception'), fieldOf(parsed, 'exceptionList')]).toEqual([
+      exception,
+      'exceptions',
+    ]);
   });
 
   it.each([
@@ -138,8 +141,8 @@ describe('allowed form of a parsed finding', () => {
       },
     });
 
-    expect(parsed.allowedForm).toBe('Split it.');
-    expect(parsed.ratchet.worseAllowedForm).toBe('Put new code in a new file.');
+    expect(fieldOf(parsed, 'allowedForm')).toBe('Split it.');
+    expect(fieldAt(parsed, 'ratchet', 'worseAllowedForm')).toBe('Put new code in a new file.');
     expect(accepted(parsed)).toBe(true);
   });
 

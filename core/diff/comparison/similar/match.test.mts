@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../compare.mjs';
+import { compareFindings } from '../test-support/typed-compare.mts';
 
-function finding(identity, message, overrides = {}) {
+function finding(
+  identity: string,
+  message: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+) {
   return {
     tool: 'test-console',
     rule: 'test-console-output',
@@ -14,7 +18,11 @@ function finding(identity, message, overrides = {}) {
   };
 }
 
-function compare(baseFindings, headFindings, baseToHeadRenames) {
+function compare(
+  baseFindings: readonly unknown[],
+  headFindings: readonly unknown[],
+  baseToHeadRenames?: Map<string, string>,
+) {
   const result = compareFindings({ baseFindings, headFindings, baseToHeadRenames });
   return {
     added: result.newFindings.map(({ identity }) => identity),
@@ -105,7 +113,7 @@ describe('findings that match the base by tokens', () => {
   });
 
   it('stays fast for thousands of different messages in one file', () => {
-    const many = (prefix) =>
+    const many = (prefix: string) =>
       Array.from({ length: 4000 }, (_, index) =>
         finding(
           `${prefix}${String(index)}`,

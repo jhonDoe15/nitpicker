@@ -3,9 +3,10 @@ import {
   TROUBLESHOOTING_ANCHORS,
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { parseAnalyzerReportKeepingValid } from './invalid-findings.mjs';
 
-const finding = (overrides = {}) => ({
+const finding = (overrides: Readonly<Record<string, unknown>> = {}) => ({
   tool: 'java',
   rule: 'r',
   path: 'src/A.java',
@@ -18,12 +19,12 @@ const finding = (overrides = {}) => ({
 const entry = { rule: 'archunit/r', paths: ['src/A.java'], reason: '...' };
 const sentence = `If this is intended, add ${JSON.stringify(entry)} to "exceptions" in nitpicker.config.json.`;
 
-const invalid = (tool, text) => ({
+const invalid = (tool: string, text: string) => ({
   tool,
   rule: 'invalid-finding',
   path: '.',
   identity: 'invalid-finding',
-  message: withTroubleshooting(text, TROUBLESHOOTING_ANCHORS.analyzerCrashed),
+  message: textOf(withTroubleshooting(text, TROUBLESHOOTING_ANCHORS.analyzerCrashed)),
   classification: 'tool-error',
 });
 

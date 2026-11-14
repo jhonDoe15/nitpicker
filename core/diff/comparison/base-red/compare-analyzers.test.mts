@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { compareAnalyzers } from './compare-analyzers.mts';
+import type { Finding, ReportEntry } from '../../../../shared/values/findings.mts';
+import { textOf } from '../../../../shared/values/readers.mts';
+import {
+  type AnalyzerOutcome,
+  type AnalyzerRun,
+  type FindingComparison,
+  compareAnalyzers,
+} from './compare-analyzers.mts';
 
-const COMPILE_ERROR = {
+const COMPILE_ERROR: Finding = {
   tool: 'build',
   rule: 'compile-error',
   path: 'src/A.java',
@@ -10,7 +17,7 @@ const COMPILE_ERROR = {
   classification: 'enforceable',
   location: { line: 3 },
 };
-const STOPPED = {
+const STOPPED: Finding = {
   tool: 'java',
   rule: 'compile-failed-skipped',
   path: '.',
@@ -20,7 +27,10 @@ const STOPPED = {
 };
 const LEGACY = { ...COMPILE_ERROR, tool: 'pmd', rule: 'UnusedPrivateField', identity: 'legacy' };
 
-function run(findings, toolErrors = []) {
+function run(
+  findings: readonly Finding[] | undefined,
+  toolErrors: readonly ReportEntry[] = [],
+): AnalyzerRun {
   return {
     reports: new Map(findings === undefined ? [] : [['java', { findings }]]),
     timings: new Map(),
@@ -29,8 +39,16 @@ function run(findings, toolErrors = []) {
   };
 }
 
-function compared(baseRun) {
-  const toolErrors = [...baseRun.toolErrors];
+function resultOf(outcomes: readonly AnalyzerOutcome[]): FindingComparison {
+  const [outcome] = outcomes;
+  if (outcome === undefined) {
+    throw new Error('expected an outcome');
+  }
+  return outcome.result;
+}
+
+function compared(baseRun: AnalyzerRun) {
+  const toolErrors: ReportEntry[] = [...baseRun.toolErrors];
   const { outcomes } = compareAnalyzers({
     analyzers: [{ name: 'java' }],
     baseRun,
@@ -39,9 +57,9 @@ function compared(baseRun) {
     touchedCode: { changedLines: new Map() },
   });
   return {
-    new: outcomes[0].result.newFindings.map(({ rule }) => rule),
-    resolved: outcomes[0].result.resolvedFindings.length,
-    toolErrors: toolErrors.map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+    new: resultOf(outcomes).newFindings.map(({ rule }) => rule),
+    resolved: resultOf(outcomes).resolvedFindings.length,
+    toolErrors: toolErrors.map(({ snapshot, rule }) => `${textOf(snapshot)} ${textOf(rule)}`),
   };
 }
 
@@ -65,7 +83,12 @@ describe('a head that stopped at compile errors', () => {
   });
 
   it('reports nothing new when the base does not build either', () => {
-    const broken = { tool: 'java', snapshot: 'base', rule: 'gradle-failure', message: 'broken' };
+    const broken: ReportEntry = {
+      tool: 'java',
+      snapshot: 'base',
+      rule: 'gradle-failure',
+      message: 'broken',
+    };
 
     expect(compared(run([], [broken]))).toEqual({
       new: [],
@@ -76,7 +99,7 @@ describe('a head that stopped at compile errors', () => {
 });
 
 describe('a PIT run that failed on one side', () => {
-  const failure = {
+  const failure: Finding = {
     tool: 'pit',
     rule: 'pit-failure',
     path: '.',
@@ -85,7 +108,7 @@ describe('a PIT run that failed on one side', () => {
     message: 'PIT failed with exit code 1: boom',
     classification: 'tool-error',
   };
-  const mutant = (file, line) => ({
+  const mutant = (file: string, line: number): Finding => ({
     tool: 'pit',
     rule: 'mutant-survived',
     path: file,
@@ -98,8 +121,8 @@ describe('a PIT run that failed on one side', () => {
   const EDITED = mutant('shop/src/Cart.java', 9);
   const ELSEWHERE = mutant('web/src/Page.java', 3);
 
-  function comparedSides(baseFindings, headFindings) {
-    const toolErrors = [];
+  function comparedSides(baseFindings: readonly Finding[], headFindings: readonly Finding[]) {
+    const toolErrors: ReportEntry[] = [];
     const { outcomes } = compareAnalyzers({
       analyzers: [{ name: 'java' }],
       baseRun: run(baseFindings),
@@ -109,12 +132,12 @@ describe('a PIT run that failed on one side', () => {
         changedLines: new Map([['shop/src/Cart.java', { added: false, ranges: [[9, 9]] }]]),
       },
     });
-    const { result } = outcomes[0];
+    const result = resultOf(outcomes);
     return {
       new: result.newFindings.map(({ identity }) => identity),
       unchanged: result.unchangedFindings.map(({ identity }) => identity),
       resolved: result.resolvedFindings.map(({ identity }) => identity),
-      toolErrors: toolErrors.map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+      toolErrors: toolErrors.map(({ snapshot, rule }) => `${textOf(snapshot)} ${textOf(rule)}`),
     };
   }
 
@@ -138,7 +161,7 @@ describe('a PIT run that failed on one side', () => {
 });
 
 describe('a head whose tests fail in one module while the analyzer keeps its other findings', () => {
-  const headFailure = {
+  const headFailure: Finding = {
     tool: 'tests',
     rule: 'tests-failed',
     path: '.',
@@ -147,7 +170,7 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
     message: '1 test fails in shop; coverage, CRAP and mutation were skipped there.',
     classification: 'tool-error',
   };
-  const finding = (rule, file) => ({
+  const finding = (rule: string, file: string): Finding => ({
     tool: rule === 'UnusedPrivateField' ? 'pmd' : 'pit',
     rule,
     path: file,
@@ -161,8 +184,8 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
   const PMD = finding('UnusedPrivateField', 'shop/src/Cart.java');
   const NEW_PMD = finding('UnusedPrivateField', 'shop/src/Order.java');
 
-  function comparedSides(baseFindings, headFindings) {
-    const toolErrors = [];
+  function comparedSides(baseFindings: readonly Finding[], headFindings: readonly Finding[]) {
+    const toolErrors: ReportEntry[] = [];
     const { outcomes, notes } = compareAnalyzers({
       analyzers: [{ name: 'java' }],
       baseRun: run(baseFindings),
@@ -170,13 +193,15 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
       toolErrors,
       touchedCode: { changedLines: new Map(), isStrictRule: () => false },
     });
-    const { result } = outcomes[0];
+    const result = resultOf(outcomes);
     return {
       new: result.newFindings.map(({ identity }) => identity),
       unchanged: result.unchangedFindings.map(({ identity }) => identity),
       resolved: result.resolvedFindings.map(({ identity }) => identity),
-      toolErrors: toolErrors.map(({ tool, snapshot, rule }) => `${tool} ${snapshot} ${rule}`),
-      notes: notes.map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+      toolErrors: toolErrors.map(
+        ({ tool, snapshot, rule }) => `${textOf(tool)} ${textOf(snapshot)} ${textOf(rule)}`,
+      ),
+      notes: notes.map(({ snapshot, rule }) => `${textOf(snapshot)} ${textOf(rule)}`),
     };
   }
 
@@ -197,7 +222,7 @@ describe('a head whose tests fail in one module while the analyzer keeps its oth
   });
 
   it('still reads a base whose tests fail too as a red base', () => {
-    const baseFailure = {
+    const baseFailure: Finding = {
       ...headFailure,
       tool: 'java',
       message: 'Tests fail on the base in shop:',

@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { isPythonTouchedRule } from '../../../../languages/python/rules/touched-rules.mjs';
-import { parseChangedLines } from '../../git/patches/changed-lines.mjs';
-import { compareFindings } from '../compare.mjs';
+import { fieldAt } from '../../../../scripts/json/fields.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { parseChangedLines } from '../../git/test-support/projects/changed-lines-views.mts';
+import { type ComparedFinding, compareFindings } from '../test-support/typed-compare.mts';
 import { EDITED_LINE_SENTENCE } from './touched-lines.mjs';
 
 const ROUTE =
   'If this is intended, add {"rule":"T201"} to "python.exceptions" in nitpicker.config.json.';
 
-function ruff(rule, subject, lines) {
+type Shape = readonly [string, string, string, string];
+type Sources = { readonly base: string; readonly head: string };
+
+function ruff(rule: string, subject: string, lines: readonly number[]) {
   return lines.map((line, index) => ({
     tool: 'ruff',
     rule,
@@ -19,7 +24,7 @@ function ruff(rule, subject, lines) {
   }));
 }
 
-function touched(hunks, sources, file = 'src/mod.py') {
+function touched(hunks: readonly (readonly string[])[], sources?: Sources, file = 'src/mod.py') {
   const diff = [`diff --git a/${file} b/${file}`, `--- a/${file}`, `+++ b/${file}`];
   return {
     changedLines: parseChangedLines(
@@ -31,7 +36,8 @@ function touched(hunks, sources, file = 'src/mod.py') {
   };
 }
 
-const lineOf = (findings) => findings.map(({ location }) => location.line);
+const lineOf = (findings: readonly ComparedFinding[]): number[] =>
+  findings.map((finding) => Number(fieldAt(finding, 'location', 'line')));
 
 describe('findings that share a message in one file', () => {
   it('reports the magic number of an added function, not a legacy one further down', () => {
@@ -57,7 +63,7 @@ describe('findings that share a message in one file', () => {
     });
 
     expect(lineOf(result.newFindings)).toEqual([2]);
-    expect(result.newFindings[0].message).toBe(`\`print\` found. ${ROUTE}`);
+    expect(fieldAt(result.newFindings, 0, 'message')).toBe(`\`print\` found. ${ROUTE}`);
     expect(lineOf(result.unchangedFindings)).toEqual([3, 8]);
   });
 
@@ -76,7 +82,7 @@ describe('findings that share a message in one file', () => {
   });
 
   it('pairs findings numbered across functions when a function with the same line goes in between', () => {
-    const inFunctions = (lines, symbols) =>
+    const inFunctions = (lines: readonly number[], symbols: readonly string[]) =>
       ruff('BLE001', 'Blind except', lines).map((finding, index) => ({
         ...finding,
         symbol: symbols[index],
@@ -87,7 +93,7 @@ describe('findings that share a message in one file', () => {
       touchedCode: touched([['@@ -7,0 +8,7 @@', '+def middle():', '+    try:']]),
     });
 
-    expect(result.newFindings.map(({ symbol }) => symbol)).toEqual(['middle']);
+    expect(result.newFindings.map((finding) => fieldOf(finding, 'symbol'))).toEqual(['middle']);
   });
 
   it('pairs by position without touched-code information', () => {
@@ -108,7 +114,7 @@ describe('a legacy finding on a line the change edits', () => {
       touchedCode: touched([['@@ -2 +2 @@', '-    print("start")', '+    print("start", items)']]),
     });
 
-    expect(result.newFindings.map(({ message }) => message)).toEqual([
+    expect(result.newFindings.map((finding) => fieldOf(finding, 'message'))).toEqual([
       `\`print\` found. ${EDITED_LINE_SENTENCE} ${ROUTE}`,
     ]);
   });
@@ -160,12 +166,14 @@ describe('findings that share a message on deleted, moved and added lines', () =
       ),
     });
 
-    expect(result.newFindings.map(({ message }) => message)).toEqual([`\`print\` found. ${ROUTE}`]);
+    expect(result.newFindings.map((finding) => fieldOf(finding, 'message'))).toEqual([
+      `\`print\` found. ${ROUTE}`,
+    ]);
   });
 
   it('pairs very many findings in line order, whatever order the analyzer listed them in', () => {
-    const lines = (count) => Array.from({ length: count }, (_, index) => index + 1);
-    const pair = (heads) =>
+    const lines = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
+    const pair = (heads: readonly unknown[]) =>
       compareFindings({
         baseFindings: ruff('T201', '`print` found', lines(500)),
         headFindings: heads,
@@ -180,16 +188,20 @@ describe('findings that share a message on deleted, moved and added lines', () =
 });
 
 const BRANCH = 'Branch coverage is 50.00%; minimum is 95%.';
-const REPEATED = [
-  ['Python branch coverage', 'coverage.py', 'src/mod.py', '    if x:'],
+const PYTHON: Shape = ['Python branch coverage', 'coverage.py', 'src/mod.py', '    if x:'];
+const REPEATED: readonly Shape[] = [
+  PYTHON,
   ['Java branch coverage', 'jacoco', 'src/main/java/demo/Mod.java', '        if (x) {'],
   ['Kotlin branch coverage', 'jacoco', 'src/main/kotlin/demo/Mod.kt', '        if (x) {'],
   ['an ESLint finding', 'eslint', 'src/mod.ts', '  if (x) {'],
   ['Go branch coverage', 'coverage', 'shop/mod.go', '\tif x {'],
 ];
-const [PYTHON] = REPEATED;
 
-function repeated([, tool, file, condition], lines, rule = 'changed-branch-coverage') {
+function repeated(
+  [, tool, file, condition]: Shape,
+  lines: readonly number[],
+  rule = 'changed-branch-coverage',
+) {
   return lines.map((line, index) => ({
     tool,
     rule,
@@ -201,7 +213,11 @@ function repeated([, tool, file, condition], lines, rule = 'changed-branch-cover
   }));
 }
 
-function source([, , , condition], conditions, { result = 1, length = 22 } = {}) {
+function source(
+  [, , , condition]: Shape,
+  conditions: readonly number[],
+  { result = 1, length = 22 }: { readonly result?: number; readonly length?: number } = {},
+): string {
   return lines(length, (line) => {
     if (conditions.includes(line)) {
       return condition;
@@ -212,11 +228,11 @@ function source([, , , condition], conditions, { result = 1, length = 22 } = {})
   });
 }
 
-function lines(length, text) {
+function lines(length: number, text: (line: number) => string): string {
   return `${Array.from({ length }, (_, index) => text(index + 1)).join('\n')}\n`;
 }
 
-function editLine6(shape, conditions, file = shape[2]) {
+function editLine6(shape: Shape, conditions: readonly number[], file = shape[2]) {
   return touched(
     [['@@ -6 +6 @@', '-    return 1', '+    return 2']],
     { base: source(shape, conditions), head: source(shape, conditions, { result: 2 }) },
@@ -225,19 +241,22 @@ function editLine6(shape, conditions, file = shape[2]) {
 }
 
 describe('a repeated finding that appears on a line the change leaves alone', () => {
-  it.each(REPEATED)('is new for %s, and the legacy one elsewhere is resolved', (...shape) => {
-    const result = compareFindings({
-      baseFindings: repeated(shape, [2]),
-      headFindings: repeated(shape, [4]),
-      touchedCode: editLine6(shape, [2, 4]),
-    });
+  it.each(REPEATED)(
+    'is new for %s, and the legacy one elsewhere is resolved',
+    (...shape: Shape) => {
+      const result = compareFindings({
+        baseFindings: repeated(shape, [2]),
+        headFindings: repeated(shape, [4]),
+        touchedCode: editLine6(shape, [2, 4]),
+      });
 
-    expect(lineOf(result.newFindings)).toEqual([4]);
-    expect(lineOf(result.resolvedFindings)).toEqual([2]);
-    expect(result.unchangedFindings).toEqual([]);
-  });
+      expect(lineOf(result.newFindings)).toEqual([4]);
+      expect(lineOf(result.resolvedFindings)).toEqual([2]);
+      expect(result.unchangedFindings).toEqual([]);
+    },
+  );
 
-  it.each(REPEATED)('is new for %s next to a legacy one that stays', (...shape) => {
+  it.each(REPEATED)('is new for %s next to a legacy one that stays', (...shape: Shape) => {
     const result = compareFindings({
       baseFindings: repeated(shape, [2, 20]),
       headFindings: repeated(shape, [2, 4]),
@@ -250,7 +269,8 @@ describe('a repeated finding that appears on a line the change leaves alone', ()
   });
 
   it('is new when its line differs from the legacy one only in spacing', () => {
-    const spaced = (text) => text.replace('    if x:\n    value3', '    if  x :\n    value3');
+    const spaced = (text: string) =>
+      text.replace('    if x:\n    value3', '    if  x :\n    value3');
     const result = compareFindings({
       baseFindings: repeated(PYTHON, [2]),
       headFindings: repeated(PYTHON, [4]),
@@ -264,12 +284,15 @@ describe('a repeated finding that appears on a line the change leaves alone', ()
   });
 
   it('compares from the reported column when the findings carry one', () => {
-    const shape = ['ESLint', 'eslint', 'src/mod.ts', '  const a = foo(1);'];
-    const code = (result) =>
+    const shape: Shape = ['ESLint', 'eslint', 'src/mod.ts', '  const a = foo(1);'];
+    const code = (result: number) =>
       source(shape, [2], { result })
         .replace('value4 = 4', 'return foo(1);')
         .replace('    r', '  r');
-    const at = (line, column) => ({ ...repeated(shape, [line])[0], location: { line, column } });
+    const at = (line: number, column: number) => ({
+      ...repeated(shape, [line])[0],
+      location: { line, column },
+    });
     const result = compareFindings({
       baseFindings: [at(2, 13)],
       headFindings: [at(4, 10)],
@@ -332,7 +355,7 @@ describe('a repeated finding the analyzer reports on another line of unchanged c
   });
 
   it('still pairs in a file whose language has no source tokens', () => {
-    const shape = ['plain text', 'vale', 'docs/notes.txt', 'if x:'];
+    const shape: Shape = ['plain text', 'vale', 'docs/notes.txt', 'if x:'];
     const result = compareFindings({
       baseFindings: repeated(shape, [2]),
       headFindings: repeated(shape, [4]),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { packageMoves, qualifiedNameMoves, remapQualifiedNames } from './qualified-names.mjs';
 
 const MOVED = new Map([
@@ -6,8 +7,9 @@ const MOVED = new Map([
   ['src/main/java/shop/service/Request.java', 'src/main/java/shop/audit/web/Request.java'],
 ]);
 
-function remapped(text, renames = MOVED) {
-  return remapQualifiedNames(text, qualifiedNameMoves(renames));
+function remapped(text: string, renames: ReadonlyMap<string, string> = MOVED): string {
+  const moves: unknown = qualifiedNameMoves(renames);
+  return textOf(remapQualifiedNames(text, moves));
 }
 
 describe('qualified names of moved sources', () => {

@@ -1,18 +1,54 @@
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../compare.mjs';
-import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
-import { declarationLine, hash, nameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
-import { crapFindings } from '../../../../shared/rules/crap.mjs';
-import { mutantFindings } from '../../../../shared/rules/mutation.mjs';
-import { evaluateStructure } from '../../../../shared/rules/structure.mjs';
+import { fieldAt } from '../../../../scripts/json/fields.mts';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { compareFindings, type ComparedFinding } from '../test-support/typed-compare.mts';
+import { branchCoverageFindings as branchCoverageFindingsJs } from '../../../../shared/rules/branch-coverage.mjs';
+import {
+  declarationLine as declarationLineJs,
+  hash as hashJs,
+  nameFreeHash as nameFreeHashJs,
+} from '../../../../shared/rules/finding-helpers.mjs';
+import { crapFindings as crapFindingsJs } from '../../../../shared/rules/crap.mjs';
+import { mutantFindings as mutantFindingsJs } from '../../../../shared/rules/mutation.mjs';
+import { evaluateStructure as evaluateStructureJs } from '../../../../shared/rules/structure.mjs';
+
+type Fields = Readonly<Record<string, unknown>>;
+type Span = readonly [number, number];
+type SpansByFile = Readonly<Record<string, readonly Span[]>>;
+
+const hash: (value: string) => string = hashJs;
+const nameFreeHash: (text: string, name: string) => string = nameFreeHashJs;
+const declarationLine: (text: string) => string = declarationLineJs;
+const evaluateStructure: (
+  report: { readonly functions: readonly Fields[] },
+  tool: string,
+) => Fields[] = evaluateStructureJs;
+const mutantFindings: (mutants: readonly Fields[], options: { readonly tool: string }) => Fields[] =
+  mutantFindingsJs;
+const crapFindings: (functions: readonly Fields[], options: { readonly tool: string }) => Fields[] =
+  crapFindingsJs;
+const branchCoverageFindings: (
+  branches: readonly Fields[],
+  options: { readonly tool: string; readonly identify: (key: string) => string },
+) => Fields[] = branchCoverageFindingsJs;
 
 const BODY = Array.from({ length: 64 }, (_, index) => `total += step(${String(index)});`);
 
-function functionText(declaration, body = BODY) {
+function functionText(declaration: string, body: readonly string[] = BODY): string {
   return [declaration, ...body, 'return total;', '}'].join('\n');
 }
 
-function entry({ file = 'src/A.java', name, start, text }) {
+function entry({
+  file = 'src/A.java',
+  name,
+  start,
+  text,
+}: {
+  readonly file?: string;
+  readonly name: string;
+  readonly start: number;
+  readonly text: string;
+}): Fields {
   return {
     file,
     name,
@@ -25,13 +61,13 @@ function entry({ file = 'src/A.java', name, start, text }) {
   };
 }
 
-function structure(...entries) {
+function structure(...entries: readonly Fields[]): Fields[] {
   return evaluateStructure({ functions: entries }, 'structure').filter(
-    ({ classification }) => classification === 'enforceable',
+    (finding) => fieldOf(finding, 'classification') === 'enforceable',
   );
 }
 
-function touched(changes, inserted) {
+function touched(changes: SpansByFile, inserted: SpansByFile) {
   return {
     changedLines: new Map(
       Object.entries(changes).map(([file, ranges]) => [
@@ -43,14 +79,27 @@ function touched(changes, inserted) {
   };
 }
 
-function compare({ base, head, changes = {}, inserted = changes, renames }) {
+function compare({
+  base,
+  head,
+  changes = {},
+  inserted = changes,
+  renames,
+}: {
+  readonly base: readonly Fields[];
+  readonly head: readonly Fields[];
+  readonly changes?: SpansByFile;
+  readonly inserted?: SpansByFile;
+  readonly renames?: Map<string, string>;
+}) {
   const result = compareFindings({
     baseFindings: base,
     headFindings: head,
     baseToHeadRenames: renames,
     touchedCode: touched(changes, inserted),
   });
-  const shown = ({ symbol, location }) => `${symbol}@${String(location?.line)}`;
+  const shown = (finding: ComparedFinding) =>
+    `${textOf(fieldOf(finding, 'symbol'))}@${String(fieldAt(finding, 'location', 'line'))}`;
   return {
     added: result.newFindings.map(shown),
     kept: result.unchangedFindings.map(shown),
@@ -60,19 +109,23 @@ function compare({ base, head, changes = {}, inserted = changes, renames }) {
 
 const legacy = functionText('int foo(int a) {');
 
+function withOverloadAbove(secondText: string, changes: SpansByFile, inserted: SpansByFile) {
+  const overload = functionText('int foo(String a) {', BODY.toReversed());
+  return compare({
+    base: structure(entry({ name: 'A.foo', start: 10, text: legacy })),
+    head: structure(
+      entry({ name: 'A.foo', start: 3, text: overload }),
+      entry({ name: 'A.foo', start: 70, text: secondText }),
+    ),
+    changes,
+    inserted,
+  });
+}
+
 describe('function findings matched by their text without the name', () => {
   it('keeps a legacy function when an overload with the same name is added above it', () => {
-    const overload = functionText('int foo(String a) {', BODY.toReversed());
-
     expect(
-      compare({
-        base: structure(entry({ name: 'A.foo', start: 10, text: legacy })),
-        head: structure(
-          entry({ name: 'A.foo', start: 3, text: overload }),
-          entry({ name: 'A.foo', start: 70, text: legacy }),
-        ),
-        changes: { 'src/A.java': [[3, 69]] },
-      }),
+      withOverloadAbove(legacy, { 'src/A.java': [[3, 69]] }, { 'src/A.java': [[3, 69]] }),
     ).toEqual({ added: ['A.foo@3'], kept: ['A.foo@70'], resolved: [] });
   });
 
@@ -96,7 +149,7 @@ describe('function findings matched by their text without the name', () => {
   });
 
   it('keeps it when the rename rewrites the whole declaration line', () => {
-    const method = (name) => [`  ${name}() {`, ...BODY, 'return total;', '}'].join('\n');
+    const method = (name: string) => [`  ${name}() {`, ...BODY, 'return total;', '}'].join('\n');
 
     expect(
       compare({
@@ -135,28 +188,31 @@ describe('function findings matched by their text without the name', () => {
 
   it('holds an edited legacy function by its declaration when an overload is added above', () => {
     const edited = functionText('int foo(int a) {', ['total = 1;', ...BODY.slice(1)]);
-    const overload = functionText('int foo(String a) {', BODY.toReversed());
 
     expect(
-      compare({
-        base: structure(entry({ name: 'A.foo', start: 10, text: legacy })),
-        head: structure(
-          entry({ name: 'A.foo', start: 3, text: overload }),
-          entry({ name: 'A.foo', start: 70, text: edited }),
-        ),
-        changes: {
+      withOverloadAbove(
+        edited,
+        {
           'src/A.java': [
             [3, 69],
             [71, 71],
           ],
         },
-        inserted: { 'src/A.java': [[3, 69]] },
-      }),
+        { 'src/A.java': [[3, 69]] },
+      ),
     ).toEqual({ added: ['A.foo@3'], kept: ['A.foo@70'], resolved: [] });
   });
 });
 
-function mutant({ method, line, anchor = 'Math|replaced + with -|h1' }) {
+function mutant({
+  method,
+  line,
+  anchor = 'Math|replaced + with -|h1',
+}: {
+  readonly method: string;
+  readonly line: number;
+  readonly anchor?: string;
+}): Fields {
   return {
     path: 'src/A.java',
     identity: `A|${method}|${anchor}#1`,
@@ -207,7 +263,7 @@ describe('mutants and branches matched without their function', () => {
   });
 
   it('reports a renamed function whose score grew', () => {
-    const crap = (name, value) =>
+    const crap = (name: string, value: number) =>
       crapFindings(
         [
           {
@@ -234,7 +290,17 @@ describe('mutants and branches matched without their function', () => {
   });
 
   it('reports growth once when the renamed function takes the name of another legacy function', () => {
-    const crap = ({ name, value, anchor, line }) =>
+    const crap = ({
+      name,
+      value,
+      anchor,
+      line,
+    }: {
+      readonly name: string;
+      readonly value: number;
+      readonly anchor: string;
+      readonly line: number;
+    }) =>
       crapFindings(
         [
           {
@@ -258,20 +324,20 @@ describe('mutants and branches matched without their function', () => {
 
     const result = compareFindings({ baseFindings: base, headFindings: head, touchedCode });
 
-    expect(result.newFindings.map(({ message }) => message)).toEqual([
+    expect(result.newFindings.map((finding) => finding['message'])).toEqual([
       'A.bar CRAP rose from 20 to 30 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/A.java"],"function":"A.bar","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
-    expect(result.newFindings[0].heldAtBase).toBeUndefined();
+    expect(fieldAt(result.newFindings, 0, 'heldAtBase')).toBeUndefined();
     expect(result.unchangedFindings).toEqual([]);
-    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['A.bar']);
-    expect(result.resolvedFindings[0].ratchet.value).toBe(35);
+    expect(result.resolvedFindings.map((finding) => finding['symbol'])).toEqual(['A.bar']);
+    expect(fieldAt(result.resolvedFindings, 0, 'ratchet', 'value')).toBe(35);
   });
 
   it('keeps an uncovered branch when its function is renamed', () => {
-    const branch = (symbol) =>
+    const branch = (symbol: string) =>
       branchCoverageFindings([{ path: 'src/A.java', key: 'k', percent: 50, line: 12, symbol }], {
         tool: 'jacoco',
-        identify: (key) => key,
+        identify: (key: string) => key,
       });
 
     expect(
