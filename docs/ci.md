@@ -228,6 +228,11 @@ so another pull request with the same head, or a changed target branch, needs it
 needs the label again. The workflow runs on `pull_request_target`, so the version on the target
 branch of the pull request runs, also for a pull request from a fork, and the pull request that adds
 the workflow cannot use it yet; it never checks out the code of the pull request. Write access is the bar because whoever has it can change the workflows anyway.
+In a public repository, GitHub blocks `pull_request_target` by default from December 2, 2026
+([changelog](https://github.blog/changelog/2026-11-02-pull_request_target-blocked-by-default-december-2)),
+so allow it for `nitpicker-policy-approval.yml` with an Actions policy (Settings > Actions >
+Policies). A blocked run fails without running the job, records no approval and leaves the label on
+the pull request; remove the label and add it again once the policy allows it.
 
 A run that the label cannot approve keeps the digest route: a merge queue, whose commits are not
 the pull request head, and a push. Map `accept-policy-change` from
