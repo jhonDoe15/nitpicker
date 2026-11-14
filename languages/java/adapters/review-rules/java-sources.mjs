@@ -36,6 +36,19 @@ export function blankComments(text) {
   );
 }
 
+export function withoutGenerics(text) {
+  let depth = 0;
+  return text
+    .split('')
+    .filter((character) => {
+      depth += character === '<' ? 1 : 0;
+      const kept = depth === 0;
+      depth -= character === '>' ? 1 : 0;
+      return kept && character !== '>';
+    })
+    .join('');
+}
+
 export function pathInside(base, relative) {
   const root = path.resolve(base);
   const full = path.resolve(root, relative);
