@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { containedPath } from '../../../shared/paths/contained-path.mjs';
 import { policyDigest, policyFindings } from '../../diff/reporting/review/policy-findings.mjs';
 import { runGit } from '../../diff/git/repository/command.mjs';
 import { captureWorkingTree } from '../../diff/git/repository/git.mjs';
@@ -42,12 +42,14 @@ const findingsOf: (
 const blobIdOf: (content: Buffer) => string = gitBlobId;
 const capturedTree: (root: string, headSha: string) => string = captureWorkingTree;
 
+const containedIn: (
+  root: string,
+  relative: string,
+  options: { readonly outside: (file: string) => string },
+) => string = containedPath;
+
 function inside(root: string, file: string): string {
-  const full = path.resolve(root, file);
-  if (!full.startsWith(root + path.sep)) {
-    throw new Error(`${file} is outside ${root}`);
-  }
-  return full;
+  return containedIn(root, file, { outside: (relative) => `${relative} is outside ${root}` });
 }
 
 function declarationFiles(root: string): string[] {

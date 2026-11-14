@@ -1,4 +1,4 @@
-import type { resolveBase } from '../../diff/git/repository/base-ref.mts';
+import { resolveBase } from '../../diff/git/repository/base-ref.mts';
 import { policyAcceptance } from '../policy-review/policy-acceptance.mts';
 import { javascriptPresetHint } from '../../configuration/project-checks/preset-detection.mjs';
 import { type CacheStore, resolveCacheStore } from '../../diff/cache/cache-stores.mts';
@@ -67,4 +67,20 @@ export function resolveRunCacheStore(
     writeNotes(cli.stderr, warnings);
   }
   return cli.options.cache ? store : undefined;
+}
+
+export function comparisonBaseOf(
+  cli: ComparisonCli,
+  repositoryRoot: string,
+): ReturnType<typeof resolveBase> {
+  return (
+    cli.sharedBase ??
+    resolveBase({
+      repositoryRoot,
+      explicitBase: cli.options.baseRef,
+      configuredBase: cli.config.base,
+      environment: cli.environment,
+      staged: cli.options.staged,
+    })
+  );
 }

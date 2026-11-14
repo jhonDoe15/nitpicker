@@ -4,7 +4,7 @@ import { javascriptUnit } from './javascript.mjs';
 import { jvmUnit } from './jvm.mjs';
 import { pythonUnit } from './python.mjs';
 
-export type DependencyUnit = {
+type DependencyUnit = {
   readonly names: readonly string[];
   readonly needs: readonly string[];
   readonly folders: readonly string[];

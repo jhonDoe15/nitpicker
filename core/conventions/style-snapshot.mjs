@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { commitSource } from './sources.mjs';
 import { explainedError } from '../../shared/messages/troubleshooting.mjs';
+import { containedPath } from '../../shared/paths/contained-path.mjs';
 
 const MAX_STYLE_FILES = 1000;
 const MAX_NAME_BYTES = 255;
@@ -101,11 +102,10 @@ function unwritableReason(file) {
 }
 
 function contained(directory, relative) {
-  const full = path.resolve(directory, relative);
-  if (full !== directory && !full.startsWith(directory + path.sep)) {
-    throw new Error(`The style file ${relative} points outside the copy of the merge base`);
-  }
-  return full;
+  return containedPath(directory, relative, {
+    includeRoot: true,
+    outside: (file) => `The style file ${file} points outside the copy of the merge base`,
+  });
 }
 
 function writeOne(directory, file, text) {

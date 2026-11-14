@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { containedPath } from '../../../shared/paths/contained-path.mjs';
 import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const MAX_BUFFER = 1024 * 1024 * 1024;
@@ -72,19 +73,16 @@ function blobContents(repositoryRoot, objects) {
   return contents;
 }
 
+function outsideTree(relative) {
+  return `${relative} is outside the base tree`;
+}
+
 function placedFolder(root, folder) {
-  const full = path.resolve(root, folder);
-  if (full !== root && !full.startsWith(root + path.sep)) {
-    throw new Error(`${folder} is outside the base tree`);
-  }
-  return full;
+  return containedPath(root, folder, { includeRoot: true, outside: outsideTree });
 }
 
 function placed(root, file) {
-  const full = path.resolve(root, file);
-  if (!full.startsWith(root + path.sep)) {
-    throw new Error(`${file} is outside the base tree`);
-  }
+  const full = containedPath(root, file, { outside: outsideTree });
   mkdirSync(path.dirname(full), { recursive: true });
   return full;
 }

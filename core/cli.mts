@@ -23,7 +23,6 @@ import { historyAvailabilityNotes, noticeDescriber } from './command/policy-revi
 import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
-import { resolveBase } from './diff/git/repository/base-ref.mts';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mts';
 import path from 'node:path';
 import { clearDiffReports, outputRootFor } from './diff/reporting/reporters.mts';
@@ -50,6 +49,7 @@ import {
   type ComparisonCli,
   type ConfiguredCli,
   acceptanceOf,
+  comparisonBaseOf,
   resolveRunCacheStore,
   writeNotes,
   writePresetHint,
@@ -89,7 +89,7 @@ const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
 
 export function runCli(options: CliInput = {}): ExitCode {
   const detached = detachLocalGitVariables(process.env);
-  const cli = withIndexFile(withCliDefaults(options), detached);
+  const cli = withIndexFile(withCliDefaults(options, process), detached);
   const [name = ''] = cli.arguments_;
   const checkCommand = CHECK_COMMANDS[name];
   if (checkCommand !== undefined) {
@@ -241,15 +241,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
-  const base =
-    cli.sharedBase ??
-    resolveBase({
-      repositoryRoot,
-      explicitBase: options.baseRef,
-      configuredBase: config.base,
-      environment: cli.environment,
-      staged: options.staged,
-    });
+  const base = comparisonBaseOf(cli, repositoryRoot);
   const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'diff');
   const selection = selectComparisonAnalyzers(cli);
   const { analyzers } = selection;
