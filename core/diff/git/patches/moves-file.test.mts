@@ -15,7 +15,7 @@ describe('moves file', () => {
     }));
 
     expect(handed.moves).toEqual(moves);
-    expect(existsSync(handed.movesFile)).toBe(false);
+    expect(existsSync(handed.movesFile ?? '')).toBe(false);
   });
 
   it('writes no file when nothing moved, and reads no file as no moves', () => {
@@ -24,7 +24,7 @@ describe('moves file', () => {
   });
 
   it('removes the file when the operation throws', () => {
-    const seen = [];
+    const seen: (string | undefined)[] = [];
 
     expect(() =>
       withMovesFile(new Map([['a.ts', 'b.ts']]), (movesFile) => {
@@ -32,6 +32,7 @@ describe('moves file', () => {
         throw new Error('stop');
       }),
     ).toThrow('stop');
-    expect(existsSync(seen[0])).toBe(false);
+    expect(seen).toHaveLength(1);
+    expect(existsSync(String(seen[0]))).toBe(false);
   });
 });

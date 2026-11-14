@@ -1,7 +1,13 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { resolveBase } from './base-ref.mts';
+import { fixtureGit, useGitFixtures } from '../test-support/git-repository.mts';
+import { resolveBase as resolveBaseOf } from './base-ref.mts';
+
+type BaseRequest = Parameters<typeof resolveBaseOf>[0];
+
+function resolveBase(request: Omit<BaseRequest, 'staged'> & { readonly staged?: true }) {
+  return resolveBaseOf({ ...request, staged: request.staged === true });
+}
 
 const { createGitRepository } = useGitFixtures();
 
@@ -144,7 +150,7 @@ describe('resolveBase', () => {
   it('accepts a remote HEAD at the checked commit and rejects a reflog entry of HEAD', () => {
     const repositoryRoot = createRepository();
     setRemoteHead(repositoryRoot, 'origin', 'main');
-    const resolve = (configuredBase) => () =>
+    const resolve = (configuredBase: string) => () =>
       resolveBase({ repositoryRoot, configuredBase, environment: {} });
 
     expect(resolve('origin/HEAD')()).toEqual({ baseRef: 'origin/HEAD', source: 'config' });
@@ -395,19 +401,19 @@ describe('resolveBase', () => {
   });
 });
 
-function createRepository() {
+function createRepository(): string {
   return createGitRepository({}, { prefix: 'nitpicker-base-ref-' }).root;
 }
 
-function addRemote(repositoryRoot, remote) {
+function addRemote(repositoryRoot: string, remote: string): void {
   fixtureGit(repositoryRoot, ['remote', 'add', remote, path.join(repositoryRoot, `${remote}.git`)]);
 }
 
-function setRemoteBranch(repositoryRoot, remote, branch) {
+function setRemoteBranch(repositoryRoot: string, remote: string, branch: string): void {
   fixtureGit(repositoryRoot, ['update-ref', `refs/remotes/${remote}/${branch}`, 'HEAD']);
 }
 
-function setRemoteHead(repositoryRoot, remote, branch) {
+function setRemoteHead(repositoryRoot: string, remote: string, branch: string): void {
   setRemoteBranch(repositoryRoot, remote, branch);
   fixtureGit(repositoryRoot, [
     'symbolic-ref',

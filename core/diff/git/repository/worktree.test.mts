@@ -10,18 +10,36 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useGitFixtures } from '../test-support/git-repository.mjs';
-import { withNamedTemporaryWorktree, withTemporaryWorktree } from './worktree.mjs';
-import { runGit } from './command.mjs';
+import { useGitFixtures } from '../test-support/git-repository.mts';
+import {
+  withNamedTemporaryWorktree as withNamedWorktreeJs,
+  withTemporaryWorktree as withWorktreeJs,
+} from './worktree.mjs';
+import { runGit as runGitJs } from './command.mjs';
+
+type Warn = (message: string) => unknown;
+
+const withTemporaryWorktree: <Result>(
+  repositoryRoot: string,
+  options: { readonly commitSha: string; readonly warn: Warn },
+  operation: (root: string) => Result,
+) => Result = withWorktreeJs;
+const withNamedTemporaryWorktree: <Result>(
+  repositoryRoot: string,
+  options: { readonly commitSha: string; readonly directoryName: string; readonly warn: Warn },
+  operation: (root: string) => Result,
+) => Result = withNamedWorktreeJs;
+const runGit: (repositoryRoot: string, args: readonly string[]) => string = runGitJs;
+type FsRemoval = { readonly rmSync: typeof rmSync };
 
 vi.mock('node:fs', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<FsRemoval>();
   return { ...actual, rmSync: vi.fn(actual.rmSync) };
 });
 
 const { createGitRepository } = useGitFixtures();
-const { rmSync: actualRmSync } = await vi.importActual('node:fs');
-const leftovers = [];
+const { rmSync: actualRmSync } = await vi.importActual<FsRemoval>('node:fs');
+const leftovers: string[] = [];
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -33,17 +51,19 @@ afterEach(() => {
 
 function failTemporaryRootRemoval() {
   vi.mocked(rmSync).mockImplementation((target, options) => {
-    if (path.basename(target).startsWith('nitpicker-diff-')) {
-      leftovers.push(target);
-      throw Object.assign(new Error(`ENOTEMPTY: directory not empty, rmdir '${target}/head'`), {
-        code: 'ENOTEMPTY',
-      });
+    const targetPath = String(target);
+    if (!path.basename(targetPath).startsWith('nitpicker-diff-')) {
+      actualRmSync(target, options);
+      return;
     }
-    return actualRmSync(target, options);
+    leftovers.push(targetPath);
+    throw Object.assign(new Error(`ENOTEMPTY: directory not empty, rmdir '${targetPath}/head'`), {
+      code: 'ENOTEMPTY',
+    });
   });
 }
 
-function registeredWorktrees(repositoryRoot) {
+function registeredWorktrees(repositoryRoot: string): string[] {
   return runGit(repositoryRoot, ['worktree', 'list', '--porcelain'])
     .split('\n')
     .filter((line) => line.startsWith('worktree '));
@@ -57,12 +77,12 @@ describe('withTemporaryWorktree', () => {
     const base = withTemporaryWorktree(
       repository.root,
       { commitSha: repository.baseSha, warn },
-      (root) => root,
+      (root: string) => root,
     );
     const head = withNamedTemporaryWorktree(
       repository.root,
       { commitSha: repository.baseSha, directoryName: 'head', warn },
-      (root) => root,
+      (root: string) => root,
     );
 
     expect(path.basename(base)).toBe('base');
@@ -86,7 +106,7 @@ describe('withTemporaryWorktree', () => {
     const root = withTemporaryWorktree(
       repository.root,
       { commitSha: repository.baseSha, warn: vi.fn() },
-      (worktreeRoot) => worktreeRoot,
+      (worktreeRoot: string) => worktreeRoot,
     );
 
     expect(path.dirname(path.dirname(root))).toBe(realTemp);
@@ -106,7 +126,7 @@ describe('withTemporaryWorktree', () => {
     expect(result).toBe('report');
     expect(warn.mock.calls).toEqual([
       [
-        `could not remove the temporary worktree ${leftovers[0]} (ENOTEMPTY: directory not empty, rmdir '${leftovers[0]}/head'); delete it and run git worktree prune once the build has stopped`,
+        `could not remove the temporary worktree ${String(leftovers[0])} (ENOTEMPTY: directory not empty, rmdir '${String(leftovers[0])}/head'); delete it and run git worktree prune once the build has stopped`,
       ],
     ]);
   });
@@ -131,7 +151,7 @@ describe('withTemporaryWorktree', () => {
     const worktreeRoot = withTemporaryWorktree(
       repository.root,
       { commitSha: repository.baseSha, warn },
-      (root) => {
+      (root: string) => {
         writeFileSync(path.join(root, '.git'), 'gitdir: /nonexistent\n');
         return root;
       },

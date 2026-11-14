@@ -1,7 +1,7 @@
-import { writeFiles } from './fixture-files.mjs';
-import { fixtureGit } from './git-repository.mjs';
+import { type FileMap, writeFiles } from './fixture-files.mts';
+import { fixtureGit } from './git-repository.mts';
 
-export function branchOff(root, branch) {
+export function branchOff(root: string, branch: FileMap): void {
   fixtureGit(root, ['checkout', '-q', '-b', 'feature']);
   writeFiles(root, branch);
   fixtureGit(root, ['add', '-A']);

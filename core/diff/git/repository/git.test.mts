@@ -1,8 +1,11 @@
 import { utimesSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { captureWorkingTree, resolveComparison } from './git.mjs';
+import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mts';
+import { captureWorkingTree as captureWorkingTreeJs, resolveComparison } from './git.mjs';
+
+const captureWorkingTree: (repositoryRoot: string, headSha: string) => string =
+  captureWorkingTreeJs;
 
 const { createGitRepository } = useGitFixtures();
 

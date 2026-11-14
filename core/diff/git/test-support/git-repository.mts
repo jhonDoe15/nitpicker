@@ -3,7 +3,7 @@ import { cpSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach } from 'vitest';
-import { writeFiles } from './fixture-files.mjs';
+import { type FileMap, writeFiles } from './fixture-files.mts';
 
 const GIT_TIMEOUT_MS = 30_000;
 
@@ -18,8 +18,12 @@ const HERMETIC_GIT_ENVIRONMENT = {
   GIT_COMMITTER_DATE: '2026-01-01T00:00:00Z',
 };
 
-export function fixtureGit(repositoryRoot, arguments_, { input } = {}) {
-  return execFileSync('git', arguments_, {
+export function fixtureGit(
+  repositoryRoot: string,
+  gitArguments: readonly string[],
+  { input }: { readonly input?: string | undefined } = {},
+): string {
+  return execFileSync('git', gitArguments, {
     cwd: repositoryRoot,
     encoding: 'utf8',
     input,
@@ -29,12 +33,12 @@ export function fixtureGit(repositoryRoot, arguments_, { input } = {}) {
   });
 }
 
-export function commit(root, message) {
+export function commit(root: string, message: string): void {
   fixtureGit(root, ['add', '-A']);
   fixtureGit(root, ['commit', '-q', '-m', message]);
 }
 
-export function createGitTemplate() {
+export function createGitTemplate(): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-empty-git-template-')));
   fixtureGit(root, ['init', '-q', '--initial-branch=main']);
   fixtureGit(root, ['config', 'user.name', 'Nitpicker Fixture']);
@@ -45,11 +49,11 @@ export function createGitTemplate() {
   return root;
 }
 
-export function copyGitTemplate(template, root) {
+export function copyGitTemplate(template: string, root: string): void {
   cpSync(path.join(template, '.git'), path.join(root, '.git'), { recursive: true });
 }
 
-function commitBase(root, files, baseRef) {
+function commitBase(root: string, files: FileMap, baseRef: string | undefined): string {
   fixtureGit(root, ['init', '-q', '--initial-branch=main']);
   writeFiles(root, files);
   fixtureGit(root, ['add', '-A']);
@@ -71,8 +75,19 @@ function commitBase(root, files, baseRef) {
   return sha;
 }
 
-export function useGitFixtures() {
-  const roots = [];
+type GitRepositoryOptions = { readonly prefix?: string; readonly baseRef?: string };
+
+type GitRepository = {
+  readonly root: string;
+  readonly baseSha: string;
+  readonly baseRef: string | undefined;
+};
+
+export function useGitFixtures(): {
+  readonly temporaryRoot: (prefix: string) => string;
+  readonly createGitRepository: (files?: FileMap, options?: GitRepositoryOptions) => GitRepository;
+} {
+  const roots: string[] = [];
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
@@ -80,13 +95,16 @@ export function useGitFixtures() {
     }
   });
 
-  function temporaryRoot(prefix) {
+  function temporaryRoot(prefix: string): string {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
     roots.push(root);
     return root;
   }
 
-  function createGitRepository(files = {}, { prefix = 'nitpicker-git-fixture-', baseRef } = {}) {
+  function createGitRepository(
+    files: FileMap = {},
+    { prefix = 'nitpicker-git-fixture-', baseRef }: GitRepositoryOptions = {},
+  ): GitRepository {
     const root = temporaryRoot(prefix);
     const baseSha = commitBase(root, files, baseRef);
     return { root, baseSha, baseRef };

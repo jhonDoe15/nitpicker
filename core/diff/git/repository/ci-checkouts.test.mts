@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mjs';
-import { writeFiles } from '../test-support/fixture-files.mjs';
+import { commit, fixtureGit, useGitFixtures } from '../test-support/git-repository.mts';
+import { writeFiles } from '../test-support/fixture-files.mts';
 import { resolveBase } from './base-ref.mts';
 import { resolveComparison } from './git.mjs';
 import { runCli } from '../../../cli.mts';
-import { captureOutput } from '../../reporting/test-support/output-capture.mjs';
+import { captureOutput } from '../../reporting/test-support/output-capture.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
-function createRemote(targetBranch) {
+function createRemote(targetBranch: string) {
   const remote = createGitRepository({ 'a.txt': 'a\n' }).root;
   if (targetBranch !== 'main') {
     fixtureGit(remote, ['branch', targetBranch]);
@@ -28,7 +28,7 @@ function createRemote(targetBranch) {
   return { remote, forkPoint };
 }
 
-function checkoutLikeRunner(remote, depth) {
+function checkoutLikeRunner(remote: string, depth?: number): string {
   const checkout = temporaryRoot('nitpicker-ci-checkout-');
   fixtureGit(checkout, ['init', '-q']);
   fixtureGit(checkout, ['remote', 'add', 'origin', `file://${remote}`]);
@@ -44,16 +44,22 @@ function checkoutLikeRunner(remote, depth) {
   return checkout;
 }
 
-function comparisonFor(checkout, environment) {
-  const base = resolveBase({ repositoryRoot: checkout, environment });
+function comparisonFor(
+  checkout: string,
+  environment: Readonly<Record<string, string | undefined>>,
+) {
+  const base = resolveBase({ repositoryRoot: checkout, environment, staged: false });
   return { base, resolve: () => resolveComparison(checkout, base.baseRef) };
 }
 
-function failureOf(action) {
+function failureOf(action: () => unknown): Error {
   try {
     action();
   } catch (error) {
-    return error;
+    if (error instanceof Error) {
+      return error;
+    }
+    throw error;
   }
   throw new Error('expected the action to fail');
 }
@@ -135,7 +141,7 @@ describe('a checkout whose history stops before the merge base', () => {
 });
 
 describe('nitpicker base', () => {
-  function base(checkout, arguments_, environment) {
+  function base(checkout: string, arguments_: readonly string[], environment: NodeJS.ProcessEnv) {
     const output = captureOutput();
     const exitCode = runCli({
       arguments_: ['base', ...arguments_],
