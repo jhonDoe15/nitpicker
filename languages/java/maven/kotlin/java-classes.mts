@@ -29,24 +29,30 @@ const ATTRIBUTE_HEADER_BYTES = 6;
 const INTERFACES_OFFSET = 6;
 const CLASS_PREAMBLE_BYTES = 8;
 
-function readConstant(buffer, offset) {
+type Constant = { readonly next: number; readonly slots: number; readonly text?: string };
+
+function readConstant(buffer: Buffer, offset: number): Constant {
   const tag = buffer[offset];
   if (tag === UTF8) {
     const start = offset + UTF8_HEADER_BYTES;
     const end = start + buffer.readUInt16BE(offset + 1);
     return { next: end, slots: 1, text: buffer.toString('utf8', start, end) };
   }
-  if (WIDE_CONSTANTS.has(tag)) {
+  if (tag !== undefined && WIDE_CONSTANTS.has(tag)) {
     return { next: offset + WIDE_CONSTANT_BYTES, slots: 2 };
   }
-  if (CONSTANT_SIZES.has(tag)) {
-    return { next: offset + 1 + CONSTANT_SIZES.get(tag), slots: 1 };
+  const size = tag === undefined ? undefined : CONSTANT_SIZES.get(tag);
+  if (size !== undefined) {
+    return { next: offset + 1 + size, slots: 1 };
   }
   throw new RangeError(`unknown constant pool tag ${String(tag)}`);
 }
 
-function skipConstants(buffer, count) {
-  const texts = [];
+function skipConstants(
+  buffer: Buffer,
+  count: number,
+): { readonly utf8: Map<number, string>; readonly offset: number } {
+  const texts: [number, string | undefined][] = [];
   let offset = HEADER_BYTES;
   const pending = [1];
   for (const index of pending) {
@@ -57,12 +63,19 @@ function skipConstants(buffer, count) {
       pending.push(index + constant.slots);
     }
   }
-  return { utf8: new Map(texts.filter(([, text]) => text !== undefined)), offset };
+  return {
+    utf8: new Map(texts.flatMap(([index, text]) => (text === undefined ? [] : [[index, text]]))),
+    offset,
+  };
 }
 
-function skipAttributes(buffer, start, wanted = () => false) {
-  const found = [];
-  const offset = Array.from({ length: buffer.readUInt16BE(start) }).reduce((at) => {
+function skipAttributes(
+  buffer: Buffer,
+  start: number,
+  wanted: (nameIndex: number) => boolean = () => false,
+): { readonly offset: number; readonly found: number[] } {
+  const found: number[] = [];
+  const offset = Array.from({ length: buffer.readUInt16BE(start) }).reduce<number>((at) => {
     if (wanted(buffer.readUInt16BE(at))) {
       found.push(buffer.readUInt16BE(at + ATTRIBUTE_HEADER_BYTES));
     }
@@ -71,14 +84,14 @@ function skipAttributes(buffer, start, wanted = () => false) {
   return { offset, found };
 }
 
-function skipMembers(buffer, start) {
-  return Array.from({ length: buffer.readUInt16BE(start) }).reduce(
+function skipMembers(buffer: Buffer, start: number): number {
+  return Array.from({ length: buffer.readUInt16BE(start) }).reduce<number>(
     (offset) => skipAttributes(buffer, offset + MEMBER_HEADER_BYTES).offset,
     start + 2,
   );
 }
 
-export function sourceFileOf(buffer) {
+export function sourceFileOf(buffer: Buffer): string | undefined {
   if (buffer.length < HEADER_BYTES || buffer.readUInt32BE(0) !== MAGIC) {
     return undefined;
   }
@@ -93,27 +106,32 @@ export function sourceFileOf(buffer) {
     members,
     (nameIndex) => utf8.get(nameIndex) === 'SourceFile',
   );
-  return found.length === 0 ? undefined : utf8.get(found[0]);
+  const [sourceIndex] = found;
+  return sourceIndex === undefined ? undefined : utf8.get(sourceIndex);
 }
 
-function classFilesIn(directory) {
+function classFilesIn(directory: string): string[] {
   return readdirSync(directory, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
     .map((entry) => path.join(entry.parentPath, entry.name));
 }
 
-function isJavaClass(file) {
+function isJavaClass(file: string): boolean {
   try {
     const sourceFile = sourceFileOf(readFileSync(file));
     return sourceFile === undefined || sourceFile.endsWith('.java');
   } catch (error) {
-    throw new Error(`nitpicker cannot read the class file ${file}: ${error.message}`, {
+    throw new Error(`nitpicker cannot read the class file ${file}: ${messageOf(error)}`, {
       cause: error,
     });
   }
 }
 
-function destinationOf(classDirectory, target, file) {
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function destinationOf(classDirectory: string, target: string, file: string): string {
   const base = path.resolve(target);
   const destination = path.resolve(base, path.relative(classDirectory, file));
   if (!destination.startsWith(base + path.sep)) {
@@ -122,7 +140,7 @@ function destinationOf(classDirectory, target, file) {
   return destination;
 }
 
-export function copyJavaClasses(classDirectory, target) {
+export function copyJavaClasses(classDirectory: string, target: string): string[] {
   rmSync(target, { recursive: true, force: true });
   if (!existsSync(classDirectory)) {
     return [];

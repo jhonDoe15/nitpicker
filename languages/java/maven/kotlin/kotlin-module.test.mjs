@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { kotlinManifest } from './kotlin-module.mjs';
+import { kotlinManifest } from './kotlin-module.mts';
 
 describe('The manifest of a Kotlin Maven module', () => {
   it('reports the all-open options, the formatter, the serialization use and the roots relative to the module', () => {

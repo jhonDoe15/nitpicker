@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
-import { readReactor } from '../maven-project.mjs';
+import { readReactor } from '../maven-project.mts';
 
 const roots = [];
 

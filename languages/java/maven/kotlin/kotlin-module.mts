@@ -1,24 +1,45 @@
 import path from 'node:path';
-import { copyJavaClasses } from './java-classes.mjs';
-import { runDetekt } from './tools/kotlin-detekt.mjs';
-import { relativeRoots } from '../module/module-paths.mjs';
-import { runKotlinFormatter } from './tools/kotlin-format.mjs';
-import { runKotlinPsi } from './tools/kotlin-programs.mjs';
+import { copyJavaClasses } from './java-classes.mts';
+import { runDetekt } from './tools/kotlin-detekt.mts';
+import { relativeRoots } from '../module/module-paths.mts';
+import { runKotlinFormatter } from './tools/kotlin-format.mts';
+import { runKotlinPsi } from './tools/kotlin-programs.mts';
+
+import type {
+  KotlinClasspaths,
+  KotlinModule,
+  KotlinOptions,
+  ToolClasspaths,
+  ProjectModule,
+} from '../typed/kotlin-types.mts';
+import type { KotlinPinned } from './tools/kotlin-dependencies.mts';
+
+type RuntimeClasspaths = KotlinClasspaths & { readonly mainRuntime: readonly string[] };
+type KotlinAnalysis = {
+  readonly spotbugsModule: ProjectModule;
+  readonly coverageModule: ProjectModule;
+  readonly auxClasspath?: string[];
+  readonly manifest: Readonly<Record<string, unknown>>;
+};
 
 const SERIALIZATION_JAR =
   /^(?:jackson-module-kotlin|kotlinx-serialization-(?:core|json)|moshi-kotlin).*\.jar$/u;
 const JAVA_CLASSES = 'java-classes';
 const JAVA_TEST_CLASSES = 'java-test-classes';
 
-export function isKotlinModule(module) {
+export function isKotlinModule(module: ProjectModule): module is KotlinModule {
   return module.kotlin !== undefined;
 }
 
-function usesSerialization(classpaths) {
+function usesSerialization(classpaths: RuntimeClasspaths): boolean {
   return classpaths.mainRuntime.some((jar) => SERIALIZATION_JAR.test(path.basename(jar)));
 }
 
-export function kotlinManifest(module, options, classpaths) {
+export function kotlinManifest(
+  module: KotlinModule,
+  options: Pick<KotlinOptions, 'formatter'>,
+  classpaths: RuntimeClasspaths,
+): Readonly<Record<string, unknown>> {
   return {
     kotlin: true,
     kotlinSerialization: usesSerialization(classpaths),
@@ -29,7 +50,21 @@ export function kotlinManifest(module, options, classpaths) {
   };
 }
 
-export function analyzeKotlinModule({ module, reportDir, tools, classpaths, pinned, options }) {
+export function analyzeKotlinModule({
+  module,
+  reportDir,
+  tools,
+  classpaths,
+  pinned,
+  options,
+}: {
+  readonly module: ProjectModule;
+  readonly reportDir: string;
+  readonly tools: ToolClasspaths;
+  readonly classpaths: RuntimeClasspaths;
+  readonly pinned: KotlinPinned;
+  readonly options: KotlinOptions | undefined;
+}): KotlinAnalysis {
   if (options === undefined || !isKotlinModule(module)) {
     return { spotbugsModule: module, coverageModule: module, manifest: {} };
   }
