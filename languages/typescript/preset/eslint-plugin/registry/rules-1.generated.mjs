@@ -70,6 +70,7 @@ import { rule as ruleNoProductionConsole } from '../rules/modules/no-production-
 import { rule as ruleNoProductionImportsInSetupFiles } from '../test-isolation/no-production-imports-in-setup-files.mjs';
 import { rule as ruleNoPromiseChain } from '../rules/syntax/no-promise-chain.mjs';
 import { rule as ruleNoRaisedTestTimeout } from '../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { rule as ruleNoRawHttpValue } from '../rules/http-values/no-raw-http-value.mjs';
 import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real-time-random-or-network.mjs';
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
@@ -173,6 +174,7 @@ export const partRules = {
   'no-production-imports-in-setup-files': ruleNoProductionImportsInSetupFiles,
   'no-promise-chain': ruleNoPromiseChain,
   'no-raised-test-timeout': ruleNoRaisedTestTimeout,
+  'no-raw-http-value': ruleNoRawHttpValue,
   'no-real-time-random-or-network': ruleNoRealTimeRandomOrNetwork,
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,

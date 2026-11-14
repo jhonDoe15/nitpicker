@@ -184,6 +184,30 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (Python).
 - TypeScript and JavaScript have no map collector that fails on an `undefined` or `null` value (the Java
   `pmd/NullMapValue` rule for `Collectors.toMap`): `Object.fromEntries` and `Map` accept both, so no rule covers it.
+- `nitpicker/no-raw-http-value`: HTTP text compared by exact case or split by hand, in all production
+  code (not in tests). A value read by `headers.get('x')`, `req.header('x')`, `req.get('x')`,
+  `req.headers['x']` or `req.headers.accept`, of a header whose value is case-insensitive
+  (`Content-Type`, `Accept*`, `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`,
+  `Cache-Control`, `Authorization`, `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like),
+  directly or through a local that is never assigned again (also behind `trim()`, `?? ''` and
+  `|| ''`), is reported when it meets a string literal with a letter in `===`, `==`, `!==`, `!=`,
+  `startsWith`, `endsWith`, `includes`, `indexOf`, a `switch`, `in`, a regular expression without
+  the `i` flag, or as the key of `Set.has`, `Map.get`, `Array.includes` or `table[value]`. Also
+  reported: a structured header (`Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match`,
+  `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by `split(',')` or `split(';')` or
+  matched by a regular expression with a separator, `name.startsWith('__Host-')` or
+  `'__Secure-'` on a cookie name, a file extension from `extname` or `split('.').pop()` used as the
+  key of a table named `mime` or `contentType` without `toLowerCase()`, and a header name written
+  with capitals (`req.headers['Content-Type']`) on the request's `headers` object, which Node
+  lowercases. The allowed forms are `value.toLowerCase()` before the comparison, or a parser: the
+  `content-type`, `negotiator`, `accepts` or `cookie` package, or the framework's own helper
+  (`req.accepts`, `req.is`, `c.req.parseBody`). A header name read through `Headers.get`,
+  `req.header` or `req.get` is case-insensitive and never reported, an HTTP method is case-sensitive
+  and not part of the rule, and a parsed `URL` already lowercases its `protocol` and `hostname`, so those are reported only when compared with a literal that has capitals (`u.protocol === 'HTTPS:'` never matches). Types (`Headers`, `Request`, `URL`, `IncomingHttpHeaders`) are used when available, names such as `headers` and `req` otherwise. A library
+  that is itself the parser takes an exception for this rule. The same forms run as
+  `pmd/HttpValueCase` and `pmd/HandSplitHttpHeader` (Java), `kotlin-source/HttpValueCase` and
+  `kotlin-source/HandSplitHttpHeader` (Kotlin), `http-value-case` and `hand-split-http-header`
+  (Python) and `go-rules/http-value-case` and `go-rules/hand-split-http-header` (Go).
 - `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
   that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
   preset: six characters or more with letters and digits, or three character classes; placeholders,

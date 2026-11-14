@@ -23,6 +23,11 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
   (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
   zone (`kotlin-source/LegacyCalendarApi`).
+- HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
+  host, cookie name or file extension (`lowercase()`, `equals(x, ignoreCase = true)`) before comparing it, and
+  parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `ContentDisposition.parse` or
+  `HttpCookie.parse` instead of `split(",")` or `split(";")` (`kotlin-source/HttpValueCase`,
+  `kotlin-source/HandSplitHttpHeader`). A library that is itself the parser takes an exception.
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `ttlSeconds.seconds`), pass
   milliseconds to `delay` and `Thread.sleep`, and keep epoch times in a `Long` or an `Instant`, never
