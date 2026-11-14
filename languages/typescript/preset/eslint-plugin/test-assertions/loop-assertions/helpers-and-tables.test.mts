@@ -1,4 +1,4 @@
-import { NODE_TEST, runCases } from './test-support/rule-cases.mjs';
+import { NODE_TEST, runCases } from './test-support/rule-cases.mts';
 
 runCases('no-assertion-in-loop through helpers, async callbacks and tables', {
   valid: [

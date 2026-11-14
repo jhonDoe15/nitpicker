@@ -1,4 +1,4 @@
-import { CHAI, NODE_TEST, runCases } from './test-support/rule-cases.mjs';
+import { CHAI, NODE_TEST, runCases } from './test-support/rule-cases.mts';
 
 const MOCHA = "import { expect } from 'chai';\n";
 const ASSERT = "import assert from 'node:assert';\n";
