@@ -47,7 +47,7 @@ export const STRUCTURE_NOTES = {
   'near-duplicate': [
     'Two functions proved to be copies from their syntax trees: the same apart from renamed locals, apart from up to four values, sharing a run of statements, or the same logic written another way.',
     'A copy keeps a second place to fix every bug and grows apart from the first; agents copy a function and change one literal more often than they extract one.',
-    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types are a type-specialized family and are not reported.',
+    'Extract one function, with the differing values as parameters, and call it from both places. Java and Kotlin overloads that differ only in primitive, boxed or generic types, and Go functions that differ only in the number type, are a type-specialized family and are not reported.',
   ],
   'decided-condition': [
     'A condition that the guards before it in the same function already decide: always true (a redundant check) or always false (dead code).',
@@ -60,7 +60,7 @@ export const STRUCTURE_NOTES = {
     'Write the printed shorter form. The message prints it from the original operands, in order, and names the operand that makes the other redundant.',
   ],
   'duplicate-branch': [
-    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm, adjacent guards that end in a jump with one body (one `a || b`), and a nested `if`/`else` that repeats the outer `else` (one `a && b`).',
+    'Two arms of one branch (an `if` chain, a ternary, a `switch`, a `select` or a `when`) with the same body; report-only, the same statements at the start or end of every arm, adjacent guards that end in a jump with one body (one `a || b`), and a nested `if`/`else` that repeats the outer `else` (one `a && b`).',
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
     'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
   ],

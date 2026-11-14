@@ -1,45 +1,49 @@
 import { afterEffects, effectsOf, fact } from '../facts.mjs';
 import { binaryOf, sourceOf, textOf } from './exits.mjs';
 
+const EXCLUSIVE = 'exclusive';
+const NUMBER = 'number';
+
 const KOTLIN_RANGES = new Map([
-  ['until', 'exclusive'],
+  ['until', EXCLUSIVE],
   ['downTo', 'down'],
 ]);
 const KOTLIN_BINARY = new Map([
   ['..', 'inclusive'],
-  ['..<', 'exclusive'],
+  ['..<', EXCLUSIVE],
 ]);
-const BOUND_LITERALS = new Set(['number']);
+const BOUND_LITERALS = new Set([NUMBER]);
+const MAX_RANGE_OPERANDS = 3;
 
 function isPlainBound(node) {
   return node.kind !== 'literal' || BOUND_LITERALS.has(node.literal);
 }
 
-function pythonBounds(arguments_, zero) {
-  const [first, second, step] = arguments_;
-  if (arguments_.length === 1) {
-    return { low: zero, high: first, shape: 'exclusive' };
+function pythonBounds(operands, zero) {
+  const [first, second, step] = operands;
+  if (operands.length === 1) {
+    return { low: zero, high: first, shape: EXCLUSIVE };
   }
   if (step === undefined) {
-    return { low: first, high: second, shape: 'exclusive' };
+    return { low: first, high: second, shape: EXCLUSIVE };
   }
   const negative =
     step.kind === 'unary' && step.value === '-' && step.children[0].kind === 'literal';
-  if (step.kind === 'literal' && step.literal === 'number') {
-    return { low: first, high: second, shape: 'exclusive' };
+  if (step.kind === 'literal' && step.literal === NUMBER) {
+    return { low: first, high: second, shape: EXCLUSIVE };
   }
   return negative ? { low: second, high: first, shape: 'descending' } : undefined;
 }
 
 function pythonRange(iter) {
-  const [callee, ...arguments_] = iter.children;
+  const [callee, ...operands] = iter.children;
   const isRange = callee?.kind === 'name' && callee.binding === 'free' && callee.value === 'range';
-  if (!isRange || arguments_.some(({ kind }) => kind === 'expression')) {
+  if (!isRange || operands.some(({ kind }) => kind === 'expression')) {
     return undefined;
   }
-  const zero = { kind: 'literal', literal: 'number', value: '0', children: [], start: iter.start };
-  return arguments_.length >= 1 && arguments_.length <= 3
-    ? pythonBounds(arguments_, zero)
+  const zero = { kind: 'literal', literal: NUMBER, value: '0', children: [], start: iter.start };
+  return operands.length >= 1 && operands.length <= MAX_RANGE_OPERANDS
+    ? pythonBounds(operands, zero)
     : undefined;
 }
 
@@ -77,7 +81,7 @@ export function isIntegerLoop(node) {
 }
 
 function rangeCondition({ low, high, shape, target }) {
-  const upper = binaryOf(shape === 'exclusive' ? '<' : '<=', target, high);
+  const upper = binaryOf(shape === EXCLUSIVE ? '<' : '<=', target, high);
   if (shape === 'descending') {
     return binaryOf('&&', binaryOf('<', low, target), binaryOf('<=', target, high));
   }

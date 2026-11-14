@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { resultSlipFindings } from '../../../../../shared/rules/slips/slip-findings.mjs';
-import { javaParser, kotlinParser } from '../test-support/parse-jvm.mjs';
+import { resultSlipFindings } from '../../../../../../shared/rules/slips/slip-findings.mjs';
+import { javaParser, kotlinParser } from '../../test-support/parse-jvm.mjs';
 
 const parsers = {};
 

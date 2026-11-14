@@ -1,3 +1,4 @@
+const SHORT = 'short';
 /** The fixed-width integer types of the JVM, by the name the solver terms give them. */
 export const WIDTHS = Object.freeze({
   byte: { bits: 8, signed: true },
@@ -10,8 +11,8 @@ export const WIDTHS = Object.freeze({
 const TYPE_LABELS = new Map([
   ['byte', 'byte'],
   ['Byte', 'byte'],
-  ['short', 'short'],
-  ['Short', 'short'],
+  [SHORT, SHORT],
+  ['Short', SHORT],
   ['char', 'char'],
   ['Char', 'char'],
   ['Character', 'char'],
@@ -37,14 +38,23 @@ export function widthTag(label) {
   return WIDTHS[label];
 }
 
+const ONE = BigInt(1);
+const TWO = BigInt(2);
+
+/** The smallest and largest value, as BigInts, of the integers a `{ bits, signed }` tag describes. */
+export function rangeOfTag({ bits, signed }) {
+  const span = TWO ** BigInt(bits);
+  return signed
+    ? { min: -(span / TWO), max: span / TWO - ONE }
+    : { min: BigInt(0), max: span - ONE };
+}
+
 export function minimumOf(label) {
-  const { bits, signed } = WIDTHS[label];
-  return signed ? -(2n ** BigInt(bits - 1)) : 0n;
+  return rangeOfTag(WIDTHS[label]).min;
 }
 
 export function maximumOf(label) {
-  const { bits, signed } = WIDTHS[label];
-  return signed ? 2n ** BigInt(bits - 1) - 1n : 2n ** BigInt(bits) - 1n;
+  return rangeOfTag(WIDTHS[label]).max;
 }
 
 /** The label of a `{ bits, signed }` tag, or undefined for a node without one. */

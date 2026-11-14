@@ -3,10 +3,13 @@ import {
   maximumOf,
   minimumOf,
   promotedLabel,
+  rangeOfTag,
   widthLabel,
   widthTag,
 } from '../../../logic/bitvectors/widths.mjs';
-import { rebuild } from '../../../near-duplicates/tree/nodes.mjs';
+import { typedByKind } from './typed-dispatch.mjs';
+
+const NUMBER = 'number';
 
 const ARITHMETIC = new Set(['+', '-', '*', '/', '%', '&', '|', '^']);
 const SHIFTS = new Set(['<<', '>>', '>>>']);
@@ -66,7 +69,8 @@ function numberLabel(text) {
   const value = BigInt(`${prefix}${pattern.exec(bare).groups.digits.replaceAll('_', '')}`);
   const label = isLong ? 'long' : 'int';
   const isHex = prefix !== '';
-  const limit = isHex ? 2n ** BigInt(widthTag(label).bits) - 1n : maximumOf(label) + 1n;
+  const unsigned = rangeOfTag({ bits: widthTag(label).bits, signed: false });
+  const limit = isHex ? unsigned.max : maximumOf(label) + BigInt(1);
   return value <= limit ? { label, value: String(value) } : undefined;
 }
 
@@ -80,14 +84,12 @@ function charCode(text) {
 }
 
 function typedLiteral(node, kotlin) {
-  if (node.literal === 'number') {
+  if (node.literal === NUMBER) {
     const found = numberLabel(node.value);
     return found === undefined ? node : tagged(node, found.label, { value: found.value });
   }
   const code = node.literal === 'char' && !kotlin ? charCode(node.value) : undefined;
-  return code === undefined
-    ? node
-    : tagged(node, 'char', { literal: 'number', value: String(code) });
+  return code === undefined ? node : tagged(node, 'char', { literal: NUMBER, value: String(code) });
 }
 
 function labelOf(node) {
@@ -123,7 +125,7 @@ function typedMember(node) {
   return tagged(
     {
       kind: 'literal',
-      literal: 'number',
+      literal: NUMBER,
       value: String(limit),
       children: [],
       start: node.start,
@@ -167,35 +169,6 @@ function typedCast(node, kotlin) {
   return isTyped ? tagged({ ...node, children: [value] }, label, { operation: 'cast' }) : node;
 }
 
-function typedNode(node, scope) {
-  switch (node.kind) {
-    case 'name': {
-      return node.binding === 'bound' ? tagged(node, scope.labels.get(node.value)) : node;
-    }
-    case 'literal': {
-      return typedLiteral(node, scope.kotlin);
-    }
-    case 'binary': {
-      return typedBinary(node);
-    }
-    case 'unary': {
-      return typedUnary(node);
-    }
-    case 'member': {
-      return typedMember(node);
-    }
-    case 'call': {
-      return typedCall(node);
-    }
-    case 'expression': {
-      return typedCast(node, scope.kotlin);
-    }
-    default: {
-      return node;
-    }
-  }
-}
-
 /**
  * `tree` with the fixed-width type of each integer expression it can know: names by their declared
  * type, literals, the limits `Integer.MAX_VALUE` and friends, sizes and index searches, casts,
@@ -209,6 +182,13 @@ export function typedTree(tree, { types, kotlin }) {
       return label === undefined ? [] : [[name, label]];
     }),
   );
-  const scope = { labels, kotlin };
-  return rebuild(tree, (node, children) => typedNode({ ...node, children }, scope));
+  return typedByKind(tree, {
+    name: (node) => (node.binding === 'bound' ? tagged(node, labels.get(node.value)) : node),
+    literal: (node) => typedLiteral(node, kotlin),
+    binary: typedBinary,
+    unary: typedUnary,
+    member: typedMember,
+    call: typedCall,
+    expression: (node) => typedCast(node, kotlin),
+  });
 }

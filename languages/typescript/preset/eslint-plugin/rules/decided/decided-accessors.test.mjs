@@ -15,13 +15,7 @@ tester.run('no-decided-condition on accessors and getters', rule, {
   invalid: [
     typed(
       'declare function go(): void; export function a(x: { a: number }) { if (x.a > 1) { return; } if (x.a > 2) { go(); } }',
-      [
-        error(
-          'alwaysFalse',
-          'x.a > 2',
-          'line 1 returns when `x.a > 1` is true',
-        ),
-      ],
+      [error('alwaysFalse', 'x.a > 2', 'line 1 returns when `x.a > 1` is true')],
     ),
   ],
 });

@@ -1,18 +1,28 @@
-import { decidingFact, relevantFacts, solveFacts } from '../../logic/sync/solve-facts.mjs';
+import { decidingFactWithin, relevantFacts, solveFacts } from '../../logic/sync/solve-facts.mjs';
+import { solverBudget } from '../../logic/sync/budget.mjs';
 import { hasModels } from '../../logic/models/models.mjs';
 import { key } from '../../logic/terms.mjs';
 import { isIntegerType } from '../../near-duplicates/proof/terms.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { depthFirst } from '../../traversal.mjs';
-import { afterEffects, conditionTerm, effectsOf, fact, mutableNames, namesOf } from './facts.mjs';
+import {
+  afterEffects,
+  conditionTerm,
+  effectsOf,
+  fact,
+  mutableNames,
+  namesOf,
+  writtenNames,
+} from './facts.mjs';
 import { conditionChecks } from './flow.mjs';
 import { enumConstants } from './flow/arms/arms.mjs';
 import { withValueEquality } from './flow/values/equals.mjs';
 import { isIntegerLoop } from './flow/loops.mjs';
 import { lambdaStatements } from './flow/nested.mjs';
 import { isChain, sitesIn } from './flow/sites.mjs';
-import { declaredTypes, stableNames } from './flow/stability.mjs';
-import { shadowedNames } from './helpers/shadowing.mjs';
+import { stableNames } from './flow/stability.mjs';
+import { declaredTypes } from './models/types.mjs';
+import { shadowedNames } from './predicate-reading/shadowing.mjs';
 import { helperNote } from '../../logic/models/helper-note.mjs';
 import { probeSlips } from './slips/probe.mjs';
 
@@ -21,8 +31,8 @@ const MAX_CHECKS = 200;
 const VERDICTS = new Set(['true', 'false']);
 const TOGETHER = 'the conditions before it decide it together';
 
-function reasonFor(facts, query, verdict) {
-  const deciding = decidingFact(facts, query, verdict);
+function reasonFor(facts, query, { verdict, solver }) {
+  const deciding = decidingFactWithin(solver, { facts, query, verdict });
   const terms = deciding?.term === undefined ? [query] : [query, deciding.term];
   return `${deciding?.reason ?? TOGETHER}${helperNote(terms)}`;
 }
@@ -50,7 +60,7 @@ function armFacts(scan, earlier = []) {
   return facts;
 }
 
-function provingFacts(known, query, verdict) {
+function provingFacts(known, query, { verdict, solver }) {
   const own = known.filter(({ assertion }) => !assertion);
   if (own.length === known.length) {
     return known;
@@ -58,6 +68,7 @@ function provingFacts(known, query, verdict) {
   const alone = solveFacts(
     own.map(({ term }) => term),
     query,
+    solver,
   );
   if (alone === verdict) {
     return own;
@@ -84,8 +95,11 @@ function decide(scan, node, facts) {
   const verdict = solveFacts(
     known.map(({ term }) => term),
     query,
+    scan.solver,
   );
-  const basis = VERDICTS.has(verdict) ? provingFacts(known, query, verdict) : undefined;
+  const basis = VERDICTS.has(verdict)
+    ? provingFacts(known, query, { verdict, solver: scan.solver })
+    : undefined;
   return basis === undefined ? undefined : { verdict, basis, query };
 }
 
@@ -96,7 +110,12 @@ function check(scan, node, { facts, part = 'condition' }) {
     return false;
   }
   const { verdict, basis, query } = decision;
-  scan.found.push({ node, verdict, part, reason: reasonFor(basis, query, verdict) });
+  scan.found.push({
+    node,
+    verdict,
+    part,
+    reason: reasonFor(basis, query, { verdict, solver: scan.solver }),
+  });
   return true;
 }
 
@@ -129,7 +148,7 @@ export function integerNames(tree) {
   );
   const other = new Set(
     declared
-      .filter((node) => !isIntegerType(node.children[0]) && !isIntegerLoop(node))
+      .filter((node) => !(isIntegerType(node.children[0]) || isIntegerLoop(node)))
       .map((node) => node.children[1].value),
   );
   return new Set(declared.map((node) => node.children[1].value).filter((name) => !other.has(name)));
@@ -148,25 +167,30 @@ function unitChecks(tree, flow) {
 }
 
 function parametersOf(tree) {
+  const nodes = nodesOf(tree);
+  const reassigned = new Set(
+    nodes.filter(({ kind }) => kind === 'assign' || kind === 'update').flatMap(writtenNames),
+  );
   return new Set(
-    nodesOf(tree)
+    nodes
       .filter((node) => node.kind === 'parameter' && node.children[1]?.kind === 'name')
-      .map((node) => node.children[1].value),
+      .map((node) => node.children[1].value)
+      .filter((name) => !reassigned.has(name)),
   );
 }
 
-function scopeOf(
-  source,
-  { looseBooleans = false, unbounded = false, kotlin = false, references = false, defined },
-) {
+function scopeOf(source, options) {
+  const { looseBooleans = false, unbounded = false, kotlin = false } = options;
   const types = declaredTypes(source);
   return {
     integers: integerNames(source),
     looseBooleans,
     unbounded,
     kotlin,
-    references,
-    shadowed: new Set([...shadowedNames(source), ...(defined ?? [])]),
+    references: options.references === true,
+    shadowed: new Set([...shadowedNames(source), ...(options.defined ?? [])]),
+    go: options.go === true,
+    remainders: options.remainders === true,
     types,
     enums: enumConstants(source, types),
   };
@@ -197,6 +221,7 @@ export function decidedConditions(source, options = {}) {
     probed: new Set(),
     checked: new Set(),
     slipsOnly: options.slipsOnly === true,
+    solver: options.solver ?? solverBudget(),
     parameters: parametersOf(tree),
   };
   for (const found of unitChecks(tree, flow)) {

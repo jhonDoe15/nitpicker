@@ -1,18 +1,19 @@
 import { patternNames } from '../facts.mjs';
 import { inside, isFunction, outsideFunctions } from '../syntax.mjs';
 
-function declaredIn(fn) {
-  const names = new Set(fn.params.flatMap((param) => patternNames(param)));
-  for (const node of inside(fn.body)) {
-    if (node.type === 'VariableDeclarator') {
-      patternNames(node.id).forEach((name) => names.add(name));
-    } else if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') {
-      names.add(node.id?.name);
-    } else if (node.type === 'CatchClause' && node.param !== null) {
-      patternNames(node.param).forEach((name) => names.add(name));
-    }
+function declaredNames(node) {
+  if (node.type === 'VariableDeclarator') {
+    return patternNames(node.id);
   }
-  return names;
+  if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration') {
+    return [node.id?.name];
+  }
+  return node.type === 'CatchClause' && node.param !== null ? patternNames(node.param) : [];
+}
+
+function declaredIn(fn) {
+  const parameters = fn.params.flatMap((param) => patternNames(param));
+  return new Set([...parameters, ...[...inside(fn.body)].flatMap(declaredNames)]);
 }
 
 function carried(facts, fn, flow) {
@@ -20,7 +21,7 @@ function carried(facts, fn, flow) {
   return facts.filter(
     (known) =>
       !known.readsMembers &&
-      [...known.names].every((name) => !flow.mutable.has(name) && !own.has(name)),
+      [...known.names].every((name) => !(flow.mutable.has(name) || own.has(name))),
   );
 }
 

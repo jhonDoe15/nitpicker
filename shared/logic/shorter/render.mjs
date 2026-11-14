@@ -19,6 +19,13 @@ function parts(node) {
   return node.op === 'not' ? [[node.kid, node.op]] : node.kids.map((kid) => [kid, node.op]);
 }
 
+function negatedText(inner) {
+  if (inner.op === 'leaf') {
+    return leafText(inner.leaf, true);
+  }
+  return inner.op === 'not' ? inner.text : `(${inner.text})`;
+}
+
 /** The condition `skeleton` as source text in `style`, parenthesizing what the operators need. */
 export function renderSkeleton(skeleton, style = C_STYLE) {
   const wrapped = foldTree(skeleton, undefined, {
@@ -28,14 +35,7 @@ export function renderSkeleton(skeleton, style = C_STYLE) {
         return { text: leafText(node, false), op: 'leaf', leaf: node };
       }
       if (node.op === 'not') {
-        const [inner] = results;
-        const text =
-          inner.op === 'leaf'
-            ? leafText(inner.leaf, true)
-            : inner.op === 'not'
-              ? inner.text
-              : `(${inner.text})`;
-        return { text: `${style.not}${text}`, op: 'not' };
+        return { text: `${style.not}${negatedText(results[0])}`, op: 'not' };
       }
       const texts = results.map(({ text, op }) =>
         op === 'or' && node.op === 'and' ? `(${text})` : text,

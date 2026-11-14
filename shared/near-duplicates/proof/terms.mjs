@@ -2,17 +2,31 @@ import { modelOf } from '../../logic/models/models.mjs';
 import { print } from '../../logic/print.mjs';
 import { term } from '../../logic/terms.mjs';
 import { rebuild } from '../tree/nodes.mjs';
+import { goIntegerNames } from './integer-types.mjs';
+
+const UNARY = 'unary';
+const IS_NOT = 'is not';
 
 const LITERAL_KIND = 'literal';
 const BINARY_KIND = 'binary';
 
-const INTEGER_TYPES = new Set(['int', 'long', 'short', 'byte', 'Int', 'Long', 'Short', 'Byte']);
+const INTEGER_TYPES = new Set([
+  'int',
+  'long',
+  'short',
+  'byte',
+  'Int',
+  'Long',
+  'Short',
+  'Byte',
+  ...goIntegerNames(),
+]);
 const LOGICAL = new Set(['&&', '||']);
 const EQUALITY = new Map([
   ['==', '==='],
   ['!=', '!=='],
   ['is', '==='],
-  ['is not', '!=='],
+  [IS_NOT, '!=='],
 ]);
 const EXTREMES = new Map([
   ['min', '<='],
@@ -38,11 +52,11 @@ const LOOSE_EQUALITY = new Set(['==', '!=']);
 const POSITIVE = new Map([
   ['!=', '=='],
   ['!==', '==='],
-  ['is not', 'is'],
+  [IS_NOT, 'is'],
 ]);
 const SYMMETRIC = new Set(['==', '===', 'is']);
 const SINGLETONS = new Set(['null']);
-const COMPARES = new Set(['==', '!=', '===', '!==', 'is', 'is not', '<', '<=', '>', '>=']);
+const COMPARES = new Set(['==', '!=', '===', '!==', 'is', IS_NOT, '<', '<=', '>', '>=']);
 
 export function isIntegerType(type) {
   return type?.kind === 'type' && INTEGER_TYPES.has(type.value);
@@ -138,7 +152,7 @@ function isLooseBoolean(node, context) {
 
 function isIdentityTest(node) {
   return (
-    (node.value === 'is' || node.value === 'is not') &&
+    (node.value === 'is' || node.value === IS_NOT) &&
     !node.children.some((child) => SINGLETONS.has(child.literal))
   );
 }
@@ -156,7 +170,7 @@ function opaqueTerm(node, operands) {
   const printed = operands.map((operand, index) => printedOperand(operand, node.children[index]));
   const sides = SYMMETRIC.has(relation) ? printed.toSorted() : printed;
   const atom = term('name', `#opaque ${relation} ${sides.join(' ')}`);
-  return POSITIVE.has(node.value) ? term('unary', '!', [atom]) : atom;
+  return POSITIVE.has(node.value) ? term(UNARY, '!', [atom]) : atom;
 }
 
 function binaryTerm(node, operands, context) {
@@ -194,14 +208,12 @@ const TERMS = {
     node.operation === 'cast' ? term('cast', node.value, children) : undefined,
   unary: (node, children, context) => {
     if (node.bits !== undefined) {
-      return term('unary', node.value, children);
+      return term(UNARY, node.value, children);
     }
     if (node.value === '-' && isArithmetic(node.value, children)) {
-      return valueAtom(term('unary', '-', children), context);
+      return valueAtom(term(UNARY, '-', children), context);
     }
-    return node.value === '!' || node.value === '-'
-      ? term('unary', node.value, children)
-      : undefined;
+    return node.value === '!' || node.value === '-' ? term(UNARY, node.value, children) : undefined;
   },
   binary: (node, children, context) => binaryTerm(node, children, context),
   conditional: (_node, children) => term('conditional', undefined, children),

@@ -2,22 +2,25 @@ import { foldTerm, rangeKey, withRange } from '../../../../../../../shared/logic
 import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { inside } from '../syntax.mjs';
 
+const STRING = 'string';
+const ARRAY = 'array';
+
 const SIZED_COLLECTIONS = /^(?:Readonly)?(?:Map|Set)$/u;
 const TYPED_ARRAYS = /^(?:Big)?(?:Int|Uint|Float)\d+(?:Clamped)?Array$/u;
 const INDEX_SEARCHES = new Map([
-  ['indexOf', ['string', 'array']],
-  ['lastIndexOf', ['string', 'array']],
-  ['findIndex', ['array']],
-  ['findLastIndex', ['array']],
-  ['search', ['string']],
+  ['indexOf', [STRING, ARRAY]],
+  ['lastIndexOf', [STRING, ARRAY]],
+  ['findIndex', [ARRAY]],
+  ['findLastIndex', [ARRAY]],
+  ['search', [STRING]],
 ]);
 
 function kindOfPart(part, checker) {
   if ((part.flags & ts.TypeFlags.StringLike) !== 0) {
-    return 'string';
+    return STRING;
   }
   if (checker.isArrayType(part) || checker.isTupleType(part)) {
-    return 'array';
+    return ARRAY;
   }
   const name = part.getSymbol()?.name ?? '';
   if (SIZED_COLLECTIONS.test(name)) {
@@ -51,7 +54,7 @@ function memberModel(node, services) {
     return undefined;
   }
   const kind = kindOf(node.object, services);
-  const isLength = node.property.name === 'length' && (kind === 'string' || kind === 'array');
+  const isLength = node.property.name === 'length' && (kind === STRING || kind === ARRAY);
   return isLength || (node.property.name === 'size' && kind === 'collection') ? 'size' : undefined;
 }
 

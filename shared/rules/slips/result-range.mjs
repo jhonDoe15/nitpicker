@@ -1,5 +1,9 @@
 import { declaredTypes, isCollectionKind, kindOfType } from '../decided/models/types.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
+import { chainOf } from '../../traversal.mjs';
+
+const COMPARE = 'compare';
+const TYPESCRIPT = 'typescript';
 
 const EQUALITY = new Set(['==', '!=', '===', '!==']);
 const ORDER = new Set(['<', '<=', '>', '>=']);
@@ -10,10 +14,12 @@ const FLIPPED = new Map([
   ['>=', '<='],
 ]);
 const SIGN_ONLY = {
-  kotlin: new Set(['compareTo', 'compare', 'compareValues']),
-  typescript: new Set(['localeCompare']),
+  kotlin: new Set(['compareTo', COMPARE, 'compareValues']),
+  typescript: new Set(['localeCompare', COMPARE]),
 };
 const LOOKUPS = new Set(['get', 'at', 'charAt']);
+const COMPARATOR_FUNCTION = /^\([^(),]*,[^()]*\)\s*=>\s*number$/u;
+const COMPARATOR_NAME = /compar|cmp/iu;
 const COMPARATORS = new Set(['Comparator', 'Collator']);
 const FIRST_ELEMENT = new Set([
   'get',
@@ -26,8 +32,20 @@ const FIRST_ELEMENT = new Set([
 ]);
 const SEARCHES = {
   python: new Set(['find', 'rfind']),
+  go: new Set([
+    'Index',
+    'IndexByte',
+    'IndexRune',
+    'IndexAny',
+    'IndexFunc',
+    'LastIndex',
+    'LastIndexByte',
+    'LastIndexAny',
+    'LastIndexFunc',
+  ]),
   other: new Set(['indexOf', 'lastIndexOf']),
 };
+const GO_PACKAGES = new Set(['strings', 'bytes', 'slices']);
 const NUMBER_SUFFIX = /[lLfFdD]$/u;
 const ZERO_TESTS = new Set(['==', '===']);
 const MISSES_FIRST = new Set(['> 0', '>= 1', '<= 0', '< 1']);
@@ -39,17 +57,27 @@ function languageOf(file) {
   if (file.endsWith('.java')) {
     return 'java';
   }
-  return file.endsWith('.py') ? 'python' : 'typescript';
+  if (file.endsWith('.go')) {
+    return 'go';
+  }
+  return file.endsWith('.py') ? 'python' : TYPESCRIPT;
+}
+
+function isNegation(node) {
+  return node.kind === 'unary' && node.value === '-';
 }
 
 function numberOf(node) {
-  if (node.kind === 'literal' && node.literal === 'number') {
-    const value = Number(node.value.replace(NUMBER_SUFFIX, ''));
-    return Number.isFinite(value) ? value : undefined;
+  const chain = chainOf(node, (current) => (isNegation(current) ? current.children[0] : undefined));
+  const base = chain.at(-1);
+  if (base.kind !== 'literal' || base.literal !== 'number') {
+    return undefined;
   }
-  const inner =
-    node.kind === 'unary' && node.value === '-' ? numberOf(node.children[0]) : undefined;
-  return inner === undefined ? undefined : -inner;
+  const value = Number(base.value.replace(NUMBER_SUFFIX, ''));
+  if (!Number.isFinite(value)) {
+    return undefined;
+  }
+  return chain.length % 2 === 0 ? -value : value;
 }
 
 function calleeName(call) {
@@ -91,7 +119,7 @@ function isSignOnlyMisuse({ operator, number }) {
     (operator === '>' && number >= 1) ||
     (operator === '>=' && number >= 2) ||
     (operator === '<' && number <= -1) ||
-    (operator === '<=' && number <= -2)
+    (operator === '<=' && -number >= 2)
   );
 }
 
@@ -101,13 +129,22 @@ function receiverType(call, types) {
   return type === undefined ? undefined : kindOfType(type);
 }
 
-function isLibraryComparison(call, types) {
+function isTypedComparator(call, types) {
+  const callee = call.children[0];
+  const type = callee.kind === 'name' ? types.get(callee.value) : undefined;
+  return type !== undefined && COMPARATOR_FUNCTION.test(type) && COMPARATOR_NAME.test(callee.value);
+}
+
+function isLibraryComparison(call, { language, types }) {
   const name = methodName(call);
   const isMember = call.children[0].kind === 'member';
+  if (language === TYPESCRIPT && !isMember) {
+    return isTypedComparator(call, types);
+  }
   if (name === 'compareValues') {
     return true;
   }
-  if (name === 'compare') {
+  if (name === COMPARE) {
     return isMember && COMPARATORS.has(receiverType(call, types));
   }
   return isMember;
@@ -118,9 +155,10 @@ function signOnlyFindings(found, { language, types }) {
   return found
     .filter(
       (entry) =>
-        names.has(methodName(entry.call)) &&
+        (names.has(methodName(entry.call)) ||
+          (language === TYPESCRIPT && isTypedComparator(entry.call, types))) &&
         isSignOnlyMisuse(entry) &&
-        isLibraryComparison(entry.call, types),
+        isLibraryComparison(entry.call, { language, types }),
     )
     .map(({ node, call }) => ({
       node,
@@ -130,11 +168,18 @@ function signOnlyFindings(found, { language, types }) {
 }
 
 function isKnownReceiver(call, language, types) {
+  if (language === 'go') {
+    const owner = call.children[0].children[0];
+    return owner.kind === 'name' && GO_PACKAGES.has(owner.value);
+  }
   return language !== 'java' || isCollectionKind(receiverType(call, types));
 }
 
+function isZero(node) {
+  return node?.kind === 'literal' && Number(node.value) === 0;
+}
+
 function isFirstIndex(node) {
-  const isZero = (child) => child?.kind === 'literal' && Number(child.value) === 0;
   if (node.kind === 'index') {
     return isZero(node.children[1]);
   }
@@ -147,7 +192,9 @@ function isFirstIndex(node) {
 }
 
 function handlesFirst(tree, call) {
-  const same = (node) => node.kind === 'call' && node.text === call.text;
+  function same(node) {
+    return node.kind === 'call' && node.text === call.text;
+  }
   return nodesOf(tree).some(
     (node) =>
       isFirstIndex(node) ||
@@ -159,7 +206,7 @@ function handlesFirst(tree, call) {
 }
 
 function searchFindings(found, { language, types, tree }) {
-  const names = language === 'python' ? SEARCHES.python : SEARCHES.other;
+  const names = SEARCHES[language] ?? SEARCHES.other;
   return found
     .filter(({ call, operator, number }) => {
       const form = `${operator} ${String(number)}`;

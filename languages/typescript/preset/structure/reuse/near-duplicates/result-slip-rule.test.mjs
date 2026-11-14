@@ -44,4 +44,28 @@ describe('result-slip on TypeScript and JavaScript', () => {
 
     expect(found).toEqual([]);
   });
+
+  it('reports a typed comparator or Intl.Collator result tested against a non-zero value', () => {
+    const found = slips({
+      'src/sort/order.ts': source(
+        'export function order(compare: (a: string, b: string) => number, c: Intl.Collator, x: string, y: string) {',
+        '  if (compare(x, y) === 1) {',
+        '    return 1;',
+        '  }',
+        '  if (c.compare(x, y) === -1) {',
+        '    return 2;',
+        '  }',
+        '  return compare(x, y) > 0 || compare(x, y) === 0 ? 3 : 0;',
+        '}',
+        'export function other(measure: (a: string, b: string) => number, x: string) {',
+        '  return measure(x, x) === 1;',
+        '}',
+      ),
+    });
+
+    expect(found).toEqual([
+      '2: `compare(x, y) === 1` compares a sign-only result with a value other than 0: `compare` may return any positive or negative number',
+      '5: `c.compare(x, y) === -1` compares a sign-only result with a value other than 0: `compare` may return any positive or negative number',
+    ]);
+  });
 });

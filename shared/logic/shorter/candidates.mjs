@@ -33,9 +33,10 @@ function chainSites(root) {
     if (node.op === 'and' || node.op === 'or') {
       sites.push({ node, path });
     }
-    kidsOf(node.op === 'leaf' ? { op: 'and', kids: [] } : node).forEach((kid, index) => {
+    const kids = kidsOf(node.op === 'leaf' ? { op: 'and', kids: [] } : node);
+    for (const [index, kid] of kids.entries()) {
       pending.push({ node: kid, path: [...path, index] });
-    });
+    }
   }
   return sites;
 }
@@ -94,7 +95,7 @@ function mergesOfPair({ node, path }, { root, guard }, pair) {
   const sides = [atomsOf(node.kids[first], node.op), atomsOf(node.kids[second], node.op)];
   const pool = sides.flat();
   const isFree = pool.every(
-    (atom) => !holdsAny(atom, guard.pinned) && !holdsAny(atom, guard.throwers),
+    (atom) => !(holdsAny(atom, guard.pinned) || holdsAny(atom, guard.throwers)),
   );
   if (!isFree || pool.length > MAX_POOL) {
     return [];

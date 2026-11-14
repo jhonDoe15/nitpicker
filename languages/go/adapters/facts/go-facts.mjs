@@ -130,7 +130,7 @@ function definitionFacts(report, uses) {
   );
 }
 
-export function goFacts(report, { module = '', testRun } = {}) {
+export function goFacts(report, { module = '', testRun, units = [] } = {}) {
   const packages = goPackages(report, module);
   const roles = new Map(report.files.map((file) => [file.path, file.test ? 'test' : 'production']));
   function roleOf(file) {
@@ -143,6 +143,7 @@ export function goFacts(report, { module = '', testRun } = {}) {
     definitions: definitionFacts(report, productionUses(imports)),
     imports,
     ...goDesignFacts(report, packages),
+    nearDuplicateUnits: units,
     docComments: report.docComments ?? [],
     console: testRun === undefined ? [] : goConsoleFacts(testRun, { report, module }),
     constrained: report.files

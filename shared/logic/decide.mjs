@@ -6,6 +6,8 @@ import { boundFacts, boundedModelOf } from './models/models.mjs';
 import { isSideEffectFree } from './purity.mjs';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot, key } from './terms.mjs';
 
+const VALUE = 'value';
+
 const DEFAULT_RESOURCE_LIMIT = 2_000_000;
 
 const STRICT_EQUALITY = new Set(['===', '!==']);
@@ -47,7 +49,7 @@ function atom(encoding, sort, node) {
     : `occurrence ${String(encoding.atoms.size)}`;
   return memo(encoding.atoms, `${sort}:${identity}`, (index) => {
     const name = `a${String(index)}`;
-    if (sort !== 'value') {
+    if (sort !== VALUE) {
       return z3.Bool.const(name);
     }
     return node.bits === undefined
@@ -57,7 +59,7 @@ function atom(encoding, sort, node) {
 }
 
 function vectorAtom(encoding, node) {
-  const constant = atom(encoding, 'value', node);
+  const constant = atom(encoding, VALUE, node);
   if (!node.signed) {
     encoding.unsigned.add(constant);
   }
@@ -94,7 +96,7 @@ function encodeValue(encoding, { node, children, integral }) {
     const [condition, whenTrue, whenFalse] = children;
     return encoding.z3.If(condition.truth, whenTrue.value, whenFalse.value);
   }
-  const value = atom(encoding, 'value', node);
+  const value = atom(encoding, VALUE, node);
   if (integral && !encoding.integers) {
     encoding.facts.push(encoding.z3.IsInt(value));
   }

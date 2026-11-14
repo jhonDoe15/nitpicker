@@ -28,7 +28,7 @@ describe.skipIf(!pythonE2eEnabled)('decided-condition: assert statements', () =>
     ].join('\n');
 
     expect(decided(text)).toEqual([
-      '3: `n > 0` is always true here: the assert on line 2 already states this',
+      '3: `n > 0` is always true here: the assert on line 2 already states this, and assertions may be off at run time',
     ]);
   });
 });

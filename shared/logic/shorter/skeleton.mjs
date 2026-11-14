@@ -1,4 +1,4 @@
-import { foldTree } from '../../traversal.mjs';
+import { depthFirst, foldTree } from '../../traversal.mjs';
 import { isLogical, isNot, key, logical, not } from '../terms.mjs';
 
 const DUAL = { and: 'or', or: 'and' };
@@ -52,24 +52,20 @@ export function skeletonOf(root, source) {
   });
 }
 
-export function leavesOf(root) {
-  const found = [];
-  const pending = [root];
-  while (pending.length > 0) {
-    const node = pending.pop();
-    if (node.op === 'leaf') {
-      found.push(node);
-    } else {
-      pending.push(...(node.op === 'not' ? [node.kid] : node.kids.toReversed()));
-    }
+function kidsOfNode(node) {
+  if (node.op === 'leaf') {
+    return [];
   }
-  return found;
+  return node.op === 'not' ? [node.kid] : node.kids;
+}
+
+export function leavesOf(root) {
+  return [...depthFirst(root, kidsOfNode)].filter((node) => node.op === 'leaf');
 }
 
 export function termOfSkeleton(root) {
   return foldTree(root, undefined, {
-    expand: (node) =>
-      node.op === 'leaf' ? [] : (node.op === 'not' ? [node.kid] : node.kids).map((kid) => [kid]),
+    expand: (node) => kidsOfNode(node).map((kid) => [kid]),
     combine: (node, _context, results) => {
       if (node.op === 'leaf') {
         return node.term;

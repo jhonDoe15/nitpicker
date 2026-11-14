@@ -4,6 +4,7 @@ import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs'
 import { PUBLIC_FACES } from '../../../../shared/rules/features/feature-roles.mjs';
 import { inspectBaseline, readInspect } from '../structure/go-inspect.mjs';
 import { readTestRun } from '../tests/go-test.mjs';
+import { goUnitFacts } from '../near-duplicates/go-unit-facts.mjs';
 import { goFacts } from './go-facts.mjs';
 
 const ANALYZER_NAME = 'facts';
@@ -13,10 +14,20 @@ const PRIVATE_COPY_FIX = 'Move it to one package, export it and import it.';
 const COPY_RULES = new Set([RULE_IDS.duplicateDefinition, RULE_IDS.siblingCopyEdit]);
 const OWN_TOOL_RULES = new Set([
   ...COPY_RULES,
+  RULE_IDS.nearDuplicate,
   RULE_IDS.testConsoleOutput,
   RULE_IDS.publicAlternativeBypass,
 ]);
 const COPIED_KIND = 'function';
+const UNIT_COPY_RULES = new Set([RULE_IDS.nearDuplicate]);
+
+function unitCopyFacts({ constrained = [], ...facts }) {
+  const variants = new Set(constrained);
+  return {
+    ...facts,
+    nearDuplicateUnits: facts.nearDuplicateUnits.filter(({ file }) => !variants.has(file)),
+  };
+}
 
 function copyFacts({ constrained = [], ...facts }) {
   const variants = new Set(constrained);
@@ -29,9 +40,11 @@ function copyFacts({ constrained = [], ...facts }) {
 }
 
 export function readGoFacts(context) {
-  return goFacts(readInspect(context.reportRoot), {
+  const report = readInspect(context.reportRoot);
+  return goFacts(report, {
     module: context.module,
     testRun: readTestRun(context.reportRoot),
+    units: goUnitFacts(context.projectRoot, report),
   });
 }
 
@@ -81,6 +94,10 @@ export function goFactFindings({ constrained, ...facts }, { policy = {}, baselin
       rules: registered.filter((rule) => COPY_RULES.has(rule)),
       policy,
       baseline: copyBaseline(baseline),
+    }),
+    ...findings(unitCopyFacts({ ...facts, constrained }), {
+      rules: registered.filter((rule) => UNIT_COPY_RULES.has(rule)),
+      policy,
     }),
     ...findings(facts, {
       rules: registered.filter((rule) => !OWN_TOOL_RULES.has(rule)),

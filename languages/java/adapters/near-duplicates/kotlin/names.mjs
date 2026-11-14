@@ -44,8 +44,26 @@ function packageOf(program) {
   return header === undefined ? '' : qualifiedText(codeChildren(header)[0]);
 }
 
+function starsOf(program) {
+  return codeChildren(program)
+    .filter((child) => child.type === 'import' && child.children.some((part) => part.type === '*'))
+    .map((child) => qualifiedText(codeChildren(child)[0]));
+}
+
+function classesOf(program) {
+  return [...depthFirst(program, codeChildren)]
+    .filter((node) => node.type === 'class_declaration' || node.type === 'object_declaration')
+    .map((node) => codeChildren(node).find((child) => child.type === 'identifier')?.text)
+    .filter((name) => name !== undefined);
+}
+
 export function fileScope(program) {
-  return { imported: importsOf(program), packageName: packageOf(program) };
+  return {
+    imported: importsOf(program),
+    packageName: packageOf(program),
+    stars: starsOf(program),
+    classes: classesOf(program),
+  };
 }
 
 function nameOf(declaration) {

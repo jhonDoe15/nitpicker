@@ -26,8 +26,8 @@ export function exitOf(node) {
   return JUMPS.get(last.kind) ?? 'leaves';
 }
 
-export function textOf(node) {
-  return node.text ?? `the condition on line ${String(node.start)}`;
+export function textOf(node, subject = 'condition') {
+  return node.text ?? `the ${subject} on line ${String(node.start)}`;
 }
 
 export function sourceOf(node) {

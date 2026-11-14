@@ -24,10 +24,9 @@ describe('integer-slip on Java', () => {
   it('reports a difference compared with 0 and names the inputs', () => {
     const found = slips(inClass('  boolean after(int a, int b) {', '    return a - b > 0;', '  }'));
 
-    expect(found).toHaveLength(1);
-    expect(found[0]).toMatch(
-      /^3: `a - b > 0` does not compare the operands: .*a = -?\d+, b = -?\d+/u,
-    );
+    expect(found.map((line) => line.replaceAll(/ = -?\d+/gu, ' = N'))).toEqual([
+      '3: `a - b > 0` does not compare the operands: the subtraction overflows for a = N, b = N',
+    ]);
   });
 
   it('reports a comparator that returns a difference', () => {
@@ -38,7 +37,9 @@ describe('integer-slip on Java', () => {
       '  }',
     );
 
-    expect(slips(text).join('\n')).toContain('is not a valid comparison result');
+    expect(slips(text).map((line) => line.replaceAll(/ = -?\d+/gu, ' = N'))).toEqual([
+      '4: `a - b` is not a valid comparison result: the subtraction overflows for a = N, b = N',
+    ]);
   });
 
   it('reports Math.abs used as an index or bucket', () => {

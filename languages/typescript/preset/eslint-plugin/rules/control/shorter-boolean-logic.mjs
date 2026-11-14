@@ -1,5 +1,6 @@
 import { findShorter } from '../../../../../../shared/logic/shorter/find-shorter.mjs';
 import { skeletonOf } from '../../../../../../shared/logic/shorter/skeleton.mjs';
+import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { isNot } from '../../../../../../shared/logic/terms.mjs';
 import { booleanParts } from './boolean-leaves.mjs';
 import { conditionTerm } from '../decided/facts.mjs';
@@ -21,11 +22,9 @@ function isConnective(node) {
 }
 
 function topOf(node) {
-  let top = node;
-  while (isConnective(top.parent)) {
-    top = top.parent;
-  }
-  return top;
+  return chainOf(node, (current) => (isConnective(current.parent) ? current.parent : undefined)).at(
+    -1,
+  );
 }
 
 function isTestPosition(node) {

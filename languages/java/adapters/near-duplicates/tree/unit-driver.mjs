@@ -52,5 +52,10 @@ function unitOf(root, file, language) {
 export function languageUnits(language, program, file) {
   const scope = language.fileScope(program);
   const units = unitRoots(program, scope, language).map((root) => unitOf(root, scope, language));
-  return uniqueNames(units).map((unit) => ({ id: `${file}#${unit.name}`, file, ...unit }));
+  const imports = {
+    names: [...new Set(scope.imported.values())],
+    stars: scope.stars,
+    classes: scope.classes,
+  };
+  return uniqueNames(units).map((unit) => ({ id: `${file}#${unit.name}`, file, imports, ...unit }));
 }

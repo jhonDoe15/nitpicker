@@ -52,5 +52,8 @@ export function negated(node, file) {
 
 /** The `if` head around a condition text, as the file's language writes it. */
 export function ifHead(text, file) {
-  return file.endsWith('.py') ? `if ${text}:` : `if (${text})`;
+  if (file.endsWith('.py')) {
+    return `if ${text}:`;
+  }
+  return file.endsWith('.go') ? `if ${text}` : `if (${text})`;
 }

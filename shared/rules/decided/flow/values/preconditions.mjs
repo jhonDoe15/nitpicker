@@ -2,9 +2,12 @@ import { fact } from '../../facts.mjs';
 import { isSimpleSubject } from '../arms/arms.mjs';
 import { binaryOf, sourceOf } from '../exits.mjs';
 
+const NOT_NULL_KIND = 'notNull';
+const IS_TRUE = 'isTrue';
+
 const NULL = { kind: 'literal', literal: 'null', value: 'null', children: [] };
 const CONDITION = 'condition';
-const NOT_NULL = 'notNull';
+const NOT_NULL = NOT_NULL_KIND;
 const JAVA_LIBRARIES = new Map([
   ['java.util.Objects', new Map([['requireNonNull', NOT_NULL]])],
   [
@@ -18,23 +21,23 @@ const JAVA_LIBRARIES = new Map([
   [
     'org.springframework.util.Assert',
     new Map([
-      ['isTrue', CONDITION],
+      [IS_TRUE, CONDITION],
       ['state', CONDITION],
-      ['notNull', NOT_NULL],
+      [NOT_NULL_KIND, NOT_NULL],
     ]),
   ],
   [
     'org.apache.commons.lang3.Validate',
     new Map([
-      ['isTrue', CONDITION],
-      ['notNull', NOT_NULL],
+      [IS_TRUE, CONDITION],
+      [NOT_NULL_KIND, NOT_NULL],
     ]),
   ],
   [
     'org.apache.commons.lang.Validate',
     new Map([
-      ['isTrue', CONDITION],
-      ['notNull', NOT_NULL],
+      [IS_TRUE, CONDITION],
+      [NOT_NULL_KIND, NOT_NULL],
     ]),
   ],
 ]);
@@ -109,7 +112,7 @@ export function preconditionFacts(node, flow) {
   }
   const line = String(node.start);
   const reason = guarantee.assertion
-    ? `the assert on line ${line} already states this`
+    ? `the assert on line ${line} already states this, and assertions may be off at run time`
     : `line ${line} throws unless \`${sourceOf(found.node)}\``;
   const known = fact(found.node, flow.scope, { holds: found.holds, reason });
   return known === undefined ? [] : [{ ...known, assertion: guarantee.assertion === true }];

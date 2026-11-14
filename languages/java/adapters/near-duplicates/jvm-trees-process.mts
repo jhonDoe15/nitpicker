@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { Parser } from 'web-tree-sitter';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { fileRequest, isText } from '../../../../shared/near-duplicates/trees-request.mjs';
 import { loadGrammar } from './grammar/load-grammar.mjs';
 import { kotlinUnits } from './kotlin/units.mjs';
 import { javaExtractions } from './extract/file-extractions.mjs';
@@ -20,10 +21,6 @@ const GRAMMARS = {
   kotlin: kotlinUnits,
 } as const;
 
-function isText(value: unknown): value is string {
-  return typeof value === 'string';
-}
-
 function textsOf(value: object): Readonly<Record<string, string>> | undefined {
   if ('texts' in value && typeof value.texts === 'object' && value.texts !== null) {
     return Object.fromEntries(
@@ -38,13 +35,9 @@ function modeOf(value: object): string {
 }
 
 function treesRequest(value: unknown): TreesRequest {
-  if (typeof value === 'object' && value !== null && 'root' in value && 'files' in value) {
-    const { root, files } = value;
-    if (isText(root) && Array.isArray(files) && files.every(isText)) {
-      return { root, files, texts: textsOf(value), mode: modeOf(value) };
-    }
-  }
-  throw new TypeError('The JVM trees request must be { root, files } with text values');
+  const { root, files } = fileRequest(value);
+  const extras = typeof value === 'object' && value !== null ? value : {};
+  return { root, files, texts: textsOf(extras), mode: modeOf(extras) };
 }
 
 async function grammarOf(name: keyof typeof GRAMMARS): Promise<Grammar> {

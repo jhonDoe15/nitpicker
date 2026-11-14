@@ -41,6 +41,10 @@ export function fields(node, name) {
   return node.childrenForFieldName(name).filter((child) => child !== null);
 }
 
+export function operatorOf(source) {
+  return field(source, 'operator')?.type;
+}
+
 export function textOf(node) {
   return node.text.replaceAll(/\s+/gu, '');
 }
