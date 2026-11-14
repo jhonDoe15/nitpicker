@@ -11,12 +11,13 @@ import { springAotSkip } from '../spring/arch-rules-gate.mts';
 import { isTestsTimeout, timedOutTests } from '../../adapters/red-base/tests-failed.mts';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mts';
 import { lifecycleArgs } from '../maven-project.mjs';
-import { MAVEN_PLUGINS, jacocoPlugin } from '../maven-tools.mjs';
+import { jacocoPlugin } from '../maven-tools.mjs';
 import { relativeTo } from '../module/module-paths.mjs';
 import { moduleName } from '../../builds/test-failures.mjs';
 import { type JavaPolicy, callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
+import { dependencyListArguments, PROJECT_CHECKS_OFF } from './maven-build-arguments.mjs';
 
 type BuildRequest = {
   readonly projectRoot: string;
@@ -70,16 +71,6 @@ function moduleNameOf(module: MavenModule, projectRoot: unknown): unknown {
   return moduleName(relativeTo(projectRoot, module.basedir));
 }
 
-const PROJECT_CHECKS_OFF = [
-  '-Dcheckstyle.skip=true',
-  '-Dpmd.skip=true',
-  '-Dcpd.skip=true',
-  '-Dspotbugs.skip=true',
-  '-Dspotless.check.skip=true',
-  '-Dktlint.skip=true',
-  '-Ddetekt.skip=true',
-];
-
 export function readTestRuns(context: PhaseOptions): TestRuns {
   const { module, reportDir, since, isArchunit, testRuntime } = context;
   if (context['quick'] === true || context['testsSkipped'] === true) {
@@ -108,6 +99,9 @@ export function runCoverageTools(options: PhaseOptions): void {
   callUntyped(runJacocoReport, { module, reportDir, tools, execFiles, since, testsRan, ...run });
   const history = options['pitHistory'];
   const scope = { projectRoot: options['projectRoot'], mutationScope: options['mutationScope'] };
+  if (options['mutationOff'] === true) {
+    return;
+  }
   callUntyped(runPit, {
     ...{ module, reportDir, tools, classpaths, isArchunit, configs, history, scope, ...run },
     deadline: options['pitDeadline'],
@@ -132,10 +126,7 @@ export function buildAndTest({
     args: [
       '--quiet',
       ...textsOf(callUntyped(buildGoals, { quick, pinned, modules })),
-      `${textOf(MAVEN_PLUGINS.dependency)}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
-      '-DoutputAbsoluteArtifactFilename=true',
-      '-DappendOutput=false',
+      ...textsOf(callUntyped(dependencyListArguments, work)),
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',

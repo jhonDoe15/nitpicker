@@ -114,6 +114,6 @@ export function coverageFindings(context: ModuleContext, crapLimit: unknown): Fi
     ...findingsFrom(archunitFindings, context),
     ...findingsFrom(springArchFindings, context),
     ...ifTested(context['jacoco'], (report) => crapFindings(context, report, crapLimit)),
-    ...(context.quick ? [] : pitFindings(context)),
+    ...(context.quick || context['mutationOff'] === true ? [] : pitFindings(context)),
   ];
 }

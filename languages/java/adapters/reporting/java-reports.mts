@@ -16,6 +16,7 @@ import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mts';
+import { withEffectsFindings } from '../effects/effects-findings.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mts';
 import { readClassLimitFindings } from '../size/class-limits.mts';
@@ -83,7 +84,7 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
 function readModuleFindings(context: ModuleContext, crapLimit: unknown): Findings {
   const { reportRoot, projectRoot, kotlin } = context;
   const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
-  return [
+  const findings = [
     ...findingsFrom(sarifFindings, context),
     ...findingsFrom(readErrorProneFindings, context),
     ...findingsFrom(formatFindings, context),
@@ -100,6 +101,7 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
     }),
     ...findingsFrom(testRunFindings, context, { reportRoot, projectRoot, testRoots }),
   ];
+  return listOf(callUntyped(withEffectsFindings, context, findings));
 }
 
 function reportingOf(options: Options, module: unknown, preset: string): Options {
@@ -142,6 +144,7 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
     ...run,
     kotlin: preset === KOTLIN && fieldOf(moduleManifest, KOTLIN) === true,
     quick: options['quick'] === true,
+    mutationOff: options['mutationOff'] === true,
     ...reportingOf(options, module, preset),
     mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, preset),
   };

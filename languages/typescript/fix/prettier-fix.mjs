@@ -82,6 +82,9 @@ export function prettierFixStep(settings, files, mergeBaseSha) {
       format: prettierFormatter(settings, 'prettier-fix', (name) => name),
       formatBase: prettierFormatter(settings, 'prettier-base-check', (name) => basePaths.get(name)),
       keepLineEndings: false,
+      tool: 'prettier',
+      allFiles: settings.allFiles === true,
+      writer: settings.writer,
     });
     return { toolErrors: [], notes: formatNotes('prettier', outcome) };
   } catch (error) {

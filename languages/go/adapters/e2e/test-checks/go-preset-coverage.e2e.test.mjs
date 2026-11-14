@@ -17,6 +17,8 @@ import {
   DISCOUNT_PANIC_TEST,
   DISCOUNT_TEST,
   UNTESTED_LEGACY,
+  twice,
+  twiceTest,
 } from '../test-support/go-fixtures.mjs';
 
 const goE2eEnabled = process.env.NITPICKER_GO_E2E === '1';
@@ -32,7 +34,12 @@ describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
   let project;
   beforeAll(() => {
     workspace = createWorkspace();
-    project = goRepository(workspace, { ...BASE_FILES, 'shop/fee.go': UNTESTED_LEGACY });
+    project = goRepository(workspace, {
+      ...BASE_FILES,
+      'shop/fee.go': UNTESTED_LEGACY,
+      'shop/twice.go': twice(1),
+      'shop/twice_test.go': twiceTest('true, false', 'true, true'),
+    });
     commitBranch(project, 'half-tested', {
       'shop/discount.go': DISCOUNT,
       'shop/discount_test.go': DISCOUNT_HALF_TEST,
@@ -51,6 +58,10 @@ describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
       }),
     });
     commitBranch(project, 'branchy', { 'shop/size.go': BRANCHY });
+    commitBranch(project, 'twice', {
+      'shop/twice.go': twice(0),
+      'shop/twice_test.go': twiceTest('false, true', 'true, false'),
+    });
     commitBranch(project, 'panicking', {
       'shop/discount.go': DISCOUNT,
       'shop/discount_test.go': DISCOUNT_PANIC_TEST,
@@ -93,6 +104,15 @@ describe.skipIf(!goE2eEnabled)('Go preset coverage and CRAP end to end', () => {
       'Branch coverage is 0.00%; minimum is 95%. Not taken: case weight > 100 (line 5); case weight > 50 (line 7); case weight > 10 (line 9); case weight > 0 (line 11); no case matching. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["shop/size.go"],"function":"Size","reason":"..."} to "exceptions" in nitpicker.config.json.',
       'Size has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["shop/size.go"],"function":"Size","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
+  });
+
+  it('fails a repeated branch that loses a test on an unchanged line, not the legacy one', () => {
+    const result = gate(project, 'twice');
+    expect(newFindings(result)).toEqual(['coverage/changed-branch-coverage shop/twice.go']);
+    expect(newMessages(result)).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the if body (line 7). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["shop/twice.go"],"function":"Twice","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+    expect(result.exitCode).toBe(1);
   });
 
   it('measures no coverage in a package whose test binary crashed, since it wrote no profile', () => {

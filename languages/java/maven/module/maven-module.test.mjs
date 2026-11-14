@@ -57,6 +57,7 @@ describe('moduleManifest', () => {
     ).toEqual({
       versions: pinned,
       build: 'maven',
+      effects: true,
       sourceRoots: ['src/main/java'],
       kotlinSourceRoots: [],
       testSourceRoots: ['src/test/java'],

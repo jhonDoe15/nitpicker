@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { finding, report } from '../test-support/report-builders.mjs';
-import { renderDiffSummary } from './diff-summary.mjs';
-import { LISTED_FINDINGS, LISTED_NOTES } from './markdown.mjs';
-import { renderSnapshotSummary } from './snapshot-summary.mjs';
+import { renderDiffSummary } from './diff-summary.mts';
+import { LISTED_FINDINGS, LISTED_NOTES } from './markdown.mts';
+import { renderSnapshotSummary } from './snapshot-summary.mts';
 
 const context = {
   linkBase: 'https://github.com/acme/shop/blob/0123abc',

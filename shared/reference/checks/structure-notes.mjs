@@ -95,7 +95,7 @@ export const STRUCTURE_NOTES = {
     'Remove the key from the repository, rotate it, and load it from a secret store or the environment.',
   ],
   'committed-binary': [
-    'A committed archive or compiled binary (`gradle-wrapper.jar` is allowed).',
+    'A committed archive or compiled binary (`gradle-wrapper.jar` and a tarball that a package.json dependency spec names are allowed).',
     'Binaries bloat the history, cannot be reviewed and go stale.',
     'Remove the file; fetch or build it in the build instead.',
   ],

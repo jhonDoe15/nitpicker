@@ -17,6 +17,8 @@ import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
 import { goCoverageFindings } from './branch-coverage/go-coverage.mjs';
 import { readTestRun, testRunFindings } from './tests/go-test.mjs';
 import { raceCheckFindings, withoutRaceOnlyFailures } from './race/race-findings.mjs';
+import { goTestRuntimeFindings } from './test-runtime/go-test-runtime.mjs';
+import { goEntryPointFindings } from './entry-points/go-entry-points.mjs';
 
 const UNUSED_LINT_RULE = 'U1000';
 
@@ -44,8 +46,7 @@ function withoutGofumptOverlap(findings, report) {
   );
 }
 
-function deadCodeFindings(context, { policy, lint }) {
-  const facts = readGoFacts(context);
+function deadCodeFindings(context, { facts, policy, lint }) {
   const factFindings = goFactFindings(facts, { policy, baseline: readGoBaseline(context) });
   const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
   const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
@@ -61,6 +62,7 @@ export function readGoFindings(context, policy = {}) {
   const testRun = readTestRun(context.reportRoot);
   const formatReport = readFormatReport(context.reportRoot);
   const lint = withoutGofumptOverlap(lintFindings(context), formatReport);
+  const facts = readGoFacts(context);
   return [
     ...formatterFindings(context, formatReport),
     ...readVetFindings(context),
@@ -73,6 +75,12 @@ export function readGoFindings(context, policy = {}) {
     ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),
     ...goCouplingFindings(report, context.module),
     ...goDomainFindings(report, context.module),
-    ...deadCodeFindings(context, { policy, lint }),
+    ...goTestRuntimeFindings(context, { facts, report }),
+    ...goEntryPointFindings(report, {
+      facts,
+      module: context.module,
+      exceptions: policy.exceptions,
+    }),
+    ...deadCodeFindings(context, { facts, policy, lint }),
   ];
 }

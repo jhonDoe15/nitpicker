@@ -40,7 +40,13 @@ describe('a collected subprocess', () => {
   it('returns the exit status and both output streams', async () => {
     expect(
       await run('process.stdout.write("out"); process.stderr.write("err"); process.exitCode = 1;'),
-    ).toEqual({ status: 1, error: undefined, stdout: 'out', stderr: 'err' });
+    ).toEqual({ status: 1, signal: undefined, error: undefined, stdout: 'out', stderr: 'err' });
+  });
+
+  it.skipIf(process.platform === 'win32')('reports the signal that ended a process', async () => {
+    const result = await run("process.kill(process.pid, 'SIGKILL')");
+
+    expect([result.status, result.signal]).toEqual([null, 'SIGKILL']);
   });
 
   it('stops a process that runs past its deadline and reports ETIMEDOUT', async () => {

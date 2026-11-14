@@ -27,7 +27,7 @@ function sameDirectory(left: string, right: string): boolean {
 }
 
 function comparisonRoots(projectRoot: string, policy: JavaPolicy): ComparisonRoots | undefined {
-  if (policy.quick === true) {
+  if (policy.quick === true || policy['mutationOff'] === true) {
     return undefined;
   }
   if (policy.snapshot === 'base') {
