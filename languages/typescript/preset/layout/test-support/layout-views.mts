@@ -154,7 +154,3 @@ export type VitestConfigFactory = (environment: {
   readonly command: string;
   readonly mode: string;
 }) => Promise<VitestConfig>;
-
-export function isModule<Module extends object>(value: unknown): value is Module {
-  return typeof value === 'object' && value !== null;
-}

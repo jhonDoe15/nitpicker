@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
-import { functionOf } from './test-support/untyped-function.mts';
 import {
   packageEntryFiles as untypedPackageEntryFiles,
   productionReach as untypedProductionReach,
@@ -9,13 +8,10 @@ import {
 
 const packageEntryFiles: (root: string, files: readonly string[]) => string[] =
   untypedPackageEntryFiles;
-const productionReach =
-  functionOf<
-    (
-      root: string,
-      options: { readonly importers: readonly string[]; readonly entries?: readonly string[] },
-    ) => Map<string, string>
-  >(untypedProductionReach);
+const productionReach: (
+  root: string,
+  options: { readonly importers: readonly string[]; readonly entries?: readonly string[] },
+) => Map<string, string> = untypedProductionReach;
 
 const { temporaryRoot } = useGitFixtures();
 

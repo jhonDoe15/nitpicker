@@ -55,7 +55,7 @@ function matches(value: string, patterns: readonly string[]): boolean {
 function hasRuntimeImport(node: TypeScript.ImportDeclaration): boolean {
   const clause = node.importClause;
   if (clause === undefined) return true;
-  if (clause.isTypeOnly) return false;
+  if (ts.isTypeOnlyImportDeclaration(clause)) return false;
   if (clause.name !== undefined || clause.namedBindings === undefined) return true;
   return (
     !ts.isNamedImports(clause.namedBindings) ||

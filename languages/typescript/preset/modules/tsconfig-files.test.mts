@@ -9,14 +9,14 @@ import {
   tsconfigChain,
   tsconfigProblems as untypedTsconfigProblems,
 } from './tsconfig-files.mjs';
-import { functionOf } from './test-support/untyped-function.mts';
 
 type Files = Readonly<Record<string, string>>;
 
-const projectTsconfigs =
-  functionOf<
-    (projectRoot: string, files: readonly string[], isHidden: (file: string) => boolean) => string[]
-  >(untypedProjectTsconfigs);
+const projectTsconfigs: (
+  projectRoot: string,
+  files: readonly string[],
+  isHidden: (file: string) => boolean,
+) => string[] = untypedProjectTsconfigs;
 const tsconfigProblems: (configFile: string) => string[] = untypedTsconfigProblems;
 
 const { temporaryRoot } = useGitFixtures();

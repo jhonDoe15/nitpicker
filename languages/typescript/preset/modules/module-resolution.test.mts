@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { functionOf } from './test-support/untyped-function.mts';
 import {
   packageNameOf,
   reachableModules as untypedReachableModules,
@@ -14,10 +13,10 @@ type Alias = { readonly find: string | RegExp; readonly replacement: string };
 type Resolution = { readonly kind: string; readonly name?: string; readonly path?: string };
 
 type Step = {
-  readonly file: string;
-  readonly depth: number;
-  readonly from: string;
-  readonly truncated?: true;
+  readonly file?: string;
+  readonly depth?: number;
+  readonly from?: string;
+  readonly truncated?: boolean;
 };
 
 type Walk = {
@@ -37,8 +36,8 @@ type Walk = {
   ): Resolution;
 };
 
-const resolveModuleSpecifier = functionOf<Walk['resolve']>(untypedResolveModuleSpecifier);
-const reachableModules = functionOf<Walk['walk']>(untypedReachableModules);
+const resolveModuleSpecifier: Walk['resolve'] = untypedResolveModuleSpecifier;
+const reachableModules: Walk['walk'] = untypedReachableModules;
 
 const roots: string[] = [];
 const PINNED = { types: [], lib: ['ES2022'] };
@@ -289,7 +288,7 @@ describe('reachableModules', () => {
     [...reachableModules(path.join(root, 'src/entry.ts'), specifiersOf, limits)].map((step) =>
       step.truncated === true
         ? 'truncated'
-        : `${path.relative(root, step.file)}@${String(step.depth)}`,
+        : `${path.relative(root, step.file ?? '')}@${String(step.depth)}`,
     );
 
   it('visits each module once, breadth first, through aliases and cycles', () => {
@@ -309,7 +308,7 @@ describe('reachableModules', () => {
 
     expect(
       [...steps].map(
-        (step) => `${path.relative(root, step.from)}>${path.relative(root, step.file)}`,
+        (step) => `${path.relative(root, step.from ?? '')}>${path.relative(root, step.file ?? '')}`,
       ),
     ).toEqual(['src/c.ts>src/a.ts', 'src/a.ts>src/entry.ts']);
   });
@@ -339,7 +338,7 @@ describe('reachableModules', () => {
         aliases: [{ find: '~', replacement: path.join(linked, 'src') }],
       },
     );
-    expect([...steps].map((step) => path.relative(linked, step.file))).toEqual([
+    expect([...steps].map((step) => path.relative(linked, step.file ?? ''))).toEqual([
       'src/a.ts',
       'packages/kit/index.ts',
     ]);
