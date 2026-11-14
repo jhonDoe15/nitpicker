@@ -1,20 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mts';
-import { validateConfig } from '../../configuration/validate.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { useTypescriptCli } from './test-support/typescript-cli.mjs';
+import { validateConfig } from '../../configuration/validate.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { enforceableRules as enforceable } from '../test-support/report-readers.mts';
+import { useTypescriptCli } from './test-support/typescript-cli.mts';
 
 const { runTypescript, typescriptRepository } = useTypescriptCli(runCli);
 
 const WIDE =
   'export function wide(a: number, b: number, c: number, d: number): number {\n  return a + b + c + d;\n}\n';
-const enforceable = (result) =>
-  result
-    .json('new-findings.json')
-    .filter(({ classification }) => classification === 'enforceable')
-    .map(({ rule, symbol }) => [rule, symbol]);
-const config = (...exceptions) => `${JSON.stringify(validateConfig({ exceptions }))}\n`;
+const config = (...exceptions: readonly object[]) =>
+  `${JSON.stringify(validateConfig({ exceptions }))}\n`;
 const lifted = {
   rule: 'function-parameters-limit',
   paths: ['src/main/a.ts'],

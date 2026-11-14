@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mts';
-import { validateConfig } from '../../configuration/validate.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { useTypescriptCli } from './test-support/typescript-cli.mjs';
+import { validateConfig } from '../../configuration/validate.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { enforceableFindings, pickFields } from '../test-support/report-readers.mts';
+import { useTypescriptCli } from './test-support/typescript-cli.mts';
 
 const { runTypescript, typescriptRepository } = useTypescriptCli(runCli);
 
 const WIDE = 'export function wide(a, b, c, d) {\n  return a + b + c + d;\n}\n';
-const config = (...exceptions) =>
+const config = (...exceptions: readonly object[]) =>
   `${JSON.stringify(validateConfig({ preset: 'javascript', exceptions }))}\n`;
 
 describe('exceptions with "preset": "javascript"', () => {
@@ -24,10 +25,12 @@ describe('exceptions with "preset": "javascript"', () => {
 
     expect(failing.exitCode, failing.text).toBe(1);
     expect(
-      failing
-        .json('new-findings.json')
-        .filter(({ classification }) => classification === 'enforceable')
-        .map(({ rule, symbol, message }) => [rule, symbol, message]),
+      pickFields(
+        enforceableFindings(failing.json('new-findings.json')),
+        'rule',
+        'symbol',
+        'message',
+      ),
     ).toEqual([
       [
         'function-parameters-limit',

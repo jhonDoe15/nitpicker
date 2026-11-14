@@ -2,10 +2,10 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { useCliFixtures } from '../test-support/cli-harness.mjs';
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
-import { readReferenceEntries } from '../../../shared/reference/store.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { useCliFixtures } from '../test-support/cli-harness.mts';
+import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
+import { readReferenceEntries as readEntries } from '../../../shared/reference/store.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 
 const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
@@ -13,6 +13,16 @@ const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE =
   'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>] [--fixable]\n';
+type ReferenceEntry = {
+  readonly id: string;
+  readonly page: string;
+  readonly tool: string;
+  readonly fix: Readonly<Record<string, string>>;
+  readonly analyzers: Readonly<Record<string, readonly string[] | undefined>>;
+};
+
+const readReferenceEntries: () => readonly ReferenceEntry[] = readEntries;
+const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
 const ENTRIES = readReferenceEntries();
 const SAMPLES = [
   'crap/crap-score-limit',
@@ -25,7 +35,10 @@ const SAMPLES = [
   'structure/function-lines-limit',
 ];
 
-function run(commandArguments, projectFiles = {}) {
+function run(
+  commandArguments: readonly string[],
+  projectFiles: Readonly<Record<string, string>> = {},
+) {
   const root = makeTemporaryRoot('nitpicker-reference-cli-');
   for (const [name, contents] of Object.entries(projectFiles)) {
     writeFileSync(path.join(root, name), contents);
@@ -41,17 +54,18 @@ function run(commandArguments, projectFiles = {}) {
   return { exitCode, stdout: output.stdoutText, stderr: output.stderrText };
 }
 
-const config = (fields) => ({ 'nitpicker.config.json': JSON.stringify(fields) });
-const lineOf = (stdout, label) => stdout.split('\n').find((line) => line.startsWith(`${label}: `));
-const listedIds = (stdout) =>
+const config = (fields: object) => ({ 'nitpicker.config.json': JSON.stringify(fields) });
+const lineOf = (stdout: string, label: string) =>
+  stdout.split('\n').find((line) => line.startsWith(`${label}: `));
+const listedIds = (stdout: string) =>
   stdout
     .split('\n')
     .slice(1)
     .filter((line) => line !== '')
-    .map((line) => line.split('  ')[0]);
-const samplesIn = (ids) => SAMPLES.filter((id) => ids.includes(id));
+    .map((line) => line.split('  ')[0] ?? '');
+const samplesIn = (ids: readonly string[]) => SAMPLES.filter((id) => ids.includes(id));
 
-function idsReportedBy(preset, disabled = []) {
+function idsReportedBy(preset: string, disabled: readonly string[] = []) {
   const enabled = presetAnalyzers({ preset })
     .map(({ name }) => name)
     .filter((name) => !disabled.includes(name));
@@ -79,8 +93,8 @@ describe('nitpicker explain', () => {
         'Fix: Fix plan: nitpicker writes the steps for the finding, and --fix does not rewrite the code.',
         'Threshold: more than 50 lines',
         'Exception: If this is intended, add {"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."} to "exceptions" in nitpicker.config.json.',
-        `Checks catalog: ${docsUrl('spec/checks.md')}`,
-        `Reference: ${docsUrl('docs/rules/checks.md', 'structure-function-lines-limit')}`,
+        `Checks catalog: ${docsUrl('spec/checks.md') ?? ''}`,
+        `Reference: ${docsUrl('docs/rules/checks.md', 'structure-function-lines-limit') ?? ''}`,
         '',
       ].join('\n'),
     });
@@ -138,7 +152,7 @@ describe('nitpicker explain', () => {
     expect(lineOf(stdout, 'Exception')).toBe(`Exception: If this is intended, add ${exception}`);
     expect(stdout.split('\n').filter((line) => line.includes('`'))).toEqual([]);
     expect(lineOf(stdout, 'Reference')).toBe(
-      `Reference: ${docsUrl(`docs/rules/${page}.md`, anchor)}`,
+      `Reference: ${docsUrl(`docs/rules/${page ?? ''}.md`, anchor) ?? ''}`,
     );
   });
 
@@ -170,7 +184,7 @@ describe('nitpicker explain', () => {
           .map((line) => line.trim().split('  ')[0]),
       ).toEqual(rules.map(({ id }) => id));
       expect(lineOf(stdout, 'Checks catalog')).toBe(
-        `Checks catalog: ${docsUrl('spec/checks.md', 'quality-area-checks')}`,
+        `Checks catalog: ${docsUrl('spec/checks.md', 'quality-area-checks') ?? ''}`,
       );
     },
   );
@@ -340,7 +354,7 @@ describe('nitpicker rules', () => {
     const reported = new Set(idsReportedBy('java'));
     expect(ids).toEqual(
       ENTRIES.filter(
-        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix.java),
+        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix['java'] ?? ''),
       ).map(({ id }) => id),
     );
     expect(

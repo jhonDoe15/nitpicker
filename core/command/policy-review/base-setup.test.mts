@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 import { createBaseSetupResolver } from './base-setup.mts';
+import type { Analyzer } from '../../../shared/values/analyzers.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 
 const { createGitRepository } = useGitFixtures();
+
+function snapshotOf(root: string, analyzers: readonly Analyzer[]) {
+  return {
+    baseProjectRoot: root,
+    headSnapshotRoot: root,
+    liveProjectRoot: root,
+    moves: undefined,
+    analyzers,
+  };
+}
 
 describe('createBaseSetupResolver', () => {
   it('measures the base with the stricter threshold, so a tightening keeps legacy findings old', () => {
@@ -12,11 +24,13 @@ describe('createBaseSetupResolver', () => {
     });
     const resolve = createBaseSetupResolver({ headConfig: {}, injectedAnalyzers: [] });
 
-    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
+    const setup = resolve(snapshotOf(root, []));
 
-    expect(setup.headPolicy.thresholds).toEqual({ fileLines: 300 });
-    expect(setup.policyChanges).toEqual(['threshold fileLines lowered from 500 to 300']);
-    expect(setup.policyLoosenings).toEqual([]);
+    expect(fieldOf(fieldOf(setup, 'headPolicy'), 'thresholds')).toEqual({ fileLines: 300 });
+    expect(fieldOf(setup, 'policyChanges')).toEqual([
+      'threshold fileLines lowered from 500 to 300',
+    ]);
+    expect(fieldOf(setup, 'policyLoosenings')).toEqual([]);
   });
 
   it('gives a base with its own config the facts read from the head checkout', () => {
@@ -40,9 +54,9 @@ describe('createBaseSetupResolver', () => {
     };
     const resolve = createBaseSetupResolver({ headConfig: {}, headPolicy, injectedAnalyzers: [] });
 
-    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
+    const setup = resolve(snapshotOf(root, []));
 
-    expect(setup.headPolicy).toEqual({
+    expect(fieldOf(setup, 'headPolicy')).toEqual({
       exclude: [],
       layout: {},
       exceptions: [],
@@ -68,9 +82,9 @@ describe('createBaseSetupResolver', () => {
       injectedAnalyzers: [],
     });
 
-    const setup = resolve({ baseProjectRoot: root, headSnapshotRoot: root, analyzers: [] });
+    const setup = resolve(snapshotOf(root, []));
 
-    expect(setup.headPolicy).toEqual({
+    expect(fieldOf(setup, 'headPolicy')).toEqual({
       exclude: [],
       layout: {},
       exceptions: [],
@@ -86,7 +100,7 @@ describe('createBaseSetupResolver', () => {
         analyzerTimeoutMinutes: { custom: 1, other: 2 },
       }),
     });
-    const analyzer = (name) => ({
+    const analyzer = (name: string): Analyzer => ({
       name,
       version: '1',
       configurationHash: 'h',
@@ -99,17 +113,18 @@ describe('createBaseSetupResolver', () => {
       injectedAnalyzers: [analyzer('custom'), analyzer('other'), analyzer('crap')],
     });
 
-    const setup = resolve({
-      baseProjectRoot: root,
-      headSnapshotRoot: root,
-      analyzers: [analyzer('custom'), analyzer('other')],
-    });
+    const setup = resolve(snapshotOf(root, [analyzer('custom'), analyzer('other')]));
 
-    expect(setup.analyzers.map(({ name, timeoutMs }) => [name, timeoutMs])).toEqual([
+    expect(
+      listOf(fieldOf(setup, 'analyzers')).map((entry) => [
+        fieldOf(entry, 'name'),
+        fieldOf(entry, 'timeoutMs'),
+      ]),
+    ).toEqual([
       ['custom', 30 * 60_000],
       ['other', undefined],
     ]);
-    expect(setup.analyzers[0].configuredTimeout).toBe(true);
-    expect(setup.policyChanges).toEqual(['analyzer enabled: crap']);
+    expect(fieldOf(listOf(fieldOf(setup, 'analyzers'))[0], 'configuredTimeout')).toBe(true);
+    expect(fieldOf(setup, 'policyChanges')).toEqual(['analyzer enabled: crap']);
   });
 });

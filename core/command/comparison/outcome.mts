@@ -3,7 +3,7 @@ import { renderConsoleSummary } from '../../diff/reporting/summary.mts';
 import { writeGithubOutput } from '../../diff/reporting/github/emit.mts';
 import { renderClosingSections } from '../../exceptions/stale-exceptions.mts';
 import { colorEnabled, displayPath } from '../../../shared/messages/terminal/terminal-text.mjs';
-import { stagedHeader } from '../../quick/summary.mjs';
+import { stagedHeader } from '../../quick/summary.mts';
 import { comparisonExitCode as exitCodeOf } from '../../diff/reporting/failing-tests/failing-tests.mts';
 import { comparisonJson } from '../../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../../cli-context.mts';

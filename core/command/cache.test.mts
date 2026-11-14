@@ -1,18 +1,27 @@
 import path from 'node:path';
+import type { TextOutput } from '../cli-context.mts';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { startTestHttpServer } from '../diff/cache/test-support/test-http-server.mjs';
-import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { startTestHttpServer } from '../diff/cache/test-support/test-http-server.mts';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mts';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
-import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
+
+type CacheRunOptions = {
+  readonly extraArguments?: readonly string[];
+  readonly configurationHash?: string;
+  readonly environment?: NodeJS.ProcessEnv;
+  readonly progress?: TextOutput;
+  readonly projectRoot?: string;
+};
 
 describe('findings cache', () => {
   function setup() {
@@ -24,19 +33,19 @@ describe('findings cache', () => {
       'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
     });
     const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
-    const snapshots = [];
+    const snapshots: string[] = [];
     const run = ({
       extraArguments = [],
       configurationHash = 'fixture-policy',
       environment = { NITPICKER_CACHE_DIR: cacheDirectory },
       progress,
       projectRoot = repository.root,
-    } = {}) => {
+    }: CacheRunOptions = {}) => {
       const analyzer = fakeAnalyzer();
       analyzer.configurationHash = configurationHash;
       const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
-        snapshots.push(context.snapshot);
+        snapshots.push(context.snapshot ?? '');
         return createInvocation(context);
       };
       const output = captureOutput();
@@ -78,8 +87,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     const worktree = path.join(makeTemporaryRoot('nitpicker-cli-worktree-'), 'worktree');
     fixtureGit(repository.root, ['worktree', 'add', '--quiet', '--detach', worktree]);
     writeFiles(worktree, { 'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })) });
-    const lines = [];
-    const progress = { write: (text) => lines.push(text) };
+    const lines: string[] = [];
+    const progress = { write: (text: string) => lines.push(text) };
 
     run({ environment: {} });
     run({ environment: {}, progress, projectRoot: worktree });
@@ -117,12 +126,16 @@ describe('remote findings cache', () => {
     writeFiles(repository.root, {
       'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
     });
-    const snapshots = [];
-    const execute = (arguments_, url = remote.url, { subprocess = false } = {}) => {
+    const snapshots: string[] = [];
+    const execute = (
+      arguments_: readonly string[],
+      url = remote.url,
+      { subprocess }: { readonly subprocess?: true } = {},
+    ) => {
       const analyzer = fakeAnalyzer();
       const createInvocation = analyzer.createInvocation.bind(analyzer);
       analyzer.createInvocation = (context) => {
-        snapshots.push(context.snapshot);
+        snapshots.push(context.snapshot ?? '');
         return createInvocation(context);
       };
       const output = captureOutput();
@@ -136,18 +149,17 @@ describe('remote findings cache', () => {
         analyzers: [analyzer],
         stdout: output.stdout,
         stderr: output.stderr,
-        runTasks: subprocess ? undefined : runTasksInProcess,
+        runTasks: subprocess === true ? undefined : runTasksInProcess,
       });
       return { exitCode, output };
     };
-    const compare = (url) =>
+    const compare = (url?: string) =>
       execute(['--base', repository.baseRef, '--output', makeOutputRoot()], url);
     return { remote, snapshots, execute, compare };
   }
   it('publishes a base snapshot that a fresh checkout then reuses', async () => {
     const { remote, snapshots, execute, compare } = await setup();
     try {
-      // The real scheduler subprocess publishes; the comparison then runs in-process.
       const published = execute(['cache', 'publish'], remote.url, { subprocess: true });
       expect(published.exitCode).toBe(0);
       expect(published.output.stdoutText).toEqual(

@@ -1,7 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   CONSOLE_LINE_LIMIT,
   FIX_LOG_FILE,
@@ -9,23 +8,18 @@ import {
   sectionText,
   writeFixLog,
 } from './console-lines.mts';
+import { fieldOf, parseJson } from '../../../shared/values/readers.mts';
 import { FIXES_FILE, reportDryRun } from './dry-run-report.mts';
+import { useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function outputRoot() {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-console-lines-'));
-  roots.push(root);
-  return root;
+  return temporaryRoot('nitpicker-console-lines-');
 }
 
-const numbered = (count) => Array.from({ length: count }, (_, index) => `line ${String(index)}`);
+const numbered = (count: number) =>
+  Array.from({ length: count }, (_, index) => `line ${String(index)}`);
 
 describe('cappedLines', () => {
   it('keeps a list of up to the limit', () => {
@@ -69,17 +63,22 @@ describe('reportDryRun', () => {
       safety: 'safe',
       files: [`f${String(index)}.txt`],
     }));
-    const lines = [];
+    const lines: string[] = [];
 
-    reportDryRun({ write: (text) => lines.push(text) }, root, { patch: Buffer.alloc(0), fixes });
+    reportDryRun({ write: (text: string) => lines.push(text) }, root, {
+      patch: Buffer.alloc(0),
+      fixes,
+    });
 
     const shown = fixes
       .slice(0, CONSOLE_LINE_LIMIT)
-      .map(({ files }) => `  format would rewrite ${files[0]}\n`);
+      .map(({ files }) => `  format would rewrite ${files[0] ?? ''}\n`);
     expect(lines).toEqual([
       `Fixes that --fix would apply (dry run, nothing was written to your files): ${String(fixes.length)}\n${shown.join('')}  ... and 3 more, see ${path.join(root, FIXES_FILE)}\n`,
       `Patch: ${path.join(root, 'fix.patch')}\nFixes: ${path.join(root, FIXES_FILE)}\n`,
     ]);
-    expect(JSON.parse(readFileSync(path.join(root, FIXES_FILE), 'utf8')).fixes).toEqual(fixes);
+    expect(fieldOf(parseJson(readFileSync(path.join(root, FIXES_FILE), 'utf8')), 'fixes')).toEqual(
+      fixes,
+    );
   });
 });

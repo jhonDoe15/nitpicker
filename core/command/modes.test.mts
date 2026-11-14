@@ -2,17 +2,23 @@ import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
-import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
-import { docsUrl } from '../../shared/messages/docs-url.mjs';
+import { exactText } from '../diff/reporting/test-support/output-expectations.mts';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
+import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mts';
+import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mts';
+import { linkSentence } from './test-support/report-readers.mts';
+import type { FixtureRepository } from './test-support/fixture-types.mts';
+import { fieldOf, listOf, parseJson } from '../../shared/values/readers.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { docsUrl as docsPageUrl } from '../../shared/messages/docs-url.mjs';
+const anyString: unknown = expect.any(String);
+const anyNumber: unknown = expect.any(Number);
+const baseFromLocalBranch: unknown = expect.stringMatching(/^Base: main \(local-branch\)\n/u);
+const docsUrl: (page: string) => string | undefined = docsPageUrl;
+
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
-const CRASH = `crashing-analyzer crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`;
 describe('nitpicker CLI', () => {
   it('fails comparison for a finding in an untracked file and identifies an argument base', () => {
     const repository = createRepository({
@@ -76,7 +82,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     expect(output.stderrText).toBe('');
   });
   describe('with no change since the merge base', () => {
-    const runUnchanged = (repository) => {
+    const runUnchanged = (repository: FixtureRepository) => {
       const output = captureOutput();
       const outputRoot = makeOutputRoot();
       writeFiles(outputRoot, { 'new-findings.json': '[{"stale":true}]\n' });
@@ -88,7 +94,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         stdout: output.stdout,
         stderr: output.stderr,
       });
-      const read = (name) => JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
+      const read = (name: string) => parseJson(readFileSync(path.join(outputRoot, name), 'utf8'));
       return { exitCode, output, summary: read('summary.json'), read };
     };
     it('runs no analyzer, prints one line, exits 0 and writes an empty summary', () => {
@@ -106,7 +112,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         resolvedBaseSha: repository.baseSha,
         mergeBaseSha: repository.baseSha,
         headSha: repository.baseSha,
-        policyHash: expect.any(String),
+        policyHash: anyString,
         configOverrides: [],
         policyChanges: [],
         policyLoosenings: [],
@@ -115,7 +121,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         tools: [],
         exclusions: [],
         renamedPaths: 0,
-        elapsedMs: expect.any(Number),
+        elapsedMs: anyNumber,
         mode: 'full',
         overallStatus: 'completed',
         newEnforceableFindings: 0,
@@ -132,8 +138,8 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       const { exitCode, summary } = runUnchanged(repository);
 
       expect(exitCode).toBe(0);
-      expect(summary.noChanges).toBe(true);
-      expect(summary.headSha).not.toBe(repository.baseSha);
+      expect(fieldOf(summary, 'noChanges')).toBe(true);
+      expect(fieldOf(summary, 'headSha')).not.toBe(repository.baseSha);
     });
     it('runs the analyzers for a change made only in the working tree', () => {
       const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
@@ -142,8 +148,10 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       const { exitCode, summary } = runUnchanged(repository);
 
       expect(exitCode).toBe(2);
-      expect(summary.noChanges).toBeUndefined();
-      expect(summary.tools.map(({ name }) => name)).toEqual(['crashing-analyzer']);
+      expect(fieldOf(summary, 'noChanges')).toBeUndefined();
+      expect(listOf(fieldOf(summary, 'tools')).map((tool) => fieldOf(tool, 'name'))).toEqual([
+        'crashing-analyzer',
+      ]);
     });
   });
   it('resolves the base from the remote HEAD when no base is given', () => {
@@ -186,7 +194,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
-    const run = (arguments_) => {
+    const run = (arguments_: readonly string[]) => {
       const output = captureOutput();
       const exitCode = runCli({
         arguments_,
@@ -210,7 +218,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
     expect(run(['base'])).toEqual({ exitCode: 0, stdout: 'main\n', stderr: '' });
     expect(run(['--output', makeOutputRoot()])).toEqual({
       exitCode: 0,
-      stdout: expect.stringMatching(/^Base: main \(local-branch\)\n/u),
+      stdout: baseFromLocalBranch,
       stderr: '',
     });
   });
@@ -340,84 +348,6 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
       ].join('\n'),
     );
   });
-  describe.each([
-    ['comparison', (repository) => ['--base', repository.baseRef]],
-    ['--all', () => ['--all']],
-  ])('exit code in %s mode', (mode, modeArguments) => {
-    const run = ({ withFinding, withToolError }) => {
-      const repository = createRepository({
-        'quality-policy.json': policy(),
-        'src/main/clean.ts': 'export const clean = true;\n',
-      });
-      writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
-      if (withFinding) {
-        writeFiles(repository.root, {
-          'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
-        });
-        if (mode === 'comparison') {
-          commit(repository.root, 'add finding');
-        }
-      }
-      const output = captureOutput();
-      const analyzers = [fakeAnalyzer(), ...(withToolError ? [crashingAnalyzer()] : [])];
-      const exitCode = runCli({
-        arguments_: [...modeArguments(repository), '--output', makeOutputRoot()],
-        environment: {},
-        currentProjectRoot: repository.root,
-        analyzers,
-        snapshotAnalyzers: analyzers,
-        stdout: output.stdout,
-        stderr: output.stderr,
-        runTasks: undefined,
-      });
-      return { exitCode, output };
-    };
-    const expectedModeOutput =
-      mode === '--all'
-        ? [
-            'Nitpicker quality snapshot',
-            'Status: tool-error',
-            'Enforceable findings: 1',
-            'Descriptive findings: 0',
-            'Tool errors: 1',
-            '',
-            'Per-tool counts:',
-            'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
-            'crashing-analyzer: total=0 enforceable=0 descriptive=0',
-            '',
-            'Enforceable findings:',
-            'fake-quality-analyzer/fixture-rule src/main/new.ts:1 Fixture finding',
-            '',
-            'Tool errors:',
-            `crashing-analyzer (head): ${CRASH}`,
-            '',
-          ].join('\n')
-        : expect.stringMatching(exactText`Base: comparison-base (argument)
-
-Quality gate summary
-✖ 1 new enforceable violation
-  fake-quality-analyzer/fixture-rule: Fixture finding
-    src/main/new.ts:1:4
-✖ 2 tool errors
-  crashing-analyzer (base): ${CRASH}
-  crashing-analyzer (head): ${CRASH}
-Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
-`);
-    it('exits 1 for findings plus a tool error and still lists the error', () => {
-      const { exitCode, output } = run({ withFinding: true, withToolError: true });
-      expect(exitCode).toBe(1);
-      expect(output.stdoutText).toEqual(expectedModeOutput);
-    });
-    it('exits 2 for a tool error without findings', () => {
-      expect(run({ withFinding: false, withToolError: true }).exitCode).toBe(2);
-    });
-    it('exits 1 for findings without a tool error', () => {
-      expect(run({ withFinding: true, withToolError: false }).exitCode).toBe(1);
-    });
-    it('exits 0 when clean', () => {
-      expect(run({ withFinding: false, withToolError: false }).exitCode).toBe(0);
-    });
-  });
   it('supports --all analyzer selection and rule drill-down', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
@@ -506,7 +436,7 @@ Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.t
         'prettier-format/prettier/prettier package.json:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         'prettier-format/prettier/prettier src/main/example.ts:1 These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         '',
-        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );

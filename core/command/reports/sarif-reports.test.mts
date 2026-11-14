@@ -3,13 +3,20 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { finding, findingLine, policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { expectValidSarif } from '../../diff/reporting/test-support/report-assertions.mjs';
+import {
+  finding,
+  findingLine,
+  policy,
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { expectValidSarif } from '../../diff/reporting/test-support/format-checks/report-assertions.mts';
 import { REPORT_FILE_NAMES } from '../../diff/reporting/reporters.mts';
 import { SNAPSHOT_REPORT_FILE_NAMES } from '../../snapshot/reporters.mts';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../test-support/cli-harness.mts';
+import type { FixtureRepository } from '../test-support/fixture-types.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -20,18 +27,18 @@ function subfolderRepository() {
   });
 }
 
-function readSarif(outputRoot, name) {
-  return JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
+function readSarif(outputRoot: string, name: string): unknown {
+  return parseJson(readFileSync(path.join(outputRoot, name), 'utf8'));
 }
 
-function locations(log) {
-  return log.runs[0].results.map((result) => [
-    result.baselineState,
-    result.locations[0].physicalLocation.artifactLocation,
+function locations(log: unknown): unknown[][] {
+  return listOf(fieldAt(log, 'runs', 0, 'results')).map((result) => [
+    fieldOf(result, 'baselineState'),
+    fieldAt(result, 'locations', 0, 'physicalLocation', 'artifactLocation'),
   ]);
 }
 
-function sourceRootOf(repository) {
+function sourceRootOf(repository: FixtureRepository) {
   return {
     '%SRCROOT%': {
       uri: `${pathToFileURL(repository.root).href}/`,
@@ -40,7 +47,7 @@ function sourceRootOf(repository) {
   };
 }
 
-function runInProject(repository, arguments_) {
+function runInProject(repository: FixtureRepository, arguments_: readonly string[]) {
   const outputRoot = makeOutputRoot();
   const output = captureOutput();
   const analyzers = [fakeAnalyzer()];
@@ -72,7 +79,7 @@ describe('SARIF reports of a project in a repository subfolder', () => {
     const logs = [current, baseline];
     expectValidSarif(current);
     expectValidSarif(baseline);
-    expect(logs.map((log) => log.runs[0].originalUriBaseIds)).toEqual(
+    expect(logs.map((log) => fieldAt(log, 'runs', 0, 'originalUriBaseIds'))).toEqual(
       logs.map(() => sourceRootOf(repository)),
     );
     expect(logs.map(locations)).toEqual(
@@ -88,7 +95,7 @@ describe('SARIF reports of a project in a repository subfolder', () => {
     expect(readdirSync(outputRoot).toSorted()).toEqual(SNAPSHOT_REPORT_FILE_NAMES.toSorted());
     const log = readSarif(outputRoot, 'report.sarif');
     expectValidSarif(log);
-    expect(log.runs[0].originalUriBaseIds).toEqual(sourceRootOf(repository));
+    expect(fieldAt(log, 'runs', 0, 'originalUriBaseIds')).toEqual(sourceRootOf(repository));
     expect(locations(log)).toEqual([
       [undefined, { uri: 'packages/my%20app/src/old.ts', uriBaseId: '%SRCROOT%' }],
     ]);

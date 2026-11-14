@@ -4,11 +4,12 @@ import { outsideRootsNotices } from '../../../languages/typescript/preset/notice
 import {
   SOURCE_FILES,
   useHistoryRepositories,
-} from '../../diff/git/test-support/history-repository.mjs';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
+} from '../../diff/git/test-support/history-repository.mts';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
 
 const { createGitRepository } = useGitFixtures();
 const { historyRepository } = useHistoryRepositories();
+const PROJECT_ROOT = import.meta.dirname;
 const changed = ['scripts/slop.ts', 'src/a.ts'];
 const PARTNER_NOTICE =
   'Files you changed in src/billing usually change together with src/invoicing (8 of 12 commits, 67%), ' +
@@ -20,12 +21,14 @@ describe('noticeDescriber', () => {
     const expected = outsideRootsNotices(changed, {});
 
     expect(expected).toHaveLength(1);
-    expect(noticeDescriber({}, {})?.(changed)).toEqual(expected);
-    expect(noticeDescriber({ preset: 'typescript' }, {})?.(changed)).toEqual(expected);
+    expect(noticeDescriber({}, {}, PROJECT_ROOT)?.(changed)).toEqual(expected);
+    expect(noticeDescriber({ preset: 'typescript' }, {}, PROJECT_ROOT)?.(changed)).toEqual(
+      expected,
+    );
   });
 
   it('uses the head policy of the project', () => {
-    const describeExcluded = noticeDescriber({}, { exclude: ['scripts/**'] });
+    const describeExcluded = noticeDescriber({}, { exclude: ['scripts/**'] }, PROJECT_ROOT);
 
     expect(describeExcluded?.(changed)).toEqual([]);
   });
@@ -78,18 +81,18 @@ describe('noticeDescriber', () => {
   });
 
   it('describes nothing for the javascript preset', () => {
-    expect(noticeDescriber({ preset: 'javascript' }, {})).toBeUndefined();
+    expect(noticeDescriber({ preset: 'javascript' }, {}, PROJECT_ROOT)).toBeUndefined();
   });
 
   describe('co-change', () => {
-    const amplified = {};
+    const amplified = { root: '', head: '' };
 
     beforeAll(() => {
       amplified.root = historyRepository();
       amplified.head = fixtureGit(amplified.root, ['rev-parse', 'HEAD']).trim();
     });
 
-    function amplifiedRoot() {
+    function amplifiedRoot(): string {
       return amplified.root;
     }
 
@@ -118,11 +121,14 @@ describe('noticeDescriber', () => {
         config,
         amplifiedRoot(),
       );
-      const context = (touchedPaths) => ({ mergeBaseSha: amplified.head, touchedPaths });
+      const context = (touchedPaths: readonly string[]) => ({
+        mergeBaseSha: amplified.head,
+        touchedPaths,
+      });
 
       expect({
-        alone: describeChange(['src/billing/invoice.ts'], context(['src/billing/invoice.ts'])),
-        deleting: describeChange(
+        alone: describeChange?.(['src/billing/invoice.ts'], context(['src/billing/invoice.ts'])),
+        deleting: describeChange?.(
           ['src/billing/invoice.ts'],
           context(['src/billing/invoice.ts', 'src/invoicing/ledger.ts']),
         ),
