@@ -1,10 +1,17 @@
 import { describe, expect, it } from 'vitest';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+import type { MutationReport } from '../../../../../languages/typescript/adapters/quality-areas/typed/mutation.mts';
 import { sourceSnippet } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mts';
 import {
   normalizeMutation,
   withUnreachedMutantsUncovered,
 } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/stryker/stryker-config.mts';
+
+function isMutationReport(value: object): value is MutationReport {
+  return 'files' in value;
+}
 
 describe('mutation reporting in the quality-area analyzers', () => {
   it('reports surviving mutants and status totals without gating on score', () => {
@@ -174,7 +181,7 @@ describe('mutation reporting in the quality-area analyzers', () => {
     expect(new Set(survivingMutants.map(({ identity }) => identity)).size).toBe(2);
   });
   it('carries the mutant column and original code into the message and location', () => {
-    const [finding] = normalizeMutation(
+    const findings = normalizeMutation(
       {
         files: {
           'src/main/value.ts': {
@@ -193,21 +200,21 @@ describe('mutation reporting in the quality-area analyzers', () => {
       'mutation',
     ).filter(({ rule }) => rule === 'mutant-survived');
 
-    expect(finding.location).toEqual({ line: 4, column: 15 });
-    expect(finding.message).toBe(
+    expect(fieldAt(findings, 0, 'location')).toEqual({ line: 4, column: 15 });
+    expect(fieldAt(findings, 0, 'message')).toBe(
       'Survived ConditionalExpression at column 15: replacing `a > b` with `true` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
     );
   });
   it('cuts the mutated code out of the source by 1-based Stryker positions', () => {
     const source = 'const a = 1;\nreturn a > 2 && a < 9;\n';
-    const at = (line, column) => ({ line, column });
+    const at = (line: number, column: number) => ({ line, column });
 
     expect(sourceSnippet(source, { start: at(2, 8), end: at(2, 13) })).toBe('a > 2');
     expect(sourceSnippet(source, { start: at(1, 11), end: at(2, 7) })).toBe('1;\nreturn');
     expect(sourceSnippet(source, { start: at(9, 1), end: at(9, 2) })).toBeUndefined();
   });
   it('keeps mutant identities stable when source positions move', () => {
-    function reportAt(line) {
+    function reportAt(line: number) {
       return {
         files: {
           'src/main/value.ts': {
@@ -254,16 +261,22 @@ describe('mutation reporting in the quality-area analyzers', () => {
 });
 
 describe('mutants of a run whose tests reach no mutated module', () => {
-  function reportOf(...mutants) {
-    return { files: { 'src/lonely.ts': { mutants } } };
+  function reportOf(...mutants: readonly object[]): MutationReport {
+    const report: object = { files: { 'src/lonely.ts': { mutants } } };
+    if (!isMutationReport(report)) {
+      throw new TypeError('not a mutation report');
+    }
+    return report;
   }
 
-  function mutant(status, coveredBy) {
+  function mutant(status: string, coveredBy?: readonly string[]): object {
     return { id: status, status, ...(coveredBy === undefined ? {} : { coveredBy }) };
   }
 
-  function statusesOf(report) {
-    return report.files['src/lonely.ts'].mutants.map(({ status }) => status);
+  function statusesOf(report: MutationReport): unknown[] {
+    return listOf(fieldAt(report, 'files', 'src/lonely.ts', 'mutants')).map((entry) =>
+      fieldOf(entry, 'status'),
+    );
   }
 
   it('are reported as not covered when the dry run collected no coverage at all', () => {
@@ -272,7 +285,7 @@ describe('mutants of a run whose tests reach no mutated module', () => {
       'perTest',
     );
 
-    expect(report.files['src/lonely.ts'].mutants).toEqual([
+    expect(fieldAt(report, 'files', 'src/lonely.ts', 'mutants')).toEqual([
       { id: 'Survived', status: 'NoCoverage', coveredBy: [] },
       { id: 'Survived', status: 'NoCoverage', coveredBy: [] },
       { id: 'CompileError', status: 'CompileError' },
@@ -284,9 +297,12 @@ describe('mutants of a run whose tests reach no mutated module', () => {
     ['a test killed a mutant', [mutant('Survived'), mutant('Killed')]],
     ['a test timed out on a mutant', [mutant('Survived'), mutant('Timeout')]],
     ['coverage analysis is off', [mutant('Survived')], 'off'],
-  ])('keep their status when %s', (_case, mutants, coverageAnalysis = 'perTest') => {
-    expect(
-      statusesOf(withUnreachedMutantsUncovered(reportOf(...mutants), coverageAnalysis)),
-    ).toEqual(mutants.map(({ status }) => status));
-  });
+  ])(
+    'keep their status when %s',
+    (_case: string, mutants: readonly object[], coverageAnalysis = 'perTest') => {
+      expect(
+        statusesOf(withUnreachedMutantsUncovered(reportOf(...mutants), coverageAnalysis)),
+      ).toEqual(mutants.map((entry) => fieldOf(entry, 'status')));
+    },
+  );
 });

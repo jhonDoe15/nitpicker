@@ -11,8 +11,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeArchitectureViolations } from '../../../../languages/typescript/adapters/static-checks-runner.mts';
-import { cruiseStrict } from '../../../../languages/typescript/preset/architecture/test-support/strict-cruise.mjs';
-import { compareFindings } from '../../comparison/compare.mjs';
+import { cruiseStrict as cruiseStrictJs } from '../../../../languages/typescript/preset/architecture/test-support/strict-cruise.mjs';
+import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
+import { fieldAt } from '../../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), '../..');
@@ -20,7 +23,33 @@ const fixturesRoot = path.join(
   packageRoot,
   'languages/typescript/preset/architecture/fixtures/strict',
 );
-const temporaryRoots = [];
+type Violation = {
+  readonly from: string;
+  readonly to: string;
+  readonly cycle?: readonly { readonly name: string }[];
+  readonly [field: string]: unknown;
+};
+type Fixture = readonly [string, string, readonly string[]];
+type MovedRun = { readonly findings: Finding[]; readonly renamedPath: string };
+type Runs = {
+  readonly baseline: Map<string, Finding[]>;
+  readonly insertedLines: Map<string, Finding[]>;
+  readonly moved: Map<string, MovedRun>;
+};
+type Scenario = {
+  readonly kind: 'baseline' | 'insertedLines' | 'moved';
+  readonly name: string;
+  readonly file: string | undefined;
+  readonly dir: string;
+  readonly renamedPath: unknown;
+};
+
+const cruiseStrict: (request: {
+  readonly baseDir: string;
+  readonly paths: readonly string[];
+  readonly outputType: string;
+}) => Promise<{ readonly output: unknown }> = cruiseStrictJs;
+const temporaryRoots: string[] = [];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
@@ -41,10 +70,8 @@ const strictBoundaryFixtures = [
   ['import-cycle', 'no-production-cycles'],
 ];
 
-// index.ts and composition-root.ts are not moved: their file name is what makes them a public entry
-// point or the composition root, so moving them legitimately changes which rule applies.
-const movableFixtures = strictBoundaryFixtures
-  .map(([name, rule]) => [
+const movableFixtures: Fixture[] = strictBoundaryFixtures
+  .map(([name = '', rule = '']): Fixture => [
     name,
     rule,
     sourceFiles(path.join(fixturesRoot, name)).filter(
@@ -53,7 +80,7 @@ const movableFixtures = strictBoundaryFixtures
   ])
   .filter(([, , files]) => files.length > 0);
 
-function sourceFiles(root, directory = 'src') {
+function sourceFiles(root: string, directory = 'src'): string[] {
   return readdirSync(path.join(root, directory), { withFileTypes: true }).flatMap((entry) => {
     const relative = `${directory}/${entry.name}`;
     return entry.isDirectory() ? sourceFiles(root, relative) : [relative];
@@ -62,30 +89,31 @@ function sourceFiles(root, directory = 'src') {
 
 const relativeSpecifier = /(from\s+)(['"])(\.{1,2}\/[^'"]+)\2/g;
 
-function resolveSpecifier(file, specifier) {
+function resolveSpecifier(file: string, specifier: string) {
   return path.posix.join(path.posix.dirname(file), specifier.replace(/\.js$/, '.ts'));
 }
 
-function toSpecifier(fromFile, targetFile) {
+function toSpecifier(fromFile: string, targetFile: string) {
   const relative = path.posix.relative(path.posix.dirname(fromFile), targetFile);
   return (relative.startsWith('.') ? relative : `./${relative}`).replace(/\.ts$/, '.js');
 }
 
-// Moves the file into a `moved/` subdirectory of its directory (keeping its name, so name-based
-// rules such as logger or state files still apply) and rewrites every relative import to match.
-function moveFile(root, relativePath) {
+function moveFile(root: string, relativePath: string) {
   const movedPath = `${path.posix.dirname(relativePath)}/moved/${path.posix.basename(relativePath)}`;
   const files = sourceFiles(root);
   const imports = files.map((file) => ({
     file,
     text: readFileSync(path.join(root, file), 'utf8'),
   }));
-  const newLocation = (file) => (file === relativePath ? movedPath : file);
+  const newLocation = (file: string) => (file === relativePath ? movedPath : file);
   for (const { file, text } of imports) {
-    const rewritten = text.replace(relativeSpecifier, (_match, keyword, quote, specifier) => {
-      const target = resolveSpecifier(file, specifier);
-      return `${keyword}${quote}${toSpecifier(newLocation(file), newLocation(target))}${quote}`;
-    });
+    const rewritten = text.replace(
+      relativeSpecifier,
+      (_match: string, keyword: string, quote: string, specifier: string) => {
+        const target = resolveSpecifier(file, specifier);
+        return `${keyword}${quote}${toSpecifier(newLocation(file), newLocation(target))}${quote}`;
+      },
+    );
     const destination = path.join(root, newLocation(file));
     mkdirSync(path.dirname(destination), { recursive: true });
     writeFileSync(destination, rewritten);
@@ -94,7 +122,7 @@ function moveFile(root, relativePath) {
   return movedPath;
 }
 
-function insertLinesAtTop(root) {
+function insertLinesAtTop(root: string) {
   for (const file of sourceFiles(root)) {
     const absolute = path.join(root, file);
     writeFileSync(
@@ -104,17 +132,17 @@ function insertLinesAtTop(root) {
   }
 }
 
-// Every scenario (a pristine fixture, a fixture with lines inserted, a fixture with one file moved) is
-// written to its own directory under one workspace, and dependency-cruiser runs once over all of them.
-// Its rules match paths by pattern, so each scenario's findings are the same as a run on that scenario
-// alone. The violations are split back per directory and their paths made relative to it again.
-let scenarioRuns;
-function scenarioFindings() {
+let scenarioRuns: Runs;
+function scenarioFindings(): Runs {
   return scenarioRuns;
 }
 
-function relocatedViolation(violation, prefix) {
-  const strip = (value) => (value.startsWith(prefix) ? value.slice(prefix.length) : value);
+function isViolation(value: unknown): value is Violation {
+  return typeof fieldOf(value, 'from') === 'string' && typeof fieldOf(value, 'to') === 'string';
+}
+
+function relocatedViolation(violation: Violation, prefix: string): Violation {
+  const strip = (value: string) => (value.startsWith(prefix) ? value.slice(prefix.length) : value);
   return {
     ...violation,
     from: strip(violation.from),
@@ -125,18 +153,23 @@ function relocatedViolation(violation, prefix) {
   };
 }
 
-async function runScenarios() {
+async function runScenarios(): Promise<Runs> {
   const workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-strict-boundary-'));
   temporaryRoots.push(workspace);
-  const scenarios = [];
-  const addScenario = (kind, name, file, mutate) => {
+  const scenarios: Scenario[] = [];
+  const addScenario = (
+    kind: Scenario['kind'],
+    name: string,
+    file?: string,
+    mutate?: (root: string) => unknown,
+  ) => {
     const dir = `scenario-${String(scenarios.length)}`;
     cpSync(path.join(fixturesRoot, name), path.join(workspace, dir), { recursive: true });
     const renamedPath = mutate?.(path.join(workspace, dir));
     scenarios.push({ kind, name, file, dir, renamedPath });
   };
-  for (const [name] of strictBoundaryFixtures) addScenario('baseline', name);
-  for (const [name] of strictBoundaryFixtures)
+  for (const [name = ''] of strictBoundaryFixtures) addScenario('baseline', name);
+  for (const [name = ''] of strictBoundaryFixtures)
     addScenario('insertedLines', name, undefined, insertLinesAtTop);
   for (const [name, , files] of movableFixtures) {
     for (const file of files) addScenario('moved', name, file, (root) => moveFile(root, file));
@@ -147,9 +180,11 @@ async function runScenarios() {
     paths: scenarios.map(({ dir }) => `${dir}/src`),
     outputType: 'json',
   });
-  const violations = JSON.parse(report.output).summary.violations;
+  const violations = listOf(
+    fieldAt(parseJson(textOf(report.output)), 'summary', 'violations'),
+  ).filter(isViolation);
 
-  const runs = { baseline: new Map(), insertedLines: new Map(), moved: new Map() };
+  const runs: Runs = { baseline: new Map(), insertedLines: new Map(), moved: new Map() };
   for (const scenario of scenarios) {
     const prefix = `${scenario.dir}/`;
     const own = violations
@@ -160,9 +195,9 @@ async function runScenarios() {
       'architecture-strict',
     );
     if (scenario.kind === 'moved') {
-      runs.moved.set(`${scenario.name}\0${scenario.file}`, {
+      runs.moved.set(`${scenario.name}\0${textOf(scenario.file)}`, {
         findings,
-        renamedPath: scenario.renamedPath,
+        renamedPath: textOf(scenario.renamedPath),
       });
     } else {
       runs[scenario.kind].set(scenario.name, findings);
@@ -172,18 +207,16 @@ async function runScenarios() {
 }
 
 describe('strict dependency-cruiser findings keep their fingerprint', () => {
-  // One dependency-cruiser run over every scenario, shared by all tests below. It is file setup, so it
-  // is not charged to the first test that happens to read it.
   beforeAll(async () => {
     scenarioRuns = await runScenarios();
   });
 
-  it.each(strictBoundaryFixtures)('%s: across inserted lines', async (name, rule) => {
-    const { baseline, insertedLines } = await scenarioFindings();
-    const base = baseline.get(name);
+  it.each(strictBoundaryFixtures)('%s: across inserted lines', (name, rule) => {
+    const { baseline, insertedLines } = scenarioFindings();
+    const base = baseline.get(name) ?? [];
     expect(base.map((finding) => finding.rule)).toContain(rule);
 
-    const head = insertedLines.get(name);
+    const head = insertedLines.get(name) ?? [];
     const comparison = compareFindings({ baseFindings: base, headFindings: head });
     expect(comparison.newFindings).toEqual([]);
     expect(comparison.resolvedFindings).toEqual([]);
@@ -191,12 +224,15 @@ describe('strict dependency-cruiser findings keep their fingerprint', () => {
   });
 
   describe.each(movableFixtures)('%s', (name, rule, files) => {
-    it.each(files)('stays baselined when %s is moved to another directory', async (file) => {
-      const { baseline, moved } = await scenarioFindings();
-      const base = baseline.get(name);
+    it.each(files)('stays baselined when %s is moved to another directory', (file) => {
+      const { baseline, moved } = scenarioFindings();
+      const base = baseline.get(name) ?? [];
       expect(base.map((finding) => finding.rule)).toContain(rule);
 
-      const { renamedPath, findings: head } = moved.get(`${name}\0${file}`);
+      const { renamedPath, findings: head } = moved.get(`${name}\0${file}`) ?? {
+        renamedPath: file,
+        findings: [],
+      };
 
       const comparison = compareFindings({
         baseFindings: base,

@@ -12,9 +12,10 @@ import {
   analyzer,
   policyFiles,
   filler,
-} from './test-support/static-check-fixtures.mjs';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { commit } from '../../../git/test-support/git-repository.mjs';
+} from './test-support/static-check-fixtures.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import { type FileMap, writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { commit } from '../../../git/test-support/git-repository.mts';
 
 const { createRepository, generatedSnapshot } = useStaticCheckFixtures();
 
@@ -27,7 +28,7 @@ describe('static differential adapters: Prettier', () => {
     const legacy = ['export const a={value:1}', ...filler(20), 'export const z = 1;', ''].join(
       '\n',
     );
-    function prettierDiff(initialFiles, changedFiles) {
+    function prettierDiff(initialFiles: FileMap, changedFiles: FileMap) {
       const repository = createRepository({
         ...policyFiles(),
         'tests/placeholder.ts': 'export const placeholder = true;\n',
@@ -154,7 +155,7 @@ describe('static differential adapters: Prettier', () => {
     });
   });
   describe('prettier precedence between the project and nitpicker configs', () => {
-    function precedenceDiff(precedence) {
+    function precedenceDiff(precedence: readonly string[] | undefined) {
       const repository = createRepository({
         ...policyFiles(),
         '.prettierrc': '{ "semi": false, "singleQuote": false }\n',
@@ -219,7 +220,7 @@ describe('static differential adapters: Prettier', () => {
       ]);
     });
   });
-  function runPrettierOn(projectRoot) {
+  function runPrettierOn(projectRoot: string) {
     return runPrettier(
       parseArguments([
         '--analyzer-name',
@@ -263,9 +264,9 @@ describe('static differential adapters: Prettier', () => {
       'src/main/fresh.ts': 'export const fresh = "a"\n',
     });
 
-    await expect(runPrettierOn(projectRoot)).rejects.toSatisfy((error) =>
+    await expect(runPrettierOn(projectRoot)).rejects.toSatisfy((error: unknown) =>
       /^prettier exited with 2: \[error\] src\/main\/broken\.ts: SyntaxError/u.test(
-        stripVTControlCharacters(error.message),
+        stripVTControlCharacters(textOf(fieldOf(error, 'message'))),
       ),
     );
   });

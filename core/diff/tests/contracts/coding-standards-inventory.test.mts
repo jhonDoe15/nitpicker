@@ -4,23 +4,38 @@ import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import {
-  collectArchitectureSignals,
-  collectSignals,
+  collectArchitectureSignals as collectArchitectureSignalsJs,
+  collectSignals as collectSignalsJs,
 } from '../../../../languages/typescript/preset/coding-standards/check.mjs';
-import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import {
-  resolveHeadPolicy,
-  withHeadPolicyFile,
+  resolveHeadPolicy as resolveHeadPolicyJs,
+  withHeadPolicyFile as withHeadPolicyFileJs,
 } from '../../../../languages/typescript/preset/head-policy.mjs';
-import { compareFindings } from '../../comparison/compare.mjs';
-import { runAnalyzers } from '../../execution/run-analyzers.mts';
+import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
+import { type AnalyzerRequest, runAnalyzers } from '../../execution/run-analyzers.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
 
+type Signal = {
+  readonly file: string;
+  readonly rule: string;
+  readonly source: string;
+  readonly message: string;
+};
+
+const configuredAnalyzers: () => { readonly name: string }[] = configuredAnalyzersJs;
+const collectSignals: (root: string, policyRoot: string) => Promise<Signal[]> = collectSignalsJs;
+const collectArchitectureSignals: (root: string, layout: undefined) => Signal[] =
+  collectArchitectureSignalsJs;
+const resolveHeadPolicy: (config: object, projectRoot: undefined) => object = resolveHeadPolicyJs;
+const withHeadPolicyFile: <T>(policy: object, run: (policyFile: string) => T) => T =
+  withHeadPolicyFileJs;
 const packageAnalyzers = configuredAnalyzers();
 const LOST_CAUSE = [
   'Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`.',
   ' An exception fits only when the original failure is deliberately dropped.',
 ].join('');
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -36,7 +51,7 @@ it('compares both sides using the head coding inventory when that inventory entr
 
   const legacySignals = [
     ...(await collectSignals(baseProjectRoot, PACKAGE_ROOT)),
-    ...collectArchitectureSignals(baseProjectRoot),
+    ...collectArchitectureSignals(baseProjectRoot, undefined),
   ];
   expect(legacySignals).toEqual([
     {
@@ -52,23 +67,23 @@ it('compares both sides using the head coding inventory when that inventory entr
   );
 
   const analyzer = packageAnalyzers.find(({ name }) => name === 'coding-standards');
-  const baseRun = runAnalyzers({
-    analyzers: [analyzer],
-    projectRoot: baseProjectRoot,
-    policyRoot: headProjectRoot,
-    toolRoot: PACKAGE_ROOT,
-    liveProjectRoot: PACKAGE_ROOT,
-    snapshot: 'base',
-  });
-  const headRun = runAnalyzers({
-    analyzers: [analyzer],
-    projectRoot: headProjectRoot,
-    policyRoot: headProjectRoot,
-    toolRoot: PACKAGE_ROOT,
-    liveProjectRoot: PACKAGE_ROOT,
-    snapshot: 'head',
-    baselineRoot: baseProjectRoot,
-  });
+  const baseRun = runAnalyzers(
+    analyzerRequest({
+      analyzers: [analyzer],
+      projectRoot: baseProjectRoot,
+      policyRoot: headProjectRoot,
+      snapshot: 'base',
+    }),
+  );
+  const headRun = runAnalyzers(
+    analyzerRequest({
+      analyzers: [analyzer],
+      projectRoot: headProjectRoot,
+      policyRoot: headProjectRoot,
+      snapshot: 'head',
+      baselineRoot: baseProjectRoot,
+    }),
+  );
   const comparison = compareFindings({
     baseFindings: baseRun.reports.get('coding-standards')?.findings ?? [],
     headFindings: headRun.reports.get('coding-standards')?.findings ?? [],
@@ -89,24 +104,41 @@ it('compares both sides using the head coding inventory when that inventory entr
   ]);
 });
 
-function headFindings(config) {
+function analyzerRequest(
+  overrides: Pick<AnalyzerRequest, 'analyzers' | 'projectRoot' | 'policyRoot' | 'snapshot'> &
+    Partial<AnalyzerRequest>,
+): AnalyzerRequest {
+  return {
+    toolRoot: PACKAGE_ROOT,
+    liveProjectRoot: PACKAGE_ROOT,
+    baselineRoot: undefined,
+    baselineMovesFile: undefined,
+    headPolicyFile: undefined,
+    mutationScope: undefined,
+    logRoot: undefined,
+    runTasks: undefined,
+    ...overrides,
+  };
+}
+
+function headFindings(config: object) {
   const projectRoot = createSnapshotRoot();
   writeProject(projectRoot);
-  const run = withHeadPolicyFile(resolveHeadPolicy(config), (headPolicyFile) =>
-    runAnalyzers({
-      analyzers: packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
-      projectRoot,
-      policyRoot: projectRoot,
-      toolRoot: PACKAGE_ROOT,
-      liveProjectRoot: PACKAGE_ROOT,
-      snapshot: 'head',
-      headPolicyFile,
-    }),
+  const run = withHeadPolicyFile(resolveHeadPolicy(config, undefined), (headPolicyFile) =>
+    runAnalyzers(
+      analyzerRequest({
+        analyzers: packageAnalyzers.filter(({ name }) => name === 'coding-standards'),
+        projectRoot,
+        policyRoot: projectRoot,
+        snapshot: 'head',
+        headPolicyFile,
+      }),
+    ),
   );
   expect(run.toolErrors).toEqual([]);
   return run.reports
     .get('coding-standards')
-    ?.findings.map(({ rule, message }) => ({ rule, message }));
+    ?.findings.map(({ rule, message }: Finding) => ({ rule, message }));
 }
 
 it('reports a new coding-standard site with the rule message', () => {
@@ -131,7 +163,7 @@ function createSnapshotRoot() {
   return projectRoot;
 }
 
-function writeProject(root) {
+function writeProject(root: string) {
   mkdirSync(path.join(root, 'src/main'), { recursive: true });
   writeFileSync(
     path.join(root, 'src/main/legacy.ts'),

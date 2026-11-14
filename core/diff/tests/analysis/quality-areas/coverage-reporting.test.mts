@@ -1,18 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
 import { runAnalyzers } from '../../../execution/run-analyzers.mts';
 import {
   coverageFailureFindings,
   formatTestFailures,
 } from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mts';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { analyzerRequest } from './test-support/analyzer-request.mts';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import type { QualityAreaOptions } from '../../../../../languages/typescript/adapters/quality-areas/typed/area-types.mts';
 import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mts';
 import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { fileURLToPath } from 'node:url';
 
+const halfBranch: unknown = expect.closeTo(0.5, 10);
+
+const failureOptions: QualityAreaOptions = {
+  analyzerName: 'coverage',
+  kind: 'coverage',
+  projectRoot: '/p',
+  projectPolicyRoot: '/p',
+  policyRoot: '/p',
+  toolRoot: '/p',
+  liveProjectRoot: '/p',
+  snapshot: 'head',
+  legacyInventory: '',
+  crapScoreLimit: 9,
+  baselineRoot: undefined,
+  baselineMovesFile: undefined,
+  mutationScope: undefined,
+};
+
 describe('coverage reporting in the quality-area analyzers', () => {
   it('skips CRAP, without a tool error of its own, when coverage reports failing tests', () => {
-    const analyzer = (name, dependencies, report) => ({
+    const analyzer = (name: string, dependencies: readonly string[], report: object) => ({
       name,
       dependencies,
       version: '1.0.0',
@@ -32,17 +52,12 @@ describe('coverage reporting in the quality-area analyzers', () => {
       message: '1 test fails',
       classification: 'tool-error',
     };
-    const result = runAnalyzers({
-      analyzers: [
+    const result = runAnalyzers(
+      analyzerRequest([
         analyzer('coverage', [], { findings: [testsFailed] }),
         analyzer('crap', ['coverage'], { findings: [] }),
-      ],
-      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      liveProjectRoot: PACKAGE_ROOT,
-      snapshot: 'head',
-    });
+      ]),
+    );
 
     expect([...result.reports.keys()]).toEqual(['coverage']);
     expect(result.toolErrors).toEqual([]);
@@ -82,69 +97,64 @@ describe('coverage reporting in the quality-area analyzers', () => {
   });
   it('keeps the process output when Vitest fails without naming a test', () => {
     expect(() =>
-      coverageFailureFindings(
-        { analyzerName: 'coverage', projectRoot: '/p' },
-        {
-          report: { numFailedTests: 0, testResults: [] },
-          result: { status: 1, stdout: '', stderr: 'Unhandled Rejection: boom' },
-          runnerName: 'Vitest',
-        },
-      ),
+      coverageFailureFindings(failureOptions, {
+        report: { numFailedTests: 0, testResults: [] },
+        result: { status: 1, stdout: '', stderr: 'Unhandled Rejection: boom' },
+        runnerName: 'Vitest',
+        precedingCommands: undefined,
+      }),
     ).toThrow(
       /^Vitest exited 1 without naming a failing test\nProcess output:\nUnhandled Rejection: boom/u,
     );
   });
   it('anchors the tool error inside the project even for a test file Vitest reports elsewhere', () => {
-    const [finding] = coverageFailureFindings(
-      { analyzerName: 'coverage', projectRoot: '/p' },
-      {
-        report: {
-          numFailedTests: 1,
-          testResults: [
-            {
-              name: '/elsewhere/test/a.test.ts',
-              assertionResults: [{ fullName: 'adds', status: 'failed', failureMessages: ['no'] }],
-            },
-          ],
-        },
-        result: { status: 1, stdout: '', stderr: '' },
-        runnerName: 'Vitest',
+    const findings = coverageFailureFindings(failureOptions, {
+      report: {
+        numFailedTests: 1,
+        testResults: [
+          {
+            name: '/elsewhere/test/a.test.ts',
+            assertionResults: [{ fullName: 'adds', status: 'failed', failureMessages: ['no'] }],
+          },
+        ],
       },
-    );
-
-    expect(finding).toEqual({
-      tool: 'coverage',
-      rule: 'tests-failed',
-      path: '.',
-      identity: 'tests-failed',
-      message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
-      classification: 'tool-error',
+      result: { status: 1, stdout: '', stderr: '' },
+      runnerName: 'Vitest',
+      precedingCommands: undefined,
     });
-    expect(finding.message).toBe(
+
+    expect(findings).toEqual([
+      {
+        tool: 'coverage',
+        rule: 'tests-failed',
+        path: '.',
+        identity: 'tests-failed',
+        message: `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
+        classification: 'tool-error',
+      },
+    ]);
+    expect(fieldAt(findings, 0, 'message')).toBe(
       `1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  /elsewhere/test/a.test.ts > adds: no`,
     );
   });
   it('says which steps of the test script nitpicker did not run before the tests', () => {
-    const run = (precedingCommands) =>
-      coverageFailureFindings(
-        { analyzerName: 'coverage', projectRoot: '/p' },
-        {
-          report: {
-            numFailedTests: 1,
-            testResults: [
-              {
-                name: '/p/test/a.test.js',
-                status: 'failed',
-                message: "Cannot find module '../dist/a.js'",
-                assertionResults: [],
-              },
-            ],
-          },
-          result: { status: 1, stdout: '', stderr: '' },
-          runnerName: 'node:test',
-          precedingCommands,
+    const run = (precedingCommands: readonly string[]) =>
+      coverageFailureFindings(failureOptions, {
+        report: {
+          numFailedTests: 1,
+          testResults: [
+            {
+              name: '/p/test/a.test.js',
+              status: 'failed',
+              message: "Cannot find module '../dist/a.js'",
+              assertionResults: [],
+            },
+          ],
         },
-      ).map(({ message }) => message);
+        result: { status: 1, stdout: '', stderr: '' },
+        runnerName: 'node:test',
+        precedingCommands,
+      }).map(({ message }) => message);
     const failure =
       '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
       "  test/a.test.js > could not run: Cannot find module '../dist/a.js'";
@@ -160,7 +170,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     expect(run([])).toEqual([failure]);
   });
   it('lists every failing test and a test file that could not run', () => {
-    const failing = (index) => ({
+    const failing = (index: number) => ({
       fullName: `case ${String(index)}`,
       status: 'failed',
       failureMessages: ['boom'],
@@ -234,7 +244,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         identity: 'covered-branches-per-test',
         message: 'Covered branch outcomes per test',
         classification: 'descriptive',
-        metric: { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
+        metric: { name: 'coveredBranchesPerTest', value: halfBranch },
       },
       {
         tool: 'coverage',
@@ -246,9 +256,9 @@ describe('coverage reporting in the quality-area analyzers', () => {
         metric: { name: 'testCount', value: 2 },
       },
     ]);
-    expect(findings.map(({ metric }) => metric).filter(Boolean)).toEqual([
+    expect(findings.map((finding) => fieldAt(finding, 'metric')).filter(Boolean)).toEqual([
       { name: 'branches', value: 50 },
-      { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
+      { name: 'coveredBranchesPerTest', value: halfBranch },
       { name: 'testCount', value: 2 },
     ]);
   });
@@ -262,7 +272,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         },
       },
       'coverage',
-      { projectRoot: '/project' },
+      { projectRoot: '/project', testCount: undefined },
     );
 
     expect(findings).toEqual([
@@ -291,7 +301,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
   it('describes uncovered arms of Vitest branch maps by kind and position', () => {
     const source =
       'export function pick(a, b) {\n  const x = a ?? 5;\n  return x > 3 ? 1 : 2;\n}\n';
-    const at = (line, column) => ({ start: { line, column } });
+    const at = (line: number, column: number) => ({ start: { line, column } });
     expect(
       describeUncoveredArms(
         { type: 'binary-expr', locations: [at(2, 12), at(2, 17)] },
@@ -325,7 +335,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
       '  }',
       '}',
     ].join('\n');
-    const at = (line, column) => ({ start: { line, column } });
+    const at = (line: number, column: number) => ({ start: { line, column } });
     const loc = { start: { line: 1, column: 0 }, end: { line: 8, column: 1 } };
 
     expect(
@@ -360,11 +370,11 @@ describe('coverage reporting in the quality-area analyzers', () => {
       {
         '/project/src/main/value.ts': {
           branchSourceHashes: { 0: 'branch-source' },
-          b: { 0: [...Array(19).fill(1), 0] },
+          b: { 0: [...Array.from({ length: 19 }, () => 1), 0] },
         },
       },
       'coverage',
-      { projectRoot: '/project' },
+      { projectRoot: '/project', testCount: undefined },
     );
 
     expect(findings).not.toContainEqual(
@@ -372,7 +382,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     );
   });
   it('reactivates only the below-threshold branch whose source changes', () => {
-    function coverageFindingsFor(secondBranchSourceHash) {
+    function coverageFindingsFor(secondBranchSourceHash: string) {
       return normalizeCoverage(
         {
           '/project/src/main/value.ts': {
@@ -387,7 +397,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
           },
         },
         'coverage',
-        { projectRoot: '/project' },
+        { projectRoot: '/project', testCount: undefined },
       );
     }
     const base = coverageFindingsFor('changed-branch-before');

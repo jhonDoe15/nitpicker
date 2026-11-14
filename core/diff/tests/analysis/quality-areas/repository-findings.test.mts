@@ -6,7 +6,10 @@ import {
   normalizeTestRuntime,
 } from '../../../../../languages/typescript/adapters/quality-areas/reporting/repository.mts';
 import { normalizeDeadCode } from '../../../../../languages/typescript/adapters/quality-areas/reporting/dead-code.mts';
-import { compareFindings } from '../../../comparison/compare.mjs';
+import { compareFindings } from '../../../comparison/test-support/typed-compare.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+
+const closeToHalf: unknown = expect.closeTo(0.5, 10);
 
 describe('repository-level findings in the quality-area analyzers', () => {
   it('reports coding-standard baseline growth as enforceable', () => {
@@ -37,6 +40,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         stabilityDirection: [{ source: 'stable', target: 'volatile', delta: 0.5 }],
       },
       'coupling',
+      [],
     );
 
     expect(findings).toEqual([
@@ -55,7 +59,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'descriptive',
-        metric: { name: 'instabilityDelta', value: expect.closeTo(0.5, 10) },
+        metric: { name: 'instabilityDelta', value: closeToHalf },
       },
     ]);
     expect(findings).toEqual([
@@ -74,7 +78,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         identity: 'package-edge:stable->volatile',
         message: 'stable depends on less stable package volatile',
         classification: 'descriptive',
-        metric: { name: 'instabilityDelta', value: expect.closeTo(0.5, 10) },
+        metric: { name: 'instabilityDelta', value: closeToHalf },
       },
     ]);
   });
@@ -230,15 +234,15 @@ describe('repository-level findings in the quality-area analyzers', () => {
     ]);
   });
   it('keys unused exports by their declaration, not by the whole file', () => {
-    const report = (sourceHash) => ({
+    const report = (sourceHash: string) => ({
       issues: [{ file: 'src/a.ts', exports: [{ name: 'unused', line: 3, col: 1, sourceHash }] }],
     });
-    const [before] = normalizeDeadCode(report('declaration'), 'dead-code');
-    const [after] = normalizeDeadCode(report('declaration'), 'dead-code');
-    const [edited] = normalizeDeadCode(report('edited-declaration'), 'dead-code');
+    const identityOf = (sourceHash: string): unknown =>
+      fieldAt(normalizeDeadCode(report(sourceHash), 'dead-code'), 0, 'identity');
 
-    expect(after.identity).toBe(before.identity);
-    expect(edited.identity).not.toBe(before.identity);
+    expect(identityOf('declaration')).toBeTypeOf('string');
+    expect(identityOf('declaration')).toBe(identityOf('declaration'));
+    expect(identityOf('edited-declaration')).not.toBe(identityOf('declaration'));
   });
   it('enforces oversized or deeply nested changed functions', () => {
     const findings = normalizeStructure(
@@ -272,7 +276,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
     ]);
   });
   it('keeps anonymous structure identities stable when preceding lines move', () => {
-    function findingsAt(start) {
+    function findingsAt(start: number) {
       return normalizeStructure(
         {
           functions: [

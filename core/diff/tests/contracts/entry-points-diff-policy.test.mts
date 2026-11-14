@@ -2,16 +2,41 @@ import path from 'node:path';
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { analyzeEntryPoints } from '../../../../languages/typescript/preset/entry-points/analyze.mjs';
-import { compareFindings } from '../../comparison/compare.mjs';
+import { analyzeEntryPoints as analyzeEntryPointsJs } from '../../../../languages/typescript/preset/entry-points/analyze.mjs';
+import { compareFindings } from '../../comparison/test-support/typed-compare.mts';
+import type { Finding } from '../../../../shared/values/findings.mts';
 import {
-  createEntryPointAnalyzer,
-  toEntryPointDiffFindings,
+  createEntryPointAnalyzer as createEntryPointAnalyzerJs,
+  toEntryPointDiffFindings as toEntryPointDiffFindingsJs,
 } from '../../../../languages/typescript/adapters/entry-points.mjs';
-import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { runAnalyzers } from '../../execution/run-analyzers.mts';
+import { configuredAnalyzers as configuredAnalyzersJs } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
+import { type AnalyzerRequest, runAnalyzers } from '../../execution/run-analyzers.mts';
 import { fileURLToPath } from 'node:url';
 
+type Dependency = { readonly resolved: string; readonly dependencyTypes: readonly string[] };
+type Module = { readonly source: string; readonly dependencies: readonly Dependency[] };
+type Bypass = {
+  readonly source: string;
+  readonly target: string;
+  readonly publicEntryPoint: string;
+  readonly dependencyKind: string;
+};
+type BypassReport = { readonly publicAlternativeBypasses: readonly Bypass[] };
+
+const configuredAnalyzers: () => { readonly name: string }[] = configuredAnalyzersJs;
+const analyzeEntryPoints: (
+  graph: { readonly modules: readonly Module[] },
+  sourceRoot: string,
+) => BypassReport = analyzeEntryPointsJs;
+const toEntryPointDiffFindings: (report: BypassReport) => Finding[] = toEntryPointDiffFindingsJs;
+const createEntryPointAnalyzer: (options: {
+  readonly version: string;
+  readonly configurationHash: string;
+  readonly exclusions: readonly string[];
+  readonly sourceRoot: string;
+  readonly sourceRoots: undefined;
+  readonly shardWeight: number;
+}) => unknown = createEntryPointAnalyzerJs;
 const packageAnalyzers = configuredAnalyzers();
 const packageRoot = path.resolve(fileURLToPath(new URL('../../', import.meta.url)), '../..');
 
@@ -75,6 +100,8 @@ describe('entry-point differential adapter', () => {
       configurationHash: 'fixture',
       exclusions: [],
       sourceRoot: 'src/main',
+      sourceRoots: undefined,
+      shardWeight: 1,
     });
     const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
     const projectRoot = path.join(temporaryRoot, 'base');
@@ -86,14 +113,21 @@ describe('entry-point differential adapter', () => {
       },
     );
     try {
-      const run = runAnalyzers({
+      const request: AnalyzerRequest = {
         analyzers: [analyzer],
         projectRoot,
         policyRoot: packageRoot,
         toolRoot: packageRoot,
         liveProjectRoot: packageRoot,
         snapshot: 'head',
-      });
+        baselineRoot: undefined,
+        baselineMovesFile: undefined,
+        headPolicyFile: undefined,
+        mutationScope: undefined,
+        logRoot: undefined,
+        runTasks: undefined,
+      };
+      const run = runAnalyzers(request);
       expect(run.toolErrors).toEqual([]);
       expect(run.reports.get('entry-points')?.findings).toHaveLength(3);
     } finally {
@@ -110,7 +144,11 @@ describe('entry-point differential adapter', () => {
   });
 
   it('includes entry-point bypasses in the production differential analyzers', () => {
-    expect([...new Set(packageAnalyzers.map(({ name }) => name))].sort()).toEqual([
+    expect(
+      [...new Set(packageAnalyzers.map(({ name }) => name))].toSorted(
+        (a, b) => Number(a > b) - Number(a < b),
+      ),
+    ).toEqual([
       'coding-standards',
       'coupling',
       'coverage',
@@ -133,7 +171,7 @@ describe('entry-point differential adapter', () => {
   });
 });
 
-function graph(includeIntroducedBypass) {
+function graph(includeIntroducedBypass: boolean) {
   return {
     modules: [
       module('src/main/alpha/existing.ts', [dependency('src/main/beta/internal.ts')]),
@@ -147,15 +185,18 @@ function graph(includeIntroducedBypass) {
   };
 }
 
-function module(source, dependencies = []) {
+function module(source: string, dependencies: readonly Dependency[] = []): Module {
   return { source, dependencies };
 }
 
-function dependency(resolved, dependencyTypes = []) {
+function dependency(resolved: string, dependencyTypes: readonly string[] = []): Dependency {
   return { resolved, dependencyTypes };
 }
 
-function reportFor({ publicEntryPoint, dependencyKind }) {
+function reportFor({
+  publicEntryPoint,
+  dependencyKind,
+}: Pick<Bypass, 'publicEntryPoint' | 'dependencyKind'>): BypassReport {
   return {
     publicAlternativeBypasses: [
       {

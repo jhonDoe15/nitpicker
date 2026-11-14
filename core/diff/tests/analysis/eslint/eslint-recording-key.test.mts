@@ -2,19 +2,19 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { useGitFixtures } from '../../../git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mts';
+import { useGitFixtures } from '../../../git/test-support/git-repository.mts';
 import {
   differingVersions,
   eslintCliPath,
   installedVersions,
   sameKey,
   snapshotKey,
-} from './test-support/eslint-recording-key.mjs';
+} from './test-support/eslint-recording-key.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
-function sha256(text) {
+function sha256(text: string) {
   return createHash('sha256').update(text).digest('hex');
 }
 

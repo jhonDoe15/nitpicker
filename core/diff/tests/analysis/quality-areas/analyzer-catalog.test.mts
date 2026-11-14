@@ -1,15 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import vitestQualityConfig from '../../../../../languages/typescript/preset/defaults/vitest.quality.config.ts';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mjs';
 import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mts';
 import { planAnalyzerShards } from '../../../sharding/sharding.mts';
+import { analyzerRequest } from './test-support/analyzer-request.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 import { fileURLToPath } from 'node:url';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
-const packageAnalyzers = configuredAnalyzers();
+type CatalogAnalyzer = {
+  readonly name: string;
+  readonly concurrencyWeight?: number;
+  readonly executionPriority?: number;
+  readonly concurrencyGroup?: string;
+  readonly shardWeight: number;
+  readonly resolveVersion: (root: string) => unknown;
+  readonly createInvocation: (context: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+    readonly snapshot: string;
+  }) => { readonly args: readonly string[] };
+};
+
+const catalog: () => CatalogAnalyzer[] = configuredAnalyzers;
+const packageAnalyzers = catalog();
 const EXPECTED_ANALYZER_NAMES = [
   'eslint-lint',
   'eslint-errors',
@@ -53,11 +70,12 @@ describe('quality-area analyzer catalog', () => {
       ],
       projectRoot: PACKAGE_ROOT,
       liveProjectRoot: PACKAGE_ROOT,
+      scope: undefined,
     });
 
     expect(report.toolErrors).toEqual([]);
-    expect(report.summary.tools[0].version).toBe(resolveTool('prettier').version);
-    expect(report.summary.tools[0].version).not.toBe('unresolved');
+    expect(fieldAt(report.summary, 'tools', 0, 'version')).toBe(resolveTool('prettier').version);
+    expect(fieldAt(report.summary, 'tools', 0, 'version')).not.toBe('unresolved');
   });
   it('resolves a real version for every analyzer', () => {
     const unresolved = packageAnalyzers.map((analyzer) => [
@@ -84,12 +102,12 @@ describe('quality-area analyzer catalog', () => {
       const priorities = Object.fromEntries(
         analyzers.map(({ name, executionPriority = 0 }) => [name, executionPriority]),
       );
-      expect(weights.coverage).toBe(2);
-      expect(weights.mutation).toBe(2);
-      expect(weights.crap).toBe(1);
-      expect(weights['eslint-lint']).toBe(1);
-      expect(priorities.coverage).toBe(1);
-      expect(priorities.mutation).toBe(1);
+      expect(fieldAt(weights, 'coverage')).toBe(2);
+      expect(fieldAt(weights, 'mutation')).toBe(2);
+      expect(fieldAt(weights, 'crap')).toBe(1);
+      expect(fieldAt(weights, 'eslint-lint')).toBe(1);
+      expect(fieldAt(priorities, 'coverage')).toBe(1);
+      expect(fieldAt(priorities, 'mutation')).toBe(1);
       expect(
         Object.entries(priorities).filter(([, executionPriority]) => executionPriority !== 0),
       ).toEqual([
@@ -105,12 +123,19 @@ describe('quality-area analyzer catalog', () => {
         analyzers
           .filter(({ name }) => name.startsWith('eslint-'))
           .map(({ concurrencyGroup }) => concurrencyGroup),
-      ).toEqual(Array(4).fill(undefined));
+      ).toEqual([undefined, undefined, undefined, undefined]);
     },
   );
   it('bounds coverage worker processes independently of host CPU visibility', async () => {
-    const config = await vitestQualityConfig({ command: 'serve', mode: 'test' });
-    expect(config.test.maxWorkers).toBe(4);
+    const qualityConfigPath =
+      '../../../../../languages/typescript/preset/defaults/vitest.quality.config.ts';
+    const loaded: unknown = await import(qualityConfigPath);
+    const factory = fieldAt(loaded, 'default');
+    const config: unknown =
+      typeof factory === 'function'
+        ? await Reflect.apply(factory, undefined, [{ command: 'serve', mode: 'test' }])
+        : undefined;
+    expect(fieldAt(config, 'test', 'maxWorkers')).toBe(4);
   });
   it('plans three balanced CI shards with heavy dependency chains separated', () => {
     const shards = planAnalyzerShards(packageAnalyzers, 3);
@@ -131,18 +156,15 @@ describe('quality-area analyzer catalog', () => {
   it('requires a live project root before running analyzers', () => {
     expect(() =>
       runAnalyzers({
-        analyzers: [],
-        projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-        policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-        toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-        snapshot: 'head',
+        ...analyzerRequest([]),
+        liveProjectRoot: '',
       }),
     ).toThrow('liveProjectRoot is required');
   });
   it('rejects invalid analyzer execution priority before invocation creation', () => {
     let invocationCreated = false;
-    const result = runAnalyzers({
-      analyzers: [
+    const result = runAnalyzers(
+      analyzerRequest([
         {
           name: 'invalid-priority',
           version: '1.0.0',
@@ -154,13 +176,8 @@ describe('quality-area analyzer catalog', () => {
             return { command: process.execPath, args: [] };
           },
         },
-      ],
-      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      liveProjectRoot: PACKAGE_ROOT,
-      snapshot: 'head',
-    });
+      ]),
+    );
 
     expect(invocationCreated).toBe(false);
     expect(result.toolErrors).toEqual([
@@ -172,7 +189,15 @@ describe('quality-area analyzer catalog', () => {
     ]);
   });
   it('does not run an analyzer after its dependency fails', () => {
-    function createAnalyzer(name, dependencies, createInvocation) {
+    function createAnalyzer(
+      name: string,
+      dependencies: readonly string[],
+      createInvocation: () => {
+        readonly command: string;
+        readonly args: string[];
+        readonly cwd: string;
+      },
+    ) {
       return {
         name,
         dependencies,
@@ -183,8 +208,8 @@ describe('quality-area analyzer catalog', () => {
       };
     }
 
-    const result = runAnalyzers({
-      analyzers: [
+    const result = runAnalyzers(
+      analyzerRequest([
         createAnalyzer('coverage', [], () => ({
           command: process.execPath,
           args: ['--input-type=module', '-e', 'process.exit(2)'],
@@ -199,20 +224,15 @@ describe('quality-area analyzer catalog', () => {
           ],
           cwd: fileURLToPath(new URL('../../../', import.meta.url)),
         })),
-      ],
-      projectRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      policyRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      toolRoot: fileURLToPath(new URL('../../../', import.meta.url)),
-      liveProjectRoot: PACKAGE_ROOT,
-      snapshot: 'head',
-    });
+      ]),
+    );
 
     expect(result.reports.size).toBe(0);
     expect(result.toolErrors).toEqual([
       {
         tool: 'coverage',
         snapshot: 'head',
-        message: `coverage crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`,
+        message: `coverage crashed with exit 2: no diagnostic output. ${String(linkSentence('analyzerCrashed'))}`,
       },
     ]);
   });
@@ -220,14 +240,14 @@ describe('quality-area analyzer catalog', () => {
     'passes the active CRAP limit to the %s dial',
     (_dial, analyzers) => {
       const analyzer = analyzers.find(({ name }) => name === 'crap');
-      const invocation = analyzer.createInvocation({
+      const invocation = analyzer?.createInvocation({
         projectRoot: '/project',
         policyRoot: '/policy',
         toolRoot: '/tools',
         snapshot: 'head',
       });
 
-      expect(invocation.args.slice(-2)).toEqual([
+      expect(invocation?.args.slice(-2)).toEqual([
         '--crap-score-limit',
         String(DEFAULT_CRAP_SCORE_LIMIT),
       ]);
