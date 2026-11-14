@@ -96,7 +96,7 @@ describe('the console capture of a test run', () => {
     startTestConsole(testOptions({ projectRoot }), { collectsLines: true }).finish();
 
     const capture = startTestConsole(
-      testOptions({ projectRoot, rerun: { files: [], namePattern: '' } }),
+      testOptions({ projectRoot, rerun: { files: [], namePattern: '', withoutMockPin: false } }),
       { collectsLines: true },
     );
     capture.finish();
