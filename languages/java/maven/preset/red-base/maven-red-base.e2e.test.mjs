@@ -5,10 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runJavaDiff } from '../../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mjs';
 import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
-import {
-  TESTS_FAILED_RULE,
-  testsFailOnBase,
-} from '../../../../../shared/rules/finding-helpers.mjs';
+import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const maven = process.env.NITPICKER_MAVEN;
@@ -141,15 +138,21 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
       });
     });
 
-    it('fails a head whose tests still fail', () => {
+    it('fails a head whose tests still fail with a tests error', () => {
       const result = diffOf(root, 'still-red');
+      const errors = result.newFindings.filter(
+        ({ classification }) => classification === 'tool-error',
+      );
 
-      expect({
-        failed: result.failed,
-        toolErrors: result.newFindings
-          .filter(({ classification }) => classification === 'tool-error')
-          .map(({ rule }) => rule),
-      }).toEqual({ failed: true, toolErrors: [TESTS_FAILED_RULE] });
+      expect([result.failed, errors.map(({ tool, rule }) => `${tool} ${rule}`)]).toEqual([
+        true,
+        ['tests tests-failed'],
+      ]);
+      const [summary, ...tests] = errors[0].message.split('\n');
+      expect(summary).toMatch(
+        /^\d+ tests? fails?[^;]*; coverage, CRAP and mutation were skipped[^,]*, the other checks ran\. Fix[^:]+:$/u,
+      );
+      expect(tests.length > 0 && tests.every((line) => /^ {2}\S/u.test(line))).toBe(true);
     });
   },
 );

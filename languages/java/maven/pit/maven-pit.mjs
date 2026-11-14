@@ -5,6 +5,10 @@ import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
 import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
+import {
+  writeSkippedTests,
+  writeUnmutatedFailures,
+} from '../../builds/pit-failure/pit-skipped.mjs';
 import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
 import { pitRunTargets } from '../module/pit-scope.mjs';
 
@@ -77,22 +81,49 @@ function pitArguments({ module, pitDir, classpaths, isArchunit, configs, history
   ];
 }
 
-function pitRan(options, { pitDir, limit, targets }) {
+function pitAttempt(options, { pitDir, limit, targets, extra = [] }) {
   const { module, tools, classpaths, isArchunit, configs, history, spawn } = options;
+  runJava({
+    tool: 'PIT',
+    classpath: pitClasspath(tools, classpaths.testRuntime),
+    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+    args: [
+      ...pitArguments({ module, pitDir, classpaths, isArchunit, configs, history, targets }),
+      ...extra,
+    ],
+    cwd: module.basedir,
+    accept: (result) => result.status === 0,
+    spawn,
+    timeoutMs: limit,
+  });
+}
+
+function pitRan(options, { pitDir, limit, targets }) {
   try {
-    runJava({
-      tool: 'PIT',
-      classpath: pitClasspath(tools, classpaths.testRuntime),
-      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-      args: pitArguments({ module, pitDir, classpaths, isArchunit, configs, history, targets }),
-      cwd: module.basedir,
-      accept: (result) => result.status === 0,
-      spawn,
-      timeoutMs: limit,
-    });
+    pitAttempt(options, { pitDir, limit, targets });
     return true;
   } catch (error) {
+    const output = error?.output ?? (error instanceof Error ? error.message : String(error));
+    if (!writeUnmutatedFailures(pitDir, output)) {
+      writePitFailure(pitDir, error);
+      return false;
+    }
+    return retriedWithoutFailingTests(options, { pitDir, targets, error });
+  }
+}
+
+function retriedWithoutFailingTests(options, { pitDir, targets, error }) {
+  const limit = pitTimeoutMs(options.timeoutMs, options.deadline);
+  if (limit < MINUTE_MS) {
     writePitFailure(pitDir, error);
+    return false;
+  }
+  try {
+    pitAttempt(options, { pitDir, limit, targets, extra: ['--skipFailingTests'] });
+    writeSkippedTests(pitDir);
+    return true;
+  } catch (retryError) {
+    writePitFailure(pitDir, retryError);
     return false;
   }
 }

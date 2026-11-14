@@ -216,6 +216,7 @@ Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone: ${CLONE_MESSAGE}
     src/main/java/demo/First.java:3
+Fix plans: 1, see ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/fix-plans.json
 Design notes for review (not failing): 2 new
   ${CLONE_SIZE_NOTE} (lines 30)
   ${CLONE_SIZE_NOTE} (tokens 381)
@@ -336,7 +337,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     );
 
-    it('stays a tool error on both snapshots when the head tests fail too, and exits 1', () => {
+    it('reads the base as red and fails the head whose tests fail too, with exit 1', () => {
       const root = repository(build.redBase.files(failing('works')));
       writeFiles(root, {
         'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
@@ -351,8 +352,16 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         notes: result.json('notes.json'),
       }).toEqual({
         exitCode: 1,
-        errors: ['base tests-failed', 'head tests-failed'],
-        notes: [],
+        errors: ['head tests-failed'],
+        notes: [
+          {
+            tool: 'java',
+            snapshot: 'base',
+            rule: 'tests-failed',
+            path: '.',
+            message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+          },
+        ],
       });
     });
 
@@ -364,9 +373,14 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
-        '✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+          'Fix the tests and rerun:',
       ]);
-      expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
+      expect(
+        result
+          .json('tool-errors.json')
+          .map(({ tool, rule, snapshot }) => `${tool} ${snapshot} ${rule}`),
+      ).toEqual(['tests head tests-failed']);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {

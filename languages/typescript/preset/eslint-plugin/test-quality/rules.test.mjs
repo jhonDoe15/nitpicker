@@ -4,6 +4,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest
 import { rule as fakeTimersRequireRestore } from './fake-timers-require-restore.mjs';
 import { rule as noCopyPastedTests } from './no-copy-pasted-tests.mjs';
 import { rule as noSharedTestState } from './no-shared-test-state.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 Object.assign(RuleTester, {
   afterAll,
@@ -110,7 +111,7 @@ tester.run('no-copy-pasted-tests', noCopyPastedTests, {
   ],
 });
 
-tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
+tester.run('fake-timers-require-restore', withoutFixes(fakeTimersRequireRestore), {
   valid: [
     "it('real', () => { run(); });",
     "afterEach(() => { vi.useRealTimers(); }); it('fake', () => { vi.useFakeTimers(); });",

@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { collectWorkingTreeChanges } from '../changes.mjs';
 import { isInScope } from '../../scope/scope-findings.mjs';
+import { collectProjectFiles } from '../all-files/project-files.mjs';
 import { containedPath } from './contained-path.mjs';
 
 export function excludedBy(globs = []) {
@@ -10,7 +11,17 @@ export function excludedBy(globs = []) {
   return (file) => matchers.some((matcher) => matcher.test(file));
 }
 
-export function collectFixFiles({ repositoryRoot, projectRoot, baseRef, accepts, scope }) {
+export function collectFixFiles({
+  repositoryRoot,
+  projectRoot,
+  baseRef,
+  accepts,
+  scope,
+  allFiles = false,
+}) {
+  if (allFiles) {
+    return collectProjectFiles({ projectRoot, accepts, scope });
+  }
   const { comparison, changes } = collectWorkingTreeChanges({
     repositoryRoot,
     projectRoot,
@@ -50,10 +61,11 @@ export function rewrittenPaths(projectRoot, files, before) {
     .map(({ path: name }) => name);
 }
 
-export function rewrittenBy(projectRoot, files, action) {
-  const before = readBytes(projectRoot, files);
-  action();
-  return rewrittenPaths(projectRoot, files, before);
+export function changedFiles(projectRoot, files, before) {
+  return files.filter(({ path: name }) => {
+    const file = containedPath(projectRoot, name);
+    return existsSync(file) && !before.get(name)?.equals(readFileSync(file));
+  });
 }
 
 export function splitByEncoding(projectRoot, files) {

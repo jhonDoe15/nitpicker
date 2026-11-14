@@ -1,3 +1,4 @@
+import { formatAdvice } from '../../../../../shared/messages/format/format-advice.mjs';
 import { ignoredConfigNotice } from '../../../../../shared/conventions/tool-precedence.mjs';
 import {
   KOTLIN_INDENTATION,
@@ -69,8 +70,7 @@ export function kotlinSummary(tools, conventions) {
 
 export function kotlinFormatAdvice(tools) {
   return {
-    ktfmt:
-      'Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run.',
+    ktfmt: formatAdvice(),
     ktlint: (ruleSwitch) =>
       `Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ${ruleSwitch} = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run).`,
     detekt:

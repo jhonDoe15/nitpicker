@@ -376,6 +376,13 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "near-duplicate",
+                        "structure/near-duplicate",
+                        "facts/near-duplicate",
+                        "decided-condition",
+                        "structure/decided-condition",
+                        "duplicate-branch",
+                        "structure/duplicate-branch",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
                         "feature-internal-import",
@@ -1184,6 +1191,17 @@
         }
       }
     },
+    "java": {
+      "description": "Java and Kotlin build settings (java and kotlin presets).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "buildTool": {
+          "description": "The build tool when the project has both a pom.xml and a Gradle build: \"maven\" or \"gradle\". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.",
+          "enum": ["maven", "gradle"]
+        }
+      }
+    },
     "spring": {
       "description": "Spring settings (java and kotlin presets).",
       "type": "object",
@@ -1476,6 +1494,7 @@
                     "foreign-feature-persistence",
                     "duplicate-definition",
                     "sibling-copy-edit",
+                    "near-duplicate",
                     "exported-name-collision",
                     "redefined-library-component",
                     "new-icon-asset",
@@ -1488,6 +1507,8 @@
                     "domain-reaches-io",
                     "component-story-missing",
                     "javascript-in-typescript-project",
+                    "decided-condition",
+                    "duplicate-branch",
                     "slow-test",
                     "committed-env-file",
                     "committed-private-key",
@@ -1521,7 +1542,8 @@
           "python": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -1702,6 +1724,7 @@
                     "foreign-feature-persistence",
                     "duplicate-definition",
                     "sibling-copy-edit",
+                    "near-duplicate",
                     "exported-name-collision",
                     "redefined-library-component",
                     "new-icon-asset",
@@ -1714,6 +1737,8 @@
                     "domain-reaches-io",
                     "component-story-missing",
                     "javascript-in-typescript-project",
+                    "decided-condition",
+                    "duplicate-branch",
                     "slow-test",
                     "committed-env-file",
                     "committed-private-key",
@@ -1749,7 +1774,8 @@
           "python": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -1792,8 +1818,8 @@
           "conventions": {
             "properties": {
               "java.formatter": {
-                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
-                "enum": ["google", "palantir", "none"]
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"spring\" (Spring Java Format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "spring", "none"]
               },
               "java.formatterVersion": {
                 "description": "Java formatter version: \"pinned\" (the version nitpicker pins), or a version such as \"2.90.0\".",
@@ -1909,6 +1935,13 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "near-duplicate",
+                            "structure/near-duplicate",
+                            "facts/near-duplicate",
+                            "decided-condition",
+                            "structure/decided-condition",
+                            "duplicate-branch",
+                            "structure/duplicate-branch",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
                             "feature-internal-import",
@@ -1948,7 +1981,7 @@
                           ]
                         },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|effects|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2014,8 +2047,8 @@
           "conventions": {
             "properties": {
               "java.formatter": {
-                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"none\" (no Java formatter runs).",
-                "enum": ["google", "palantir", "none"]
+                "description": "Java formatter: \"google\" (google-java-format), \"palantir\" (palantir-java-format), \"spring\" (Spring Java Format), \"none\" (no Java formatter runs).",
+                "enum": ["google", "palantir", "spring", "none"]
               },
               "java.formatterVersion": {
                 "description": "Java formatter version: \"pinned\" (the version nitpicker pins), or a version such as \"2.90.0\".",
@@ -2173,6 +2206,13 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "near-duplicate",
+                            "structure/near-duplicate",
+                            "facts/near-duplicate",
+                            "decided-condition",
+                            "structure/decided-condition",
+                            "duplicate-branch",
+                            "structure/duplicate-branch",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
                             "feature-internal-import",
@@ -2220,6 +2260,7 @@
                             "kotlin-source/UnsafeCastOperator",
                             "kotlin-source/ListUsedAsSet",
                             "kotlin-source/LinearLookupInLoop",
+                            "kotlin-source/RedundantStreamStep",
                             "kotlin-source/SortForExtreme",
                             "kotlin-source/ConfigurationReadOutsideCompositionRoot",
                             "kotlin-source/FutureWithoutException",
@@ -2246,7 +2287,6 @@
                             "kotlin-source/UnclosedInlineResource",
                             "kotlin-source/LogStringConcatenation",
                             "kotlin-source/ShellCommand",
-                            "kotlin-source/IoCallInLoop",
                             "kotlin-source/StandardStreamOutsideEntryPoint",
                             "kotlin-source/CatchOnlyLogsOrReturnsDefault",
                             "kotlin-source/BooleanFlagParameter",
@@ -2276,6 +2316,13 @@
                             "kotlin-source/LegacyCalendarApi",
                             "kotlin-source/TimeUnitMismatch",
                             "kotlin-source/UriCreateDynamic",
+                            "effects/IoCallInLoop",
+                            "effects/AccumulatorCopyInLoop",
+                            "effects/LazyRelationInLoop",
+                            "effects/RemoteCallInTransaction",
+                            "effects/RemoteCallUnderLock",
+                            "effects/RetryWithoutIdempotency",
+                            "effects/DualWriteWithoutOutbox",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",
@@ -2389,9 +2436,14 @@
                             "kotlin-source/TimeoutWithoutSuspension"
                           ]
                         },
+                        {
+                          "enum": ["kotlin-source/IoCallInLoop"],
+                          "deprecated": true,
+                          "description": "A deprecated spelling that still works; it names effects/IoCallInLoop."
+                        },
                         { "pattern": "^detekt\\.[a-z-]+\\.[A-Z][A-Za-z0-9]*$" },
                         {
-                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
+                          "pattern": "^(?:pmd|spotbugs|errorprone|archunit|effects|google-java-format|palantir-java-format|jacoco|checkstyle|crap|duplicates|pit|structure|coupling|javac|forbiddenapis|dependencies|spring|test-runtime)/[\\s\\S]"
                         }
                       ]
                     }
@@ -2539,6 +2591,13 @@
                         "structure/exported-name-collision",
                         "sibling-copy-edit",
                         "structure/sibling-copy-edit",
+                        "near-duplicate",
+                        "structure/near-duplicate",
+                        "facts/near-duplicate",
+                        "decided-condition",
+                        "structure/decided-condition",
+                        "duplicate-branch",
+                        "structure/duplicate-branch",
                         "shared-used-by-one-feature",
                         "coupling/shared-used-by-one-feature",
                         "feature-internal-import",
@@ -2601,7 +2660,8 @@
           "i18n": false,
           "kotlin": false,
           "go": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     },
@@ -2711,6 +2771,13 @@
                             "structure/exported-name-collision",
                             "sibling-copy-edit",
                             "structure/sibling-copy-edit",
+                            "near-duplicate",
+                            "structure/near-duplicate",
+                            "facts/near-duplicate",
+                            "decided-condition",
+                            "structure/decided-condition",
+                            "duplicate-branch",
+                            "structure/duplicate-branch",
                             "shared-used-by-one-feature",
                             "coupling/shared-used-by-one-feature",
                             "feature-internal-import",
@@ -2749,6 +2816,10 @@
                             "duplicates/duplicate-clone",
                             "stability-direction",
                             "coupling/stability-direction",
+                            "no-production-runtime",
+                            "test-runtime/no-production-runtime",
+                            "unused-option",
+                            "structure/unused-option",
                             "domain-imports-adapter",
                             "coupling/domain-imports-adapter",
                             "domain-imports-io",
@@ -2792,7 +2863,8 @@
           "i18n": false,
           "python": false,
           "kotlin": false,
-          "spring": false
+          "spring": false,
+          "java": false
         }
       }
     }
@@ -3012,6 +3084,9 @@
         "structure/duplicate-definition",
         "sibling-copy-edit",
         "structure/sibling-copy-edit",
+        "near-duplicate",
+        "structure/near-duplicate",
+        "facts/near-duplicate",
         "exported-name-collision",
         "structure/exported-name-collision",
         "redefined-library-component",
@@ -3036,6 +3111,10 @@
         "structure/component-story-missing",
         "javascript-in-typescript-project",
         "structure/javascript-in-typescript-project",
+        "decided-condition",
+        "structure/decided-condition",
+        "duplicate-branch",
+        "structure/duplicate-branch",
         "slow-test",
         "test-runtime/slow-test",
         "committed-env-file",

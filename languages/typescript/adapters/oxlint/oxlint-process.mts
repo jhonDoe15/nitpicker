@@ -6,13 +6,19 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../../shared/config.mjs';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { troubleshootingError, withTroubleshooting } from '../lint-engine/typed/tools.mts';
+import { INCOMPATIBLE_MARKER } from '../lint-engine/compatibility/incompatible-package.mts';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import type { Environment } from '../../../../shared/processes/environment.mts';
+import {
+  describeProcessEnd,
+  failureDetail,
+} from '../../../../shared/processes/process-failure.mjs';
 
 type Status = SpawnSyncReturns<string>['status'];
 
 export type CollectedRun = {
   readonly status: Status;
+  readonly signal: NodeJS.Signals | undefined;
   readonly error: (Error & { readonly code?: unknown }) | undefined;
   readonly stdout: string;
   readonly stderr: string;
@@ -59,6 +65,9 @@ export function tsgolintBinary(): string {
 }
 
 export function withEngineHint(detail: string): string {
+  if (detail.includes(INCOMPATIBLE_MARKER)) {
+    return detail;
+  }
   return detail.includes(CONFIG_FILE_NAME)
     ? detail
     : withTroubleshooting(`${detail}\n${ENGINE_HINT}`, TROUBLESHOOTING_ANCHORS.engineUnavailable);
@@ -134,10 +143,11 @@ export function spawnCollected(
     child.on('error', (error) => {
       failures.push(error);
     });
-    child.on('close', (status) => {
+    child.on('close', (status, signal) => {
       clearTimeout(timer);
       resolve({
         status,
+        signal: signal ?? undefined,
         error: failures[0],
         stdout: Buffer.concat(output.stdout).toString('utf8'),
         stderr: Buffer.concat(output.stderr).toString('utf8'),
@@ -176,6 +186,7 @@ function outputCollector(maxBuffer: number, onOverflow: () => void): CollectedOu
 
 function parsedReport(
   result: Pick<CollectedRun, 'status' | 'stdout' | 'stderr'> & {
+    readonly signal?: unknown;
     readonly error?: Error | undefined;
   },
   {
@@ -187,8 +198,12 @@ function parsedReport(
     throw new Error(`${context} failed: ${result.error.message}`, { cause: result.error });
   }
   if (!acceptedStatuses.includes(result.status)) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`${context} exited with ${String(result.status)}: ${withEngineHint(detail)}`);
+    const detail = failureDetail(result) || 'no diagnostic output';
+    throw new Error(
+      describeProcessEnd(context, result, {
+        detail: typeof result.signal === 'string' ? detail : withEngineHint(detail),
+      }),
+    );
   }
   try {
     return parseJson(result.stdout);

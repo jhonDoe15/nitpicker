@@ -15,7 +15,7 @@ import { bindingFieldName, loadProgram, locationOf } from './program.mts';
 import { toExpr } from './expressions.mts';
 import { bodyOf } from './statements.mts';
 
-export const ANALYZER_VERSION = 'flow-model-3';
+export const ANALYZER_VERSION = 'flow-model-4';
 
 type SimpleElement = ts.BindingElement & { readonly name: ts.Identifier };
 
@@ -23,6 +23,7 @@ function isSimpleElement(element: ts.BindingElement): element is SimpleElement {
   return (
     element.dotDotDotToken === undefined &&
     element.initializer === undefined &&
+    (element.propertyName === undefined || !ts.isComputedPropertyName(element.propertyName)) &&
     ts.isIdentifier(element.name)
   );
 }

@@ -78,7 +78,8 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
   `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
   `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
-  `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`),
+  `sibling-copy-edit`, `near-duplicate`, `duplicate-branch`, `exported-name-collision`,
+  `redefined-library-component`, `new-icon-asset`),
   the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
   ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
   (required for `changed-branch-coverage`) that limits the entry to one function. The message of
@@ -89,7 +90,7 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   count as a level. A folder already deeper on the base fails only when it gets deeper, and the rule takes exceptions like the file
   limits.
 - The reuse rules (`shared-used-by-one-feature`, `duplicate-definition`, `sibling-copy-edit`,
-  `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
+  `near-duplicate`, `duplicate-branch`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`) come from the
   `coupling` and `structure` checks, not from ESLint, and take exceptions the same way; the
   JavaScript preset runs them too.
 - `layout.sharedRoots` and `layout.featureRoots` (folder globs, default `<sourceRoot>/main/shared` and
@@ -127,3 +128,13 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   you list yourself is always run, so list `e2e` to keep a vitest or supertest suite there.
 - A Jest project with tests in a root `__tests__/` gets them run by Jest in the quality test run,
   like every other test file (see [Test runners](../usage.md#test-runners)).
+
+## Fixes
+
+Seventeen of nitpicker's own ESLint rules offer a rewrite. A `safe` rule has an ESLint fix that
+`nitpicker --fix` applies. A `review` rule (`no-falsy-default`, `require-http-timeout`,
+`require-test-process-timeout`, `no-raised-test-timeout`, `no-disabled-tls-verification`,
+`no-shell-string-command`) changes behaviour on purpose, so it offers the rewrite as an ESLint
+suggestion that only a run which selects the rule applies. A fixer gives up and leaves the finding when it
+cannot prove the rewrite is safe. The list, with what each rewrite does, is under
+[ESLint rule fixes](../usage.md#eslint-rule-fixes).

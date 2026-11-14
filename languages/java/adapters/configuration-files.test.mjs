@@ -9,12 +9,15 @@ const STATIC_IMPORT = /(?:^|\n)\s*(?:import|export)\b[^'";]*?\bfrom\s*['"](\.[^'
 const MODULE = /\.m[jt]s$/u;
 
 const GENERATOR_INPUTS = 'languages/java/gradle/rulesets/';
+const FIX_ONLY_CHECKS = 'languages/java/gradle/errorprone/fix-checks/';
 
 function resourceFiles(directory) {
   return readdirSync(path.join(packageRoot, directory), { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name)))
-    .filter((file) => !file.startsWith(GENERATOR_INPUTS));
+    .filter(
+      (file) => ![GENERATOR_INPUTS, FIX_ONLY_CHECKS].some((prefix) => file.startsWith(prefix)),
+    );
 }
 
 function staticImports(file) {

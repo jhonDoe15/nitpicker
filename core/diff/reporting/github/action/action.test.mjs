@@ -6,8 +6,8 @@ import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/gi
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { executeStep } from './test-support/action-steps.mjs';
 import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mts';
-import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mjs';
-import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mjs';
+import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mts';
+import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mts';
 import {
   ACTION_BLOCK_END,
   ACTION_BLOCK_START,

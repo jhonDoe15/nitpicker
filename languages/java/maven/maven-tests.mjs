@@ -2,7 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSy
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
-import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
+import { failedCaseEntries, freshReports } from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -55,7 +55,7 @@ function copyArchunitReports(reports, reportDir, isArchunit) {
   }
 }
 
-function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
+function testOutcome({ moduleName, failures, testsRan }) {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
@@ -64,10 +64,7 @@ function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
     tests: failures.map(({ text }) => text),
     details: failures.map(({ detail }) => detail),
   };
-  if (tolerateFailures === true) {
-    return { testsRan, failure };
-  }
-  throw failingTestsError([failure]);
+  return { testsRan, failure };
 }
 
 export function collectArchunitResults({ module, reportDir, since, isArchunit }) {
@@ -81,7 +78,6 @@ export function collectTestResults({
   reportDir,
   since,
   isArchunit,
-  tolerateFailures,
   retriesPass,
   moduleName = '.',
 }) {
@@ -95,7 +91,6 @@ export function collectTestResults({
     moduleName,
     failures,
     testsRan: reports.length > 0,
-    tolerateFailures,
   });
 }
 

@@ -10,7 +10,13 @@ import { packageVersion } from '../../help/package-version.mts';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { describePackageManager } from '../detection/package-manager.mts';
 import { fieldOf, textOf } from '../../../shared/values/readers.mts';
-import { cappedRange, chooseVitest, minimumOf, typescriptRequirement } from './peer-pins.mts';
+import {
+  cappedRange,
+  chooseVitest,
+  lowestClause,
+  minimumOf,
+  typescriptRequirement,
+} from './peer-pins.mts';
 import type { FoundVersion, VitestPeerTable } from './peer-pins.mts';
 import { satisfiesRange } from './version-range.mts';
 
@@ -45,6 +51,7 @@ export type PeerNeeds = {
 };
 
 const COVERAGE_PACKAGE = '@vitest/coverage-v8';
+const VITEST = 'vitest';
 const RUNNER_PEERS: Readonly<Record<string, readonly string[]>> = {
   vitest: ['vitest', COVERAGE_PACKAGE],
   jest: ['jest'],
@@ -57,7 +64,6 @@ const NITPICKER = 'nitpicker';
 const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?(?:\.(?<patch>\d+))?/u;
 const PEER_RANGES = fieldOf(manifestOf(PACKAGE_ROOT), PEER_DEPENDENCIES);
 const NATIVE_TYPESCRIPT_MAJOR = 7;
-const VITEST = 'vitest';
 const OTHER_VITEST_PEERS: VitestPeerTable = {
   4: { vite: '^6.0.0 || ^7.0.0 || ^8.0.0' },
   5: { vite: '^6.4.0 || ^7.0.0 || ^8.0.0' },
@@ -189,8 +195,11 @@ export function nodePeerNeeds(
   const kept = added.filter(
     ({ name }) => !(blocked && (name === VITEST || name === COVERAGE_PACKAGE)),
   );
+  const vitestIsOld = added.some(({ name, supported }) => name === VITEST && !supported);
   return {
-    add: kept.map(({ name }) => requirementOf(projectRoot, name, { nodeVersion, choice })),
+    add: kept.map((status) =>
+      requirementOf(projectRoot, status, { nodeVersion, choice, vitestIsOld }),
+    ),
     uninstalled: statuses.filter((status) => !needsAdding(status)).map(({ name }) => name),
     absent: statuses.filter(({ installed }) => installed === undefined).map(({ name }) => name),
     outdated: statuses
@@ -200,12 +209,29 @@ export function nodePeerNeeds(
   };
 }
 
+function lowestRange(name: string): string | undefined {
+  return lowestClause(textOf(supportedRange(name)));
+}
+
 type RequirementContext = {
   readonly nodeVersion: string;
   readonly choice: ReturnType<typeof vitestChoice> | undefined;
+  readonly vitestIsOld: boolean;
 };
 
-function requirementOf(projectRoot: string, name: string, context: RequirementContext): string {
+function chosenVitest(name: string, choice: RequirementContext['choice']): string | undefined {
+  if (choice?.kind !== 'fits') {
+    return undefined;
+  }
+  const chosen = { [VITEST]: choice.vitest, [COVERAGE_PACKAGE]: choice.coverage }[name];
+  return chosen === name ? undefined : chosen;
+}
+
+function requirementOf(
+  projectRoot: string,
+  { name, supported, declared }: PeerStatus,
+  context: RequirementContext,
+): string {
   if (name === NITPICKER) {
     return `${NITPICKER}@${textOf(packageVersion())}`;
   }
@@ -214,13 +240,14 @@ function requirementOf(projectRoot: string, name: string, context: RequirementCo
       ? typescriptRequirement(textOf(supportedRange(TYPESCRIPT)), typescriptToolRange())
       : javascriptApiTypeScript();
   }
-  if (context.choice?.kind === 'fits' && name === VITEST) {
-    return context.choice.vitest;
+  const chosen = chosenVitest(name, context.choice);
+  if (chosen !== undefined) {
+    return chosen;
   }
-  if (context.choice?.kind === 'fits' && name === COVERAGE_PACKAGE) {
-    return context.choice.coverage;
-  }
-  return pinnedToVitest(projectRoot, name);
+  const declaredFine = declared !== undefined && isSupported(name, { declared });
+  const old = !(supported || declaredFine) || (name === COVERAGE_PACKAGE && context.vitestIsOld);
+  const range = lowestRange(name === COVERAGE_PACKAGE ? VITEST : name);
+  return old && range !== undefined ? `${name}@${range}` : pinnedToVitest(projectRoot, name);
 }
 
 function pinnedToVitest(projectRoot: string, name: string): string {

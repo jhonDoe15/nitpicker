@@ -5,7 +5,7 @@ import {
   writeSnapshotReports,
   renderRuleFilterSection as renderSnapshotRuleFilterSection,
 } from '../snapshot/reporters.mts';
-import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { analyzerRunOptions, selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { withNamedTemporaryWorktree } from '../diff/git/repository/worktree.mjs';
 import {
   prepareSnapshotDependencies,
@@ -15,15 +15,16 @@ import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
 import { type QualitySnapshot, runQualitySnapshot } from '../snapshot/run-snapshot.mts';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
-import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
+import { writeGithubOutput } from '../diff/reporting/github/emit.mts';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { runProfileSummary } from '../quick/summary.mjs';
-import { outputRootFor } from '../diff/reporting/reporters.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mts';
 import { assertHasCommit } from '../diff/git/repository/base-ref.mts';
-import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
-import { failingHeadTests } from '../diff/reporting/failing-tests/failing-tests.mjs';
-import { snapshotJson } from '../diff/reporting/json-output/json-output.mjs';
+import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mts';
+import { failingHeadTests as failingTestsOf } from '../diff/reporting/failing-tests/failing-tests.mts';
+import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
+import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
 
 type SnapshotCli = {
@@ -34,7 +35,7 @@ type SnapshotCli = {
     readonly outputRoot?: string;
   };
   readonly currentProjectRoot: string;
-  readonly analyzers: unknown;
+  readonly analyzers: readonly ProfiledAnalyzer[];
   readonly quick: unknown;
   readonly captureHead?: unknown;
   readonly headPolicy: unknown;
@@ -44,6 +45,8 @@ type SnapshotCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
   readonly scope: unknown;
+  readonly setupErrors: readonly object[];
+  readonly additionalToolErrors?: readonly unknown[];
 };
 
 type SnapshotReport = QualitySnapshot & { text?: unknown };
@@ -56,10 +59,9 @@ type WorktreeRun = {
   readonly currentProjectRoot: string;
   readonly headPolicy: unknown;
   readonly scope: unknown;
+  readonly setupErrors: readonly object[];
 };
 
-const selectAll: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
-  selectAnalyzers;
 const inWorktree: (
   repositoryRoot: string,
   snapshot: {
@@ -69,7 +71,6 @@ const inWorktree: (
   },
   operation: (worktreeRoot: string) => SnapshotReport,
 ) => SnapshotReport = withNamedTemporaryWorktree;
-const failingTestsOf: (toolErrors: unknown) => readonly unknown[] = failingHeadTests;
 const capturedTree: Capture = captureWorkingTree;
 const prepareDependencies: (options: {
   readonly projectRoot: string;
@@ -87,8 +88,9 @@ function stderrWarning(stderr: TextOutput): (message: string) => unknown {
 
 export function runSnapshotCli(cli: SnapshotCli): number {
   const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
+  const { setupErrors } = cli;
   const outputRoot = textOf(outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot'));
-  const selectedAnalyzers = selectAll(analyzers, options.analyzerNames);
+  const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
   }
@@ -111,10 +113,12 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         currentProjectRoot,
         headPolicy,
         scope,
+        setupErrors,
       },
       analyzerRunOptions({ outputRoot, runTasks }),
     ),
   );
+  addToolErrors(report, cli.additionalToolErrors ?? []);
   Object.assign(
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
@@ -125,6 +129,14 @@ export function runSnapshotCli(cli: SnapshotCli): number {
     repositoryRoot,
   });
   return writeSnapshotOutcome(cli, report, outputRoot);
+}
+
+function addToolErrors(report: SnapshotReport, errors: readonly unknown[]): void {
+  if (errors.length === 0) {
+    return;
+  }
+  report.toolErrors.unshift(...errors.map((error) => ({ ...objectOf(error), path: '' })));
+  Object.assign(report.summary, { overallStatus: 'tool-error' });
 }
 
 function writeSnapshotOutcome(
@@ -161,7 +173,14 @@ function snapshotExitCode({ summary, toolErrors }: SnapshotReport): number {
 }
 
 function runInSnapshotWorktree(
-  { snapshotRoot, selectedAnalyzers, currentProjectRoot, headPolicy, scope }: WorktreeRun,
+  {
+    snapshotRoot,
+    selectedAnalyzers,
+    currentProjectRoot,
+    headPolicy,
+    scope,
+    setupErrors,
+  }: WorktreeRun,
   execution: object,
 ): SnapshotReport {
   const needsDependencies = selectedAnalyzers.some(
@@ -183,6 +202,7 @@ function runInSnapshotWorktree(
       liveProjectRoot: currentProjectRoot,
       headPolicy: objectOf(headPolicy),
       scope,
+      setupErrors,
       ...execution,
     });
   } finally {

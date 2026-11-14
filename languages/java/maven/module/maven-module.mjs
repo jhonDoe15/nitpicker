@@ -10,6 +10,7 @@ import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
 import { runGuards } from '../guards/maven-guards.mjs';
+import { runEffects } from '../effects/maven-effects.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mjs';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mjs';
 import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mjs';
@@ -72,6 +73,7 @@ function analyzeSources(options) {
   const kotlin = analyzeKotlinModule({ ...options, options: options.kotlinOptions });
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
   runGuards(options, options.project);
+  runEffects({ ...options, options: options.effectsOptions });
   runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;
 }
@@ -93,7 +95,7 @@ export function analyzeModule(options) {
   });
   const reactor = usesReactor(classpaths);
   const kotlin = analyzeSources({ ...options, reportDir, spring, springArch, reactor });
-  if (failure === undefined) {
+  if (failure === undefined && options.testsSkipped !== true) {
     runCoverageTools({
       ...options,
       module: kotlin.coverageModule,
@@ -107,6 +109,10 @@ export function analyzeModule(options) {
     ...kotlin.manifest,
     sourceJava: parserJava({ level: sourceLevel(module.compiler) }),
   };
-  writeManifest({ reportDir, manifest: written, testsFailed: failure !== undefined });
+  writeManifest({
+    reportDir,
+    manifest: written,
+    testsFailed: failure !== undefined || options.testsSkipped === true,
+  });
   return failure && { ...failure, roots: ownSourceRoots(written) };
 }

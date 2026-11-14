@@ -5,7 +5,7 @@ const MAX_LISTED = 3;
 
 export function reuseFinding(
   analyzerName,
-  { key, path: findingPath, identity, symbol, line, values },
+  { key, path: findingPath, identity, symbol, line, values, planFacts },
 ) {
   const rule = RULE_IDS[key];
   return {
@@ -20,6 +20,7 @@ export function reuseFinding(
     classification: 'enforceable',
     ...(symbol === undefined ? {} : { symbol }),
     ...(line === undefined ? {} : { location: { line } }),
+    ...(planFacts === undefined ? {} : { planFacts }),
   };
 }
 
@@ -41,4 +42,15 @@ export function uniqueFindings(findings) {
       left.rule.localeCompare(right.rule) ||
       left.identity.localeCompare(right.identity),
   );
+}
+
+/**
+ * A fact rule over function units: `findingsOf(unit, analyzerName)` for each function unit whose
+ * file `rule` is not excepted for.
+ */
+export function functionUnitRule(rule, findingsOf) {
+  return (units, { analyzerName, isExcepted }) =>
+    units
+      .filter((unit) => unit.tree?.kind === 'function' && !isExcepted(rule, unit.file))
+      .flatMap((unit) => findingsOf(unit, analyzerName));
 }

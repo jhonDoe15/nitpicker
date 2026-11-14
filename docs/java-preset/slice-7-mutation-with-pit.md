@@ -2,6 +2,14 @@
 
 Part of the [Java preset guide](../java-preset.md).
 
+- **Turning it off.** `"disable": ["mutation"]` in `nitpicker.config.json` (the same key and word as
+  the Python and TypeScript presets) runs the Java or Kotlin analyzer without PIT on the base and the
+  head: the analyzer declares `switchableParts: ['mutation']`, so the name is accepted without
+  removing the analyzer, the runner gets `--mutation off`, Gradle gets `-Pnitpicker.mutation=off`
+  (`nitpickerJava` no longer depends on `nitpickerPit`), Maven skips `runPit` and does not resolve the
+  PIT jars, and no mutation findings or `pit-failure` errors are read. Stderr says `mutation is turned
+off by "disable", so java does not run it on the base or the head`. It is a policy loosening like any
+  other `disable` entry.
 - **Profile.** As decided in [`mutation-testing.md`](../mutation-testing.md) (X10): one default
   profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
   path of the compiled main classes, the first package that holds classes: a project rooted in
@@ -53,11 +61,11 @@ Part of the [Java preset guide](../java-preset.md).
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build. When the failed build left JUnit
   reports with failing tests (the init script lists the report directory of every test task in
-  `test-results.json` of the report base), the run is repeated without the Test tasks, PIT and
-  JaCoCo of the failing modules, and the failure is a `java/tests-failed` tool error (exit 1) that
-  names up to 50 of them with the same text as on Maven (`1 test fails; coverage, CRAP and mutation
-were skipped. Fix the tests and rerun:`); otherwise it is a `java/gradle-failure` tool error.
-  Projects without main classes produce no report and no findings.
+  `test-results.json` of the report base), the build runs again without the tests of the failing
+  projects, and each one gets a `tests/tests-failed` tool error (exit 1) that names up to 50 of them
+  with the same text as on Maven (`1 test fails in core; coverage, CRAP and mutation were skipped
+there, the other checks ran. Fix the tests and rerun:`) instead of Gradle's own failure output;
+  otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
   runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a

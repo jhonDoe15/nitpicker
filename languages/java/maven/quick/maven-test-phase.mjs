@@ -45,9 +45,8 @@ function moduleNameOf(module, projectRoot) {
 }
 
 export function readTestRuns(context) {
-  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures, retriesPass } =
-    context;
-  if (context.quick) {
+  const { module, reportDir, since, isArchunit, testRuntime, retriesPass } = context;
+  if (context.quick || context.testsSkipped) {
     collectArchunitResults({ module, reportDir, since, isArchunit });
     return { testsRan: false, failure: undefined };
   }
@@ -56,7 +55,6 @@ export function readTestRuns(context) {
     reportDir,
     since,
     isArchunit,
-    tolerateFailures,
     retriesPass,
     moduleName: moduleNameOf(module, context.projectRoot),
   });
@@ -75,6 +73,9 @@ export function runCoverageTools(options) {
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
   const history = options.pitHistory;
   const scope = { projectRoot: options.projectRoot, mutationScope: options.mutationScope };
+  if (options.mutationOff) {
+    return;
+  }
   runPit({
     ...{ module, reportDir, tools, classpaths, isArchunit, configs, history, scope, ...run },
     deadline: options.pitDeadline,

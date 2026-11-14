@@ -44,7 +44,8 @@ let $proxyNames := (
       return ('jakarta.validation.constraints.' || $name, 'javax.validation.constraints.' || $name),
       for $name in (
         'CodePointLength', 'CreditCardNumber', 'Currency', 'EAN', 'ISBN', 'Length', 'LuhnCheck',
-        'Mod10Check', 'Mod11Check', 'Normalized', 'Range', 'URL', 'UUID', 'UniqueElements')
+        'Mod10Check', 'Mod11Check', 'Normalized', 'ParameterScriptAssert', 'Range', 'URL', 'UUID',
+        'ScriptAssert', 'UniqueElements')
       return 'org.hibernate.validator.constraints.' || $name,
       'jakarta.validation.Valid', 'javax.validation.Valid', $projectConstraintAnnotations),
     $proxyAnnotation := function($annotation) {

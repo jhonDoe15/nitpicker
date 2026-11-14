@@ -2,13 +2,13 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { noteSectionLines, noteSummaryLines } from './notes.mjs';
-import { renderJunitReport } from '../junit.mjs';
-import { writeDiffReports } from '../reporters.mjs';
-import { renderSarifReport } from '../sarif.mjs';
+import { noteSectionLines, noteSummaryLines } from './notes.mts';
+import { renderJunitReport } from '../junit.mts';
+import { writeDiffReports } from '../reporters.mts';
+import { renderSarifReport } from '../sarif.mts';
 import { finding } from '../test-support/report-builders.mjs';
-import { renderConsoleSummary } from '../summary.mjs';
-import { renderTextReport } from '../text.mjs';
+import { renderConsoleSummary } from '../summary.mts';
+import { renderTextReport } from '../text.mts';
 
 const temporaryRoots = [];
 
@@ -81,6 +81,15 @@ describe('red-base notes in the reports', () => {
       "Note: the project's tests fail on the base (python, java).",
       'Coverage, CRAP, mutation, slow-test and test-console results are unknown there, ' +
         'so only added files and edited lines are judged on them.',
+    ]);
+  });
+
+  it('says the tests did not finish when the base build timed out', () => {
+    const timedOut = { ...JAVA_NOTE, rule: 'tests-timed-out' };
+
+    expect([noteSummaryLines([timedOut])[0], noteSummaryLines([timedOut, NOTE])[0]]).toEqual([
+      "Note: the project's tests did not finish on the base (java).",
+      "Note: the project's tests fail or did not finish on the base (java, python).",
     ]);
   });
 

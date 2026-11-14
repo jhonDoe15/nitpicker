@@ -1,4 +1,4 @@
-import { analyzerName } from '../reporting/report-model.mjs';
+import { analyzerName as nameOf } from '../reporting/report-model.mts';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../git/repository/command.mjs';
 import path from 'node:path';
@@ -41,7 +41,6 @@ type MetadataRequest = {
   readonly warn: (message: string) => unknown;
 };
 
-const nameOf: (analyzer: unknown, index: number) => unknown = analyzerName;
 const git: (root: string, args: readonly string[]) => string = runGit;
 const inWorktree: (
   repositoryRoot: string,

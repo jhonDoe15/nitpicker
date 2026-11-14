@@ -109,6 +109,7 @@ const PRECEDENCE_EXEMPT_TOOLS = new Map([
   ['spring', { presets: ['java', KOTLIN], reason: OWN_ANALYZER }],
   ['dependencies', { presets: ['java', KOTLIN, PYTHON], reason: OWN_ANALYZER }],
   ['kotlin-source', { presets: [KOTLIN], reason: OWN_ANALYZER }],
+  ['effects', { presets: ['java', KOTLIN], reason: OWN_ANALYZER }],
   ['crap', { presets: ['java', KOTLIN, PYTHON, TYPESCRIPT, JAVASCRIPT], reason: OWN_ANALYZER }],
   [
     'structure',

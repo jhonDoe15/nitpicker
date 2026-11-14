@@ -7,6 +7,7 @@ import {
 import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { COMMON_EXCEPTION_RULES, RULE_IDS } from '../../../../shared/policy.mjs';
 import { PACKAGE_RULE_IDS } from '../../../../shared/project-rules/hygiene-rules.mjs';
+import { UNUSED_API_RULE_IDS } from '../../../../shared/unused-api/unused-api-policy.mjs';
 import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
@@ -62,6 +63,8 @@ export const GO_EXCEPTION_RULES = [
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
   RULE_IDS.testOnlyExport,
+  RULE_IDS.noProductionRuntime,
+  UNUSED_API_RULE_IDS.unusedOption,
   RULE_IDS.sharedUsedByOneFeature,
   RULE_IDS.featureInternalImport,
   RULE_IDS.sharedImportsFeature,

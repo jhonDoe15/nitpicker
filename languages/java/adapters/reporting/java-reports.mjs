@@ -17,6 +17,7 @@ import { readCommentFindings } from '../comments/comment-findings.mjs';
 import { readInlineSuppressionFindings } from '../suppressions/java-suppressions.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
+import { withEffectsFindings } from '../effects/effects-findings.mjs';
 import { archunitFindings, springArchFindings } from './archunit/archunit-findings.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { testRunFindings } from '../test-runs/test-run-findings.mjs';
@@ -54,6 +55,7 @@ import {
 } from './skips/skipped-tools.mjs';
 import { foreignKeyGate } from '../jpa/foreign-keys/key-gate.mjs';
 import { pitFailureFindings } from '../../builds/pit-failure/pit-failure.mjs';
+import { pitSkippedFindings } from '../../builds/pit-failure/pit-skipped.mjs';
 
 const ROOT_MODULE = 'root';
 
@@ -128,6 +130,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
       quick: options.quick === true,
+      mutationOff: options.mutationOff === true,
       jacoco:
         options.quick === true || module.manifest.testsFailed === true
           ? undefined
@@ -164,7 +167,7 @@ function readModuleFindings(context, crapLimit) {
   const { testSourceRoots = [], kotlinTestSourceRoots = [] } = context.manifest;
   const testRoots = [...testSourceRoots, ...kotlinTestSourceRoots];
   const skipped = skippedFiles(reportRoot);
-  return [
+  return withEffectsFindings(context, [
     ...skippedToolFindings({
       reportRoot,
       javaStyle: context.javaStyle,
@@ -180,7 +183,7 @@ function readModuleFindings(context, crapLimit) {
     ...unlessSkipped(skipped, STRUCTURE_SKIPPED, () =>
       ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
     ),
-    ...(context.quick ? [] : pitFindings(context)),
+    ...(context.quick || context.mutationOff ? [] : pitFindings(context)),
     ...unlessSkipped(skipped, STRUCTURE_SKIPPED, () =>
       readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
     ),
@@ -195,7 +198,7 @@ function readModuleFindings(context, crapLimit) {
       locate: sourceLocator(projectRoot, lintedRoots(context.manifest)),
     }),
     ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
-  ];
+  ]);
 }
 
 function lintedRoots({ sourceRoots = [], testSourceRoots = [] }) {
@@ -245,20 +248,21 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot, reactorRoot }, jac
 function pitFindings(context) {
   const { reportRoot, projectRoot } = context;
   const pitReport = path.join(reportRoot, 'pit/mutations.xml');
-  const failures =
-    context.manifest.testsFailed === true
-      ? []
-      : pitFailureFindings(reportRoot, context.module?.moduleDir);
+  if (context.manifest.testsFailed === true) {
+    return [];
+  }
+  const failures = pitFailureFindings(reportRoot, context.module?.moduleDir);
   if (failures.length > 0 || !existsSync(pitReport)) {
     return failures;
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  return ingestPit(readFileSync(pitReport, 'utf8'), {
+  const mutations = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
     sourceText: sourceTextReader(projectRoot),
     ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
   }).findings;
+  return [...mutations, ...pitSkippedFindings(reportRoot, context.module?.moduleDir)];
 }
 
 function branchFindings(context, jacoco) {

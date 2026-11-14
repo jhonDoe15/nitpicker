@@ -1,3 +1,5 @@
+import { fieldOf, textOf } from './readers.mts';
+
 export type Analyzer = {
   readonly name: string;
   readonly publishesModuleImports?: unknown;
@@ -9,6 +11,10 @@ type Invocation = {
   readonly args: readonly string[];
   readonly env?: Readonly<Record<string, string | undefined>>;
 };
+
+export function analyzerNameOf(analyzer: unknown): string {
+  return textOf(fieldOf(analyzer, 'name'));
+}
 
 export type ProfiledAnalyzer = {
   readonly name: string;

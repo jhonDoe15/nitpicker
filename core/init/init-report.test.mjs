@@ -80,13 +80,32 @@ describe('the install lines of the init report', () => {
       ].join('\n'),
     );
   });
+
+  it('says "too old" instead of "missing" for an installed peer below the supported range', () => {
+    const peers = {
+      missing: ['vitest@^4.1.11', 'nitpicker@1.0.0'],
+      absent: ['nitpicker@1.0.0'],
+      outdated: ['vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)'],
+      command: "pnpm add --save-dev 'vitest@^4.1.11' nitpicker@1.0.0",
+    };
+
+    expect(peerSection(peers)).toBe(
+      [
+        'Install what nitpicker needs from your project (missing: nitpicker@1.0.0; vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)):',
+        "  pnpm add --save-dev 'vitest@^4.1.11' nitpicker@1.0.0",
+      ].join('\n'),
+    );
+  });
 });
 
 describe('the install lines for peers that are installed but too old', () => {
   const peers = {
     missing: ['nitpicker@1.0.0', 'typescript@>=5.7 <6.1.0', 'vitest'],
     absent: ['nitpicker@1.0.0'],
-    outdated: ['typescript 5.4.5 is older than 5.7', 'vitest 2.1.4 is older than 4.1.11'],
+    outdated: [
+      'typescript too old (have 5.4.5, need >=5.7)',
+      'vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
+    ],
     uninstalled: [],
     command: "yarn add --dev nitpicker@1.0.0 'typescript@>=5.7 <6.1.0' vitest",
   };
@@ -94,7 +113,7 @@ describe('the install lines for peers that are installed but too old', () => {
   it('says why a peer is asked for again instead of calling it missing', () => {
     expect(peerSection(peers)).toBe(
       [
-        'Install what nitpicker needs from your project (missing: nitpicker@1.0.0; typescript 5.4.5 is older than 5.7; vitest 2.1.4 is older than 4.1.11):',
+        'Install what nitpicker needs from your project (missing: nitpicker@1.0.0; typescript too old (have 5.4.5, need >=5.7); vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)):',
         "  yarn add --dev nitpicker@1.0.0 'typescript@>=5.7 <6.1.0' vitest",
       ].join('\n'),
     );

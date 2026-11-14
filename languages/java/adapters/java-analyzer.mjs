@@ -12,8 +12,8 @@ import { COMPILE_ERROR_TOOL } from '../../../shared/rules/finding-helpers.mjs';
 import { javaCommand } from '../maven/maven-command.mjs';
 import { JVM_NOISE } from '../../../shared/messages/jvm/jvm-noise.mjs';
 import { mutationScopeArguments } from '../../../core/tooling/runner-arguments.mjs';
-import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
 import { HEAD_TESTS_TOOL } from './red-base/tests-failed.mjs';
+import { changedTestsKey } from '../builds/change-scope/tested-sources.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../..');
 const runnerPath = path.join(import.meta.dirname, 'java-runner.mjs');
@@ -24,6 +24,7 @@ const ENTRY_FILES = [
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const DESIGN_DIRECTORY = 'languages/java/gradle/design';
+const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -42,6 +43,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/dependency-tasks.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/tool-jdk.gradle',
+  'languages/java/gradle/tasks/analysis/effects-task.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
   'languages/java/builds/tools/tool-commands.json',
   'languages/java/builds/tools/tool-commands.mjs',
@@ -52,6 +54,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/CpdReport.java',
   'languages/java/gradle/errorprone/error-prone.gradle',
   'languages/java/gradle/pit/pit-scope.gradle',
+  'languages/java/gradle/pit/pit-retry.gradle',
   'languages/java/gradle/kotlin/kotlin-detekt.gradle',
   'languages/java/gradle/kotlin/kotlin-format.gradle',
   'languages/java/gradle/kotlin/kotlin-lint.gradle',
@@ -77,6 +80,7 @@ function configurationContents() {
   const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
   const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
   const design = readdirSync(path.join(packageRoot, DESIGN_DIRECTORY), { recursive: true });
+  const effects = readdirSync(path.join(packageRoot, EFFECTS_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
@@ -84,6 +88,7 @@ function configurationContents() {
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
       ...javaSources(DESIGN_DIRECTORY, design),
+      ...javaSources(EFFECTS_DIRECTORY, effects),
     ],
     packageRoot,
   );
@@ -132,6 +137,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
   return {
     name: kotlin ? 'kotlin' : 'java',
     publishesModuleImports: true,
+    switchableParts: ['mutation'],
     version: readPinnedVersions(),
     resolveVersion: () => {
       runtimeVersion ??= javaRuntimeVersion();
