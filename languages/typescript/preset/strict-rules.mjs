@@ -29,6 +29,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-loaded-rows-saved-back',
   'nitpicker/no-lookup-per-element',
   'nitpicker/no-query-per-parent',
+  'nitpicker/no-whole-rows-for-one-value',
   'nitpicker/no-retry-without-idempotency',
   'nitpicker/no-remote-call-under-lock',
   'nitpicker/no-remote-call-in-transaction',

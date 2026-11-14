@@ -18,6 +18,7 @@ import { rule as ruleNoWaitForWithFakeTimers } from '../rules/testing/assertions
 import { rule as ruleNoWastedCollectionStep } from '../rules/collections/pipelines/no-wasted-collection-step.mjs';
 import { rule as ruleNoWeakAssertion } from '../test-assertions/weak-assertion/no-weak-assertion.mjs';
 import { rule as ruleNoWeakHash } from '../rules/security/hash/no-weak-hash.mjs';
+import { rule as ruleNoWholeRowsForOneValue } from '../rules/queries/columns/no-whole-rows-for-one-value.mjs';
 import { rule as rulePreserveErrorCause } from '../rules/errors/preserve-error-cause.mjs';
 import { rule as rulePromiseWaitDeadline } from '../rules/promises/executors/promise-wait-deadline.mjs';
 import { rule as ruleReactControlledInput } from '../rules/react/forms/react-controlled-input.mjs';
@@ -73,6 +74,7 @@ export const partRules = {
   'no-wasted-collection-step': ruleNoWastedCollectionStep,
   'no-weak-assertion': ruleNoWeakAssertion,
   'no-weak-hash': ruleNoWeakHash,
+  'no-whole-rows-for-one-value': ruleNoWholeRowsForOneValue,
   'preserve-error-cause': rulePreserveErrorCause,
   'promise-wait-deadline': rulePromiseWaitDeadline,
   'react-controlled-input': ruleReactControlledInput,

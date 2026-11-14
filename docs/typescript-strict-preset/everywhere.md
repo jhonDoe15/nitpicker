@@ -664,6 +664,23 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   subscriber or a `Model.addHook` call, or whose class cannot be resolved, are left alone. A delete or update
   of another table or model keyed by the loaded rows' ids is not this shape. Per-row `save`, `update` and `remove` calls inside the loop are
   `nitpicker/no-io-in-loop`'s.
+- No whole rows loaded only to read one column or to test existence (`nitpicker/no-whole-rows-for-one-value`,
+  needs the type checker for the column form). On the query results of `nitpicker/no-in-memory-query` it
+  reports a result only mapped to one field of its rows (`rows.map((row) => row.email)` or
+  `.map(({ email }) => email)`, directly or through a variable read once), when the type checker finds the
+  field as a declared column (a getter, a method, a relation without a column decorator or an unresolved type
+  stays silent): select the column (`select: { email: true }` in TypeORM and Prisma, `attributes` in
+  Sequelize, `fields` in MikroORM, `db.select({ email: users.email })` in Drizzle). It also reports a
+  `count`/`countBy` result that is only compared with zero or one (`> 0`, `>= 1`, `!== 0`, `=== 0`, `< 1`,
+  or used as a condition) and a `findOne`, `findOneBy`, `findFirst` or `findUnique` result that is only a
+  condition (`if (row)`, `!row`, `Boolean(row)`, `!== null`, `== undefined`, a ternary test), directly or
+  through a variable read once: use `exists` or `existsBy` (TypeORM), `findFirst({ where, select: { id: true } })`
+  (Prisma), `findOne` with `attributes: ['id']` (Sequelize) or `fields` (MikroORM). A query that already
+  selects (`select`, `columns`, `attributes`, `fields`), a `findOne` with a lock option (`lock`, `forUpdate`,
+  `skipLocked`; `exists` cannot lock), a paged query, rows that are used another way, and
+  ids that only feed a delete or update (`nitpicker/no-loaded-rows-saved-back`'s) are left alone.
+  Drizzle's `select({ value: count() })` existence form and its one-column form are not covered: its rows
+  have no model class to read the field from, and the count comes back as a row.
 - No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
   counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
   `multiple-collection-joins`): the database returns one row for every pair of their elements. It

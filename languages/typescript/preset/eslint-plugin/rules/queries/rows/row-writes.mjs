@@ -12,19 +12,19 @@ export const DELETE = 'delete';
 const SAVES = new Set(['save', 'persistAndFlush', 'bulkCreate']);
 const REMOVES = new Set(['remove', 'softRemove', 'removeAndFlush']);
 const ID_WRITES = new Map([
-  ['delete', DELETE],
+  [DELETE, DELETE],
   ['deleteMany', DELETE],
   ['destroy', DELETE],
   ['softDelete', DELETE],
   ['nativeDelete', DELETE],
-  ['update', UPDATE],
+  [UPDATE, UPDATE],
   ['updateMany', UPDATE],
   ['nativeUpdate', UPDATE],
 ]);
 const ID_HELPERS = new Set(['In', 'inArray', 'any', 'Any', 'anyOf']);
 const DRIZZLE_WRITES = new Map([
-  ['delete', DELETE],
-  ['update', UPDATE],
+  [DELETE, DELETE],
+  [UPDATE, UPDATE],
 ]);
 
 function calleeName(call) {
@@ -117,13 +117,16 @@ function idsOf(read) {
 
 function chainNames(call) {
   const names = [];
-  let current = call;
-  while (
-    current?.type === 'CallExpression' &&
-    unwrapped(current.callee).type === 'MemberExpression'
-  ) {
+  const pending = [call];
+  for (const current of pending) {
+    if (
+      current?.type !== 'CallExpression' ||
+      unwrapped(current.callee).type !== 'MemberExpression'
+    ) {
+      break;
+    }
     names.push(memberName(unwrapped(current.callee)));
-    current = unwrapped(unwrapped(current.callee).object);
+    pending.push(unwrapped(unwrapped(current.callee).object));
   }
   return names;
 }
@@ -145,13 +148,16 @@ function nextHop(context, current) {
 }
 
 function consumerOf(context, node) {
-  let current = node;
-  for (let step = 0; step < MAX_HOPS; step += 1) {
+  const pending = [node];
+  for (const current of pending) {
     const hop = nextHop(context, current);
     if (hop.found !== undefined || hop.next === undefined) {
       return hop.found;
     }
-    current = hop.next;
+    if (pending.length >= MAX_HOPS) {
+      break;
+    }
+    pending.push(hop.next);
   }
   return undefined;
 }
@@ -166,7 +172,7 @@ function idWriteKind(consumer) {
   return ID_WRITES.get(name);
 }
 
-const DRIZZLE_TABLES = new Set(['from', 'delete', 'update']);
+const DRIZZLE_TABLES = new Set(['from', DELETE, UPDATE]);
 
 function drizzleTable(context, call) {
   const found = callChain(call).find((each) => DRIZZLE_TABLES.has(calleeName(each)));
@@ -174,13 +180,16 @@ function drizzleTable(context, call) {
   return table === undefined ? undefined : context.sourceCode.getText(table);
 }
 
+function receiverPath(call) {
+  return receiverNames(unwrapped(call.callee).object).join('.');
+}
+
 function sameTable(context, query, consumer) {
   const isDrizzle = callChain(query).some((each) => calleeName(each) === 'from');
   if (isDrizzle) {
     return drizzleTable(context, query) === drizzleTable(context, consumer);
   }
-  const names = (call) => receiverNames(unwrapped(call.callee).object).join('.');
-  return names(query) === names(consumer);
+  return receiverPath(query) === receiverPath(consumer);
 }
 
 function idsWrite(context, mapped, query) {
@@ -189,6 +198,10 @@ function idsWrite(context, mapped, query) {
   return shape !== undefined && sameTable(context, query, consumer)
     ? { node: consumer, shape }
     : undefined;
+}
+
+export function isIdsWrite(context, mapped, query) {
+  return idsWrite(context, mapped, query) !== undefined;
 }
 
 function idsShape(context, rows, query) {

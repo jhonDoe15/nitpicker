@@ -140,6 +140,7 @@
   "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mjs": 3,
   "languages/python/rules/e2e/time/time-units.e2e.test.mjs": 2,
   "languages/python/rules/e2e/updates/in-memory-update.e2e.test.mjs": 7,
+  "languages/python/rules/e2e/updates/narrow-reads.e2e.test.mjs": 4,
   "languages/python/rules/e2e/waits/waits.e2e.test.mjs": 2,
   "languages/python/rules/e2e/writes/dual-write-forms.e2e.test.mjs": 2,
   "languages/python/rules/e2e/writes/dual-write-without-outbox.e2e.test.mjs": 2,

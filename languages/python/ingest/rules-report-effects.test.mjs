@@ -71,6 +71,16 @@ describe('effect rules report', () => {
       'Order|status,total|django',
       '`Order` rows are loaded only to set `status`, `total` to the same value on each and save them back, which one update statement does without loading the rows',
     ],
+    [
+      'row-for-one-column',
+      'User|email|django',
+      '`User` rows are loaded whole only to read `email` from each, when the query can return just that column',
+    ],
+    [
+      'row-for-existence',
+      'User|first|sqlalchemy',
+      '`User` rows are loaded only to test whether one exists, when an existence query answers it',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

@@ -57,6 +57,7 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   `if`, `any()` or `next()`, `.order_by()` instead of `sorted()`, and `.aggregate()`/`func.sum` instead
   of `sum()`, `max()` or `Counter` over the rows (`in-memory-query`).
 - Let the database change rows too: `Model.objects.filter(...).update(status="expired")` or `session.execute(update(Model).where(...).values(...))` instead of loading rows, assigning the same value to each and calling `bulk_update` or `commit` (`in-memory-update`).
+- Ask for what you use: `values_list("email", flat=True)` or `select(User.email)` instead of loading whole rows to read one column (`row-for-one-column`), and `.exists()` or `select(exists().where(...))` instead of `.count() > 0` or `.first() is not None` (`row-for-existence`).
 - Index every foreign key in the migration that adds it (Alembic `op.create_index`, or `index=True` on
   the column), with an index or primary key that starts with the column. PostgreSQL does not create one
   (`foreign-key-index`).

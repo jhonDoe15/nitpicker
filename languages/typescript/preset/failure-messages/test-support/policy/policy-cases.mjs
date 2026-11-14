@@ -114,6 +114,11 @@ export const policyFailureMessageCases = [
     'deleteMany',
   ),
   adapterCase(
+    'count compared with zero names findFirst',
+    "import { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\nexport async function taken(name: string) { return (await prisma.user.count({ where: { name } })) > 0; }",
+    'findFirst',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',
