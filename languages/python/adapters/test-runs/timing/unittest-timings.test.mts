@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../../metrics/python-helpers.mts';
 import { UNITTEST_SCRIPT } from '../../execution/python-test-runner.mjs';
 import { JUNIT_REPORT, RERUN_REPORT } from '../junit-results.mjs';
-import { readJunit } from '../../typed/tests/test-views.mts';
+import { readJunit } from '../../test-support/views/test-views.mts';
 import { readSlowTestFindings } from '../../typed/report/report-views.mts';
 import { retimeSlowTests } from './slow-retime.mjs';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';

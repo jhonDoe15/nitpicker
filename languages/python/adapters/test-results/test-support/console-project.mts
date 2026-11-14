@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from '../../test-runs/test-step.mjs';
 import { createToolContext } from '../../test-support/typed/tool-context.mts';
-import { type ConsoleEntry as Entry, readConsoleReport } from '../../typed/tests/test-views.mts';
+import {
+  type ConsoleEntry as Entry,
+  readConsoleReport,
+} from '../../test-support/views/test-views.mts';
 
 function sortedEntries(entries: readonly Entry[]): Entry[] {
   return entries.toSorted(

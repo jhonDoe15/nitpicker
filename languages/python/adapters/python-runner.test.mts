@@ -6,7 +6,7 @@ import { installFakeToolchain } from './test-support/fake-toolchain.mts';
 import type { IngestedFinding } from './typed/report/report-types.mts';
 import type { RunnerPolicy, RunnerSettings } from './typed/runner/runner-types.mts';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mts';
-import { linkSentence } from './typed/tests/tools-test-views.mts';
+import { linkSentence } from './test-support/views/tools-test-views.mts';
 import { useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
 

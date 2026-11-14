@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createConsoleProjects } from './test-support/console-project.mts';
-import type { ConsoleEntry } from '../typed/tests/test-views.mts';
+import type { ConsoleEntry } from '../test-support/views/test-views.mts';
 
 const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 

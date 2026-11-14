@@ -1,11 +1,11 @@
 import {
+  designFacts as untypedDesignFacts,
   fn as untypedFn,
   owner as untypedOwner,
 } from '../../../../../shared/rules/design/test-support/design-facts.mjs';
 import { goFactFindings } from '../go-fact-findings.mts';
 import { goFacts } from '../go-facts.mts';
-import { designFacts } from '../../typed/shared-readers.mts';
-import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { fieldOf, listOf, textOf } from '../../../../../shared/values/readers.mts';
 import type { DesignCallable, DesignType, InspectReport } from '../../go-types.mts';
 
 export const MODULE = 'example.com/shop';
@@ -16,6 +16,18 @@ const owner: (file: string, name?: string, extra?: Fields) => DesignType = untyp
 const fn: (owned: DesignType, name: string, extra?: Fields) => DesignCallable = untypedFn;
 
 export { fn, owner };
+
+function designFacts(input: {
+  types: readonly DesignType[];
+  callables: readonly DesignCallable[];
+}): { modules: readonly { file: string }[] } {
+  const facts: unknown = Reflect.apply(untypedDesignFacts, undefined, [input]);
+  return {
+    modules: listOf(fieldOf(facts, 'modules')).map((module) => ({
+      file: textOf(fieldOf(module, 'file')),
+    })),
+  };
+}
 
 export function goReport({
   types = [],

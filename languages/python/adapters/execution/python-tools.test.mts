@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createToolContext } from '../test-support/typed/tool-context.mts';
 import { runPythonTools } from '../typed/runner/runner-views.mts';
-import { launchEnv, runsOf, testsRanOf } from '../typed/tests/tools-test-views.mts';
+import { launchEnv, runsOf, testsRanOf } from '../test-support/views/tools-test-views.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   callsLog,

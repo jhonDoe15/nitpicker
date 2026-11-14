@@ -2,7 +2,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fieldOf, parseJson, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { DUPLICATES_TOOL } from '../../../core/tooling/jscpd/run-jscpd.mjs';
-import { jscpdVersion } from './typed/tests/tools-test-views.mts';
+import { jscpdVersion } from './test-support/views/tools-test-views.mts';
 import { PYTEST_PROBE } from './execution/python-test-runner.mjs';
 import { MUTMUT_VERSION_PROBE } from './mutation/python-mutation.mjs';
 import { stubCallsLog } from './test-support/runs/calls-log.mts';

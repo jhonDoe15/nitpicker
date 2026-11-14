@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseIni } from '../../typed/tests/test-views.mts';
+import { parseIni } from '../../test-support/views/test-views.mts';
 
 describe('parsing an ini file', () => {
   it('reads sections, both separators, comments and continued values', () => {
