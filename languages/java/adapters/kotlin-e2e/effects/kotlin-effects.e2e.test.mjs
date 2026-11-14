@@ -17,6 +17,7 @@ import {
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const LOOPS = 'src/main/kotlin/shop/reports/LoopImports.kt';
+const HELD = 'src/main/kotlin/shop/held/HeldScopes.kt';
 const JAVA_LOOP = 'src/main/java/shop/reports/JavaImports.java';
 const LOOP_RULES = /InLoop|NoFlush|BatchOfOne/u;
 
@@ -74,6 +75,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/reports/LoopImports.kt',
         'src/main/kotlin/shop/reports/Accumulators.kt',
         'src/main/kotlin/shop/billing/LazyLoads.kt',
+        'src/main/kotlin/shop/held/HeldScopes.kt',
         JAVA_LOOP,
       ]),
     );
@@ -120,6 +122,15 @@ describe.skipIf(!enabled)('the effects engine in the Kotlin preset', () => {
         (finding) => finding.tool === 'kotlin-source' && LOOP_RULES.test(finding.rule),
       ),
     ).toEqual([]);
+  });
+
+  it('reports on the Kotlin files with the effects exception route in the message', () => {
+    const held = findings.filter((finding) => finding.tool === 'effects' && finding.path === HELD);
+
+    expect(held.map((finding) => finding.location.line)).toEqual([25, 30, 33, 35, 39, 45, 50]);
+    expect(held.every((finding) => finding.message.includes(`"effects/${finding.rule}"`))).toBe(
+      true,
+    );
   });
 
   it('keeps one loop finding on a Java line that PMD and the engine both report', () => {

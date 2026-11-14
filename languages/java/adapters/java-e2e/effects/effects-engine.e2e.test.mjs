@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 13,
+      classes: 18,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -131,6 +131,27 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       '111 message concurrent',
       '113 message loop',
     ]);
+  });
+
+  it('reports remote calls under a lock unless the block fills state once or only tries the lock', () => {
+    expect(methodsOf(run.report, 'RemoteCallUnderLock')).toEqual([
+      'Locks.guardedByClosed',
+      'Locks.guardedByArgument',
+      'Locks.underSinglePermit',
+    ]);
+  });
+
+  it('reports transactions held across a remote call, and skips detached and suspended work', () => {
+    expect(methodsOf(run.report, 'RemoteCallInTransaction')).toEqual([
+      'Scopes.confirm',
+      'Scopes.manual',
+    ]);
+  });
+
+  it('leaves the bodies of a transaction synchronization to run after the transaction', () => {
+    expect(methodsOf(run.report, 'RemoteCallInTransaction')).not.toContain(
+      'Hooks.afterTransaction',
+    );
   });
 
   it('reports copies on every step', () => {

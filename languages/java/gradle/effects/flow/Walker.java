@@ -74,6 +74,7 @@ public final class Walker {
   private static final Set<String> JOINS = Set.of("join", "get", "await", "awaitAll", "joinAll", "allOf", "anyOf",
       "invokeAll", "resultNow", "getNow");
   private static final String LISTENER = "(add|register|set)\\w*(Listener|Callback|Handler)|subscribe|addCallback";
+  private static final String SYNCHRONIZATION = "org/springframework/transaction/support/TransactionSynchronization";
   private final Program program;
   private final boolean tracking;
 
@@ -186,8 +187,14 @@ public final class Walker {
     return false;
   }
 
+  private boolean synchronization(MethodFlow flow, Lambdas.Use use) {
+    return use.bodies().stream()
+        .anyMatch(body -> program.index.isSubtype(body.owner.name, SYNCHRONIZATION)
+            && use.reference() == null && flow.owner != body.owner);
+  }
+
   public boolean detached(MethodFlow flow, Lambdas.Use use) {
-    return use.consumer() < 0 || later(flow, use)
+    return use.consumer() < 0 || later(flow, use) || synchronization(flow, use)
         || (async((MethodInsnNode) flow.insns[use.consumer()]) && !joined(flow));
   }
 

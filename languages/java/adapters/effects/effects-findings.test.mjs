@@ -178,6 +178,44 @@ describe('readEffectsFindings', () => {
     ]);
   });
 
+  it('names the held scope, the remote call path and the way out for transactions and locks', () => {
+    const held = {
+      className: 'shop.Import',
+      fileName: 'Import.java',
+      line: 40,
+      method: 'Import.confirm',
+      holder: 'Import.confirm',
+      path: ['PriceSource.priceOf()', 'RestClient.get()'],
+    };
+    const calls =
+      '`Import.confirm()` calls `PriceSource.priceOf()`, which calls `RestClient.get()`';
+    const messages = read([
+      { ...held, rule: 'RemoteCallInTransaction', scope: '@Transactional', detail: 'a' },
+      { ...held, rule: 'RemoteCallUnderLock', scope: 'ReentrantLock.lock()', detail: 'b' },
+    ]).map((finding) => finding.message);
+
+    expect(messages).toEqual([
+      sentence(
+        'Make the remote call before the transaction starts or after it commits; when its side effect must',
+        'match the transaction, write an outbox row in the transaction and send it from a worker:',
+        `${calls} inside the \`@Transactional\` method \`Import.confirm()\`, which also uses the database,`,
+        "so a pooled connection stays held for the remote call's latency and the pool runs dry under load.",
+        exception('RemoteCallInTransaction', JAVA_FILE),
+      ),
+      sentence(
+        'Make the remote call before taking the lock or after releasing it, and keep only the change of the',
+        'shared state inside; copy the value you need out of the lock first:',
+        `${calls} while holding \`ReentrantLock.lock()\` in \`Import.confirm()\`,`,
+        "so every thread waiting for the lock also waits for the remote call's latency.",
+        'A fill-once block stays allowed: the call under an `if` that tests the state the block then sets',
+        '(a token refresh, a cached download), so callers wait for one request instead of each sending their',
+        'own. When the remote effect must happen exactly once per state change, record it in an outbox row and',
+        'send it from a worker.',
+        exception('RemoteCallUnderLock', JAVA_FILE),
+      ),
+    ]);
+  });
+
   it('numbers repeated identities per file and leaves Kotlin files to the kotlin preset', () => {
     const findings = read([loop, { ...loop, line: 14 }, { ...loop, fileName: 'Other.kt' }]);
 

@@ -2292,6 +2292,8 @@
                             "effects/IoCallInLoop",
                             "effects/AccumulatorCopyInLoop",
                             "effects/LazyRelationInLoop",
+                            "effects/RemoteCallInTransaction",
+                            "effects/RemoteCallUnderLock",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

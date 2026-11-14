@@ -80,10 +80,43 @@ function lazyRelation({ method, entity, relation, origin }, language) {
   ].join(' ');
 }
 
+function heldScope(scope, holder) {
+  if (scope === 'retry loop') {
+    return `a retry loop in ${code(`${holder}()`)}`;
+  }
+  return scope.startsWith('@') || scope === 'synchronized'
+    ? `the ${code(scope)} method ${code(`${holder}()`)}`
+    : `${code(scope)} in ${code(`${holder}()`)}`;
+}
+
+function remoteInTransaction({ method, scope, holder, path }) {
+  return [
+    'Make the remote call before the transaction starts or after it commits; when its side effect must',
+    'match the transaction, write an outbox row in the transaction and send it from a worker:',
+    `${code(`${method}()`)} ${callPath(path)} inside ${heldScope(scope, holder)}, which also uses the`,
+    "database, so a pooled connection stays held for the remote call's latency and the pool runs dry under load.",
+  ].join(' ');
+}
+
+function remoteUnderLock({ method, scope, holder, path }) {
+  return [
+    'Make the remote call before taking the lock or after releasing it, and keep only the change of the',
+    'shared state inside; copy the value you need out of the lock first:',
+    `${code(`${method}()`)} ${callPath(path)} while holding ${heldScope(scope, holder)},`,
+    "so every thread waiting for the lock also waits for the remote call's latency.",
+    'A fill-once block stays allowed: the call under an `if` that tests the state the block then sets',
+    '(a token refresh, a cached download), so callers wait for one request instead of each sending their',
+    'own. When the remote effect must happen exactly once per state change, record it in an outbox row and',
+    'send it from a worker.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
   LazyRelationInLoop: lazyRelation,
+  RemoteCallInTransaction: remoteInTransaction,
+  RemoteCallUnderLock: remoteUnderLock,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);
