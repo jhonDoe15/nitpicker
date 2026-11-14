@@ -1,7 +1,9 @@
 import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs';
 import { guardCompiler } from './errorprone/maven-compiler.mjs';
-import { withGuardChecks } from '../builds/rulesets/checkstyle-config.mjs';
-import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
+import {
+  nitpickerCheckstyleConfig,
+  withGuardChecks,
+} from '../builds/rulesets/checkstyle-config.mjs';
 import { spawnSync } from 'node:child_process';
 import {
   existsSync,
@@ -15,6 +17,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava } from './maven-command.mjs';
+import { toolJava } from './errorprone/maven-jdk.mjs';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { spotbugsLaunch } from './security/spotbugs-launch.mjs';
 import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
@@ -25,7 +28,6 @@ import {
   NITPICKER_SPOTBUGS,
   spotbugsArguments,
 } from '../adapters/tool-config/declared/spotbugs-declared.mjs';
-import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
@@ -154,27 +156,6 @@ export function runSpotbugs({
   });
 }
 
-export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn, timeoutMs }) {
-  const report = path.join(reportDir, 'format.txt');
-  const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
-  const formatter = JAVA_FORMATTERS[javaStyle];
-  if (files.length === 0 || formatter === undefined) {
-    writeFileSync(report, '');
-    return;
-  }
-  const result = runJava({
-    tool: formatter.tool,
-    classpath: tools[formatter.classpath],
-    jvmArgs: JAVAC_EXPORTS,
-    mainClass: formatter.mainClass,
-    args: [...formatter.flags, '--dry-run', ...files],
-    cwd: module.basedir,
-    spawn,
-    timeoutMs,
-  });
-  writeFileSync(report, result.stdout);
-}
-
 function bundledGoogleChecks(checkstyleJar, spawn = spawnSync) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-'));
   try {
@@ -256,6 +237,7 @@ function checkstyleReport(options) {
     return;
   }
   runJava({
+    java: toolJava({ tool: 'Checkstyle' }),
     tool: 'Checkstyle',
     classpath: tools.checkstyle,
     mainClass: 'com.puppycrawl.tools.checkstyle.Main',

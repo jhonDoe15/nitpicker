@@ -100,9 +100,10 @@ non-test `.py` files under a source root changed, and runs every mutant after an
 including every test change, because mutmut does not re-test results when a test changes. See
 [python-preset.md](python-preset/slice-6-mutation-testing.md#reusing-base-results-on-head).
 
-The Java and Kotlin presets keep mutating every class on both sides, and head starts from PIT's
-history file of the base run, so PIT runs again only the mutants of changed classes and those whose
-tests changed. See [Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
+The Java and Kotlin presets do the same with PIT: head mutates the classes with changed lines and
+keeps the mutants on those lines, and both sides mutate, whole, up to ten production files that a
+changed test uses, matched by identity, so the base runs PIT only when a test changed. See
+[Mutation in a comparison](java-preset/mutation-in-a-comparison.md).
 
 ## Java and Kotlin mutators
 

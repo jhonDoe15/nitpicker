@@ -4,6 +4,12 @@ import {
   CONTROL_FLOW_MESSAGE,
   CONTROL_FLOW_RULE,
 } from './flow/assertion-flow.mjs';
+import { DROPPED_MESSAGE, DROPPED_RULE, droppedCallbacks } from './dropped/dropped-callbacks.mjs';
+import {
+  MESSAGE_MESSAGE,
+  MESSAGE_RULE,
+  messagesAfterAssertions,
+} from './dropped/message-after-assertion.mjs';
 import { loopScope } from './flow/loops/loop-scope.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
 import { RETRY_MESSAGE, RETRY_RULE, retriesInTests } from './retries/retry-tests.mjs';
@@ -47,6 +53,8 @@ export function honestyReports(scanned, suites, project) {
     ...located(focusedTests(suites), FOCUSED_RULE, FOCUSED_MESSAGE),
     ...located(retriesInTests(scanned, suites), RETRY_RULE, RETRY_MESSAGE),
     ...flowReports(scanned, suites),
+    ...located(droppedCallbacks(scanned, suites), DROPPED_RULE, DROPPED_MESSAGE),
+    ...located(messagesAfterAssertions(scanned, suites), MESSAGE_RULE, MESSAGE_MESSAGE),
     ...weakReports(scanned, suites),
   ];
 }

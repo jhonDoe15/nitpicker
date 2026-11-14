@@ -33,9 +33,16 @@ describe('checkstyleRuleName', () => {
         'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
         'com.puppycrawl.tools.checkstyle.checks.UpperEllCheck',
         'RightCurlySame',
+        'com.puppycrawl.tools.checkstyle.checks.whitespace.OperatorWrapCheck#OperatorWrapNL',
         'com.example.checks.HouseRuleCheck',
       ].map(checkstyleRuleName),
-    ).toEqual(['Indentation', 'UpperEll', 'RightCurlySame', 'com.example.checks.HouseRuleCheck']);
+    ).toEqual([
+      'Indentation',
+      'UpperEll',
+      'RightCurlySame',
+      'OperatorWrapNL',
+      'com.example.checks.HouseRuleCheck',
+    ]);
   });
 });
 

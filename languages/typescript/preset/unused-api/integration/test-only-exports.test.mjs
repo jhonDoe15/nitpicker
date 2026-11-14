@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { runDeadCode } from '../../../adapters/quality-areas/runners/repository.mjs';
+import { runDeadCode } from '../../../adapters/quality-areas/runners/repository.mts';
 import { createProject } from '../test-support/project.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');

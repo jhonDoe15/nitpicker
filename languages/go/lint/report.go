@@ -40,7 +40,7 @@ func supersededBy() map[string][]string {
 		"SA4006":                      {"SA4010"},
 		"SA1006":                      {"printf"},
 		"nilness":                     {"SA4031", "SA5000"},
-		"errcheck":                    {"SA5001", "SA9001", "sqlclosecheck"},
+		"errcheck":                    {"SA5001", "SA9001", "sqlclosecheck", "regexpMust"},
 		"nilnil":                      {"nilerr"},
 		"wastedassign":                {"SA4006", "SA4010"},
 		"usetesting":                  {"testingcontext"},
@@ -55,9 +55,29 @@ func supersededBy() map[string][]string {
 		"gocheckcompilerdirectives":   {"SA9009"},
 		"usestdlibvars":               {"ST1013"},
 		"bidichk":                     {"ST1018"},
+		"wrapperFunc":                 {"QF1004", "S1003"},
+		"badCall":                     {"SA1018"},
+		"badLock":                     {"SA2001", "SA2003"},
+		"boolExprSimplify":            {"SA4013"},
+		"sloppyLen":                   {"SA4024"},
+		"equalFold":                   {"SA6005"},
+		"unnecessaryDefer":            {"SA9010"},
+		"redundantSprint":             {"S1025", "S1039", "string-format"},
+		"nilValReturn":                {"nilerr"},
+		"regexpSimplify":              {"badRegexp"},
+		"sqlclosecheck":               {"sqlQuery"},
+		"rowserrcheck":                {"sqlQuery"},
+		"ifElseChain":                 {"QF1003"},
+		"emptyFallthrough":            {"useless-fallthrough"},
+		"preferFprint":                {"QF1012"},
+		"dupCase":                     {"identical-switch-conditions"},
 		"context-outside-entry":       {"contextcheck"},
+		"SA1019":                      {"G506", "G507"},
+		"G118":                        {"lostcancel"},
+		"G115":                        {"G109"},
+		"G601":                        {"range-val-address"},
+		"contextcheck":                {"G118"},
 		"todoCommentWithoutDetail":    {"todo-without-issue"},
-		"G101":                        {"hardcoded-secret", "credential-shape"},
 		"skipped-test-without-reason": {"switched-off-test"},
 	}
 	maps.Copy(replacements, reviveSuperseded())
@@ -97,10 +117,7 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 			continue
 		}
 		for _, diagnostic := range action.Diagnostics {
-			rule, message := catalog.Rule(action.Analyzer.Name, diagnostic)
-			if rule == action.Analyzer.Name {
-				rule = ruleName(action.Analyzer)
-			}
+			rule, message := ruleOf(action.Analyzer, diagnostic)
 			found := finding(action.Package.Fset, diagnostic.Pos, names[action.Analyzer.Name], rule)
 			found.Message = message
 			seen[found] = true
@@ -117,8 +134,8 @@ func analyze(directory string, settings options, patterns []string) (Result, err
 	for _, found := range revived {
 		seen[found] = true
 	}
-	findings, err := selected(handWritten(kept(seen), sources(loaded)), settings.project)
-	result.Findings = findings
+	chosen, err := selected(slices.Collect(maps.Keys(seen)), settings.project)
+	result.Findings = handWritten(kept(present(chosen)), sources(loaded))
 	return result, err
 }
 
@@ -239,6 +256,14 @@ func kept(seen map[Finding]bool) []Finding {
 			cmp.Compare(left.Message, right.Message))
 	})
 	return findings
+}
+
+func present(findings []Finding) map[Finding]bool {
+	set := map[Finding]bool{}
+	for _, found := range findings {
+		set[found] = true
+	}
+	return set
 }
 
 func lineKey(found Finding) string {

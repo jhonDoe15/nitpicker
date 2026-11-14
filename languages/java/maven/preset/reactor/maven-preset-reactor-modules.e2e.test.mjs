@@ -16,7 +16,7 @@ import {
   fixtures,
   EMPTY_CATCH,
   copyOf,
-} from '../../__tests__/maven-preset-project.mjs';
+} from '../../__tests__/maven-preset-project.mts';
 import { pathsOutsideProject } from '../../../adapters/java-e2e/test-support/project-paths.mjs';
 
 describe.skipIf(!enabled)('Java preset on Maven reactor modules', () => {

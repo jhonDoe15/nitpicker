@@ -10,6 +10,7 @@ const { cleanup, outcomes } = createScripts({
     'swallowed-exception',
     'blind-suppress',
     'weak-assertion',
+    'simpler-boolean-logic',
   ],
 });
 afterEach(cleanup);

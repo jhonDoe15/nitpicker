@@ -22,6 +22,8 @@ const WEAK_COPYLEFT_LICENSES = new Set([
   'MPL-2.0',
 ]);
 
+const CLASSPATH_EXCEPTION = /^GPL-2\.0(?:-only|-or-later|\+)?\s+WITH\s+Classpath-exception-2\.0$/i;
+
 const GPL_MARKER = 'GPL or AGPL';
 const POLYFORM_KINDS = [
   'NONCOMMERCIAL',
@@ -85,7 +87,9 @@ function classifyIdentifier(identifier, extraPermissive) {
   if (PERMISSIVE_LICENSES.has(base) || extraPermissive.has(base)) {
     return PERMISSIVE;
   }
-  return WEAK_COPYLEFT_LICENSES.has(base) ? WEAK_COPYLEFT : REJECTED;
+  return WEAK_COPYLEFT_LICENSES.has(base) || CLASSPATH_EXCEPTION.test(identifier)
+    ? WEAK_COPYLEFT
+    : REJECTED;
 }
 
 function pick(verdicts, better) {

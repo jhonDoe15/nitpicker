@@ -29,6 +29,21 @@ const NUMERIC_TYPES = new Set([
   'UByte',
   'Integer',
   'Number',
+  'int8',
+  'int16',
+  'int32',
+  'int64',
+  'uint',
+  'uint8',
+  'uint16',
+  'uint32',
+  'uint64',
+  'uintptr',
+  'float32',
+  'float64',
+  'complex64',
+  'complex128',
+  'rune',
 ]);
 const COORDINATE_NAMES = new Set(
   ['x', 'y', 'z', 'w', 'r', 'g', 'b', 'a', 'h', 's', 'l', 'v', 'i', 'j', 'k', 'n', 'm'].concat([
@@ -48,7 +63,10 @@ const COORDINATE_NAMES = new Set(
 function parameterKeys(callable) {
   return (callable.params ?? [])
     .slice(0, MAX_PARAMS)
-    .filter(({ type, variadic, pattern }) => type !== undefined && !variadic && !pattern)
+    .filter(
+      ({ name, type, variadic, pattern }) =>
+        name !== '_' && type !== undefined && !variadic && !pattern,
+    )
     .map(({ name, type }) => `${name}: ${type}`)
     .sort();
 }

@@ -25,7 +25,7 @@ public final class Spawns {
                 done.countDown();
               })
           .start();
-      done.await();
+      done.await(); // violation: UnboundedWait
     }
   }
 
@@ -38,7 +38,7 @@ public final class Spawns {
   static void virtualThreadAndJoin() throws InterruptedException {
     try (StringReader in = new StringReader("a")) {
       Thread worker = Thread.startVirtualThread(() -> in.hashCode());
-      worker.join();
+      worker.join(); // violation: UnboundedWait
     }
   }
 
@@ -50,7 +50,7 @@ public final class Spawns {
 
   static void builtVirtualThreadAndJoin() throws InterruptedException {
     try (StringReader in = new StringReader("a")) {
-      Thread.ofVirtual().start(() -> in.hashCode()).join();
+      Thread.ofVirtual().start(() -> in.hashCode()).join(); // violation: UnboundedWait
     }
   }
 
@@ -78,7 +78,7 @@ public final class Spawns {
             }
           },
           10L);
-      done.await();
+      done.await(); // violation: UnboundedWait
     }
   }
 
@@ -91,7 +91,7 @@ public final class Spawns {
   static int completionAndTake(CompletionService<Integer> completion) throws Exception {
     try (StringReader in = new StringReader("a")) {
       completion.submit(() -> in.read());
-      return completion.take().get();
+      return completion.take().get(); // violation: UnboundedWait
     }
   }
 

@@ -178,21 +178,25 @@ public final class Reads {
       walk(qualified.getReceiverExpression(), context, found);
       return;
     }
-    if (!(RESULT_HOSTS.contains(nameOf(call.getCalleeExpression())) && !call.getLambdaArguments().isEmpty())) {
+    if (!(named(RESULT_HOSTS, nameOf(call.getCalleeExpression())) && !call.getLambdaArguments().isEmpty())) {
       walk(qualified.getReceiverExpression(), context, found);
     }
     call(call, true, context, found);
   }
 
+  private static boolean named(Set<String> names, String name) {
+    return name != null && names.contains(name);
+  }
+
   private void call(KtCallExpression call, boolean qualified, Context context, List<Object> found) {
     String name = nameOf(call.getCalleeExpression());
-    boolean scoped = RESULT_HOSTS.contains(name) && !call.getLambdaArguments().isEmpty();
+    boolean scoped = named(RESULT_HOSTS, name) && !call.getLambdaArguments().isEmpty();
     List<? extends ValueArgument> arguments = call.getValueArguments();
     for (int index = 0; index < arguments.size(); index++) {
       KtExpression expression = arguments.get(index).getArgumentExpression();
-      boolean key = index == 0 && qualified && LOOKUPS.contains(name);
+      boolean key = index == 0 && qualified && named(LOOKUPS, name);
       if (expression instanceof KtLambdaExpression lambda) {
-        if (!KEEP_HOSTS.contains(name)) {
+        if (!named(KEEP_HOSTS, name)) {
           Map<String, Object> read = read(null, null, context);
           pending.add(read);
           pendingLambdas.add(lambda);

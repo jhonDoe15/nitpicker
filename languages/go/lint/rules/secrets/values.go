@@ -62,7 +62,8 @@ func isSecretName(name string) bool {
 	words := nameWords(name)
 	count := len(words)
 	marker := count > 1 && words[count-1] == "token" && slices.Contains(markerTokenWords, words[count-2])
-	return !marker && secretName.MatchString(joinedLetters(words))
+	masked := slices.ContainsFunc(words, func(word string) bool { return slices.Contains(maskedNameWords, word) })
+	return !(marker || masked) && secretName.MatchString(joinedLetters(words))
 }
 
 func isCandidate(text string) bool {

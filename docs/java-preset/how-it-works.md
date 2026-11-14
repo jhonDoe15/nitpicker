@@ -17,8 +17,8 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   not edited, and the base snapshot (a git worktree of the merge base) is analyzed with exactly the
   same tools and versions as head, even if the base predates any adoption. It registers
   `nitpickerJava` in every project that applies the `java` plugin. Every tool version is pinned
-  exactly in one map at the top of the file (PMD 7.7.0, SpotBugs 4.9.3 with the find-sec-bugs plugin 1.14.0, google-java-format 1.25.2,
-  JaCoCo 0.8.12, Checkstyle 10.21.1, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
+  exactly in one map at the top of the file (PMD 7.16.0, SpotBugs 4.9.8 with the find-sec-bugs plugin 1.14.0, google-java-format 1.35.0,
+  JaCoCo 0.8.16, PIT 1.22.1, Checkstyle 13.5.0, Error Prone 2.50.0, NullAway 0.14.2). Tools run from their own configurations (`nitpickerPmd` and so on), so they never
   touch the consumer's compile classpath. Nitpicker passes `-Pnitpicker.reportDir=<dir>`, a
   temporary directory outside the project, and the task writes only below it, one subdirectory per
   Gradle project (layout in [internals.md](../internals.md#java-report-directory)). A build script
@@ -94,7 +94,11 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2:
-  `tests-failed` when the test reports name failing tests (exit 1), `gradle-failure` otherwise.
+  `gradle-failure` (exit 2), or `internal-error` when nitpicker's own code fails (a `TypeError`,
+  `RangeError`, `ReferenceError` or `SyntaxError`, such as an unreadable report). Failing tests are
+  not a Gradle failure: when the test reports name them, the build runs again without the tests of
+  those projects, and each one gets a `tests-failed` tool error (exit 1 on the head, a red-base note
+  on the base) while the other checks keep their findings.
   A head that does not compile is not a tool failure: each compiler error (javac, Error Prone,
   kotlinc; on Maven the compiler plugin's `[ERROR] file:[line,column]` lines) becomes a
   `build/compile-error` finding at its file and line (exit 1), and one `compile-failed-skipped`

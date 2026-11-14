@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../../cli.mjs';
+import { runCli as nitpickerCli } from '../../../cli.mts';
 import { commit } from '../../../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
 import { useGradleFixtures, useMavenFixtures } from '../test-support/java-cli-harness.mjs';

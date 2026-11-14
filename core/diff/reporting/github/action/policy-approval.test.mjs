@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { parse } from 'yaml';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { APPROVAL_WORKFLOW, placeApprovalWorkflow } from '../../../../init/files/ci-workflow.mjs';
+import { APPROVAL_WORKFLOW, placeApprovalWorkflow } from '../../../../init/files/ci-workflow.mts';
 import { actionStep, executeStep, readAction } from './test-support/action-steps.mjs';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../..');

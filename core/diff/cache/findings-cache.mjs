@@ -44,8 +44,8 @@ export function createFindingsCache({
   directory,
   mergeBaseSha,
   projectRelativePath,
-  configOverrides = [],
-  headPolicy = {},
+  configOverrides,
+  headPolicy,
   codeFingerprint = nitpickerCodeFingerprint(),
 }) {
   const backend = store ?? createDirectoryStore(directory);
@@ -54,8 +54,8 @@ export function createFindingsCache({
       mergeBaseSha,
       projectRelativePath,
       analyzer,
-      configOverrides,
-      headPolicy,
+      configOverrides: configOverrides ?? [],
+      headPolicy: headPolicy ?? {},
       codeFingerprint,
     });
   }

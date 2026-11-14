@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultResolvedLayout } from '../../preset/layout.mjs';
-import { isIntegrationTest } from './integration-tests.mjs';
+import { isIntegrationTest } from './integration-tests.mts';
 
 describe('integration tests by path', () => {
   it('tells the e2e root, integration folders and integration file suffixes from unit tests', () => {

@@ -102,7 +102,11 @@ const LOOSENING_SETTINGS = [
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
   [/^protocols$/u, 'protocols-loosened', protocolsLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
-  [/^conventions\.typescript\.detachedWorkRunners$/u, 'detached-work-runner-added', listGrew],
+  [
+    /^conventions\.(?:typescript|kotlin)\.detachedWorkRunners$/u,
+    'detached-work-runner-added',
+    listGrew,
+  ],
 ];
 
 export function looseningKindOfSetting(change, scope) {

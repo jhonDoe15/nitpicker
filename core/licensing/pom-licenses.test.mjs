@@ -88,7 +88,7 @@ describe('licenses read from the POMs of the tool jars', () => {
     expect(javaJarLicenseViolations([jar])).toEqual([]);
   });
 
-  it('rejects GPL with the classpath exception, an unknown name and a POM without a license', () => {
+  it('allows GPL with the classpath exception, and rejects an unknown name and a POM without a license', () => {
     const root = repository();
     const gpl = 'GNU General Public License, version 2 (GPL2), with the classpath exception';
     const jars = [
@@ -98,7 +98,6 @@ describe('licenses read from the POMs of the tool jars', () => {
     ];
 
     expect(javaJarLicenseViolations(jars)).toEqual([
-      `org.example:dataflow:3: license "${gpl}" (GPL-2.0-only WITH Classpath-exception-2.0) is not on the allowlist`,
       'org.example:custom:1: license "Example Community License" (LicenseRef-Example-Community-License) is not on the allowlist',
       'org.example:bare:1: no license in its POM or a parent POM',
     ]);

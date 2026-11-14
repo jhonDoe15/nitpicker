@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { assertSupportedNode, requiredNodeRange, requireRepository } from './preconditions.mjs';
+import { assertSupportedNode, requiredNodeRange, requireRepository } from './preconditions.mts';
 
 const project = useProjects();
 
