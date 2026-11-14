@@ -1,11 +1,12 @@
 import { Linter } from 'eslint';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { rule } from './no-copied-constant.mjs';
 import { ruleModule } from '../../test-support/rule-tester.mts';
+import { writeProjectFiles } from '../../../test-support/temporary-projects.mts';
 
 const SOURCES = {
   'tsconfig.json': JSON.stringify({
@@ -56,10 +57,7 @@ let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-copied-constants-'));
-  for (const [file, text] of Object.entries(SOURCES)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+  writeProjectFiles(root, SOURCES);
 });
 
 afterAll(() => {
