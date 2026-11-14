@@ -1,13 +1,14 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import {
   diffOf,
   fromTool,
   kotlinE2eEnabled,
   kotlinSources,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mts';
+import { exceptionRoute } from '../test-support/views/kotlin-e2e-views.mts';
+import { assigned } from '../test-support/views/assigned.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset library branches and ports end to end', () => {
   const fixture = useKotlinCoverageProject();
@@ -17,10 +18,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset library branches and ports end
 
     expect(
       jacoco
-        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`)
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location?.line)}`)
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
-    expect(jacoco.find(({ location }) => location.line === 14).message).toBe(
+    expect(
+      assigned(
+        jacoco.find(({ location }) => location?.line === 14),
+        'line 14 finding',
+      ).message,
+    ).toBe(
       `Branch coverage is 50.00%; minimum is 95%. Not taken: a branch of this line or of isNullOrBlank, which is inlined from the standard library (pass null to take its null arm). Test it, or remove it if it can't happen. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Library.kt`, function: 'Library.present' })}`,
     );
   });

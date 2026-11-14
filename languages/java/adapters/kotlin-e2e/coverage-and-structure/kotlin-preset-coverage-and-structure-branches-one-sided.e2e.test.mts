@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
 import {
   diffOf,
   fromTool,
   kotlinE2eEnabled,
   kotlinSources,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import { useKotlinCoverageProject } from '../__tests__/kotlin-coverage-project.mts';
+import { exceptionRoute } from '../test-support/views/kotlin-e2e-views.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-sided branch coverage end to end', () => {
   const fixture = useKotlinCoverageProject();
