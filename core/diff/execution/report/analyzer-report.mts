@@ -1,4 +1,4 @@
-import { parseAnalyzerReportKeepingValid } from '../../comparison/schema/invalid-findings.mts';
+import { parseAnalyzerReportKeepingValid } from '../../comparison/schema/invalid-findings.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
@@ -18,6 +18,9 @@ type ChildOutput = {
 
 type ReportedTask = Pick<AnalyzerTask, 'name' | 'acceptedExitCodes' | 'reportedTools'>;
 
+const parseKeepingValid: (value: unknown, analyzerName: string) => AnalyzerReport =
+  parseAnalyzerReportKeepingValid;
+
 export function reportFromAnalyzerOutput(
   task: ReportedTask,
   { status, signal, stdoutText, stderrText }: ChildOutput,
@@ -36,7 +39,7 @@ export function reportFromAnalyzerOutput(
 
 function parsedReport(rawReport: unknown, analyzerName: string): AnalyzerReport {
   try {
-    return parseAnalyzerReportKeepingValid(rawReport, analyzerName);
+    return parseKeepingValid(rawReport, analyzerName);
   } catch (error) {
     if (error instanceof Error) {
       error.message = textOf(
