@@ -2,18 +2,54 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { conventionStyle } from '../../../../core/conventions/definitions.mjs';
-import { projectToolLayer, withProjectToolConfigs } from './project-tool-policy.mjs';
+import {
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
+} from '../head-policy.mjs';
+import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mjs';
+import {
+  projectToolLayer as untypedProjectToolLayer,
+  withProjectToolConfigs as untypedWithProjectToolConfigs,
+} from './project-tool-policy.mjs';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
-const roots = [];
+type Settings = {
+  precedence?: string[];
+  projectConfigError?: string;
+  projectConfigDigest?: string;
+  projectConfig?: { options?: unknown };
+};
+type ToolMap = { knip?: Settings; prettier?: Settings; 'dependency-cruiser'?: Settings };
+type HeadPolicy = { tools?: ToolMap };
+
+const resolveHeadPolicy: (config: { tools?: ToolMap }, projectRoot?: string) => HeadPolicy =
+  untypedResolveHeadPolicy;
+const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
+  untypedWithHeadCheckoutFacts;
+const conventionStyle: (
+  preset: string | undefined,
+  context: { config: Record<string, unknown>; projectRoot: string },
+) => {
+  unused?: unknown;
+  summary?: (conventions?: unknown) => string[];
+} = untypedConventionStyle;
+const withProjectToolConfigs: (
+  tools: ToolMap | undefined,
+  projectRoot: string,
+  options?: { disabled?: string[]; timeout?: number },
+) => ToolMap | undefined = untypedWithProjectToolConfigs;
+const projectToolLayer: (tool: string, settings: Settings | undefined) => unknown =
+  untypedProjectToolLayer;
+
+const ANY_TEXT: unknown = expect.any(String);
+
+const roots: string[] = [];
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function project(files) {
+function project(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-tools-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -26,19 +62,19 @@ function project(files) {
 const OPTED_IN = { knip: { precedence: ['project', 'nitpicker'] } };
 const ONLY_DATA = 'only JSON values and regular expressions can be used';
 
-function unread(file, reason) {
+function unread(file: string, reason: string) {
   return `Could not read the project's knip config (${file}): ${reason}`;
 }
 
-function failure(root, options) {
-  const settings = withProjectToolConfigs(OPTED_IN, root, options).knip;
+function failure(root: string, options?: { timeout?: number }) {
+  const settings = withProjectToolConfigs(OPTED_IN, root, options)?.knip;
   expect(settings).toEqual({
     precedence: ['project', 'nitpicker'],
-    projectConfigError: settings.projectConfigError,
-    projectConfigDigest: expect.any(String),
+    projectConfigError: settings?.projectConfigError,
+    projectConfigDigest: ANY_TEXT,
   });
-  expect(() => projectToolLayer('knip', settings)).toThrow(settings.projectConfigError);
-  return settings.projectConfigError;
+  expect(() => projectToolLayer('knip', settings)).toThrow(settings?.projectConfigError);
+  return settings?.projectConfigError;
 }
 
 describe('project tool configs in the head policy', () => {
@@ -56,15 +92,15 @@ describe('project tool configs in the head policy', () => {
       'knip.jsonc': '// house rules\n{ "ignore": ["a/**"], "compilers": { "css": true }, }',
       'package.json': '{ "knip": { "ignore": ["b/**"], "entry": ["x.ts"] }, }',
     });
-    const first = withProjectToolConfigs(OPTED_IN, root).knip;
+    const first = withProjectToolConfigs(OPTED_IN, root)?.knip;
     expect(first).toEqual({
       precedence: ['project', 'nitpicker'],
       projectConfig: { ignore: ['a/**'], entry: ['x.ts'] },
-      projectConfigDigest: expect.any(String),
+      projectConfigDigest: ANY_TEXT,
     });
     writeFileSync(path.join(root, 'knip.jsonc'), '{ "ignore": ["c/**"] }');
-    const second = withProjectToolConfigs(OPTED_IN, root).knip;
-    expect(second.projectConfigDigest).not.toBe(first.projectConfigDigest);
+    const second = withProjectToolConfigs(OPTED_IN, root)?.knip;
+    expect(second?.projectConfigDigest).not.toBe(first?.projectConfigDigest);
     expect(projectToolLayer('knip', second)).toEqual({
       precedence: ['project', 'nitpicker'],
       config: { ignore: ['c/**'], entry: ['x.ts'] },
@@ -81,7 +117,7 @@ describe('project tool configs in the head policy', () => {
         'export default { ignore, workspaces: { app: { compilers: { css: () => "" } } } };',
       ].join('\n'),
     });
-    expect(withProjectToolConfigs(OPTED_IN, root).knip.projectConfig).toEqual({
+    expect(withProjectToolConfigs(OPTED_IN, root)?.knip?.projectConfig).toEqual({
       ignore: ['unset', 'kept'],
       workspaces: { app: {} },
     });
@@ -92,7 +128,7 @@ describe('project tool configs in the head policy', () => {
       '"tools.knip.precedence" lists "project" but a knip config (knip.json, knip.jsonc, .knip.json, ' +
         '.knip.jsonc, knip.ts, knip.js, knip.config.ts, knip.config.js, or the "knip" key in ' +
         'package.json) is missing: create it, or remove "project" from tools.knip.precedence. ' +
-        linkSentence('projectToolConfigMissing'),
+        String(linkSentence('projectToolConfigMissing')),
     );
     expect(failure(project({ 'knip.json': '[1]' }))).toBe(
       unread('knip.json', 'knip.json must hold an object'),
@@ -145,9 +181,9 @@ describe('project tool configs in the head policy', () => {
     const root = project({ 'knip.json': '{ "ignore": ["a/**"] }' });
     const head = resolveHeadPolicy({ tools: OPTED_IN }, root);
     const firstOnly = { knip: { precedence: ['nitpicker', 'project'] } };
-    expect(withHeadCheckoutFacts(resolveHeadPolicy({ tools: firstOnly }), head).tools.knip).toEqual(
-      { ...head.tools.knip, precedence: ['nitpicker', 'project'] },
-    );
+    expect(
+      withHeadCheckoutFacts(resolveHeadPolicy({ tools: firstOnly }), head).tools?.knip,
+    ).toEqual({ ...head.tools?.knip, precedence: ['nitpicker', 'project'] });
     const plain = { knip: { precedence: ['nitpicker'] } };
     expect(withHeadCheckoutFacts(resolveHeadPolicy({ tools: plain }), head).tools).toEqual(plain);
     expect(withHeadCheckoutFacts(resolveHeadPolicy({}), head).tools).toBeUndefined();
@@ -163,8 +199,8 @@ describe('project tool configs in the head policy', () => {
       'knip.jsonc': '{}',
       'package.json': '{ "knip": {} }',
     });
-    const summary = (config, preset) =>
-      conventionStyle(preset, { config, projectRoot: root }).summary();
+    const summary = (config: Record<string, unknown>, preset?: string) =>
+      conventionStyle(preset, { config, projectRoot: root }).summary?.();
     const notice =
       'Ignoring knip.jsonc and the "knip" key in package.json; ' +
       'opt in with "tools": { "knip": { "precedence": ["project", "nitpicker"] } }';
@@ -177,23 +213,23 @@ describe('project tool configs in the head policy', () => {
     rmSync(path.join(root, '.dependency-cruiser.cjs'));
     expect(summary({ preset: 'javascript' }, 'javascript')).toEqual([notice]);
     expect(summary({ tools: OPTED_IN })).toEqual([]);
-    expect(conventionStyle(undefined, { config: {}, projectRoot: project({}) }).summary()).toEqual(
-      [],
-    );
+    expect(
+      conventionStyle(undefined, { config: {}, projectRoot: project({}) }).summary?.(),
+    ).toEqual([]);
   });
 });
 
 describe('dependency-cruiser configs in the head policy', () => {
   const tools = { 'dependency-cruiser': { precedence: ['project', 'nitpicker'] } };
-  const settingsOf = (root) => withProjectToolConfigs(tools, root)['dependency-cruiser'];
-  const unreadCruiser = (file, reason) =>
+  const settingsOf = (root: string) => withProjectToolConfigs(tools, root)?.['dependency-cruiser'];
+  const unreadCruiser = (file: string, reason: string) =>
     `Could not read the project's dependency-cruiser config (${file}): ${reason}`;
 
   it('reads JSON in process, hands JSON5 and extends to dependency-cruiser, and keeps patterns', () => {
     const root = project({
       '.dependency-cruiser.json': '{ forbidden: [{ name: "x", from: {}, to: {} }], // json5\n}',
     });
-    expect(settingsOf(root).projectConfig).toEqual({
+    expect(settingsOf(root)?.projectConfig).toEqual({
       forbidden: [{ name: 'x', from: {}, to: {} }],
     });
     const extending = project({
@@ -201,14 +237,14 @@ describe('dependency-cruiser configs in the head policy', () => {
       '.dependency-cruiser.json':
         '{ "extends": "./base.json", "forbidden": [{ "name": "y", "from": {}, "to": {} }] }',
     });
-    expect(settingsOf(extending).projectConfig).toEqual({
+    expect(settingsOf(extending)?.projectConfig).toEqual({
       forbidden: [{ name: 'y', from: {}, to: {} }],
       options: { exclude: '^gen' },
     });
     const script = project({
       '.dependency-cruiser.cjs': 'module.exports = { options: { exclude: { path: /^gen/u } } };',
     });
-    expect(settingsOf(script).projectConfig).toEqual({
+    expect(settingsOf(script)?.projectConfig).toEqual({
       options: { exclude: { path: { $nitpickerRegExp: ['^gen', 'u'] } } },
     });
   });
@@ -223,7 +259,7 @@ describe('dependency-cruiser configs in the head policy', () => {
       '.dependency-cruiser.cjs': `module.exports = ${JSON.stringify({ options })};`,
     });
     const roots = [json, script];
-    expect(roots.map((root) => settingsOf(root).projectConfig.options)).toEqual(
+    expect(roots.map((root) => settingsOf(root)?.projectConfig?.options)).toEqual(
       roots.map((root) => ({
         webpackConfig: { fileName: path.join(root, 'webpack.config.js'), env: 'production' },
         babelConfig: { fileName: path.join(root, 'config/babel.json') },
@@ -237,7 +273,7 @@ describe('dependency-cruiser configs in the head policy', () => {
     const viaExtends = project({
       '.dependency-cruiser.json': JSON.stringify({ extends: shared }),
     });
-    expect(settingsOf(viaExtends).projectConfigError).toBe(
+    expect(settingsOf(viaExtends)?.projectConfigError).toBe(
       unreadCruiser(
         '.dependency-cruiser.json',
         `.dependency-cruiser.json could not be loaded: "extends": "${shared}" in .dependency-cruiser.json is outside the project`,
@@ -246,7 +282,7 @@ describe('dependency-cruiser configs in the head policy', () => {
     const viaRequire = project({
       '.dependency-cruiser.cjs': `module.exports = require(${JSON.stringify(shared)});`,
     });
-    expect(settingsOf(viaRequire).projectConfigError).toBe(
+    expect(settingsOf(viaRequire)?.projectConfigError).toBe(
       unreadCruiser(
         '.dependency-cruiser.cjs',
         `.dependency-cruiser.cjs could not be loaded: ${shared} in .dependency-cruiser.cjs is outside the project`,

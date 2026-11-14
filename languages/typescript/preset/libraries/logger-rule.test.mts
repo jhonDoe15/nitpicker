@@ -1,26 +1,11 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
-import tseslint from 'typescript-eslint';
 import { structuredCatchLoggingRule } from '../eslint-plugin/rules/errors/structured-catch-logging.mjs';
-
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+import { tester } from './test-support/rule-tester.mts';
 
 const VALUE_MESSAGE = `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string.`;
 const EITHER_MESSAGE = `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error).`;
 const ERR_MESSAGE = 'Log a caught value as logger.<level>({ err: error, ...context }, message).';
 
-function inCatch(call) {
+function inCatch(call: string) {
   return `try { run(); } catch (e) { ${call}; }`;
 }
 

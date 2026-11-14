@@ -2,10 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readConfigObject } from './config-module.mjs';
+import { readConfigObject as untypedReadConfigObject } from './config-module.mjs';
 import { readStrykerProjectConfig, strykerProjectFile } from './stryker-project-config.mjs';
 
-const roots = [];
+const readConfigObject: (projectRoot: string, name: string, timeoutMs?: number) => unknown =
+  untypedReadConfigObject;
+
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -13,7 +16,7 @@ afterEach(() => {
   }
 });
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-module-'));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {
@@ -95,15 +98,15 @@ describe('loading a project config module', () => {
       'stryker.config.mjs':
         'export default { concurrency: process.env.GITHUB_STEP_SUMMARY ? 2 : 1 };',
     });
-    const previous = process.env.GITHUB_STEP_SUMMARY;
-    process.env.GITHUB_STEP_SUMMARY = '/tmp/summary.md';
+    const previous = process.env['GITHUB_STEP_SUMMARY'];
+    process.env['GITHUB_STEP_SUMMARY'] = '/tmp/summary.md';
     try {
       expect(readConfigObject(root, 'stryker.config.mjs')).toEqual({ concurrency: 1 });
     } finally {
       if (previous === undefined) {
-        delete process.env.GITHUB_STEP_SUMMARY;
+        delete process.env['GITHUB_STEP_SUMMARY'];
       } else {
-        process.env.GITHUB_STEP_SUMMARY = previous;
+        process.env['GITHUB_STEP_SUMMARY'] = previous;
       }
     }
   });

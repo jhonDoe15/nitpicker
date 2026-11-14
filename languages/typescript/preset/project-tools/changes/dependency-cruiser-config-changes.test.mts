@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { dependencyCruiserConfigChanges } from './dependency-cruiser-config-changes.mjs';
+import { dependencyCruiserConfigChanges as untypedDependencyCruiserConfigChanges } from './dependency-cruiser-config-changes.mjs';
+
+type ChangeInputs = {
+  base: unknown;
+  head: unknown;
+  precedence: string[];
+  label: string;
+  files: string[];
+};
+
+const dependencyCruiserConfigChanges: (inputs: ChangeInputs) => unknown =
+  untypedDependencyCruiserConfigChanges;
 
 const FILES = ['.dependency-cruiser.json'];
 const LABEL = 'dependency-cruiser .dependency-cruiser.json';
 const RULE = { name: 'no-lib', severity: 'error', from: { path: '^src' }, to: { path: '^lib' } };
 const UNNAMED = { severity: 'error', from: { path: '^src' }, to: { path: '^vendor' } };
 
-function changes(base, head) {
+function changes(base: unknown, head: unknown) {
   return dependencyCruiserConfigChanges({
     base,
     head,
@@ -16,15 +27,15 @@ function changes(base, head) {
   });
 }
 
-function loosened(text) {
+function loosened(text: string) {
   return { loosened: { text: `${LABEL} ${text}`, kind: 'tool-config', files: FILES } };
 }
 
-function changed(text) {
+function changed(text: string) {
   return { changed: `${LABEL} ${text}` };
 }
 
-const shown = (rules) => JSON.stringify(rules);
+const shown = (rules: unknown) => JSON.stringify(rules);
 
 describe('what an edit of the dependency-cruiser config changes', () => {
   it.each([

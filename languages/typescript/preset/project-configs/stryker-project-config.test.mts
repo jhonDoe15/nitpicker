@@ -2,17 +2,24 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
 import { normalizeMutation } from '../../adapters/quality-areas/reporting/tests.mts';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { strykerIgnoredNotices } from './ignored-notices.mjs';
+import { withoutProjectIgnoredMutants } from '../../adapters/quality-areas/typed/mutation.mts';
+import { strykerIgnoredNotices as untypedStrykerIgnoredNotices } from './ignored-notices.mjs';
+import { readStrykerProjectConfig as untypedReadStrykerProjectConfig } from './stryker-project-config.mjs';
 import {
   layeredStrykerConfig,
-  readStrykerProjectConfig,
-  withoutProjectIgnoredMutants,
-} from './stryker-project-config.mjs';
+  resolveHeadPolicy,
+  validateConfig,
+  withHeadCheckoutFacts,
+} from './test-support/policy-views.mts';
 
-const roots = [];
+const readStrykerProjectConfig: (projectRoot: string) => unknown = untypedReadStrykerProjectConfig;
+const strykerIgnoredNotices: (options: {
+  config: Record<string, unknown>;
+  projectRoot: string;
+}) => unknown = untypedStrykerIgnoredNotices;
+
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -20,7 +27,7 @@ afterEach(() => {
   }
 });
 
-function projectWith(files) {
+function projectWith(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-stryker-config-'));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {
@@ -60,12 +67,12 @@ const PROJECT = {
   ignorePatterns: ['fixtures'],
 };
 
-function settingsFor(precedence, project = PROJECT) {
+function settingsFor(precedence: string[], project: Record<string, unknown> = PROJECT) {
   const root = projectWith({ 'stryker.config.json': JSON.stringify(project) });
   return resolveHeadPolicy({ tools: { stryker: { precedence } } }, root).tools.stryker;
 }
 
-const MALFORMED_CONFIGS = [
+const MALFORMED_CONFIGS: [Record<string, string>, string][] = [
   [{}, '"tools.stryker.precedence" lists "project" but a Stryker config (stryker.conf.json'],
   [{ 'stryker.config.json': '{broken' }, 'stryker.config.json is not valid JSON'],
   [{ 'stryker.config.json': '[]' }, 'stryker.config.json must contain a JSON object'],
@@ -113,7 +120,7 @@ describe('the project Stryker config', () => {
   it('never lets the project lower a timeout below what nitpicker or Stryker uses', () => {
     const lowered = { timeoutMS: 1, timeoutFactor: 0.1, dryRunTimeoutMinutes: 0 };
     const raised = { timeoutMS: 20_000, timeoutFactor: 3, dryRunTimeoutMinutes: 30 };
-    const layered = (own, project) =>
+    const layered = (own: Record<string, unknown>, project: Record<string, unknown>) =>
       layeredStrykerConfig(own, settingsFor(['project', 'nitpicker'], project));
 
     expect(layered({ timeoutMS: 10_000, timeoutFactor: 2 }, lowered)).toEqual({
@@ -227,7 +234,7 @@ describe('the project Stryker config', () => {
   });
 });
 
-function strykerMutant(line, mutatorName, excluded, comment) {
+function strykerMutant(line: number, mutatorName: string, excluded: string[], comment?: string) {
   const reason =
     comment ??
     (excluded.includes(mutatorName)
@@ -243,7 +250,7 @@ function strykerMutant(line, mutatorName, excluded, comment) {
   };
 }
 
-function mutationFindings(precedence) {
+function mutationFindings(precedence: string[]) {
   const settings = settingsFor(precedence, { mutator: { excludedMutations: ['StringLiteral'] } });
   const applied = layeredStrykerConfig({ plugins: [] }, settings);
   const excluded = applied.mutator?.excludedMutations ?? [];
@@ -258,7 +265,7 @@ function mutationFindings(precedence) {
     .filter(({ classification }) => classification === 'enforceable')
     .map(
       ({ rule, identity, location }) =>
-        `${String(location.line)} ${rule} ${identity.split('|')[0]}`,
+        `${String(location?.line)} ${rule} ${String(identity.split('|')[0])}`,
     )
     .toSorted();
 }
@@ -281,11 +288,11 @@ describe('mutants the project config excludes', () => {
       statusReason: 'Static mutant (and "ignoreStatic" was enabled)',
     };
     const report = { files: { 'src/a.ts': { mutants: [staticMutant] } } };
-    const kept = (project) =>
+    const kept = (project: Record<string, unknown>) =>
       withoutProjectIgnoredMutants(
         report,
         layeredStrykerConfig({}, settingsFor(['project'], project)),
-      ).files['src/a.ts'].mutants.length;
+      ).files?.['src/a.ts']?.mutants?.length;
 
     expect(kept({ ignoreStatic: true })).toBe(0);
     expect(kept({})).toBe(1);
@@ -317,7 +324,8 @@ describe('the Stryker precedence setting', () => {
 
   it('prints a notice for an ignored Stryker config while mutation testing runs', () => {
     const root = projectWith({ '.stryker.config.mjs': 'export default {};' });
-    const notices = (config) => strykerIgnoredNotices({ config, projectRoot: root });
+    const notices = (config: Record<string, unknown>) =>
+      strykerIgnoredNotices({ config, projectRoot: root });
 
     expect(notices({})).toEqual([
       'Ignoring .stryker.config.mjs; opt in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }',
