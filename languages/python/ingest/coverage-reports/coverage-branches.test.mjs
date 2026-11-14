@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { parseChangedLines } from '../../../../core/diff/git/patches/changed-lines.mjs';
-import { isStrictRule } from '../../../typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../../typescript/preset/strict-rules.mts';
 import { ingestCoverageBranches } from './coverage-branches.mjs';
 
 const fixture = (name) =>

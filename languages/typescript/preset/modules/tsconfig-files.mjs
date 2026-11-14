@@ -76,7 +76,8 @@ function referencedConfigs(projectRoot, config) {
   );
 }
 
-export function projectTsconfigs(projectRoot, files, isHidden = () => false) {
+export function projectTsconfigs(projectRoot, files, hiddenFile) {
+  const isHidden = hiddenFile ?? (() => false);
   const found = new Set(
     files.filter(
       (file) => PROJECT_CONFIG.test(file) && !DEPENDENCY_FOLDER.test(file) && !isHidden(file),

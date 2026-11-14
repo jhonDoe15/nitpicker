@@ -20,11 +20,12 @@
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
-      "languages/typescript/preset/defaults/crap.config.mjs",
-      "languages/typescript/preset/defaults/stryker.config.mjs",
-      "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
-      "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
-      "languages/typescript/preset/eslint-config/policies/module-effects.config.mjs",
+      "languages/typescript/preset/*/report.mts",
+      "languages/typescript/preset/defaults/crap.config.mts",
+      "languages/typescript/preset/defaults/stryker.config.mts",
+      "languages/typescript/preset/eslint-config/policies/coding-standards.config.mts",
+      "languages/typescript/preset/eslint-config/policies/errors.config.mts",
+      "languages/typescript/preset/eslint-config/policies/module-effects.config.mts",
       "core/bin.mts",
       "core/cli.mts",
       "core/diff/sharding/aggregate-shards.mts",
@@ -38,9 +39,10 @@
       "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
-      "languages/typescript/preset/architecture/public-contract-usage.mjs",
-      "languages/typescript/preset/architecture/runtime-dependency-boundaries.mjs",
-      "languages/typescript/preset/coding-standards/check.mjs",
+      "languages/typescript/preset/architecture/public-contract-usage.mts",
+      "languages/typescript/preset/architecture/runtime-dependency-boundaries.mts",
+      "languages/typescript/preset/coding-standards/check.mts",
+      "languages/typescript/preset/project-tools/config-loader.mts",
       "languages/java/adapters/gradle-wrapper/test-support/build-tree.mjs"
     ]
   },
@@ -72,7 +74,7 @@
     },
     {
       "rule": "nitpicker/no-node-process-per-test",
-      "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mjs"],
+      "paths": ["languages/typescript/preset/duplicates/duplicates-policy.test.mts"],
       "reason": "jscpd ships only as a native executable behind a launcher script with no importable API, and the file checks its exit status and report for a missing config, so the process boundary is the thing under test."
     },
     {
@@ -116,8 +118,8 @@
       "rule": "nitpicker/no-raised-test-timeout",
       "paths": [
         "languages/javascript/preset/clean-project/js-clean.test.mjs",
-        "languages/typescript/preset/clean-projects/react-project.test.mjs",
-        "languages/typescript/preset/clean-projects/strict-clean.test.mjs"
+        "languages/typescript/preset/clean-projects/react-project.test.mts",
+        "languages/typescript/preset/clean-projects/strict-clean.test.mts"
       ],
       "reason": "The tests that keep a raised timeout run real nitpicker analyzers (ESLint, TypeScript, Prettier, coverage and Stryker mutation for the full runs) over a copy of a fixture project. Measured on a four-CPU machine while other test suites were running, they take 14 to 52 seconds each, and the full `--all` runs 36 to 79 seconds, so the 30-second default cannot hold them; the tests in these files that take under about ten seconds (a single analyzer or a single edited line) use the default."
     },

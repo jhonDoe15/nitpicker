@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
-import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mts';
 import { compareFindings } from '../comparison/compare.mjs';
 import { withEditedLineReason } from '../comparison/positions/touched-lines.mjs';
 import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
