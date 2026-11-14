@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
+import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 
 const roots = [];
 

@@ -8,17 +8,26 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand } from '../../../maven/maven-command.mjs';
-import { lintFingerprint } from '../lint-baseline.mjs';
+import { lintFingerprint } from '../lint-baseline.mts';
 import { runJavacLint } from '../javac-lint-runner.mts';
+import { type LintCompiler, type LintPlan } from '../../typed/lint-plan.mts';
 
-export const JAVAC = javaCommand('javac');
-const NO_SETTINGS = { release: '17', source: undefined, target: undefined, args: [] };
+type PlanOptions = {
+  readonly basedir?: string;
+  readonly compiler?: Partial<LintCompiler>;
+  readonly classpath?: readonly string[];
+} & Readonly<Record<string, unknown>>;
+type Warning = { readonly line: number; readonly source: string; readonly caret: string };
+
+export const JAVAC = textOf(javaCommand('javac'));
+const NO_SETTINGS: LintCompiler = { release: '17', source: undefined, target: undefined, args: [] };
 
 export function createTemporaries() {
-  const roots = [];
+  const roots: string[] = [];
   return {
     directory() {
       const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javac-lint-'));
@@ -33,7 +42,7 @@ export function createTemporaries() {
   };
 }
 
-function inside(root, name) {
+function inside(root: string, name: string): string {
   const target = path.resolve(root, name);
   if (!target.startsWith(root + path.sep)) {
     throw new Error(`${name} is outside ${root}`);
@@ -41,7 +50,7 @@ function inside(root, name) {
   return target;
 }
 
-export function writeFiles(root, files) {
+export function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
   for (const [name, text] of Object.entries(files)) {
     const target = inside(root, name);
     mkdirSync(path.dirname(target), { recursive: true });
@@ -49,7 +58,7 @@ export function writeFiles(root, files) {
   }
 }
 
-function javaFilesUnder(directory) {
+function javaFilesUnder(directory: string): string[] {
   return existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
@@ -57,7 +66,10 @@ function javaFilesUnder(directory) {
     : [];
 }
 
-export function javaPlan(root, { basedir = root, compiler = {}, classpath = [], ...rest } = {}) {
+export function javaPlan(
+  root: string,
+  { basedir = root, compiler = {}, classpath = [], ...rest }: PlanOptions = {},
+): LintPlan {
   return {
     root,
     basedir,
@@ -75,22 +87,22 @@ export function javaPlan(root, { basedir = root, compiler = {}, classpath = [], 
   };
 }
 
-export function compileClasses(plan) {
+export function compileClasses(plan: LintPlan): void {
   execFileSync(JAVAC, ['-d', plan.classDirectory, ...plan.sources], { timeout: 10_000 });
 }
 
-export function baseCache(plan, lines) {
+export function baseCache(plan: LintPlan, lines: readonly string[]): void {
   writeFiles(plan.cacheDirectory, {
     'javac-lint.txt': [...lines, ''].join('\n'),
     'javac-lint-fingerprint.txt': lintFingerprint(plan),
   });
 }
 
-export function warning(file, line) {
+export function warning(file: string, line: number): string {
   return `${file}:${String(line)}: warning: [rawtypes] found raw type: List`;
 }
 
-export function rawTypeWarning(file, { line, source, caret }) {
+export function rawTypeWarning(file: string, { line, source, caret }: Warning): string[] {
   return [
     warning(file, line),
     source,
@@ -101,15 +113,18 @@ export function rawTypeWarning(file, { line, source, caret }) {
   ];
 }
 
-export function namesWarning(file, line = 3) {
+export function namesWarning(file: string, line = 3): string[] {
   return rawTypeWarning(file, { line, source: '  java.util.List names;', caret: '           ^' });
 }
 
-function reportLines(file) {
+function reportLines(file: string): string[] | undefined {
   return existsSync(file) ? readFileSync(file, 'utf8').split('\n') : undefined;
 }
 
-export function lint(plan, baselineRoot) {
+export function lint(
+  plan: LintPlan,
+  baselineRoot?: string,
+): { report: string[] | undefined; failure: string[] | undefined } {
   const reportDir = path.join(plan.basedir, 'target/nitpicker');
   mkdirSync(reportDir, { recursive: true });
   runJavacLint(plan, { reportDir, baselineRoot });
@@ -119,7 +134,7 @@ export function lint(plan, baselineRoot) {
   };
 }
 
-export function warningHeaders(report) {
+export function warningHeaders(report: readonly string[]): string[] {
   return report.filter((line) => line.includes(': warning: ['));
 }
 

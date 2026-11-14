@@ -3,30 +3,51 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { classSummaries } from '../classes/class-summary.mjs';
-import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
-import { lombokPath } from './lint-arguments.mjs';
-import { inheritedLombokConfigs, lombokConfigs, posix } from './lint-staging.mjs';
+import { languageLevelOf, lintCompatibleOf, lintCompilerOf } from '../typed/javac-views.mts';
+import { lombokPath } from './lint-arguments.mts';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { type LintPlan } from '../typed/lint-plan.mts';
+import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
+import { posixOf as posix } from '../typed/javac-views.mts';
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
 const WARNING_FILE = /^(.+\.java):\d+: warning: \[/u;
-const NO_REUSE = { unchanged: new Set(), kept: '' };
-function javacVersion(javac, spawn = spawnSync) {
-  const result = spawn(javac, ['-version'], { encoding: 'utf8' });
-  const lines = [result.stdout, result.stderr].join('').split(/\r?\n/u);
+const NO_REUSE: Reuse = { unchanged: new Set(), kept: '' };
+
+type Summary = {
+  readonly name: string;
+  readonly sourceFile: string | undefined;
+  readonly superName: string | undefined;
+  readonly interfaces: readonly string[];
+  readonly references: ReadonlySet<string>;
+};
+type Reuse = { readonly unchanged: ReadonlySet<string>; readonly kept: string };
+type ReuseRequest = {
+  readonly baselineRoot: string | undefined;
+  readonly sources: readonly string[];
+  readonly fingerprint: string;
+  readonly reportPath: (file: string) => string;
+};
+const readSummaries: (directories: readonly string[]) => Summary[] = classSummaries;
+
+function javacVersion(javac: string, spawn: unknown = spawnSync): string {
+  const result = callUntyped(spawn, javac, ['-version'], { encoding: 'utf8' });
+  const lines = [fieldOf(result, 'stdout'), fieldOf(result, 'stderr')].join('').split(/\r?\n/u);
   return lines.filter((line) => line.startsWith('javac')).join('\n');
 }
 
-function insideRoot(root, entry) {
+function insideRoot(root: string, entry: string): boolean {
   const relative = path.relative(root, entry);
   return !(relative.startsWith('..') || path.isAbsolute(relative));
 }
 
-function fileDigest(file) {
+function fileDigest(file: string): string {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
-function directoryDigest(directory) {
+function directoryDigest(directory: string): string {
   const files = readdirSync(directory, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.join(entry.parentPath, entry.name))
@@ -40,7 +61,7 @@ function directoryDigest(directory) {
     .digest('hex');
 }
 
-function entryDigest(root, entry) {
+function entryDigest(root: string, entry: string): string {
   const name = insideRoot(root, entry) ? posix(path.relative(root, entry)) : path.basename(entry);
   if (!existsSync(entry)) {
     return `${name} missing`;
@@ -48,17 +69,19 @@ function entryDigest(root, entry) {
   return `${name} ${statSync(entry).isDirectory() ? directoryDigest(entry) : fileDigest(entry)}`;
 }
 
-function digests(root, entries) {
+function digests(root: string, entries: readonly string[]): string[] {
   return entries.map((entry) => entryDigest(root, entry)).sort();
 }
 
-export function lintFingerprint(plan) {
+export function lintFingerprint(plan: LintPlan): string {
   const sources = plan.sources.filter((source) => insideRoot(plan.root, source));
   const inputs = {
     javac: javacVersion(plan.javac, plan.spawn),
-    level: languageLevel(lintCompiler(plan)),
+    level: languageLevelOf(lintCompilerOf(plan)),
     encoding: plan.compiler.encoding ?? 'UTF-8',
-    args: lintCompatible(lintCompiler(plan).args).map((arg) => arg.replaceAll(plan.root, '<root>')),
+    args: lintCompatibleOf(lintCompilerOf(plan).args).map((arg) =>
+      arg.replaceAll(plan.root, '<root>'),
+    ),
     classpath: digests(plan.root, plan.classpath),
     lombok: digests(plan.root, lombokPath(plan)),
     lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),
@@ -67,13 +90,13 @@ export function lintFingerprint(plan) {
   return createHash('sha256').update(JSON.stringify(inputs)).digest('hex');
 }
 
-function ownerKey({ name, sourceFile }) {
+function ownerKey({ name, sourceFile }: Summary): string {
   const slash = name.lastIndexOf('/');
   const file = sourceFile ?? `${name.slice(slash + 1).split('$')[0]}.java`;
   return slash < 0 ? file : `${name.slice(0, slash)}/${file}`;
 }
 
-function ownedBy(summary, files) {
+function ownedBy(summary: Summary, files: readonly string[]): string[] {
   const key = ownerKey(summary);
   return files.filter((file) => {
     const name = posix(file);
@@ -81,7 +104,7 @@ function ownedBy(summary, files) {
   });
 }
 
-function withSubtypes(summaries, names) {
+function withSubtypes(summaries: readonly Summary[], names: ReadonlySet<string>): Set<string> {
   const marked = new Set(names);
   const pending = [...marked];
   for (const name of pending) {
@@ -97,11 +120,17 @@ function withSubtypes(summaries, names) {
   return marked;
 }
 
-function dependentSources(classDirectory, { changed, unchanged }) {
+function dependentSources(
+  classDirectory: string,
+  {
+    changed,
+    unchanged,
+  }: { readonly changed: readonly string[]; readonly unchanged: readonly string[] },
+): Set<string> {
   if (changed.length === 0 || unchanged.length === 0) {
     return new Set();
   }
-  const summaries = classSummaries([classDirectory]);
+  const summaries = readSummaries([classDirectory]);
   const changedNames = withSubtypes(
     summaries,
     new Set(
@@ -117,7 +146,7 @@ function dependentSources(classDirectory, { changed, unchanged }) {
   );
 }
 
-function warningsOf(report, files) {
+function warningsOf(report: string, files: ReadonlySet<string | undefined>): string {
   return readFileSync(report, 'utf8')
     .split(/\r?\n/u)
     .filter((line) => files.has(WARNING_FILE.exec(line)?.[1]))
@@ -125,7 +154,7 @@ function warningsOf(report, files) {
     .join('');
 }
 
-function sameBytes(before, after) {
+function sameBytes(before: string, after: string): boolean {
   return (
     existsSync(before) &&
     statSync(before).isFile() &&
@@ -133,12 +162,16 @@ function sameBytes(before, after) {
   );
 }
 
-export function reusableWarnings(plan, { baselineRoot, sources, fingerprint, reportPath }) {
+export function reusableWarnings(
+  plan: LintPlan,
+  { baselineRoot, sources, fingerprint, reportPath }: ReuseRequest,
+): Reuse {
   if (baselineRoot === undefined) {
     return NO_REUSE;
   }
-  function inBaseline(file) {
-    return path.join(baselineRoot, path.relative(plan.root, file));
+  const baseline: string = baselineRoot;
+  function inBaseline(file: string): string {
+    return path.join(baseline, path.relative(plan.root, file));
   }
   const cache = inBaseline(path.join(plan.cacheDirectory, LINT_CACHE));
   const stored = inBaseline(path.join(plan.cacheDirectory, LINT_FINGERPRINT));

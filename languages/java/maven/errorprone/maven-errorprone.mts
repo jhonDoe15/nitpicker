@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { isJavaModule } from '../../builds/lint/lint-arguments.mjs';
+import { isJavaModule } from '../../builds/lint/lint-arguments.mts';
 import { runJava } from '../maven-command.mjs';
 import { javaFiles } from '../maven-lint.mjs';
 import { errorProneJava } from './maven-jdk.mjs';

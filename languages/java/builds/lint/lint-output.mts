@@ -12,81 +12,94 @@ const LOMBOK_IMPORT = /^\s*import\s+(lombok(?:\.\w+)*)\.(\w+|\*)\s*;/gmu;
 const OTHER_IMPORT = /^\s*import\s+(?!lombok\.)[\w.]+\.(\w+)\s*;/gmu;
 const LOMBOK_PACKAGE = 'lombok.';
 
-function blocks(log) {
-  const found = [];
+type Imports = {
+  readonly explicit: ReadonlySet<string>;
+  readonly wildcard: boolean;
+  readonly other: ReadonlySet<string>;
+};
+type ImportsOf = (file: string) => Imports;
+type Relocation = { readonly staged: string; readonly from: string; readonly to: string };
+
+function blocks(log: string): string[][] {
+  const found: string[][] = [];
   for (const line of log.split(/(?<=\n)/u)) {
     const isStart = WARNING.test(line) || BLOCK_END.test(line.trimEnd());
     if (isStart || found.length === 0) {
       found.push([line]);
     } else {
-      found.at(-1).push(line);
+      found.at(-1)?.push(line);
     }
   }
   return found;
 }
 
-function importedNames(text) {
-  const lombok = [...text.matchAll(LOMBOK_IMPORT)].map(([, , name]) => name);
-  const other = new Set([...text.matchAll(OTHER_IMPORT)].map(([, name]) => name));
+function importedNames(text: string): Imports {
+  const lombok = [...text.matchAll(LOMBOK_IMPORT)].map(([, , name = '']) => name);
+  const other = new Set([...text.matchAll(OTHER_IMPORT)].map(([, name = '']) => name));
   return { explicit: new Set(lombok), wildcard: lombok.includes('*'), other };
 }
 
-function isLombokName(name, imports) {
+function isLombokName(name: string, imports: Imports): boolean {
   if (name.startsWith(LOMBOK_PACKAGE)) {
     return true;
   }
-  const simple = name.split('.')[0];
+  const simple = name.split('.')[0] ?? '';
   return imports.explicit.has(simple) || (imports.wildcard && !imports.other.has(simple));
 }
 
-function lombokAnnotationAt(block, importsOf) {
-  const [header, source = '', caret = ''] = block;
+function lombokAnnotationAt(block: readonly string[], importsOf: ImportsOf): boolean {
+  const [header = '', source = '', caret = ''] = block;
   const column = caret.indexOf('^');
   const annotation = column < 0 ? undefined : ANNOTATION.exec(source.slice(column));
   return (
-    annotation?.[1] !== undefined && isLombokName(annotation[1], importsOf(WARNING.exec(header)[1]))
+    annotation?.[1] !== undefined &&
+    isLombokName(annotation[1], importsOf(WARNING.exec(header)?.[1] ?? ''))
   );
 }
 
-function importReader() {
-  const known = new Map();
+function importReader(): ImportsOf {
+  const known = new Map<string, Imports>();
   return (file) => {
-    if (!known.has(file)) {
-      known.set(file, importedNames(existsSync(file) ? readFileSync(file, 'latin1') : ''));
+    const cached = known.get(file);
+    if (cached !== undefined) {
+      return cached;
     }
-    return known.get(file);
+    const read = importedNames(existsSync(file) ? readFileSync(file, 'latin1') : '');
+    known.set(file, read);
+    return read;
   };
 }
 
-function posixPath(file) {
+function posixPath(file: string): string {
   return file.replaceAll('\\', '/');
 }
 
-export function relocated(log, { staged, from, to }) {
+export function relocated(log: string, { staged, from, to }: Relocation): string {
   const fromPrefix = `${posixPath(path.join(staged, from))}/`;
   const target = to === '' ? '' : `${to}/`;
   return log
-    .replaceAll(SOURCE_HEADER, (file) => {
+    .replaceAll(SOURCE_HEADER, (file: string) => {
       const posix = posixPath(file);
       return posix.startsWith(fromPrefix) ? target + posix.slice(fromPrefix.length) : file;
     })
     .replaceAll(path.join(staged, from) + path.sep, target);
 }
 
-export function lintedWarnings(log, context) {
+export function lintedWarnings(log: string, context: Relocation): string {
   const importsOf = importReader();
   const stagedPrefix = `${posixPath(context.staged)}/`;
   const kept = blocks(log).filter((block) => {
-    const warning = WARNING.exec(block[0]);
+    const warning = WARNING.exec(block[0] ?? '');
     return (
       warning === null ||
-      (posixPath(warning[1]).startsWith(stagedPrefix) && !lombokAnnotationAt(block, importsOf))
+      (posixPath(warning[1] ?? '').startsWith(stagedPrefix) &&
+        !lombokAnnotationAt(block, importsOf))
     );
   });
   return relocated(kept.flat().join(''), context);
 }
 
-export function hasUnreadWarnings(log) {
+export function hasUnreadWarnings(log: string): boolean {
   return (
     (WARNING_COUNT.test(log) && !PRINTED_WARNING.test(log)) ||
     log.split(/\r?\n/u).some((line) => LINT_DIAGNOSTIC.test(line) && !WARNING.test(line))
