@@ -2,10 +2,16 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readKotlinCrapFindings, readKotlinStructureFindings } from '../kotlin-metrics.mjs';
-import { parseFinding } from '../../../../../core/diff/comparison/finding-schema.mjs';
+import {
+  readKotlinCrapFindings,
+  readKotlinStructureFindings,
+} from '../test-support/kotlin-metrics-views.mts';
+import type { MetricsFunction } from '../test-support/kotlin-metrics-views.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
+import { parseFinding as untypedParseFinding } from '../../../../../core/diff/comparison/finding-schema.mjs';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
+const parseFinding: (value: unknown) => unknown = untypedParseFinding;
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -32,7 +38,12 @@ class Boot {
 }
 `;
 
-function entry(name, start, end, extra = {}) {
+function entry(
+  name: string,
+  start: number,
+  end: number,
+  extra: Record<string, unknown> = {},
+): MetricsFunction {
   return {
     file: FILE,
     name,
@@ -53,11 +64,11 @@ const INIT = entry('Boot.<init>', 4, 8, { initializer: true, complexity: 2 });
 const TABLE = entry('Boot.table', 10, 12, { initializer: true, complexity: 2 });
 const FILES = [{ file: FILE, package: 'demo', classes: ['demo.Boot'] }];
 
-function sourceLine(number, covered, missed, branches = [0, 0]) {
-  return `<line nr="${number}" mi="${missed}" ci="${covered}" mb="${branches[0]}" cb="${branches[1]}"/>`;
+function sourceLine(number: number, covered: number, missed: number, branches = [0, 0]) {
+  return `<line nr="${String(number)}" mi="${String(missed)}" ci="${String(covered)}" mb="${String(branches[0])}" cb="${String(branches[1])}"/>`;
 }
 
-function jacoco(sourceLines, methods = '') {
+function jacoco(sourceLines: string[], methods = '') {
   return `<report name="demo"><package name="demo">
   <class name="demo/Boot" sourcefilename="Boot.kt">
     <method name="&lt;init&gt;" desc="()V" line="3"><counter type="LINE" missed="0" covered="9"/></method>
@@ -67,11 +78,16 @@ function jacoco(sourceLines, methods = '') {
 </package></report>`;
 }
 
-function crap(functions, report, crapLimit = 3) {
+function bootProject() {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
   writeFileSync(path.join(root, FILE), SOURCE);
+  return root;
+}
+
+function crap(functions: MetricsFunction[], report: string, crapLimit = 3) {
+  const root = bootProject();
   return readKotlinCrapFindings(
     { functions, files: FILES },
     { projectRoot: root, jacoco: report, crapLimit },
@@ -148,10 +164,7 @@ describe('CRAP of init blocks and property initializers', () => {
 
 describe('structure limits of init blocks and property initializers', () => {
   it('measures an init block like a function and names it after its class', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
-    temporaryRoots.push(root);
-    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
-    writeFileSync(path.join(root, FILE), SOURCE);
+    const root = bootProject();
     const wide = entry('Boot.<init>', 4, 90, { initializer: true, statements: 25 });
 
     const findings = readKotlinStructureFindings({ functions: [wide], files: FILES }, root);
@@ -176,11 +189,8 @@ describe('structure limits of init blocks and property initializers', () => {
 describe('identity of init blocks', () => {
   const NESTED = { initializer: true, maxControlNesting: 3, complexity: 4 };
 
-  function structure(functions) {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
-    temporaryRoots.push(root);
-    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
-    writeFileSync(path.join(root, FILE), SOURCE);
+  function structure(functions: MetricsFunction[]) {
+    const root = bootProject();
     return readKotlinStructureFindings({ functions, files: FILES }, root).map(
       ({ rule, identity, ratchet }) => [
         rule,
@@ -206,10 +216,7 @@ describe('identity of init blocks', () => {
   });
 
   it('reports the nesting of an init block or a property initializer without advice to return early', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
-    temporaryRoots.push(root);
-    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
-    writeFileSync(path.join(root, FILE), SOURCE);
+    const root = bootProject();
     const functions = [
       entry('Boot.<init>', 4, 8, NESTED),
       entry('Boot.table', 10, 12, NESTED),
@@ -223,7 +230,11 @@ describe('identity of init blocks', () => {
         symbol,
         allowedForm,
         message.includes(allowedForm),
-        parseFinding(findings.find((finding) => finding.symbol === symbol)).exception.function,
+        fieldAt(
+          parseFinding(findings.find((finding) => finding.symbol === symbol)),
+          'exception',
+          'function',
+        ),
       ]),
     ).toEqual([
       ['Boot.<init>', 'Move the nested part into its own function.', true, 'Boot.<init>'],
@@ -248,11 +259,8 @@ describe('identity of init blocks', () => {
 });
 
 describe('CRAP identity of init blocks', () => {
-  function identities(functions, lines) {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-initializers-'));
-    temporaryRoots.push(root);
-    mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
-    writeFileSync(path.join(root, FILE), SOURCE);
+  function identities(functions: MetricsFunction[], lines: string[]) {
+    const root = bootProject();
     return readKotlinCrapFindings(
       { functions, files: FILES },
       { projectRoot: root, jacoco: jacoco(lines), crapLimit: 3 },

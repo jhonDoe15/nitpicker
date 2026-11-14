@@ -1,14 +1,22 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
-import { kotlinProjects } from '../test-support/kotlin-project.mjs';
-import { kotlinSummary } from './kotlin-format-advice.mjs';
+import { kotlinProjects } from '../test-support/kotlin-project.mts';
+import {
+  kotlinGradleArguments,
+  kotlinStyleFile,
+  resolveKotlinTools,
+} from '../test-support/kotlin-tools-views.mts';
+import type { ToolOptions } from '../test-support/kotlin-tools-views.mts';
+import { kotlinSummary as untypedKotlinSummary } from './kotlin-format-advice.mjs';
+
+const kotlinSummary: (tools: unknown, conventions: Record<string, string>) => string[] =
+  untypedKotlinSummary;
 
 const WIDE = { 'kotlin.lineLength': '120' };
 const { project, remove } = kotlinProjects();
 
 afterEach(remove);
 
-const toolsOf = (root, options = {}) => resolveKotlinTools(root, options);
+const toolsOf = (root: string, options: ToolOptions = {}) => resolveKotlinTools(root, options);
 
 describe('kotlin.lineLength reaches the tools', () => {
   it('writes max_line_length into the ktlint defaults and the detekt layer', () => {

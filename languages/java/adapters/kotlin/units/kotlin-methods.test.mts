@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { selectKotlinMethods } from '../kotlin-metrics.mjs';
+import { selectKotlinMethods as untypedSelectKotlinMethods } from '../kotlin-metrics.mjs';
+
+type Unit = { name: string; start: number; end: number; lambda?: boolean };
+type Method = { name: string; line: number; className?: string };
+
+const selectKotlinMethods: (fn: Unit, candidates: Method[], siblings: Unit[]) => Method[] =
+  untypedSelectKotlinMethods;
 
 describe('selectKotlinMethods', () => {
   const fn = { name: 'Demo.run', start: 10, end: 20 };
-  const method = (name, line) => ({ name, line });
+  const method = (name: string, line: number) => ({ name, line });
 
   it('takes the methods that start inside the function', () => {
     const selected = selectKotlinMethods(

@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { KOTLIN_REPORTS } from './kotlin-report-names.mjs';
 
+const REPORT_FILES: Readonly<Record<string, string>> = KOTLIN_REPORTS;
+
 const EMPTY_REPORTS = {
   metrics: '{"functions":[],"files":[]}',
   facts: '{"files":[]}',
@@ -16,7 +18,7 @@ const BUILD_TOOLS = [
   },
 ];
 
-const noKotlinBranch = ({ file, start }) => {
+const noKotlinBranch = ({ file, start }: { file: URL; start: string }) => {
   const text = readFileSync(file, 'utf8');
   const task = text.indexOf(start);
   const branch = text.indexOf('isEmpty()', task);
@@ -29,7 +31,7 @@ describe.each(BUILD_TOOLS)(
     const branch = noKotlinBranch(tool);
 
     it.each(Object.keys(KOTLIN_REPORTS))('%s', (report) => {
-      expect(branch).toContain(KOTLIN_REPORTS[report]);
+      expect(branch).toContain(REPORT_FILES[report]);
     });
 
     it.each([...new Set(Object.values(EMPTY_REPORTS))])(

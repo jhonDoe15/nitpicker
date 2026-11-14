@@ -3,9 +3,16 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { collectJavaFindings } from '../../java-diff.mjs';
-import { kotlinGradleArguments, kotlinStyleFile, resolveKotlinTools } from '../kotlin-tools.mjs';
+import { textsOf } from '../../../../../shared/values/readers.mts';
+import { assigned } from '../../kotlin-e2e/test-support/views/assigned.mts';
 import { fakeGradleRun } from '../../test-support/in-process-gradle.mjs';
-import { kotlinProjects } from '../test-support/kotlin-project.mjs';
+import { kotlinProjects } from '../test-support/kotlin-project.mts';
+import {
+  kotlinGradleArguments,
+  kotlinStyleFile,
+  resolveKotlinTools,
+} from '../test-support/kotlin-tools-views.mts';
+import type { ToolOptions } from '../test-support/kotlin-tools-views.mts';
 
 const FOLLOWED = {
   'kotlin.indentation': '4',
@@ -18,7 +25,7 @@ const { project, remove } = kotlinProjects();
 
 afterEach(remove);
 
-const styleOf = (root, options = {}) =>
+const styleOf = (root: string, options: ToolOptions = {}) =>
   kotlinStyleFile(resolveKotlinTools(root, options), options.conventions ?? {});
 
 describe('what runs without the project', () => {
@@ -147,7 +154,7 @@ describe('what runs with the project listed', () => {
       conventions: { 'kotlin.lineLength': '100', 'kotlin.trailingCommas': 'never' },
     });
 
-    expect(style.editorconfigs.map(({ path: file, text }) => [file, text])).toEqual([
+    expect(style?.editorconfigs.map(({ path: file, text }) => [file, text])).toEqual([
       [
         '.editorconfig',
         'root = true\n\n[*.kt]\nmax_line_length = 300\n\n[*.{kt,kts}]\nmax_line_length = 100\n',
@@ -189,7 +196,7 @@ describe('what runs with the project listed', () => {
       '-Pnitpicker.kotlin.ktfmtStyle=kotlinlang',
       '-Pnitpicker.kotlin.ktfmtEditorconfig=true',
     ]);
-    expect(styleOf(base, options).editorconfigs).toEqual([
+    expect(styleOf(base, options)?.editorconfigs).toEqual([
       { path: '.editorconfig', text: 'root = true\n\nmax_line_length = 100\n' },
     ]);
   });
@@ -202,7 +209,7 @@ describe('what runs with the project listed', () => {
       conventions: { 'kotlin.wildcardImports': 'wildcard' },
     };
 
-    const layersOf = (precedence) =>
+    const layersOf = (precedence: string[]) =>
       kotlinGradleArguments(base, { ...options, toolPrecedence: { detekt: precedence } }).filter(
         (argument) => /detekt(Layers|Config)/.test(argument),
       );
@@ -221,10 +228,10 @@ describe('what runs with the project listed', () => {
     const root = project({ 'detekt.yml': '' });
     const toolPrecedence = { detekt: ['nitpicker', 'project'] };
 
-    expect(styleOf(root, { toolPrecedence }).detektConventions).toBe(
+    expect(styleOf(root, { toolPrecedence })?.detektConventions).toBe(
       'style:\n  WildcardImport:\n    active: true\n',
     );
-    expect(styleOf(root, { toolPrecedence, conventions: FOLLOWED }).detektConventions).toBe(
+    expect(styleOf(root, { toolPrecedence, conventions: FOLLOWED })?.detektConventions).toBe(
       'style:\n  WildcardImport:\n    active: false\n',
     );
   });
@@ -256,16 +263,18 @@ describe('what runs with the project listed', () => {
 });
 
 describe('the Gradle hand-off', () => {
-  const argumentsOf = (root, policy) => {
+  const argumentsOf = (root: string, policy: unknown) => {
     collectJavaFindings(root, { ...fakeGradleRun, policy });
-    return JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')).filter(
+    return textsOf(
+      JSON.parse(readFileSync(path.join(root, 'build/gradle-args.json'), 'utf8')),
+    ).filter(
       (argument) =>
         !(
           argument.startsWith('-Pnitpicker.reportDir=') || argument.startsWith('-Pnitpicker.node=')
         ),
     );
   };
-  const styleFileOf = (root) =>
+  const styleFileOf = (root: string): unknown =>
     JSON.parse(readFileSync(path.join(root, 'build/style-file.json'), 'utf8'));
 
   it('hands the style of the policy to Gradle in a file, which is gone once the run ends', () => {
@@ -276,7 +285,10 @@ describe('the Gradle hand-off', () => {
       conventions: { 'kotlin.indentation': '2' },
     });
 
-    const file = args.find((argument) => argument.startsWith('-Pnitpicker.kotlin.styleFile='));
+    const file = assigned(
+      args.find((argument) => argument.startsWith('-Pnitpicker.kotlin.styleFile=')),
+      'style file argument',
+    );
     expect(args.slice(4, 7)).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktlint',

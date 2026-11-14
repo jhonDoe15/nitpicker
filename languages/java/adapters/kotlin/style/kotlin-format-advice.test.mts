@@ -1,7 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { kotlinFormatAdvice, kotlinSummary } from './kotlin-format-advice.mjs';
+import {
+  kotlinFormatAdvice as untypedKotlinFormatAdvice,
+  kotlinSummary as untypedKotlinSummary,
+} from './kotlin-format-advice.mjs';
 
-const OPT_IN = (tool) => `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
+type SummaryTools = {
+  formatter?: string;
+  ktfmtStyle?: string;
+  ktfmtEditorconfig?: boolean;
+  editorconfigIgnored?: boolean;
+  editorconfigFiles?: string[];
+  detektIgnored?: string;
+};
+
+const kotlinFormatAdvice: (tools: SummaryTools) => {
+  ktfmt: string;
+  ktlint: (ruleSwitch: string) => string;
+  detekt: string | undefined;
+} = untypedKotlinFormatAdvice;
+const kotlinSummary: (tools: SummaryTools, conventions: Record<string, string>) => string[] =
+  untypedKotlinSummary;
+
+const OPT_IN = (tool: string) =>
+  `"tools": { "${tool}": { "precedence": ["project", "nitpicker"] } }`;
 
 describe('the advice on the findings', () => {
   it('sends a ktfmt finding to nitpicker --fix', () => {
