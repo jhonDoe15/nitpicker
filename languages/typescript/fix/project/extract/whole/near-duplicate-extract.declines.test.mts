@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { useFixtureProjects } from '../../test-support/fixture-project.mts';
-import { copy, loader, pair, twoMethods } from '../test-support/sources.mjs';
-import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mjs';
+import { copy, loader, pair, twoMethods } from '../test-support/sources.mts';
+import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mts';
 
 const projects = useFixtureProjects();
 
-function outcome(files) {
+function outcome(files: Record<string, string>): { source: string | undefined; notes: string[] } {
   const result = projects.fix(files, { recipe, rule: 'structure/near-duplicate' });
   return { source: result.tree['src/a.ts'], notes: result.notes };
 }
 
-function writing(name, prefix, value) {
+function writing(name: string, prefix: string, value: string): string {
   return copy(name, { prefix })
     .replace('const selected', 'limit = limit + 1;\n  const selected')
     .replace(`'${prefix}'`, value);
@@ -42,11 +42,13 @@ function endingWithComment() {
   return `${copy('alignTop')}\n${noted}`;
 }
 
-function moduleLoad(name, path) {
+function moduleLoad(name: string, path: string): string {
   return loader(name, `require('${path}')`);
 }
 
-const note = (line, reason) => [`--fix left src/a.ts:${line} near-duplicate: ${reason}`];
+function note(line: number, reason: string): string[] {
+  return [`--fix left src/a.ts:${String(line)} near-duplicate: ${reason}`];
+}
 const requireDeclaration = 'declare function require(path: string): (id: string) => string;\n';
 const several = 'a copy belongs to more than one pair of near-duplicates';
 
