@@ -2268,8 +2268,18 @@ runs them one after another. While they run, stderr shows one progress line per 
 the project (`nitpicker: [web] head: running 6 analyzers`). Each project's console output is printed
 as one block when it finishes, in the order of the plan, so the console reads the same as a run one
 project at a time, and the summary and exit code are the same. A project runs in its own process
-with its own run lock, report folder and snapshot worktrees, so projects share no state. A
+with its own run lock, report folder and head checkout; the shared Maven and Gradle tool caches are
+filled through a staging folder, so two projects filling them at once do not clash. A
 programmatic run that passes its own analyzers runs its projects one after another.
+
+The selected projects share one checkout of the base: nitpicker adds one git worktree at the merge
+base for the run, and each project reads its base from its own folder inside it. When the base needs
+its own install (its lockfile or manifests differ from the working tree's), the first project under a
+package-manager root installs it and the others under that root reuse it, one install at a time. A
+project that holds another selected project (the root project of a repository with nested projects,
+or two presets on one folder) gets a base checkout of its own, since its analyzers would otherwise see
+the other project's build output, and so does a Gradle project without its own settings file, whose
+build Gradle runs from an enclosing folder. Each project still checks out its own head.
 
 ### Reports and exit code
 

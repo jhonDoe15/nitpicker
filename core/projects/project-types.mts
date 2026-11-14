@@ -82,6 +82,7 @@ export type ProjectCli = {
   readonly sharedBase: ConfiguredCli['sharedBase'];
   readonly baseConfigOverlay: ProjectOverlay | undefined;
   readonly projectKey?: string | undefined;
+  readonly sharedBaseWorktree?: ConfiguredCli['sharedBaseWorktree'];
   readonly repositoryLoosenings?: readonly unknown[];
   readonly repositoryToolErrors?: readonly ReportEntry[];
 };

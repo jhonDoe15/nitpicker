@@ -26,7 +26,7 @@ import {
 import { comparisonOf, selectionOf, submodulePaths } from './selection-plan.mts';
 import { enclosingPlan, requestsProjects, singleMode } from './single-mode.mts';
 import { clearReports, extrasOf, type RunContext } from './execution/project-rows.mts';
-import { runRows } from './execution/parallel-rows.mts';
+import { runRowsWithSharedBase } from './execution/shared-base.mts';
 import type { ExitCode } from '../../cli-context.mts';
 import type {
   Comparison,
@@ -146,7 +146,8 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   cli.stdout.write(renderPlan({ plan, rows, outside, details: cli.options.details }));
   const repository = repositoryOf(planned, comparison, cli);
   const finish = finisher(planned, prepared, { cli, notices, repository, startedAt });
-  const results = runRows(rows, { cli, runProject, outputRoot, comparison, analyzers });
+  const context = { cli, runProject, outputRoot, comparison, analyzers };
+  const results = runRowsWithSharedBase(rows, context, plan.repositoryRoot);
   if (Array.isArray(results)) {
     return finish(results);
   }
