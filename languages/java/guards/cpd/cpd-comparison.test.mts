@@ -6,6 +6,7 @@ import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { readDuplicateFindings } from '../../adapters/metrics/java-duplicates.mjs';
 import { coveredByCpd, readCpdFindings } from '../cpd-duplicates.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
 const MAIN_A = 'src/main/java/demo/A.java';
 const MAIN_B = 'src/main/java/demo/B.java';
@@ -14,7 +15,23 @@ const LOGIC = Array.from(
   (_, index) => `    total += compute(${String(index)}) * rate;`,
 ).join('\n');
 const FAILED = '1\nboom\n';
-const roots = [];
+const roots: string[] = [];
+
+type Reports = Readonly<Record<string, string>>;
+type Changes = Readonly<Record<string, unknown>>;
+
+const readDuplicates: (
+  reportRoot: string,
+  options: { reportFile: string; skip: ReturnType<typeof coveredByCpd> },
+) => unknown = readDuplicateFindings;
+const parseReport: (value: unknown, name: string) => { findings: readonly unknown[] } =
+  parseAnalyzerReport;
+const compare: (input: {
+  baseFindings: readonly unknown[];
+  headFindings: readonly unknown[];
+  touchedCode: { changedLines: Map<string, unknown>; isStrictRule: () => boolean };
+  unknownOnBase: undefined;
+}) => Readonly<Record<string, unknown>> = compareFindings;
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -22,11 +39,11 @@ afterEach(() => {
   }
 });
 
-function sourceWith(name) {
+function sourceWith(name: string): string {
   return `class ${name} {\n  int run(int rate) {\n    int total = 0;\n${LOGIC}\n    return total;\n  }\n}\n`;
 }
 
-function cpdXml(clones) {
+function cpdXml(clones: readonly (readonly [number, number])[]): string {
   const duplications = clones.map(
     ([lines, tokens]) =>
       `<duplication lines="${String(lines)}" tokens="${String(tokens)}">` +
@@ -38,7 +55,7 @@ function cpdXml(clones) {
   return `<?xml version="1.0"?>\n<pmd-cpd>\n${duplications.join('\n')}\n</pmd-cpd>\n`;
 }
 
-function jscpdJson(clones) {
+function jscpdJson(clones: readonly (readonly [number, number, string])[]): string {
   const duplicates = clones.map(([lines, tokens, fragment]) => ({
     firstFile: { name: 'demo/A.java', start: 3 },
     secondFile: { name: 'demo/B.java', start: 3 },
@@ -49,15 +66,12 @@ function jscpdJson(clones) {
   return JSON.stringify({ runs: [{ root: 'src/main/java', report: { duplicates } }] });
 }
 
-function snapshotFindings(reports) {
+function snapshotFindings(reports: Reports): readonly unknown[] {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-comparison-'));
   roots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
-  for (const [file, name] of [
-    [MAIN_A, 'A'],
-    [MAIN_B, 'B'],
-  ]) {
+  for (const [file, name] of Object.entries({ [MAIN_A]: 'A', [MAIN_B]: 'B' })) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), sourceWith(name));
   }
@@ -72,34 +86,38 @@ function snapshotFindings(reports) {
       testRoots: [],
       module,
     }),
-    ...readDuplicateFindings(reportRoot, {
-      reportFile: 'duplicates.json',
-      skip: coveredByCpd([{ reportRoot }], root),
-    }),
+    ...listOf(
+      readDuplicates(reportRoot, {
+        reportFile: 'duplicates.json',
+        skip: coveredByCpd([{ reportRoot }], root),
+      }),
+    ),
   ];
-  return parseAnalyzerReport({ findings }).findings;
+  return parseReport({ findings }, 'java').findings;
 }
 
-function compared(base, head, changedLines = {}) {
-  const result = compareFindings({
+function compared(base: Reports, head: Reports, changedLines: Changes = {}) {
+  const result = compare({
     baseFindings: snapshotFindings(base),
     headFindings: snapshotFindings(head),
     touchedCode: {
       changedLines: new Map(Object.entries(changedLines)),
       isStrictRule: () => true,
     },
+    unknownOnBase: undefined,
   });
-  function clones(findings) {
+  function clones(findings: readonly unknown[]): string[] {
     return findings
-      .filter((finding) => finding.rule !== 'duplicate-clone-size')
+      .filter((finding) => fieldOf(finding, 'rule') !== 'duplicate-clone-size')
       .map(
-        (finding) => `${finding.classification} ${finding.rule} ${finding.identity.slice(0, 4)}`,
+        (finding) =>
+          `${textOf(fieldOf(finding, 'classification'))} ${textOf(fieldOf(finding, 'rule'))} ${textOf(fieldOf(finding, 'identity')).slice(0, 4)}`,
       );
   }
   return {
-    new: clones(result.newFindings),
-    resolved: clones(result.resolvedFindings),
-    unchanged: clones(result.unchangedFindings),
+    new: clones(listOf(result['newFindings'])),
+    resolved: clones(listOf(result['resolvedFindings'])),
+    unchanged: clones(listOf(result['unchangedFindings'])),
   };
 }
 

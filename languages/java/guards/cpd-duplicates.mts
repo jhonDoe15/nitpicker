@@ -28,13 +28,18 @@ type Clone = {
   readonly lines: number;
   readonly tokens: number;
 };
+type CoveredClone = {
+  readonly first: Pick<Side, 'file' | 'line'>;
+  readonly second: Pick<Side, 'file' | 'line'>;
+  readonly lines?: number;
+};
 type Range = Pick<Side, 'file' | 'line' | 'endLine'>;
 type Reportable = CpdFinding & { readonly location?: unknown };
 type FindingsOptions = {
   readonly projectRoot: string;
   readonly sourceRoots?: readonly string[];
   readonly testRoots: readonly string[];
-  readonly module: unknown;
+  readonly module?: unknown;
 };
 
 const evaluate: (clones: readonly Clone[], tool: string) => Reportable[] = evaluateDuplicates;
@@ -206,7 +211,7 @@ function distinctClones(clones: readonly Clone[]): Clone[] {
   return kept;
 }
 
-function jscpdRange(side: Side, lines: number | undefined): Range {
+function jscpdRange(side: Pick<Side, 'file' | 'line'>, lines: number | undefined): Range {
   return { file: side.file, line: side.line, endLine: side.line + (lines ?? 1) - 1 };
 }
 
@@ -222,7 +227,7 @@ function readCpdClones(reportRoot: string, projectRoot: string): Clone[] {
 export function coveredByCpd(
   modules: readonly unknown[],
   projectRoot: string,
-): (clone: Clone) => boolean {
+): (clone: CoveredClone) => boolean {
   const cpdCloneList = modules.flatMap((module) =>
     readCpdClones(textOf(fieldOf(module, 'reportRoot')), projectRoot),
   );

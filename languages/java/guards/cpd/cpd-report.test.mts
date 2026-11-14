@@ -5,18 +5,18 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { readCpdFindings } from '../cpd-duplicates.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   for (const root of roots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-function report(children = '') {
+function report(children = ''): string {
   return `<?xml version="1.0"?>\n<pmd-cpd>\n${children}</pmd-cpd>\n`;
 }
 
-function project() {
+function project(): { root: string; reportRoot: string } {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cpd-'));
   roots.push(root);
   const reportRoot = path.join(root, 'build/nitpicker');
@@ -24,7 +24,7 @@ function project() {
   return { root, reportRoot };
 }
 
-function options(root) {
+function options(root: string) {
   return { projectRoot: root, testRoots: ['src/test/java'] };
 }
 
@@ -35,7 +35,7 @@ describe('readCpdFindings without a usable CPD run', () => {
 
   const moduleRoots = { sourceRoots: ['core/src/main/java'], testRoots: ['core/src/test/java'] };
 
-  function notRun(reason) {
+  function notRun(reason: string) {
     return [
       {
         tool: 'duplicates',
