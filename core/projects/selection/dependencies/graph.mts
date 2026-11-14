@@ -14,6 +14,7 @@ type UnitReader = (directory: string) => DependencyUnit | undefined;
 type Lookup = {
   readonly byName: ReadonlyMap<string, string>;
   readonly projectPaths: readonly string[];
+  readonly folderOf: (projectPath: string) => string;
 };
 
 const READERS: readonly UnitReader[] = [javascriptUnit, nxUnit, pythonUnit, jvmUnit];
@@ -47,13 +48,15 @@ export function deepestProject(
 function edgesOf(
   projectPath: string,
   unit: DependencyUnit,
-  { byName, projectPaths }: Lookup,
+  { byName, projectPaths, folderOf }: Lookup,
 ): Set<string> {
+  const folders = projectPaths.map(folderOf);
   const named = unit.needs.map((need) => byName.get(need));
   const located = unit.folders
-    .map((folder) => path.posix.normalize(path.posix.join(projectPath, folder)))
+    .map((folder) => path.posix.normalize(path.posix.join(folderOf(projectPath), folder)))
     .filter((resolved) => !resolved.startsWith('..'))
-    .map((resolved) => deepestProject(projectPaths, resolved));
+    .map((resolved) => deepestProject(folders, resolved))
+    .flatMap((folder) => projectPaths.filter((other) => folderOf(other) === folder));
   return new Set(
     [...named, ...located].filter(
       (other): other is string => other !== undefined && other !== projectPath,
@@ -61,9 +64,17 @@ function edgesOf(
   );
 }
 
-export function dependencyGraph(root: string, projectPaths: readonly string[]): DependencyGraph {
+export function dependencyGraph(
+  root: string,
+  projectPaths: readonly string[],
+  folders: ReadonlyMap<string, string> = new Map(),
+): DependencyGraph {
+  const folderOf = (projectPath: string): string => folders.get(projectPath) ?? projectPath;
   const units = new Map(
-    projectPaths.map((projectPath) => [projectPath, unitOf(path.join(root, projectPath))]),
+    projectPaths.map((projectPath) => [
+      projectPath,
+      unitOf(path.join(root, folderOf(projectPath))),
+    ]),
   );
   const byName = new Map(
     [...units].flatMap(([projectPath, unit]) =>
@@ -73,7 +84,7 @@ export function dependencyGraph(root: string, projectPaths: readonly string[]): 
   return new Map(
     [...units].map(([projectPath, unit]) => [
       projectPath,
-      edgesOf(projectPath, unit, { byName, projectPaths }),
+      edgesOf(projectPath, unit, { byName, projectPaths, folderOf }),
     ]),
   );
 }

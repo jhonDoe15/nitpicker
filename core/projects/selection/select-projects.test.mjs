@@ -232,3 +232,23 @@ describe('toolchain files', () => {
     ).toEqual([true, false, false]);
   });
 });
+
+describe('one folder gated by two presets', () => {
+  const shared = [project('.@java', 'java'), project('.@typescript')].map((entry) => ({
+    ...entry,
+    repoPath: '.',
+  }));
+
+  function sharedChoice(changed) {
+    const { selection } = selectProjects({ projects: shared, changed, graph: new Map() });
+    return selection.filter(({ selected }) => selected).map(({ path }) => path);
+  }
+
+  it('gives each file to the preset that checks its language or toolchain', () => {
+    expect(sharedChoice(['src/main/java/A.java'])).toEqual(['.@java']);
+    expect(sharedChoice(['src/main/webapp/a.ts'])).toEqual(['.@typescript']);
+    expect(sharedChoice(['package.json'])).toEqual(['.@typescript']);
+    expect(sharedChoice(['pom.xml'])).toEqual(['.@java']);
+    expect(sharedChoice(['README.md'])).toEqual(['.@java']);
+  });
+});

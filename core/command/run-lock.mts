@@ -18,6 +18,7 @@ type LockedRun = {
   readonly projectRoot: string;
   readonly stderr: TextOutput;
   readonly lockPath?: string;
+  readonly projectKey?: string | undefined;
 };
 
 const ATTEMPTS = Array.from({ length: 5 }, (_, attempt) => attempt);
@@ -32,8 +33,9 @@ export function isProcessAlive(pid: number): boolean {
   }
 }
 
-export function resolveRunLockPath(projectRoot: string): string {
-  const name = `nitpicker-run-${createHash('sha256').update(projectRoot).digest('hex').slice(0, 12)}.lock`;
+export function resolveRunLockPath(projectRoot: string, projectKey?: string): string {
+  const identity = projectKey === undefined ? projectRoot : `${projectRoot}@${projectKey}`;
+  const name = `nitpicker-run-${createHash('sha256').update(identity).digest('hex').slice(0, 12)}.lock`;
   return path.resolve(projectRoot, runGit(projectRoot, ['rev-parse', '--git-path', name]).trim());
 }
 
@@ -130,7 +132,12 @@ export function describeRunInProgress(holder: number): string {
 }
 
 export function withRunLock<Result>(
-  { projectRoot, stderr, lockPath = resolveRunLockPath(projectRoot) }: LockedRun,
+  {
+    projectRoot,
+    stderr,
+    projectKey,
+    lockPath = resolveRunLockPath(projectRoot, projectKey),
+  }: LockedRun,
   operation: () => Result,
 ): Result | number {
   const lock = acquireRunLock(lockPath);

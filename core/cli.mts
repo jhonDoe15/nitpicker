@@ -198,7 +198,7 @@ function runSingle(cli: ConfiguredCli, currentProjectRoot: string): ExitCode {
   });
   const run = { currentProjectRoot, config, headPolicy, scope: cli.scope, setup };
   const exitCode: unknown = withRunLock(
-    { projectRoot: currentProjectRoot, stderr: cli.stderr },
+    { projectRoot: currentProjectRoot, stderr: cli.stderr, projectKey: cli.projectKey },
     () => (options.all ? runSnapshot(cli, run) : runComparison(cli, run)),
   );
   return numberOr(exitCode, 2);

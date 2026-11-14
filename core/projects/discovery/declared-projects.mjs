@@ -95,14 +95,30 @@ function workspaceMembersOf(entry, { root, files }) {
   }));
 }
 
+function isRepeat(entry, kept) {
+  return kept.some(
+    (other) =>
+      other.path === entry.path &&
+      (other.preset === undefined || entry.preset === undefined || other.preset === entry.preset),
+  );
+}
+
+function withIdentities(entries) {
+  return entries.map((entry) =>
+    entries.filter((other) => other.path === entry.path).length > 1
+      ? { ...entry, path: `${entry.path}@${entry.preset}`, folder: entry.path }
+      : entry,
+  );
+}
+
 export function resolveDeclaredProjects({ root, entries, files, submodules }) {
-  const seen = new Set();
-  return entries
-    .flatMap((entry) => expand(entry, { root, files, submodules }))
-    .flatMap((entry) => workspaceMembersOf(entry, { root, files }))
-    .filter((entry) => {
-      const fresh = !seen.has(entry.path);
-      seen.add(entry.path);
-      return fresh;
-    });
+  const kept = [];
+  for (const entry of entries
+    .flatMap((listed) => expand(listed, { root, files, submodules }))
+    .flatMap((listed) => workspaceMembersOf(listed, { root, files }))) {
+    if (!isRepeat(entry, kept)) {
+      kept.push(entry);
+    }
+  }
+  return withIdentities(kept);
 }

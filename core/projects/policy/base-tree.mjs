@@ -7,7 +7,13 @@ import { GIT_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
 
 const MAX_BUFFER = 1024 * 1024 * 1024;
 const SYMLINK_MODE = '120000';
-const PLAN_INPUT_NAMES = new Set(['Pipfile', 'setup.py', 'setup.cfg', 'requirements.txt']);
+const PLAN_INPUT_NAMES = new Set([
+  'Pipfile',
+  'setup.py',
+  'setup.cfg',
+  'requirements.txt',
+  '.gitmodules',
+]);
 const PLAN_INPUT_EXTENSIONS = new Set([
   '.json',
   '.toml',

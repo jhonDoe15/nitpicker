@@ -12,6 +12,10 @@ export const DECLARATION_FILES = [
   'package.json',
   'pnpm-workspace.yaml',
   'pyproject.toml',
+  'nx.json',
+  'angular.json',
+  'settings.gradle',
+  'settings.gradle.kts',
 ];
 
 function parsed(parse, text) {
@@ -36,11 +40,26 @@ function listsPackages(text) {
   return Array.isArray(parsed(parseYaml, text).value?.packages);
 }
 
+function listsAngularProjects(text) {
+  const projects = parsed(JSON.parse, text).value?.projects;
+  return Object.values(projects ?? {}).some(
+    (project) => typeof project?.root === 'string' && project.root !== '',
+  );
+}
+
+function includesBuilds(text) {
+  return /\bincludeBuild\b/u.test(text);
+}
+
 const DECLARES = {
   [CONFIG_FILE_NAME]: listsProjects,
   'package.json': hasWorkspaces,
   'pnpm-workspace.yaml': listsPackages,
   'pyproject.toml': declaresUvWorkspace,
+  'nx.json': () => true,
+  'angular.json': listsAngularProjects,
+  'settings.gradle': includesBuilds,
+  'settings.gradle.kts': includesBuilds,
 };
 
 export function declaresProjects(readText) {

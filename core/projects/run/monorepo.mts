@@ -107,6 +107,7 @@ function extrasOf(
       singleProject: true,
       sharedBase: comparison.base,
       baseConfigOverlay: baseProject?.overlay,
+      projectKey: project.folder === project.path ? undefined : project.path,
     },
   };
 }

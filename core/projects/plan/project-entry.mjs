@@ -50,18 +50,44 @@ function nestedExcludes(entry, allPaths) {
     });
 }
 
-function overlayOf(entry, { absolute, root, excludes }) {
+const SCRIPT_PRESETS = new Set(['typescript', 'javascript']);
+const WEB_SOURCE_FOLDERS = ['src/main/webapp', 'src/main/frontend', 'frontend'];
+
+function companionSettings(entry, { absolute, companion }) {
+  if (!companion || !SCRIPT_PRESETS.has(entry.preset) || entry.settings?.layout !== undefined) {
+    return entry.settings;
+  }
+  const sourceRoots = WEB_SOURCE_FOLDERS.filter((folder) =>
+    existsSync(path.join(absolute, folder)),
+  );
+  return sourceRoots.length === 0
+    ? entry.settings
+    : { ...entry.settings, layout: { sourceRoots, testRoots: sourceRoots } };
+}
+
+function overlayOf(entry, { absolute, root, excludes, companion }) {
   const preset = entry.preset === undefined ? presetToDeclare({}, absolute)?.preset : entry.preset;
   const declared = entry.preset !== undefined;
   const inherits =
     entry.path === '.' ? undefined : path.relative(absolute, root).split(path.sep).join('/');
-  if (preset === undefined && excludes.length === 0 && inherits === undefined) {
+  const settings = companionSettings(entry, { absolute, companion });
+  const extra = {
+    ...(companion ? { companion } : {}),
+    ...(settings === undefined ? {} : { settings }),
+  };
+  if (
+    preset === undefined &&
+    excludes.length === 0 &&
+    inherits === undefined &&
+    Object.keys(extra).length === 0
+  ) {
     return undefined;
   }
   return {
     ...(preset === undefined ? {} : { preset, declared }),
     ...(excludes.length === 0 ? {} : { exclude: excludes }),
     ...(inherits === undefined ? {} : { inherits }),
+    ...extra,
   };
 }
 
@@ -96,15 +122,23 @@ function rejectOtherBase(entry, config, rootConfig) {
 
 export function describeProject(entry, context) {
   const { root, repositoryRoot, prefix, rootConfig, allPaths } = context;
-  rejectNestedProjects(entry, root);
-  const absolute = entry.path === '.' ? root : path.join(root, entry.path);
-  const overlay = overlayOf(entry, { absolute, root, excludes: nestedExcludes(entry, allPaths) });
+  const folder = entry.folder ?? entry.path;
+  const located = { ...entry, path: folder };
+  rejectNestedProjects(located, root);
+  const absolute = folder === '.' ? root : path.join(root, folder);
+  const overlay = overlayOf(located, {
+    absolute,
+    root,
+    excludes: nestedExcludes(located, allPaths),
+    companion: entry.folder !== undefined,
+  });
   const loaded = loadSettings(absolute, overlay, repositoryRoot);
-  rejectOtherBase(entry, loaded.config, rootConfig);
+  rejectOtherBase(located, loaded.config, rootConfig);
   return {
     path: entry.path,
+    folder,
     absolute,
-    repoPath: path.posix.normalize(path.posix.join(prefix, entry.path)),
+    repoPath: path.posix.normalize(path.posix.join(prefix, folder)),
     origin: entry.origin,
     overlay,
     preset: loaded.config?.preset ?? overlay?.preset ?? 'typescript',
@@ -117,5 +151,10 @@ export function describeProject(entry, context) {
 }
 
 export function reportFolder(projectPath) {
-  return projectPath === '.' ? ROOT_REPORT_FOLDER : projectPath;
+  if (projectPath === '.') {
+    return ROOT_REPORT_FOLDER;
+  }
+  return projectPath.startsWith('.@')
+    ? `${ROOT_REPORT_FOLDER}${projectPath.slice(1)}`
+    : projectPath;
 }
