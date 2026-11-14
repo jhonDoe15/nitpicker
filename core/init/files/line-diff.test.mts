@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { unifiedDiff } from './line-diff.mts';
 
-const diff = (before, after) => unifiedDiff({ name: 'file.json', before, after });
+function diff(before: string, after: string): string {
+  return unifiedDiff({ name: 'file.json', before, after });
+}
 
 describe('unified diff', () => {
   it('shows an added line between unchanged ones', () => {

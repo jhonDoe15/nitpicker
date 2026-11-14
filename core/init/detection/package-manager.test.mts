@@ -1,18 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../test-support/projects.mjs';
+import { textOf } from '../../../shared/values/readers.mts';
+import { useProjects } from '../test-support/projects.mts';
 import { describePackageManager } from './package-manager.mts';
 
 const project = useProjects();
 const NODE_MODULES_LINKER = 'nodeLinker: node-modules\n';
-const COMMANDS = {
-  npm: { add: 'npm install --save-dev', install: 'npm install', run: 'npx nitpicker' },
-  pnpm: { add: 'pnpm add --save-dev', install: 'pnpm install', run: 'pnpm exec nitpicker' },
-  yarn: { add: 'yarn add --dev', install: 'yarn install', run: 'yarn nitpicker' },
-  bun: { add: 'bun add --dev', install: 'bun install', run: 'bunx nitpicker' },
+const COMMANDS: Readonly<Record<string, readonly [string, string, string]>> = {
+  npm: ['npm install --save-dev', 'npm install', 'npx nitpicker'],
+  pnpm: ['pnpm add --save-dev', 'pnpm install', 'pnpm exec nitpicker'],
+  yarn: ['yarn add --dev', 'yarn install', 'yarn nitpicker'],
+  bun: ['bun add --dev', 'bun install', 'bunx nitpicker'],
 };
 
-function manager(root, name, details = {}) {
-  return { name, root, locked: false, declaration: undefined, ...COMMANDS[name], ...details };
+function commandsOf(name: string): Readonly<Record<string, string>> {
+  const [add, install, run] = COMMANDS[name] ?? [];
+  return { add: textOf(add), install: textOf(install), run: textOf(run) };
+}
+
+function manager(root: string, name: string, details: object = {}) {
+  return { name, root, locked: false, declaration: undefined, ...commandsOf(name), ...details };
 }
 
 describe('package manager detection', () => {

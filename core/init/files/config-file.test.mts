@@ -1,14 +1,19 @@
 import { existsSync, symlinkSync } from 'node:fs';
-import { format } from 'prettier';
+import { format, type Options } from 'prettier';
 import { describe, expect, it } from 'vitest';
-import { useProjects, readText } from '../test-support/projects.mjs';
+import { useProjects, readText } from '../test-support/projects.mts';
 import { placeConfig, renderConfig } from './config-file.mts';
 
 const project = useProjects();
 
 describe('rendered config', () => {
   it('is what the repository Prettier config makes of the JSON', async () => {
-    const options = { parser: 'json', singleQuote: true, trailingComma: 'all', printWidth: 100 };
+    const options: Options = {
+      parser: 'json',
+      singleQuote: true,
+      trailingComma: 'all',
+      printWidth: 100,
+    };
 
     expect(await format(JSON.stringify({ preset: 'typescript' }), options)).toBe(
       renderConfig({ preset: 'typescript' }),
@@ -120,7 +125,7 @@ describe('placing the config', () => {
   ])('adds the preset to the one-line file %j', (text, added) => {
     const root = project({ 'nitpicker.config.json': text });
 
-    expect(placeConfig(root, 'java').diff.split('\n').slice(3)).toEqual([
+    expect(placeConfig(root, 'java').diff?.split('\n').slice(3)).toEqual([
       `-${text.trimEnd()}`,
       added,
       '',

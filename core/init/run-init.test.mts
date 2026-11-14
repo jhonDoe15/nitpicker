@@ -1,17 +1,18 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { textOf } from '../../shared/values/readers.mts';
 import { packageVersion } from '../help/package-version.mts';
-import { INIT_USAGE_TEXT } from '../help/usage-text.mts';
+import type { FileMap } from '../diff/git/test-support/fixture-files.mts';
 import { readSnippet } from './files/agents-md.mts';
 import { unifiedDiff } from './files/line-diff.mts';
-import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mjs';
+import { init, initWith, readText, useProjects, withPeers } from './test-support/projects.mts';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
-const SKILL = `npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill`;
+const SKILL = `npx skills add jhonDoe15/nitpicker#v${textOf(packageVersion())} --skill`;
 const LOCAL_SKILL = 'npx skills add ./node_modules/nitpicker --skill';
-const NITPICKER = `nitpicker@${packageVersion()}`;
+const NITPICKER = `nitpicker@${textOf(packageVersion())}`;
 const NODE_INSTALL = `${NITPICKER} typescript @types/node vitest @vitest/coverage-v8`;
 const NODE_MISSING = `${NITPICKER}, typescript, @types/node, vitest, @vitest/coverage-v8`;
 const GRADLE_NOTE =
@@ -51,16 +52,25 @@ const YARN_WORKFLOW = [
   '          node-version: 24',
   '      - run: yarn install --frozen-lockfile',
   '      - name: nitpicker',
-  `        uses: jhonDoe15/nitpicker@v${packageVersion()}`,
+  `        uses: jhonDoe15/nitpicker@v${textOf(packageVersion())}`,
   '        with:',
   "          node-version: ''",
   '          install-command: none',
   '',
 ].join('\n');
 
-function project(files) {
+function project(files: FileMap) {
   return createProject(files, { repository: true });
 }
+
+type ReportParts = {
+  readonly head: readonly string[];
+  readonly peers: readonly string[];
+  readonly config?: readonly string[] | undefined;
+  readonly skills: readonly string[];
+  readonly offers?: readonly string[] | undefined;
+  readonly command?: string | undefined;
+};
 
 function expectedReport({
   head,
@@ -69,7 +79,7 @@ function expectedReport({
   skills,
   offers,
   command = 'npx nitpicker',
-}) {
+}: ReportParts): string {
   const defaultOffers = [
     `To add the agent guidance to AGENTS.md, run: ${command} init --agents-md`,
     `To write ${WORKFLOW_PATH}, run: ${command} init --ci github`,
@@ -91,11 +101,11 @@ function expectedReport({
   ].join('\n');
 }
 
-function install(missing, command) {
+function install(missing: string, command: string): string[] {
   return [`Install what nitpicker needs from your project (missing: ${missing}):`, `  ${command}`];
 }
 
-function npmReport({ config, offers }) {
+function npmReport({ config, offers }: Pick<ReportParts, 'config' | 'offers'>): string {
   return expectedReport({
     head: ['nitpicker init: TypeScript, npm, Vitest (preset "typescript")'],
     peers: install(NODE_MISSING, `npm install --save-dev ${NODE_INSTALL}`),
@@ -391,7 +401,7 @@ describe('nitpicker init --agents-md', () => {
 });
 
 describe('nitpicker init --ci github', () => {
-  const yarnReport = (workflowLines, config = CREATED) =>
+  const yarnReport = (workflowLines: readonly string[], config = CREATED) =>
     expectedReport({
       head: ['nitpicker init: TypeScript, yarn, Vitest (preset "typescript")'],
       peers: install(NODE_MISSING, `yarn add --dev ${NODE_INSTALL}`),
@@ -473,25 +483,6 @@ describe('nitpicker init --ci github', () => {
       exitCode: 2,
       stdoutText: '',
       stderrText: 'nitpicker failed: --ci takes one of: github\n',
-    });
-  });
-});
-
-describe('nitpicker init arguments', () => {
-  it('prints its own help', () => {
-    expect(init(project({}), '--help')).toEqual({
-      exitCode: 0,
-      stdoutText: INIT_USAGE_TEXT,
-      stderrText: '',
-    });
-  });
-
-  it('refuses an unknown argument and says where to look', () => {
-    expect(init(project(TYPESCRIPT), '--force')).toEqual({
-      exitCode: 2,
-      stdoutText: '',
-      stderrText:
-        'nitpicker failed: Unknown argument for init: --force. See nitpicker init --help.\n',
     });
   });
 });

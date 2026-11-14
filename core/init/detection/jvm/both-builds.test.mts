@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { init, readText, useProjects } from '../../test-support/projects.mjs';
+import type { FileMap } from '../../../diff/git/test-support/fixture-files.mts';
+import { init, readText, useProjects } from '../../test-support/projects.mts';
 import { detectProject } from '../detect-project.mts';
 
 const project = useProjects();
@@ -12,11 +13,11 @@ const MAVEN_NOTE =
 const UNPINNED_NOTE =
   'pom.xml and a Gradle build both exist: using Gradle (gradlew exists). To choose, set "java.buildTool" ("maven" or "gradle") in nitpicker.config.json.';
 
-function both(extra) {
+function both(extra: FileMap) {
   return project({ 'pom.xml': '<project/>', 'build.gradle': '', ...SOURCE, ...extra }, REPOSITORY);
 }
 
-function noteLines(stdoutText) {
+function noteLines(stdoutText: string) {
   return stdoutText.split('\n').filter((line) => line.includes('both exist'));
 }
 

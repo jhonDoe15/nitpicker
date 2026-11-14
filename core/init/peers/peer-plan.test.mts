@@ -1,15 +1,32 @@
 import { describe, expect, it } from 'vitest';
+import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
-import { useProjects, withPeers } from '../test-support/projects.mjs';
+import { useProjects, withPeers } from '../test-support/projects.mts';
+import type { InitProject } from '../init-types.mts';
 import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mts';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';
-const NITPICKER = `nitpicker@${packageVersion()}`;
+const NITPICKER = `nitpicker@${textOf(packageVersion())}`;
 const NOTHING = { missing: [], uninstalled: [], undeclared: [], installedOnly: [] };
 
-function nodeProject(add, testRunner = 'vitest') {
-  return { family: 'node', packageManager: { add, install: 'npm install' }, testRunner };
+function projectOf(project: Partial<InitProject> & { readonly family: string }): InitProject {
+  return { preset: '', summary: '', notes: [], ...project };
+}
+
+function nodeProject(add: string, testRunner = 'vitest'): InitProject {
+  return projectOf({
+    family: 'node',
+    packageManager: {
+      name: 'npm',
+      root: '',
+      locked: false,
+      run: '',
+      add,
+      install: 'npm install',
+    },
+    testRunner,
+  });
 }
 
 describe('peer plan for Node projects', () => {
@@ -114,7 +131,7 @@ describe('peer plan for Node projects', () => {
 });
 
 describe('peer plan for Python projects', () => {
-  const python = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy' };
+  const python = projectOf({ family: 'python', testRunner: 'pytest', typeChecker: 'mypy' });
   const ALL = ['coverage', 'mypy', 'pytest', MUTMUT];
 
   it.each([
@@ -182,7 +199,7 @@ describe('peer plan for Python projects', () => {
 
 describe('peer plan for Java and Kotlin projects', () => {
   it('asks for no package, only Java 21', () => {
-    expect(planPeers(project({}), { family: 'jvm' })).toEqual({
+    expect(planPeers(project({}), projectOf({ family: 'jvm' }))).toEqual({
       ...NOTHING,
       requirements: 'Java 21 or newer. nitpicker adds its own analysis tools to the build.',
     });

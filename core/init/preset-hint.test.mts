@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
-import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mts';
+import type { FileMap } from '../diff/git/test-support/fixture-files.mts';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../diff/reporting/test-support/output-capture.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 const HINT_START =
   'nitpicker: no "preset" is set, so the TypeScript preset runs, but these sources';
 
-function stderrOf(files) {
+function stderrOf(files: FileMap) {
   const repository = createRepository({ 'quality-policy.json': policy(), ...files });
   const output = captureOutput();
-  runCli({
+  void runCli({
     arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot()],
     environment: {},
     currentProjectRoot: repository.root,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { runCli } from '../../cli.mts';
-import { useCliFixtures } from '../../command/test-support/cli-harness.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { useProjects, withPeers } from '../test-support/projects.mjs';
+import { useCliFixtures } from '../../command/test-support/cli-harness.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { useProjects, withPeers } from '../test-support/projects.mts';
 import { assertProjectPeers } from './project-peers.mts';
 
 const project = useProjects();
@@ -13,7 +13,7 @@ const PRESET = ['eslint-lint', 'coverage', 'prettier-format'].map((name) => ({
 }));
 const VITEST = { vitest: '4.1.11', '@vitest/coverage-v8': '4.1.11' };
 
-function check(root, analyzers = PRESET, configuredRunner) {
+function check(root: string, analyzers: readonly unknown[] = PRESET, configuredRunner?: string) {
   return () => {
     assertProjectPeers({ projectRoot: root, analyzers, configuredRunner, packageRoot: root });
   };
@@ -60,7 +60,12 @@ describe('the project peers a run needs', () => {
     const analyzers = PRESET;
 
     expect(() => {
-      assertProjectPeers({ projectRoot: root, analyzers, packageRoot });
+      assertProjectPeers({
+        projectRoot: root,
+        analyzers,
+        configuredRunner: undefined,
+        packageRoot,
+      });
     }).not.toThrow();
   });
 
@@ -108,7 +113,7 @@ describe('the project peers a run needs', () => {
   it('stops the gate before any analyzer starts', () => {
     const repository = cli.createRepository({ 'src/example.ts': 'export const example = 1;\n' });
     const output = captureOutput();
-    const started = [];
+    const started: unknown[] = [];
 
     const exitCode = cli.runCli({
       arguments_: ['--base', 'comparison-base', '--output', cli.makeOutputRoot()],

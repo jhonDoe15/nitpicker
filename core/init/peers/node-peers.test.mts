@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
-import { useProjects } from '../test-support/projects.mjs';
+import { useProjects } from '../test-support/projects.mts';
 import {
   assertTypeScriptNode,
   lowestClause,
@@ -10,14 +11,14 @@ import {
 } from './node-peers.mts';
 
 const project = useProjects();
-const NITPICKER = `nitpicker@${packageVersion()}`;
+const NITPICKER = `nitpicker@${textOf(packageVersion())}`;
 const ALL_VITEST_PEERS = [NITPICKER, 'typescript', '@types/node', 'vitest', '@vitest/coverage-v8'];
 
-function addedPeers(...arguments_) {
+function addedPeers(...arguments_: Parameters<typeof missingNodePeers>): readonly string[] {
   return missingNodePeers(...arguments_).add;
 }
 
-function installed(name, version = '1.0.0') {
+function installed(name: string, version = '1.0.0') {
   return { [`node_modules/${name}/package.json`]: JSON.stringify({ name, version }) };
 }
 

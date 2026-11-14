@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../test-support/projects.mjs';
+import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
+import { useProjects } from '../test-support/projects.mts';
 import { detectProject } from './detect-project.mts';
 
 const project = useProjects();
@@ -10,20 +11,20 @@ const MAVEN_KOTLIN_NOTE =
 const NO_SOURCES_NOTE =
   'No TypeScript or JavaScript sources under src yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.';
 
-function detected(files) {
+function detected(files: FileMap) {
   const { preset, family, summary, notes } = detectProject(project(files));
   return { preset, family, summary, notes };
 }
 
-function node(preset, summary, notes = []) {
+function node(preset: string, summary: string, notes: readonly string[] = []) {
   return { preset, family: 'node', summary, notes };
 }
 
-function python(summary) {
+function python(summary: string) {
   return { preset: 'python', family: 'python', summary, notes: [] };
 }
 
-function jvm(preset, summary, notes = []) {
+function jvm(preset: string, summary: string, notes: readonly string[] = []) {
   return { preset, family: 'jvm', summary, notes };
 }
 

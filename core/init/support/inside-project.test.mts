@@ -1,6 +1,6 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../test-support/projects.mjs';
+import { useProjects } from '../test-support/projects.mts';
 import {
   hasProjectFile,
   insideProject,

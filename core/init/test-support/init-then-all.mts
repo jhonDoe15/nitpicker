@@ -2,12 +2,22 @@ import { cpSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runCli } from '../../cli.mts';
-import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
+import type { ExitCode } from '../../cli-context.mts';
+import { parseJson } from '../../../shared/values/readers.mts';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import { insideProject } from '../support/inside-project.mts';
 
 const SNAPSHOT_REPORTS = 'reports/quality/snapshot';
 
-export function copyFixtureRepository({ fixtureRoot, prefix, ignored }) {
+export function copyFixtureRepository({
+  fixtureRoot,
+  prefix,
+  ignored,
+}: {
+  readonly fixtureRoot: string;
+  readonly prefix: string;
+  readonly ignored: readonly string[];
+}): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), prefix)));
   cpSync(fixtureRoot, root, { recursive: true });
   rmSync(insideProject(root, 'nitpicker.config.json'), { force: true });
@@ -17,24 +27,34 @@ export function copyFixtureRepository({ fixtureRoot, prefix, ignored }) {
   return root;
 }
 
-function run(root, cliArguments) {
+type CliRun = { exitCode: ExitCode; text: string };
+
+function run(root: string, cliArguments: readonly string[]): CliRun {
   let text = '';
   const exitCode = runCli({
     arguments_: cliArguments,
     environment: { NO_COLOR: '1' },
     currentProjectRoot: root,
-    stdout: { write: (chunk) => (text += chunk) },
-    stderr: { write: (chunk) => (text += chunk) },
+    stdout: { write: (chunk: string) => (text += chunk) },
+    stderr: { write: (chunk: string) => (text += chunk) },
     progress: { write: () => undefined },
   });
   return { exitCode, text };
 }
 
-function readReport(root, name) {
-  return JSON.parse(readFileSync(insideProject(root, `${SNAPSHOT_REPORTS}/${name}`), 'utf8'));
+function readReport(root: string, name: string): unknown {
+  return parseJson(readFileSync(insideProject(root, `${SNAPSHOT_REPORTS}/${name}`), 'utf8'));
 }
 
-export function runInitThenAll(root) {
+type InitThenAll = {
+  init: CliRun;
+  all: CliRun;
+  config: string;
+  summary: unknown;
+  toolErrors: unknown;
+};
+
+export function runInitThenAll(root: string): InitThenAll {
   const init = run(root, ['init']);
   const all = run(root, ['--all']);
   return {

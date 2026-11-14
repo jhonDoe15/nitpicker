@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../test-support/projects.mjs';
+import { useProjects } from '../test-support/projects.mts';
 import { pythonPeerStatus, requiredPythonPeers } from './python-peers.mts';
 
 const project = useProjects();
@@ -22,9 +22,9 @@ describe('required Python peers', () => {
   });
 });
 
-function missingPythonPeers(root, python) {
+function missingPythonPeers(root: string, python: Parameters<typeof pythonPeerStatus>[1]) {
   return pythonPeerStatus(root, python)
-    .filter(({ declared, installed }) => !declared && !installed)
+    .filter(({ declared, installed }) => !(declared || installed))
     .map(({ requirement }) => requirement);
 }
 

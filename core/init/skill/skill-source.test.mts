@@ -1,20 +1,22 @@
 import { mkdirSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { textOf } from '../../../shared/values/readers.mts';
 import { packageVersion } from '../../help/package-version.mts';
-import { init, useProjects } from '../test-support/projects.mjs';
+import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
+import { init, useProjects } from '../test-support/projects.mts';
 import { skillSource } from './skill-source.mts';
 
 const createProject = useProjects();
 const INSTALLED = { 'node_modules/nitpicker/package.json': '{"version":"0.0.1"}' };
 const PYTHON = { 'pyproject.toml': '[project]\nname = "app"\n', 'app/main.py': 'VALUE = 1\n' };
 
-function skillSection(output) {
+function skillSection(output: string) {
   const sections = output.split('\n\n');
   return sections.find((section) => section.startsWith('Install the agent skill:'));
 }
 
-function project(files) {
+function project(files: FileMap) {
   return createProject(files, { repository: true });
 }
 
@@ -62,7 +64,7 @@ describe('the source init prints for the agent skill', () => {
     const root = project(PYTHON);
 
     expect(skillSection(init(root).stdoutText)).toBe(
-      `Install the agent skill:\n  npx skills add jhonDoe15/nitpicker#v${packageVersion()} --skill nitpicker-python`,
+      `Install the agent skill:\n  npx skills add jhonDoe15/nitpicker#v${textOf(packageVersion())} --skill nitpicker-python`,
     );
   });
 

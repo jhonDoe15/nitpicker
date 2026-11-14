@@ -1,23 +1,33 @@
 import { describe, expect, it } from 'vitest';
-import { useProjects } from '../test-support/projects.mjs';
+import type { FileMap } from '../../diff/git/test-support/fixture-files.mts';
+import type { InitProject } from '../init-types.mts';
+import { useProjects } from '../test-support/projects.mts';
 import { workflowParts } from './ci-steps.mts';
 
 const project = useProjects();
-const PYTHON = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy', tool: 'pip' };
+const PYTHON: InitProject = {
+  preset: '',
+  summary: '',
+  notes: [],
+  family: 'python',
+  testRunner: 'pytest',
+  typeChecker: 'mypy',
+  tool: 'pip',
+};
 const CHECKS = 'the python-rules, mutmut and dependency checks need Python 3.10 or newer';
 
-function pythonSetup(files) {
+function pythonSetup(files: FileMap) {
   const root = project(files);
   const { ENVIRONMENT_STEPS, notes } = workflowParts(root, {
     project: PYTHON,
-    peers: { missing: [], undeclared: [], installedOnly: [] },
+    peers: { missing: [], uninstalled: [], undeclared: [], installedOnly: [] },
     version: '1.2.3',
     repository: root,
   });
   return { setup: ENVIRONMENT_STEPS.slice(1).join('\n'), notes };
 }
 
-function pyproject(spec) {
+function pyproject(spec: string) {
   return { 'pyproject.toml': `[project]\nrequires-python = "${spec}"\n` };
 }
 
@@ -42,7 +52,7 @@ describe('the Python version of the CI job', () => {
       '^3.9',
     ],
   ])('raises %s below the floor to Python 3.10, with a note', (_name, files, spec) => {
-    const lower = /\d+\.\d+/u.exec(spec)[0];
+    const lower = /\d+\.\d+/u.exec(spec)?.[0] ?? '';
 
     expect(pythonSetup(files)).toEqual({
       setup: '        with:\n          python-version: "3.10"',
@@ -61,7 +71,7 @@ describe('the Python version of the CI job', () => {
       '~3.9',
     ],
   ])('keeps the lower bound of %s that leaves the floor out, with a note', (_name, files, spec) => {
-    const lower = /\d+\.\d+/u.exec(spec)[0];
+    const lower = /\d+\.\d+/u.exec(spec)?.[0] ?? '';
 
     expect(pythonSetup(files)).toEqual({
       setup: `        with:\n          python-version: "${lower}"`,
