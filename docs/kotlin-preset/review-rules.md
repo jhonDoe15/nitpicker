@@ -1033,7 +1033,7 @@ Kotlin-specific choices:
   a local `val groups = items.groupBy { ... }`, and either side of a local
   `val (open, closed) = items.partition { ... }` all count as collections. A `groups.keys` element or an
   element of one grouped list is still one row.
-- One finding per site: `kotlin-source/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
+- One finding per site: `effects/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
   `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop` or `SpringDataSaveInLoopHelper` reports the same line.
 
 Not ported:

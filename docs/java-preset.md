@@ -56,6 +56,7 @@ Each topic has its own page, so two changes to different topics never edit the s
 - [Spring architecture rules](java-preset/spring-architecture-rules.md)
 - [Spring configuration files](java-preset/spring-configuration-files.md)
 - [Review rules](java-preset/review-rules.md)
+- [Effects rules](java-preset/effects-rules.md)
 - [Doc comments](java-preset/doc-comments.md)
 - [Reuse rules](java-preset/reuse-rules.md)
 - [Rule messages](java-preset/rule-messages.md)
