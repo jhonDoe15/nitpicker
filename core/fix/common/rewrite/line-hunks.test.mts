@@ -32,8 +32,8 @@ describe('lineHunks', () => {
     ]);
   });
   it('treats a middle too large to compare as one hunk', () => {
-    const left = Array.from({ length: 2100 }, (_, index) => `l${index}`);
-    const right = Array.from({ length: 2000 }, (_, index) => `r${index}`);
+    const left = Array.from({ length: 2100 }, (_, index) => `l${String(index)}`);
+    const right = Array.from({ length: 2000 }, (_, index) => `r${String(index)}`);
 
     expect(lineHunks(['k', ...left, 'k'], ['k', ...right, 'k'])).toEqual([
       { aStart: 1, aEnd: 2101, bStart: 1, bEnd: 2001 },
@@ -90,7 +90,7 @@ describe('line endings', () => {
     ]).toEqual(['a\r\n\r\nb\r\n', 'a\r\n\nb\n', 'a\n\n']);
   });
   it('wraps a formatter so each output follows its own source', () => {
-    const format = keepingLineEndings((sources) => ({
+    const format = keepingLineEndings((sources: ReadonlyMap<string, string>) => ({
       formatted: new Map([...sources].map(([name, text]) => [name, text.replaceAll('\r', '')])),
       unformattable: ['x'],
     }));

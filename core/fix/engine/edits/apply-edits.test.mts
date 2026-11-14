@@ -1,27 +1,27 @@
 import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { applyFixes } from './apply-edits.mjs';
-import { createSnapshot } from './snapshot.mjs';
+import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
+import { applyFixes, createSnapshot } from '../../test-support/engine-views.mts';
+import type { Edit } from '../../test-support/engine-views.mts';
 
 const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>) {
   const root = temporaryRoot('nitpicker-apply-edits-');
   writeFiles(root, files);
   return { root, snapshot: createSnapshot(root, Object.keys(files)) };
 }
 
-function entry(...edits) {
+function entry(...edits: readonly Edit[]) {
   return {
     recipe: 'demo',
     fix: { finding: { tool: 'demo', rule: 'x', path: 'a.txt', line: 1 }, edits },
   };
 }
 
-function read(root, name) {
+function read(root: string, name: string) {
   return readFileSync(path.join(root, name), 'utf8');
 }
 

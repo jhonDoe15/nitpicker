@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { activeRecipes, checkRecipe, defineRecipes, ruleName } from './recipes.mjs';
+import { checkRecipe, defineRecipes, ruleName } from './recipes.mjs';
+import { activeRecipes } from '../test-support/engine-views.mts';
 
 const valid = {
   id: 'demo',
@@ -20,7 +21,9 @@ describe('checkRecipe', () => {
     [{ safety: 'unsafe' }, 'Recipe demo has safety unsafe, not safe or review'],
     [{ plan: undefined }, 'Recipe demo has no plan function'],
   ])('refuses a recipe with %o', (override, message) => {
-    expect(() => checkRecipe({ ...valid, ...override })).toThrow(message);
+    expect(() => {
+      checkRecipe({ ...valid, ...override });
+    }).toThrow(message);
   });
   it('accepts a complete recipe', () => {
     expect(checkRecipe(valid)).toBe(valid);
@@ -29,7 +32,9 @@ describe('checkRecipe', () => {
 
 describe('defineRecipes', () => {
   it('refuses two recipes with one id', () => {
-    expect(() => defineRecipes([valid, { ...valid }])).toThrow('Recipe demo is defined twice');
+    expect(() => {
+      defineRecipes([valid, { ...valid }]);
+    }).toThrow('Recipe demo is defined twice');
   });
   it('freezes the list', () => {
     expect(Object.isFrozen(defineRecipes([valid]))).toBe(true);

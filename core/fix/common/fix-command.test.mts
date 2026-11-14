@@ -1,6 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
-import { failureText, fixSpawn, fixerError, runFixCommand } from './fix-command.mjs';
+import { linkSentence } from '../test-support/link-sentence.mts';
+import {
+  failureText,
+  fixSpawn as untypedFixSpawn,
+  fixerError,
+  runFixCommand as untypedRunFixCommand,
+} from './fix-command.mjs';
+
+type Result = {
+  readonly status?: number;
+  readonly stdout?: string;
+  readonly stderr?: string;
+  readonly error?: Error;
+};
+type Command = {
+  readonly operation: string;
+  readonly command: string;
+  readonly cwd: string;
+  readonly acceptedStatuses: readonly number[];
+  readonly args: readonly string[];
+  readonly environment?: Readonly<Record<string, string>>;
+  readonly input?: string;
+  readonly shell?: true;
+  readonly executeFixCommand: (invocation: { readonly shell?: true }) => Result;
+  readonly describe?: (result: Result) => string;
+};
+
+const runFixCommand: (command: Command) => Result = untypedRunFixCommand;
+const fixSpawn: (options: {
+  readonly operation: string;
+  readonly executeFixCommand: (invocation: unknown) => Result;
+}) => (
+  command: string,
+  args: readonly string[],
+  options?: {
+    readonly cwd?: string;
+    readonly env?: Readonly<Record<string, string>>;
+    readonly shell?: true;
+    readonly timeout?: number;
+  },
+) => Result = untypedFixSpawn;
 
 const BASE = {
   operation: 'demo-fix',
@@ -11,13 +50,13 @@ const BASE = {
 
 describe('runFixCommand', () => {
   it('hands the invocation to the injected executor and returns its result', () => {
-    const seen = [];
+    const seen: unknown[] = [];
     const result = runFixCommand({
       ...BASE,
       args: ['-v'],
       environment: { DEMO: '1' },
       input: 'text',
-      executeFixCommand: (invocation) => {
+      executeFixCommand: (invocation: unknown) => {
         seen.push(invocation);
         return { status: 0, stdout: 'done' };
       },
@@ -37,8 +76,8 @@ describe('runFixCommand', () => {
     ]);
   });
   it('hands over the shell flag only when the command needs a shell', () => {
-    const seen = [];
-    const executeFixCommand = (invocation) => {
+    const seen: unknown[] = [];
+    const executeFixCommand = (invocation: { readonly shell?: true }) => {
       seen.push(invocation.shell);
       return { status: 0 };
     };
@@ -82,7 +121,7 @@ describe('runFixCommand', () => {
         ...BASE,
         args: [],
         executeFixCommand: () => ({ status: 3 }),
-        describe: (result) => `custom ${result.status}`,
+        describe: (result) => `custom ${String(result.status)}`,
       }),
     ).toThrow('demo-fix failed: custom 3');
   });
@@ -90,10 +129,10 @@ describe('runFixCommand', () => {
 
 describe('fixSpawn', () => {
   it('turns a spawn call into an invocation that keeps the timeout, the shell and the environment', () => {
-    const seen = [];
+    const seen: unknown[] = [];
     const spawn = fixSpawn({
       operation: 'demo-tools',
-      executeFixCommand: (invocation) => {
+      executeFixCommand: (invocation: unknown) => {
         seen.push(invocation);
         return { status: 0 };
       },

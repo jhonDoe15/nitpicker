@@ -1,40 +1,24 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { JVM_RECIPES } from '../../../languages/java/fix/recipes/jvm-recipes.mjs';
-import { fakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
-import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { defineRecipes } from '../engine/recipes.mjs';
-import { applyPatch, treeOf } from '../dry-run/test-support/tree.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
+import { policy } from '../../diff/execution/test-support/analyzer-findings.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { defineRecipes } from '../test-support/engine-views.mts';
+import { fakeJvmTools, jvmRecipes, todoRecipe } from '../test-support/tool-views.mts';
+import type { FakeTools, FixCliInput } from '../test-support/tool-views.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { parseJson, textOf } from '../../../shared/values/readers.mts';
+import type { FixtureRepository } from '../../command/test-support/fixture-types.mts';
+import { applyPatch, treeOf } from '../dry-run/test-support/tree.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 
 const JAVA = 'src/main/java/demo';
-const OTHER = {
-  id: 'java-other-todo',
-  rules: [{ tool: 'checkstyle', rule: 'OtherTodo' }],
-  presets: ['java'],
-  scope: 'file',
-  safety: 'safe',
-  plan: ({ files }) => ({
-    fixes: files.flatMap(({ path: name, text }) => {
-      const start = text.indexOf('TODO');
-      return name.endsWith('.java') && start !== -1
-        ? [
-            {
-              finding: { tool: 'checkstyle', rule: 'OtherTodo', path: name, line: 1 },
-              edits: [{ type: 'replace', path: name, start, end: start + 4, text: 'DONE' }],
-            },
-          ]
-        : [];
-    }),
-  }),
-};
-const FIX_RECIPES = defineRecipes([...JVM_RECIPES, OTHER]);
+const OTHER = todoRecipe('java-other-todo', 'OtherTodo', 'safe');
+const FIX_RECIPES = defineRecipes([...jvmRecipes, OTHER]);
 const LEGACY = [
   { file: `${JAVA}/A.java`, rule: 'UpperEll', source: 'fp:a', count: 2 },
   { file: `${JAVA}/B.java`, rule: 'UpperEll', source: 'fp:b', count: 1 },
@@ -53,10 +37,14 @@ function javaRepository() {
   });
 }
 
-function run(repository, extra, tools = fakeJvmTools()) {
+function run(
+  repository: FixtureRepository,
+  extra: readonly string[],
+  tools: FakeTools = fakeJvmTools(),
+) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
-  const exitCode = runCli({
+  const input: FixCliInput = {
     arguments_: [...extra, '--output', outputRoot],
     currentProjectRoot: repository.root,
     environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
@@ -65,7 +53,8 @@ function run(repository, extra, tools = fakeJvmTools()) {
     fixRecipes: FIX_RECIPES,
     stdout: output.stdout,
     stderr: output.stderr,
-  });
+  };
+  const exitCode = runCli(input);
   return {
     exitCode,
     stdout: output.stdoutText.slice(0, output.stdoutText.indexOf('Nitpicker quality snapshot')),
@@ -74,11 +63,14 @@ function run(repository, extra, tools = fakeJvmTools()) {
   };
 }
 
-function inventory(repository) {
-  return JSON.parse(readFileSync(path.join(repository.root, 'nitpicker.legacy.json'), 'utf8'));
+function inventory(repository: FixtureRepository): unknown {
+  return fieldAt(
+    parseJson(readFileSync(path.join(repository.root, 'nitpicker.legacy.json'), 'utf8')),
+    'sites',
+  );
 }
 
-function source(repository, name) {
+function source(repository: FixtureRepository, name: string) {
   return readFileSync(path.join(repository.root, JAVA, name), 'utf8');
 }
 
@@ -94,7 +86,7 @@ describe('nitpicker --fix --all --rule', () => {
     );
     expect(source(repository, 'B.java')).toBe('class B { long a = 4L; String s = "TODO"; }\n');
     expect(source(repository, 'C.java')).toBe('class  C {}\n');
-    expect(inventory(repository).sites).toEqual([LEGACY[2]]);
+    expect(inventory(repository)).toEqual([LEGACY[2]]);
     expect(result.stdout).toBe(`Fixed files:
 ${JAVA}/A.java
 ${JAVA}/B.java
@@ -120,7 +112,7 @@ Fix notes:
 
     run(repository, ['--fix', '--all', '--rule', 'checkstyle/UpperEll']);
 
-    expect(inventory(repository).sites).toEqual([{ ...LEGACY[0], count: 4 }]);
+    expect(inventory(repository)).toEqual([{ ...LEGACY[0], count: 4 }]);
   });
   it('leaves the allowances alone when several sites of the file match the rule', () => {
     const sites = [LEGACY[0], { ...LEGACY[0], source: 'fp:other', count: 1 }];
@@ -134,7 +126,7 @@ Fix notes:
 
     const result = run(repository, ['--fix', '--all', '--rule', 'checkstyle/UpperEll']);
 
-    expect(inventory(repository).sites).toEqual(sites);
+    expect(inventory(repository)).toEqual(sites);
     expect(
       result.stdout.split('\n').filter((line) => line.includes('nitpicker.legacy.json')),
     ).toEqual([
@@ -155,10 +147,10 @@ Fix notes:
     const errors = result.stderr
       .split('\n')
       .filter((line) => line.startsWith('nitpicker: fix tool error: '))
-      .map((line) => JSON.parse(line.slice(line.indexOf('{'))));
-    expect(errors.map(({ tool }) => tool)).toEqual(['fix-baseline']);
+      .map((line) => parseJson(line.slice(line.indexOf('{'))));
+    expect(errors.map((error) => fieldAt(error, 'tool'))).toEqual(['fix-baseline']);
     expect(
-      errors[0].message.startsWith(
+      textOf(fieldAt(errors, 0, 'message')).startsWith(
         '--fix could not lower the legacy inventory nitpicker.legacy.json: ',
       ),
     ).toBe(true);
@@ -208,7 +200,7 @@ Fix notes (from the dry run):
 
     expect(result.stderr).toBe('');
     expect(source(repository, 'B.java')).toBe('class B { long a = 4L; String s = "TODO"; }\n');
-    expect(inventory(repository).sites).toEqual([LEGACY[2]]);
+    expect(inventory(repository)).toEqual([LEGACY[2]]);
   });
   it('refuses a bare --fix --all and names --rule', () => {
     const result = run(javaRepository(), ['--fix', '--all']);

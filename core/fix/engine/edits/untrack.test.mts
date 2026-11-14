@@ -1,15 +1,15 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
-import { applyFixes } from './apply-edits.mjs';
-import { createSnapshot } from './snapshot.mjs';
+import { fixtureGit, useGitFixtures } from '../../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../../diff/git/test-support/fixture-files.mts';
+import { applyFixes, createSnapshot } from '../../test-support/engine-views.mts';
+import type { Edit } from '../../test-support/engine-views.mts';
 import { isTracked, untrackPath } from './untrack.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
-function entry(...edits) {
+function entry(...edits: readonly Edit[]) {
   return {
     recipe: 'demo',
     fix: { finding: { tool: 'demo', rule: 'x', path: '.env', line: 1 }, edits },
@@ -19,7 +19,7 @@ function entry(...edits) {
 const IGNORE = { type: 'write', path: '.gitignore', text: '/.env\n' };
 const UNTRACK = { type: 'untrack', path: '.env' };
 
-function tracked(root) {
+function tracked(root: string) {
   return fixtureGit(root, ['ls-files']).split('\n').filter(Boolean);
 }
 

@@ -9,18 +9,30 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import { formatNotes, linkNote } from './fix-notes.mjs';
 import { rewriteFormatted } from './format-rewrite.mjs';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
-function trimmer(calls = []) {
+type Sources = ReadonlyMap<string, string>;
+type Format = (sources: Sources) => {
+  readonly formatted: Map<string, string>;
+  readonly unformattable: string[];
+};
+type Repository = ReturnType<typeof createGitRepository>;
+type RunOptions = {
+  readonly touchedLinesOnly?: true;
+  readonly formatBase?: Format;
+  readonly keepLineEndings?: false;
+};
+
+function trimmer(calls: string[][] = []): Format {
   return (sources) => {
     calls.push([...sources.keys()]);
-    const formatted = new Map();
-    const unformattable = [];
+    const formatted = new Map<string, string>();
+    const unformattable: string[] = [];
     for (const [name, source] of sources) {
       if (source.includes('BROKEN')) {
         unformattable.push(name);
@@ -32,7 +44,7 @@ function trimmer(calls = []) {
   };
 }
 
-function outcomeWith(fields) {
+function outcomeWith(fields: Readonly<Record<string, readonly string[]>>) {
   return {
     rewritten: [],
     partlyRewritten: [],
@@ -44,20 +56,25 @@ function outcomeWith(fields) {
   };
 }
 
-function topic(files, changes) {
+function topic(files: Readonly<Record<string, string>>, changes: Readonly<Record<string, string>>) {
   const repository = createGitRepository(files, { baseRef: 'base' });
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
   return repository;
 }
 
-function lineFeedTrimmer(sources) {
+function lineFeedTrimmer(sources: Sources) {
   return trimmer()(
     new Map([...sources].map(([name, source]) => [name, source.replaceAll('\r\n', '\n')])),
   );
 }
 
-function run(repository, names, format, options = {}) {
+function run(
+  repository: Repository,
+  names: readonly string[],
+  format: Format,
+  options: RunOptions = {},
+) {
   return rewriteFormatted({
     projectRoot: repository.root,
     repositoryRoot: repository.root,
@@ -68,7 +85,7 @@ function run(repository, names, format, options = {}) {
   });
 }
 
-function read(repository, name) {
+function read(repository: Repository, name: string) {
   return readFileSync(path.join(repository.root, name), 'utf8');
 }
 
@@ -94,7 +111,7 @@ describe('rewriteFormatted', () => {
   });
   it('leaves a file alone that the formatter would not change, without reading the base', () => {
     const repository = topic({ 'ok.txt': 'a\n' }, { 'ok.txt': 'a\nb\n' });
-    const calls = [];
+    const calls: string[][] = [];
 
     const outcome = run(repository, ['ok.txt'], trimmer(calls));
 
@@ -106,7 +123,7 @@ describe('rewriteFormatted', () => {
       { 'clean.txt': 'a\n', 'legacy.txt': 'a  \n' },
       { 'clean.txt': 'a  \n', 'legacy.txt': 'a  \nb\n', 'new.txt': 'n  \n', 'same.txt': 's\n' },
     );
-    const calls = [];
+    const calls: string[][] = [];
 
     run(repository, ['clean.txt', 'legacy.txt', 'new.txt', 'same.txt'], trimmer(calls));
 
@@ -150,7 +167,7 @@ describe('rewriteFormatted', () => {
     const repository = topic({}, { 'ok.txt': 'a  \n' });
     const latin1 = Buffer.from('caf\u00e9  \n', 'latin1');
     writeFileSync(path.join(repository.root, 'latin1.txt'), latin1);
-    const calls = [];
+    const calls: string[][] = [];
 
     const outcome = run(repository, ['latin1.txt', 'ok.txt'], trimmer(calls));
 
@@ -161,7 +178,7 @@ describe('rewriteFormatted', () => {
   it('does not call the formatter when no file is UTF-8 text', () => {
     const repository = topic({}, {});
     writeFileSync(path.join(repository.root, 'latin1.txt'), Buffer.from([0xe9, 0x0a]));
-    const calls = [];
+    const calls: string[][] = [];
 
     expect(run(repository, ['latin1.txt'], trimmer(calls)).undecodable).toEqual(['latin1.txt']);
     expect(calls).toEqual([]);
@@ -209,11 +226,11 @@ describe('rewriteFormatted on lines, line endings and concurrent edits', () => {
   });
   it("keeps the formatter's line endings and checks the base with its own formatter when asked", () => {
     const repository = topic({ 'old.txt': 'a\r\n' }, { 'old.txt': 'a  \r\n' });
-    const baseCalls = [];
+    const baseCalls: string[][] = [];
 
     const outcome = run(repository, ['old.txt'], lineFeedTrimmer, {
       keepLineEndings: false,
-      formatBase: (sources) => {
+      formatBase: (sources: Sources) => {
         baseCalls.push([...sources.values()]);
         return { formatted: new Map(sources), unformattable: [] };
       },
@@ -224,7 +241,7 @@ describe('rewriteFormatted on lines, line endings and concurrent edits', () => {
   });
   it('leaves a file alone that changed while the formatter ran', () => {
     const repository = topic({}, { 'busy.txt': 'a  \n', 'calm.txt': 'c  \n' });
-    function editingTrimmer(sources) {
+    function editingTrimmer(sources: Sources) {
       writeFileSync(path.join(repository.root, 'busy.txt'), 'edited  \n');
       return trimmer()(sources);
     }

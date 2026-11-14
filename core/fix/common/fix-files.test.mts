@@ -1,10 +1,10 @@
 import { rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 import {
-  collectFixFiles,
+  collectFixFiles as untypedCollectFixFiles,
   excludedBy,
   readBytes,
   rewrittenPaths,
@@ -13,6 +13,18 @@ import {
 import { toolPrecedenceOf } from './tool-precedence.mjs';
 
 const { createGitRepository } = useGitFixtures();
+
+const collectFixFiles: (options: {
+  readonly repositoryRoot: string;
+  readonly projectRoot: string;
+  readonly baseRef: string;
+  readonly scope: undefined;
+  readonly accepts: (name: string) => boolean;
+}) => {
+  readonly files: readonly { readonly path: string }[];
+  readonly links: readonly string[];
+  readonly comparison: { readonly mergeBaseSha: string | undefined };
+} = untypedCollectFixFiles;
 
 describe('excludedBy', () => {
   it('matches a path against any exclude glob', () => {
@@ -43,7 +55,8 @@ describe('collectFixFiles', () => {
       repositoryRoot: repository.root,
       projectRoot: repository.root,
       baseRef: 'base',
-      accepts: (name) => name.endsWith('.py'),
+      scope: undefined,
+      accepts: (name: string) => name.endsWith('.py'),
     });
 
     expect(files.map(({ path: name }) => name)).toEqual(['a.py', 'new/b.py']);
@@ -60,7 +73,8 @@ describe('collectFixFiles', () => {
       repositoryRoot: repository.root,
       projectRoot: repository.root,
       baseRef: 'base',
-      accepts: (name) => name.endsWith('.py'),
+      scope: undefined,
+      accepts: (name: string) => name.endsWith('.py'),
     });
 
     expect([files, links]).toEqual([[], ['inside.py', 'outside.py']]);

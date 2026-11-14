@@ -1,34 +1,39 @@
 import { text } from 'node:stream/consumers';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import * as prettier from 'prettier';
-import { prettierPrecedence } from '../../languages/typescript/preset/head-policy.mjs';
 import {
+  ignoreOptions,
+  inputOf,
   isIgnoredByLayers,
   layeredPrettierOptions,
-} from '../../languages/typescript/adapters/prettier/prettier-layers.mjs';
+  layersOf,
+  lacksLocation,
+} from './prettier-runner-types.mts';
+import type { Input, Layers, SourceFile } from './prettier-runner-types.mts';
 
-async function isIgnored(input, layers, relativePath) {
+async function isIgnored(input: Input, layers: Layers, relativePath: string) {
   if (input.layered) {
     return isIgnoredByLayers(prettier, { ...layers, relativePath });
   }
-  const info = await prettier.getFileInfo(path.join(input.projectRoot, relativePath), {
-    ignorePath: layers.policyIgnorePath,
-  });
+  const info = await prettier.getFileInfo(
+    path.join(input.projectRoot, relativePath),
+    ignoreOptions(layers),
+  );
   return info.ignored || info.inferredParser === null;
 }
 
-function optionsFor(input, layers, relativePath) {
+function optionsFor(input: Input, layers: Layers, relativePath: string) {
   return input.layered
     ? layeredPrettierOptions(prettier, { ...layers, relativePath })
     : layers.policyOptions;
 }
 
-function messageOf(error) {
+function messageOf(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-async function formatOne(input, layers, { path: relativePath, filePath, source }) {
+async function formatOne(input: Input, layers: Layers, file: SourceFile) {
+  const { path: relativePath, filePath, source } = file;
   try {
     if (await isIgnored(input, layers, relativePath)) {
       return { path: relativePath, ignored: true };
@@ -39,19 +44,13 @@ async function formatOne(input, layers, { path: relativePath, filePath, source }
       formatted: await prettier.format(source, { ...options, filepath: filePath }),
     };
   } catch (error) {
-    return error?.loc === undefined
+    return lacksLocation(error)
       ? { path: relativePath, error: messageOf(error) }
       : { path: relativePath, unparsable: true };
   }
 }
 
-const input = JSON.parse(await text(process.stdin));
-const layers = {
-  precedence: prettierPrecedence(),
-  policyOptions: JSON.parse(readFileSync(process.argv[2], 'utf8')),
-  policyIgnorePath: process.argv[3],
-  projectRoot: input.projectRoot,
-  liveProjectRoot: input.projectRoot,
-};
+const input = inputOf(await text(process.stdin));
+const layers = layersOf(input, process.argv);
 const results = await Promise.all(input.files.map((file) => formatOne(input, layers, file)));
 process.stdout.write(`${JSON.stringify({ results })}\n`);
