@@ -1,17 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { timeUnitMismatches } from './time-units.mjs';
+import {
+  type Check,
+  type Messaged,
+  type Subjected,
+  lineOf,
+  scanKotlinSource,
+} from '../../typed/typed-scan.mts';
+import { timeUnitMismatches as untypedTimeUnitMismatches } from './time-units.mjs';
 
-function found(lines, imports = []) {
+const timeUnitMismatches: Check<Subjected & Messaged> = untypedTimeUnitMismatches;
+
+function found(lines: string[], imports: string[] = []) {
   const header = imports.map((line) => `${line}\n`).join('');
-  const source = `${header}class Sessions {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
+  const source = `${header}class Sessions {\n${lines.map((line: string) => `    ${line}`).join('\n')}\n}\n`;
   const scanned = scanKotlinSource(source);
   return timeUnitMismatches(scanned).map(
     ({ offset }) => lineOf(scanned, offset) - imports.length - 1,
   );
 }
 
-function messages(lines) {
+function messages(lines: string[]) {
   return timeUnitMismatches(scanKotlinSource(lines.join('\n'))).map(({ message }) => message);
 }
 

@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { dynamicUris } from './uri-parsing.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { dynamicUris as untypedDynamicUris } from './uri-parsing.mjs';
+
+const dynamicUris: Check<Ruled> = untypedDynamicUris;
 
 const IMPORTS = 'import java.net.URI\nimport java.net.URISyntaxException\n\n';
 
-function found(body, header = IMPORTS) {
+function found(body: string, header = IMPORTS) {
   const source = `${header}fun link(text: String, path: String): Any? {\n${body}\n}\n`;
   const scanned = scanKotlinSource(source);
   const first = lineOf(scanned, source.indexOf('fun link'));

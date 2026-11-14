@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { defaultTimeZones } from './default-time-zone.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { defaultTimeZones as untypedDefaultTimeZones } from './default-time-zone.mjs';
 
-function found(lines) {
-  const source = `class Clocks {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
+const defaultTimeZones: Check<Ruled> = untypedDefaultTimeZones;
+
+function found(lines: string[]) {
+  const source = `class Clocks {\n${lines.map((line: string) => `    ${line}`).join('\n')}\n}\n`;
   const scanned = scanKotlinSource(source);
   return defaultTimeZones(scanned).map(({ rule, offset }) => [rule, lineOf(scanned, offset)]);
 }

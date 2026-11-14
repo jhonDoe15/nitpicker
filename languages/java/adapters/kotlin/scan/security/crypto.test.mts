@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { disabledTlsVerification, WEAK_HMAC_MESSAGE, weakHashes } from './crypto.mjs';
+import { type Check, type Located, scanKotlinSource } from '../typed/typed-scan.mts';
+import { foundWrappedLines } from '../typed/scan-found.mts';
+import {
+  disabledTlsVerification as untypedDisabledTlsVerification,
+  WEAK_HMAC_MESSAGE as UNTYPED_WEAK_HMAC_MESSAGE,
+  weakHashes as untypedWeakHashes,
+} from './crypto.mjs';
 
-function found(check, lines) {
-  const source = `class Crypto {\n${lines.map((line) => `    ${line}`).join('\n')}\n}\n`;
-  const scanned = scanKotlinSource(source);
-  return check(scanned).map((reported) => lineOf(scanned, reported.offset));
+const disabledTlsVerification: Check<Located> = untypedDisabledTlsVerification;
+const weakHashes: Check<Located & { message?: string }> = untypedWeakHashes;
+const WEAK_HMAC_MESSAGE: string = UNTYPED_WEAK_HMAC_MESSAGE;
+
+function found(check: Check<Located>, lines: string[]) {
+  return foundWrappedLines(check, 'class Crypto {', lines);
 }
 
 describe('weakHashes', () => {

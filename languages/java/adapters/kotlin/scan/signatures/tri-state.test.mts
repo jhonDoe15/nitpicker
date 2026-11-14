@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { triStateBooleans } from './tri-state.mjs';
+import { type Check, type Subjected, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { triStateBooleans as untypedTriStateBooleans } from './tri-state.mjs';
 
-function found(source) {
+const triStateBooleans: Check<Subjected> = untypedTriStateBooleans;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return triStateBooleans(scanned).map((reported) => [
     reported.rule,
