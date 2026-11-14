@@ -2,23 +2,31 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { readPinnedTools } from '../../../builds/java-build.mjs';
-import { toolDependencies } from '../../maven-tools.mjs';
+import { readPinnedTools as untypedPinnedTools } from '../../../builds/java-build.mjs';
+import { toolDependencies as untypedToolDependencies } from '../../maven-tools.mjs';
 import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mts';
-import { kotlinTools } from './kotlin-dependencies.mts';
+import { type KotlinPinned, kotlinTools } from './kotlin-dependencies.mts';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mts';
 import { psiArguments } from './kotlin-programs.mts';
+import type { KotlinRoots } from '../kotlin-roots.mts';
 
-const roots = [];
-const module = {
-  basedir: '/work/app',
-  kotlin: {
-    sourceRoots: ['/work/app/src/main/java', '/work/app/src/main/kotlin'],
-    testSourceRoots: ['/work/app/src/test/kotlin', '/work/app/src/main/kotlin'],
-  },
+const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
+const toolDependencies: (
+  pinned: KotlinPinned,
+  jvmTools: unknown[],
+  extra: unknown[],
+) => Readonly<Record<string, readonly string[]>> = untypedToolDependencies;
+
+const roots: string[] = [];
+const kotlin: KotlinRoots = {
+  jdkToolchain: undefined,
+  allOpen: { annotations: [], presets: [] },
+  sourceRoots: ['/work/app/src/main/java', '/work/app/src/main/kotlin'],
+  testSourceRoots: ['/work/app/src/test/kotlin', '/work/app/src/main/kotlin'],
 };
+const module = { basedir: '/work/app', kotlin };
 
-function tree(files) {
+function tree(files: readonly string[]): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-arguments-'));
   roots.push(root);
   for (const name of files) {
@@ -96,7 +104,7 @@ describe('detekt arguments', () => {
       'lib/kotlin-stdlib-1.9.jar',
       'classes/.keep',
     ]);
-    const library = (name) => path.join(root, 'lib', name);
+    const library = (name: string): string => path.join(root, 'lib', name);
 
     expect(
       detektClasspath({
@@ -197,7 +205,7 @@ describe('Kotlin tools', () => {
   const pinned = readPinnedTools();
   const everything =
     '<exclusions><exclusion><groupId>*</groupId><artifactId>*</artifactId></exclusion></exclusions>';
-  const dependency = (coordinates, extra = '') => {
+  const dependency = (coordinates: string, extra = ''): string => {
     const [groupId, artifactId, version, classifier] = coordinates.split(':');
     const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId><version>${version}</version>`;
     return `<dependency>${id}${classifier === undefined ? '' : `<classifier>${classifier}</classifier>`}${extra}</dependency>`;
@@ -215,13 +223,13 @@ describe('Kotlin tools', () => {
     expect(tools['kotlin-compiler']).toEqual([
       dependency(`org.jetbrains.kotlin:kotlin-compiler-embeddable:${pinned.kotlinCompiler}`),
     ]);
-    expect(tools.detekt).toEqual([
+    expect(tools['detekt']).toEqual([
       dependency(`io.gitlab.arturbosch.detekt:detekt-cli:${pinned.detekt}:all`, everything),
     ]);
     expect(tools['detekt-stdlib']).toEqual([
       dependency(`org.jetbrains.kotlin:kotlin-stdlib:${pinned.detektKotlin}`, everything),
     ]);
-    expect(tools.ktlint).toEqual([
+    expect(tools['ktlint']).toEqual([
       dependency(`com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all`, everything),
     ]);
   });
@@ -233,7 +241,7 @@ describe('Kotlin tools', () => {
       'detekt-stdlib',
       'ktfmt',
     ]);
-    expect(kotlinTools(pinned, 'ktfmt').at(-1).coordinates).toEqual([
+    expect(kotlinTools(pinned, 'ktfmt').at(-1)?.coordinates).toEqual([
       `com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies`,
     ]);
     expect(kotlinTools(pinned, 'none').map(({ name }) => name)).toEqual([
@@ -249,7 +257,7 @@ describe('the JDK detekt resolves types against', () => {
     vi.unstubAllEnvs();
   });
 
-  function toolchainHome() {
+  function toolchainHome(): string {
     const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-jdk-'));
     roots.push(home);
     mkdirSync(path.join(home, '.m2'));
@@ -260,7 +268,7 @@ describe('the JDK detekt resolves types against', () => {
     return home;
   }
 
-  function runningJdk() {
+  function runningJdk(): string {
     const home = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-running-jdk-'));
     roots.push(home);
     mkdirSync(path.join(home, 'bin'));
