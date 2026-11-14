@@ -211,7 +211,7 @@ describe('nitpicker show after a failing comparison', () => {
   });
 
   it('exits 0 for a run that found nothing to check', () => {
-    const repository = createRepository({ 'quality-policy.json': policy() });
+    const repository = createRepository({ 'quality-policy.json': policy(), 'src/a.ts': '' });
     const outputRoot = makeOutputRoot();
     execute(repository, ['--base', repository.baseRef, '--output', outputRoot]);
 

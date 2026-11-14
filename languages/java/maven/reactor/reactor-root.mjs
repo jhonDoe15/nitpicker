@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { parentChain } from '../../builds/change-scope/jvm-paths.mjs';
+import { ancestorDirectories } from '../../../../shared/filesystem.mjs';
 
 const MODULE_ENTRY = /<module>([^<]*)<\/module>/gu;
 const COMMENT = /<!--[\s\S]*?-->/gu;
@@ -28,7 +28,7 @@ function listsModule(parent, child) {
 
 export function reactorRootOf(projectRoot) {
   let top = projectRoot;
-  for (const parent of parentChain(projectRoot).slice(1)) {
+  for (const parent of ancestorDirectories(projectRoot).slice(1)) {
     if (existsSync(path.join(top, '.git')) || !listsModule(parent, top)) {
       break;
     }

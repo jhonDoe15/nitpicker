@@ -2,12 +2,9 @@
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mts';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
-import { runCacheCommand } from './command/cache.mts';
 import { runChangelogCommand } from './command/changelog/changelog.mts';
-import { runExplainCommand, runRulesCommand } from './command/reference/reference.mts';
-import { runBaseCommand } from './command/base.mts';
-import { runShowCommand } from './command/show/show.mts';
 import { missingPathHint, parseArguments } from './command/arguments.mts';
+import { SUBCOMMANDS } from './command/subcommands/subcommands.mts';
 import { resolveRunTarget } from './scope/run-target.mts';
 import { realpathSync } from 'node:fs';
 import {
@@ -38,7 +35,6 @@ import { baseSetupResolver } from './command/policy-review/base-setup.mts';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { printedInformation } from './command/information/printed-information.mts';
-import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
@@ -59,7 +55,6 @@ import type {
   ConfiguredRun,
   ExitCode,
   RunSetup,
-  Subcommand,
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
 import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
@@ -73,14 +68,6 @@ const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   },
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
-};
-const SUBCOMMANDS: Readonly<Record<string, Subcommand>> = {
-  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
-  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
-  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
-  show: (cli, rest) => runShowCommand({ ...cli, arguments_: rest }),
-  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
-  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
 };
 
 export function runCli(options: CliInput = {}): ExitCode {

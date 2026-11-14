@@ -49,22 +49,12 @@ function headFactProperties(projectRoot, policy, directory) {
   ];
 }
 
-function mutationScopeProperties({ mutationScope }, directory) {
-  if (mutationScope === undefined) {
+function jsonFileProperty(value, { target, property }) {
+  if (value === undefined) {
     return [];
   }
-  const file = path.join(directory, MUTATION_SCOPE_FILE);
-  writeFileSync(file, JSON.stringify(mutationScope));
-  return [`-Pnitpicker.mutationScope=${file}`];
-}
-
-function changedFilesProperties({ changedFiles }, directory) {
-  if (changedFiles === undefined) {
-    return [];
-  }
-  const file = path.join(directory, CHANGED_FILES_FILE);
-  writeFileSync(file, JSON.stringify(changedFiles));
-  return [`-Pnitpicker.changedFiles=${file}`];
+  writeFileSync(target, JSON.stringify(value));
+  return [`-Pnitpicker.${property}=${target}`];
 }
 
 function pitDeadlineProperties(budget) {
@@ -102,8 +92,14 @@ export function gradleStages(
       ...(testsSkipped ? ['-Pnitpicker.testsSkipped=true'] : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
-      ...mutationScopeProperties(policy, directory),
-      ...changedFilesProperties(policy, directory),
+      ...jsonFileProperty(policy.mutationScope, {
+        target: path.join(directory, MUTATION_SCOPE_FILE),
+        property: 'mutationScope',
+      }),
+      ...jsonFileProperty(policy.changedFiles, {
+        target: path.join(directory, CHANGED_FILES_FILE),
+        property: 'changedFiles',
+      }),
       ...pitHistoryProperties(policy, projectRoot),
       ...pitDeadlineProperties(budget),
       '-I',
