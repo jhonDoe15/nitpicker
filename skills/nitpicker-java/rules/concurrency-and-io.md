@@ -24,6 +24,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`if (++n % 50 == 0) { em.flush(); em.clear(); }`) and a batch filled in the loop and queried when full are fine.
 - Accumulators: never rebuild a collection from itself on each step (`all = Stream.concat(all.stream(), ...).toList()`,
   `byId = new HashMap<>(byId)` in a loop); collect once, or fill one mutable collection (`effects/AccumulatorCopyInLoop`).
+- Lazy relationships: read the relationship of each element of a query result only after the query fetched it
+  (`@EntityGraph`, `JOIN FETCH`, `@BatchSize`, or a projection), never `invoice.getCustomer().getName()` per invoice
+  of `findAll()` (`effects/LazyRelationInLoop`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

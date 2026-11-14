@@ -32,6 +32,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Accumulators: never rebuild a collection from itself on each step (`acc + x` in `fold`, `reduce` or a loop,
   `acc += x` on a `var` read-only list); use `map`, `flatMap`, `buildList` or one mutable collection
   (`effects/AccumulatorCopyInLoop`).
+- Lazy relationships: read the relationship of each element of a query result only after the query fetched it
+  (`@EntityGraph`, `JOIN FETCH`, `@BatchSize`, or a projection), never `invoices.map { it.customer.name }` over
+  `findAll()` (`effects/LazyRelationInLoop`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

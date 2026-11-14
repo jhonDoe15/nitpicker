@@ -2291,6 +2291,7 @@
                             "kotlin-source/UriCreateDynamic",
                             "effects/IoCallInLoop",
                             "effects/AccumulatorCopyInLoop",
+                            "effects/LazyRelationInLoop",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

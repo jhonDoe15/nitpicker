@@ -18,6 +18,10 @@ export const JAVA_EFFECTS = [
   'AccumulatorCopyInLoop 16 Accumulators.concatenated loop all',
   'AccumulatorCopyInLoop 23 Accumulators.reduced reduce acc',
   'AccumulatorCopyInLoop 32 Accumulators.copiedMap loop byId',
+  'LazyRelationInLoop 21 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
+  'LazyRelationInLoop 35 LazyLoads.linesFromQuery TypedQuery.getResultList() Invoice.lines',
+  'LazyRelationInLoop 44 LazyLoads.namesNextToFetchedLines InvoiceRepository.findWithLines() Invoice.customer',
+  'LazyRelationInLoop 27 LazyLoads.lineCounts InvoiceRepository.findFrom() Invoice.lines',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -50,6 +54,9 @@ export const KOTLIN_EFFECTS = [
   'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
   'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
   'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
+  'LazyRelationInLoop 4 LazyLoads.customerNames InvoiceRepository.findAll() Invoice.customer',
+  'LazyRelationInLoop 9 LazyLoads.lineCount InvoiceRepository.findFrom() Invoice.lines',
+  'LazyRelationInLoop 14 LazyLoads.lazySequence InvoiceRepository.findAll() Invoice.lines',
 ];
 
 function summaryOf(violation) {

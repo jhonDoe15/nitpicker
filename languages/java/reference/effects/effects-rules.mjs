@@ -10,6 +10,10 @@ const PATH = ['<helper>', '<call>'];
 const SAMPLES = [
   ['IoCallInLoop', { method: METHOD, kind: 'database', form: 'loop', path: PATH }],
   ['AccumulatorCopyInLoop', { method: METHOD, variable: '<variable>', form: 'loop' }],
+  [
+    'LazyRelationInLoop',
+    { method: METHOD, entity: '<Entity>', relation: '<relation>', origin: '<query>' },
+  ],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

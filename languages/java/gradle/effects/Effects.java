@@ -17,7 +17,9 @@ import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.kinds.Summaries;
+import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.rules.AccumulatorCopy;
+import nitpicker.effects.rules.LazyRelation;
 import nitpicker.effects.rules.LoopIo;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.tree.ClassNode;
@@ -62,7 +64,7 @@ public final class Effects {
         load(index, Path.of(dependency), report, true);
       }
       Budget.begin(longOption(options, "timeBudgetSeconds"));
-      run(new Program(index), report);
+      run(new Program(index), report, options);
       report.unreadableLibraries(index.unreadable());
       int[] supertypes = index.supertypeCoverage();
       report.note("unresolved", Map.of("supertypes", supertypes[0], "total", supertypes[1]));
@@ -72,18 +74,27 @@ public final class Effects {
     Files.writeString(Path.of(args[0]), report.toJson(), StandardCharsets.UTF_8);
   }
 
-  static void run(Program program, Report report) {
+  static void run(Program program, Report report, Map<String, String> options) {
     Summaries summaries = new Summaries(program);
     summaries.compute();
     program.io((flow, index) -> flow.insns[index] instanceof MethodInsnNode call
         && summaries.kind(call.owner, call.name, call.desc) != null);
     new LoopIo(program, summaries, report).run();
     new AccumulatorCopy(program, report).run();
+    new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {
     try {
       return Long.parseLong(options.getOrDefault(key, "0").trim());
+    } catch (NumberFormatException unreadable) {
+      return 0;
+    }
+  }
+
+  private static int batchFetchSize(Map<String, String> options) {
+    try {
+      return Integer.parseInt(options.getOrDefault("batchFetchSize", "0").trim());
     } catch (NumberFormatException unreadable) {
       return 0;
     }
