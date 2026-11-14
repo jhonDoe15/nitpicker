@@ -63,7 +63,7 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectNative: native,
     });
     const layout = readLayout();
-    const contextOnly = contextOnlyFiles(targetPath, options.projectRoot, layout);
+    const contextOnly = contextOnlyFiles(targetPath, options.projectRoot, { layout, ts });
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics

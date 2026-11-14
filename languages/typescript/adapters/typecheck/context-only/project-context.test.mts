@@ -31,8 +31,10 @@ afterAll(() => {
 });
 
 function project(configFiles: Readonly<Record<string, string>>): string {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-roots-')));
-  roots.push(root);
+  const directory = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-')));
+  roots.push(directory);
+  const root = path.join(directory, 'head');
+  mkdirSync(root);
   const files = {
     ...configFiles,
     'src/main.ts': source,
@@ -119,7 +121,7 @@ beforeAll(() => {
     resolveTool('typescript', { projectRoot: PACKAGE_ROOT }).root,
     'lib/tsc.js',
   );
-  cases.forEach(({ name, configs, engine }) => {
+  projectConfigs.forEach(([name, configs]) => {
     const root = project(configs);
     const { status, stdout, stderr } = spawnSync(
       process.execPath,
@@ -129,7 +131,7 @@ beforeAll(() => {
         timeout: 20_000,
       },
     );
-    prepared.set(`${name}/${engine}`, { root, baseline: { status, stdout, stderr } });
+    prepared.set(name, { root, baseline: { status, stdout, stderr } });
   });
 });
 
@@ -137,7 +139,7 @@ describe('the type check preserves the project global type context', () => {
   it.each(cases)(
     'loads transitive Node globals from $name with $engine',
     async ({ name, engine }) => {
-      const fixture = prepared.get(`${name}/${engine}`);
+      const fixture = prepared.get(name);
       if (fixture === undefined) throw new Error('Missing type-check fixture');
       const { root, baseline } = fixture;
       expect(baseline).toEqual({ status: 0, stdout: '', stderr: '' });
