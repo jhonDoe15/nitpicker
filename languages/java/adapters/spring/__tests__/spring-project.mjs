@@ -24,6 +24,7 @@ const reviewFixture = path.join(
   'review-rules',
 );
 const SPRING_RULE = /^(?:Spring|Jpa)/;
+const SOURCE_ROOT = 'src/main/java';
 const VIOLATION_MARKER = /\/\/ violation: (.*)$/;
 const CHECKSTYLE_VERSION = /<checkstyle version="([^"]+)">/;
 function javaFiles(root) {
@@ -50,34 +51,29 @@ function expectedViolations(sourceRoot) {
     )
     .sort();
 }
-function constrainedBodies(results, sourceRoot) {
-  const projectRoot = path.resolve(sourceRoot, '..', '..', '..');
-  const findings = results.map((result) => {
-    const { artifactLocation, region } = result.locations[0].physicalLocation;
-    return {
-      tool: 'pmd',
-      rule: result.ruleId,
-      path: path.relative(projectRoot, new URL(artifactLocation.uri).pathname),
-      location: { line: region.startLine, column: region.startColumn },
-      result,
-    };
-  });
-  return withoutUnconstrainedBodies(findings, {
-    projectRoot,
-    roots: [path.relative(projectRoot, sourceRoot)],
-    readText: sourceTextReader(projectRoot),
-  }).map(({ result }) => result);
-}
-
-function reportedViolations(sarifFile, sourceRoot) {
+function reportedViolations(sarifFile, projectRoot) {
   const [run] = JSON.parse(readFileSync(sarifFile, 'utf8')).runs;
-  return constrainedBodies(run.results, sourceRoot)
+  const findings = run.results
     .filter((result) => SPRING_RULE.test(result.ruleId))
     .map((result) => {
       const { artifactLocation, region } = result.locations[0].physicalLocation;
-      const file = path.relative(sourceRoot, new URL(artifactLocation.uri).pathname);
-      return `${file.split(path.sep).join('/')}:${String(region.startLine)} ${result.ruleId}`;
-    })
+      const file = path.relative(projectRoot, new URL(artifactLocation.uri).pathname);
+      return {
+        tool: 'pmd',
+        rule: result.ruleId,
+        path: file.split(path.sep).join('/'),
+        location: { line: region.startLine, column: region.startColumn },
+      };
+    });
+  return withoutUnconstrainedBodies(findings, {
+    projectRoot,
+    roots: [SOURCE_ROOT],
+    readText: sourceTextReader(projectRoot),
+  })
+    .map(
+      ({ rule, path: file, location }) =>
+        `${path.posix.relative(SOURCE_ROOT, file)}:${String(location.line)} ${rule}`,
+    )
     .sort();
 }
 const REVIEW_MARKER = /\/\/ violation: ([\w-]+(?:, [\w-]+)*)/u;
