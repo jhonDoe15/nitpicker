@@ -1880,6 +1880,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "BooleanFlagParameter",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
       "rule": "AvoidCatchingGenericException",
       "path": "src/main/java/probe/C7Names.java",
       "line": 11
@@ -2144,6 +2150,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "GenericTypeName",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 3
+    },
+    {
+      "tool": "pmd",
       "rule": "ReturnEmptyCollectionRatherThanNull",
       "path": "src/main/java/probe/NullColl.java",
       "line": 11
@@ -2219,6 +2231,12 @@
       "rule": "UnsynchronizedStaticFormatter",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "GenericTypeName",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 13
     },
     {
       "tool": "pmd",
