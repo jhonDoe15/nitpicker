@@ -41,12 +41,16 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
   says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
+- `--label <label>` (repeatable) focuses the run on one kind of finding, such as `performance`,
+  `bug`, `simplification` or `maintainability` (`npx nitpicker --help` lists them): it runs only the
+  checks that can report it and lists only those findings. Its exit 0 is not a pass either: the
+  summary says `Only findings labeled ...`, and you run the gate without `--label` before you finish.
 
 ### Exit codes
 
 | Code | Meaning                                                                                                                                |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer`.                                       |
+| 0    | Completed with no new enforceable findings. Done, unless the run was narrowed with `--analyzer` or `--label`.                          |
 | 1    | At least one new enforceable finding or a failing head test, even if a tool also errored. Fix and rerun.                               |
 | 2    | A tool error and no new enforceable findings or failing head tests, invalid arguments, invalid config, or any other failure to decide. |
 

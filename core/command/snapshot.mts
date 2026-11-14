@@ -26,6 +26,7 @@ import { snapshotJson } from '../diff/reporting/json-output/json-output.mts';
 import type { TextOutput } from '../cli-context.mts';
 import type { ProfiledAnalyzer } from '../../shared/values/analyzers.mts';
 import { fieldOf, numberOr, objectOf, textOf } from '../../shared/values/readers.mts';
+import type { LabelFilter } from '../labels/taxonomy.mts';
 
 type SnapshotCli = {
   readonly options: {
@@ -45,6 +46,7 @@ type SnapshotCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
   readonly scope: unknown;
+  readonly labels?: LabelFilter | undefined;
   readonly setupErrors: readonly object[];
   readonly additionalToolErrors?: readonly unknown[];
 };
@@ -107,7 +109,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         scope,
         setupErrors,
       },
-      analyzerRunOptions({ outputRoot, runTasks }),
+      { ...analyzerRunOptions({ outputRoot, runTasks }), labels: cli.labels },
     ),
   );
   addToolErrors(report, cli.additionalToolErrors ?? []);
