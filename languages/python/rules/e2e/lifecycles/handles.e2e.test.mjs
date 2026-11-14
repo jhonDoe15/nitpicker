@@ -76,7 +76,7 @@ describe.skipIf(!enabled)('handle-unreleased-on-close', () => {
       ['handed to a helper in close', start(call) + closeWith('cancel_all(self._handle)'), []],
       [
         'local timer started and joined',
-        start('t = threading.Timer(5, self.tick)\n        t.start()\n        t.join()') +
+        start('t = threading.Timer(5, self.tick)\n        t.start()\n        t.join(timeout=10)') +
           closeWith('pass'),
         [],
       ],
