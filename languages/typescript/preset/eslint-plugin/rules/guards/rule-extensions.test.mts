@@ -1,4 +1,4 @@
-import { createRuleTester } from './test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as noBranchInCompositionRoot } from '../boundaries/no-branch-in-composition-root.mjs';
 import { rule as noHandwrittenBoundaryGuard } from '../boundaries/no-handwritten-boundary-guard.mjs';
 import { rule as noManagedResource } from '../boundaries/no-managed-resource-construction-outside-composition-roots.mjs';
@@ -9,7 +9,7 @@ import { rule as preserveErrorCause } from '../errors/preserve-error-cause.mjs';
 import { rule as reportModuleLoadEffects } from '../modules/report-module-load-effects.mjs';
 import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 const root = '/repo/src/main/composition-root.ts';
 
 tester.run('preserve-error-cause for Error subclasses', withoutFixes(preserveErrorCause), {
