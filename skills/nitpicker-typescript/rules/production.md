@@ -106,6 +106,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
+- Give every field written from a request a validation bound at or below its column width (`z.string().max(30)`,
+  `@MaxLength(30)` for `varchar(30)`), and keep the OpenAPI `maxLength`, `minLength` and `pattern` equal to the
+  validation of the same property (`field-limit-mismatch`). A column wider than the validation is fine.
 - Pick the cheaper collection form: a `Set` (`add`, `has`) for items you search while you collect
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`

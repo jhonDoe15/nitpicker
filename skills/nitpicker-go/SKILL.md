@@ -84,6 +84,9 @@ honesty): read
   its columns (`CREATE INDEX ON orders (customer_id)`); PostgreSQL does not create one
   (`foreign-key-index`). Without migrations, a GORM foreign-key field gets `gorm:"index"` and an
   ent edge that holds the key gets `index.Edges("owner")` (`go-rules/unindexed-foreign-key`).
+- Give every field written from a request a validation bound at or below its column width
+  (`validate:"max=30"` for `gorm:"size:30"`), and keep the OpenAPI `maxLength` equal to the validation of the
+  same property (`field-limit-mismatch`). A column wider than the validation is fine.
 
 ## Reuse, packages and dead code
 

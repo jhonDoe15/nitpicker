@@ -98,7 +98,6 @@ import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
 import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
 import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-uncoerced-request-input.mjs';
-import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -202,5 +201,4 @@ export const partRules = {
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
   'no-unbounded-query-array': ruleNoUnboundedQueryArray,
   'no-uncoerced-request-input': ruleNoUncoercedRequestInput,
-  'no-uncollected-tests': ruleNoUncollectedTests,
 };
