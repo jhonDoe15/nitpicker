@@ -1,14 +1,14 @@
-import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
-import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { RULE_HINTS, RULES_TOOL } from '../rules/rule-hints.mjs';
-import { allowedOf, describedBy } from './hint-text.mjs';
+import { RULES_TOOL } from '../rules/rule-hints.mjs';
+import { textsOf } from '../../../shared/values/readers.mts';
+import { allowedOf, describedBy } from './hint-text.mts';
+import { counterpartsOf, RULE_HINTS, ruleEntry } from './typed/hint-views.mts';
+import type { EntryView } from './typed/hint-views.mts';
 
 const PYTHON_ANALYZERS = { python: ['python'] };
 
-/** The entries of the checks nitpicker's own Python script reports (`python-rules/*`). */
-export function pythonRulesEntries() {
+export function pythonRulesEntries(): EntryView[] {
   return RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap((hint) =>
-    hint.rules.map((rule) =>
+    textsOf(hint.rules).map((rule) =>
       ruleEntry({
         tool: RULES_TOOL,
         rule,

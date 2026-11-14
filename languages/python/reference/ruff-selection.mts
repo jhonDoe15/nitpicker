@@ -1,8 +1,12 @@
 import { spawnSync } from 'node:child_process';
 import { isStableRule } from '../adapters/configuration/python-ruff-config.mjs';
 import { RUFF_IGNORE, RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
-import { paragraphsOf } from '../../../shared/reference/build/text.mjs';
+import { paragraphsOf as untypedParagraphsOf } from '../../../shared/reference/build/text.mjs';
 import { PROBE_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { parseRuffRules } from './typed/ruff-rule-views.mts';
+import type { RuffRule, RuffSnapshot } from './typed/ruff-rule-views.mts';
+
+const paragraphsOf: (text: string) => string[] = untypedParagraphsOf;
 
 const CODE = /^([A-Z]+)(\d*)$/u;
 const MAXIMUM_OUTPUT = 64 * 1024 * 1024;
@@ -16,27 +20,28 @@ const REFERENCE_LINK = /\[([^\]]+)\](?!\()/gu;
 const VERSION = /^ruff (\S+)/u;
 const WHY_PARAGRAPHS = 2;
 
-function isSelected(code) {
-  const [, letters, digits] = CODE.exec(code);
-  return RUFF_SELECT.some((selector) => {
-    const [, selectorLetters, selectorDigits] = CODE.exec(selector);
+function isSelected(code: string): boolean {
+  const [, letters = '', digits = ''] = CODE.exec(code) ?? [];
+  return RUFF_SELECT.some((selector = '') => {
+    const [, selectorLetters = '', selectorDigits = ''] = CODE.exec(selector) ?? [];
     return selectorLetters === letters && digits.startsWith(selectorDigits);
   });
 }
 
-/** Whether the ruff config of the Python preset selects the rule `code` and does not ignore it. */
-export function isPresetRule(code) {
+export function isPresetRule(code: string): boolean {
   return isSelected(code) && !RUFF_IGNORE.includes(code);
 }
 
-function sectionsOf(explanation) {
+function sectionsOf(explanation: string): Map<string, string | undefined> {
   const parts = explanation.split(SECTION).slice(1);
   return new Map(
-    parts.flatMap((part, index) => (index % 2 === 0 ? [[part.trim(), parts[index + 1]]] : [])),
+    parts.flatMap((part, index): [string, string | undefined][] =>
+      index % 2 === 0 ? [[part.trim(), parts[index + 1]]] : [],
+    ),
   );
 }
 
-function leadingParagraphs(section, count) {
+function leadingParagraphs(section: string | undefined, count: number): string | undefined {
   return section === undefined
     ? undefined
     : paragraphsOf(section.replaceAll(FENCE, '').replaceAll(REFERENCE_LINK, '$1'))
@@ -44,19 +49,18 @@ function leadingParagraphs(section, count) {
         .join(' ');
 }
 
-function explained({ explanation = '' }) {
+function explained({ explanation = '' }: RuffRule): Partial<RuffRule> {
   const sections = sectionsOf(explanation);
-  const example = USE_INSTEAD.exec(explanation)?.[1].trimEnd();
-  return Object.fromEntries(
-    [
-      ['whatItDoes', leadingParagraphs(sections.get('What it does'), 1)],
-      ['why', leadingParagraphs(sections.get('Why is this bad?'), WHY_PARAGRAPHS)],
-      ['useInstead', example],
-    ].filter(([, value]) => value !== undefined && value !== ''),
-  );
+  const example = USE_INSTEAD.exec(explanation)?.[1]?.trimEnd();
+  const entries: [string, string | undefined][] = [
+    ['whatItDoes', leadingParagraphs(sections.get('What it does'), 1)],
+    ['why', leadingParagraphs(sections.get('Why is this bad?'), WHY_PARAGRAPHS)],
+    ['useInstead', example],
+  ];
+  return Object.fromEntries(entries.filter(([, value]) => value !== undefined && value !== ''));
 }
 
-function hasSafeFix({ fix = '', explanation = '' }) {
+function hasSafeFix({ fix = '', explanation = '' }: RuffRule): boolean {
   if (fix.includes('not available')) {
     return false;
   }
@@ -65,12 +69,12 @@ function hasSafeFix({ fix = '', explanation = '' }) {
   return safety === undefined || (SAFE_WORD.test(first) && !UNSAFE_WORD.test(first));
 }
 
-function selectedRuffRules(rules) {
+function selectedRuffRules(rules: readonly RuffRule[]): RuffRule[] {
   return rules
     .filter(
       (rule) => (isStableRule(rule) || RUFF_SELECT.includes(rule.code)) && isPresetRule(rule.code),
     )
-    .map((rule) => ({
+    .map((rule): RuffRule => ({
       code: rule.code,
       name: rule.name,
       linter: rule.linter,
@@ -81,27 +85,21 @@ function selectedRuffRules(rules) {
     .toSorted((left, right) => left.code.localeCompare(right.code));
 }
 
-/** Whether the dotted version `left` comes before `right` (`0.16.8` before `0.16.10`). */
-export function isOlderVersion(left, right) {
+export function isOlderVersion(left: string, right: string): boolean {
   const leftParts = left.split('.').map(Number);
   const rightParts = right.split('.').map(Number);
   const differing = leftParts.findIndex((part, index) => part !== (rightParts[index] ?? 0));
   return differing === -1
     ? leftParts.length < rightParts.length
-    : leftParts[differing] < (rightParts[differing] ?? 0);
+    : (leftParts[differing] ?? 0) < (rightParts[differing] ?? 0);
 }
 
-function ruffVersion(ruff) {
+function ruffVersion(ruff: string): string | undefined {
   const result = spawnSync(ruff, ['--version'], { encoding: 'utf8', timeout: PROBE_TIMEOUT_MS });
   return result.status === 0 ? VERSION.exec(result.stdout)?.[1] : undefined;
 }
 
-/**
- * The rules of the ruff at `ruff` (a path, or a command on the PATH) that the preset selects, with
- * the text of each rule's documentation the reference uses, and that ruff's version; undefined when
- * it cannot be run.
- */
-export function installedRuffRules(ruff) {
+export function installedRuffRules(ruff: string): RuffSnapshot | undefined {
   const result = spawnSync(ruff, ['rule', '--all', '--output-format', 'json'], {
     encoding: 'utf8',
     maxBuffer: MAXIMUM_OUTPUT,
@@ -109,15 +107,14 @@ export function installedRuffRules(ruff) {
   });
   const version = ruffVersion(ruff);
   return result.status === 0 && version !== undefined
-    ? { version, rules: selectedRuffRules(JSON.parse(result.stdout)) }
+    ? { version, rules: selectedRuffRules(parseRuffRules(result.stdout)) }
     : undefined;
 }
 
-/**
- * `snapshot` with the rules of `previous` that the config selects by code and that its ruff does
- * not have yet: a rule of a newer ruff the config already names keeps its entry.
- */
-export function withSelectedNewerRules(snapshot, previous) {
+export function withSelectedNewerRules(
+  snapshot: RuffSnapshot,
+  previous: RuffSnapshot,
+): RuffSnapshot {
   const codes = new Set(snapshot.rules.map(({ code }) => code));
   const newer = previous.rules.filter(({ code }) => RUFF_SELECT.includes(code) && !codes.has(code));
   return {

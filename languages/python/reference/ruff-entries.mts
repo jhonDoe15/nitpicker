@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { hintFor } from '../rules/rule-hints.mjs';
-import { allowedOf } from './hint-text.mjs';
-import { isPresetRule } from './ruff-selection.mjs';
+import { allowedOf } from './hint-text.mts';
+import { isPresetRule } from './ruff-selection.mts';
+import { hintFor, ruleEntry } from './typed/hint-views.mts';
+import { parseRuffSnapshot } from './typed/ruff-rule-views.mts';
+import type { EntryView } from './typed/hint-views.mts';
+import type { RuffRule, RuffSnapshot } from './typed/ruff-rule-views.mts';
 
 export const RUFF_RULES_FILE = new URL('../ruff/ruff-rules.json', import.meta.url);
 
@@ -10,7 +12,16 @@ const DOCUMENTATION = 'https://docs.astral.sh/ruff/rules';
 const PYTHON = 'python';
 const PLACEHOLDER = /\{(\w+)\}/gu;
 
-function ruffEntry({ code, name, linter, summary, whatItDoes, why, useInstead, safeFix }) {
+function ruffEntry({
+  code,
+  name,
+  linter,
+  summary,
+  whatItDoes,
+  why,
+  useInstead,
+  safeFix,
+}: RuffRule): EntryView {
   const hint = hintFor({ tool: 'ruff', rule: code });
   const selected = `Selected in the ruff config of the Python preset, with the ${linter} rules (\`${name}\`).`;
   return ruleEntry({
@@ -28,13 +39,11 @@ function ruffEntry({ code, name, linter, summary, whatItDoes, why, useInstead, s
   });
 }
 
-/** The committed ruff snapshot: the version of ruff it was taken from and the rules the preset selects. */
-export function readRuffSnapshot() {
-  return JSON.parse(readFileSync(RUFF_RULES_FILE, 'utf8'));
+export function readRuffSnapshot(): RuffSnapshot {
+  return parseRuffSnapshot(readFileSync(RUFF_RULES_FILE, 'utf8'));
 }
 
-/** The entries of the ruff rules the Python preset selects, from the committed snapshot. */
-export function ruffEntries() {
+export function ruffEntries(): EntryView[] {
   return readRuffSnapshot()
     .rules.filter(({ code }) => isPresetRule(code))
     .map(ruffEntry);
