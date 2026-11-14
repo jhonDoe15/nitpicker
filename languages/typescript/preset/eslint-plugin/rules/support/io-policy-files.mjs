@@ -1,5 +1,6 @@
 /** The I/O rules and their parts: a change to one invalidates the lint cache. */
 export const IO_POLICY_FILES = [
+  'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulator-concat.mjs',
   'languages/typescript/preset/eslint-plugin/rules/loops/chunked-loops.mjs',
   'languages/typescript/preset/eslint-plugin/rules/loops/concurrent-batches.mjs',
   'languages/typescript/preset/eslint-plugin/rules/loops/loop-shapes.mjs',

@@ -69,6 +69,11 @@ export const policyFailureMessageCases = [
     'pipeline()',
   ),
   adapterCase(
+    'accumulator concat names pushing into the accumulator',
+    'export const all = (xs: number[][]) => xs.reduce((acc, x) => acc.concat(x), []);',
+    'push into an array',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

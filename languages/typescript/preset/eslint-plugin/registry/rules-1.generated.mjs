@@ -11,6 +11,7 @@ import { rule as ruleHoverTestNeedsKeyboard } from '../rules/react-tests/hover-t
 import { rule as ruleIntegrationTestUsesApprovedHarness } from '../rules/testing/processes/integration-test-uses-approved-harness.mjs';
 import { rule as ruleNamingConvention } from '../rules/wrapped/naming-convention.mjs';
 import { rule as ruleNoAccumulatingSpread } from '../rules/collections/no-accumulating-spread.mjs';
+import { rule as ruleNoAccumulatorConcat } from '../rules/collections/no-accumulator-concat.mjs';
 import { rule as ruleNoAddOnlyCollection } from '../rules/lifecycles/growth/no-add-only-collection.mjs';
 import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertions/no-assertion-in-loop.mjs';
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandl
 import { rule as ruleNoUnindexedForeignKey } from '../rules/foreign-keys/no-unindexed-foreign-key.mjs';
 import { rule as ruleNoUninjectableDelay } from '../rules/testing/lifecycle/no-uninjectable-delay.mjs';
 import { rule as ruleNoUnknownInDomain } from '../rules/boundaries/no-unknown-in-domain.mjs';
-import { rule as ruleNoUnknownMainFolder } from '../rules/guards/no-unknown-main-folder.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -113,6 +113,7 @@ export const partRules = {
   'integration-test-uses-approved-harness': ruleIntegrationTestUsesApprovedHarness,
   'naming-convention': ruleNamingConvention,
   'no-accumulating-spread': ruleNoAccumulatingSpread,
+  'no-accumulator-concat': ruleNoAccumulatorConcat,
   'no-add-only-collection': ruleNoAddOnlyCollection,
   'no-assertion-in-loop': ruleNoAssertionInLoop,
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-unindexed-foreign-key': ruleNoUnindexedForeignKey,
   'no-uninjectable-delay': ruleNoUninjectableDelay,
   'no-unknown-in-domain': ruleNoUnknownInDomain,
-  'no-unknown-main-folder': ruleNoUnknownMainFolder,
 };

@@ -467,6 +467,16 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   (`db.select().from(t).where(...)`) is reported once. The JavaScript preset runs the same rule: JS
   that the type checker covers (`allowJs` with `checkJs`, or JSDoc types) is classified by type,
   and the rest by import and receiver name.
+- `nitpicker/no-accumulator-concat`: an accumulator array is not copied with `concat` on every
+  step, in all production code. It reports `acc.concat(x)` in the callback passed straight to
+  `reduce` or `reduceRight` when `acc` is the callback's first parameter, and a loop or iteration
+  callback that reassigns an array declared outside it from `acc.concat(x)`
+  (`all = all.concat(item.tags)`). Each step copies everything collected so far, so the work is
+  quadratic; the spread forms are `nitpicker/no-accumulating-spread`'s, so no step is reported
+  twice. `concat` counts only on an array: with the type checker the accumulator's type must be an
+  array or a tuple (a string's `concat` is not reported); without it, the variable or the `reduce`
+  start value must be an array literal. Allowed forms: `flatMap`, `Object.fromEntries`,
+  `Object.groupBy`, or push into an array created before the loop.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

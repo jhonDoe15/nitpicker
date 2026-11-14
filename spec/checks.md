@@ -206,6 +206,11 @@ preset runs the same rule. A call that takes a whole chunk, a paging or polling 
 publish are left alone. A remote call inside `Promise.all` is the fan-out rule's, so no call is reported
 twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-in-loop` in the Go preset.
 
+Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
+accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
+the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
+the accumulator's type when the type checker runs, so a string's `concat` is left alone.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic
