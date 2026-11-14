@@ -1,28 +1,29 @@
 import { describe, expect, it } from 'vitest';
+import { stringMatching } from '../test-support/report-readers.mts';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
 import {
   unusedFieldConsoleEntry,
   unusedFieldFields,
   unusedFieldMessage,
   useGradleFixtures,
   useMavenFixtures,
-} from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+} from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
 
 describe.each([
   ['a Gradle build', useGradleFixtures],
   ['a Maven build', useMavenFixtures],
 ])('nitpicker with "preset": "java" and a legacy inventory on %s', (_name, useFixtures) => {
   const { repository, run } = useFixtures(nitpickerCli);
-  const site = (name, count) => ({
+  const site = (name: string, count: number) => ({
     file: 'src/main/java/demo/A.java',
     rule: 'UnusedPrivateField',
     source: `fp:nitpicker/subject=Avoid unused field: ${name}`,
     count,
   });
-  const inventory = (...sites) => `${JSON.stringify({ sites })}\n`;
+  const inventory = (...sites: readonly object[]) => `${JSON.stringify({ sites })}\n`;
   it('baselines a site the inventory allows', () => {
     const root = repository({ 'nitpicker.legacy.json': inventory(site('added', 1)) });
     writeFiles(root, {
@@ -44,7 +45,7 @@ describe.each([
     const result = run(root);
     expect({ exitCode: result.exitCode, output: result.text }).toEqual({
       exitCode: 1,
-      output: expect.stringMatching(exactText`Base: comparison-base (argument)
+      output: stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
@@ -74,7 +75,7 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 
     expect({ exitCode: result.exitCode, output: result.text }).toEqual({
       exitCode: 1,
-      output: expect.stringMatching(exactText`Base: comparison-base (argument)
+      output: stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation

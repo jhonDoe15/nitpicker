@@ -5,24 +5,40 @@ import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
 import { createJavaAnalyzer } from '../../../languages/java/adapters/java-analyzer.mjs';
 import {
-  INTERNAL_ERROR_RULE,
-  analyzeJavaSnapshot,
+  INTERNAL_ERROR_RULE as internalErrorRule,
+  analyzeJavaSnapshot as analyzeSnapshot,
 } from '../../../languages/java/adapters/java-runner.mjs';
 import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { fakeGradleRun, useGradleFixtures } from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import { useGradleFixtures } from './test-support/java-cli-harness.mts';
+import { fakeGradleRun as fakeGradleTools } from '../../../languages/java/adapters/test-support/in-process-gradle.mjs';
+import { labelsOf, linkSentence } from '../test-support/report-readers.mts';
+import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+
+type SnapshotOptions = {
+  readonly gradle?: string;
+  readonly spawn?: unknown;
+  readonly policy?: object;
+};
+
+const INTERNAL_ERROR_RULE: string = internalErrorRule;
+const analyzeJavaSnapshot: (
+  projectRoot: string,
+  options: SnapshotOptions,
+) => { readonly findings: readonly unknown[] } = analyzeSnapshot;
+const fakeGradleRun: { readonly gradle: string; readonly spawn: unknown } = fakeGradleTools;
+const compileKotlinFailed: unknown = expect.stringContaining('compileKotlin failed');
 
 const { kotlinRepository, run, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
 describe('Gradle failures of the kotlin analyzer', () => {
-  const kotlinToolError = (snapshot) => [
+  const kotlinToolError = (snapshot: string): unknown[] => [
     expect.objectContaining({
       tool: 'kotlin',
       snapshot,
       rule: 'gradle-failure',
-      message: expect.stringContaining('compileKotlin failed'),
+      message: compileKotlinFailed,
     }),
   ];
   it('reports a Gradle failure on head as a kotlin tool error', () => {
@@ -49,7 +65,11 @@ describe('Gradle failures of the kotlin analyzer', () => {
 describe('Kotlin analyzer', () => {
   it('is named kotlin, declares the Kotlin tools and starts the runner with the kotlin preset', () => {
     const analyzer = createJavaAnalyzer({ kotlin: true });
-    const invocation = analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tool' });
+    const invocation = analyzer.createInvocation({
+      projectRoot: '/project',
+      toolRoot: '/tool',
+      mutationScope: undefined,
+    });
 
     expect(analyzer.name).toBe('kotlin');
     expect(analyzer.reportedTools).toEqual([
@@ -181,10 +201,10 @@ describe('Java analyzer errors that are not build failures', () => {
 
     const { findings } = analyzeJavaSnapshot(root, { ...fakeGradleRun });
 
-    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`)).toEqual([
+    expect(labelsOf(findings, 'tool', 'rule').map((label) => label.replace(' ', '/'))).toEqual([
       'test-runtime/test-console-output',
     ]);
-    expect(findings[0].tokens.at(-1)).toBe('bean');
+    expect(listOf(fieldOf(findings[0], 'tokens')).at(-1)).toBe('bean');
   });
 
   it('reports an error in its own code as an internal error, not a Gradle failure', () => {
@@ -223,7 +243,7 @@ describe('Gradle failure diagnostics', () => {
         policy: { logRoot, logLabel: 'logs' },
       });
 
-      expect(findings[0].message).toBe(
+      expect(fieldOf(findings[0], 'message')).toBe(
         `Java preset failed on your change: ${expected}\nFull Gradle log: logs/java-head-gradle.log\n` +
           linkSentence('gradleFails'),
       );
@@ -239,10 +259,12 @@ describe('Gradle failure diagnostics', () => {
     writeFiles(root, { GRADLE_FAIL: lines.join('\n') });
     const logLabel = 'l'.repeat(600);
 
-    const { message } = analyzeJavaSnapshot(root, {
-      ...fakeGradleRun,
-      policy: { logRoot, logLabel },
-    }).findings[0];
+    const message = textOf(
+      fieldOf(
+        analyzeJavaSnapshot(root, { ...fakeGradleRun, policy: { logRoot, logLabel } }).findings[0],
+        'message',
+      ),
+    );
 
     expect(message.split('\n').slice(-2)).toEqual([
       `Full Gradle log: ${logLabel}/java-head-gradle.log`,
@@ -271,26 +293,31 @@ describe('Gradle failure diagnostics', () => {
     const before = gradleLogs();
 
     const result = run(root);
-    const errors = result.json('tool-errors.json');
+    const errors = listOf(result.json('tool-errors.json'));
+    const snapshotOf = (error: unknown) => textOf(fieldOf(error, 'snapshot'));
 
     expect(gradleLogs()).toEqual(before);
     expect(result.exitCode).toBe(2);
-    expect(errors.map(({ snapshot }) => snapshot).sort()).toEqual(['base', 'head']);
-    const where = { base: 'on the base', head: 'on your change' };
-    expect(errors.map(({ message }) => message)).toEqual(
-      errors.map(({ snapshot }) =>
-        [
-          `Kotlin preset failed ${where[snapshot]}: Execution failed for task ':test'.`,
-          '> There were failing tests. See the report at: build/reports/tests/test/index.html',
-          `Full Gradle log: ${result.reports}/logs/kotlin-${snapshot}-gradle.log`,
-          linkSentence('gradleFails'),
-        ].join('\n'),
-      ),
+    expect(errors.map(snapshotOf).sort()).toEqual(['base', 'head']);
+    const where: Readonly<Record<string, string>> = { base: 'on the base', head: 'on your change' };
+    expect(errors.map((error) => fieldOf(error, 'message'))).toEqual(
+      errors
+        .map(snapshotOf)
+        .map((snapshot) =>
+          [
+            `Kotlin preset failed ${where[snapshot] ?? ''}: Execution failed for task ':test'.`,
+            '> There were failing tests. See the report at: build/reports/tests/test/index.html',
+            `Full Gradle log: ${result.reports}/logs/kotlin-${snapshot}-gradle.log`,
+            linkSentence('gradleFails'),
+          ].join('\n'),
+        ),
     );
     expect(
-      errors.map(({ snapshot }) =>
-        readFileSync(path.join(result.reports, 'logs', `kotlin-${snapshot}-gradle.log`), 'utf8'),
-      ),
+      errors
+        .map(snapshotOf)
+        .map((snapshot) =>
+          readFileSync(path.join(result.reports, 'logs', `kotlin-${snapshot}-gradle.log`), 'utf8'),
+        ),
     ).toEqual(errors.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`));
   });
 });

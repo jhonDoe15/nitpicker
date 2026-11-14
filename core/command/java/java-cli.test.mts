@@ -4,23 +4,32 @@ import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
-import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
+import { exactText } from '../../diff/reporting/test-support/output-expectations.mts';
+import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mts';
 import {
   unusedFieldConsoleEntry,
   unusedFieldFields,
   unusedFieldMessage,
   useGradleFixtures,
   useMavenFixtures,
-} from './test-support/java-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { acceptedDigest } from '../test-support/accepted-digest.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
-import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+} from './test-support/java-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { acceptedDigest } from '../test-support/accepted-digest.mts';
+import {
+  labelsOf,
+  linkSentence,
+  pickFields,
+  toolNames,
+  whereField,
+} from '../test-support/report-readers.mts';
+import { docsUrl as renderDocsUrl } from '../../../shared/messages/docs-url.mjs';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
+
+const docsUrl: (page: string, anchor?: string) => string | undefined = renderDocsUrl;
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const addedField = unusedFieldMessage('added');
-const xmlText = (text) =>
+const xmlText = (text: string) =>
   text
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -39,7 +48,7 @@ const CLONE_MESSAGE = [
 
 const UNUSED_FIELD_HELP_URI = docsUrl('docs/rules/java-pmd.md', 'pmd-unusedprivatefield');
 
-const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
+const addedFieldOutput: unknown = expect.stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
@@ -49,10 +58,11 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
 describe.each([
   ['a Gradle build', useGradleFixtures, true],
-  ['a Maven build', useMavenFixtures, false],
-])('nitpicker with "preset": "java" on %s', (_name, useFixtures, subprocess) => {
+  ['a Maven build', useMavenFixtures, undefined],
+] as const)('nitpicker with "preset": "java" on %s', (_name, useFixtures, subprocess) => {
   const { build, run, runCli, temporaryRoot, ...fixtures } = useFixtures(nitpickerCli);
-  const repository = (files = {}) => fixtures.repository({ ...EMPTY_JDEPS, ...files });
+  const repository = (files: Readonly<Record<string, string>> = {}) =>
+    fixtures.repository({ ...EMPTY_JDEPS, ...files });
   it('passes when the change adds no finding and keeps the legacy one baselined', () => {
     const root = repository();
     writeFiles(root, {
@@ -63,10 +73,7 @@ describe.each([
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'java',
-      'repository-hygiene',
-    ]);
+    expect(toolNames(result.json('summary.json'))).toEqual(['java', 'repository-hygiene']);
   });
   it('fails on a new enforceable finding and reports it in text, JSON, SARIF and JUnit', () => {
     const root = repository();
@@ -83,10 +90,11 @@ describe.each([
     });
     expect(result.output.out).toEqual(addedFieldOutput);
     expect(
-      JSON.parse(readFileSync(path.join(result.reports, 'new-findings.json'), 'utf8')).map(
-        ({ helpUri }) => helpUri,
+      pickFields(
+        parseJson(readFileSync(path.join(result.reports, 'new-findings.json'), 'utf8')),
+        'helpUri',
       ),
-    ).toEqual([UNUSED_FIELD_HELP_URI]);
+    ).toEqual([[UNUSED_FIELD_HELP_URI]]);
     expect(result.json('new-findings.json')).toEqual([
       {
         tool: 'pmd',
@@ -198,9 +206,9 @@ describe.each([
     const body = Array.from(
       { length: 12 },
       (_, i) =>
-        `    int v${i} = compute(a, b) + ${i} * helper(a);\n    if (v${i} > 10) { total += v${i}; }`,
+        `    int v${String(i)} = compute(a, b) + ${String(i)} * helper(a);\n    if (v${String(i)} > 10) { total += v${String(i)}; }`,
     ).join('\n');
-    const source = (name) =>
+    const source = (name: string) =>
       `package demo;\n\npublic final class ${name} {\n  int run(int a, int b) {\n    int total = 0;\n${body}\n    return total;\n  }\n}\n`;
     const root = repository({ 'src/main/java/demo/First.java': source('First') });
     writeFiles(root, { 'src/main/java/demo/Second.java': source('Second') });
@@ -208,9 +216,7 @@ describe.each([
 
     const result = run(root);
 
-    expect({ exitCode: result.exitCode, output: result.text }).toEqual({
-      exitCode: 1,
-      output: expect.stringMatching(exactText`Base: comparison-base (argument)
+    const cloneOutput: unknown = expect.stringMatching(exactText`Base: comparison-base (argument)
 
 Quality gate summary
 ✖ 1 new enforceable violation
@@ -221,11 +227,12 @@ Design notes for review (not failing): 2 new
   ${CLONE_SIZE_NOTE} (lines 30)
   ${CLONE_SIZE_NOTE} (tokens 381)
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
-`),
+`);
+    expect({ exitCode: result.exitCode, output: result.text }).toEqual({
+      exitCode: 1,
+      output: cloneOutput,
     });
-    const clones = result
-      .json('new-findings.json')
-      .filter((finding) => finding.rule === 'duplicate-clone');
+    const clones = whereField(result.json('new-findings.json'), 'rule', 'duplicate-clone');
     expect(clones).toEqual([
       {
         tool: 'duplicates',
@@ -258,7 +265,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
     expect(result.exitCode).toBe(2);
     expect(result.output.err).toBe('');
-    expect(result.json('summary.json').overallStatus).toBe('tool-error');
+    expect(fieldOf(result.json('summary.json'), 'overallStatus')).toBe('tool-error');
     expect(result.json('tool-errors.json')).toEqual([
       {
         tool: 'java',
@@ -277,7 +284,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('summary.json').overallStatus).toBe('tool-error');
+    expect(fieldOf(result.json('summary.json'), 'overallStatus')).toBe('tool-error');
     expect(result.json('tool-errors.json')).toEqual([
       {
         tool: 'java',
@@ -289,10 +296,16 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     ]);
   });
   describe('on a base whose tests fail', () => {
-    const failing = (name) =>
+    const failing = (name: string) =>
       `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="${name}">` +
       '<failure message="expected: 1"/></testcase></testsuite>';
-    const repaired = (root, { write = {}, remove = [] }) => {
+    const repaired = (
+      root: string,
+      {
+        write = {},
+        remove = [],
+      }: { readonly write?: Readonly<Record<string, string>>; readonly remove?: readonly string[] },
+    ) => {
       if (remove.length > 0) {
         fixtureGit(root, ['rm', '-q', ...remove]);
       }
@@ -322,20 +335,18 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       ]);
     });
 
-    it.runIf(build.redBase.modules !== undefined)(
-      'names the failing module of a multi-module build',
-      () => {
-        const root = repository(build.redBase.modules.files(failing('works')));
-        repaired(root, build.redBase.modules.repair);
+    it.runIf('modules' in build.redBase)('names the failing module of a multi-module build', () => {
+      const modules = 'modules' in build.redBase ? build.redBase.modules : undefined;
+      const root = repository(modules?.files(failing('works')));
+      repaired(root, modules?.repair ?? {});
 
-        const result = run(root);
+      const result = run(root);
 
-        expect(result.exitCode, result.text).toBe(0);
-        expect(result.json('notes.json').map(({ message }) => message)).toEqual([
-          `Tests fail on the base in core:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
-        ]);
-      },
-    );
+      expect(result.exitCode, result.text).toBe(0);
+      expect(labelsOf(result.json('notes.json'), 'message')).toEqual([
+        `Tests fail on the base in core:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+      ]);
+    });
 
     it('reads the base as red and fails the head whose tests fail too, with exit 1', () => {
       const root = repository(build.redBase.files(failing('works')));
@@ -348,7 +359,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
       expect({
         exitCode: result.exitCode,
-        errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+        errors: labelsOf(result.json('tool-errors.json'), 'snapshot', 'rule'),
         notes: result.json('notes.json'),
       }).toEqual({
         exitCode: 1,
@@ -376,11 +387,9 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         '✖ 1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
           'Fix the tests and rerun:',
       ]);
-      expect(
-        result
-          .json('tool-errors.json')
-          .map(({ tool, rule, snapshot }) => `${tool} ${snapshot} ${rule}`),
-      ).toEqual(['tests head tests-failed']);
+      expect(labelsOf(result.json('tool-errors.json'), 'tool', 'snapshot', 'rule')).toEqual([
+        'tests head tests-failed',
+      ]);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
@@ -422,7 +431,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json')[0]).toEqual({
+    expect(listOf(result.json('tool-errors.json'))[0]).toEqual({
       tool: 'java',
       snapshot: 'base',
       rule: build.missingBinary.rule,
@@ -439,7 +448,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       arguments_: ['--all', '--output', reports],
       environment: { NO_COLOR: '1' },
       currentProjectRoot: root,
-      stdout: { write: (value) => (out.text += value) },
+      stdout: { write: (value: string) => (out.text += value) },
       stderr: { write: () => undefined },
     });
 
@@ -464,7 +473,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         '  coupling/coupling . modules summary (modules 0)',
         '  coupling/coupling . packages summary (packages 0)',
         '',
-        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
+        `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );
