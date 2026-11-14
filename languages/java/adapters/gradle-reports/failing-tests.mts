@@ -11,7 +11,7 @@ type FailingTests = {
 type ResultsRequest = {
   readonly reportBase: string;
   readonly since: number;
-  readonly retriesPass?: boolean;
+  readonly retriesPass: boolean;
 };
 
 const TEST_RESULTS_FILE = 'test-results.json';
@@ -28,11 +28,7 @@ function failingModule(entry: unknown, since: number, retriesPass: boolean): Fai
   };
 }
 
-export function failingTestsOf({
-  reportBase,
-  since,
-  retriesPass = false,
-}: ResultsRequest): FailingTests[] {
+export function failingTestsOf({ reportBase, since, retriesPass }: ResultsRequest): FailingTests[] {
   const file = path.join(reportBase, TEST_RESULTS_FILE);
   if (!existsSync(file)) {
     return [];
