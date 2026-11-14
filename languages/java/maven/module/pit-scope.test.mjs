@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { pitRunTargets, scopedPitTargets } from './pit-scope.mjs';
+import { pitRunTargets, scopedPitTargets } from './pit-scope.mts';
 
 const roots = [];
 

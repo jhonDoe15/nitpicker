@@ -1,61 +1,92 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
-import { kotlinTools } from './tools/kotlin-dependencies.mjs';
-import { isKotlinModule } from './kotlin-module.mjs';
+import { kotlinTools } from './tools/kotlin-dependencies.mts';
+import { isKotlinModule } from './kotlin-module.mts';
+import { objectOf, optionalText, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { callUntyped } from '../../adapters/typed/java-values.mts';
+import type { KotlinOptions, KotlinStyle } from '../typed/kotlin-types.mts';
+import {
+  type KotlinSetup,
+  type KotlinSetupRequest,
+  type OptionsRequest,
+  type ResolvedTools,
+  styleOf,
+  toolsOf,
+} from '../typed/kotlin-setup-views.mts';
 import { writeDetektLists } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
-import { kotlinStyleFile, resolveKotlinTools } from '../../adapters/kotlin/kotlin-tools.mjs';
 import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
 import { detektLayers } from '../../adapters/kotlin/style/kotlin-style-files.mjs';
 
 const PSI_CLASSES = 'kotlin-psi-classes';
 const LISTS_FILE = 'detekt-lists.yml';
-const LAYER_FILES = {
+const LAYER_FILES: Readonly<Record<string, string>> = {
   conventions: 'followed-conventions.yml',
   enforced: 'enforced-conventions.yml',
 };
 const NO_KOTLIN = { extraTools: [], options: undefined };
 
-function detektSettings({ tools, style, configRoot, work }) {
+function detektSettings({
+  tools,
+  style,
+  configRoot,
+  work,
+}: {
+  readonly tools: ResolvedTools;
+  readonly style: KotlinStyle;
+  readonly configRoot: string;
+  readonly work: string;
+}): Pick<KotlinOptions, 'detektLayers' | 'detektLists'> {
   const projectConfig =
     tools.detektConfig === undefined ? undefined : path.join(configRoot, tools.detektConfig);
   const layerTexts = { conventions: style.detektConventions, enforced: style.detektEnforced };
-  const layers = detektLayers({
-    conventionLayer: layerTexts.conventions,
-    enforcedLayer: layerTexts.enforced,
-    projectConfig,
-    nitpickerFirst: tools.detektNitpickerFirst,
-  });
+  const layers = textsOf(
+    callUntyped(detektLayers, {
+      conventionLayer: layerTexts.conventions,
+      enforcedLayer: layerTexts.enforced,
+      projectConfig,
+      nitpickerFirst: tools.detektNitpickerFirst,
+    }),
+  );
   mkdirSync(work, { recursive: true });
-  const files = { project: projectConfig };
+  const files: Record<string, string | undefined> = { project: projectConfig };
   for (const [name, text] of Object.entries(layerTexts)) {
     if (text !== undefined) {
-      files[name] = path.join(work, LAYER_FILES[name]);
-      writeFileSync(files[name], text);
+      const file = path.join(work, textOf(LAYER_FILES[name]));
+      files[name] = file;
+      writeFileSync(file, text);
     }
   }
   return {
-    detektLayers: layers.map((name) => files[name]),
+    detektLayers: layers.map((name) => textOf(files[name])),
     detektLists:
       projectConfig === undefined
         ? undefined
-        : writeDetektLists(configRoot, projectConfig, path.join(work, LISTS_FILE)),
+        : optionalText(
+            callUntyped(writeDetektLists, configRoot, projectConfig, path.join(work, LISTS_FILE)),
+          ),
   };
 }
 
-function resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolchains }) {
-  const conventions = policy.conventions ?? {};
-  const tools = resolveKotlinTools(projectRoot, {
+function resolveKotlinOptions({
+  projectRoot,
+  policy,
+  effectivePom,
+  work,
+  toolchains,
+}: OptionsRequest): KotlinOptions {
+  const conventions = objectOf(policy.conventions) ?? {};
+  const tools = toolsOf(projectRoot, {
     formatter: policy.kotlinFormatter,
-    detektConfig: policy.kotlinDetektConfig,
+    detektConfig: policy['kotlinDetektConfig'],
     snapshot: policy.snapshot,
     conventions,
     policyRoot: policy.policyRoot,
-    toolPrecedence: policy.toolPrecedence,
+    toolPrecedence: policy['toolPrecedence'],
     effectivePom,
-    facts: policy.kotlinFacts,
+    facts: policy['kotlinFacts'],
   });
-  const style = kotlinStyleFile(tools, conventions) ?? {};
+  const style = styleOf(tools.raw, conventions) ?? {};
   return {
     projectRoot,
     toolchains,
@@ -67,8 +98,13 @@ function resolveKotlinOptions({ projectRoot, policy, effectivePom, work, toolcha
     ktfmtMaxWidth: tools.ktfmtMaxWidth,
     ktfmtEditorconfig: tools.ktfmtEditorconfig === true,
     style,
-    advice: kotlinFormatAdvice(tools),
-    ...detektSettings({ tools, style, configRoot: policy.policyRoot ?? projectRoot, work }),
+    advice: callUntyped(kotlinFormatAdvice, tools.raw),
+    ...detektSettings({
+      tools,
+      style,
+      configRoot: optionalText(policy.policyRoot) ?? projectRoot,
+      work,
+    }),
   };
 }
 
@@ -83,7 +119,7 @@ export function kotlinSetup({
   environment,
   spawn,
   timeoutMs,
-}) {
+}: KotlinSetupRequest): KotlinSetup {
   if (policy.preset !== 'kotlin') {
     return NO_KOTLIN;
   }
