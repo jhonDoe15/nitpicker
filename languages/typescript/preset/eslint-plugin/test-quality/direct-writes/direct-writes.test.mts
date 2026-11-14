@@ -1,12 +1,7 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule } from '../fake-timers-require-restore.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, { afterAll, afterEach, beforeAll, beforeEach, describe, it });
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const tester = typescriptRuleTester();
 const env = { messageId: 'unrestoredEnvWrite' };
 const global = { messageId: 'unrestoredGlobalWrite' };
 
