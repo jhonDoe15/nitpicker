@@ -88,7 +88,7 @@ function registerRestore() {
 }
 
 const startsTestProcesses =
-  execArguments.includes('--test') && process.env.NODE_TEST_CONTEXT === undefined;
+  execArguments.includes('--test') && (process.env.NODE_TEST_CONTEXT ?? '') === '';
 
 if (IN_PROCESS_OPTION.test(execArguments.join(' '))) {
   queueMicrotask(registerRestore);

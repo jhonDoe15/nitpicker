@@ -8,16 +8,19 @@ import {
 import { fakeTimerChange } from '../rules/runner-apis/runner-doubles.mjs';
 import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
+const STUB_GLOBAL = 'stubGlobal';
+const STUB_ENV = 'stubEnv';
+
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'after', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
 const NODE_TEST_MODULE = 'node:test';
 const STUB_RESTORES = new Map([
-  ['stubGlobal', 'unstubAllGlobals'],
-  ['stubEnv', 'unstubAllEnvs'],
+  [STUB_GLOBAL, 'unstubAllGlobals'],
+  [STUB_ENV, 'unstubAllEnvs'],
 ]);
 const STUB_MESSAGES = new Map([
-  ['stubGlobal', 'unrestoredGlobal'],
-  ['stubEnv', 'unrestoredEnv'],
+  [STUB_GLOBAL, 'unrestoredGlobal'],
+  [STUB_ENV, 'unrestoredEnv'],
 ]);
 const CLOCK_RESTORES = {
   vitest: {
@@ -143,8 +146,8 @@ export const rule = {
   create(context) {
     const options = context.options[0] ?? {};
     const checkedStubs = new Set([
-      ...(options.globals ? ['stubGlobal'] : []),
-      ...(options.envs ? ['stubEnv'] : []),
+      ...(options.globals ? [STUB_GLOBAL] : []),
+      ...(options.envs ? [STUB_ENV] : []),
     ]);
     const apis = createRunnerApis();
     const visitors = runnerApiVisitors(apis);

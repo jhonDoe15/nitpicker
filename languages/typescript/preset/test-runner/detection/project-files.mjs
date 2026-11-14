@@ -1,18 +1,21 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
+const VITEST = 'vitest';
+const MOCHA = 'mocha';
+
 const CONFIG_EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs', 'json'];
 
 const CONFIG_FILES = [
-  ['vitest', ['vitest.config', 'vitest.workspace']],
+  [VITEST, ['vitest.config', 'vitest.workspace']],
   ['jest', ['jest.config']],
-  ['mocha', ['.mocharc']],
+  [MOCHA, ['.mocharc']],
 ];
 
 const MOCHA_CONFIG_EXTRA = ['.mocharc.yml', '.mocharc.yaml', '.mocharc.jsonc'];
 
 const RUNNER_DEPENDENCIES = [
-  ['vitest', ['vitest']],
+  [VITEST, [VITEST]],
   [
     'jest',
     [
@@ -26,14 +29,14 @@ const RUNNER_DEPENDENCIES = [
       '@rescripts/cli',
     ],
   ],
-  ['mocha', ['mocha']],
+  [MOCHA, [MOCHA]],
 ];
 
 function configFileNames(runner, bases) {
   const names = bases.flatMap((base) =>
     CONFIG_EXTENSIONS.map((extension) => `${base}.${extension}`),
   );
-  return runner === 'mocha' ? [...names, ...MOCHA_CONFIG_EXTRA] : names;
+  return runner === MOCHA ? [...names, ...MOCHA_CONFIG_EXTRA] : names;
 }
 
 function hasProjectFile(projectRoot, name) {

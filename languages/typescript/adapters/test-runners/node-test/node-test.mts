@@ -22,14 +22,17 @@ import {
   workerCount,
 } from '../test-run.mts';
 
+const IMPORT_OPTION = '--import';
+const REQUIRE_OPTION = '--require';
+
 const REPORTER = checkoutModuleUrl(new URL('node-test-reporter.mjs', import.meta.url)).href;
 const RESTORE_MOCKS = path.join(import.meta.dirname, 'restore-mocks.cjs');
-const REQUIRE_HOOK_OPTIONS = new Set(['--require', '-r']);
+const REQUIRE_HOOK_OPTIONS = new Set([REQUIRE_OPTION, '-r']);
 const IN_PROCESS_OPTION = /(?:^|\s)--(?:experimental-)?test-isolation[=\s]+none(?:\s|$)/u;
 const TYPESCRIPT_FILE = /\.[cm]?ts$/u;
 const LOADER_OPTIONS = new Set([
-  '--import',
-  '--require',
+  IMPORT_OPTION,
+  REQUIRE_OPTION,
   '-r',
   '--loader',
   '--experimental-loader',
@@ -38,8 +41,8 @@ const LOADER_OPTIONS = new Set([
 const SKIPPED_DIRECTORY = /^(?:node_modules|\.nitpicker-diff-.*)$/u;
 
 const VALUED_NODE_OPTIONS = new Set([
-  '--import',
-  '--require',
+  IMPORT_OPTION,
+  REQUIRE_OPTION,
   '-r',
   '--loader',
   '--experimental-loader',
@@ -92,8 +95,8 @@ function restoreMocksArguments(
   );
   const runsInProcess = IN_PROCESS_OPTION.test([...nodeArguments, ...scriptOptions].join(' '));
   return usesRequireHook || runsInProcess
-    ? ['--require', RESTORE_MOCKS]
-    : ['--import', pathToFileURL(RESTORE_MOCKS).href];
+    ? [REQUIRE_OPTION, RESTORE_MOCKS]
+    : [IMPORT_OPTION, pathToFileURL(RESTORE_MOCKS).href];
 }
 
 function entryName(entry: unknown): string {

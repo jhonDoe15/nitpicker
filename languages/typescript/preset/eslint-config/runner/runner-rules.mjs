@@ -5,7 +5,12 @@ import { RUNNER_NAMES, TEST_RUNNERS } from '../../test-runner/runners.mjs';
 import { runnerVocabulary } from '../../test-runner/vocabulary/runner-vocabulary.mjs';
 import { nodeTestPlugin } from './node-test-plugin.mjs';
 
-const EXPECT_ASSERTIONS = ['expect', 'assert', 'expectTypeOf', 'assertType'];
+const EXPECT = 'expect';
+const ASSERT = 'assert';
+const NODE_TEST = 'node:test';
+const MOCHA = 'mocha';
+
+const EXPECT_ASSERTIONS = [EXPECT, ASSERT, 'expectTypeOf', 'assertType'];
 
 const STRUCTURE_RULES = {
   'expect-expect': 'error',
@@ -52,10 +57,10 @@ const NODE_ASSERT_EXPORTS = [
 const ASSERTION_NAMES = {
   vitest: EXPECT_ASSERTIONS,
   jest: EXPECT_ASSERTIONS,
-  node: ['assert', 'expect', '*.assert', ...NODE_ASSERT_EXPORTS],
+  node: [ASSERT, EXPECT, '*.assert', ...NODE_ASSERT_EXPORTS],
   mocha: [
-    'assert',
-    'expect',
+    ASSERT,
+    EXPECT,
     'should',
     '*.assert',
     '*.expect',
@@ -65,15 +70,15 @@ const ASSERTION_NAMES = {
   ],
 };
 
-const NAMESPACES = { vitest: 'vitest', jest: 'jest', node: 'node-test', mocha: 'mocha' };
+const NAMESPACES = { vitest: 'vitest', jest: 'jest', node: 'node-test', mocha: MOCHA };
 
 export const RUNNER_RULE_NAMESPACES = Object.values(NAMESPACES);
 
 const RUNNER_MODULES = {
   vitest: 'vitest',
   jest: '@jest/globals',
-  node: 'node:test',
-  mocha: 'mocha',
+  node: NODE_TEST,
+  mocha: MOCHA,
 };
 
 const UPSTREAM_IMPORT_GUARDS = { vitest: ['node'] };
@@ -150,9 +155,7 @@ const NODE_TEST_TYPED_RULES = {
   '@typescript-eslint/no-floating-promises': [
     'error',
     {
-      allowForKnownSafeCalls: [
-        { from: 'package', package: 'node:test', name: NODE_TEST_FUNCTIONS },
-      ],
+      allowForKnownSafeCalls: [{ from: 'package', package: NODE_TEST, name: NODE_TEST_FUNCTIONS }],
     },
   ],
 };
@@ -162,7 +165,7 @@ function nodeTestConfig() {
   return {
     plugins: { 'node-test': nodeTestPlugin(jest, Object.keys(rules)) },
     globals: {},
-    settings: { jest: { globalPackage: 'node:test' } },
+    settings: { jest: { globalPackage: NODE_TEST } },
     rules: namespaced('node-test', rules),
     typedRules: NODE_TEST_TYPED_RULES,
   };
@@ -172,8 +175,8 @@ function mochaConfig() {
   return {
     plugins: { mocha: { rules: jest.rules } },
     globals: globals.mocha,
-    settings: { jest: { globalPackage: 'mocha' } },
-    rules: namespaced('mocha', withAssertions('mocha', STRUCTURE_RULES)),
+    settings: { jest: { globalPackage: MOCHA } },
+    rules: namespaced(MOCHA, withAssertions(MOCHA, STRUCTURE_RULES)),
   };
 }
 

@@ -1,6 +1,10 @@
 import { chainOf } from '../rules/analysis/ancestry.mjs';
 import { isExpectCall, memberName } from '../rules/analysis/test-code-analysis.mjs';
 
+const UNPINNED_FAILURE = 'unpinnedFailure';
+const UNPINNED = 'unpinned';
+const ASSERT = 'assert';
+
 const EXCEPTION_ROUTE = 'An exception fits only when the value cannot be pinned.';
 const ASSERT_EXACT = '`assert.strictEqual` or `assert.deepStrictEqual`';
 const CHAI_EXACT = '`expect(...).to.equal(...)` or `expect(...).to.deep.equal(...)`';
@@ -10,7 +14,7 @@ const ASSERT_THROWS = new Set(['throws', 'rejects', 'throw', 'Throw']);
 const NOT_A_SUBJECT = new Set([...ASSERT_THROWS, 'fail', 'doesNotThrow', 'doesNotReject']);
 const VAGUE_ARGUMENTS = new Set(['Identifier', 'MemberExpression']);
 const NEGATED_ONLY = new Set(['null', 'undefined']);
-const ASSERT_MODULES = new Set(['assert', 'node:assert', 'assert/strict', 'node:assert/strict']);
+const ASSERT_MODULES = new Set([ASSERT, 'node:assert', 'assert/strict', 'node:assert/strict']);
 
 function importedName(specifier) {
   if (specifier.type !== 'ImportSpecifier') {
@@ -27,7 +31,7 @@ function rememberImport(bindings, node) {
     const name = importedName(specifier);
     if (ASSERT_MODULES.has(source)) {
       bindings.set(specifier.local.name, name === 'default' || name === 'strict' ? 'ok' : name);
-    } else if (source === 'chai' && name === 'assert') {
+    } else if (source === 'chai' && name === ASSERT) {
       bindings.set(specifier.local.name, 'ok');
     }
   }
@@ -57,14 +61,14 @@ function rememberRequire(bindings, declarator) {
 function isAssertNamespace(bindings, node) {
   const target = memberName(node) === 'strict' ? node.object : node;
   if (target.type === 'Identifier') {
-    return target.name === 'assert' || bindings.get(target.name) === 'ok';
+    return target.name === ASSERT || bindings.get(target.name) === 'ok';
   }
-  return memberName(target) === 'assert';
+  return memberName(target) === ASSERT;
 }
 
 function assertMethod(bindings, callee) {
   if (callee.type === 'Identifier') {
-    return callee.name === 'assert' ? 'ok' : bindings.get(callee.name);
+    return callee.name === ASSERT ? 'ok' : bindings.get(callee.name);
   }
   return callee.type === 'MemberExpression' && isAssertNamespace(bindings, callee.object)
     ? memberName(callee)
@@ -89,13 +93,13 @@ function assertVerdict(bindings, node) {
     return { messageId: 'literalSubject', form: method };
   }
   if (ASSERT_TRUTHY.has(method) && isVague(node.arguments[0])) {
-    return { messageId: 'unpinned', form: `assert.${method}`, exact: ASSERT_EXACT };
+    return { messageId: UNPINNED, form: `assert.${method}`, exact: ASSERT_EXACT };
   }
   if (ASSERT_DEFINED.has(method)) {
-    return { messageId: 'unpinned', form: `assert.${method}`, exact: ASSERT_EXACT };
+    return { messageId: UNPINNED, form: `assert.${method}`, exact: ASSERT_EXACT };
   }
   if (ASSERT_THROWS.has(method) && node.arguments.length < 2) {
-    return { messageId: 'unpinnedFailure', form: `assert.${method}` };
+    return { messageId: UNPINNED_FAILURE, form: `assert.${method}` };
   }
   return method === 'called' ? { messageId: 'bareCall', form: 'assert.called' } : undefined;
 }
@@ -110,10 +114,10 @@ function chaiLinks(node) {
 function chaiPropertyVerdict(name, links) {
   const negated = links.includes('not');
   if (name === 'ok' || (name === 'exist' && !negated) || (NEGATED_ONLY.has(name) && negated)) {
-    return { messageId: 'unpinned', form: `.${negated ? 'not.' : ''}${name}`, exact: CHAI_EXACT };
+    return { messageId: UNPINNED, form: `.${negated ? 'not.' : ''}${name}`, exact: CHAI_EXACT };
   }
   if (name === 'rejected' && !negated) {
-    return { messageId: 'unpinnedFailure', form: '.rejected' };
+    return { messageId: UNPINNED_FAILURE, form: '.rejected' };
   }
   return name === 'called' && !negated ? { messageId: 'bareCall', form: '.called' } : undefined;
 }
@@ -161,7 +165,7 @@ export const rule = {
           const pinsNothing = ASSERT_THROWS.has(name) && node.arguments.length === 0;
           if (links !== undefined && pinsNothing && !links.includes('not')) {
             reportVerdict(node.callee.property, {
-              messageId: 'unpinnedFailure',
+              messageId: UNPINNED_FAILURE,
               form: `.${name}()`,
             });
           }

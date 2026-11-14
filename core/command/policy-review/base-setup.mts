@@ -12,7 +12,7 @@ import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { policyChangeFields } from '../../policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { configureAll, presetAnalyzers } from '../../configuration/preset-analyzers.mts';
-import { withBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
+import { withBaseTestRunner as untypedWithBaseTestRunner } from '../../../languages/typescript/preset/diff/base-runner.mjs';
 import { applyRunProfile } from '../../quick/profile.mts';
 import { withoutTroubleshooting } from '../../../shared/messages/troubleshooting.mjs';
 import { type Analyzer, analyzersOf } from '../../../shared/values/analyzers.mts';
@@ -53,6 +53,17 @@ type BaseSetupCli = {
   readonly options: object;
   readonly stderr: { write(text: string): unknown };
 };
+
+const withBaseTestRunner: (
+  setup: object,
+  context: {
+    readonly headPolicy: unknown;
+    readonly baseProjectRoot: string;
+    readonly liveProjectRoot: string | undefined;
+    readonly analyzers: readonly Analyzer[];
+    readonly warn: Warn;
+  },
+) => object = untypedWithBaseTestRunner;
 
 const configuredTimeout: (analyzer: Analyzer, timeouts: object | undefined) => Analyzer =
   withConfiguredTimeout;

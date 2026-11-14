@@ -6,6 +6,8 @@ import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mjs';
 import { testAreaGlobsFor } from '../strict-tests.mjs';
 import { restrictedMatchers } from './restricted-matchers.mjs';
 
+const ERROR = 'error';
+
 const MATCHER_PLUGINS = { vitest: { vitest }, jest: { jest } };
 
 function matcherRules(runner) {
@@ -13,9 +15,9 @@ function matcherRules(runner) {
     return {};
   }
   return {
-    [`${runner}/no-restricted-matchers`]: ['error', restrictedMatchers],
-    [`${runner}/prefer-called-with`]: 'error',
-    [`${runner}/require-to-throw-message`]: 'error',
+    [`${runner}/no-restricted-matchers`]: [ERROR, restrictedMatchers],
+    [`${runner}/prefer-called-with`]: ERROR,
+    [`${runner}/require-to-throw-message`]: ERROR,
   };
 }
 
@@ -38,7 +40,7 @@ function stubRestoreBlock(restores, { projectGlobs, ignores }) {
     plugins: { nitpicker: nitpickerRules },
     rules: {
       'nitpicker/fake-timers-require-restore': [
-        'error',
+        ERROR,
         { globals: !restores.globals, envs: !restores.envs },
       ],
     },
@@ -63,7 +65,7 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
     files: layout.sourceGlobs,
     ignores: [...layout.excludedGlobs, ...testAreaGlobs],
     plugins: { nitpicker: nitpickerRules },
-    rules: { 'nitpicker/no-test-helpers-in-source': ['error', options] },
+    rules: { 'nitpicker/no-test-helpers-in-source': [ERROR, options] },
   };
 }
 
@@ -75,17 +77,17 @@ function honestyRulesBlock(layout, { files, runner, assertionFunctionNames }) {
     linterOptions: escapeHatchLinterOptions,
     plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
     rules: {
-      'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
-      'nitpicker/no-shared-test-state': 'error',
-      'nitpicker/no-copy-pasted-tests': ['error', runnerOption],
-      'nitpicker/fake-timers-require-restore': 'error',
-      'nitpicker/no-real-time-random-or-network': ['error', runnerOption],
-      'nitpicker/no-switched-off-tests': 'error',
-      'nitpicker/no-unpinned-assertion': 'error',
-      'nitpicker/no-float-equality-in-tests': 'error',
-      'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
-      'nitpicker/no-unowned-async-assertion': 'error',
-      'nitpicker/no-weak-assertion': 'error',
+      'nitpicker/no-comments': [ERROR, { suppressionsOnly: true }],
+      'nitpicker/no-shared-test-state': ERROR,
+      'nitpicker/no-copy-pasted-tests': [ERROR, runnerOption],
+      'nitpicker/fake-timers-require-restore': ERROR,
+      'nitpicker/no-real-time-random-or-network': [ERROR, runnerOption],
+      'nitpicker/no-switched-off-tests': ERROR,
+      'nitpicker/no-unpinned-assertion': ERROR,
+      'nitpicker/no-float-equality-in-tests': ERROR,
+      'nitpicker/no-assertion-in-loop': [ERROR, { assertionFunctionNames }],
+      'nitpicker/no-unowned-async-assertion': ERROR,
+      'nitpicker/no-weak-assertion': ERROR,
       ...matcherRules(runner),
     },
   };
@@ -99,7 +101,7 @@ function setupFileBlocks(setupFiles) {
     {
       files: setupFiles,
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-production-imports-in-setup-files': 'error' },
+      rules: { 'nitpicker/no-production-imports-in-setup-files': ERROR },
     },
   ];
 }
@@ -123,7 +125,7 @@ export function testHonestyConfigFor(
       ignores: layout.excludedGlobs,
       plugins: { nitpicker: nitpickerRules },
       rules: {
-        'nitpicker/no-real-time-random-or-network': ['error', { network: true, ...runnerOption }],
+        'nitpicker/no-real-time-random-or-network': [ERROR, { network: true, ...runnerOption }],
       },
     },
     testPlacementBlock(layout, { testAreaGlobs: files, testRootsOnDisk }),
@@ -132,7 +134,7 @@ export function testHonestyConfigFor(
       files,
       ignores: layout.excludedGlobs,
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-uncollected-tests': ['error', runnerOption] },
+      rules: { 'nitpicker/no-uncollected-tests': [ERROR, runnerOption] },
     },
     ...setupFileBlocks(setupFiles),
   ];

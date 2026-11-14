@@ -139,6 +139,14 @@ function writeOutcome({
   return result.skipped.length === 0 ? 0 : 2;
 }
 
+function configuredAnalyzers(
+  analyzers: CacheCli['analyzers'],
+  config: NitpickerConfig,
+  policy: unknown,
+): readonly ProfiledAnalyzer[] {
+  return configureAll(presetAnalyzers(config, analyzers), config, policy);
+}
+
 type PublishTarget = {
   readonly config: NitpickerConfig;
   readonly projectRoot: string;
@@ -149,17 +157,21 @@ function publishedAnalyzers(
   cli: CacheCli,
   { config, projectRoot, options }: PublishTarget,
 ): { readonly headPolicy: unknown; readonly selected: Analyzer[] } {
-  const configure = (policy: unknown): readonly ProfiledAnalyzer[] =>
-    configureAll(presetAnalyzers(config, cli.analyzers), config, policy);
   const detectedPolicy: unknown = publishHeadPolicy(config, projectRoot, {
     maven: cli.environment?.['NITPICKER_MAVEN'],
   });
   const headPolicy: unknown = withProjectTestFiles(detectedPolicy, {
     projectRoot,
     liveProjectRoot: projectRoot,
-    analyzers: selectedAnalyzers(configure(detectedPolicy), options),
+    analyzers: selectedAnalyzers(
+      configuredAnalyzers(cli.analyzers, config, detectedPolicy),
+      options,
+    ),
   });
-  return { headPolicy, selected: selectedAnalyzers(configure(headPolicy), options) };
+  return {
+    headPolicy,
+    selected: selectedAnalyzers(configuredAnalyzers(cli.analyzers, config, headPolicy), options),
+  };
 }
 
 export function runCacheCommand(cli: CacheCli): number {
