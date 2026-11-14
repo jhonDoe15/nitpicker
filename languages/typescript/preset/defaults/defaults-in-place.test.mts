@@ -27,6 +27,7 @@ import {
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
+  'core/fix/common/contained-path.mjs',
   'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
@@ -58,7 +59,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/coupling/feature-layout.mjs',
   'languages/typescript/preset/dependency-graph',
   'languages/typescript/preset/entry-points/analyze.mjs',
-  'languages/typescript/preset/test-runtime/analyze.mjs',
+  'languages/typescript/preset/test-runtime',
   'languages/typescript/preset/eslint-config',
   'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
@@ -75,6 +76,7 @@ const POLICY_PATHS = [
   'languages/typescript/adapters/quality-areas',
   'languages/typescript/adapters/eslint',
   'languages/typescript/adapters/immutable-types',
+  'languages/typescript/adapters/typed',
   'languages/typescript/preset/structure/reuse/reuse-paths.mjs',
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',

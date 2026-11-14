@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../../../languages/typescript/adapters/eslint/normalize.mts';
 import { strictSyntaxConfig } from '../../../../languages/typescript/preset/eslint-config/strict.mjs';
 import { lintFixture } from '../../../../languages/typescript/preset/failure-messages/test-support/harness.mts';
-import { isStrictRule } from '../../../../languages/typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../../../languages/typescript/preset/strict-rules.mts';
 import { compareFindings } from '../../comparison/compare.mjs';
 import { writeFiles } from '../../git/test-support/fixture-files.mjs';
 import {

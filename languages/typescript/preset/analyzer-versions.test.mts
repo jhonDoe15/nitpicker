@@ -1,18 +1,40 @@
 import { readFileSync } from 'node:fs';
 import { PACKAGE_ROOT } from '../../../core/tooling/tool-resolution.mjs';
 import { describe, expect, it } from 'vitest';
+import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { policyHash } from '../../../core/diff/reporting/report-model.mts';
 import {
-  ESLINT_PLUGIN_PACKAGES,
-  resolveAnalyzerVersion,
+  ESLINT_PLUGIN_PACKAGES as UNTYPED_ESLINT_PLUGIN_PACKAGES,
+  resolveAnalyzerVersion as untypedResolveAnalyzerVersion,
   testRunnerAnalyzerVersion,
 } from './analyzer-versions.mjs';
 
-function fakeResolver(overrides = {}) {
-  return (name) => ({ version: overrides[name] ?? '1.0.0' });
+type ToolOptions = { projectRoot?: string | undefined; packageRoot?: string | undefined };
+type Resolver = (name: string, options?: ToolOptions) => ReturnType<typeof resolvedTool>;
+
+const ESLINT_PLUGIN_PACKAGES: readonly string[] = UNTYPED_ESLINT_PLUGIN_PACKAGES;
+
+const resolveAnalyzerVersion: (
+  analyzer: string,
+  projectRoot: string,
+  options: { resolve: Resolver; bundled?: boolean; installed?: () => boolean },
+) => string = untypedResolveAnalyzerVersion;
+
+const runnerVersion: (
+  analyzer: string,
+  projectRoot: string,
+  options: { resolve: Resolver; configuredRunner: string },
+) => string = testRunnerAnalyzerVersion;
+
+function resolvedTool(version: string) {
+  return { root: '/tool', version, binPath: undefined };
 }
 
-function hashFor(overrides) {
+function fakeResolver(overrides: Readonly<Record<string, string>> = {}) {
+  return (name: string) => resolvedTool(overrides[name] ?? '1.0.0');
+}
+
+function hashFor(overrides: Readonly<Record<string, string>>) {
   const version = resolveAnalyzerVersion('coding-standards', '/project', {
     resolve: fakeResolver(overrides),
   });
@@ -27,7 +49,9 @@ describe('ESLint analyzer versions', () => {
       resolve: fakeResolver(),
     });
 
-    const packageVersion = JSON.parse(readFileSync(`${PACKAGE_ROOT}/package.json`, 'utf8')).version;
+    const packageVersion = textOf(
+      fieldOf(parseJson(readFileSync(`${PACKAGE_ROOT}/package.json`, 'utf8')), 'version'),
+    );
     const plugins = ESLINT_PLUGIN_PACKAGES.map((plugin) => `${plugin}@1.0.0`);
     expect(version).toBe(
       `eslint@1.0.0;typescript@1.0.0;plugins:${[...plugins, `nitpicker-plugin@${packageVersion}`].join(',')}`,
@@ -103,15 +127,15 @@ describe('ESLint analyzer versions', () => {
 
     expect(resolveAnalyzerVersion('coverage', '/project', { resolve })).toBe('vitest@4.1.11');
     expect(resolveAnalyzerVersion('test-console', '/project', { resolve })).toBe('vitest@4.1.11');
-    expect(
-      testRunnerAnalyzerVersion('test-console', '/project', { resolve, configuredRunner: 'jest' }),
-    ).toBe('jest@30.5.2');
-    expect(
-      testRunnerAnalyzerVersion('mutation', '/project', { resolve, configuredRunner: 'jest' }),
-    ).toBe('10.0.0;jest@30.5.2;@typescript/native@1.0.0');
-    expect(
-      testRunnerAnalyzerVersion('coverage', '/project', { resolve, configuredRunner: 'node' }),
-    ).toBe(`node@${process.versions.node}`);
+    expect(runnerVersion('test-console', '/project', { resolve, configuredRunner: 'jest' })).toBe(
+      'jest@30.5.2',
+    );
+    expect(runnerVersion('mutation', '/project', { resolve, configuredRunner: 'jest' })).toBe(
+      '10.0.0;jest@30.5.2;@typescript/native@1.0.0',
+    );
+    expect(runnerVersion('coverage', '/project', { resolve, configuredRunner: 'node' })).toBe(
+      `node@${process.versions.node}`,
+    );
   });
 });
 
@@ -119,10 +143,10 @@ describe('package-bundled analyzer versions', () => {
   it.each(['crap', 'structure'])(
     'resolves %s from the TypeScript package of nitpicker, not from the project',
     (analyzer) => {
-      const calls = [];
-      const resolve = (name, options) => {
-        calls.push({ name, projectRoot: options.projectRoot });
-        return { version: '5.4.3' };
+      const calls: { name: string; projectRoot: string | undefined }[] = [];
+      const resolve = (name: string, options?: ToolOptions) => {
+        calls.push({ name, projectRoot: options?.projectRoot });
+        return resolvedTool('5.4.3');
       };
 
       expect(resolveAnalyzerVersion(analyzer, '/project', { resolve })).toBe('5.4.3');

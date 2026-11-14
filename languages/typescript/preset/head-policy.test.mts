@@ -15,22 +15,69 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
+import { fieldOf, parseJson, textOf } from '../../../shared/values/readers.mts';
 import { runQualityDiff } from '../../../core/diff/comparison/run-diff.mts';
 import {
-  defaultLayout,
-  prettierPrecedence,
-  readHeadPolicy,
-  readLayout,
-  resolveHeadPolicy,
-  typecheckEngine,
-  withHeadPolicyFile,
+  defaultLayout as untypedDefaultLayout,
+  prettierPrecedence as untypedPrettierPrecedence,
+  readHeadPolicy as untypedReadHeadPolicy,
+  readLayout as untypedReadLayout,
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  typecheckEngine as untypedTypecheckEngine,
+  withHeadPolicyFile as untypedWithHeadPolicyFile,
 } from './head-policy.mjs';
+
+type Section = Readonly<Record<string, unknown>>;
+type PolicySections = {
+  readonly react: Section;
+  readonly tools: { readonly prettier: Section };
+  readonly duplicates: Section;
+  readonly frameworks: Section;
+};
+type Environment = NodeJS.ProcessEnv;
+
+const defaultLayout: Readonly<Record<string, readonly string[]>> = untypedDefaultLayout;
+const resolveHeadPolicy: (config?: object, projectRoot?: string) => PolicySections =
+  untypedResolveHeadPolicy;
+const withHeadPolicyFile: (policy: object, operation: (policyFile: string) => void) => void =
+  untypedWithHeadPolicyFile;
+const readHeadPolicy: (environment?: Environment) => PolicySections = untypedReadHeadPolicy;
+const readLayout: (environment?: Environment) => {
+  readonly entryPoints: readonly string[];
+  readonly duplicateSkippedFolders: readonly string[] | undefined;
+} = untypedReadLayout;
+const prettierPrecedence: (environment?: Environment) => readonly string[] =
+  untypedPrettierPrecedence;
+const typecheckEngine: (environment?: Environment) => string = untypedTypecheckEngine;
 
 const probeRunnerPath = path.join(
   import.meta.dirname,
   '../../../core/diff/fixtures/policy-probe-runner.mjs',
 );
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
+const libraryOverrides = {
+  exclude: ['**/legacy/**'],
+  layout: { ...defaultLayout, sourceRoots: ['lib'] },
+  thresholds: { crapLimit: 12 },
+};
+
+function policyWithDefaults(overrides: object = {}) {
+  return {
+    exclude: [],
+    layout: defaultLayout,
+    exceptions: [],
+    thresholds: {},
+    react: {},
+    i18n: {},
+    tools: {},
+    duplicates: {},
+    testConsole: {},
+    generatedFiles: [],
+    frameworks: { defaultExports: [], entryPoints: [] },
+    history: {},
+    ...overrides,
+  };
+}
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -62,7 +109,7 @@ describe('head policy react key', () => {
 });
 
 describe('head policy icon package', () => {
-  function projectWith(dependencies) {
+  function projectWith(dependencies: Readonly<Record<string, string>>) {
     const root = temporaryDirectory();
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies }));
     return root;
@@ -93,7 +140,7 @@ describe('head policy icon package', () => {
 });
 
 describe('head policy React major version', () => {
-  function projectWith(dependencies) {
+  function projectWith(dependencies: Readonly<Record<string, string>>) {
     const root = temporaryDirectory();
     writeFileSync(path.join(root, 'package.json'), JSON.stringify({ dependencies }));
     return root;
@@ -107,7 +154,7 @@ describe('head policy React major version', () => {
       JSON.stringify({ version: '18.3.1' }),
     );
 
-    expect(resolveHeadPolicy({}, root).react.major).toBe(18);
+    expect(resolveHeadPolicy({}, root).react['major']).toBe(18);
   });
 
   it('leaves the major out when React is off or its version is unreadable', () => {
@@ -121,14 +168,18 @@ describe('head policy React major version', () => {
 });
 
 describe('head policy styling approach', () => {
-  function stylingOf(manifest, files, config = {}) {
+  function stylingOf(
+    manifest: object,
+    files: Readonly<Record<string, string>>,
+    config: object = {},
+  ) {
     const root = temporaryDirectory();
     writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
     for (const [file, text] of Object.entries(files)) {
       mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
       writeFileSync(path.join(root, file), text);
     }
-    return resolveHeadPolicy(config, root).react.styling;
+    return resolveHeadPolicy(config, root).react['styling'];
   }
 
   const cssModules =
@@ -170,14 +221,17 @@ describe('head policy styling approach', () => {
 });
 
 describe('head policy test cleanup', () => {
-  function autoCleanupOf(devDependencies, config) {
+  function autoCleanupOf(
+    devDependencies: Readonly<Record<string, string>>,
+    config: string | undefined,
+  ) {
     const root = temporaryDirectory();
     writeFileSync(
       path.join(root, 'package.json'),
       JSON.stringify({ dependencies: { react: '19.0.0' }, devDependencies }),
     );
     if (config !== undefined) writeFileSync(path.join(root, 'vitest.config.ts'), config);
-    return resolveHeadPolicy({}, root).react.autoCleanup;
+    return resolveHeadPolicy({}, root).react['autoCleanup'];
   }
 
   it('records whether Testing Library unmounts after each test without a setup call', () => {
@@ -192,7 +246,7 @@ describe('head policy test cleanup', () => {
 });
 
 describe('head policy framework conventions', () => {
-  function projectWith(manifest, files = {}) {
+  function projectWith(manifest: object, files: Readonly<Record<string, string>> = {}) {
     const root = temporaryDirectory();
     writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
     for (const [file, text] of Object.entries(files)) {
@@ -270,20 +324,7 @@ describe('head policy framework conventions', () => {
 
 describe('head policy reader', () => {
   it('falls back to preset layout defaults without a policy file', () => {
-    expect(readHeadPolicy({})).toEqual({
-      exclude: [],
-      layout: defaultLayout,
-      exceptions: [],
-      thresholds: {},
-      react: {},
-      i18n: {},
-      tools: {},
-      duplicates: {},
-      testConsole: {},
-      generatedFiles: [],
-      frameworks: { defaultExports: [], entryPoints: [] },
-      history: {},
-    });
+    expect(readHeadPolicy({})).toEqual(policyWithDefaults());
   });
 
   it('merges the head policy over the defaults', () => {
@@ -293,20 +334,9 @@ describe('head policy reader', () => {
       thresholds: { crapLimit: 12 },
     });
     withHeadPolicyFile(policy, (policyFile) => {
-      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile })).toEqual({
-        exclude: ['**/legacy/**'],
-        layout: { ...defaultLayout, sourceRoots: ['lib'] },
-        exceptions: [],
-        thresholds: { crapLimit: 12 },
-        react: {},
-        i18n: {},
-        tools: {},
-        duplicates: {},
-        testConsole: {},
-        generatedFiles: [],
-        frameworks: { defaultExports: [], entryPoints: [] },
-        history: {},
-      });
+      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile })).toEqual(
+        policyWithDefaults(libraryOverrides),
+      );
     });
   });
 
@@ -336,12 +366,12 @@ describe('head policy reader', () => {
     writeFileSync(path.join(root, '.prettierrc'), '{ "semi": false }\n');
     const projectConfig = { tools: { prettier: { precedence: ['project'] } } };
     const nitpickerOnly = { tools: { prettier: { precedence: ['nitpicker'] } } };
-    const before = resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest;
+    const before = resolveHeadPolicy(projectConfig, root).tools.prettier['projectConfigDigest'];
     expect(resolveHeadPolicy(nitpickerOnly, root).tools.prettier).toEqual({
       precedence: ['nitpicker'],
     });
     writeFileSync(path.join(root, '.prettierrc'), '{ "semi": true }\n');
-    expect(resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest).not.toBe(
+    expect(resolveHeadPolicy(projectConfig, root).tools.prettier['projectConfigDigest']).not.toBe(
       before,
     );
     expect(resolveHeadPolicy({}, root)).not.toHaveProperty('tools');
@@ -358,7 +388,9 @@ describe('head policy reader', () => {
   });
 
   it('fails instead of weakening the policy when the file is unreadable or malformed', () => {
-    expect(() => readHeadPolicy({ NITPICKER_POLICY: '/nonexistent/policy.json' })).toThrow();
+    expect(() => readHeadPolicy({ NITPICKER_POLICY: '/nonexistent/policy.json' })).toThrow(
+      /policy\.json/,
+    );
     const root = temporaryDirectory();
     const policyFile = path.join(root, 'policy.json');
     writeFileSync(policyFile, '{not-json');
@@ -366,17 +398,17 @@ describe('head policy reader', () => {
   });
 
   it('removes the policy file after the operation', () => {
-    let seen;
+    let seen: string | undefined;
     withHeadPolicyFile({}, (policyFile) => {
       seen = policyFile;
       expect(existsSync(policyFile)).toBe(true);
     });
-    expect(existsSync(seen)).toBe(false);
+    expect(existsSync(String(seen))).toBe(false);
   });
 });
 
 describe('head policy delivery', () => {
-  let gitTemplateRoot;
+  let gitTemplateRoot: string;
 
   beforeAll(() => {
     gitTemplateRoot = createGitTemplate();
@@ -398,6 +430,21 @@ describe('head policy delivery', () => {
     git(repository, ['add', '-A']);
     git(repository, ['commit', '-q', '-m', 'head']);
 
+    const policyProbe = {
+      name: 'policy-probe',
+      version: '1.0.0',
+      configurationHash: 'probe',
+      exclusions: [],
+      createInvocation: (context: unknown) => {
+        const projectRoot = textOf(fieldOf(context, 'projectRoot'));
+        return {
+          command: process.execPath,
+          args: [probeRunnerPath, projectRoot, logPath],
+          cwd: projectRoot,
+        };
+      },
+    };
+
     runQualityDiff({
       repositoryRoot: repository,
       projectRelativePath: '.',
@@ -409,42 +456,17 @@ describe('head policy delivery', () => {
         layout: { sourceRoots: ['lib'] },
         thresholds: { crapLimit: 12 },
       }),
-      analyzers: [
-        {
-          name: 'policy-probe',
-          version: '1.0.0',
-          configurationHash: 'probe',
-          exclusions: [],
-          createInvocation: ({ projectRoot }) => ({
-            command: process.execPath,
-            args: [probeRunnerPath, projectRoot, logPath],
-            cwd: projectRoot,
-          }),
-        },
-      ],
+      analyzers: [policyProbe],
     });
 
     const runs = readFileSync(logPath, 'utf8')
       .trim()
       .split('\n')
-      .map((line) => JSON.parse(line));
+      .map((line) => parseJson(line));
     expect(runs).toHaveLength(2);
-    expect(new Set(runs.map((run) => run.root)).size).toBe(2);
-    expect(runs.map((run) => run.policy)).toEqual(
-      runs.map(() => ({
-        exclude: ['**/legacy/**'],
-        layout: { ...defaultLayout, sourceRoots: ['lib'] },
-        exceptions: [],
-        thresholds: { crapLimit: 12 },
-        react: {},
-        i18n: {},
-        tools: {},
-        duplicates: {},
-        testConsole: {},
-        generatedFiles: [],
-        frameworks: { defaultExports: [], entryPoints: [] },
-        history: {},
-      })),
+    expect(new Set(runs.map((run) => fieldOf(run, 'root'))).size).toBe(2);
+    expect(runs.map((run) => fieldOf(run, 'policy'))).toEqual(
+      runs.map(() => policyWithDefaults(libraryOverrides)),
     );
   });
 });
@@ -455,16 +477,19 @@ function temporaryDirectory() {
   return root;
 }
 
-// Hermetic fixture git: a developer's global config (commit signing adds about 150 ms per commit)
-// must not change the fixture's cost or behaviour.
 const gitFixtureEnvironment = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
   GIT_CONFIG_NOSYSTEM: '1',
 };
 
-function git(cwd, arguments_) {
-  return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
+function git(cwd: string, arguments_: string[]) {
+  return execFileSync('git', arguments_, {
+    cwd,
+    encoding: 'utf8',
+    env: gitFixtureEnvironment,
+    timeout: 10_000,
+  });
 }
 
 describe('head policy duplicates key', () => {

@@ -4,14 +4,20 @@ import {
   ownCosts,
   weightsFromSeconds,
 } from '../../../scripts/shard-weights/weights.mts';
+import { fieldOf, listOf, numberOr, textOf } from '../../../shared/values/readers.mts';
 import { configuredAnalyzers } from './diff/configured-analyzers.mjs';
 
-const packageAnalyzers = configuredAnalyzers();
-// These pin the relative ordering the measurements in docs/shard-weights.md established, never
-// exact timings: re-measuring may move every number, but not the shape.
-const weight = Object.fromEntries(
-  packageAnalyzers.map(({ name, shardWeight }) => [name, shardWeight]),
+const packageAnalyzers = listOf(configuredAnalyzers()).map((analyzer) => ({
+  name: textOf(fieldOf(analyzer, 'name')),
+  shardWeight: numberOr(fieldOf(analyzer, 'shardWeight'), Number.NaN),
+}));
+const weights = new Map(
+  packageAnalyzers.map(({ name, shardWeight }): [string, number] => [name, shardWeight]),
 );
+
+function weight(name: string): number {
+  return weights.get(name) ?? Number.NaN;
+}
 
 describe('shard weights', () => {
   it('gives every analyzer an explicit positive integer weight', () => {
@@ -24,22 +30,22 @@ describe('shard weights', () => {
   });
 
   it('ranks the test-running analyzers above the static ones', () => {
-    expect(weight.mutation).toBeGreaterThan(weight.coverage);
-    expect(weight.coverage).toBeGreaterThan(weight['eslint-errors']);
+    expect(weight('mutation')).toBeGreaterThan(weight('coverage'));
+    expect(weight('coverage')).toBeGreaterThan(weight('eslint-errors'));
     const cheap = ['duplicates', 'structure', 'dead-code'];
-    expect(cheap.map((name) => [name, weight.coverage > weight[name]])).toEqual(
+    expect(cheap.map((name) => [name, weight('coverage') > weight(name)])).toEqual(
       cheap.map((name) => [name, true]),
     );
-    expect(Math.max(...Object.values(weight))).toBe(weight.mutation);
+    expect(Math.max(...weights.values())).toBe(weight('mutation'));
   });
 
   it('weights crap as the small step it adds on top of coverage', () => {
-    expect(weight.crap).toBeLessThan(weight.coverage / 2);
+    expect(weight('crap')).toBeLessThan(weight('coverage') / 2);
   });
 
   it('weights the full lint above the focused lint checks', () => {
     const focused = ['eslint-errors', 'eslint-logging', 'eslint-module-effects'];
-    expect(focused.map((name) => [name, weight['eslint-lint'] > weight[name]])).toEqual(
+    expect(focused.map((name) => [name, weight('eslint-lint') > weight(name)])).toEqual(
       focused.map((name) => [name, true]),
     );
   });

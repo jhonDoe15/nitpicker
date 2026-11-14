@@ -6,13 +6,17 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../shared/paths/checkout-module.mjs';
 import presetConfig from './defaults/eslint.config.mts';
 
+type Plugins = NonNullable<Linter.Config['plugins']>;
+
+const sourcePath: (file: string) => string = checkoutModulePath;
 const presetConfigUrl = pathToFileURL(
-  checkoutModulePath(path.join(import.meta.dirname, 'defaults/eslint.config.mjs')),
+  sourcePath(path.join(import.meta.dirname, 'defaults/eslint.config.mjs')),
 );
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 let importCount = 0;
 
 afterEach(() => {
@@ -22,11 +26,34 @@ afterEach(() => {
   }
 });
 
-function configured(ruleId) {
-  return presetConfig.findLast((entry) => entry.rules?.[ruleId] !== undefined).rules[ruleId];
+function ruleSetting(entry: Linter.Config | undefined, ruleId: string): Linter.RuleEntry {
+  const setting = entry?.rules?.[ruleId];
+  if (setting === undefined) {
+    throw new Error(`No configured entry for ${ruleId}`);
+  }
+  return setting;
 }
 
-function messages(ruleId, plugins, code) {
+function configured(ruleId: string): Linter.RuleEntry {
+  return ruleSetting(
+    presetConfig.findLast((entry) => entry.rules?.[ruleId] !== undefined),
+    ruleId,
+  );
+}
+
+function singleRuleEntries(ruleId: string, plugins: Plugins): Linter.Config[] {
+  return presetConfig
+    .filter((entry) => entry.rules?.[ruleId] !== undefined)
+    .map((entry) => ({
+      ...(entry.files === undefined ? {} : { files: entry.files }),
+      ...(entry.ignores === undefined ? {} : { ignores: entry.ignores }),
+      plugins,
+      languageOptions: { parser: tseslint.parser },
+      rules: { [ruleId]: ruleSetting(entry, ruleId) },
+    }));
+}
+
+function messages(ruleId: string, plugins: Plugins, code: string) {
   return new Linter()
     .verify(code, [
       {
@@ -38,11 +65,11 @@ function messages(ruleId, plugins, code) {
     .map(({ message }) => message);
 }
 
-function vitestMessages(ruleId, code) {
+function vitestMessages(ruleId: string, code: string) {
   return messages(ruleId, { vitest }, code);
 }
 
-function tsCommentMessages(code) {
+function tsCommentMessages(code: string) {
   return messages(
     '@typescript-eslint/ban-ts-comment',
     { '@typescript-eslint': tseslint.plugin },
@@ -69,16 +96,9 @@ describe('vitest/expect-expect', () => {
 
   it('is not applied to the files Vitest runs as type tests', () => {
     const code = "it('compiles', () => { const value: number = 1; });\n";
-    const entries = presetConfig
-      .filter((entry) => entry.rules?.['vitest/expect-expect'] !== undefined)
-      .map(({ files, ignores, rules }) => ({
-        ...(files === undefined ? {} : { files }),
-        ...(ignores === undefined ? {} : { ignores }),
-        plugins: { vitest },
-        languageOptions: { parser: tseslint.parser },
-        rules: { 'vitest/expect-expect': rules['vitest/expect-expect'] },
-      }));
-    const reported = (name) => new Linter().verify(code, entries, name).map(({ ruleId }) => ruleId);
+    const entries = singleRuleEntries('vitest/expect-expect', { vitest });
+    const reported = (name: string) =>
+      new Linter().verify(code, entries, name).map(({ ruleId }) => ruleId);
     expect(reported('test/api.test.ts')).toEqual(['vitest/expect-expect']);
     expect(reported('test/api.spec.tsx')).toEqual(['vitest/expect-expect']);
     expect(reported('test/api.test-d.ts')).toEqual([]);
@@ -95,16 +115,10 @@ describe('vitest/expect-expect', () => {
 
 describe('@typescript-eslint/no-unused-vars', () => {
   const code = 'export const two = (_state: unknown, _props: unknown, other: unknown) => 2;\n';
-  const entries = presetConfig
-    .filter((entry) => entry.rules?.['@typescript-eslint/no-unused-vars'] !== undefined)
-    .map(({ files, ignores, rules }) => ({
-      ...(files === undefined ? {} : { files }),
-      ...(ignores === undefined ? {} : { ignores }),
-      plugins: { '@typescript-eslint': tseslint.plugin },
-      languageOptions: { parser: tseslint.parser },
-      rules: { '@typescript-eslint/no-unused-vars': rules['@typescript-eslint/no-unused-vars'] },
-    }));
-  const reported = (name) =>
+  const entries = singleRuleEntries('@typescript-eslint/no-unused-vars', {
+    '@typescript-eslint': tseslint.plugin,
+  });
+  const reported = (name: string) =>
     new Linter().verify(code, entries, name).map(({ message }) => message.split(' ')[0]);
 
   it('accepts a leading underscore on a parameter in test files as in production code', () => {
@@ -124,7 +138,7 @@ describe('@typescript-eslint/ban-ts-comment', () => {
   });
 });
 
-async function ruleSettings(policy) {
+async function ruleSettings(policy?: object) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-convention-rules-'));
   temporaryRoots.push(root);
   if (policy !== undefined) {
@@ -136,13 +150,16 @@ async function ruleSettings(policy) {
   const { default: config } = await import(
     `${presetConfigUrl.href}?conventions=${String(importCount)}`
   );
-  const settingOf = (ruleId) =>
-    config.findLast((entry) => entry.rules?.[ruleId] !== undefined).rules[ruleId];
+  const settingOf = (ruleId: string): unknown =>
+    listOf(config)
+      .map((entry) => fieldOf(fieldOf(entry, 'rules'), ruleId))
+      .findLast((setting) => setting !== undefined);
+  const optionsOf = (ruleId: string): unknown => listOf(settingOf(ruleId))[1];
   return {
     typeImports: settingOf('@typescript-eslint/consistent-type-imports'),
     fileNames: settingOf('nitpicker/file-name-casing'),
-    assertFunctionNames: settingOf('vitest/expect-expect')[1].assertFunctionNames,
-    detachedWorkRunners: settingOf('nitpicker/no-unhandled-void-promise')[1].runners,
+    assertFunctionNames: fieldOf(optionsOf('vitest/expect-expect'), 'assertFunctionNames'),
+    detachedWorkRunners: fieldOf(optionsOf('nitpicker/no-unhandled-void-promise'), 'runners'),
   };
 }
 

@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { POLICY_FILES } from '../../checks/policy-files.mjs';
 import { resolveHeadPolicy } from '../../head-policy.mjs';
 import { resolveLayout } from '../../layout.mjs';
-import { isStrictRule, strictEslintRuleIds } from '../../strict-rules.mjs';
+import { isStrictRule, strictEslintRuleIds } from '../../strict-rules.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
 import { i18nOffRules, i18nRuleIds, i18nRuleNames, i18nRules } from './i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from './i18n-scope.mjs';

@@ -1,3 +1,4 @@
+import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import { isJavaTouchedRule } from '../../java/adapters/touched-rules.mjs';
 import { isPythonTouchedRule } from '../../python/rules/touched-rules.mjs';
 import { strictBoundaryRules } from './architecture/strict-boundary-rules.mjs';
@@ -6,8 +7,6 @@ import { isUnusedParameterFinding } from './eslint-config/policy/unused-paramete
 import { regexpRuleIds } from './eslint-config/regexp/regexp-rules.mjs';
 import { reactRuleIds, reactTestRuleIds } from './eslint-config/react/react-rules.mjs';
 import { serverRuleIds } from './eslint-config/server/server-rules.mjs';
-
-// eslint-plugin-functional (about a second of CPU), which would tax every start of the CLI.
 export const strictEslintRuleIds = [
   '@typescript-eslint/explicit-module-boundary-types',
   '@typescript-eslint/no-floating-promises',
@@ -127,26 +126,28 @@ export const strictEslintRuleIds = [
   'no-restricted-properties',
   'no-restricted-syntax',
   'nitpicker/require-atomic-updates',
-  ...regexpRuleIds,
+  ...textsOf(regexpRuleIds),
 ];
+
+type FindingFacts = { readonly tool?: string; readonly message?: string };
 
 const PRETTIER_RULE = 'prettier/prettier';
 const UNUSED_VARIABLES_RULE = '@typescript-eslint/no-unused-vars';
 
-function isUnusedParameter(rule, finding) {
+function isUnusedParameter(rule: string, finding?: FindingFacts) {
   return rule === UNUSED_VARIABLES_RULE && isUnusedParameterFinding(finding);
 }
 
 const strictRuleIds = new Set([
   ...strictEslintRuleIds,
-  ...reactRuleIds,
-  ...reactTestRuleIds,
-  ...i18nRuleIds,
-  ...serverRuleIds,
-  ...strictBoundaryRules.map(({ name }) => name),
+  ...textsOf(reactRuleIds),
+  ...textsOf(reactTestRuleIds),
+  ...textsOf(i18nRuleIds),
+  ...textsOf(serverRuleIds),
+  ...listOf(strictBoundaryRules).map((rule) => textOf(fieldOf(rule, 'name'))),
 ]);
 
-export function isStrictRule(rule, finding) {
+export function isStrictRule(rule: string, finding?: FindingFacts): boolean {
   return (
     strictRuleIds.has(rule) ||
     rule === PRETTIER_RULE ||
@@ -156,6 +157,6 @@ export function isStrictRule(rule, finding) {
   );
 }
 
-export function mustMeetOnEditedLines(rule, finding) {
+export function mustMeetOnEditedLines(rule: string, finding?: FindingFacts): boolean {
   return rule === PRETTIER_RULE || isUnusedParameter(rule, finding);
 }
