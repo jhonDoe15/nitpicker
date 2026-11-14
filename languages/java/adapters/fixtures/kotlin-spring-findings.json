@@ -301,5 +301,20 @@
   "src/main/kotlin/shop/bad/settings/Settings.kt:32 SpringNullOnlyConfigCheck TokenConfig.tokenKey.region",
   "src/main/kotlin/shop/bad/settings/Settings.kt:37 SpringNullOnlyConfigCheck TokenConfig.tokenAudience.audience",
   "src/main/kotlin/shop/bad/settings/Settings.kt:43 SpringNullOnlyConfigCheck TokenConfig.tokenScope.containsProperty",
-  "src/main/kotlin/shop/bad/settings/Settings.kt:46 SpringNullOnlyConfigCheck TokenConfig.tokenScope.getProperty"
+  "src/main/kotlin/shop/bad/settings/Settings.kt:46 SpringNullOnlyConfigCheck TokenConfig.tokenScope.getProperty",
+  "src/main/kotlin/shop/rows/Receipts.kt:65 SpringDataFilterInQuery ReceiptReports.count.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:67 SpringDataFilterInQuery ReceiptReports.none.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:69 SpringDataFilterInQuery ReceiptReports.counted.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:71 SpringDataFilterInQuery ReceiptReports.total.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:73 SpringDataFilterInQuery ReceiptReports.largest.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:76 SpringDataFilterInQuery ReceiptReports.perState.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:78 SpringDataFilterInQuery ReceiptReports.sorted.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:80 SpringDataFilterInQuery ReceiptReports.byReference.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:83 SpringDataFilterInQuery ReceiptReports.ordered.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:86 SpringDataFilterInQuery ReceiptReports.large.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:88 SpringDataFilterInQuery ReceiptReports.anyOpen.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:91 SpringDataFilterInQuery ReceiptReports.named.findAllById",
+  "src/main/kotlin/shop/rows/Receipts.kt:94 SpringDataFilterInQuery ReceiptReports.paged.pageFor",
+  "src/main/kotlin/shop/rows/Receipts.kt:96 SpringDataFilterInQuery ReceiptReports.reactiveCount.forCustomer",
+  "src/main/kotlin/shop/rows/Receipts.kt:99 SpringDataFilterInQuery ReceiptReports.reactiveOpen.forCustomer"
 ]

@@ -83,7 +83,7 @@ class SwatchService(private val swatches: SwatchRepository, private val entityMa
     @Transactional(readOnly = true)
     fun lookups(shades: List<Shade>): List<Long> {
         val byShade = shades.associateWith { swatches.idsWith(it) }
-        val counts = shades.map { swatches.idsWith(it).size.toLong() }
+        val counts = shades.map { swatches.idsWith(it).firstOrNull() ?: 0L }
         return shades.flatMap(swatches::idsWith) + byShade.values.flatten() + counts
     }
 

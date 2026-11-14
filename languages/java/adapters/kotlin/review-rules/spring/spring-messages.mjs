@@ -127,7 +127,7 @@ const ALLOWED = {
   SpringDataSaveInLoopHelper:
     'Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.',
   SpringDataFilterInQuery:
-    'Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().',
+    'Move the filter, count, sort or total into the query instead of doing it on the loaded rows: a where clause or an exists query for a filter, a count or exists query for a size or emptiness check, order by or a Sort argument for a sort, and an aggregate @Query (sum, max, group by) for a total.',
 };
 
 export const SPRING_RULES = Object.keys(ALLOWED);
