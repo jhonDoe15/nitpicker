@@ -15,6 +15,7 @@ on:
       - 'scripts/test-shards/**'
       - '.github/python-e2e-constraints.txt'
       - 'evals/**/*.test.mjs'
+      - 'evals/**/*.test.mts'
       - 'scripts/ci/**'
       - '.github/workflows/python-e2e.yml'
   pull_request:
@@ -49,7 +50,7 @@ jobs:
         uses: actions/github-script@v8.0.0
         with:
           script: |
-            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mts`);
             await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/python-e2e.yml' });
 
   python-shard:
@@ -90,13 +91,15 @@ jobs:
       - run: pip install -c .github/python-e2e-constraints.txt basedpyright black coverage mypy pyright pytest ruff uv
       # The base-environment tests install real projects with poetry and uv.
       - run: pipx install poetry==2.4.3
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
+      # The monorepo tests install a pnpm workspace with the real pnpm.
+      - run: corepack enable
       - run: npm ci
       - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
       - uses: actions/upload-artifact@v7.0.2

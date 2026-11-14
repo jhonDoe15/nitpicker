@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planAnalyzerShards, selectAnalyzerShard } from './sharding.mjs';
+import { planAnalyzerShards, selectAnalyzerShard } from './sharding.mts';
 
 function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
   return { name, dependencies, shardWeight };

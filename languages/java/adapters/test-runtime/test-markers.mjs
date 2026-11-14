@@ -1,3 +1,5 @@
+import { simpleName } from '../../ingest/class-names.mjs';
+
 const TEST_ANNOTATIONS = [
   'org.junit.Test',
   'org.junit.jupiter.api.Test',
@@ -45,10 +47,6 @@ const BRIDGE_PATTERNS = [
   /^org\.springframework\.boot\.(?:[a-z][a-z0-9]*\.)*test\.autoconfigure\.(?:[a-z][a-z0-9]*\.)*\w+Test$/u,
   /^io\.micronaut\.test\.extensions\.(?:[a-z][a-z0-9]*\.)*MicronautTest$/u,
 ];
-
-function simpleName(className) {
-  return className.slice(className.lastIndexOf('.') + 1);
-}
 
 export const TEST_DECLARATION = new RegExp(
   String.raw`@(?:${TEST_ANNOTATIONS.map(simpleName).join('|')})\b|` +

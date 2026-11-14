@@ -7,7 +7,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { runCli } from '../../../core/cli.mjs';
+import { runCli } from '../../../core/cli.mts';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
@@ -251,7 +251,7 @@ describe('applyLayout', () => {
         '--tool-root',
         '/p',
         packageRoot,
-        `${packageRoot}/languages/typescript/adapters/eslint-runner.mjs`,
+        `${packageRoot}/languages/typescript/adapters/eslint-runner.mts`,
         'eslint-lint',
         'languages/typescript/preset/defaults/eslint.config.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',

@@ -129,14 +129,23 @@ function leftToFanOut(calls) {
     rule !== 'IoCallInLoop' || !calls.has(`${file}:${String(location?.line)}`);
 }
 
+function reviewViews(context) {
+  const { reportRoot, manifest, projectRoot, modules, kotlinBuild, foreignKeys } = context;
+  const assertionHelpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  return {
+    ...{ reportRoot, projectRoot, manifest, modules, foreignKeys },
+    buildViews: kotlinBuild,
+    assertionHelpers,
+  };
+}
+
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
-  const { modules, kotlinBuild: buildViews, foreignKeys } = context;
-  const views = { reportRoot, projectRoot, manifest, modules, buildViews, foreignKeys };
+  const views = reviewViews(context);
   const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
-  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  const runners = context.conventions?.['kotlin.detachedWorkRunners'] ?? [];
   const ruleFindings = withDetektCountRatchets(
     applyKotlinRuleMessages(
       withoutCoveredCasts([
@@ -145,7 +154,9 @@ export function readKotlinFindings(context, crapLimit) {
           spring: manifest.spring === true,
           testRoots,
         }),
-        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...readKotlinSourceFindings(projectRoot, manifest, runners).filter(
+          leftToFanOut(fanOut.calls),
+        ),
         ...fanOut.findings,
         ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
       ]),
@@ -165,7 +176,7 @@ export function readKotlinFindings(context, crapLimit) {
         sourceRoots: manifest.kotlinSourceRoots ?? [],
         testRoots,
       }),
-      ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+      ...readTestAssertionFindings(projectRoot, testRoots, views.assertionHelpers),
       ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
       ...readKotlinReviewFindings(views),
       ...readKotlinStructureFindings(metrics, projectRoot),

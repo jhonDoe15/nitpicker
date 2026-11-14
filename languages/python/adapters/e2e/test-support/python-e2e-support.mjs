@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { runCli } from '../../../../../core/cli.mjs';
+import { runCli } from '../../../../../core/cli.mts';
 import { readConfigFile } from '../../../../../core/configuration/config.mjs';
 import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
 import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mjs';

@@ -202,7 +202,7 @@ jobs:
       # The CLI takes the base from GITHUB_BASE_REF on a pull request and origin/main on a manual run;
       # policy is nitpicker.config.json.
       - name: nitpicker on itself
-        run: node core/cli.mjs --output reports/nitpicker
+        run: node core/cli.mts --output reports/nitpicker
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ steps.approval.outputs.acceptance || vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
       - uses: actions/upload-artifact@v7.0.2

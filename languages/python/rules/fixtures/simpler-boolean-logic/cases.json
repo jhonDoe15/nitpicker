@@ -1,0 +1,17 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "simpler-boolean-logic",
+    "mention": "not (a or b)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "SIM102",
+    "mention": "if a and b:"
+  },
+  {
+    "tool": "ruff",
+    "rule": "SIM210",
+    "mention": "return a < b"
+  }
+]

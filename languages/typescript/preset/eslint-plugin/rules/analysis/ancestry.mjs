@@ -26,3 +26,7 @@ export function constantInitializer(sourceCode, identifier) {
     ? (definition.node.init ?? undefined)
     : undefined;
 }
+
+export function isIdentifierNamed(node, name) {
+  return node.type === 'Identifier' && node.name === name;
+}

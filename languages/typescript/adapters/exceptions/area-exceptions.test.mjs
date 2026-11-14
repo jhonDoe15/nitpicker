@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../shared/head-policy.mjs';
-import { normalizeArchitectureViolations } from '../static-checks-runner.mjs';
-import { applyAreaExceptions } from './area-exceptions.mjs';
+import { normalizeArchitectureViolations } from '../static-checks-runner.mts';
+import { applyAreaExceptions } from './area-exceptions.mts';
 
 const architectureFindings = (report, analyzerName) =>
   applyAreaExceptions(normalizeArchitectureViolations(report, analyzerName));

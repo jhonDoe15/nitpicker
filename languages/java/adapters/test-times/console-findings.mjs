@@ -1,4 +1,7 @@
-import { consoleAllowMatcher } from '../../../../shared/rules/console/console-findings.mjs';
+import {
+  consoleAllowMatcher,
+  consoleTokens,
+} from '../../../../shared/rules/console/console-findings.mjs';
 import { normalizeConsoleMessage } from '../../../../shared/rules/console/console-messages.mjs';
 import { exceptionHint, exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
@@ -8,7 +11,6 @@ import { readConsoleEntries } from './console-output.mjs';
 const CONSOLE_TOOL = 'test-runtime';
 const CONSOLE_RULE = 'test-console-output';
 export const CONSOLE_EXCEPTION_RULE = `${CONSOLE_TOOL}/${CONSOLE_RULE}`;
-const MIN_TOKENS = 3;
 const MESSAGE =
   'Tests print new console output: {output}. Fix the cause (for example a warning the code under test now logs, or a mock or thread that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json. {exception}';
 
@@ -38,7 +40,6 @@ function moduleMessages(entries, { allow, exceptions, modulePath }) {
 
 function findingFor({ file, test, message }, moduleRoot) {
   const where = test === '' ? file : `${file}, test "${test}"`;
-  const tokens = message.split(' ');
   return {
     tool: CONSOLE_TOOL,
     rule: CONSOLE_RULE,
@@ -49,7 +50,7 @@ function findingFor({ file, test, message }, moduleRoot) {
       exceptionHint(CONSOLE_EXCEPTION_RULE, file),
     ),
     classification: 'enforceable',
-    ...(tokens.length < MIN_TOKENS ? {} : { tokens }),
+    ...consoleTokens(message),
   };
 }
 

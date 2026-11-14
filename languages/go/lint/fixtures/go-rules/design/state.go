@@ -60,6 +60,12 @@ func (store *Store) Remember(key, value string) {
 	store.entries[key] = value
 }
 
+func (store *Store) Forget(key string) {
+	store.mutex.Lock()
+	defer store.mutex.Unlock()
+	delete(store.entries, key)
+}
+
 var loaded map[string]string // want mutable-package-state
 
 var once sync.Once // want mutable-package-state

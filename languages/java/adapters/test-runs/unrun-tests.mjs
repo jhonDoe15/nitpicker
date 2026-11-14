@@ -90,7 +90,7 @@ function mavenTestRoots(manifest) {
 
 function mavenFindings(context) {
   const { reportRoot, manifest } = context;
-  if (manifest.runsFailsafe !== false) {
+  if (manifest.runsFailsafe !== false || manifest.testsFailed === true) {
     return [];
   }
   const ran = ranClasses(reportRoot);

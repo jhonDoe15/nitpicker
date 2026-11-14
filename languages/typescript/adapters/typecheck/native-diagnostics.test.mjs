@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { apiEntry, nativeDiagnostics } from './native-diagnostics.mjs';
-import { formatDiagnostic, loadTypeScript } from './typescript-program.mjs';
+import { apiEntry, nativeDiagnostics } from './native-diagnostics.mts';
+import { formatDiagnostic, loadTypeScript } from './typescript-program.mts';
 
 const SYNC = 'typescript/unstable/sync';
 const ASYNC = 'typescript/unstable/async';

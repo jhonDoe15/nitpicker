@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { runCli } from '../../../cli.mjs';
+import { runCli } from '../../../cli.mts';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import {
   finding,

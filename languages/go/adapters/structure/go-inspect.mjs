@@ -16,6 +16,7 @@ const EMPTY = {
   usages: [],
   docComments: [],
   skipped: [],
+  design: { types: [], callables: [] },
 };
 
 function runInspect(context, root, report) {

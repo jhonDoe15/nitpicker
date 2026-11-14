@@ -12,6 +12,8 @@ describe('checkout modules', () => {
     directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkout-module-'));
     writeFileSync(path.join(directory, 'converted.mts'), '');
     writeFileSync(path.join(directory, 'packaged.mjs'), '');
+    writeFileSync(path.join(directory, 'emitted.mts'), '');
+    writeFileSync(path.join(directory, 'emitted.mjs'), '');
   });
 
   afterAll(() => {
@@ -31,11 +33,27 @@ describe('checkout modules', () => {
     ],
     ['leaves files that are not ES modules alone', 'rules.json', 'rules.json'],
   ])('%s', (_name, file, opened) => {
-    expect(checkoutModulePath(path.join(directory, file))).toBe(path.join(directory, opened));
+    expect(checkoutModulePath(path.join(directory, file), { stripsTypes: true })).toBe(
+      path.join(directory, opened),
+    );
   });
   it('maps a module URL the same way', () => {
-    expect(checkoutModuleUrl(pathToFileURL(path.join(directory, 'converted.mjs'))).href).toBe(
+    const converted = pathToFileURL(path.join(directory, 'converted.mjs'));
+    expect(checkoutModuleUrl(converted, { stripsTypes: true }).href).toBe(
       pathToFileURL(path.join(directory, 'converted.mts')).href,
+    );
+    const emitted = pathToFileURL(path.join(directory, 'emitted.mjs'));
+    expect(checkoutModuleUrl(emitted, { stripsTypes: false }).href).toBe(emitted.href);
+  });
+  it('opens the emitted JavaScript where Node.js cannot strip types, as in the package build', () => {
+    const emitted = path.join(directory, 'emitted.mjs');
+    expect(checkoutModulePath(emitted, { stripsTypes: false })).toBe(emitted);
+    expect(checkoutModulePath(emitted, { stripsTypes: true })).toBe(
+      path.join(directory, 'emitted.mts'),
+    );
+    const converted = path.join(directory, 'converted.mjs');
+    expect(checkoutModulePath(converted, { stripsTypes: false })).toBe(
+      path.join(directory, 'converted.mts'),
     );
   });
 });

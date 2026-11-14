@@ -64,8 +64,11 @@ function scannedFiles(projectRoot, sourceRoots) {
     .filter(({ scanned }) => !generatedFile(scanned));
 }
 
-function scanFiles(files, rules) {
-  const context = { declarations: kotlinDeclarations(files.map(({ scanned }) => scanned)) };
+function scanFiles(files, rules, runners) {
+  const context = {
+    declarations: kotlinDeclarations(files.map(({ scanned }) => scanned)),
+    runners,
+  };
   return files.flatMap(({ file, scanned }) => {
     const occurrences = new Map();
     return rules
@@ -75,9 +78,13 @@ function scanFiles(files, rules) {
   });
 }
 
-export function readKotlinSourceFindings(projectRoot, manifest) {
+export function readKotlinSourceFindings(projectRoot, manifest, runners = []) {
   return [
-    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinSourceRoots ?? []), MAIN_RULES),
-    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []), TEST_RULES),
+    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinSourceRoots ?? []), MAIN_RULES, runners),
+    ...scanFiles(
+      scannedFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []),
+      TEST_RULES,
+      runners,
+    ),
   ];
 }

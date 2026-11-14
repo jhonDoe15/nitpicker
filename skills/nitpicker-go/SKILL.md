@@ -105,9 +105,44 @@ releases the file; calling it twice returns an error.`). Keep the prose to 5 lin
   package needs a detail from a narrower one, define an interface in the widely used package and
   let the narrower one implement it.
 - Code under a `shared` folder is used by more than one feature (`shared-used-by-one-feature`);
-  code only one feature uses lives in that feature.
+  code only one feature uses lives in that feature. Other code uses only the package directly in a
+  feature folder, never its sub-packages (`feature-internal-import`); `shared` never uses a feature
+  (`shared-imports-feature`); features never depend on each other in a cycle (`feature-cycle`).
+- A package under a `domain` folder imports no adapter package, `os`, `net`, database, HTTP or
+  messaging client, logger or random source, and calls no id generator such as `uuid.New`
+  (`domain-imports-*`): declare an interface (a port) in the domain, implement it in an adapter,
+  and pass ids, times and random values in. Value types such as `uuid.UUID`, `net.IP` and
+  `sql.ErrNoRows` are fine.
 - `go.mod` requires exactly what the code imports: run `go mod tidy` after adding or removing an
   import (`unused-dependency`, `unlisted-dependency`).
+
+## Deep modules
+
+- Keep a type's state behind its methods. A method that returns a private slice, map or pointer
+  field (`return c.items`) hands callers in other files the state: editing the result
+  (`lines[0] = x`, `delete(m, k)`, `sort.Strings(c.Lines())`) fails `mutable-state-escape`. Return a
+  copy (`slices.Clone`) or add the operation to the type.
+- Pass a function the values it reads. A struct of 5 or more fields handed whole through 2 or more
+  functions that read a third of it is reported by `context-threading` (report-only); pass those
+  values, or a small struct with just them.
+- A lifecycle the project lists in `protocols` (`Begin` with `Commit` or `Rollback`) is closed with
+  a `defer` in the function that opens it; a close after the work that is not deferred is skipped
+  by an early `return` (`protocol-contract` fails). Three functions repeating the same
+  three calls on one type are reported by `caller-protocol` (report-only): give the type one method
+  that does them all.
+- A function whose whole body is `return other(a, b)` into another file, called through a second
+  such function, is a pass-through chain (`forwarding-chain`, report-only): call the last function
+  where the first is used, or let a hop own something (a conversion, a default, a dependency).
+- A struct whose methods serve two groups of callers that never meet and share no field
+  (`disjoint-consumer-groups`, report-only) is two types: split it by who calls what.
+- The same three parameters in exported functions of three files
+  (`data-clump`, report-only): give them one struct that owns their rules.
+- Two packages that group the constants of one enum or field the same way (`Card` and `Paypal` as
+  one case in a `switch` here and an `if` there) repeat a rule (`repeated-policy-decision`,
+  report-only): give the type one function or method that answers it and call it.
+- Functions in other files that branch on the same two fields of a struct that has methods
+  (`o.Status` and `o.Tier` in an `if` here and a `switch` there) decide for it
+  (`foreign-state-decision`, report-only): move the decision into a method of the struct.
 
 ## Size and tests
 

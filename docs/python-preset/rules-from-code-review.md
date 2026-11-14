@@ -53,6 +53,35 @@ members is not reported.
   `Config`) and every definition of a convention module (`admin.py`, `apps.py`, `urls.py`,
   `signals.py`, `settings`, `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) are
   never compared; an entry point never is.
+- `public-alternative-bypass` reads the same scan, with the components of the TypeScript rule: each
+  top-level package, or each subpackage of it when the source root holds one top-level package
+  (`src/shop/billing`), leaving out `shared` and `utils`. When a component's `__init__.py` lists a
+  name in `__all__` and imports it (`from .invoice import Invoice`), a production module outside
+  the component that imports the name from inside it (`from shop.billing.invoice import Invoice`)
+  is reported, and the message names the import to use (`Import Invoice from shop.billing.`).
+  Packages without `__all__` declare no public API, so they are not judged. Code inside the
+  component, tests, entry modules and the `main.py`, `server.py` and `composition_root.py` of a
+  top-level package (they wire the internals together), imports under `if TYPE_CHECKING:`, imports
+  inside a function or in a `try` that catches `ImportError`, and a module imported whole are left
+  alone; a function-local or type-checking import is how a cycle through the package is broken.
+  Any other import that goes around the package on purpose takes an exception for the importing
+  file.
+- `near-duplicate` (tool `facts`) reads the functions and methods of the same scan: two production
+  functions whose syntax trees are proved copies (the same apart from renamed locals, up to 4
+  changed values, or a shared run of 3 or more statements) fail, at the copy whose `file#name`
+  sorts last, also across distributions; test modules are not compared. A copy large enough for
+  the renamed `duplicate-clone` pass and different only in names and literals is left to it.
+- `decided-condition` (tool `facts`) reads the same trees: an `if`, `elif`, `while`, conditional
+  expression or `and`/`or` operand that the guards before it in the same function decide fails,
+  when a solver proves it always true (a redundant check) or always false (dead code). The guards
+  are enclosing `if`s and their `else`, guard clauses that `return`, `raise`, `break` or
+  `continue`, and the left side of `and` and `or`; an assignment to a name, or a call when the name
+  is a module name, forgets what was known, and arithmetic is an opaque value.
+- `duplicate-branch` (tool `facts`) reads the same trees: two arms of an `if`/`elif` chain or a
+  conditional expression whose bodies have the same canonical tree fail. Ruff `SIM114` keeps the
+  adjacent `if`/`elif` arms; this rule adds the arms that are not adjacent and the `else`. The
+  statements every arm of a complete chain starts or ends with are reported, not failed, when
+  moving them keeps behaviour.
 - `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
   `duplicate-definition` compares the whole project, whatever the distribution. A module Django
   loads by convention (the list above, in a Django application) and its names are production code.

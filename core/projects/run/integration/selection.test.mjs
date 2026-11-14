@@ -56,7 +56,7 @@ describe('projects found without a "projects" setting', () => {
   it('keep one project when the list is empty', () => {
     const root = workspaceRepository({
       'nitpicker.config.json': '{"projects":[]}',
-      ...projectFiles('.'),
+      ...projectFiles('.', { 'src/index.ts': 'export const root = 1;\n' }),
     });
     writeFiles(root, { 'packages/docs/src/a.ts': 'export const changed = 1;\n' });
 

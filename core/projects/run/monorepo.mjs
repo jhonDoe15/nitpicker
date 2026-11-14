@@ -1,7 +1,7 @@
 import path from 'node:path';
-import { policyAcceptance } from '../../command/policy-review/policy-acceptance.mjs';
+import { policyAcceptance } from '../../command/policy-review/policy-acceptance.mts';
 import { clearDiffReports, outputRootFor } from '../../diff/reporting/reporters.mjs';
-import { clearSnapshotReports } from '../../snapshot/reporters.mjs';
+import { clearSnapshotReports } from '../../snapshot/reporters.mts';
 import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';

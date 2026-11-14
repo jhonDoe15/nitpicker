@@ -4,10 +4,11 @@ import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
-import { progressEvent } from '../analyzer-scheduler.mjs';
-import { reportFromAnalyzerOutput } from '../process.mjs';
+import { progressEvent } from '../graph/outcomes.mts';
+import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';
 import { createProgressReporter } from '../progress.mjs';
 import { runFakeAnalyzer } from './fake-analyzer.mjs';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
@@ -20,7 +21,7 @@ const pythonRunnerPath = path.resolve(
   '../../../../languages/python/adapters/python-runner.mjs',
 );
 
-const cliPath = path.resolve(import.meta.dirname, '../../../cli.mjs');
+const cliPath = checkoutModulePath(path.resolve(import.meta.dirname, '../../../cli.mjs'));
 
 const inProcessScripts = new Map([
   [cliPath, inProcessHygiene],
