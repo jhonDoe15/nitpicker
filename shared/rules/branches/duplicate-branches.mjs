@@ -1,27 +1,18 @@
 import { branchKey } from './arm-keys.mjs';
 import { branchGroups } from './arms.mjs';
+import { guardSimplifications } from './guards/guard-merges.mjs';
+import { testsType } from './guards/type-tests.mjs';
 import { sharedEnds } from './shared-ends.mjs';
 import { escapingNames } from '../../near-duplicates/canonical/effects.mjs';
 import { digest } from '../../near-duplicates/tree/keys.mjs';
-import { nodesOf, sizeOf } from '../../near-duplicates/tree/nodes.mjs';
+import { sizeOf } from '../../near-duplicates/tree/nodes.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { listNames } from '../../messages/messages.mjs';
-import { functionUnitRule, reuseFinding } from '../reuse/reuse-finding.mjs';
+import { functionUnitRule, identityCounter, reuseFinding } from '../reuse/reuse-finding.mjs';
 
 const MIN_BLOCK_NODES = 3;
 const SHORT_KEY = 12;
 const CONSTRUCTS = { if: '`if`', when: '`when`' };
-const PATTERN = /^\w*pattern\w*:/u;
-
-function testsType(arm) {
-  const tests = [
-    ...(arm.conditions ?? []),
-    ...(arm.condition === undefined ? [] : [arm.condition]),
-  ];
-  return tests
-    .flatMap((test) => nodesOf(test))
-    .some(({ kind, value }) => kind === 'type' || PATTERN.test(String(value)));
-}
 
 function isEnteredFromAbove(group, index) {
   const before = group.arms[index - 1];
@@ -100,22 +91,23 @@ function sharedText(group, { end, count }) {
 
 function unitFindings(unit, analyzerName) {
   const escaping = escapingNames(unit.tree);
-  const seen = new Map();
+  const numbered = identityCounter();
   function finding({ identity, line, values, classification }) {
     const base = `${unit.file}#${unit.name}:${identity}`;
-    const count = (seen.get(base) ?? 0) + 1;
-    seen.set(base, count);
     const found = reuseFinding(analyzerName, {
       key: 'duplicateBranch',
       path: unit.file,
-      identity: `duplicate-branch:${base}#${String(count)}`,
+      identity: numbered(`duplicate-branch:${base}`),
       symbol: unit.name,
       line,
       values,
     });
     return { ...found, classification };
   }
-  return branchGroups(unit.tree).flatMap((group) => {
+  const guards = guardSimplifications(unit.tree, unit.file).map((found) =>
+    finding({ ...found, classification: 'descriptive' }),
+  );
+  const groups = branchGroups(unit.tree).flatMap((group) => {
     const equal = equalArms(group);
     const duplicates = equal.filter(([, arms]) => !isLeftToTool(unit.file, group, arms));
     if (equal.length > 0) {
@@ -137,6 +129,7 @@ function unitFindings(unit, analyzerName) {
       }),
     );
   });
+  return [...groups, ...guards];
 }
 
 export const duplicateBranchFindings = functionUnitRule(RULE_IDS.duplicateBranch, unitFindings);
