@@ -1,5 +1,6 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { messageOf } from '../../adapters/gradle-wrapper/gradle-execution.mts';
 
 const CONSTANT_SIZES = new Map([
   [3, 4],
@@ -125,10 +126,6 @@ function isJavaClass(file: string): boolean {
       cause: error,
     });
   }
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function destinationOf(classDirectory: string, target: string, file: string): string {

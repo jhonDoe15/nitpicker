@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { runMaven } from '../../maven-command.mjs';
 import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { messageOf } from '../../../adapters/gradle-wrapper/gradle-execution.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
 import { callUntyped } from '../../../adapters/typed/java-values.mts';
 import type { ToolchainContext } from '../../typed/toolchain-types.mts';
@@ -38,12 +39,12 @@ function optionValue(given: readonly string[], names: readonly string[]): string
   return values.at(-1);
 }
 
-function mavenHome(context: ToolchainContext): string | undefined {
+function mavenHome(context: ToolchainContext): { home?: string | undefined; failure?: string } {
   try {
     const output = textOf(callUntyped(runMaven, { ...context, args: ['--version'] }));
-    return MAVEN_HOME_LINE.exec(output)?.[1]?.trim();
-  } catch {
-    return undefined;
+    return { home: MAVEN_HOME_LINE.exec(output)?.[1]?.trim() };
+  } catch (error) {
+    return { failure: messageOf(error) };
   }
 }
 
@@ -59,7 +60,7 @@ export function globalToolchainsFile(context: ToolchainContext): string | undefi
   if (given !== undefined) {
     return path.resolve(context.projectRoot, given);
   }
-  const home = mavenHome(context);
+  const { home } = mavenHome(context);
   return home === undefined ? undefined : path.join(home, 'conf', 'toolchains.xml');
 }
 

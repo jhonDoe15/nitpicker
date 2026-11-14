@@ -4,9 +4,9 @@ import { javaCommand, runJava } from '../../maven-command.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
 import { kotlinFiles, lintedRoots } from './kotlin-files.mts';
 import { relativeRoots } from '../../module/module-paths.mts';
-import { callUntyped } from '../../../adapters/typed/java-values.mts';
-import type { JavaSpawn } from '../../../adapters/typed/java-values.mts';
-import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import { type JavaSpawn, callUntyped } from '../../../adapters/typed/java-values.mts';
+import { succeeded } from '../../../adapters/design/producer/design-program.mts';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import type { KotlinPinned } from './kotlin-dependencies.mts';
 import type { KotlinModule, ToolClasspaths } from '../../typed/kotlin-types.mts';
 
@@ -16,10 +16,6 @@ const COMPILED_MARKER = '.compiled';
 const TEST_PREFIX = 'test:';
 const EMPTY_METRICS = '{"functions":[],"files":[]}';
 const EMPTY_FILES = '{"files":[]}';
-
-function succeeded(result: unknown): boolean {
-  return fieldOf(result, 'status') === 0;
-}
 
 export function psiArguments({
   metrics,
