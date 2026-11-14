@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { cleanupSkippedOnFailure } from './cleanup-order.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { cleanupSkippedOnFailure as untypedCleanupSkippedOnFailure } from './cleanup-order.mjs';
 
-function lines(source) {
+const cleanupSkippedOnFailure: Check<Ruled> = untypedCleanupSkippedOnFailure;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return cleanupSkippedOnFailure(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
 const HEADER = 'class Client(private val a: Closeable, private val b: Closeable) : AutoCloseable {';
-const inClass = (body, name = 'close') => {
-  const lines = body.split('\n').map((line) => `        ${line}`);
+const inClass = (body: string, name = 'close') => {
+  const lines = body.split('\n').map((line: string) => `        ${line}`);
   return [
     HEADER,
     '    var state: Any? = Any()',

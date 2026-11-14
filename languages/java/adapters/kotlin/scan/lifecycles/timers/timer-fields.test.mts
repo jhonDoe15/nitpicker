@@ -1,19 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { timerNotStoppedOnClose } from './timer-fields.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { timerNotStoppedOnClose as untypedTimerNotStoppedOnClose } from './timer-fields.mjs';
 
-function lines(source) {
+const timerNotStoppedOnClose: Check<Ruled> = untypedTimerNotStoppedOnClose;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return timerNotStoppedOnClose(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
 const SCHEDULER = '    private val scheduler = Executors.newSingleThreadScheduledExecutor()';
-const inClass = (closeBody, property = SCHEDULER, annotation = '') =>
+const inClass = (closeBody: string, property = SCHEDULER, annotation = '') =>
   [
     `${annotation}class Poller : AutoCloseable {`,
     property,
     '    override fun close() {',
-    ...closeBody.split('\n').map((line) => `        ${line}`),
+    ...closeBody.split('\n').map((line: string) => `        ${line}`),
     '    }',
     '}',
     '',

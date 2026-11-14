@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../../kotlin-source.mjs';
-import { cachedDeferredKeepsFailure } from './cached-deferred.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../../typed/typed-scan.mts';
+import { cachedDeferredKeepsFailure as untypedCachedDeferredKeepsFailure } from './cached-deferred.mjs';
 
-function lines(source) {
+const cachedDeferredKeepsFailure: Check<Ruled> = untypedCachedDeferredKeepsFailure;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return cachedDeferredKeepsFailure(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
 const HEAD = 'class Client(private val scope: CoroutineScope) {\n';
 const FIELD = '    private var conn: Deferred<String>? = null\n';
-const inClass = (body, field = FIELD) => `${HEAD}${field}${body}}\n`;
+const inClass = (body: string, field = FIELD) => `${HEAD}${field}${body}}\n`;
 
 describe('cachedDeferredKeepsFailure', () => {
   it.each([
@@ -47,7 +49,7 @@ describe('cachedDeferredKeepsFailure', () => {
     expect(lines(source)).toEqual(expected);
   });
 
-  it.each([
+  it.each<[string, string, number[]?]>([
     [
       'a job started and cancelled on stop',
       inClass(
