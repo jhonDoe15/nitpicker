@@ -1,23 +1,30 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
-import { installedRuffRules } from '../reference/ruff-selection.mjs';
+import { installedRuffRules } from '../reference/ruff-selection.mts';
+import { parseRuffSnapshot } from '../reference/typed/ruff-rule-views.mts';
+import type { RuffRule, RuffSnapshot } from '../reference/typed/ruff-rule-views.mts';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
-function identities(rules) {
+function identities(rules: readonly RuffRule[]): Map<string, string> {
   return new Map(rules.map(({ code, name, linter }) => [code, `${name} (${linter})`]));
 }
 
 describe.skipIf(!enabled)('the ruff rule snapshot of the rule reference', () => {
-  let committed;
-  let live;
-  let snapshot;
-  let installed;
+  let committed: RuffSnapshot;
+  let live: RuffSnapshot;
+  let snapshot: Map<string, string>;
+  let installed: Map<string, string>;
 
   beforeAll(() => {
-    committed = JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8'));
-    live = installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff') ?? { rules: [] };
+    committed = parseRuffSnapshot(
+      readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8'),
+    );
+    live = installedRuffRules(process.env['NITPICKER_RUFF'] ?? 'ruff') ?? {
+      version: '',
+      rules: [],
+    };
     snapshot = identities(committed.rules);
     installed = identities(live.rules);
   });
@@ -35,7 +42,7 @@ describe.skipIf(!enabled)('the ruff rule snapshot of the rule reference', () => 
 
   it('has no other rule than one the config selects by code that a newer ruff added', () => {
     expect(
-      [...snapshot.keys()].filter((code) => !installed.has(code) && !RUFF_SELECT.includes(code)),
+      [...snapshot.keys()].filter((code) => !(installed.has(code) || RUFF_SELECT.includes(code))),
     ).toEqual([]);
   });
 });

@@ -2,20 +2,26 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync }
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createToolContext, lint, RUFF_REPORT } from '../adapters/python-tools.mjs';
-import { ruffFindings } from '../adapters/python-reports.mjs';
-import { applyPythonExceptions } from '../adapters/configuration/python-exceptions.mjs';
+import { lint, RUFF_REPORT } from '../adapters/python-tools.mjs';
+import { toolContext } from '../rules/test-support/python-rule-scripts.mts';
+import type { IngestedFinding } from '../ingest/typed/ingest-types.mts';
+import { ruffFindings } from '../adapters/python-reports.mts';
+import { applyPythonExceptions } from '../adapters/configuration/python-exceptions.mts';
 import {
   RULES_REPORT,
   checkRules,
   readAllowances,
   readTestFiles,
 } from '../adapters/analysis/python-ast-rules.mjs';
-import { ingestRulesReport } from '../ingest/rules-report.mjs';
-import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { applyRuleHints } from '../rules/rule-hints.mjs';
+import { ingestRulesReport } from '../ingest/rules-report.mts';
+import { applyRuleHints, exceptionRoute } from '../rules/typed/rule-hint-views.mts';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
+const runLint: (context: unknown) => void = lint;
+const runRules: (context: unknown) => void = checkRules;
+const testFilesOf: (root: string) => string[] = readTestFiles;
+const readJson: (text: string) => unknown = JSON.parse;
+
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 const fixtures = path.resolve(import.meta.dirname, '../rules/fixtures/ruff-pitfalls');
 const PITFALL = /^(?:(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+|PLR0124|PLR1711|PLR1714)$/u;
 const OWNERS = [
@@ -160,11 +166,13 @@ const EXCEPTED = {
   'tests/test_waits.py': ['8 ASYNC110'],
 };
 
-function pythonFiles(folder) {
-  return readdirSync(folder, { recursive: true }).filter((file) => file.endsWith('.py'));
+function pythonFiles(folder: string): string[] {
+  return readdirSync(folder, { recursive: true, encoding: 'utf8' }).filter((file) =>
+    file.endsWith('.py'),
+  );
 }
 
-function writeProject(root) {
+function writeProject(root: string) {
   writeFileSync(
     path.join(root, 'pyproject.toml'),
     '[project]\nname = "pitfalls"\nrequires-python = ">=3.12"\n',
@@ -175,7 +183,7 @@ function writeProject(root) {
     ['allowed', 'allowed'],
     ['overlap', 'overlap'],
     ['overlap', 'excepted'],
-  ]) {
+  ] satisfies [string, string][]) {
     cpSync(path.join(fixtures, from), path.join(root, to), { recursive: true });
   }
   for (const file of pythonFiles(path.join(root, 'shifted'))) {
@@ -184,17 +192,20 @@ function writeProject(root) {
   }
 }
 
-function readFindings(projectRoot, reportRoot) {
-  const context = createToolContext({
+function readFindings(
+  projectRoot: string,
+  reportRoot: string,
+): { findings: IngestedFinding[]; testFiles: string[] } {
+  const context = toolContext({
     projectRoot,
     liveRoot: projectRoot,
     settings: { environment: 'path', sourceRoots: ['.'] },
     reportRoot,
   });
-  checkRules(context);
-  lint(context);
-  const report = JSON.parse(readFileSync(path.join(reportRoot, RUFF_REPORT), 'utf8'));
-  const testFiles = readTestFiles(reportRoot);
+  runRules(context);
+  runLint(context);
+  const report = readJson(readFileSync(path.join(reportRoot, RUFF_REPORT), 'utf8'));
+  const testFiles = testFilesOf(reportRoot);
   const ruff = ruffFindings(report, {
     roots: [projectRoot],
     projectRoot,
@@ -209,11 +220,11 @@ function readFindings(projectRoot, reportRoot) {
   };
 }
 
-const inside = (folder) => (found) => found.path.startsWith(`${folder}/`);
-const relative = (folder, file) => file.slice(folder.length + 1);
+const inside = (folder: string) => (found: IngestedFinding) => found.path.startsWith(`${folder}/`);
+const relative = (folder: string, file: string) => file.slice(folder.length + 1);
 
-function sitesBy(findings, folder) {
-  const grouped = {};
+function sitesBy(findings: readonly IngestedFinding[], folder: string): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
   for (const found of findings.filter(inside(folder))) {
     const file = relative(folder, found.path);
     grouped[file] = [...(grouped[file] ?? []), `${String(found.location?.line)} ${found.rule}`];
@@ -229,10 +240,10 @@ function sitesBy(findings, folder) {
 }
 
 describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
-  let root;
-  let reports;
-  let findings;
-  let testFiles;
+  let root: string;
+  let reports: string;
+  let findings: IngestedFinding[];
+  let testFiles: string[];
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-ruff-pitfalls-'));
@@ -262,7 +273,7 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
   });
 
   it('keeps finding identities stable across line movement and names the exception route', () => {
-    const identities = (folder) =>
+    const identities = (folder: string) =>
       findings
         .filter((found) => inside(folder)(found) && PITFALL.test(found.rule))
         .map(({ rule, identity, path: file, message }) => ({
