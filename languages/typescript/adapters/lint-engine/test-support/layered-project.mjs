@@ -7,7 +7,7 @@ import { RULE_EXCEPTION_ENTRY } from '../../../preset/eslint-config/exceptions.m
 import { resolveHeadPolicy } from '../../../preset/head-policy.mjs';
 import { LINT_CONFIG } from '../../../preset/test-environment/resolve-environment.mjs';
 import { createProject } from '../../oxlint/test-support/oxlint-project.mjs';
-import { runLintEngine } from '../lint-engine.mjs';
+import { runLintEngine } from '../lint-engine.mts';
 
 const TSESLINT = JSON.stringify(import.meta.resolve('typescript-eslint'));
 

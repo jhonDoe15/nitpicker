@@ -79,4 +79,5 @@ export type RunSetup = {
   readonly analyzers: readonly ProfiledAnalyzer[];
   readonly quick: unknown;
   readonly captureHead: unknown;
+  readonly setupErrors: readonly object[];
 };

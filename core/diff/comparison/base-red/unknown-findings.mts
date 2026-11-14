@@ -1,4 +1,9 @@
-import { mutationFailuresOf, unknownMutantsFor, unknownOnBaseFor } from './unknown-base.mjs';
+import {
+  headTestFailuresOf,
+  mutationFailuresOf,
+  unknownMutantsFor,
+  unknownOnBaseFor,
+} from './unknown-base.mjs';
 import type { AnalyzerReport, Finding } from '../../../../shared/values/findings.mts';
 
 type FindingTest = (finding: Finding) => boolean;
@@ -11,6 +16,8 @@ const unknownOnBase: (
 ) => FindingTest | undefined = unknownOnBaseFor;
 const mutationFailures: (report: AnalyzerReport | undefined) => readonly Finding[] =
   mutationFailuresOf;
+const headTestFailures: (report: AnalyzerReport | undefined, name: string) => readonly Finding[] =
+  headTestFailuresOf;
 const unknownMutants: (
   failures: readonly Finding[],
   touchedCode?: unknown,
@@ -42,12 +49,33 @@ export function unknownOnBaseOf({
   );
 }
 
+function withoutUnmeasured(
+  findings: readonly Finding[],
+  unmeasured: FindingTest | undefined,
+): readonly Finding[] {
+  return unmeasured === undefined ? findings : findings.filter((finding) => !unmeasured(finding));
+}
+
 export function withoutUnmeasuredMutants(
   baseFindings: readonly Finding[],
   { name, headRun }: { readonly name: string; readonly headRun: ReportsRun },
 ): readonly Finding[] {
-  const unmeasured = unknownMutants(mutationFailures(headRun.reports.get(name)));
-  return unmeasured === undefined
-    ? baseFindings
-    : baseFindings.filter((finding) => !unmeasured(finding));
+  const headReport = headRun.reports.get(name);
+  return withoutUnmeasured(
+    baseFindings,
+    eitherOf(
+      unknownMutants(mutationFailures(headReport)),
+      unknownOnBase(headTestFailures(headReport, name), undefined),
+    ),
+  );
+}
+
+export function withoutHeadUnmeasured(
+  headFindings: readonly Finding[],
+  { name, headRun }: { readonly name: string; readonly headRun: ReportsRun },
+): readonly Finding[] {
+  return withoutUnmeasured(
+    headFindings,
+    unknownOnBase(headTestFailures(headRun.reports.get(name), name), undefined),
+  );
 }

@@ -37,4 +37,9 @@ describe('detached-work runner pins', () => {
       ],
     });
   });
+
+  it('counts a newly named Kotlin runner as a loosening', () => {
+    const kotlin = (names) => ({ conventions: { 'kotlin.detachedWorkRunners': names } });
+    expect(changes({}, kotlin(['runDetached'])).loosened).toHaveLength(1);
+  });
 });

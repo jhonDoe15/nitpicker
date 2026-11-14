@@ -93,6 +93,7 @@ const CORE_LEVEL = { release: '17', source: '17', target: undefined };
 const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
 function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
+  const compiler = packaging === 'pom' ? undefined : NO_COMPILER_SETTINGS;
   const target = path.join(basedir, 'target');
   return {
     basedir,
@@ -114,7 +115,7 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     jacocoDestFiles: [],
     jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
-    compiler: NO_COMPILER_SETTINGS,
+    compiler,
   };
 }
 
@@ -199,6 +200,36 @@ describe('readReactor', () => {
       [root, 'demo:parent'],
       [path.join(root, 'a'), 'demo:parent-a'],
     ]);
+  });
+
+  it('reads no compiler settings of a pom module, so its unresolved processor paths do not matter', () => {
+    const root = reactor({ 'pom.xml': raw('parent'), 'app/pom.xml': raw('app') });
+    const processor = (version) =>
+      inBuild(
+        plugin(
+          'maven-compiler-plugin',
+          '<configuration><annotationProcessorPaths><path><groupId>org.projectlombok</groupId>' +
+            `<artifactId>lombok</artifactId>${version}</path></annotationProcessorPaths></configuration>`,
+        ),
+      );
+    const effectivePom = (appVersion) =>
+      [
+        '<projects>',
+        '<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging>' +
+          `<modules><module>app</module></modules>${processor('')}</project>`,
+        `<project><groupId>demo</groupId><artifactId>app</artifactId>${processor(appVersion)}</project>`,
+        '</projects>',
+      ].join('');
+
+    const [parent, app] = readReactor(root, effectivePom('<version>1.18.42</version>'));
+
+    expect([parent.compiler, app.compiler.processorPaths]).toEqual([
+      undefined,
+      ['org.projectlombok:lombok:1.18.42'],
+    ]);
+    expect(() => readReactor(root, effectivePom(''))).toThrow(
+      /^Maven module demo:app: maven-compiler-plugin's annotationProcessorPaths names org\.projectlombok:lombok /u,
+    );
   });
 
   it.each([

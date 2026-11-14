@@ -45,6 +45,7 @@ type SnapshotCli = {
   readonly environment: NodeJS.ProcessEnv;
   readonly runTasks: unknown;
   readonly scope: unknown;
+  readonly setupErrors: readonly object[];
 };
 
 type SnapshotReport = QualitySnapshot & { text?: unknown };
@@ -57,6 +58,7 @@ type WorktreeRun = {
   readonly currentProjectRoot: string;
   readonly headPolicy: unknown;
   readonly scope: unknown;
+  readonly setupErrors: readonly object[];
 };
 
 const inWorktree: (
@@ -81,6 +83,7 @@ function stderrWarning(stderr: TextOutput): (message: string) => unknown {
 
 export function runSnapshotCli(cli: SnapshotCli): number {
   const { options, currentProjectRoot, analyzers, headPolicy, stderr, runTasks, scope } = cli;
+  const { setupErrors } = cli;
   const outputRoot = textOf(outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot'));
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -101,6 +104,7 @@ export function runSnapshotCli(cli: SnapshotCli): number {
         currentProjectRoot,
         headPolicy,
         scope,
+        setupErrors,
       },
       analyzerRunOptions({ outputRoot, runTasks }),
     ),
@@ -151,7 +155,14 @@ function snapshotExitCode({ summary, toolErrors }: SnapshotReport): number {
 }
 
 function runInSnapshotWorktree(
-  { snapshotRoot, selectedAnalyzers, currentProjectRoot, headPolicy, scope }: WorktreeRun,
+  {
+    snapshotRoot,
+    selectedAnalyzers,
+    currentProjectRoot,
+    headPolicy,
+    scope,
+    setupErrors,
+  }: WorktreeRun,
   execution: object,
 ): SnapshotReport {
   const needsDependencies = selectedAnalyzers.some(
@@ -173,6 +184,7 @@ function runInSnapshotWorktree(
       liveProjectRoot: currentProjectRoot,
       headPolicy: objectOf(headPolicy),
       scope,
+      setupErrors,
       ...execution,
     });
   } finally {

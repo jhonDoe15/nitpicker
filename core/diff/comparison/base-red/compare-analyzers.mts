@@ -5,12 +5,16 @@ import {
 } from '../../reporting/report-model.mts';
 import {
   COMPILE_FAILED_SKIPPED_RULE,
-  TESTS_FAILED_RULE,
   TESTS_FAILED_RULES,
+  TESTS_UNMEASURED_RULES,
 } from '../../../../shared/rules/finding-helpers.mjs';
 import { withoutAnsi } from '../../../../shared/messages/terminal/terminal-text.mjs';
 import { baseFailuresOf, baseNoteOf, redBaseAnalyzers } from './unknown-base.mjs';
-import { unknownOnBaseOf, withoutUnmeasuredMutants } from './unknown-findings.mts';
+import {
+  unknownOnBaseOf,
+  withoutHeadUnmeasured,
+  withoutUnmeasuredMutants,
+} from './unknown-findings.mts';
 import type { AnalyzerReport, Finding, ReportEntry } from '../../../../shared/values/findings.mts';
 
 export type AnalyzerRun = {
@@ -83,6 +87,7 @@ const failuresOf: (request: {
 }) => readonly Finding[] | undefined = baseFailuresOf;
 const noteOf: (name: string, finding: Finding) => ReportEntry = baseNoteOf;
 const testsFailedRules: readonly unknown[] = TESTS_FAILED_RULES;
+const testsUnmeasuredRules: readonly unknown[] = TESTS_UNMEASURED_RULES;
 
 export function compareAnalyzers(context: ComparisonRequest): {
   readonly outcomes: AnalyzerOutcome[];
@@ -125,8 +130,8 @@ function removalNotes(failureNotes: readonly ReportEntry[]): ReportEntry[] {
 }
 
 function withoutConsequenceNotes(notes: ReportEntry[]): ReportEntry[] {
-  return notes.some(({ rule }) => rule === TESTS_FAILED_RULE)
-    ? notes.filter(({ rule }) => rule === TESTS_FAILED_RULE)
+  return notes.some(({ rule }) => testsUnmeasuredRules.includes(rule))
+    ? notes.filter(({ rule }) => testsUnmeasuredRules.includes(rule))
     : notes;
 }
 
@@ -192,7 +197,7 @@ function compareOrReportError(context: ComparedContext): FindingComparison {
   try {
     const result = findingsCompared({
       baseFindings: withoutUnmeasuredMutants(baseFindings, context),
-      headFindings,
+      headFindings: withoutHeadUnmeasured(headFindings, context),
       baseToHeadRenames: context.baseToHeadRenames,
       baseToHeadDirectories: context.baseToHeadDirectories,
       touchedCode: context.touchedCode,

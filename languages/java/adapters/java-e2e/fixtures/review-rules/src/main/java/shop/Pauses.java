@@ -154,7 +154,7 @@ public final class Pauses {
     }
   }
 
-  public static int napOrChoose(long millis, boolean strict) {
+  public static int napOrChoose(long millis, boolean strict) { // violation: BooleanFlagParameter
     try {
       Thread.sleep(millis);
       return 1;

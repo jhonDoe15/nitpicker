@@ -1,3 +1,4 @@
+import { TESTS_TIMED_OUT_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 import { textOf } from '../../../../shared/values/readers.mts';
 
@@ -28,6 +29,14 @@ const COUNTS_AS_NEW = [
   'of the head counts as new.',
 ].join(' ');
 
+function outcomeOf(failed: readonly ReportEntry[]): string {
+  const timedOut = failed.filter(({ rule }) => rule === TESTS_TIMED_OUT_RULE).length;
+  if (timedOut === 0) {
+    return 'fail';
+  }
+  return timedOut === failed.length ? 'did not finish' : 'fail or did not finish';
+}
+
 export function noteSummaryLines(notes: readonly ReportEntry[] = []): string[] {
   const failed = notes.filter(({ rule }) => rule !== 'tests-removed');
   if (failed.length === 0) {
@@ -36,7 +45,7 @@ export function noteSummaryLines(notes: readonly ReportEntry[] = []): string[] {
   const tools = [...new Set(failed.map(({ tool }) => tool))].join(', ');
   const removed = notes.some(({ rule }) => rule === 'tests-removed');
   return [
-    `Note: the project's tests fail on the base (${tools}).`,
+    `Note: the project's tests ${outcomeOf(failed)} on the base (${tools}).`,
     removed ? COUNTS_AS_NEW : UNKNOWN_ON_BASE,
   ];
 }

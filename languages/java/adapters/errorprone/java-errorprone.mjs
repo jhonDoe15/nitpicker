@@ -15,6 +15,12 @@ const CHECKS = JSON.parse(
   readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
 );
 const CERTAIN_BUGS = new Set(CHECKS.certainBugs);
+const KNOWN_CRASHES = new Map([
+  [
+    'UnnecessarilyFullyQualified',
+    /JCIdent cannot be cast to (?:class )?com\.sun\.source\.tree\.MemberSelectTree/u,
+  ],
+]);
 
 export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifest = {} }) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
@@ -49,15 +55,26 @@ function isCrash(diagnostic) {
   return typeof diagnostic?.crash === 'string';
 }
 
+function isKnownCrash({ crash, cause }) {
+  return typeof cause === 'string' && KNOWN_CRASHES.get(crash)?.test(cause) === true;
+}
+
 function crashError({ crash, file, line, cause }, roots) {
   const [relative = file] = projectRelative(file, roots);
   const why = typeof cause === 'string' && cause !== '' ? ` (${cause})` : '';
+  const known = isKnownCrash({ crash, cause });
+  const consequence = known
+    ? ', a known Error Prone bug, so it was turned off for this run and only its findings are missing. ' +
+      'The crash is not a problem in this code.'
+    : ', so it was turned off for this run and the findings of the other checks are kept. ' +
+      'The crash is an Error Prone bug, not a problem in this code.';
   return {
     ...toolError(
       'check-crashed',
-      `Error Prone's ${crash} check crashed on ${relative}:${String(line)}${why}, so it was turned off for this run and the findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.`,
+      `Error Prone's ${crash} check crashed on ${relative}:${String(line)}${why}${consequence}`,
     ),
     identity: `check-crashed:${crash}`,
+    ...(known ? { classification: 'descriptive' } : {}),
   };
 }
 

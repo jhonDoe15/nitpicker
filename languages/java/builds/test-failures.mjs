@@ -100,13 +100,17 @@ function modulesOf(failures) {
   return modules.length === 0 ? '' : ` in ${modules.join(', ')}`;
 }
 
-export function failingTestsError(failures) {
+export function failingTestsText(failures, consequence) {
   const count = failures.reduce((total, { tests }) => total + tests.length, 0);
+  return [
+    testsFailHeadline(count, consequence, modulesOf(failures)),
+    ...listedFailures(failures),
+  ].join('\n');
+}
+
+export function failingTestsError(failures) {
   const error = explainedError(
-    [
-      testsFailHeadline(count, 'the build stopped, so no other check ran', modulesOf(failures)),
-      ...listedFailures(failures),
-    ].join('\n'),
+    failingTestsText(failures, 'the build stopped, so no other check ran'),
   );
   return Object.defineProperty(error, 'failures', { value: failures });
 }

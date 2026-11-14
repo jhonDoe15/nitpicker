@@ -347,6 +347,26 @@ ${HELD_STRUCTURE_NOTE}
     expect(report.summary.tools[0].version).toBe('unknown');
     expect(report.toolErrors).toEqual([error]);
   });
+  it('reports a setup error that every shard carries once', () => {
+    const fixture = createFixture();
+    const error = {
+      tool: 'source-roots',
+      snapshot: 'head',
+      rule: 'empty-sources',
+      path: '',
+      message: 'm',
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], toolErrors: [error] });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'], toolErrors: [error] });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('first'), analyzer('second')],
+      shardCount: 2,
+    });
+
+    expect(report.toolErrors).toEqual([error]);
+  });
   it('rejects a missing shard instead of silently reducing analyzer coverage', () => {
     const fixture = createFixture();
     const analyzers = [analyzer('a'), analyzer('b')];

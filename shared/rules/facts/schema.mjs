@@ -15,6 +15,7 @@ import { DESIGN_SHAPES, designItemProblem } from '../design/schema/design-shapes
 import { designReferenceProblem } from '../design/schema/design-references.mjs';
 
 const ROLES = ['production', 'test'];
+const PERSISTENCE_KINDS = ['entity', 'data-access'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
 const SCHEMA_DOCS = 'see "Facts schema" in docs/internals.md';
 const PATH_RULE =
@@ -27,6 +28,10 @@ function isName(value) {
     isNonEmpty(value.name) &&
     optional(isNonEmpty)(value.alias)
   );
+}
+
+function isTree(value) {
+  return typeof value === 'object' && value !== null && isNonEmpty(value.kind);
 }
 
 function isNames(value) {
@@ -44,6 +49,7 @@ const SHAPES = {
     publicNames: optional(isStrings),
     entryName: optional(isNonEmpty),
     compositionRoot: optional(isBoolean),
+    persistence: optional(oneOf(PERSISTENCE_KINDS)),
     generated: optional(isBoolean),
     initializer: optional(isBoolean),
   },
@@ -87,6 +93,14 @@ const SHAPES = {
     detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
+  nearDuplicateUnits: {
+    file: isProjectPath,
+    name: isNonEmpty,
+    start: isLine,
+    end: isLine,
+    tokens: isCount,
+    tree: isTree,
+  },
 };
 
 const FACT_LISTS = [...Object.keys(SHAPES), ...Object.keys(DESIGN_SHAPES)];
@@ -106,10 +120,15 @@ const MODULE_REFERENCES = [
   ['imports', 'to', isModule],
   ['definitions', 'file', isModule],
   ['docComments', 'file', isModule],
+  ['nearDuplicateUnits', 'file', isModule],
   ['console', 'file', isModuleOrFolder],
 ];
 
-const REFERENCE_NOUNS = { docComments: 'doc comment', console: 'console entry' };
+const REFERENCE_NOUNS = {
+  docComments: 'doc comment',
+  console: 'console entry',
+  nearDuplicateUnits: 'near-duplicate unit',
+};
 
 function itemProblem(list, item, index) {
   if (DESIGN_SHAPES[list] !== undefined) {

@@ -221,8 +221,19 @@ function moduleFact(file, context) {
   };
 }
 
+function isProductionSource(file, context) {
+  return !context.referenceOnly.has(file) && context.roleOf(file) !== 'test';
+}
+
+function nearDuplicateUnits(file, context) {
+  if (!isProductionSource(file, context)) {
+    return [];
+  }
+  return (context.scanned[file].nearDuplicateUnits ?? []).map((unit) => ({ file, ...unit }));
+}
+
 function docCommentFacts(file, context) {
-  if (context.referenceOnly.has(file) || context.roleOf(file) === 'test') {
+  if (!isProductionSource(file, context)) {
     return [];
   }
   return context.scanned[file].docComments.map(({ line, name, qualifier, lines, detailed }) => ({
@@ -273,5 +284,6 @@ export function factsBundle({
     definitions: files.flatMap((file) => definitionFacts(file, context)),
     imports: files.flatMap((file) => importFacts(file, context)),
     docComments: files.flatMap((file) => docCommentFacts(file, context)),
+    nearDuplicateUnits: files.flatMap((file) => nearDuplicateUnits(file, context)),
   };
 }
