@@ -56,6 +56,9 @@ function assertRuntimeFiles(files) {
   ).toEqual([]);
 }
 
+const enabled = process.env.NITPICKER_PACK_TEST === '1';
+const suite = enabled ? describe : describe.skip;
+
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 
 function checkoutCopy() {
@@ -79,34 +82,7 @@ function checkoutCopy() {
   return copy;
 }
 
-describe('npm package contents', () => {
-  let packedFiles;
-  let copy;
-
-  afterAll(() => {
-    rmSync(copy, { recursive: true, force: true });
-  });
-
-  beforeAll(() => {
-    let listing;
-    copy = checkoutCopy();
-    try {
-      listing = JSON.parse(
-        execFileSync('npm', ['pack', '--dry-run', '--json'], {
-          cwd: copy,
-          encoding: 'utf8',
-          timeout: 120_000,
-        }),
-      );
-    } catch (error) {
-      throw new Error('npm pack did not return a valid listing', {
-        cause: error,
-      });
-    }
-
-    packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
-  }, 150_000);
-
+describe('npm package contents rules', () => {
   it('fails when a runtime file is omitted from files', () => {
     const files = new Set(['package.json']);
     expect(() => {
@@ -156,6 +132,36 @@ describe('npm package contents', () => {
       'languages/go/inspect/inspect_test.go',
     ]);
   });
+});
+
+suite('npm package contents', () => {
+  let packedFiles;
+  let copy;
+
+  afterAll(() => {
+    rmSync(copy, { recursive: true, force: true });
+  });
+
+  beforeAll(() => {
+    let listing;
+    copy = checkoutCopy();
+    try {
+      listing = JSON.parse(
+        execFileSync('npm', ['pack', '--dry-run', '--json'], {
+          cwd: copy,
+          encoding: 'utf8',
+          timeout: 120_000,
+        }),
+      );
+    } catch (error) {
+      throw new Error('npm pack did not return a valid listing', {
+        cause: error,
+      });
+    }
+
+    packedFiles = new Set(listing[0].files.map(({ path: file }) => file));
+  });
+
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
     assertRuntimeFiles(packedFiles);
     expect(packedFiles.has('core/bin.mjs')).toBe(true);

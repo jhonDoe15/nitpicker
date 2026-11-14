@@ -162,12 +162,6 @@
             "hookTimeoutMs": 300000,
             "testDeclarationCeilingMs": 180000,
             "hookDeclarationCeilingMs": 300000
-          },
-          "package-contents": {
-            "language": "typescript",
-            "include": ["core/pack-contents.test.mjs"],
-            "hookTimeoutMs": 150000,
-            "hookDeclarationCeilingMs": 150000
           }
         }
       }

@@ -46,6 +46,7 @@
     "measure:shard-weights": "node scripts/shard-weights/measure.mts",
     "release:changelog": "node scripts/release/changelog.mts",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",
+    "test:pack": "NITPICKER_PACK_TEST=1 vitest run --config vitest.config.mts --hookTimeout=150000 core/pack-contents.test.mjs",
     "test:record-eslint": "node scripts/record-eslint-reports.mts",
     "test:conformance": "vitest run --config vitest.config.mts core/diff/comparison/conformance.test.mjs",
     "test:java": "NITPICKER_JAVA_E2E=1 vitest run --config vitest.config.mts --no-file-parallelism",

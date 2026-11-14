@@ -111,6 +111,10 @@ jobs:
           java-version: 21
       # One worker per vCPU: Vitest defaults to one fewer, and most tests wait on child processes.
       - run: npm test -- --maxWorkers=100% --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+      # The npm package listing runs the prepack emit and rule generation, which take longer than the
+      # default hook timeout on CI runners, so it runs here on its own with a longer hook timeout.
+      - if: matrix.shard == 1
+        run: npm run test:pack
 
   test:
     if: always()
