@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT, isToolInstalled, resolveTool } from '../../tooling/tool-resolution.mjs';
-import { runAnalyzers } from './run-analyzers.mjs';
+import { runAnalyzers } from './run-analyzers.mts';
 import { resolveAnalyzerVersion } from '../../../languages/typescript/preset/analyzer-versions.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 

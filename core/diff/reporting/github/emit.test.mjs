@@ -4,14 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../git/test-support/git-repository.mjs';
 import { captureOutput } from '../test-support/output-capture.mjs';
 import { finding, report } from '../test-support/report-builders.mjs';
-import { renderDiffSummary } from './diff-summary.mjs';
-import { renderSnapshotSummary } from './snapshot-summary.mjs';
+import { renderDiffSummary } from './diff-summary.mts';
+import { renderSnapshotSummary } from './snapshot-summary.mts';
 import {
   SUMMARY_LIMIT_BYTES,
   fittedSummary,
   githubOutputPlan,
   writeGithubOutput,
-} from './emit.mjs';
+} from './emit.mts';
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 

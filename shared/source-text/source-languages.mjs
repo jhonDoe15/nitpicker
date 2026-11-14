@@ -114,6 +114,34 @@ const KOTLIN_OPERATORS = [
   '%=',
 ];
 
+const GO_OPERATORS = [
+  '&^=',
+  '<<=',
+  '>>=',
+  '...',
+  '&^',
+  '<-',
+  ':=',
+  '==',
+  '!=',
+  '<=',
+  '>=',
+  '&&',
+  '||',
+  '++',
+  '--',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+  '&=',
+  '|=',
+  '^=',
+  '<<',
+  '>>',
+];
+
 const SINGLE_LINE = { multiline: false, escapes: true };
 const MULTILINE = { multiline: true, escapes: true };
 
@@ -155,6 +183,15 @@ const KOTLIN_STRINGS = {
   },
 };
 
+const GO_STRINGS = {
+  start: /(?<opener>"|'|`)/y,
+  kinds: {
+    '"': { ...SINGLE_LINE, close: '"' },
+    "'": { ...SINGLE_LINE, close: "'" },
+    '`': { multiline: true, escapes: false, close: '`' },
+  },
+};
+
 function operatorPattern(operators) {
   const escaped = operators.map((operator) => operator.replaceAll(/[$()*+.?[\\\]^{|}]/gu, '\\$&'));
   return new RegExp(`${escaped.join('|')}|[\\s\\S]`, 'uy');
@@ -192,6 +229,13 @@ const LANGUAGES = {
     blockComment: true,
     nestedComments: true,
   },
+  go: {
+    name: 'go',
+    operators: operatorPattern(GO_OPERATORS),
+    strings: GO_STRINGS,
+    lineComment: '//',
+    blockComment: true,
+  },
 };
 
 const EXTENSIONS = [
@@ -199,6 +243,7 @@ const EXTENSIONS = [
   [/\.[cm]?[jt]sx?$/u, LANGUAGES.javascript],
   [/\.java$/u, LANGUAGES.java],
   [/\.kts?$/u, LANGUAGES.kotlin],
+  [/\.go$/u, LANGUAGES.go],
 ];
 
 export function sourceLanguage(filePath) {

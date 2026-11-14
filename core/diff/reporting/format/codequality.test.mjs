@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { comparisonKey } from '../../comparison/fingerprint.mjs';
 import { finding } from '../test-support/report-builders.mjs';
-import { renderCodeQualityReport } from './codequality.mjs';
+import { renderCodeQualityReport } from './codequality.mts';
 
 function fingerprint(projectDirectory, value) {
   return createHash('sha256')

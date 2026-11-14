@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
-import { policyHash } from '../diff/reporting/report-model.mjs';
+import { policyHash } from '../diff/reporting/report-model.mts';
 
 const ALL_PRESETS = ['typescript', 'javascript', 'python', 'java', 'kotlin'];
 

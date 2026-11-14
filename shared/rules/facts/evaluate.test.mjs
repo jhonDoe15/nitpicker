@@ -221,6 +221,7 @@ describe('the shared fact rules', () => {
       'sibling-copy-edit',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
+      'public-alternative-bypass',
       'test-only-export',
       'doc-comment-content',
       'test-console-output',

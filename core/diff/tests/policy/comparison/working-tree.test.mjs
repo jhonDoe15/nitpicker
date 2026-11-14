@@ -6,7 +6,7 @@ import {
   useQualityDiffRepositories,
   workingTreeOptions,
 } from '../test-support/quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import {
   finding,
   findingLine,

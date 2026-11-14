@@ -6,7 +6,7 @@ import { headPolicyEnvironment } from '../../../../languages/typescript/preset/h
 import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
 import { progressEvent } from '../graph/outcomes.mts';
 import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';
-import { createProgressReporter } from '../progress.mjs';
+import { createProgressReporter } from '../progress.mts';
 import { runFakeAnalyzer } from './fake-analyzer.mjs';
 import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 

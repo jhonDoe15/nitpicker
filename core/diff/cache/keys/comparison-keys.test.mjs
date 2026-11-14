@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withComparisonKeys } from './comparison-keys.mjs';
+import { withComparisonKeys } from './comparison-keys.mts';
 
 const comparison = { touchedPaths: ['a.txt'], headRoot: '/head', quick: false };
 

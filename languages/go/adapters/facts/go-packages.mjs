@@ -69,6 +69,7 @@ export function goPackages(report, module = '') {
     nameOf: (directory) => names.get(directory),
     mains: directories.filter((directory) => names.get(directory) === MAIN),
     directoryOfImport,
+    importPathOf,
     isPublished,
   };
 }

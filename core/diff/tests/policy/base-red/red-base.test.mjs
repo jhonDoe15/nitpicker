@@ -2,10 +2,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { runTasksInProcess } from '../../../execution/test-support/in-process-analyzers.mjs';
 import { fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
-import { renderConsoleSummary } from '../../../reporting/summary.mjs';
+import { renderConsoleSummary } from '../../../reporting/summary.mts';
 
 const specAnalyzerPath = path.join(import.meta.dirname, '../../../fixtures/spec-analyzer.mjs');
 const outputs = [];

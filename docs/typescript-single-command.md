@@ -217,7 +217,7 @@ edit; the base is a committed tree and cannot change under its key.
   fails the run.
 - Location: `NITPICKER_CACHE_DIR` when set (relative to the project root), else
   `node_modules/.cache/nitpicker` in the project, else `nitpicker/cache` in the repository's Git
-  common directory (`resolveCacheDirectory` in `core/diff/cache/cache-stores.mjs`). The
+  common directory (`resolveCacheDirectory` in `core/diff/cache/cache-stores.mts`). The
   `node_modules` folder keeps entries apart between checkouts with different installed
   dependencies. Projects without one (Gradle, Maven, Python, Go) declare their dependencies in
   committed build files, which the merge-base SHA in the key already covers, so all worktrees of a

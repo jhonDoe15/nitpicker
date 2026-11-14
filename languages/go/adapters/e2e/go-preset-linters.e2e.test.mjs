@@ -94,12 +94,14 @@ describe.skipIf(!goE2eEnabled)('Go preset linters end to end', () => {
   it('fails the own go-rules findings with the allowed form', () => {
     const result = gate(project, 'own-rules');
     expect(newFindings(result)).toEqual([
+      'go-rules/copied-constant-in-test shop/rules_test.go',
       'go-rules/logged-and-returned shop/rules.go',
       'go-rules/panic-for-failure shop/rules.go',
     ]);
-    expect(newMessages(result)).toEqual([
-      'the error is logged and then returned, so it is reported twice: return it wrapped with `%w` and let the caller that handles it log it, or log it here and handle it. If this is intended, add {"rule":"go-rules/logged-and-returned","paths":["shop/rules.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    expect(newMessages(result).toSorted()).toEqual([
+      'This literal copies MaxQuantity from package example.com/shop/shop: when MaxQuantity changes, the test keeps checking the old value or stops testing the case it was written for. Use MaxQuantity (or an expression on it, such as MaxQuantity + 1). If the value is a contract the test pins on purpose, assert it next to the constant: `if MaxQuantity != 500 { t.Fatalf(...) }`, or `assert.Equal(t, 500, MaxQuantity)`. If this is intended, add {"rule":"go-rules/copied-constant-in-test","paths":["shop/rules_test.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       'panic outside main, init and a Must function: return an error and let the caller decide (a Must function, such as `regexp.MustCompile`, panics only on input the program itself wrote). If this is intended, add {"rule":"go-rules/panic-for-failure","paths":["shop/rules.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'the error is logged and then returned, so it is reported twice: return it wrapped with `%w` and let the caller that handles it log it, or log it here and handle it. If this is intended, add {"rule":"go-rules/logged-and-returned","paths":["shop/rules.go"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 

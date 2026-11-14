@@ -3,7 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { parseArguments } from '../../../../../languages/typescript/adapters/static-checks/arguments.mts';
 import { runPrettier } from '../../../../../languages/typescript/adapters/static-checks/prettier.mts';
 import {

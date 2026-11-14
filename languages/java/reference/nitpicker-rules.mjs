@@ -1,4 +1,5 @@
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
+import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
 import { asSentence } from '../../../shared/reference/build/text.mjs';
 import { adviceOf } from '../../../shared/reference/build/messages.mjs';
 import { guideCell } from '../../../shared/reference/build/guide-tables.mjs';
@@ -251,7 +252,10 @@ function copiedConstantEntry() {
       pin: COPIED_CONSTANT_PIN,
     }),
     exception: { key: EXCEPTIONS_KEY, rule: COPIED_CONSTANT_EXCEPTION_RULE },
-    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-copy-a-constant' }],
+    docs: [
+      { label: 'Java preset guide', path: GUIDE, anchor: 'tests-that-copy-a-constant' },
+      ...counterpartsOf(COPIED_CONSTANT_EXCEPTION_RULE),
+    ],
   });
 }
 

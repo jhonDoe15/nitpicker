@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
+import { fakeGoFormat } from '../../languages/go/fix/test-support/fake-go-format.mjs';
 import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
@@ -24,6 +25,7 @@ function repository() {
     'src/a.py': 'a  =  1\n',
     'src/main/java/A.java': 'class  A {}\n',
     'src/main/kotlin/A.kt': 'class  A\n',
+    'src/a.go': 'package  a\n',
   });
   return created;
 }
@@ -37,6 +39,7 @@ function operationsFor(config) {
   const created = repository();
   const python = fakePythonTools();
   const jvm = fakeJvmTools();
+  const go = fakeGoFormat();
   const operations = [];
   const result = fixWorkingTree({
     repositoryRoot: created.root,
@@ -48,6 +51,9 @@ function operationsFor(config) {
       operations.push(invocation.operation);
       if (invocation.operation in TYPESCRIPT_REPLIES) {
         return { status: 0, stdout: TYPESCRIPT_REPLIES[invocation.operation], stderr: '' };
+      }
+      if (invocation.operation === 'go-format-fix') {
+        return go.executeFixCommand(invocation);
       }
       if (['ruff-fix', 'ruff-format-fix', 'python-probe'].includes(invocation.operation)) {
         return python.executeFixCommand(invocation);
@@ -88,6 +94,12 @@ describe('fixWorkingTree', () => {
 
     expect(operations).toEqual(['fix-tools', 'java-probe', 'java-format-fix', 'ktlint-fix']);
     expect(result.fixedFiles).toEqual(['src/main/java/A.java', 'src/main/kotlin/A.kt']);
+  });
+  it('runs only the Go formatter for the go preset', () => {
+    const { operations, result } = operationsFor({ preset: 'go' });
+
+    expect(operations).toEqual(['go-format-fix']);
+    expect(result.fixedFiles).toEqual(['src/a.go']);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseDrillDownOptions } from '../../../comparison/cli.mjs';
+import { parseDrillDownOptions } from '../../../comparison/cli.mts';
 
 describe('quality diff command-line options', () => {
   it('separates repeatable drill-down flags from the arguments resolveBaseRef sees', () => {

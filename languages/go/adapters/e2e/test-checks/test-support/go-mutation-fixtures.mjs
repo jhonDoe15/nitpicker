@@ -94,6 +94,8 @@ export const BROKEN_TEST = `package shop
 import "testing"
 
 func TestBroken(t *testing.T) {
-	t.Fatal("still broken")
+	if Rate(0) != 0 {
+		t.Fatal("still broken")
+	}
 }
 `;

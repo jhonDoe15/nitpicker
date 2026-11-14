@@ -258,7 +258,7 @@ const CATALOG = [
     check: 'test-runtime',
     limit:
       'a test file (Java and Kotlin: a test class) that runs no production code: nothing it imports or references, directly or through test helpers, is production code, and it starts no production process or framework context',
-    enforcedBy: withKotlin(ALL, true),
+    enforcedBy: withGo(withKotlin(ALL, true)),
   },
   {
     id: RULE_IDS.typeOnlyProductionDependency,
@@ -274,7 +274,7 @@ const CATALOG = [
     limit: 'raising a legacy baseline allowance fails',
     enforcedBy: withGo(withKotlin(ALL, true)),
   },
-  entryPointRule(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
+  entryPointRule(RULE_IDS, withGo(withKotlin(TYPESCRIPT_ONLY, false))),
   ...UNUSED_API_RULES,
   ...sizeRules({ all: ALL, withKotlin, withGo }),
   ...reuseRules(RULE_IDS, withKotlin(TYPESCRIPT_ONLY, false)),
