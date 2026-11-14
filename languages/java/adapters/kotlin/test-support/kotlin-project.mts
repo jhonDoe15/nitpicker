@@ -2,9 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-/** Creates throwaway Kotlin project directories and removes every one it made. */
-export function kotlinProjects() {
-  const temporaryRoots = [];
+type KotlinProjects = {
+  project: (files?: Record<string, string>) => string;
+  remove: () => void;
+};
+
+export function kotlinProjects(): KotlinProjects {
+  const temporaryRoots: string[] = [];
 
   function remove() {
     for (const root of temporaryRoots.splice(0)) {
@@ -12,7 +16,7 @@ export function kotlinProjects() {
     }
   }
 
-  function project(files = {}) {
+  function project(files: Record<string, string> = {}) {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-tools-')));
     temporaryRoots.push(root);
     for (const [relative, contents] of Object.entries(files)) {

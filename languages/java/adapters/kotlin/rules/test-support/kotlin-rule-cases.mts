@@ -1,10 +1,10 @@
 import { SUPPRESSION_RULE } from '../kotlin-rules.mjs';
-import { kotlinGuardCases } from './kotlin-guard-cases.mjs';
+import { kotlinGuardCases, type KotlinRuleCase } from './kotlin-guard-cases.mts';
 
 const COROUTINE_IMPORTS =
   'import kotlinx.coroutines.GlobalScope\nimport kotlinx.coroutines.launch\n';
 
-export const kotlinRuleCases = [
+export const kotlinRuleCases: KotlinRuleCase[] = [
   {
     id: 'nullAssertion',
     rule: 'detekt.potential-bugs.UnsafeCallOnNullableType',
@@ -258,16 +258,18 @@ export const kotlinRuleCases = [
   ...kotlinGuardCases,
 ];
 
-const VARIANT_NAMES = { banned: 'Banned', allowed: 'Allowed' };
+type Variant = 'banned' | 'allowed';
 
-export function fixtureSource(testCase, variant) {
+const VARIANT_NAMES: Record<Variant, string> = { banned: 'Banned', allowed: 'Allowed' };
+
+export function fixtureSource(testCase: KotlinRuleCase, variant: Variant): string {
   return `package demo.${testCase.id}\n\n${testCase[variant].replaceAll('{name}', VARIANT_NAMES[variant])}`;
 }
 
-export function fixturePath(testCase, variant) {
+export function fixturePath(testCase: KotlinRuleCase, variant: Variant): string {
   return `src/main/kotlin/demo/${testCase.id}/${VARIANT_NAMES[variant]}.kt`;
 }
 
-export function expectedMessage(testCase, variant) {
+export function expectedMessage(testCase: KotlinRuleCase, variant: Variant): string | undefined {
   return testCase.message?.replaceAll('{name}', VARIANT_NAMES[variant]);
 }
