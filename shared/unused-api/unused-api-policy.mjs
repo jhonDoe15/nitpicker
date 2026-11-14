@@ -4,17 +4,20 @@ export const UNUSED_API_RULE_IDS = {
   testOnlyExport: 'test-only-export',
 };
 
+const TESTS_DO_NOT_COUNT = 'tests do not count';
+
 export const UNUSED_OPTION_SCOPES = {
   typescript: {
     private: 'tests and stories do not count',
     published: 'tests, stories and examples of this package count',
   },
-  python: { private: 'tests do not count', published: "this package's own tests count" },
+  python: { private: TESTS_DO_NOT_COUNT, published: "this package's own tests count" },
   kotlin: {
-    private: 'tests do not count',
+    private: TESTS_DO_NOT_COUNT,
     published: "this module's own tests count",
     local: 'private or internal, so calls in tests count',
   },
+  go: { private: TESTS_DO_NOT_COUNT, published: "this module's own tests count" },
 };
 
 const NO_OPTIONAL_INPUTS =
@@ -53,8 +56,10 @@ export const UNUSED_API_RULES = [
       'default) of a public module-level function (no leading underscore, and listed in `__all__` when the ' +
       'module has a literal one); Kotlin, a defaulted parameter of a public top-level, object or companion ' +
       'function (not members or constructors, built by reflection) or of a private or internal function or ' +
-      "constructor (its module's calls and tests)",
-    enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, python: true },
+      "constructor (its module's calls and tests); Go, an exported field (untagged, not embedded) of " +
+      'an `...Options` or `...Opts` struct that an exported function or method takes, or a `WithX` ' +
+      'function returning the option type of an exported variadic `...Option` parameter',
+    enforcedBy: { ...TYPESCRIPT_AND_KOTLIN, python: true, go: true },
     notApplicable: { java: NO_OPTIONAL_INPUTS },
   },
   {
