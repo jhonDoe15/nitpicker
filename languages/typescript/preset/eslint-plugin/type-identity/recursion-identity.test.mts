@@ -2,22 +2,34 @@ import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 import { giveEachInstantiationItsOwnIdentity, startIdentityScope } from './recursion-identity.mjs';
 
-function programOf(code) {
+function programOf(code: string) {
   const file = 'grid.ts';
   const host = ts.createCompilerHost({ noLib: true, types: [] });
   const readFile = host.readFile.bind(host);
-  host.readFile = (name) => (name === file ? code : readFile(name));
-  host.fileExists = (name) => name === file;
+  host.readFile = (name: string) => (name === file ? code : readFile(name));
+  host.fileExists = (name: string) => name === file;
   return ts.createProgram({ rootNames: [file], options: { noLib: true, types: [] }, host });
 }
 
-function typesOf(program) {
+function typesOf(program: ts.Program) {
   const checker = program.getTypeChecker();
-  return program
-    .getSourceFile('grid.ts')
-    .statements.map((statement) =>
-      checker.getTypeAtLocation(statement.declarationList.declarations[0].name),
-    );
+  const source = program.getSourceFile('grid.ts');
+  if (source === undefined) {
+    throw new Error('grid.ts is not in the program');
+  }
+  return source.statements.flatMap((statement) =>
+    ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations.map(({ name }) => checker.getTypeAtLocation(name))
+      : [],
+  );
+}
+
+function identityOf(checker: ts.TypeChecker, type: ts.Type | undefined): unknown {
+  const method: unknown = Reflect.get(checker, 'getRecursionIdentity');
+  if (typeof method !== 'function') {
+    throw new TypeError('The checker has no getRecursionIdentity');
+  }
+  return Reflect.apply(method, checker, [type]);
 }
 
 describe('giveEachInstantiationItsOwnIdentity', () => {
@@ -36,13 +48,11 @@ describe('giveEachInstantiationItsOwnIdentity', () => {
     const checker = program.getTypeChecker();
     const [numberType, stringType] = typesOf(program);
 
-    expect(typeof checker.getRecursionIdentity).toBe('function');
+    expect(typeof Reflect.get(checker, 'getRecursionIdentity')).toBe('function');
     expect(giveEachInstantiationItsOwnIdentity(program)).toBe(true);
     expect(giveEachInstantiationItsOwnIdentity(program)).toBe(false);
-    expect(checker.getRecursionIdentity(numberType)).toBe(checker.getRecursionIdentity(numberType));
-    expect(checker.getRecursionIdentity(numberType)).not.toBe(
-      checker.getRecursionIdentity(stringType),
-    );
+    expect(identityOf(checker, numberType)).toBe(identityOf(checker, numberType));
+    expect(identityOf(checker, numberType)).not.toBe(identityOf(checker, stringType));
   });
 
   it('hands out new identities in each scope, so no cached result outlives its scope', () => {
@@ -50,11 +60,11 @@ describe('giveEachInstantiationItsOwnIdentity', () => {
     const checker = program.getTypeChecker();
     const [type] = typesOf(program);
     giveEachInstantiationItsOwnIdentity(program);
-    const before = checker.getRecursionIdentity(type);
+    const before = identityOf(checker, type);
 
     startIdentityScope(program);
 
-    expect(checker.getRecursionIdentity(type)).not.toBe(before);
-    expect(checker.getRecursionIdentity(type)).toBe(checker.getRecursionIdentity(type));
+    expect(identityOf(checker, type)).not.toBe(before);
+    expect(identityOf(checker, type)).toBe(identityOf(checker, type));
   });
 });
