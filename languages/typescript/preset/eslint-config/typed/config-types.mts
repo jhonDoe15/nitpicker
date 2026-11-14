@@ -18,7 +18,7 @@ export type StrictOptions = {
   readonly detachedWorkRunners?: string[];
 };
 
-export type Selector = { readonly selector: string; readonly message: string };
+type Selector = { readonly selector: string; readonly message: string };
 
 export type RestrictedSyntax = Record<'configFile' | 'source' | 'domain' | 'adapters', Selector[]>;
 

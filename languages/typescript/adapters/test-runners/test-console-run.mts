@@ -2,7 +2,10 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mts';
-import { checkoutModulePath, checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
+import {
+  checkoutModulePath,
+  checkoutModuleUrl,
+} from '../../../../shared/paths/checkout-module.mjs';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { temporaryProjectPath } from './test-run.mts';
 import { consoleEntry, writeReportFile } from './typed/runner-tools.mts';

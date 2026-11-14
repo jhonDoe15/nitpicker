@@ -12,7 +12,7 @@ export type CouplingModule = {
 
 export type CouplingGraph = { readonly modules: readonly CouplingModule[] | undefined };
 
-export type SharedEntry = {
+type SharedEntry = {
   readonly source: string;
   readonly feature: string;
   readonly directory: string;

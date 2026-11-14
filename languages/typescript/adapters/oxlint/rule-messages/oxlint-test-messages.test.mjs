@@ -7,7 +7,8 @@ import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
 
 const presetRoot = path.join(import.meta.dirname, '../../../preset');
-const moduleUrl = (relativePath) => JSON.stringify(checkoutModulePath(path.join(presetRoot, relativePath)));
+const moduleUrl = (relativePath) =>
+  JSON.stringify(checkoutModulePath(path.join(presetRoot, relativePath)));
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import vitest from ${JSON.stringify(import.meta.resolve('@vitest/eslint-plugin'))};
 import { resolveLayout } from ${moduleUrl('layout.mjs')};

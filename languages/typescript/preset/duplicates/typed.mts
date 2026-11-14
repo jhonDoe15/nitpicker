@@ -21,7 +21,7 @@ import {
   sourceRoot as untypedSourceRoot,
 } from '../layout.mjs';
 
-export type CloneSide = { readonly file: string; readonly line: number };
+type CloneSide = { readonly file: string; readonly line: number };
 
 export type JscpdClone = {
   readonly first: CloneSide;

@@ -24,7 +24,7 @@ export type ModuleExports = {
   }[];
 };
 
-export type StarLink = {
+type StarLink = {
   readonly star: true;
   readonly exported?: undefined;
   readonly imported?: undefined;
@@ -44,7 +44,7 @@ export type GraphLink = (StarLink | NamedLink) & { readonly source: string };
 
 export type Link = (StarLink | NamedLink) & { readonly specifier: string };
 
-export type Resolved<T> = T & { readonly source: string };
+type Resolved<T> = T & { readonly source: string };
 
 export type ModuleFacts = {
   readonly edges: readonly Link[];

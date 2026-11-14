@@ -50,7 +50,7 @@ type Transform = (text: string, targetPath: string) => string;
 
 type TransformOptions = { readonly strictMutants: boolean };
 
-export type VitestProject = {
+type VitestProject = {
   readonly test: {
     readonly include: string[];
     readonly exclude: string[];
