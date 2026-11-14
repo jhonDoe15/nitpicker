@@ -11,6 +11,9 @@ function inFunction(body, parameters = 'dir') {
 tester.run('no-unsafe-path-join with directory listings', noUnsafePathJoin, {
   valid: [
     {
+      code: 'import { readdirSync, readFileSync } from "node:fs"; import { join } from "node:path"; function f(dir) { return readdirSync(dir).map(name => readFileSync(join(dir, name))); }',
+    },
+    {
       code: inFunction(
         'return fs.readdirSync("/srv").map(name => fs.readFileSync(path.join("/srv", name)));',
       ),
@@ -78,6 +81,28 @@ tester.run('no-unsafe-path-join with directory listings', noUnsafePathJoin, {
     },
   ],
   invalid: [
+    {
+      code: inFunction(
+        'return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, path',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: inFunction(
+        'path.join = extra; return fs.readdirSync(dir).map(name => fs.readFileSync(path.join(dir, name)));',
+        'dir, extra',
+      ),
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readdirSync, readFileSync } from "node:fs"; import { join } from "node:path"; function f(dir, join) { return readdirSync(dir).map(name => readFileSync(join(dir, name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
+    {
+      code: 'import { readdirSync, readFileSync } from "node:fs"; let { join } = require("node:path"); function f(dir, extra) { join = extra; return readdirSync(dir).map(name => readFileSync(join(dir, name))); }',
+      errors: [{ messageId: 'unsafePath' }],
+    },
     {
       code: 'import { readdirSync, readFileSync } from "node:fs"; import path from "node:path"; function f(dir) { return readdirSync(dir, "base64").map(name => readFileSync(path.join(dir, name))); }',
       errors: [{ messageId: 'unsafePath' }],
