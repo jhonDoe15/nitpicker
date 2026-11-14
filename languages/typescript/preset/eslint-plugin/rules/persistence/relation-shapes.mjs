@@ -4,6 +4,7 @@ import {
   TYPEORM,
   importedName,
   importsOrm,
+  mergedProperties,
   objectOf,
   ormOf,
   propertiesOf,
@@ -68,16 +69,6 @@ function fromProperties(sourceCode, { orm, kind }, properties) {
         ? undefined
         : { node: cascade, values: cascadeValues(sourceCode, cascade.value) },
   };
-}
-
-function mergedProperties(sourceCode, argumentsList) {
-  const merged = new Map();
-  for (const argument of argumentsList) {
-    for (const [key, value] of propertiesOf(sourceCode, objectOf(sourceCode, argument))) {
-      merged.set(key, value);
-    }
-  }
-  return merged;
 }
 
 function decoratorRelation(sourceCode, call) {

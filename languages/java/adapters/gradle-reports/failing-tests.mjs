@@ -4,7 +4,7 @@ import { failedCaseEntries, freshReports, moduleName } from '../../builds/test-f
 
 const TEST_RESULTS_FILE = 'test-results.json';
 
-export function failingTestsOf({ reportBase, since }) {
+export function failingTestsOf({ reportBase, since, retriesPass = false }) {
   const file = path.join(reportBase, TEST_RESULTS_FILE);
   if (!existsSync(file)) {
     return [];
@@ -14,7 +14,7 @@ export function failingTestsOf({ reportBase, since }) {
       const entries = results
         .flatMap((directory) => freshReports(directory, since))
         .sort()
-        .flatMap(failedCaseEntries);
+        .flatMap((report) => failedCaseEntries(report, { retriesPass }));
       return {
         module: moduleName(dir),
         tests: entries.map(({ text }) => text),

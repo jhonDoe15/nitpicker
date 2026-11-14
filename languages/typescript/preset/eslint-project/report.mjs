@@ -1,6 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 import { layerEntries } from '../../adapters/lint-engine/project-layer.mjs';
 import { replacedOptionRules } from '../../adapters/lint-engine/project-rules.mjs';
 import { RULE_EXCEPTION_ENTRY } from '../eslint-config/exceptions.mjs';
@@ -13,7 +14,9 @@ async function replacedRules(projectConfig) {
   const project = await layerEntries(projectConfig);
   const rules = new Set();
   for (const { configRelativePath } of createQualityChecks(readLayout()).eslintChecks) {
-    const policy = await import(pathToFileURL(path.join(packageRoot, configRelativePath)).href);
+    const policy = await import(
+      pathToFileURL(checkoutModulePath(path.join(packageRoot, configRelativePath))).href
+    );
     const entries = policy.default.filter((entry) => entry?.name !== RULE_EXCEPTION_ENTRY);
     for (const rule of replacedOptionRules(entries, project)) {
       rules.add(rule);

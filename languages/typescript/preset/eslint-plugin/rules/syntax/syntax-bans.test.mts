@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { lintFixture } from '../../../failure-messages/test-support/harness.mjs';
+import { lintFixture } from '../../../failure-messages/test-support/harness.mts';
 import { applyRuleExceptions as untypedApplyRuleExceptions } from '../../../eslint-config/exceptions.mjs';
-import { strictSyntaxConfig } from '../../../eslint-config/strict.mjs';
+import { strictSyntaxConfig } from '../../../eslint-config/strict.mts';
 
 type Exception = { rule: string; paths: string[]; reason: string };
 
