@@ -60,7 +60,9 @@ function sharedReporter(reporters) {
   const ruleSets = groups.map((group) => [
     ...new Set(group.flatMap(({ finding }) => unusedRuleIds(finding.message))),
   ]);
-  if (ruleSets.every((rules) => rules.length === 0)) return preferred;
+  if (ruleSets.every((rules) => rules.length === 0)) {
+    return preferred;
+  }
   const shared = ruleSets[0].filter((rule) => ruleSets.every((rules) => rules.includes(rule)));
   return shared.length === 0
     ? undefined

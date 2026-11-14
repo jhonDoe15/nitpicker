@@ -28,7 +28,7 @@ function project(files, tsconfig) {
   return root;
 }
 
-function diagnosticCodes(root, configFile) {
+function diagnosticCodes(configFile) {
   const parsed = ts.getParsedCommandLineOfConfigFile(configFile, undefined, {
     ...ts.sys,
     onUnRecoverableConfigFileDiagnostic: (diagnostic) => {
@@ -52,7 +52,7 @@ function nitpickerCodes(root) {
   });
   const target = path.join(root, '.nitpicker-typecheck.json');
   writeFileSync(target, transform('{"compilerOptions":{},"include":[],"exclude":[]}', target));
-  return diagnosticCodes(root, target);
+  return diagnosticCodes(target);
 }
 
 const COMPILER_OPTIONS = {
@@ -74,7 +74,7 @@ describe('the type check root files', () => {
       { compilerOptions: COMPILER_OPTIONS, include: ['src', 'benchmarks'] },
     );
 
-    expect(diagnosticCodes(root, path.join(root, 'tsconfig.json'))).toEqual([]);
+    expect(diagnosticCodes(path.join(root, 'tsconfig.json'))).toEqual([]);
     expect(nitpickerCodes(root)).toEqual([]);
   });
 
@@ -84,7 +84,7 @@ describe('the type check root files', () => {
       { compilerOptions: COMPILER_OPTIONS, include: ['src'] },
     );
 
-    expect(diagnosticCodes(root, path.join(root, 'tsconfig.json'))).toEqual([2591]);
+    expect(diagnosticCodes(path.join(root, 'tsconfig.json'))).toEqual([2591]);
     expect(nitpickerCodes(root)).toEqual([2591]);
   });
 

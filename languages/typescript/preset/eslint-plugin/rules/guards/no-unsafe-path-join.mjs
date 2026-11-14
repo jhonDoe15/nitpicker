@@ -5,6 +5,7 @@ import { isPathBuilder } from '../analysis/node/listed-entry-sources.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { isContained, unwrapped } from './path-containment.mjs';
 
+const JOINED_TEMPLATE_PARTS = 3;
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
 const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);
 const TWO_PATH_FUNCTIONS = new Set(
@@ -150,7 +151,7 @@ function listedEntryBase(scope, node, parts) {
   }
   const simpleTemplate =
     node.type === 'TemplateLiteral' &&
-    node.quasis.length === 3 &&
+    node.quasis.length === JOINED_TEMPLATE_PARTS &&
     node.quasis[0].value.cooked === '' &&
     node.quasis[1].value.cooked === '/' &&
     node.quasis[2].value.cooked === '';

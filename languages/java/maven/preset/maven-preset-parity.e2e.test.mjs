@@ -205,7 +205,6 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       identity: 'tests-failed:core',
       symbol: 'core',
       classification: 'tool-error',
-      symbol: 'core',
       message: [
         '1 test fails in core; coverage, CRAP and mutation were skipped there, the other checks ran. ' +
           'Fix the tests and rerun:',

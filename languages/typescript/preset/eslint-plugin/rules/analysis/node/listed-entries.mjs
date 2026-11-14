@@ -8,11 +8,14 @@ import {
 } from './listed-entry-sources.mjs';
 
 const LISTING_FUNCTIONS = new Set(['readdir', 'readdirSync', 'opendir', 'opendirSync']);
-const KEEPING_METHODS = new Set(['filter', 'sort', 'toSorted', 'slice', 'reverse', 'toReversed']);
+const FILTER = 'filter';
+const ORDER_KEEPING_CALLBACKS = [FILTER, 'sort', 'toSorted'];
+const KEEPING_METHODS = new Set([...ORDER_KEEPING_CALLBACKS, 'slice', 'reverse', 'toReversed']);
+const ENTRY_CALLBACK_PARAMETERS = 3;
 const ITERATING_METHODS = new Set([
   'map',
   'forEach',
-  'filter',
+  FILTER,
   'flatMap',
   'some',
   'every',
@@ -91,11 +94,13 @@ function callStep(scope, node) {
     node.callee.type === 'MemberExpression' &&
     !node.callee.computed &&
     KEEPING_METHODS.has(node.callee.property.name);
-  if (!kept) return {};
+  if (!kept) {
+    return {};
+  }
   const callback = node.arguments[0];
   const safeCallback =
     callback === undefined ||
-    !['filter', 'sort', 'toSorted'].includes(node.callee.property.name) ||
+    !ORDER_KEEPING_CALLBACKS.includes(node.callee.property.name) ||
     safeIterationCallback(scope.sourceCode, callback);
   return { next: safeCallback ? node.callee.object : undefined };
 }
@@ -145,7 +150,7 @@ function iteratedCollection(definition) {
     call.callee.type === 'MemberExpression' &&
     !call.callee.computed &&
     ITERATING_METHODS.has(call.callee.property.name) &&
-    callback.params.length < 3;
+    callback.params.length < ENTRY_CALLBACK_PARAMETERS;
   return isFirstParameter && iterates ? call.callee.object : undefined;
 }
 
@@ -175,8 +180,9 @@ function entryBinding(scope, segment) {
   if (variable === undefined || definition === undefined || !isUnreassigned(variable)) {
     return undefined;
   }
-  if (inner(segment).type === 'MemberExpression' && hasUnsafeObjectReferences(variable))
+  if (inner(segment).type === 'MemberExpression' && hasUnsafeObjectReferences(variable)) {
     return undefined;
+  }
   const collection = iteratedCollection(definition);
   return collection === undefined ? undefined : { variable, collection };
 }

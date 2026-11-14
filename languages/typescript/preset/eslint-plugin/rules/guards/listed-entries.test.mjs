@@ -179,7 +179,7 @@ tester.run('no-unsafe-path-join with directory listings', noUnsafePathJoin, {
     },
     {
       code: inFunction(
-        'return fs.readdirSync(dir).map(name => fs.readFileSync(`${dir}/../${name}`));',
+        `return fs.readdirSync(dir).map(name => fs.readFileSync(\`\${dir}/../\${name}\`));`,
         'dir, extra',
       ),
       errors: [{ messageId: 'unsafePath' }],

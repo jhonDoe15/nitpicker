@@ -67,9 +67,13 @@ export function contextOnlyFiles(
   { layout, ts }: CompilerScope,
 ): ReadonlySet<string> {
   const config: unknown = JSON.parse(readFileSync(configPath, 'utf8'));
-  if (typeof config !== 'object' || config === null) return new Set();
+  if (typeof config !== 'object' || config === null) {
+    return new Set();
+  }
   const roots = layoutRoots(config, { configPath, projectRoot, layout });
-  if (roots.length === listedFiles(config).length) return new Set();
+  if (roots.length === listedFiles(config).length) {
+    return new Set();
+  }
   const scoped = programFiles({ ts, configPath, config: { ...config, files: roots } });
   const complete = programFiles({ ts, configPath, config });
   const contextOnly = [...complete].filter((file) => !scoped.has(file));

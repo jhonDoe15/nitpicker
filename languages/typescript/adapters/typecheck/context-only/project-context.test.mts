@@ -104,24 +104,23 @@ const cases = projectConfigs.flatMap(([name, configs]) =>
   ['native', 'project'].map((engine) => ({ name, configs, engine })),
 );
 
-const prepared = new Map<
-  string,
-  {
-    readonly root: string;
-    readonly baseline: {
-      readonly status: number | null;
-      readonly stdout: string;
-      readonly stderr: string;
-    };
-  }
->();
+type PreparedFixture = {
+  readonly root: string;
+  readonly baseline: {
+    readonly status: number | null;
+    readonly stdout: string;
+    readonly stderr: string;
+  };
+};
+
+const prepared = new Map<string, PreparedFixture>();
 
 beforeAll(() => {
   const compiler = path.join(
     resolveTool('typescript', { projectRoot: PACKAGE_ROOT }).root,
     'lib/tsc.js',
   );
-  projectConfigs.forEach(([name, configs]) => {
+  for (const [name, configs] of projectConfigs) {
     const root = project(configs);
     const { status, stdout, stderr } = spawnSync(
       process.execPath,
@@ -132,16 +131,22 @@ beforeAll(() => {
       },
     );
     prepared.set(name, { root, baseline: { status, stdout, stderr } });
-  });
+  }
 });
+
+function preparedFixture(name: string): PreparedFixture {
+  const fixture = prepared.get(name);
+  if (fixture === undefined) {
+    throw new Error('Missing type-check fixture');
+  }
+  return fixture;
+}
 
 describe('the type check preserves the project global type context', () => {
   it.each(cases)(
     'loads transitive Node globals from $name with $engine',
     async ({ name, engine }) => {
-      const fixture = prepared.get(name);
-      if (fixture === undefined) throw new Error('Missing type-check fixture');
-      const { root, baseline } = fixture;
+      const { root, baseline } = preparedFixture(name);
       expect(baseline).toEqual({ status: 0, stdout: '', stderr: '' });
 
       const result = await findings(root, engine);
