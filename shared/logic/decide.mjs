@@ -1,3 +1,4 @@
+import { boundFacts, boundedModelOf } from './models/models.mjs';
 import { isSideEffectFree } from './purity.mjs';
 import { foldTerm, isBooleanLiteral, isComparison, isLogical, isNot, key } from './terms.mjs';
 
@@ -42,7 +43,7 @@ function isArithmeticOperator(node) {
 }
 
 function isIntegral(node, children) {
-  if (isIntegerLiteral(node) || node.integer === true) {
+  if (isIntegerLiteral(node) || node.integer === true || boundedModelOf(node)?.integer === true) {
     return true;
   }
   if (node.kind === 'conditional') {
@@ -115,7 +116,7 @@ function encodeValue(encoding, { node, children, integral }) {
 }
 
 function encodeNotANumber(encoding, { node, integral }) {
-  return node.kind === 'literal' || integral || encoding.integers
+  return node.kind === 'literal' || integral || encoding.integers || boundedModelOf(node)?.number
     ? encoding.z3.Bool.val(false)
     : atom(encoding, 'not-a-number', node);
 }
@@ -176,14 +177,25 @@ function encodeTruth(encoding, { node, children }) {
 function encode(encoding, root) {
   return foldTerm(root, (node, children) => {
     const encoded = { node, children, integral: isIntegral(node, children) };
+    const value = encodeValue(encoding, encoded);
+    const notANumber = encodeNotANumber(encoding, encoded);
+    assumeModel(encoding, { node, value, notANumber });
     return {
       node,
       integral: encoded.integral,
-      value: encodeValue(encoding, encoded),
-      notANumber: encodeNotANumber(encoding, encoded),
+      value,
+      notANumber,
       truth: encodeTruth(encoding, encoded),
     };
   }).truth;
+}
+
+function assumeModel(encoding, { node, value, notANumber }) {
+  const model = boundedModelOf(node);
+  if (model !== undefined) {
+    const { z3, numbers } = encoding;
+    encoding.facts.push(...boundFacts(z3, { model, value, notANumber, numbers }));
+  }
 }
 
 function distinctLiterals(encoding) {

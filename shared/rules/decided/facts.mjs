@@ -1,3 +1,4 @@
+import { isStableModel } from '../../logic/models/models.mjs';
 import { pureCallKind } from '../../logic/purity.mjs';
 import { not, term } from '../../logic/terms.mjs';
 import { escapingNames } from '../../near-duplicates/canonical/effects.mjs';
@@ -93,7 +94,9 @@ function isEffectCall(node) {
   if (node.kind === 'expression') {
     return SUSPENDING.has(node.value);
   }
-  return node.kind === 'call' && pureCallKind(node.children[0]) === undefined;
+  return (
+    node.kind === 'call' && !isStableModel(node) && pureCallKind(node.children[0]) === undefined
+  );
 }
 
 function writtenTargets(node) {

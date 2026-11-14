@@ -49,6 +49,11 @@ object`. Instance methods are left to the duplicates check, as class methods are
 - **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
   base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
   compares the edited definition with its base copy and its same-named siblings in the module.
+- **`result-slip`.** The same trees feed `shared/rules/slips/`: an `indexOf` or `lastIndexOf` on a
+  list or set whose declared type is known, tested with `> 0` (or `>= 1`, `<= 0`, `< 1`), misses a
+  match at position 0. Use `>= 0`, `!= -1` or `contains`. SpotBugs `RV_CHECK_FOR_POSITIVE_INDEXOF`
+  keeps the `String` case and Error Prone `CompareToZero` keeps `compareTo`/`compare` results
+  compared with a value other than 0, so the two do not overlap.
 - **`decided-condition`.** The same trees feed `shared/rules/decided/`, which walks each method body
   with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
   return, throw, break or continue, earlier `when` arms, the arms of a `switch` or `when (subject)` (the label in its arm, the earlier
@@ -65,7 +70,13 @@ object`. Instance methods are left to the duplicates check, as class methods are
   false is dead code, always true a redundant check, and the message names the guard that decides
   it. A write to a name, or a call that is not pure on a field or a name a lambda captures, forgets
   what was known; `int` and `long` locals and parameters are integers, and arithmetic is an
-  opaque value because JVM integers overflow. SpotBugs `UC_USELESS_CONDITION` reports a few of
+  opaque value because JVM integers overflow. Value models add what every caller knows about a
+  call on a name whose declared type is a known `String`, collection, `Optional`, array or
+  floating-point type: sizes and lengths are whole numbers that are never negative, `isEmpty()`
+  means a size of 0, `indexOf` returns at least -1, `Math.abs` of a `double` is not negative,
+  `Math.random()` is in `[0, 1)`, and a known pure method or a same-file getter that only returns a
+  field gives the same value until a write or a call may change it. A project method named `size()`
+  on another type gets no fact. SpotBugs `UC_USELESS_CONDITION` reports a few of
   these in bytecode only at low confidence, which the preset leaves out, so the two do not overlap.
 - **`duplicate-branch`.** The same trees again: two arms of an `else if` chain, two `switch`
   cases (not one that falls through or that a case falls into; arrow cases never do) or two `when`

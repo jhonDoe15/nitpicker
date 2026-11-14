@@ -1,6 +1,9 @@
 import { decidedConditions } from './decided.mjs';
+import { getterTable, gettersOfFile } from './models/getters.mjs';
+import { modelledTree } from './models/annotate.mjs';
+import { declaredTypes } from './models/types.mjs';
 import { RULE_IDS } from '../../policy.mjs';
-import { functionUnitRule, reuseFinding } from '../reuse/reuse-finding.mjs';
+import { reuseFinding } from '../reuse/reuse-finding.mjs';
 
 const OUTCOMES = {
   true: { consequence: '', fix: 'Remove the check, or fix the condition that was meant.' },
@@ -11,9 +14,21 @@ const OUTCOMES = {
   operand: { consequence: '', fix: 'Remove the operand, or fix the condition that was meant.' },
 };
 
-function unitFindings(unit, analyzerName) {
+function modelled(unit, getters) {
+  const scope = {
+    types: declaredTypes(unit.tree),
+    getters: gettersOfFile(getters, unit.file),
+    owner: /^(?<owner>[\w$]+)\./u.exec(unit.name)?.groups.owner,
+    python: unit.file.endsWith('.py'),
+    kotlin: unit.file.endsWith('.kt'),
+  };
+  return modelledTree(unit.tree, scope);
+}
+
+function unitFindings(unit, analyzerName, getters) {
   const seen = new Map();
-  return decidedConditions(unit.tree, {
+  const tree = modelled(unit, getters);
+  return decidedConditions(tree, {
     looseBooleans: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
   }).map(({ node, verdict, part, reason }) => {
@@ -32,4 +47,10 @@ function unitFindings(unit, analyzerName) {
   });
 }
 
-export const decidedConditionFindings = functionUnitRule(RULE_IDS.decidedCondition, unitFindings);
+export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
+  const getters = getterTable(units);
+  return units
+    .filter((unit) => unit.tree?.kind === 'function')
+    .filter((unit) => !isExcepted(RULE_IDS.decidedCondition, unit.file))
+    .flatMap((unit) => unitFindings(unit, analyzerName, getters));
+}

@@ -35,7 +35,15 @@ proves it always true (a redundant check) or always false (dead code). The guard
 `if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
 of a `when` without a subject, `require`, `check`, `requireNotNull` and `assert` calls, the arms of `when (subject)` over literals, the left side of `&&` and `||`, the bounds of a `for` over `until`,
 `..` or `downTo`, the branches of an `if` expression, facts about `val` names a lambda captures, `==` or `equals` on a string, and a `val` or `var` set to a literal until it is written again; a write, or a call on a `var` a
-lambda captures, forgets what was known.
+lambda captures, forgets what was known. Sizes, `length`, `count()`, `indexOf` results, the absolute
+value of a `Double` and `Math.random()` are known by the declared type of the name they are read
+from (a size is never negative, `isEmpty()` is a size of 0, `indexOf` is at least -1), and a
+same-file getter that only returns a field gives the same value until something may change it.
+
+`result-slip` (tool `structure`) reads the same trees: the result of `compareTo`, `compare` or
+`compareValues` compared with a value other than 0 (`== 1`, `== -1`, `> 1`) fails, because only its
+sign is defined, and so does `indexOf(x) > 0`, which misses a match at position 0; compare with 0
+or test `>= 0`.
 
 `duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
 bodies have the same canonical tree (locals declared in the arm may have other names) fail, except
