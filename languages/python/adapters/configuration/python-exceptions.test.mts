@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateDuplicates } from '../../../../shared/rules/duplicates.mjs';
-import { applyPythonExceptions } from './python-exceptions.mjs';
+import { listOf } from '../../../../shared/values/readers.mts';
+import { applyPythonExceptions, type Routable } from './python-exceptions.mts';
 
-const finding = (rule, path) => ({ tool: 'ruff', rule, path, identity: rule });
-const exception = (rule, paths) => ({ rule, paths, reason: 'because' });
+function isRouted(value: unknown): value is Routable {
+  return typeof value === 'object' && value !== null && 'rule' in value;
+}
+
+const finding = (rule: string, path: string) => ({ tool: 'ruff', rule, path, identity: rule });
+const exception = (rule: string, paths: string[]) => ({ rule, paths, reason: 'because' });
 
 describe('python exceptions', () => {
   const findings = [
@@ -54,7 +59,11 @@ describe('python exceptions', () => {
   });
 
   it('lifts a broken import contract for the file it names', () => {
-    const contract = (file) => ({ tool: 'import-linter', rule: 'contract-broken', path: file });
+    const contract = (file: string) => ({
+      tool: 'import-linter',
+      rule: 'contract-broken',
+      path: file,
+    });
     const broken = [contract('src/app/web/views.py'), contract('src/app/domain/model.py')];
 
     expect(
@@ -63,7 +72,7 @@ describe('python exceptions', () => {
   });
 
   it('lifts a clone when the exception matches either file of the pair', () => {
-    const clones = evaluateDuplicates(
+    const evaluated: unknown = evaluateDuplicates(
       [
         {
           first: { file: 'src/a/left.py', line: 1 },
@@ -75,7 +84,8 @@ describe('python exceptions', () => {
       ],
       'duplicates',
     );
-    const lifted = (glob) =>
+    const clones = listOf(evaluated).filter(isRouted);
+    const lifted = (glob: string) =>
       applyPythonExceptions(clones, [exception('duplicate-clone', [glob])]).map(({ rule }) => rule);
 
     expect(lifted('src/a/**')).toEqual(['duplicate-clone-size', 'duplicate-clone-size']);

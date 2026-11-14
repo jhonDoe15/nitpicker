@@ -2,13 +2,13 @@ import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createToolContext } from '../python-tools.mjs';
+import { createToolContext } from '../test-support/typed/tool-context.mts';
 import { ruffConfigFor } from './python-ruff-config.mjs';
 
-const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const roots = [];
+const enabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
+const roots: string[] = [];
 
-function temporary() {
+function temporary(): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-ruff-config-')));
   roots.push(root);
   return root;

@@ -1,36 +1,38 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { textOf } from '../../../../../shared/values/readers.mts';
 import {
   excludePattern,
   mypyExcludeArguments,
   readMypyConfig,
   writeMypyConfig,
 } from './mypy-config.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+const { temporaryRoot } = useGitFixtures();
 
 function temporary() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-mypy-config-')));
-  roots.push(root);
+  const root = temporaryRoot('nitpicker-mypy-config-');
   return root;
 }
 
-function generated(files, exclude = [], extra = {}) {
+type Files = Readonly<Record<string, string>>;
+
+function writeConfig(options: Readonly<Record<string, unknown>>): string {
+  return textOf(Reflect.apply(writeMypyConfig, undefined, [options]));
+}
+
+function generated(
+  files: Files,
+  exclude: readonly string[] = [],
+  extra: Readonly<Record<string, unknown>> = {},
+) {
   const projectRoot = temporary();
   const reportRoot = temporary();
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(projectRoot, name)), { recursive: true });
-    writeFileSync(path.join(projectRoot, name), text);
-  }
-  const file = writeMypyConfig({
+  writeFiles(projectRoot, files);
+  const file = writeConfig({
     projectRoot,
     reportRoot,
     exclude,
@@ -163,7 +165,7 @@ describe('the mypy config nitpicker generates', () => {
 
   it('excludes the nitpicker exclude globs as one regular expression', () => {
     const { text } = generated({}, ['src/gen/**', '**/*_pb2.py', 'build']);
-    const pattern = new RegExp(/^exclude = (.+)$/m.exec(text)[1]);
+    const pattern = new RegExp(/^exclude = (.+)$/m.exec(text)?.[1] ?? '');
 
     expect(
       [
@@ -247,7 +249,7 @@ describe('per-module sections that would silence the project own modules', () =>
 });
 
 describe('the mypy config with tools.mypy listing the project', () => {
-  const listed = (root) => ({
+  const listed = (root: string) => ({
     toolPrecedence: { mypy: ['project', 'nitpicker'] },
     policyRoot: root,
   });
@@ -263,13 +265,17 @@ describe('the mypy config with tools.mypy listing the project', () => {
     '',
   ].join('\n');
 
-  function layered(files, exclude, precedence) {
+  function layered(
+    files: Files,
+    exclude: readonly string[],
+    precedence?: Readonly<Record<string, unknown>>,
+  ) {
     const projectRoot = temporary();
     const reportRoot = temporary();
     for (const [name, text] of Object.entries(files)) {
       writeFileSync(path.join(projectRoot, name), text);
     }
-    const file = writeMypyConfig({
+    const file = writeConfig({
       projectRoot,
       reportRoot,
       exclude,
@@ -320,14 +326,14 @@ describe('the mypy config with tools.mypy listing the project', () => {
   });
 
   it('keeps the isolated config when nitpicker is listed first', () => {
-    const precedence = (root) => ({
+    const precedence = (root: string) => ({
       toolPrecedence: { mypy: ['nitpicker', 'project'] },
       policyRoot: root,
     });
     const projectRoot = temporary();
     writeFileSync(path.join(projectRoot, 'pyproject.toml'), PYPROJECT);
     const reportRoot = temporary();
-    const file = writeMypyConfig({
+    const file = writeConfig({
       projectRoot,
       reportRoot,
       exclude: [],
@@ -427,7 +433,7 @@ describe('the project config of the head read for the snapshot', () => {
       path.join(head, 'mypy.ini'),
       '[mypy]\nplugins = tools/plugin.py\nmypy_path = $MYPY_CONFIG_FILE_DIR/stubs\n',
     );
-    const file = writeMypyConfig({
+    const file = writeConfig({
       projectRoot: snapshot,
       reportRoot: temporary(),
       exclude: [],

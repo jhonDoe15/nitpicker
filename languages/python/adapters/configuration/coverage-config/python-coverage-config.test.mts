@@ -1,31 +1,22 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   readProjectCoverage,
   UNTESTABLE_LINES,
   writeCoverageConfig,
 } from './python-coverage-config.mjs';
 import { javascriptPattern } from '../../../ingest/coverage-reports/exhaustive-match.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-function project(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-coverage-config-')));
-  roots.push(root);
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
+function project(files: Readonly<Record<string, string>>): string {
+  const root = temporaryRoot('nitpicker-python-coverage-config-');
+  writeFiles(root, files);
   return root;
 }
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
 
 const PROCESS_RUN = {
   concurrency: ['multiprocessing', 'thread'],
@@ -190,9 +181,8 @@ describe('the coverage settings of the project', () => {
       writeCoverageConfig({ projectRoot: project({}), reportRoot: project({}) }, ['src']),
       'utf8',
     );
-    const patterns = config
-      .split('exclude_lines =\n')[1]
-      .split('\npartial_branches')[0]
+    const excludeSection = config.split('exclude_lines =\n')[1] ?? '';
+    const patterns = (excludeSection.split('\npartial_branches')[0] ?? '')
       .split('\n')
       .map((pattern) => javascriptPattern(pattern.trim(), 'mu'));
 
@@ -219,11 +209,24 @@ describe('the project coverage config under tools.coverage', () => {
     excluded: ['pragma: no cover', 'def __repr__'],
     partial: ['pragma: no branch'],
   };
-  function listed(key, values) {
+  function listed(key: string, values: readonly string[]) {
     return [`${key} =`, ...values.map((value) => `    ${value}`)];
   }
 
-  function expected(projectRoot, { omit = [], run = [], excluded = [], partial = [] }) {
+  function expected(
+    projectRoot: string,
+    {
+      omit = [],
+      run = [],
+      excluded = [],
+      partial = [],
+    }: {
+      omit?: readonly string[];
+      run?: readonly string[];
+      excluded?: readonly string[];
+      partial?: readonly string[];
+    },
+  ) {
     return [
       '[run]',
       'branch = True',
@@ -238,7 +241,16 @@ describe('the project coverage config under tools.coverage', () => {
     ].join('\n');
   }
 
-  function written(precedence, { files = { 'pyproject.toml': PYPROJECT }, policyFiles } = {}) {
+  function written(
+    precedence: readonly string[] | undefined,
+    {
+      files = { 'pyproject.toml': PYPROJECT },
+      policyFiles,
+    }: {
+      files?: Readonly<Record<string, string>>;
+      policyFiles?: Readonly<Record<string, string>>;
+    } = {},
+  ) {
     const projectRoot = project(files);
     const policyRoot = policyFiles === undefined ? projectRoot : project(policyFiles);
     const context = {
@@ -278,7 +290,7 @@ describe('the project coverage config under tools.coverage', () => {
   });
 
   it('refuses a run value coverage does not take, so it cannot add lines to the config', () => {
-    const run = (line) => ({
+    const run = (line: string) => ({
       files: { 'pyproject.toml': `[tool.coverage.run]\n${line}\n` },
     });
 

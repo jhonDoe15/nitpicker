@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { collectionOptions, isTestFile, matchesGlob } from './collection-options.mjs';
+import { fieldsOf } from '../../../../../shared/values/readers.mts';
 import { readPytestConfig } from './pytest-config.mjs';
+
+type Settings = { pythonFiles: string[]; django?: boolean; testpaths?: string[] };
 
 const defaults = { pythonFiles: ['test_*.py', '*_test.py'] };
 
@@ -43,15 +46,17 @@ describe('telling a test file from a source file', () => {
     ['testing.py', defaults, false],
     ['src/app/service.py', defaults, false],
     ['src/app/testsuite.py', defaults, false],
-  ])('%s with %j is %s', (file, settings, expected) => {
-    expect(isTestFile(file, settings)).toBe(expected);
+  ])('%s with %j is %s', (file: string, settings: Settings, expected: boolean) => {
+    const result: unknown = Reflect.apply(isTestFile, undefined, [file, settings]);
+    expect(result).toBe(expected);
   });
 });
 
 describe('the collection options for the rules script', () => {
   it('lift the deselecting options out of addopts', () => {
+    const base = fieldsOf(readPytestConfig('/nonexistent'));
     const config = {
-      ...readPytestConfig('/nonexistent'),
+      ...base,
       addopts: [
         '-q',
         '--deselect',
@@ -68,12 +73,12 @@ describe('the collection options for the rules script', () => {
       ],
     };
 
-    expect(collectionOptions(config)).toEqual({
-      pythonFiles: config.pythonFiles,
-      pythonClasses: config.pythonClasses,
-      pythonFunctions: config.pythonFunctions,
-      norecursedirs: config.norecursedirs,
-      testpaths: config.testpaths,
+    expect(Reflect.apply(collectionOptions, undefined, [config])).toEqual({
+      pythonFiles: base['pythonFiles'],
+      pythonClasses: base['pythonClasses'],
+      pythonFunctions: base['pythonFunctions'],
+      norecursedirs: base['norecursedirs'],
+      testpaths: base['testpaths'],
       deselected: ['tests/a.py::test_x', 'tests/b.py'],
       ignored: ['tests/old'],
       ignoredGlobs: ['tests/gen_*'],
