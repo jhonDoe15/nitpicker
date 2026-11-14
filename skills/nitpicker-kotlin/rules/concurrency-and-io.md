@@ -47,6 +47,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   a repository or client itself; use `@BatchMapping` or a `DataLoader` (`effects/GraphqlFieldPerParent`).
 - Reactive pipelines: never look up each element of a list inside `Flux.fromIterable(items).flatMap(...)`; fetch all
   elements with one call and join in memory (`effects/ReactiveLookupPerElement`).
+- Bulk changes: never load rows only to set the same value on each and save them, or to delete them; use one
+  `@Modifying @Query` update or delete, or `deleteAllInBatch` (`effects/RowsChangedInMemory`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 23,
+      classes: 30,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -188,6 +188,17 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Reactive.fromArray',
       'Reactive.remote',
       'Reactive.limitedDatabase',
+    ]);
+  });
+
+  it('reports rows loaded to be changed or deleted in memory, and skips lifecycle, other calls and other uses', () => {
+    expect(methodsOf(run.report, 'RowsChangedInMemory')).toEqual([
+      'Updates.forEachThenSave',
+      'Updates.loopThenSave',
+      'Updates.dirtyChecking',
+      'Updates.deleteAllRows',
+      'Updates.deleteEach',
+      'Updates.collectionTableUpdate',
     ]);
   });
 

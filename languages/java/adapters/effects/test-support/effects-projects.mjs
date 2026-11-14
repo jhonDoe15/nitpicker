@@ -50,6 +50,9 @@ export const JAVA_EFFECTS = [
   `DualWriteWithoutOutbox 28 DualWrites.placeWithEvent afterCommit ${PUBLISH}>OrderListeners.onPlaced()>${JAVA_SEND}`,
   `DualWriteWithoutOutbox 33 DualWrites.ship inline ${PUBLISH}>OrderListeners.onShipped()>${JAVA_SEND}`,
   `DualWriteWithoutOutbox 41 DualWrites.placeAfterCommit afterCommit ${JAVA_SEND}`,
+  'RowsChangedInMemory 14 TicketUpdates.expire update TicketRepository.findByStatus() Ticket',
+  'RowsChangedInMemory 21 TicketUpdates.close update TicketRepository.findByStatus() Ticket',
+  'RowsChangedInMemory 27 TicketUpdates.purge delete TicketRepository.findByStatus() Ticket',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -102,6 +105,9 @@ export const KOTLIN_EFFECTS = [
   `RetryWithoutIdempotency 14 Retries.announceWithLoop retry loop ${KOTLIN_SEND}`,
   `DualWriteWithoutOutbox 15 DualWrites.place inline ${KOTLIN_SEND}`,
   `DualWriteWithoutOutbox 20 DualWrites.placeWithEvent afterCommit ${PUBLISH}>OrderListeners.onPlaced()>${KOTLIN_SEND}`,
+  'RowsChangedInMemory 7 TicketUpdates.expire update TicketRepository.findByStatus() Ticket',
+  'RowsChangedInMemory 14 TicketUpdates.close update TicketRepository.findByStatus() Ticket',
+  'RowsChangedInMemory 18 TicketUpdates.purge delete TicketRepository.findByStatus() Ticket',
 ];
 
 function summaryOf(violation) {
@@ -123,6 +129,9 @@ function summaryOf(violation) {
   }
   if (scope !== undefined) {
     return [rule, line, method, scope, calls.join('>')].join(' ');
+  }
+  if (entity !== undefined && relation === undefined) {
+    return [rule, line, method, form, origin, entity].join(' ');
   }
   if (origin !== undefined) {
     return [rule, line, method, origin, `${entity}.${relation}`].join(' ');

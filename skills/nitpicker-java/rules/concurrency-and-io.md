@@ -38,6 +38,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   a repository or client itself; use `@BatchMapping` or a `DataLoader` (`effects/GraphqlFieldPerParent`).
 - Reactive pipelines: never look up each element of a list inside `Flux.fromIterable(items).flatMap(...)`; fetch all
   elements with one call and join in memory (`effects/ReactiveLookupPerElement`).
+- Bulk changes: never load rows only to set the same value on each and save them, or to delete them; use one
+  `@Modifying @Query` update or delete, or `deleteAllInBatch` (`effects/RowsChangedInMemory`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
