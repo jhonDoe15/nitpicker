@@ -1,4 +1,4 @@
-import { writeDiffReports } from '../reporting/reporters.mts';
+import { fixPlansFor, writeDiffReports } from '../reporting/reporters.mts';
 import { partialRunField as partialRunOf } from '../reporting/partial-run/partial-run.mts';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree, hasSameTree } from '../git/repository/git.mjs';
@@ -43,6 +43,7 @@ export type DiffOptions = Omit<
   readonly headProjectRoot?: string | undefined;
   readonly requestedBaseRef?: unknown;
   readonly partialRun?: unknown;
+  readonly fixRecipes?: unknown;
   readonly includeWorkingTree?: true | undefined;
   readonly captureHead?: unknown;
   readonly staged?: unknown;
@@ -95,11 +96,10 @@ const comparisonOf: (repositoryRoot: string, requestedBaseRef: unknown) => Compa
   resolveComparison;
 const sameTree: (repositoryRoot: string, left: string, right: string) => boolean = hasSameTree;
 const captureTree: CaptureHead = captureWorkingTree;
-const writeReports: (
-  outputRoot: string,
-  report: DiffReport,
-  location: { readonly projectPath: string; readonly repositoryRoot: string },
-) => unknown = writeDiffReports;
+type ReportPlace = { readonly projectPath: string; readonly repositoryRoot: string };
+const writeReports: (outputRoot: string, report: DiffReport, location: ReportPlace) => unknown =
+  writeDiffReports;
+const plansFor: (report: DiffReport, location: ReportPlace) => unknown[] = fixPlansFor;
 const withPolicyFile: <T>(policy: unknown, operation: (file: unknown) => T) => T =
   withHeadPolicyFile;
 
@@ -112,10 +112,12 @@ export function runQualityDiff(options: DiffOptions): DiffReport {
     : compareChanges(settings, comparison, startedAt);
   report.summary.elapsedMs = Date.now() - startedAt;
   Object.assign(report.summary, partialRunOf(settings.partialRun));
-  report.text = writeReports(settings.outputRoot, report, {
+  const location = {
     projectPath: settings.projectRelativePath,
     repositoryRoot: settings.repositoryRoot,
-  });
+  };
+  report.fixPlans = plansFor(report, location);
+  report.text = writeReports(settings.outputRoot, report, location);
   return report;
 }
 
@@ -221,6 +223,8 @@ function runAndCombine(context: RunContext): DiffReport {
     runHeadAnalyzers(context, baselineMovesFile),
   );
   return combineAnalyzerReports({
+    headRoot: context.roots.headSnapshotRoot,
+    fixRecipes: [...listOf(settings.fixRecipes)],
     analyzers: settings.analyzers,
     baseRun,
     headRun,

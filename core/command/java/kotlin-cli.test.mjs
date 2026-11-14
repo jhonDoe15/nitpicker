@@ -103,7 +103,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'format',
         message:
-          'File is not formatted with ktfmt. Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
+          'File is not formatted with ktfmt. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);

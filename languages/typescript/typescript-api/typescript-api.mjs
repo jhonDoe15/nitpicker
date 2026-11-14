@@ -1,4 +1,3 @@
-import { createRequire } from 'node:module';
-import { selectTypeScriptApi } from './api-selection.mjs';
+import { lazyTypeScriptApi } from './lazy-typescript-api.mjs';
 
-export const ts = createRequire(import.meta.url)(selectTypeScriptApi().file);
+export const ts = lazyTypeScriptApi();

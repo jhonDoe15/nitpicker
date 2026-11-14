@@ -1,4 +1,5 @@
 import { PRESET_TITLES } from '../../../shared/reference/entry.mjs';
+import { fixStatusIn } from '../../../shared/reference/fix-status.mjs';
 import { entryFacts, entryLinks, linkUrl, plainText } from '../../../shared/reference/facts.mjs';
 import {
   closestIds,
@@ -29,11 +30,13 @@ export type Entry = {
   readonly page?: string;
   readonly tool?: string;
   readonly findingTools?: readonly string[];
+  readonly fix?: Readonly<Record<string, string>>;
   readonly analyzers: Readonly<Record<string, readonly string[] | undefined>>;
 };
 
 export type EntryIndex = { readonly entries: readonly Entry[] };
 
+export const fixStatusOf: (entry: Entry, preset: string) => string = fixStatusIn;
 export const presetTitles: Readonly<Record<string, string>> = PRESET_TITLES;
 export const factsOf: (entry: Entry) => readonly Fact[] = entryFacts;
 export const linksOf: (entry: Entry) => readonly Link[] = entryLinks;

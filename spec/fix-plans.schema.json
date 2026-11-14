@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jhonDoe15/nitpicker/spec/fix-plans.schema.json",
+  "title": "Nitpicker fix plans",
+  "description": "The fix-plans.json that a comparison run writes beside new-findings.json: one plan for each new enforceable finding of a nitpicker check whose fix needs judgment. A plan is built from the finding, the files of the project and the rule's allowed form. It changes no file and calls no language model; the agent or the person who reads it makes the change.",
+  "type": "array",
+  "items": { "$ref": "#/$defs/plan" },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "plan": {
+      "type": "object",
+      "required": ["finding", "kind", "target", "context", "steps", "doneWhen"],
+      "additionalProperties": false,
+      "properties": {
+        "finding": {
+          "description": "The finding the plan is for, as new-findings.json prints it.",
+          "type": "object",
+          "required": ["tool", "rule", "path"],
+          "additionalProperties": false,
+          "properties": {
+            "tool": { "$ref": "#/$defs/nonEmptyString" },
+            "rule": { "$ref": "#/$defs/nonEmptyString" },
+            "path": { "$ref": "#/$defs/nonEmptyString" },
+            "line": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "kind": {
+          "description": "The kind of change the plan asks for.",
+          "enum": [
+            "extract-function",
+            "split-file",
+            "add-test-for-branch",
+            "strengthen-assertion",
+            "kill-mutant",
+            "remove-duplicate",
+            "extract-shared-function",
+            "invert-dependency",
+            "move-module",
+            "parse-at-boundary",
+            "reduce-complexity",
+            "group-parameters",
+            "flatten-hierarchy",
+            "exercise-production-code",
+            "follow-allowed-form"
+          ]
+        },
+        "target": {
+          "description": "The code to change: a file or a folder, the function or class when the finding names one, and the lines.",
+          "type": "object",
+          "required": ["path", "startLine", "endLine"],
+          "additionalProperties": false,
+          "properties": {
+            "path": { "$ref": "#/$defs/nonEmptyString" },
+            "symbol": { "$ref": "#/$defs/nonEmptyString" },
+            "startLine": { "type": "integer", "minimum": 1 },
+            "endLine": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "context": {
+          "description": "Only what the kind needs, such as the measured value and the limit, candidate blocks, the uncovered branch, the mutation, the other copy of a duplicate, the import edge or the nearest test file. The fields differ by kind.",
+          "type": "object"
+        },
+        "steps": {
+          "description": "The steps to take, in order, with the real names of the files and symbols and the allowed form of the rule.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "doneWhen": {
+          "description": "When the change is done: the finding that stops being reported.",
+          "$ref": "#/$defs/nonEmptyString"
+        }
+      }
+    }
+  }
+}

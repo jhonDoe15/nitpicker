@@ -60,11 +60,12 @@ function directoryDocuments(projectRoot, relative) {
 }
 
 function fileDocuments(absoluteDirectory, relativePath, name) {
-  const [, fileProfile, extension] = CONFIG_FILE.exec(name);
   const text = readText(path.join(absoluteDirectory, name));
-  if (text === undefined) {
-    return [];
-  }
+  return text === undefined ? [] : textDocuments(text, relativePath, name);
+}
+
+function textDocuments(text, relativePath, name) {
+  const [, fileProfile, extension] = CONFIG_FILE.exec(name);
   const parsed = extension === 'properties' ? parseProperties(text) : parseYaml(text);
   return parsed.map((document) => ({
     path: relativePath,

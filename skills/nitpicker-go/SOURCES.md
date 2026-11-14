@@ -313,6 +313,8 @@ than the others, and this skill teaches its rules before an agent writes Go.
   is one way to write.
 - **Holding interfaces to the method limit.** Interface size is better judged by a linter that
   knows where the interface is used.
+- **A fix plan for near-duplicates.** The Go preset has no `near-duplicate` check (it has no near-duplicate
+  trees), so there is nothing to plan; `duplicates/duplicate-clone` keeps its own plan.
 
 ## Review findings
 
@@ -424,3 +426,9 @@ Two adversarial reviews of go-critic changed these rules:
 - **Overlaps settled**: exhaustive keeps a one-case enum switch over singleCaseSwitch, QF1012
   keeps the writes it reports over preferFprint, and revive's `useless-fallthrough` keeps the
   tagged switches over emptyFallthrough, which still covers untagged ones.
+
+## Near-duplicate extraction
+
+Go has no `near-duplicate` rule and no `--fix` recipes yet, so there is nothing to extract.
+
+The same holds for a `partial-run` pair: no recipe extracts the shared statements in Go, and the finding keeps its fix plan.

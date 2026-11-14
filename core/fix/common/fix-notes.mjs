@@ -2,7 +2,7 @@ function listed(paths, note) {
   return paths.length === 0 ? [] : [note(paths.join(', '))];
 }
 
-export function rewrittenNote(tool, paths) {
+function rewrittenNote(tool, paths) {
   return listed(paths, (names) => `${tool} rewrote ${names}`);
 }
 
@@ -29,6 +29,7 @@ export function formatNotes(tool, outcome) {
     ),
     ...listed(outcome.unformattable, (names) => `${tool} could not parse ${names}`),
     ...undecodableNote(undecodable),
+    ...listed(outcome.unwritable ?? [], (entries) => `--fix could not write ${entries}`),
     ...listed(
       changedMeanwhile,
       (names) => `--fix left ${names} as is: the file changed while --fix ran`,

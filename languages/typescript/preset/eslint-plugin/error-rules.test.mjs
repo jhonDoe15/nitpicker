@@ -4,6 +4,7 @@ import tseslint from 'typescript-eslint';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
 import { rule as preserveErrorCause } from './rules/errors/preserve-error-cause.mjs';
 import { rule as structuredCatchLogging } from './rules/errors/structured-catch-logging.mjs';
+import { withoutFixes } from '../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -73,7 +74,7 @@ ruleTester.run('no-silent-catch', noSilentCatch, {
     },
   ],
 });
-ruleTester.run('structured-catch-logging', structuredCatchLogging, {
+ruleTester.run('structured-catch-logging', withoutFixes(structuredCatchLogging), {
   valid: [
     {
       filename: '/repo/src/main/feature.ts',
@@ -106,7 +107,7 @@ ruleTester.run('structured-catch-logging', structuredCatchLogging, {
     },
   ],
 });
-ruleTester.run('keep caught causes in the Pino serializer', structuredCatchLogging, {
+ruleTester.run('keep caught causes in the Pino serializer', withoutFixes(structuredCatchLogging), {
   valid: [
     "try { load(); } catch (error) { logger.warn({ err: error }, 'failed'); }",
     "try { load(); } catch (error) { const fields = { err: error, category: 'network' }; logger.error(fields, 'failed'); }",
@@ -122,7 +123,7 @@ ruleTester.run('keep caught causes in the Pino serializer', structuredCatchLoggi
     },
   ],
 });
-ruleTester.run('preserve wrapped error causes', preserveErrorCause, {
+ruleTester.run('preserve wrapped error causes', withoutFixes(preserveErrorCause), {
   valid: [
     'try { load(); } catch (error) { throw normalizeFailure(error); }',
     "try { load(); } catch (error) { throw new Error('failed', { cause: error }); }",

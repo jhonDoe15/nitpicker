@@ -2,6 +2,7 @@ import { RuleTester } from 'eslint';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
 import { rule as noRaisedTestTimeout } from '../../rules/testing/assertions/no-raised-test-timeout.mjs';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
 RuleTester.afterAll = afterAll;
 
@@ -23,7 +24,7 @@ const ruleTester = new RuleTester({
 
 const testFile = '/repo/tests/integration/repository.test.ts';
 const lines = (...parts) => parts.join('\n');
-ruleTester.run('no-raised-test-timeout', noRaisedTestTimeout, {
+ruleTester.run('no-raised-test-timeout', withoutFixes(noRaisedTestTimeout), {
   valid: [
     {
       filename: testFile,

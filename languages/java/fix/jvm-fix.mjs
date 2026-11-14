@@ -1,5 +1,6 @@
 import { fixerError, fixSpawn } from '../../../core/fix/common/fix-command.mjs';
 import {
+  changedFiles,
   collectFixFiles,
   excludedBy,
   readBytes,
@@ -8,6 +9,9 @@ import {
 import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
+import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
+import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
 import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
@@ -17,6 +21,11 @@ import { readPinnedTools } from '../builds/java-build.mjs';
 import { formatterJava } from '../maven/errorprone/maven-jdk.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
 import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
+import { defineRecipes } from '../../../core/fix/engine/recipes.mjs';
+import { errorPronePatch } from './errorprone/run/error-prone-step.mjs';
+import { errorProneRecipes } from './errorprone/recipes/error-prone-recipes.mjs';
+import { JVM_RECIPES } from './recipes/jvm-recipes.mjs';
+import { SPRING_CONFIG_FILE } from './recipes/spring/config/config-targets.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
 
 const JAVA_FILE = /\.java$/u;
@@ -110,13 +119,15 @@ function applyStep(step, classpaths, scope) {
         files: step.files,
         format: step.formatWith(classpaths),
         touchedLinesOnly: step.touchedLinesOnly === true,
+        tool: step.plan.label,
+        writer: scope.writer,
       }),
     ),
   }));
 }
 
-function rewriteScope({ projectRoot, repositoryRoot }, mergeBaseSha) {
-  return { projectRoot, repositoryRoot, mergeBaseSha };
+function rewriteScope({ projectRoot, repositoryRoot, writer, allFiles }, mergeBaseSha) {
+  return { projectRoot, repositoryRoot, mergeBaseSha, writer, allFiles: allFiles === true };
 }
 
 function runSteps(settings, steps, mergeBaseSha) {
@@ -144,32 +155,86 @@ function runSteps(settings, steps, mergeBaseSha) {
   ];
 }
 
-export function fixJvm(settings) {
-  const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
-  const headPolicy = settings.headPolicy ?? {};
+function recipeRun({ settings, files, accepts, selectedRules, patchEntries }) {
+  const shared = sharedInputs({
+    projectRoot: settings.projectRoot,
+    headPolicy: settings.headPolicy,
+    selectedRules,
+  });
+  const run = runRecipes({
+    projectRoot: settings.projectRoot,
+    files,
+    recipes:
+      settings.recipes ??
+      defineRecipes([...JVM_RECIPES, ...SHARED_RECIPES, ...errorProneRecipes(patchEntries)]),
+    writer: settings.writer,
+    preset: settings.config.preset ?? 'java',
+    selectedRules,
+    accepts,
+    inputs: shared.inputs,
+  });
+  return { ...run, toolErrors: [...shared.toolErrors, ...run.toolErrors] };
+}
+
+function acceptsOf({ projectRoot, headPolicy, config }) {
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
   const roots = declaredSourceRoots(projectRoot);
+  return function accepts(name) {
+    return (
+      (SPRING_CONFIG_FILE.test(name) && !excluded(name)) ||
+      ((JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+        !excluded(name) &&
+        inJvmSourceSets(name, roots) &&
+        !isGeneratedJvm(projectRoot, name))
+    );
+  };
+}
+
+export function fixJvm(settings) {
+  const { repositoryRoot, projectRoot, baseRef, scope, config = {} } = settings;
+  const selectedRules = settings.selectedRules ?? [];
+  const headPolicy = settings.headPolicy ?? {};
+  const accepts = acceptsOf({ projectRoot, headPolicy, config });
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     scope,
-    accepts: (name) =>
-      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
-      !excluded(name) &&
-      inJvmSourceSets(name, roots) &&
-      !isGeneratedJvm(projectRoot, name),
+    accepts,
+    allFiles: settings.allFiles === true,
   });
-  if (files.length === 0) {
+  if (files.length === 0 && selectedRules.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const resolved = { ...settings, headPolicy, config };
-  const outcomes = runSteps(resolved, plannedSteps(resolved, files), comparison.mergeBaseSha);
+  const patch = attempt('error-prone-fix', () => ({
+    entries: errorPronePatch(resolved, files, comparison.mergeBaseSha),
+  }));
+  const recipes = recipeRun({
+    settings: resolved,
+    files,
+    accepts,
+    selectedRules,
+    patchEntries: patch.entries ?? new Map(),
+  });
+  const formatted =
+    selectedRules.length === 0 ? recipes.files : changedFiles(projectRoot, recipes.files, before);
+  const outcomes = runSteps(resolved, plannedSteps(resolved, formatted), comparison.mergeBaseSha);
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
-    toolErrors: outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
-    notes: [...outcomes.flatMap(({ notes = [] }) => notes), ...linkNote(links)],
+    fixedFindings: recipes.fixedFindings,
+    toolErrors: [
+      ...patch.toolErrors,
+      ...recipes.toolErrors,
+      ...outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
+    ],
+    notes: [
+      ...patch.notes,
+      ...recipes.notes,
+      ...outcomes.flatMap(({ notes = [] }) => notes),
+      ...linkNote(links),
+    ],
   };
 }

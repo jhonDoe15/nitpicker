@@ -23,9 +23,23 @@ export const COMMANDS: readonly Row[] = [
 export const FLAGS: readonly Row[] = [
   ['--all', 'Report every finding in the checkout, with no baseline.'],
   ['--base <ref>', 'Compare against this ref instead of the detected base.'],
-  ['--fix', 'Apply ESLint and Prettier fixes to the changed files, then compare.'],
+  [
+    '--fix',
+    'Apply the fixers of the preset to the changed files, then compare (--all --rule: every file).',
+  ],
+  [
+    '--dry-run',
+    'With --fix: write fix.patch and fixes.json to the output folder and change no file.',
+  ],
+  [
+    '--verify <narrow|full>',
+    'With --fix: re-run the analyzers of the fixed rules (narrow, default) or the whole gate (full) and undo a recipe that makes things worse.',
+  ],
   ['--analyzer <name>', 'Run only this analyzer (repeatable).'],
-  ['--rule <substring>', 'List the findings whose rule matches (repeatable).'],
+  [
+    '--rule <substring>',
+    'List the findings whose rule matches; with --fix, apply only the fixes of tool/rule (repeatable).',
+  ],
   ['--details', 'Print every new and held finding with its full message.'],
   ['--json', 'Print one compact JSON result on stdout instead of the summary.'],
   ['--quick', 'Run only the fast checks and skip the tests and what builds on them.'],
@@ -72,7 +86,7 @@ const AGGREGATE_USAGE =
 const CACHE_PUBLISH_USAGE =
   'nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]';
 const USAGE_LINES: readonly [string, ...string[]] = [
-  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
+  'nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]] [--analyzer <name>]...',
   '          [--rule <substring>]... [--details] [--json] [--quick] [--staged]',
   '          [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]',
   '          [--accept-policy-change=<digest>] [--help] [--version]',
@@ -82,7 +96,7 @@ const USAGE_LINES: readonly [string, ...string[]] = [
   'nitpicker changelog [<version>]',
   'nitpicker base [--base <ref>]',
   'nitpicker explain <tool/rule>...',
-  'nitpicker rules [--preset <name>] [--tool <name>]',
+  'nitpicker rules [--preset <name>] [--tool <name>] [--fixable]',
 ];
 
 function table(rows: readonly Row[]): string {

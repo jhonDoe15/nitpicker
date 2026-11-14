@@ -33,11 +33,19 @@ full run below.
 2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
    code. It first rewrites the changed Java files with the formatter the run names under
    "Following this project's conventions" (google-java-format 1.35.0, `--aosp` for the aosp style,
-   or palantir-java-format) and lists them under "Fixed files:"; re-read a file it lists before you
+   or palantir-java-format) and lists them under "Fixed files:", after its fix recipes, which list
+   each finding they fixed under "Fixed findings:"; re-read a file it lists before you
    edit it again. When the run says no Java formatter runs, it leaves the files alone; keep the
    layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with
    the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the
    PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
+   To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes
+   `fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the
+   fixes of the rules you name, including their `review` recipes. A recipe that makes things worse
+   (its finding stays, it adds a finding or a compile error) is rolled back and named under "Fix notes";
+   `--fix --verify full` checks with the whole gate. To clear one rule across the whole project, run
+   `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in `nitpicker.legacy.json`.
+   For a finding no recipe fixes, read its plan in `fix-plans.json` (same folder): the target lines, the context and the steps. Follow the steps; they are done when the finding named in `doneWhen` stops.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
@@ -113,3 +121,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 Under the kotlin preset the Java sources get the same checks. Kotlin sources follow the
 `nitpicker-kotlin` skill; if it isn't installed, install it with the
 command `npx nitpicker init` prints, with `--skill nitpicker-kotlin`.
+
+Why each fix decision was made, and what --fix leaves alone: [SOURCES.md](SOURCES.md).

@@ -91,7 +91,7 @@ export function reuseFindings(
       language: 'typescript',
       analyzerName,
       rules: REUSE_RULES,
-      policy: { exceptions },
+      policy: { exceptions, layout: typescriptFeatureLayout(configured, layout.sourceRoots) },
       baseline,
     }),
     ...sharedFactFindings(neutral, {

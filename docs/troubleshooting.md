@@ -52,7 +52,7 @@ checkout and `base` is the merge base.
 ### Invalid arguments
 
 **Symptom.** `nitpicker failed: Unknown argument: --foo`, `--base requires a value`,
-`--fix cannot be combined with --all`, `--all cannot be combined with --base`,
+`--fix --all rewrites the whole project, so it needs the rule to fix`, `--all cannot be combined with --base`,
 `--shard-count and --shard-index must be provided together`,
 `NITPICKER_MAX_PARALLEL must be a positive integer`, `Unknown cache command`, and similar. Exit code 2.
 
@@ -62,7 +62,7 @@ Nothing was analyzed.
 **Fix.** Run `nitpicker --help` for the accepted forms, or read the
 [command line reference](usage.md#command-line). The combinations that are refused:
 
-- `--all` cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
+- `--all` cannot be combined with `--base`, sharding or `--defer-exit`, and `--fix --all` needs `--rule <tool/rule>`.
 - `--shard-count` and `--shard-index` go together, and `--analyzer` cannot be combined with them.
 - `--shard-count` cannot exceed the number of independent analyzer groups, and `--shard-index` must be
   a whole number from 0 to `--shard-count` minus 1.

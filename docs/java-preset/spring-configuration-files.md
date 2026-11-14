@@ -169,3 +169,37 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
   unbound-property rule), `config-rules/config-rules.test.mjs` (active profiles, diagnostics, error
   details, URL credentials), `wiring/spring-wiring.test.mjs` (the `@Enable...` check) and `java-reports.test.mjs`
   (glue, the `spring: true` gate).
+- **Fixing with `--fix`.** `nitpicker --fix --rule spring/<rule>` edits `application*.properties`,
+  `application*.yml` and `application*.yaml` under `src/main/resources` (and its `config/` folder)
+  for each rule below, on Gradle and Maven projects and with the Java and Kotlin presets. Each fix is
+  a `review` fix: it runs only when the rule is named, because it changes a value. Only the changed
+  files are edited, and every other byte of the file stays as it was (order, quoting, comments, line
+  endings, other YAML documents). A recipe uses the rule's own detection code, so it flags what the
+  rule flags.
+
+  | Rule                  | Fix                                                                                                                                                                                                            |
+  | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `ddl-auto`            | the mode becomes `validate`; `spring.jpa.generate-ddl=true` becomes `false`                                                                                                                                    |
+  | `open-in-view`        | `true` becomes `false`; a main file that never sets it gets `spring.jpa.open-in-view=false` in its first document                                                                                              |
+  | `error-details`       | `never` (`false` for `include-exception`); in `${NAME:always}` only the default changes                                                                                                                        |
+  | `actuator-exposure`   | `*` and the sensitive endpoints leave the list, `health` stays or replaces them; an open `access` becomes `none` (`read-only` for the default) and a shutdown switch is removed                                |
+  | `risky-startup-flags` | the line is removed                                                                                                                                                                                            |
+  | `unsafe-diagnostics`  | `always` becomes `when-authorized`; other settings are removed, and a YAML parent left empty goes with them                                                                                                    |
+  | `literal-secret`      | the literal becomes `${ENV_NAME}`, named like Spring's relaxed binding of the key (`spring.datasource.password` gives `SPRING_DATASOURCE_PASSWORD`); the default of a `${NAME:literal}` placeholder is dropped |
+  | `active-profile`      | `spring.profiles.active` becomes `spring.profiles.default`, which a deployment can override                                                                                                                    |
+
+  Not fixed: a credential inside a URL (the variable name is a choice), `spring.profiles.include`
+  (it needs a named `spring.profiles.group`), a YAML flow map such as `management: {a: b}`, a value
+  with backslash escapes or continuation lines, and files outside `src/main/resources`. Spring Boot
+  rejects `spring.profiles.active` inside a profile-specific document, so the rule's allowed form is
+  the deployment's environment variable or `spring.profiles.default`, not a move into a profile
+  document. A setting the recipe cannot edit is named in a "Fix notes:" line.
+
+  `missing-enable` adds the missing `@EnableScheduling`, `@EnableAsync`, `@EnableCaching`,
+  `@EnableMethodSecurity` or `@EnableRetry` (with its import, in sorted position) above the
+  `@SpringBootApplication` class of the module, in Java or Kotlin, for the files that changed. It
+  is a `review` fix, not a safe one: the annotation switches the feature on, so scheduled jobs start
+  to run, methods start to be cached, called asynchronously or checked for roles, which the code did
+  not do before. `@Secured` users get `@EnableMethodSecurity(securedEnabled = true)`. With no or
+  more than one `@SpringBootApplication` class, or an `@Retryable` of Spring Framework resilience
+  (which needs `@EnableResilientMethods`), nothing is edited and a note says so.

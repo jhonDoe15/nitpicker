@@ -1,10 +1,11 @@
 import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
 import { rule } from './require-http-timeout.mjs';
+import { withoutFixes } from '../../../../eslint-config/rule-hints.mjs';
 
 const tester = createRuleTester();
 const missing = (call) => [{ messageId: 'noTimeout', data: { call } }];
 
-tester.run('require-http-timeout with signals, defaults and passthrough', rule, {
+tester.run('require-http-timeout with signals, defaults and passthrough', withoutFixes(rule), {
   valid: [
     'export async function g(u: string) { const init: RequestInit = { method: "GET" }; init.signal = AbortSignal.timeout(5000); return fetch(u, init); }',
     'import axios from "axios"; export function g(u: string) { const config: any = {}; config.timeout = 5000; return axios.get(u, config); }',

@@ -7,9 +7,37 @@ export { FORMAT_FAILURE_STATUS } from '../adapters/python-tools.mjs';
 export const BLACK_DEFAULT_EXCLUDES =
   '/(\\.direnv|\\.eggs|\\.git|\\.hg|\\.ipynb_checkpoints|\\.mypy_cache|\\.nox|\\.pytest_cache|\\.ruff_cache|\\.tox|\\.svn|\\.venv|\\.vscode|__pypackages__|_build|buck-out|build|dist|venv)/';
 
-export function lintFixCommand(context, files) {
+export function lintFixCommands(context, fixable = []) {
   const options = lintOptions(context).filter((option) => option !== '--ignore-noqa');
-  return ['ruff', 'check', ...options, '--force-exclude', '--fix', '--', ...files];
+  return (file) => [
+    'ruff',
+    'check',
+    ...options,
+    '--force-exclude',
+    '--fix-only',
+    ...(fixable.length === 0 ? [] : ['--fixable', fixable.join(',')]),
+    '--exit-non-zero-on-fix',
+    `--stdin-filename=${file}`,
+    '-',
+  ];
+}
+
+export function reviewFixCommands(context, codes) {
+  const [first] = lintFixCommands(context)('');
+  const [tool, subcommand, ...rest] = first;
+  const options = rest.filter(
+    (option) => !option.startsWith('--stdin-filename=') && option !== '-',
+  );
+  return (file) => [
+    tool,
+    subcommand,
+    ...options,
+    '--unsafe-fixes',
+    '--select',
+    codes.join(','),
+    `--stdin-filename=${file}`,
+    '-',
+  ];
 }
 
 function flagValues(options, flag) {

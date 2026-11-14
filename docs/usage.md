@@ -534,6 +534,8 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `changed-metrics.json`: metrics that moved.
 - `held-findings.json`: findings that were already there and are no worse than at the base (for
   example a file over a size limit that did not grow); they are allowed, and any increase fails.
+- `fix-plans.json`: a plan for each new finding of a nitpicker check that needs judgment (see
+  [Fix plans](#fix-plans)).
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: informational notes the run reports but does not fail on, such as a base whose
   tests fail (see "A base whose tests fail" below).
@@ -716,7 +718,7 @@ automatically. See [another run is in progress](troubleshooting.md#another-run-i
 ## Command line
 
 ```text
-nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all [--fix --rule <tool/rule>] | --fix [--dry-run] [--verify narrow|full]]
           [--analyzer <name>]... [--rule <substring>]... [--details] [--json]
           [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
@@ -729,16 +731,18 @@ nitpicker cache publish [--analyzer <name>]...
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
 nitpicker explain <tool/rule>...
-nitpicker rules [--preset <name>] [--tool <name>]
+nitpicker rules [--preset <name>] [--tool <name>] [--fixable]
 ```
 
 - `<path>...`: show and gate only the findings in these files or folders; see
   [One file or folder](#one-file-or-folder).
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
-  Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
+  Cannot be combined with `--base`, sharding or `--defer-exit`. It takes `--fix` only together with
+  `--rule` (see [Fix one rule everywhere](#fix-one-rule-everywhere)).
 - `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
   gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
-  `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
+  `ruff check --fix` (safe fixes, nitpicker's rules only, plus the fixes the preset promoted; see
+  `skills/nitpicker-python/SOURCES.md`) and ruff format or black for Python;
   google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin; gofmt, gofumpt
   or goimports for Go (see the Java, Kotlin and Python sections and the
   [Go preset](go-preset.md#format-check-following-the-project)). The TypeScript and JavaScript fixers touch only the changed files
@@ -747,12 +751,22 @@ nitpicker rules [--preset <name>] [--tool <name>]
   is. Only files whose bytes changed are listed under "Fixed files:", and a
   formatter leaves alone a file that already failed its format check on the base (ktlint, whose
   findings are per line, formats only the code around your change in such a file). ESLint,
-  Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
+  `ruff check --fix`, Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
   renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
-  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
-  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
-  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
-  other fixers and the comparison still run. Cannot be combined with `--all`.
+  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint, `ruff check --fix`
+  and the Python, Java and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  the gate's `prettier.endOfLine` convention, as its format check expects. Before the formatter,
+  `--fix` applies nitpicker's own fix recipes for the preset (see [Fix recipes](#fix-recipes)); the
+  ESLint step applies the fixes of nitpicker's own rules (see [ESLint rule fixes](#eslint-rule-fixes)); and
+  lists each finding they fixed under "Fixed findings:". A fixer that fails is reported as a tool
+  error; the other fixers and the comparison still run. Only `--all` with `--rule` can be combined
+  with it; see [Fix one rule everywhere](#fix-one-rule-everywhere). See
+  [Preview and pick fixes](#preview-and-pick-fixes) for `--dry-run` and `--rule`. The Go preset runs its
+  formatter only and has no recipes.
+- `--verify <narrow|full>`: with `--fix`, how the fixes are checked; see
+  [Verify the fixes](#verify-the-fixes). `narrow` is the default.
+- `--dry-run`: with `--fix`, write `fix.patch` and `fixes.json` to the output folder and change no
+  file (see [Preview and pick fixes](#preview-and-pick-fixes)).
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
   be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
@@ -796,7 +810,7 @@ nitpicker rules [--preset <name>] [--tool <name>]
   yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
   to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
   a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
-- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable). With `--fix`, it takes full `tool/rule` names and picks the fixes to apply (see [Preview and pick fixes](#preview-and-pick-fixes)).
 - `--details`: print every new finding with its full message, and every held finding, in the
   console summary (see [Console summary](#console-summary)).
 - `--json`: print one compact JSON object on stdout instead of the console summary (see
@@ -850,10 +864,11 @@ The other commands:
   for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
   to list its rules. A name the reference does not know is reported with the closest rules and
   exits 1.
-- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
-  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
-  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
-  full, and `--tool` keeps one tool.
+- `nitpicker rules [--preset <name>] [--tool <name>] [--fixable]`: list the rules, one line each. It
+  lists the preset of the project's `nitpicker.config.json` (`typescript` without a config) and
+  leaves out the rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists
+  another preset in full, `--tool` keeps one tool, and `--fixable` keeps the rules `--fix` fixes
+  (marked `automatic`) or fixes with `--fix --rule` (see [Fix recipes](#fix-recipes)).
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 
@@ -1948,6 +1963,408 @@ A timeout is not policy: changing it is not listed as a policy change, and a pul
 raises it runs both snapshots with the head's timeouts. A lowered timeout that makes an analyzer
 time out is still a tool error (exit 2).
 
+## Preview and pick fixes
+
+`nitpicker --fix --dry-run` runs the fixers as `--fix` does, then puts every file back as it was.
+It writes two files to the output folder (`--output`, the folder of the reports) and changes
+nothing else:
+
+- `fix.patch`: a unified diff of all the fixes. Paths are relative to the repository root, so
+  `git apply <output>/fix.patch` run there gives the tree a real `--fix` gives.
+- `fixes.json`: `{ "fixes": [...] }`, one entry per fix with its `finding` (`tool`, `rule`, `path`,
+  `line`) and `recipe` for a recipe, or its `tool` for a fixer that rewrites whole files, plus its
+  `safety` (`safe` or `review`) and the `files` it touches.
+
+`fix.patch` holds file changes only. A fix that untracks a path (the `untrack-committed-files`
+recipe) changes the git index, which a patch cannot hold: `fixes.json` lists it, and a real `--fix`
+run untracks the path. A dry run leaves the index as it was.
+
+It prints one line per fix, at most 20 of them: `fixes.json` has the rest. The same cap holds for
+the "Fixed files", "Fixed findings" and "Fix notes" lists of a `--fix` run; when one is cut, the
+full lists are in `fix.log` in the output folder. The comparison that follows runs on the unfixed tree, so the exit
+code is the one of a run without `--fix`. `--dry-run` only works with `--fix`. A plain `--fix` run
+removes an older `fix.patch`, `fixes.json` and `fix.log` from the output folder.
+
+`nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the rules you name.
+Give the full name, as in the findings (`checkstyle/UpperEll`, `eslint-lint/no-var`, `ruff/F401`).
+Naming a rule also allows its `review` recipes, which `--fix` alone never runs. Without `--rule`,
+`--fix` is unchanged. With `--rule`, a step that cannot be narrowed to a rule does not run on its
+own, so it never rewrites findings you did not name:
+
+- Recipes run for the named rules only.
+- ESLint applies the fixes of the named rules in one pass, and the suggestion of a named rule that
+  offers exactly one. Name a rule as in the findings (`eslint-lint/<rule>`) or as `eslint/<rule>`.
+  With no ESLint rule named, it does not run.
+- `ruff check --fix` is limited to the named `ruff/<code>` rules (`--fixable`); with no ruff rule
+  named, it does not run.
+  A named code that ruff marks unsafe and that the Python preset reviewed (see
+  `skills/nitpicker-python/SOURCES.md`) also gets a second pass with `--unsafe-fixes`.
+- Prettier, the Python formatter and the Java and Kotlin formatters run only on the files the
+  selected fixes changed, so a file nothing fixed is not reformatted.
+
+Combine both to preview one rule: `nitpicker --fix --dry-run --rule checkstyle/UpperEll`.
+
+### Fix one rule everywhere
+
+`nitpicker --fix --all --rule <tool/rule>` fixes one rule in every file of the project, not only in
+the files you changed. A bare `--fix --all` is refused, so a project-wide rewrite is always one
+named rule and one diff you can review. Then the normal run of `--all` reports what is left. A
+fixer or inventory error in this run is a tool error of that `--all` run (exit 2), not only a line
+on stderr.
+
+- The fixers take every project file they cover. Recipes see all of them, and a recipe that works
+  on one file may edit any of them.
+- Formatters do not skip files that were unformatted on the base. They still run only on the files
+  the selected fixes changed.
+- Only the fixes of the named rules apply, as with `--fix --rule`.
+- Findings that the legacy inventory (`nitpicker.legacy.json`) allows are fixed too. After the fix
+  and the verification, the allowance of the fixed rule is lowered by the number of findings fixed
+  in that file, and an entry that reaches 0 is removed. It is never raised. When several sites of
+  the file match the rule, a fix does not say which one it removed, so their allowances stay and a
+  note says so. Fix notes list each
+  change. If the fixer of a rule does not report how many findings it fixed (ESLint, ruff), the
+  allowance stays as it is and a note says so.
+- `--dry-run` includes the inventory change in `fix.patch`. `--verify` works as with `--fix`.
+
+Example: `nitpicker --fix --all --rule checkstyle/UpperEll`.
+
+## Fix recipes
+
+A fix recipe rewrites the code a single rule flags, where one rewrite is correct in every case the
+rule reports. Recipes run with `--fix` on the changed files, before the formatter, so they never
+format. Each listed finding reads `<path>:<line> <tool>/<rule> (<recipe>)`. A recipe marked `review`
+runs only when `--fix --rule` names one of its rules.
+
+| Preset       | Rule                                                                                                                                                                                                                                                                                                                    | Recipe                                                                                                               | What it does                                                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| java         | `structure/near-duplicate` (copies in one class)                                                                                                                                                                                                                                                                        | `java-extract-near-duplicate`                                                                                        | extracts the shared method of a proved copy and calls it from both copies (review)                                                              |
+| java         | `structure/near-duplicate` (a run shared by two methods of a class)                                                                                                                                                                                                                                                     | `java-extract-partial-run`                                                                                           | extracts the shared statements of a `partial-run` pair into a method and calls it from both (review)                                            |
+| typescript   | `structure/near-duplicate` (copies in one file)                                                                                                                                                                                                                                                                         | `typescript-extract-near-duplicate`                                                                                  | extracts the shared function of a proved copy and calls it from both copies                                                                     |
+| typescript   | `structure/near-duplicate` (a run shared by two functions of a file)                                                                                                                                                                                                                                                    | `typescript-extract-partial-run`                                                                                     | extracts the shared statements of a `partial-run` pair into a function and calls it from both (review)                                          |
+| java         | `checkstyle/UpperEll`                                                                                                                                                                                                                                                                                                   | `java-upper-ell`                                                                                                     | turns the `l` suffix of a `long` literal into `L`, outside strings, text blocks and comments                                                    |
+| kotlin       | `detekt/detekt.style.NewLineAtEndOfFile`                                                                                                                                                                                                                                                                                | `kotlin-final-newline`                                                                                               | ends a file with a line break, CRLF when the file uses CRLF                                                                                     |
+| java, kotlin | `errorprone/<Check>` for the checks in [Error Prone fixes](#error-prone-fixes)                                                                                                                                                                                                                                          | `java-error-prone-safe`, `java-error-prone-review`                                                                   | applies the fix Error Prone suggests, to the changed lines of `.java` files                                                                     |
+| java, kotlin | `pmd/<Rule>` for the rules in [Fix-only Error Prone checks](#fix-only-error-prone-checks)                                                                                                                                                                                                                               | `java-source-safe`, `java-source-review`                                                                             | applies the rewrite of a check nitpicker ships, to the changed lines of `.java` files                                                           |
+| kotlin       | detekt `UseRequire`, `UseCheckOrError`, `UseRequireNotNull`, `UseCheckNotNull`, `MayBeConst` (private properties; the others are `review`), `ModifierOrder`, `OptionalAbstractKeyword`, `ExplicitItLambdaParameter`, `UnnecessaryLet`, `VarCouldBeVal` and the empty class, finally, init and default constructor rules | `kotlin-use-require`, `kotlin-may-be-const` and the other `kotlin-*` recipes in `skills/nitpicker-kotlin/SOURCES.md` | rewrites the Kotlin text the rule flags                                                                                                         |
+| kotlin       | `catch-log-without-exception`, `CommentedOutCode`, `GeneratedOnHandWrittenCode`, `FocusedTest`, `ValidationAnnotationTarget`                                                                                                                                                                                            | `kotlin-catch-log-without-exception` and its siblings                                                                | passes the exception to the logger, deletes commented-out code, drops the marker or focus, writes `@field:`                                     |
+| kotlin       | `LogStringConcatenation`, `MayBeConst` on non-private properties, `UseIsNullOrEmpty`, `UseOrEmpty`, `UnusedPrivateProperty`, `UnusedPrivateMember`, `JvmSyntheticOnHandWrittenCode`, `MutationIgnoreMarker`                                                                                                             | `kotlin-use-is-null-or-empty` and its siblings                                                                       | `review` recipes: they run only when their rule is selected, because the text does not prove them                                               |
+| python       | `python-rules/catch-log-without-exception`                                                                                                                                                                                                                                                                              | `python-exc-info`                                                                                                    | adds `exc_info=True` to a standard-library `logging` call in an `except` handler (safe)                                                         |
+| python       | `python-rules/falsy-default`                                                                                                                                                                                                                                                                                            | `python-falsy-default`                                                                                               | rewrites `x or d` to `x if x is not None else d` and `x if x else d` to `x if x is not None else d` (review)                                    |
+| python       | `python-rules/frozen-dataclass`                                                                                                                                                                                                                                                                                         | `python-frozen-dataclass`                                                                                            | adds `frozen=True` to a `@dataclass` with no bases, no subclass and no assigned field (review)                                                  |
+| python       | `python-rules/http-without-timeout`                                                                                                                                                                                                                                                                                     | `python-http-timeout`                                                                                                | adds `timeout=10`, or replaces `timeout=None`, on a client, session or pool method call (review)                                                |
+| python       | `python-rules/shell-command`                                                                                                                                                                                                                                                                                            | `python-shell-arguments`                                                                                             | turns a literal `["sh", "-c", "cmd"]` or `asyncio.create_subprocess_shell("cmd")` without shell syntax into an argument list (review)           |
+| python       | `python-rules/tls-verification-off`                                                                                                                                                                                                                                                                                     | `python-tls-verification`                                                                                            | drops a literal `verify=False` or `ssl=False` keyword (review)                                                                                  |
+| python       | `python-rules/unsafe-deserialization`                                                                                                                                                                                                                                                                                   | `python-safe-load`                                                                                                   | turns `yaml.unsafe_load` and `yaml.full_load` (and the `_all` forms) into `yaml.safe_load` (review)                                             |
+| python       | `python-rules/uncollected-tests`                                                                                                                                                                                                                                                                                        | `python-collected-test-name`                                                                                         | renames the file to `test_<name>.py` or the first collected pattern, unless that name exists (review)                                           |
+| python       | `mutmut/mutant-ignored`                                                                                                                                                                                                                                                                                                 | `python-mutmut-pragma`                                                                                               | removes `# pragma: no mutate` comments from production code (review)                                                                            |
+| java, kotlin | `spring/ddl-auto`, `open-in-view`, `error-details`, `actuator-exposure`, `risky-startup-flags`, `unsafe-diagnostics`, `literal-secret`, `active-profile`                                                                                                                                                                | `spring-<rule>`                                                                                                      | edits the one setting in `application*.properties` and `application*.yml` under `src/main/resources`, and nothing else in the file (review fix) |
+| java, kotlin | `spring/missing-enable`                                                                                                                                                                                                                                                                                                 | `spring-missing-enable`                                                                                              | adds the missing `@Enable...` annotation and its import to the `@SpringBootApplication` class (review fix)                                      |
+| typescript   | `eslint/nitpicker/no-comments`                                                                                                                                                                                                                                                                                          | `typescript-restating-doc-comment`                                                                                   | deletes the lines of an exported JSDoc comment that only restates the name of its declaration or type member                                    |
+| java         | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `java-restating-doc-comment`                                                                                         | deletes the lines of a Javadoc comment in a main source set that only restates the name of its declaration                                      |
+| kotlin       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `kotlin-restating-doc-comment`                                                                                       | the same for KDoc, and for Javadoc in the Java files of the project                                                                             |
+| python       | `facts/doc-comment-content`                                                                                                                                                                                                                                                                                             | `python-restating-docstring`                                                                                         | deletes the lines of a docstring that only restates the name of its function or class, or turns a docstring that is the whole body into `pass`  |
+
+Near-duplicate extraction. The `near-duplicate` recipes handle a `same` or `parameterizable` pair
+whose copies sit in one file (TypeScript, JavaScript) or in one class (Java). The first copy becomes
+the shared function: a module-level function after the first copy, or a private method (static when
+it reads no instance state). Both bodies become one call, and each signature stays. Differing
+literals become parameters named after what they flow into. Any other differing value is passed as
+an arrow function (TypeScript and JavaScript) so it is evaluated where it was. A recipe leaves the
+finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
+variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
+JavaScript), the helper name is taken, the copies differ in types, exceptions or the comments one of
+them holds, a copy takes part in more than one pair, a string or template literal spans lines
+(TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
+`final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
+name that a superclass may declare, a call with a static and an instance overload), or the copies
+differ in a way a parameter cannot carry. A pair in two files or two classes is not looked at. The
+TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
+not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
+whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,
+Python and Go have no extraction recipe.
+
+Partial-run extraction. The `partial-run` recipes handle a pair that shares a run of three or more
+statements, in two functions of one file or two methods of one class. The shared run becomes a
+function placed after the first of the two. Each copy of the run becomes one call. The inputs of the
+function are the variables the run reads and declared before it, and the values the copies differ in.
+The one value the code after the run uses is returned, and a run that ends with `return` becomes a
+returned call. A recipe leaves the finding for its fix plan when the run returns early on some paths,
+defines more than one value that the code after it uses, writes a variable declared before it, jumps
+out of itself, awaits or yields, declares a function, a class or a `var`, sits in a Java `try` with a
+`catch`, throws other exceptions in the two copies, calls code that may change a variable the run
+reads through a closure (TypeScript, JavaScript), or builds a closure over a `let` the run declares
+(TypeScript, JavaScript). It also declines for the reasons of the
+whole-copy recipes above (a name in use, comments, `this`, copies in more than one pair). Signatures,
+parameters and return types of the two functions may differ.
+
+The TypeScript, Java and Kotlin recipes are safe: `--fix` runs them with no further choice. The Python
+recipe is a review recipe, because a docstring is the `__doc__` of its object: `--fix --rule
+facts/doc-comment-content` runs it. The Go preset has no recipes. A doc comment is left alone when it shares its line with code, when an
+`exceptions` entry for `doc-comment-content` covers its file, and in the places where the rule does
+not look (tests, and for Python anything outside the production modules).
+
+The rule reference says what `--fix` does about each rule, in a "Fix" line that `nitpicker explain`
+prints too: `automatic` (a safe recipe, or a fixer that runs under `--fix`: ESLint rules that
+declare a fix, Prettier, ruff safe fixes and the formatters), `with --fix --rule` (a recipe that needs a
+review and runs only when you name the rule), `fix plan` (nitpicker writes the steps, and nothing is
+rewritten) or `none`. The line is computed from the recipes and the fixers, so it cannot drift: a
+test fails when the generated reference does not match them. An ESLint or ruff fix does not
+cover every case a rule reports. Checkstyle layout rules are not listed as fixed: with a Java
+formatter they are suppressed, and without one `--fix` does not format.
+
+TypeScript and JavaScript run three more fixers on the changed files, before ESLint's own fixes and
+the formatter. Each one reads the rules it fixes from `--fix --rule`; with no rule selected it applies
+only what is listed as safe. Every decision is recorded in
+[`skills/nitpicker-typescript/SOURCES.md`](../skills/nitpicker-typescript/SOURCES.md).
+
+| Preset                 | Rule                                                        | Fixer               | What it does                                                                                                                                                                 |
+| ---------------------- | ----------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| typescript, javascript | `eslint-lint/<rule>` of a rule that only offers suggestions | ESLint suggestion   | applies the suggestion when the rule offers exactly one; a rule that offers two or more is left alone                                                                        |
+| typescript, javascript | `typescript-typecheck/TS<code>`                             | TypeScript code fix | applies the language service's fix for an allowlisted error code, such as a missing `override` (safe) or a missing import, an unused declaration, a missing `await` (review) |
+| typescript, javascript | `dead-code/unused-dependency`                               | knip `--fix`        | removes an unused dependency from a changed `package.json`                                                                                                                   |
+| typescript, javascript | `dead-code/exports`, `dead-code/types`                      | knip `--fix`        | removes the `export` keyword of an unused export or type, only when `--rule` selects it; the declaration stays, so it may then be reported as unused                         |
+| typescript, javascript | `dead-code/files`                                           | knip `--fix`        | deletes an unused changed file, only when `--rule dead-code/files` selects it                                                                                                |
+
+A fix marked review changes behaviour on purpose, so it runs only when its rule is selected with
+`--rule`. knip runs on a temporary copy of the project, and only edits to changed files are written
+back, through the same checked write as the recipes. A `package.json` edit keeps its indentation.
+
+Review recipes can be wrong for a project, so `--fix` runs them only when you select their rule with
+`--rule <tool/rule>`:
+
+| Preset                 | Rule                                                                                                           | Recipe                                             | What it does                                                                                                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| all                    | `repository-hygiene/committed-env-file`, `committed-build-output`, `committed-binary`, `committed-private-key` | `untrack-committed-files`                          | untracks the file or folder with `git rm --cached` and adds an anchored line to the `.gitignore` of the project (created when missing, line endings kept, no duplicate); the working copy stays |
+| python                 | `dependencies/unused-dependency`                                                                               | `python-dependencies`                              | removes the dependency from `pyproject.toml` (PEP 621 `[project] dependencies`, or Poetry `[tool.poetry.dependencies]`)                                                                         |
+| python                 | `dependencies/unlisted-dependency`                                                                             | `python-dependencies`                              | adds `name>=<installed version>` to `pyproject.toml`: the project dependencies, or the uv `dev` group, `[tool.uv] dev-dependencies` or the Poetry dev table when only tests import it           |
+| python                 | `dependencies/no-dev-dependency-in-production`                                                                 | `python-dependencies`                              | moves the entry from the development group to the project dependencies as it was written                                                                                                        |
+| typescript, javascript | `eslint/nitpicker/no-default-export`                                                                           | `typescript-no-default-export`                     | turns the default export into a named export (the declared name, or the file name for an anonymous one) and rewrites every importer                                                             |
+| typescript, javascript | `eslint/nitpicker/file-name-casing`                                                                            | `typescript-file-name-casing`                      | renames the file to the expected casing and rewrites every import path, the file's own relative imports included                                                                                |
+| typescript, javascript | `eslint/nitpicker/naming-convention`                                                                           | `typescript-naming-convention`                     | renames the identifier to the casing the rule names, in every file that refers to it                                                                                                            |
+| typescript, javascript | `eslint/nitpicker/no-compatibility-shim`                                                                       | `typescript-no-compatibility-shim`                 | deletes the second exported name and points its importers at the canonical name                                                                                                                 |
+| typescript, javascript | `eslint/nitpicker/no-test-helpers-in-source`                                                                   | `typescript-no-test-helpers-in-source`             | moves the helper to `test-support/` under the test root, or beside the code in a colocated layout                                                                                               |
+| typescript, javascript | `eslint/nitpicker/no-uncollected-tests`                                                                        | `typescript-no-uncollected-tests`                  | renames the file to `<name>.test.<ext>`                                                                                                                                                         |
+| typescript, javascript | `eslint/nitpicker/no-external-executables-in-unit-tests`                                                       | `typescript-no-external-executables-in-unit-tests` | moves the unit test into the integration folder of the test root                                                                                                                                |
+| typescript, javascript | `coupling/shared-used-by-one-feature`                                                                          | `typescript-shared-used-by-one-feature`            | moves the shared module into the one feature that imports it                                                                                                                                    |
+| typescript, javascript | `entry-points/public-alternative-bypass`                                                                       | `typescript-public-alternative-bypass`             | imports from the entry point and adds the export there when it is missing                                                                                                                       |
+| typescript, javascript | `dependency-architecture/feature-internals-only-through-index`                                                 | `typescript-feature-internals-only-through-index`  | imports from the feature index and adds the export there when it is missing                                                                                                                     |
+| typescript, javascript | `structure/duplicate-definition`                                                                               | `typescript-duplicate-definition`                  | keeps the exported copy (else the first), exports it if needed, and imports it in the other module, keeping the name exported there                                                             |
+| typescript, javascript | `structure/exported-name-collision`                                                                            | `typescript-exported-name-collision`               | aliases one import with `as` to the next free name                                                                                                                                              |
+| typescript, javascript | `eslint/nitpicker/no-forwarding-wrapper`                                                                       | `typescript-no-forwarding-wrapper`                 | points callers at the target and deletes the wrapper                                                                                                                                            |
+| typescript, javascript | `structure/unused-prop`                                                                                        | `typescript-unused-prop`                           | drops the property from the type and the destructuring                                                                                                                                          |
+| typescript, javascript | `structure/unused-option`                                                                                      | `typescript-unused-option`                         | drops the property from the type and the destructuring                                                                                                                                          |
+| typescript, javascript | `dead-code/test-only-export`                                                                                   | `typescript-test-only-export`                      | moves the declaration to test support and repoints test imports                                                                                                                                 |
+| typescript, javascript | `eslint/nitpicker/no-dev-dependency-in-production`                                                             | `typescript-no-dev-dependency-in-production`       | moves the package from `devDependencies` to `dependencies` with the same range and formatting; reinstall afterwards to refresh the lockfile                                                     |
+
+The installed version is read with `importlib.metadata` in the interpreter the Python checks use. When
+it cannot be read, needs a newer Python than the `requires-python` of `pyproject.toml` allows (checked when the
+`packaging` module is installed), or `pyproject.toml` has no list to edit, the dependency is left alone and a "Fix
+notes:" line names it. Other manifests (`requirements.txt`, `setup.py`, `Pipfile`) are not edited.
+
+`--fix` never commits and never stages a file. The one thing it does to the git index is the untracking
+above: `git rm --cached` on the path of a finding of those four rules (the removal stays staged), run
+after the `.gitignore` edit succeeds and with literal path matching, so no other index entry changes. A
+`committed-private-key` fix untracks the file but is not listed as fixed: a "Fix notes:" line says the
+key has to be rotated, because it stays in the history.
+
+A recipe edits a file only when it still holds the bytes the recipe read (a recipe that lists a
+file of its own, such as `.gitignore` or `pyproject.toml`, may edit that file as well). A file that changed in the
+meantime is left as it is and named in a "Fix notes:" line. When two fixes overlap, the later one is
+skipped and planned again on the new text. Recipes repeat until nothing changes, up to three passes,
+and a fix still left after that is named in a "Fix notes:" line. A recipe that fails is reported as
+a tool error, and the other recipes still run.
+
+The Python recipes run the rule script in the project's Python environment over the file texts, so
+they flag what the rules flag and convert the positions to text offsets in UTF-16 units. A recipe
+declines, with a "Fix notes:" line, when it cannot prove the rewrite: dynamic or spread arguments,
+an existing keyword of the same name, comments inside the edited span, or a logger that is not the
+standard library's. Recipes marked review run only when you select their rule.
+
+### Verify the fixes
+
+A recipe can be wrong in a case its author did not foresee. After the fixers have run, `--fix`
+checks every recipe that applied a fix:
+
+1. It runs again the analyzers that report the fixed rules, plus the one that compiles or type
+   checks the project (`typescript-typecheck` for TypeScript, the build for Java and Kotlin, the
+   type checker of the preset for Python). The analyzers are found from the tools they report, and
+   they run in the `--quick` profile, so no tests, coverage or mutation run. The findings are
+   compared by tool, rule and file with the ones the same analyzers give for the files before the
+   fix.
+2. A recipe is rolled back when its finding is still there, when it adds a finding in a file it
+   touched, or when it adds a compile or type error. A new compile or type error in a file that no
+   recipe touched rolls back every recipe, as nitpicker cannot tell which one caused it.
+3. A rolled back recipe gets its files back as they were before `--fix`, and a "Fix notes:" line
+   names the recipe, its files and the reason: `--fix rolled back <recipe> (<files>): <reason>`.
+   Two recipes that touched the same file are rolled back together. The other recipes stay applied,
+   and the comparison runs on the tree that is left. The files of a rolled back recipe are not
+   formatted either, and they are not listed under "Fixed files:" or "Fixed findings:".
+
+When no recipe fixed anything, nothing is verified. When the analyzers fail, or none reports the
+fixed rules, every fix stays and a "Fix notes:" line says that the fixes were not verified.
+Formatters and `eslint --fix` are trusted and are not rolled back by themselves. `--fix --dry-run`
+verifies too, so the plan only lists the fixes that would stay.
+
+`nitpicker --fix --verify full` runs the whole gate instead (the analyzers you selected, tests and
+mutation testing included) and uses the same rules. In it a new `tests` finding anywhere rolls
+every recipe back too. It takes as long as a normal run.
+
+The TypeScript project recipes read the whole project, not only the changed files, because a rename
+or a move has to reach every importer. They use the TypeScript language service of the installed
+`typescript` package (`findRenameLocations` and `getEditsForFileRename`) over the file texts the run
+read, so planning does not write. Each flags what its rule flags: the recipe runs the rule's own
+check on the file. A recipe declines, with a "Fix notes:" line, and leaves the finding when it
+cannot prove the rewrite:
+
+- a `import()` or `require()` with a path that is computed, or one that loads the module in a way
+  that names its exports at run time (for a default export or a rename);
+- a string that names the module path, such as `vi.mock('./file')`;
+- a namespace import that is read with a computed key, and a default export that is re-exported as
+  a default;
+- a target path that is taken, or an importer that `--fix` does not cover;
+- a module that `package.json` names as an entry point, that a `.vue`, `.svelte`, `.astro`, `.md` or
+  `.mdx` file may import, or that a string names, such as `vi.mock('./greet.js')`;
+- a module that another module re-exports as a namespace (`export * as name`);
+- a change that would add a compiler error to a file it touches or to a file that imports one of
+  them (the plan is checked on a second copy of the project before it is accepted).
+
+The import and duplicate recipes also decline when the new import would add a cycle, or when an
+entry point lacks the export and the import is a default or a namespace import. The package recipe
+changes `package.json` only, in place, keeping its indentation and key order.
+
+A move or a rename changes the module path that other code, and other repositories, may import, so
+all of these recipes are `review`. `dead-code/files` is not a recipe of its own: the knip step above
+deletes an unused file when `--fix --rule dead-code/files` selects it, and keeps the file, with a
+"Fix notes:" line, when a computed `import()` or a string path could still load it. The other
+decisions are in `skills/nitpicker-typescript/SOURCES.md`.
+
+### Fixes in the reports
+
+A new finding that a file-scope recipe of the preset covers carries a `fix` in `new-findings.json`:
+`{ recipe, safety, path, sha256, textLength, edits }`. This holds for every preset with recipes
+(TypeScript, JavaScript, Java, Kotlin and Python); the Go preset has none. A finding fixed by a
+project-scope recipe (a rename, a move, a change in another file), by a formatter, or by ESLint,
+ruff, knip or Error Prone themselves has no `fix` field: `--fix --dry-run` shows those. The edits use the engine's
+shape (`replace` with `start` and `end` offsets in UTF-16 code units, or `write` of the whole file)
+and are only a plan: nitpicker writes no file for them. Apply them only when `path` still has the
+`sha256` given. A fix that touches more than one file has `recipe` and `safety` only. When several
+findings of one rule sit on one line, each gets its own fix, in the order of their columns; when
+the recipe does not give one fix for each of them, none of them gets a `fix`. An analyzer that
+already knows the edit may set `fix` on its finding, and nitpicker keeps it.
+
+In `report.sarif` and `report-baseline.sarif`, the result of such a finding has `fixes[]` with
+`artifactChanges[].replacements[]`: a `deletedRegion` with `charOffset` and `charLength`, and the
+`insertedContent.text`. Editors and code review tools can offer it as one click.
+
+## ESLint rule fixes
+
+With the TypeScript and JavaScript presets, `--fix` also applies the fixes of nitpicker's own ESLint
+rules, in the same ESLint step as the rest. A fix is offered only when one rewrite is correct in every
+case the rule reports. When nitpicker cannot prove the rewrite is safe (a computed key, a spread, a
+dynamic callee, a comment inside the text it would replace, a name that is not in scope), it leaves the
+finding as it is. No fix adds a comment.
+
+| Rule                                                 | Kind   | What it does                                                                                                             |
+| ---------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------ |
+| `nitpicker/no-comments`                              | safe   | deletes the comment, and its whole line when it is alone on it; keeps JSDoc that carries types                           |
+| `nitpicker/preserve-error-cause`                     | safe   | adds `{ cause: error }` to the wrapper call; leaves a catch without a binding                                            |
+| `nitpicker/structured-catch-logging`                 | safe   | turns `logger.error('message', error)` into `logger.error({ err: error }, 'message')`                                    |
+| `nitpicker/no-unused-dom-environment`                | safe   | changes a `@vitest-environment` or `@jest-environment` directive to `node`                                               |
+| `nitpicker/no-test-retry`                            | safe   | removes the retry option or the `jest.retryTimes` and `this.retries` call                                                |
+| `nitpicker/bounded-container-teardown`               | safe   | writes `teardownContainer(container)` when that function is in scope                                                     |
+| `nitpicker/container-pause-requires-finally-unpause` | safe   | wraps the work between `pause()` and `unpause()` in `withPausedContainer` when that function is in scope                 |
+| `nitpicker/fake-timers-require-restore`              | safe   | adds an `afterEach` that restores the timers, stubbed globals or stubbed environment                                     |
+| `nitpicker/test-tsconfig-pins-lib-and-types`         | safe   | adds `types: []` and `lib: ['ES2022']` to a literal `compilerOptions`                                                    |
+| `nitpicker/hermetic-git-in-tests`                    | safe   | adds `GIT_CONFIG_GLOBAL` and `GIT_CONFIG_NOSYSTEM` to the `env` of the git call                                          |
+| `nitpicker/no-mutating-method-in-domain`             | safe   | writes `toSorted` or `toReversed` for a `sort` or `reverse` through a computed key on a fresh array whose result is used |
+| `nitpicker/no-falsy-default`                         | review | writes `??` for `\|\|` or for `x ? x : fallback`                                                                         |
+| `nitpicker/require-http-timeout`                     | review | adds `signal: AbortSignal.timeout(10000)` to `fetch` and `timeout: 10000` to `axios.<method>`                            |
+| `nitpicker/require-test-process-timeout`             | review | adds `timeout` (the test declaration ceiling, 10000 ms by default) to `spawnSync`, `execSync` and `execFileSync`         |
+| `nitpicker/no-raised-test-timeout`                   | review | removes the raised timeout so the default applies                                                                        |
+| `nitpicker/no-disabled-tls-verification`             | review | removes the option or assignment that turns verification off                                                             |
+| `nitpicker/no-shell-string-command`                  | review | turns a plain command template into an `execFile` call with an argument array, or drops `shell: true`                    |
+
+A `safe` rule has an ESLint fix, so `--fix` applies it. A `review` rule changes behaviour on purpose, so it
+offers its rewrite as an ESLint suggestion, which plain `--fix` never applies. When a run selects the rule
+(`--fix --rule eslint-lint/<rule>`), the fix, or the one suggestion of a `review` rule, is applied to the changed
+files, and the other ESLint rules are not fixed in that run. Prettier runs after ESLint as usual.
+
+`nitpicker/structured-catch-logging` is configured in the logging check, not in the `eslint-lint` check, so
+`--fix` also loads the rules of the logging check for the production files it covers. Its fix is applied
+like the others; the logging check's other rule, `nitpicker/no-production-console`, has no fix.
+
+### Error Prone fixes
+
+Error Prone suggests a fix for about 370 of its checks. With `--fix` on a Gradle or Maven project,
+nitpicker compiles the project once more with the settings the gate compiles with (the init script
+on Gradle, the compiler arguments on Maven) plus `-XepPatchChecks` and `-XepPatchLocation`, into a
+folder of its own, never in place. Error Prone writes its suggested fixes as a patch. nitpicker
+keeps the hunks that touch a line you changed and applies them as checked edits: a hunk whose old
+lines are no longer in the file is skipped. Files you did not change stay byte-identical. The step
+covers the `.java` files of Java and Kotlin projects. A compile that fails is a `error-prone-fix`
+tool error, and the other fixers still run.
+
+A plain `--fix` applies the checks on the safe list: fixes that keep behaviour and match the form
+the preset asks for. The other checks are on the review list and run only when a run selects their rule, for example
+`errorprone/ClassCanBeStatic`: their fix changes behaviour on purpose, changes a
+public signature, or touches several places that must change together. The lists and the reasons
+are in `skills/nitpicker-java/SOURCES.md`.
+
+### Fix-only Error Prone checks
+
+PMD ships no fixes. For some of its rules nitpicker ships its own Error Prone checks, in
+`languages/java/gradle/errorprone/fix-checks/`. They only fix: the finding still comes from PMD,
+and a fix is reported under that rule, for example `pmd/PreserveStackTrace`. nitpicker compiles
+them against the pinned Error Prone when it runs the patch compile above, so they cost no extra
+compile, and they never run in the gate. Each check edits one file, so none renames a public symbol.
+
+`pmd/UseStandardCharsets`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`,
+`pmd/LogStringConcatenation` and `pmd/UseCollectionIsEmpty` are on the safe list. The others
+(`pmd/LiteralsFirstInComparisons`, `pmd/PreserveStackTrace`, `pmd/SpringConstructorInjection`, `pmd/DetachedTestCase`,
+`pmd/RetryInTest`, `pmd/MutationIgnoreMarker`, `pmd/GeneratedOnHandWrittenCode`) change what the
+code does or what the tests measure, so they run only when a run selects their rule. When two
+fixes sit within a few lines of each other, Error Prone writes one hunk and nitpicker reports it
+under the nearest rule. Which rules have a check, and why the others do not, is in
+`skills/nitpicker-java/SOURCES.md`.
+
+## Fix plans
+
+Most of what is left after formatting needs judgment: a function that is too long, a mutant that
+survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
+can rewrite these, but an agent still spends most of its work finding the code, its context and the
+form the rule allows. A comparison run writes that down in `fix-plans.json`, beside
+`new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The rule
+reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
+on) keeps its message and its help link and gets no plan.
+
+A plan changes no file, and nitpicker calls no language model for it: it is built from the finding,
+the project files and the allowed form of the rule. The schema is
+[`spec/fix-plans.schema.json`](../spec/fix-plans.schema.json), also exported by the package as
+`nitpicker/spec/fix-plans.schema.json`. Each plan has:
+
+- `finding`: the `tool`, `rule`, `path` and `line` of the finding.
+- `kind`: the change asked for. It is one of `extract-function`, `split-file`,
+  `add-test-for-branch`, `strengthen-assertion`, `kill-mutant`, `remove-duplicate`,
+  `extract-shared-function`, `invert-dependency`, `move-module`, `parse-at-boundary`,
+  `reduce-complexity`, `group-parameters`, `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
+  whose only guidance is their allowed form.
+- `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`.
+- `context`: only what the kind needs. It holds the measured value and the limit with candidate
+  blocks to move for a size rule, the branch and the nearest test file for coverage, the mutation
+  (the mutator, the original and the replacement) for a surviving mutant, both copies for a
+  duplicate, the function to extract from a near-duplicate (its signature, the arguments each copy
+  passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
+  import edge or cycle for an architecture rule. Where no test file exists, the
+  context names the path the project's test layout suggests.
+- `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
+- `doneWhen`: the finding that stops being reported.
+
+The report lists one line per plan (`<tool>/<rule> <path>:<line> <kind>`) and the console summary
+one line, `Fix plans: <count>, see <folder>/fix-plans.json`. A project that ran no comparison, such
+as `--all`, has no plans. The plans come from one registry keyed by tool and rule
+(`shared/fix-plans/registry.mjs`), and the `fix plan` status of the rule reference is computed from
+the same registry, so the two cannot differ. A plan does not list the tests that ran a mutant.
+
 ## Java preset
 
 Set `"preset": "java"` in `nitpicker.config.json` to gate a Gradle or Maven project the same way: PMD,
@@ -2184,8 +2601,9 @@ error.
 
 `--fix` runs inside that environment, on the changed `.py`, `.pyi` and `.ipynb` files, the files
 the gate's ruff and format checks cover: `ruff check --fix` with nitpicker's selected rules and
-ruff's safe fixes, then the formatter the run names (ruff format or black) with the options of the
-"Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
+ruff's safe fixes, one file at a time over stdin so that nitpicker writes the result the same safe
+way it writes formatter output, then the formatter the run names (ruff format or black) with the
+options of the "Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
 never deleted (the gate's check ignores them, but only on the lines you change). Like ESLint on
 TypeScript, it fixes the whole changed file, not only the changed lines. Notebooks go to Black too,
 which formats them, as the gate checks them, only when its `jupyter` extra (`black[jupyter]`) is
@@ -2834,7 +3252,7 @@ loosen the gate. A project whose ruff or black config set the line length or quo
 conventions (and detekt's defaults) until it opts in. The run prints, once at the start, the exact
 command that formats the code the way nitpicker checks it (`Format with ruff: ruff format ...`), and
 one line per ignored config, such as `Ignoring [tool.ruff] in pyproject.toml except
-lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding points to that command.
+lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }`. Each format finding asks for `nitpicker --fix`, which formats the changed files with that formatter.
 
 | Tool     | Default (isolated)                                                                                 | Read when `precedence` lists `"project"`                                                                                    |
 | -------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |

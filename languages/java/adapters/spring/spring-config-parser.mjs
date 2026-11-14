@@ -262,7 +262,7 @@ function scalarValue(text) {
   return unquote(withoutNodeProperties(text.trim()));
 }
 
-function unquote(text) {
+export function unquote(text) {
   const quote = text[0];
   if ((quote === '"' || quote === "'") && text.length >= 2 && text.endsWith(quote)) {
     return text.slice(1, -1);

@@ -1,0 +1,34 @@
+{
+  "missing-import": {
+    "src/lib.ts": "export function helper(): number {\n  return 1;\n}\n",
+    "src/a.ts": "export function run(): number {\n  return helper();\n}\n"
+  },
+  "unused-declaration": {
+    "src/a.ts": "export function run(): number {\n  const unused = 3;\n  return 1;\n}\n"
+  },
+  "missing-await": {
+    "src/lib.ts": "export async function load(): Promise<number> {\n  return 1;\n}\n",
+    "src/a.ts": "import { load } from './lib.js';\n\nexport async function run(): Promise<number> {\n  return Math.abs(load());\n}\n"
+  },
+  "missing-async": {
+    "src/lib.ts": "export async function load(): Promise<number> {\n  return 1;\n}\n",
+    "src/a.ts": "import { load } from './lib.js';\n\nexport function run() {\n  return await load();\n}\n"
+  },
+  "missing-const": {
+    "src/a.ts": "export function run(): number {\n  total = 4;\n  return total;\n}\n"
+  },
+  "add-override": {
+    "src/a.ts": "class Base {\n  run(): void {}\n}\n\nexport class Child extends Base {\n  run(): void {}\n}\n"
+  },
+  "remove-override": {
+    "src/a.ts": "class Base {\n  run(): void {}\n}\n\nexport class Child extends Base {\n  override walk(): void {}\n}\n"
+  },
+  "ambiguous-import": {
+    "src/one.ts": "export function helper(): number {\n  return 1;\n}\n",
+    "src/two.ts": "export function helper(): number {\n  return 2;\n}\n",
+    "src/a.ts": "export function run(): number {\n  return helper();\n}\n"
+  },
+  "unused-import": {
+    "src/a.ts": "import path from 'node:path';\nimport { basename } from 'node:path';\n\nexport function run(): string {\n  return basename('a');\n}\n"
+  }
+}

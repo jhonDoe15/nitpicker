@@ -20,6 +20,18 @@ describe('the ruff snapshot of the rule reference', () => {
   });
 });
 
+describe('the safe fixes of the ruff snapshot', () => {
+  const safeFix = (code) =>
+    readRuffSnapshot().rules.find((rule) => rule.code === code)?.safeFix === true;
+
+  it('marks the rules whose fix ruff applies by default, and not an unsafe fix or no fix', () => {
+    expect(safeFix('F401')).toBe(true);
+    expect(safeFix('B013')).toBe(true);
+    expect(safeFix('F841')).toBe(false);
+    expect(safeFix('ARG001')).toBe(false);
+  });
+});
+
 describe('isOlderVersion', () => {
   it('compares dotted versions part by part as numbers', () => {
     expect(isOlderVersion('0.16.8', '0.16.10')).toBe(true);

@@ -432,6 +432,7 @@ it('fails on purpose', () => {
           '  eslint-lint/nitpicker/no-null: Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and as a value in the data passed to `JSON.stringify` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing. An exception fits only when a framework or library requires it.',
           '    src/main/legacy.js:2:22',
           '    If this is intended, add {"rule":"nitpicker/no-null","paths":["src/main/legacy.js"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+          `Fix plans: 1, see ${sharedRoot}/reports/diff/fix-plans.json`,
           'Ran only: eslint-lint. Run nitpicker without --analyzer before you finish.',
           `Full diagnostics: ${sharedRoot}/reports/diff/report.txt`,
           '',

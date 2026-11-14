@@ -5,7 +5,7 @@ const MAX_LISTED = 3;
 
 export function reuseFinding(
   analyzerName,
-  { key, path: findingPath, identity, symbol, line, values },
+  { key, path: findingPath, identity, symbol, line, values, planFacts },
 ) {
   const rule = RULE_IDS[key];
   return {
@@ -20,6 +20,7 @@ export function reuseFinding(
     classification: 'enforceable',
     ...(symbol === undefined ? {} : { symbol }),
     ...(line === undefined ? {} : { location: { line } }),
+    ...(planFacts === undefined ? {} : { planFacts }),
   };
 }
 

@@ -87,6 +87,6 @@ config" or "from your build file" instead of "used by N of M measured files".
   `--enable-editorconfig` and runs in a copy of the sources with the same mirrored `.editorconfig`
   files as ktlint; without it ktfmt runs in the project, without a copy of the sources. `["nitpicker", "project"]` is a
   config error for ktfmt, as ktfmt has no flag to ignore the `.editorconfig` once enabled. One
-  `format` finding per file, tool `ktfmt`, identity `format`, whose message refers to the
-  `Format with ktfmt` command printed at the start of the run; a file that already failed on the base
+  `format` finding per file, tool `ktfmt`, identity `format`, whose message asks for
+  `nitpicker --fix`, which formats the changed files; a file that already failed on the base
   stays baselined, new files and files that start failing do not.

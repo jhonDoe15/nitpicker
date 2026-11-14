@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterAll } from 'vitest';
 import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
 import { rule } from './no-falsy-default.mjs';
+import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-falsy-default-')));
 writeFileSync(
@@ -41,7 +42,7 @@ function typed(code, name, extension = 'ts') {
   };
 }
 
-tester.run('no-falsy-default', rule, {
+tester.run('no-falsy-default', withoutFixes(rule), {
   valid: [
     'export function pick(limit?: number) { return limit ?? 10; }',
     'export function pick(limit = 10) { return limit || 20; }',

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../core/fix/run-fix.mjs';
+import { fixWorkingTree } from '../../../core/fix/run-fix.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
 import { fakeJvmTools } from './test-support/fake-jvm-tools.mjs';
@@ -82,6 +82,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${JAVA}/New.java`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         `google-java-format rewrote ${JAVA}/New.java`,
@@ -147,6 +148,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten',
@@ -250,6 +252,7 @@ describe('--fix for Java', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${JAVA}/Ok.java`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [
         `google-java-format rewrote ${JAVA}/Ok.java`,
@@ -456,6 +459,7 @@ describe('--fix for Kotlin', () => {
 
     expect(result).toEqual({
       fixedFiles: [`${KT}/Ok.kt`],
+      fixedFindings: [],
       toolErrors: [],
       notes: [`ktfmt rewrote ${KT}/Ok.kt`, `ktfmt could not parse ${KT}/Broken.kt`],
     });
@@ -467,6 +471,7 @@ describe('--fix for Kotlin', () => {
 
     expect(result).toEqual({
       fixedFiles: [],
+      fixedFindings: [],
       toolErrors: [],
       notes: [`ktlint could not parse ${KT}/Broken.kt`],
     });

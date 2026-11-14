@@ -99,9 +99,8 @@ to run the build's own apply goal or format task. A declared `spring` fixes the 
 them at 4 spaces and 120. Spotless `eclipse()` and `prettier()` projects stay `none`.
 
 A badly formatted file is one `google-java-format`, `google-java-format --aosp` or
-`palantir-java-format` finding (the one that ran), not hundreds. Its message gives the command that
-fixes the file (`google-java-format --replace <Java files>`, with `--aosp`, or `palantir-java-format
---palantir --replace <Java files>`) and says how to pin `conventions.java.formatter` (`"google"`,
+`palantir-java-format` finding (the one that ran), not hundreds. Its message asks for `nitpicker --fix`,
+which formats the changed files with that formatter, and says how to pin `conventions.java.formatter` (`"google"`,
 `"palantir"` or `"none"`) in nitpicker.config.json when it is not your formatter. The Checkstyle
 checks that only restate the formatter's layout are suppressed in both styles (`Indentation`,
 `CommentsIndentation`, `WhitespaceAround`, `WhitespaceAfter`, `GenericWhitespace`, `MethodParamPad`,

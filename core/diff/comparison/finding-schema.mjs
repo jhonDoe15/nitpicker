@@ -1,9 +1,11 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { parseFix } from './schema/fix-field.mjs';
 import { parseLineRanges, parseNotRunFields } from './schema/not-run-fields.mjs';
 import {
   isRecord,
   normalizeFindingPath,
   positiveInteger,
+  requiredRecord,
   requiredString,
 } from './schema/values.mjs';
 import { withoutAnsi } from '../../../shared/messages/terminal/terminal-text.mjs';
@@ -94,6 +96,8 @@ const OPTIONAL_PARSERS = {
   anchor: parseAnchor,
   helpUri: parseHelpUri,
   cause: parseCause,
+  fix: parseFix,
+  planFacts: requiredRecord,
 };
 
 function parseOptionalFields(value, classification, context) {

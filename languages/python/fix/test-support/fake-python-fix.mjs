@@ -1,5 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
-import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
+import { spawnSync } from 'node:child_process';
 
 const PARSE_FAILURES = {
   'ruff-format-fix': {
@@ -8,6 +7,8 @@ const PARSE_FAILURES = {
   },
   'black-fix': { status: 123, stderr: 'error: cannot format -: Cannot parse: 1:0: BROKEN\n' },
 };
+
+const STDIN_FILENAME = '--stdin-filename=';
 
 const JUPYTER_SKIP =
   'Skipping .ipynb files as Jupyter dependencies are not installed.\nYou can fix this by running ``pip install "black[jupyter]"``\n';
@@ -23,18 +24,19 @@ export function fakePythonTools({
   poetryEnvironment,
   jupyterMissing = false,
   missingFormatter = false,
+  sourceFixes = false,
+  scanned = '{}',
 } = {}) {
   const calls = [];
   function lint(invocation) {
-    const separator = invocation.args.indexOf('--');
-    for (const file of invocation.args.slice(separator + 1)) {
-      const target = containedPath(invocation.cwd, file);
-      const edited = lintEdit?.(file, readFileSync(target, 'utf8'));
-      if (edited !== undefined) {
-        writeFileSync(target, edited);
-      }
+    const file = invocation.args
+      .find((arg) => arg.startsWith(STDIN_FILENAME))
+      .slice(STDIN_FILENAME.length);
+    const edited = lintEdit?.(file, invocation.input) ?? invocation.input;
+    if (lintStatus !== 0) {
+      return { status: lintStatus, stdout: '', stderr: 'ruff exploded' };
     }
-    return { status: lintStatus, stdout: '', stderr: lintStatus === 0 ? '' : 'ruff exploded' };
+    return { status: edited === invocation.input ? 0 : 1, stdout: edited, stderr: '' };
   }
   function format(invocation) {
     if (missingFormatter) {
@@ -55,9 +57,26 @@ export function fakePythonTools({
     }
     return { status: 0, stdout: squeezed(invocation.input), stderr: '' };
   }
+  function sourceEdits(invocation) {
+    if (!sourceFixes) {
+      return { status: 0, stdout: '{"fixes":[],"declines":[]}', stderr: '' };
+    }
+    const run = spawnSync('python3', invocation.args, {
+      input: invocation.input,
+      encoding: 'utf8',
+      timeout: 60_000,
+    });
+    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
+  }
   function executeFixCommand(invocation) {
+    if (invocation.operation === 'python-fix-edits') {
+      return sourceEdits(invocation);
+    }
     calls.push(invocation);
     if (invocation.operation === 'python-probe') {
+      if (invocation.args.some((arg) => arg.endsWith('import-scan.py'))) {
+        return { status: 0, stdout: scanned, stderr: '' };
+      }
       return invocation.command === 'poetry' && poetryEnvironment !== undefined
         ? { status: 0, stdout: `${poetryEnvironment}\n`, stderr: '' }
         : { status: 1, stdout: '', stderr: '' };

@@ -12,7 +12,7 @@ const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 
 const EXPLAIN_USAGE = 'Usage: nitpicker explain <tool/rule>...\n';
 const RULES_USAGE =
-  'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>]\n';
+  'Usage: nitpicker rules [--preset <typescript|javascript|java|kotlin|python>] [--tool <name>] [--fixable]\n';
 const ENTRIES = readReferenceEntries();
 const SAMPLES = [
   'crap/crap-score-limit',
@@ -76,6 +76,7 @@ describe('nitpicker explain', () => {
         'Analyzers: structure (TypeScript and JavaScript); java (Java); kotlin (Kotlin); python (Python)',
         'Why it is on: Long functions hide several jobs in one place; agents grow them instead of splitting them.',
         'Allowed form: Split it into functions named for what each part does and put new code in a new function. A function, file or class already over its limit may be edited as long as the change does not make it worse.',
+        'Fix: Fix plan: nitpicker writes the steps for the finding, and --fix does not rewrite the code.',
         'Threshold: more than 50 lines',
         'Exception: If this is intended, add {"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."} to "exceptions" in nitpicker.config.json.',
         `Checks catalog: ${docsUrl('spec/checks.md')}`,
@@ -208,6 +209,25 @@ describe('nitpicker explain', () => {
   });
 });
 
+const AUTOMATIC = 'Fix: Automatic: nitpicker --fix removes the finding.';
+
+describe('nitpicker explain, fix line', () => {
+  it.each([
+    ['checkstyle/UpperEll', 'Fix: Automatic in Java, none in Kotlin.'],
+    ['prettier-format/prettier/prettier', AUTOMATIC],
+    ['pmd/UnusedLocalVariable', 'Fix: None: fix it by hand.'],
+    ['eslint/@typescript-eslint/consistent-type-imports', AUTOMATIC],
+    ['eslint/no-undef', 'Fix: None: fix it by hand.'],
+    ['ruff/F401', AUTOMATIC],
+    ['ruff/F841', 'Fix: None: fix it by hand.'],
+  ])('says what --fix does about %s', (name, line) => {
+    const { exitCode, stdout } = run(['explain', name]);
+
+    expect(exitCode).toBe(0);
+    expect(stdout.split('\n')).toContain(line);
+  });
+});
+
 describe('nitpicker rules', () => {
   it('lists the rules of the TypeScript preset by default, one line each with the first sentence', () => {
     const { exitCode, stdout } = run(['rules']);
@@ -308,6 +328,43 @@ describe('nitpicker rules', () => {
     );
 
     expect(ids).toEqual(idsReportedBy('python'));
+  });
+
+  it('lists only the rules --fix fixes, with how, for --fixable', () => {
+    const { stdout } = run(['rules', '--preset', 'java', '--fixable']);
+    const ids = listedIds(stdout);
+
+    expect(stdout.split('\n')[0]).toBe(
+      `Java preset: ${String(ids.length)} fixable rules. nitpicker explain <tool/rule> describes one.`,
+    );
+    const reported = new Set(idsReportedBy('java'));
+    expect(ids).toEqual(
+      ENTRIES.filter(
+        ({ id, fix }) => reported.has(id) && ['automatic', 'review'].includes(fix.java),
+      ).map(({ id }) => id),
+    );
+    expect(
+      ids.filter((id) =>
+        ['checkstyle/UpperEll', 'google-java-format/format', 'pmd/UnusedLocalVariable'].includes(
+          id,
+        ),
+      ),
+    ).toEqual(['checkstyle/UpperEll', 'google-java-format/format']);
+    expect(stdout).toMatch(/^checkstyle\/UpperEll {2}.* \[automatic\]$/mu);
+  });
+
+  it('lists the fixable rules of the project preset and narrows them by tool', () => {
+    const python = listedIds(run(['rules', '--fixable'], config({ preset: 'python' })).stdout);
+
+    expect(python.filter((id) => ['ruff-format/format', 'ruff/F841'].includes(id))).toEqual([
+      'ruff-format/format',
+    ]);
+    expect(listedIds(run(['rules', '--fixable', '--tool', 'checkstyle']).stdout)).toEqual([]);
+    const detekt = listedIds(
+      run(['rules', '--preset', 'kotlin', '--fixable', '--tool', 'detekt']).stdout,
+    );
+    expect(detekt.includes('detekt/detekt.style.NewLineAtEndOfFile')).toBe(true);
+    expect(detekt.includes('detekt/detekt.style.MagicNumber')).toBe(false);
   });
 
   it('fails on an unknown preset and on a bad option, and prints usage for --help', () => {

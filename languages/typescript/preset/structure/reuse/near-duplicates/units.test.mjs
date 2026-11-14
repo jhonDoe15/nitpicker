@@ -3,7 +3,7 @@ import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { findNearDuplicates } from '../../../../../../shared/near-duplicates/engine.mjs';
 import { COPIES } from '../../../../../../shared/near-duplicates/test-support/copies.mjs';
 import { javascriptUnits } from '../../../../../../shared/near-duplicates/test-support/javascript.mjs';
-import { nearDuplicateUnits } from './units.mjs';
+import { nearDuplicateUnitNodes, nearDuplicateUnits } from './units.mjs';
 import { FORMAT_COPY, JSX_COPIES, TYPESCRIPT_COPIES, UNIT_FORMS } from './test-support/sources.mjs';
 
 function unitsOf(text, file) {
@@ -151,5 +151,13 @@ export function hasOverdueSome(loans: Loan[], today: Date): boolean {
     expect(verdicts(findNearDuplicates(unitsOf(text, 'loans.ts')))).toEqual([
       { verdict: 'same', units: ['loans.ts#hasOverdueLoop', 'loans.ts#hasOverdueSome'] },
     ]);
+  });
+
+  it('lists the syntax node of each unit in the order of the units', () => {
+    const text =
+      'export function first(a: number) {\n  return a + 1;\n}\n\nexport function second(b: number) {\n  return b * 2;\n}\n';
+    const sourceFile = ts.createSourceFile('pair.ts', text, ts.ScriptTarget.Latest, true);
+    const names = nearDuplicateUnitNodes(sourceFile).map((node) => node.name.text);
+    expect(names).toEqual(nearDuplicateUnits(sourceFile, 'pair.ts').map(({ name }) => name));
   });
 });

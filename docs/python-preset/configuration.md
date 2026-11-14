@@ -182,7 +182,7 @@ The run prints, once at the start, the command that formats the code the way nit
 black prints `<empty file>` for the config it writes), and one line when a project config is
 ignored: `Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with
 "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (the flake8-pytest-style options
-are read without the opt-in). Each format finding refers to the command and names
+are read without the opt-in). Each format finding asks for `nitpicker --fix` and names
 `python.formatter` (when detected), the setting that changes the formatter.
 
 **Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the

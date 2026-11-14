@@ -1,9 +1,10 @@
 import { typescriptRuleTester } from '../test-support/rule-tester.mjs';
 import { rule } from '../rules/testing/processes/timeouts/require-test-process-timeout.mjs';
+import { withoutFixes } from '../../eslint-config/rule-hints.mjs';
 
 const tester = typescriptRuleTester();
 
-tester.run('require-test-process-timeout', rule, {
+tester.run('require-test-process-timeout', withoutFixes(rule), {
   valid: [
     "import { spawnSync } from 'node:child_process'; spawnSync('tool', [], { timeout: 1 });",
     "import { execSync } from 'child_process'; const SECOND = 1000; const OPTIONS = { timeout: SECOND * 90 }; execSync('tool', OPTIONS);",

@@ -250,7 +250,7 @@ function declarationAt(code, from, scope) {
   return scope.type === undefined ? undefined : memberDeclaration(code, at, scope);
 }
 
-export function javaDocComments(source) {
+export function javaDocCommentEntries(source) {
   const { code, docs } = readTokens(source);
   const context = { pairs: bracePairs(code), types: typeBodies(code) };
   const starts = lineStarts(source);
@@ -261,6 +261,16 @@ export function javaDocComments(source) {
       return [];
     }
     const text = doc.kind === 'javadoc' ? javadocText(doc.text) : doc.text;
-    return [docComment({ text, line: lineAt(starts, doc.start), declared, chain: scope.chain })];
+    const comment = docComment({
+      text,
+      line: lineAt(starts, doc.start),
+      declared,
+      chain: scope.chain,
+    });
+    return [{ span: { start: doc.start, end: doc.end }, comment }];
   });
+}
+
+export function javaDocComments(source) {
+  return javaDocCommentEntries(source).map(({ comment }) => comment);
 }

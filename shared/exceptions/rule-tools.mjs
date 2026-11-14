@@ -77,7 +77,7 @@ const RULE_TOOLS = new Map([
   ...Object.values(DOMAIN_RULE_IDS).map((rule) => [rule, [COUPLING_TOOL]]),
   [RULE_IDS.duplicateDefinition, [STRUCTURE_TOOL]],
   [RULE_IDS.siblingCopyEdit, [STRUCTURE_TOOL]],
-  [RULE_IDS.nearDuplicate, [STRUCTURE_TOOL]],
+  [RULE_IDS.nearDuplicate, [STRUCTURE_TOOL, FACTS_TOOL]],
   [RULE_IDS.decidedCondition, [STRUCTURE_TOOL]],
   [RULE_IDS.duplicateBranch, [STRUCTURE_TOOL]],
   [RULE_IDS.exportedNameCollision, [STRUCTURE_TOOL]],

@@ -34,7 +34,10 @@ export function withProjectKnipConfig(config: KnipConfig): KnipConfig {
   return layeredKnipConfig(config, projectToolLayer(KNIP_TOOL, readHeadPolicy().tools.knip));
 }
 
-function configFile(projectRoot: string, config: KnipConfig): { path: string; text: string } {
+export function knipConfigFile(
+  projectRoot: string,
+  config: KnipConfig,
+): { path: string; text: string } {
   const written = writtenKnipConfig(config);
   return hasEncodedRegExp(written)
     ? {
@@ -48,7 +51,7 @@ function configFile(projectRoot: string, config: KnipConfig): { path: string; te
 }
 
 export function knipReport(options: QualityAreaOptions, config: KnipConfig): unknown {
-  const file = configFile(options.projectRoot, config);
+  const file = knipConfigFile(options.projectRoot, config);
   trackTemporaryPath(file.path);
   writeFileSync(file.path, file.text);
   try {

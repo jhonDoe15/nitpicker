@@ -21,6 +21,9 @@ public final class ErrorProneReport {
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
   private static final String PROJECT_FLAG = "--errorprone-flag=";
+  private static final String PATCH_LOCATION = PROJECT_FLAG + "-XepPatchLocation:";
+  private static final String FIX_CHECKS = PROJECT_FLAG + "-XepNitpickerFixChecks:";
+  private static final String PROCESSOR_PATH = "-processorpath";
   private static final List<String> MODULE_OPTIONS = List.of("--add-exports", "--add-modules", "--add-reads");
   private static final List<String> NULLAWAY_OPTIONS =
       List.of("ExcludedFieldAnnotations", "ExternalInitAnnotations", "CustomInitializerAnnotations");
@@ -30,6 +33,8 @@ public final class ErrorProneReport {
       Pattern.compile("(?m)^\\s*lombok\\.addSuppressWarnings\\s*=\\s*(\\w+)");
   private static final Pattern STOP_BUBBLING = Pattern.compile("(?m)^\\s*config\\.stopBubbling\\s*=\\s*true\\b");
   private static final Pattern CRASH = Pattern.compile("BugPattern: (\\w+)(?:[\\s\\S]*?Stack Trace:\\s*(.+))?");
+
+  private static final Map<String, Path> FIX_CHECK_CLASSES = new HashMap<>();
 
   private ErrorProneReport() {}
 
@@ -41,8 +46,16 @@ public final class ErrorProneReport {
     List<String> entries = new ArrayList<>();
     List<String> errors = new ArrayList<>();
     Map<String, String> crashes = new LinkedHashMap<>();
-    for (int index = 2; index < args.length; index++) {
-      compile(compiler, Path.of(args[index]), checks, entries, errors, crashes);
+    try {
+      for (int index = 2; index < args.length; index++) {
+        compile(compiler, Path.of(args[index]), checks, entries, errors, crashes);
+      }
+    } finally {
+      for (Path built : FIX_CHECK_CLASSES.values()) {
+        try (Stream<Path> files = Files.walk(built)) {
+          files.sorted(Comparator.reverseOrder()).forEach(file -> file.toFile().delete());
+        }
+      }
     }
     entries.addAll(crashes.values());
     if (!errors.isEmpty()) {
@@ -96,6 +109,59 @@ public final class ErrorProneReport {
     }
     projectLines.forEach(line -> flags.add(line.substring(PROJECT_FLAG.length())));
     return String.join(" ", flags);
+  }
+
+  static List<String> projectLines(List<String> head, String patchDirectory) {
+    return head.stream().filter(line -> line.startsWith(PROJECT_FLAG) && !line.startsWith(FIX_CHECKS))
+        .map(line -> line.startsWith(PATCH_LOCATION) && !line.endsWith(":IN_PLACE")
+            ? line + "/" + patchDirectory : line)
+        .toList();
+  }
+
+  /**
+   * Compiles the fix-only checks of the {@code -XepNitpickerFixChecks:<folder>} flag against the processor path and
+   * returns the folder holding their classes and service file, or null when the flag is absent. They run only in
+   * the patch compile of --fix and are never part of the findings run.
+   */
+  static Path fixChecks(JavaCompiler compiler, List<String> head, Map<String, Path> built) throws IOException {
+    Optional<String> flag = head.stream().filter(line -> line.startsWith(FIX_CHECKS)).findFirst();
+    int path = head.indexOf(PROCESSOR_PATH) + 1;
+    if (flag.isEmpty() || path == 0) {
+      return null;
+    }
+    Path sources = Path.of(flag.get().substring(FIX_CHECKS.length()));
+    String classpath = head.get(path);
+    Path cached = built.get(sources + "|" + classpath);
+    if (cached != null) {
+      return cached;
+    }
+    Path output = Files.createTempDirectory("nitpicker-fix-checks");
+    List<String> files;
+    try (Stream<Path> walk = Files.walk(sources)) {
+      files = walk.filter(file -> file.toString().endsWith(".java")).map(Path::toString).sorted().toList();
+    }
+    List<String> options = new ArrayList<>(List.of("-proc:none", "-d", output.toString(), "-classpath", classpath));
+    for (String name : List.of("api", "file", "main", "model", "parser", "processing", "tree", "util", "code", "comp")) {
+      options.add("--add-exports=jdk.compiler/com.sun.tools.javac." + name + "=ALL-UNNAMED");
+    }
+    DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<>();
+    try (StandardJavaFileManager manager =
+        compiler.getStandardFileManager(diagnostics, Locale.ROOT, StandardCharsets.UTF_8)) {
+      if (!compiler.getTask(null, manager, diagnostics, options, null, manager.getJavaFileObjectsFromStrings(files))
+          .call()) {
+        throw new IOException("The fix checks do not compile: " + diagnostics.getDiagnostics());
+      }
+    }
+    Path services = sources.resolve("META-INF");
+    try (Stream<Path> walk = Files.walk(services)) {
+      for (Path file : walk.filter(Files::isRegularFile).toList()) {
+        Path target = output.resolve("META-INF").resolve(services.relativize(file).toString());
+        Files.createDirectories(target.getParent());
+        Files.copy(file, target);
+      }
+    }
+    built.put(sources + "|" + classpath, output);
+    return output;
   }
 
   static List<String> javacOptions(List<String> lines) {
@@ -173,16 +239,23 @@ public final class ErrorProneReport {
     List<String> sources = lines.subList(separator + 1, lines.size());
     String ownClasses = head.stream().filter(line -> line.startsWith(OWN_CLASSES)).findFirst()
         .orElse(OWN_CLASSES).substring(OWN_CLASSES.length());
+    Path fixChecks = fixChecks(compiler, head, FIX_CHECK_CLASSES);
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
     for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
       List<String> options = javacOptions(head);
+      if (fixChecks != null) {
+        int processors = options.indexOf(PROCESSOR_PATH) + 1;
+        options.set(processors, options.get(processors) + java.io.File.pathSeparator + fixChecks);
+      }
       if (group.size() < sources.size()) {
         int classpath = options.indexOf("-classpath") + 1;
         options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
       }
+      String patchDirectory = Integer.toHexString(argumentsFile.toAbsolutePath().normalize().toString().hashCode())
+          + (group == unsuppressed ? "-lombok" : "");
       options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-          group == unsuppressed, head.stream().filter(line -> line.startsWith(PROJECT_FLAG)).toList()));
+          group == unsuppressed, projectLines(head, patchDirectory)));
       if (failedSilently(compiler, options, group, entries, errors, crashes)) {
         errors.add("javac failed on " + argumentsFile + " without reporting an error");
       }

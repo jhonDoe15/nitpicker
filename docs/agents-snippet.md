@@ -24,12 +24,20 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
 - `npx nitpicker --fix` first applies the preset's fixers to the changed files (ESLint and Prettier;
   `ruff check --fix` and ruff format or black; google-java-format or palantir-java-format; ktlint or
   ktfmt; gofmt, gofumpt or goimports), then runs the comparison. Use it to clear formatting and auto-fixable lint findings. It
-  cannot be combined with `--all`.
+  cannot be combined with `--all` unless you name a rule (next item).
+- `npx nitpicker --fix --dry-run` changes no file: it writes `fix.patch` (apply it with `git apply`
+  from the repository root) and `fixes.json` to the output folder and prints one line per fix.
+  `npx nitpicker --fix --rule <tool/rule>` (repeatable) applies only the fixes of the named rules,
+  including their `review` recipes, and formats only the files those fixes touched.
+  `--fix` checks every recipe it applied and rolls back one that leaves its finding, adds a finding
+  or breaks the compile; the rollback is named under "Fix notes". `--fix --verify full` checks with
+  the whole gate. `npx nitpicker --fix --all --rule <tool/rule>` fixes that one rule in every file
+  and lowers its allowance in `nitpicker.legacy.json`; a bare `--fix --all` is refused.
 - `npx nitpicker --base <ref>` compares against a specific ref when the default base is wrong (for
   example `--base origin/develop`).
 - `npx nitpicker --all` reports every finding in the checkout, with no baseline. It exits 1 on any
   violation, so use it to survey existing code, not as your pass/fail check. It cannot be combined
-  with `--base`, `--fix`, sharding or `--defer-exit`.
+  with `--base`, sharding or `--defer-exit`, and takes `--fix` only with `--rule`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating. Its exit 0 is not a pass: the summary
   says `Ran only: ...`, and you run the gate without `--analyzer` before you finish.
@@ -66,6 +74,8 @@ for `--all`):
   `exception` (the entry the message tells you to add to `exceptions`, with `exceptionList` naming
   the config list). Use `allowedForm` to fix the code. Never add `exception` yourself (step 3
   below).
+- `fix-plans.json`: for each new finding of a nitpicker check that needs judgment, a plan with
+  its `kind`, `target` lines, `context`, `steps` and `doneWhen`. Follow the steps to fix the finding.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
