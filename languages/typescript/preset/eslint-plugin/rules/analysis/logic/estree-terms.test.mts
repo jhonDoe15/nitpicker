@@ -1,26 +1,87 @@
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { normalize, sameCondition } from '../../../../../../../shared/logic/normalize.mjs';
-import { print } from '../../../../../../../shared/logic/print.mjs';
-import { toTerm } from './estree-terms.mjs';
+import {
+  normalize as untypedNormalize,
+  sameCondition,
+} from '../../../../../../../shared/logic/normalize.mjs';
+import { print as untypedPrint } from '../../../../../../../shared/logic/print.mjs';
+import { toTerm as untypedToTerm } from './estree-terms.mjs';
 
-function parsed(code, options) {
-  const { ast } = tseslint.parser.parseForESLint(code, { range: true, loc: true });
-  const sourceCode = { getText: (node) => code.slice(node.range[0], node.range[1]) };
-  return { ast, convert: (node) => toTerm(node, sourceCode, options) };
+type Statement = { type: string; expression?: unknown; body?: unknown };
+type Program = { type: 'Program'; body: Statement[] };
+type Term = { children: Term[]; integer?: boolean };
+type SourceText = (node: { range: number[] }) => string;
+type TermNode = { type: string; name?: string };
+type TermOptions = {
+  isBoolean?: (node: TermNode) => boolean;
+  isInteger?: (node: TermNode) => boolean;
+};
+
+function isTerm(value: unknown): value is Term {
+  return typeof value === 'object' && value !== null && 'children' in value;
 }
 
-function expressionTerm(code, options) {
+function toTerm(root: unknown, sourceCode: { getText: SourceText }, options: TermOptions): Term {
+  const term: unknown = Reflect.apply(untypedToTerm, undefined, [root, sourceCode, options]);
+  if (isTerm(term)) {
+    return term;
+  }
+  throw new TypeError('The conversion did not return a term.');
+}
+
+function isProgram(value: unknown): value is Program {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    value.type === 'Program' &&
+    'body' in value &&
+    Array.isArray(value.body)
+  );
+}
+
+function programOf(code: string): Program {
+  const result: unknown = tseslint.parser.parseForESLint(code);
+  if (typeof result === 'object' && result !== null && 'ast' in result && isProgram(result.ast)) {
+    return result.ast;
+  }
+  throw new TypeError('The parser did not return a program.');
+}
+
+function parsed(code: string, options: TermOptions = {}) {
+  const ast = programOf(code);
+  const sourceCode = {
+    getText: (node: { range: number[] }) => code.slice(node.range[0], node.range[1]),
+  };
+  return { ast, convert: (node: unknown): Term => toTerm(node, sourceCode, options) };
+}
+
+function expressionTerm(code: string, options?: TermOptions): Term {
   const { ast, convert } = parsed(`(${code});`, options);
-  return convert(ast.body[0].expression);
+  const statement = ast.body.at(0);
+  if (statement?.type !== 'ExpressionStatement') {
+    throw new TypeError('Expected an expression statement.');
+  }
+  return convert(statement.expression);
 }
 
-function bodyTerm(code) {
+function bodyTerm(code: string): Term {
   const { ast, convert } = parsed(`function f() { ${code} }`);
-  return convert(ast.body[0].body);
+  const statement = ast.body.at(0);
+  if (statement?.type !== 'FunctionDeclaration') {
+    throw new TypeError('Expected a function declaration.');
+  }
+  return convert(statement.body);
 }
 
-function simplified(term, options) {
+const normalize: (
+  node: Term,
+  options?: { booleanContext?: boolean },
+) => { term: Term; rewrites: { rewrite: string }[] } = untypedNormalize;
+
+const print: (root: Term) => string = untypedPrint;
+
+function simplified(term: Term, options?: { booleanContext?: boolean }) {
   const { term: normal, rewrites } = normalize(term, options);
   return { form: print(normal), rewrites: rewrites.map(({ rewrite }) => rewrite) };
 }
@@ -138,16 +199,16 @@ describe('TypeScript terms in normal form', () => {
   });
 
   it('marks the expressions the caller knows to be boolean', () => {
-    const isBoolean = (node) => node.type === 'Identifier' && node.name === 'ready';
+    const isBoolean = (node: TermNode) => node.type === 'Identifier' && node.name === 'ready';
     const ternary = expressionTerm('ready ? true : false', { isBoolean });
 
     expect(simplified(ternary)).toEqual({ form: 'ready', rewrites: ['boolean-literal-ternary'] });
   });
 
   it('marks the expressions the caller knows to be integers', () => {
-    const isInteger = (node) => node.type === 'Identifier' && node.name === 'count';
-    const [count, limit] = expressionTerm('count < limit', { isInteger }).children;
+    const isInteger = (node: TermNode) => node.type === 'Identifier' && node.name === 'count';
+    const { children } = expressionTerm('count < limit', { isInteger });
 
-    expect([count.integer, limit.integer]).toEqual([true, undefined]);
+    expect(children.map((child) => child.integer)).toEqual([true, undefined]);
   });
 });

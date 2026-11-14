@@ -1,9 +1,9 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-tri-state-boolean.mjs';
 
 const tester = typescriptRuleTester();
 
-function flagged(code, name, options) {
+function flagged(code: string, name: string, options?: unknown[]) {
   return {
     code,
     ...(options === undefined ? {} : { options }),
