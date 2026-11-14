@@ -1,13 +1,27 @@
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { replaceEdit } from '../edits/text-edits.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import type { ReplaceEdit } from '../typed/project-types.mts';
+import { replaceEdit } from '../typed/project-views.mts';
 
-function isExported(statement) {
-  return (ts.getModifiers(statement) ?? []).some(
+const ts = typescriptApi();
+
+type DeclarationKind = 'const' | 'function' | 'type';
+
+export type Declaration = {
+  readonly statement: TypeScript.Statement;
+  readonly kind: DeclarationKind;
+  readonly exported: boolean;
+};
+
+function isExported(statement: TypeScript.Statement): boolean {
+  return ((ts.canHaveModifiers(statement) ? ts.getModifiers(statement) : undefined) ?? []).some(
     ({ kind }) => kind === ts.SyntaxKind.ExportKeyword,
   );
 }
 
-function declaredName(statement) {
+function declaredName(
+  statement: TypeScript.Statement,
+): { readonly name: string; readonly kind: DeclarationKind } | undefined {
   if (ts.isVariableStatement(statement)) {
     const [only, ...rest] = statement.declarationList.declarations;
     return only !== undefined && rest.length === 0 && ts.isIdentifier(only.name)
@@ -22,8 +36,11 @@ function declaredName(statement) {
   return isType ? { name: statement.name.text, kind: 'type' } : undefined;
 }
 
-export function declarationOf(sourceFile, name) {
-  for (const statement of sourceFile.statements) {
+export function declarationOf(
+  sourceFile: TypeScript.SourceFile | undefined,
+  name: string,
+): Declaration | undefined {
+  for (const statement of sourceFile?.statements ?? []) {
     const declared = declaredName(statement);
     if (declared?.name === name) {
       return { statement, kind: declared.kind, exported: isExported(statement) };
@@ -32,7 +49,11 @@ export function declarationOf(sourceFile, name) {
   return undefined;
 }
 
-export function removalEdit(path, statement, replacement = '') {
+export function removalEdit(
+  path: string,
+  statement: TypeScript.Node,
+  replacement = '',
+): ReplaceEdit {
   const sourceFile = statement.getSourceFile();
   const { text } = sourceFile;
   const start = statement.getStart(sourceFile, true);
@@ -41,7 +62,11 @@ export function removalEdit(path, statement, replacement = '') {
   return replaceEdit(path, [start, end], replacement);
 }
 
-export function importInsertion(path, sourceFile, line) {
+export function importInsertion(
+  path: string,
+  sourceFile: TypeScript.SourceFile,
+  line: string,
+): ReplaceEdit {
   const imports = sourceFile.statements.filter(ts.isImportDeclaration);
   const last = imports.at(-1);
   if (last === undefined) {
@@ -50,7 +75,11 @@ export function importInsertion(path, sourceFile, line) {
   return replaceEdit(path, [last.end, last.end], `\n${line}`);
 }
 
-export function exportKeywordEdit(path, sourceFile, statement) {
+export function exportKeywordEdit(
+  path: string,
+  sourceFile: TypeScript.SourceFile,
+  statement: TypeScript.Node,
+): ReplaceEdit {
   const at = statement.getStart(sourceFile);
   return replaceEdit(path, [at, at], 'export ');
 }

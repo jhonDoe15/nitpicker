@@ -1,26 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { sharedUsedByOneFeature } from '../../../preset/coupling/shared-usage.mjs';
-import { projectGraph } from '../model/project-graph.mjs';
-import { withProject } from '../model/project-model.mjs';
+import { analyzeFixedSources } from '../test-support/analyze-fixed-sources.mts';
 import { useFixtureProjects } from '../test-support/fixture-project.mts';
-import { sharedUsedByOneFeatureRecipe as recipe } from './shared-used-by-one-feature.mjs';
+import type { FixedProject } from '../test-support/fixture-project.mts';
+import { projectGraph, sharedUsedByOneFeature } from '../typed/reuse-views.mts';
+import { sharedUsedByOneFeatureRecipe as recipe } from './shared-used-by-one-feature.mts';
 
 const projects = useFixtureProjects();
 const RULE = 'coupling/shared-used-by-one-feature';
 const BILLING = 'src/main/features/billing';
 const SHARED = 'src/main/shared';
 
-function remaining(result) {
-  const names = Object.keys(result.tree).filter((name) => name.startsWith('src/'));
-  const context = {
-    projectRoot: result.projectRoot,
-    files: names.map((path) => ({ path })),
-    read: (name) => result.tree[name],
-  };
-  return withProject(context, (project) =>
+function remaining(result: FixedProject) {
+  return analyzeFixedSources(result, (project) =>
     sharedUsedByOneFeature(projectGraph(project), {
       sourceRoot: 'src',
-      isProduction: (file) => file.startsWith('src/'),
+      isProduction: (file: string) => file.startsWith('src/'),
     }),
   );
 }
