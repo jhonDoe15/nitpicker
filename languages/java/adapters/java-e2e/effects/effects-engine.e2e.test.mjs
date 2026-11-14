@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 18,
+      classes: 19,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -152,6 +152,13 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(methodsOf(run.report, 'RemoteCallInTransaction')).not.toContain(
       'Hooks.afterTransaction',
     );
+  });
+
+  it('accepts an idempotency key from a helper, field or wrapper, and a breaker without retries', () => {
+    expect(methodsOf(run.report, 'RetryWithoutIdempotency')).toEqual([
+      'Writes.withoutKey',
+      'Writes.withRetries',
+    ]);
   });
 
   it('reports copies on every step', () => {

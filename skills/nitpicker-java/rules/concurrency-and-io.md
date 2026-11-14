@@ -30,6 +30,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Remote calls: make an HTTP or RPC call before a `@Transactional` method or `TransactionTemplate` starts or after it
   commits, and never while holding a lock (`synchronized`, `ReentrantLock`): copy what you need out of the lock first
   (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
+- Retries: a call that retries (`@Retryable`, `RetryTemplate`, Failsafe, a retry loop) writes idempotently: a Stripe
+  idempotency key, an upsert, a message deduplication id, or retry only the read (`effects/RetryWithoutIdempotency`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).
