@@ -232,3 +232,50 @@ describe('TypeScript compiler dependencies', () => {
     expect(edgeLabel(graph, 'apps/web', 'libs/ui')).toBe('tsconfig references');
   });
 });
+
+describe('JVM dependencies by coordinates', () => {
+  const pom = (coordinates, dependencies = '') =>
+    `<project><parent><groupId>com.acme</groupId><artifactId>parent</artifactId></parent>${coordinates}` +
+    `<dependencyManagement><dependencies><dependency><groupId>com.acme</groupId><artifactId>users</artifactId></dependency></dependencies></dependencyManagement>` +
+    `<dependencies>${dependencies}</dependencies></project>`;
+
+  it('follows a Maven dependency on the coordinates another project builds', () => {
+    const files = {
+      'libs/common/pom.xml': pom('<artifactId>common</artifactId>'),
+      'services/orders/pom.xml': pom(
+        '<artifactId>orders</artifactId>',
+        '<dependency><groupId>com.acme</groupId><artifactId>common</artifactId></dependency>',
+      ),
+      'services/users/pom.xml': pom('<artifactId>users</artifactId>'),
+    };
+    const graph = dependencyGraph(layout(files), [
+      'libs/common',
+      'services/orders',
+      'services/users',
+    ]);
+
+    expect(Object.fromEntries([...graph].map(([key, needs]) => [key, [...needs]]))).toEqual({
+      'libs/common': [],
+      'services/orders': ['libs/common'],
+      'services/users': [],
+    });
+    expect(edgeLabel(graph, 'services/orders', 'libs/common')).toBe('com.acme:common');
+  });
+
+  it('follows Gradle dependencies, substitutions and version catalog entries', () => {
+    const files = {
+      'libs/common/settings.gradle': "rootProject.name = 'common'\n",
+      'libs/common/build.gradle': "group = 'com.acme'\n",
+      'libs/model/build.gradle.kts': 'group = "com.acme"\n',
+      'services/orders/build.gradle': "dependencies { implementation 'com.acme:common:1.0' }\n",
+      'services/users/build.gradle.kts': 'dependencies { implementation(libs.acme.model) }\n',
+      'services/users/gradle/libs.versions.toml':
+        '[libraries]\nacme-model = { module = "com.acme:model", version = "1.0" }\n',
+    };
+    const projects = ['libs/common', 'libs/model', 'services/orders', 'services/users'];
+    const graph = dependencyGraph(layout(files), projects);
+
+    expect([...(graph.get('services/orders') ?? [])]).toEqual(['libs/common']);
+    expect([...(graph.get('services/users') ?? [])]).toEqual(['libs/model']);
+  });
+});

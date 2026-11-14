@@ -472,3 +472,28 @@ describe('TypeScript projects wired through tsconfig paths', () => {
     ]);
   });
 });
+
+describe('JVM projects that depend on each other by coordinates', () => {
+  it('runs the Maven service when the library it depends on changes', () => {
+    const pom = (artifact, dependencies = '') =>
+      `<project><groupId>com.acme</groupId><artifactId>${artifact}</artifactId>` +
+      `<dependencies>${dependencies}</dependencies></project>\n`;
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['libs/*', 'services/*'] }),
+      ...projectFiles('libs/common', { 'pom.xml': pom('common'), 'src/A.java': 'class A {}\n' }),
+      ...projectFiles('services/orders', {
+        'pom.xml': pom(
+          'orders',
+          '<dependency><groupId>com.acme</groupId><artifactId>common</artifactId></dependency>',
+        ),
+        'src/B.java': 'class B {}\n',
+      }),
+    });
+    writeFiles(root, { 'libs/common/src/A.java': 'class A { }\n' });
+
+    expect(run(root).plan.split('\n').slice(1)).toEqual([
+      '  run  libs/common (java): 1 changed file',
+      '  run  services/orders (java): depends on libs/common (com.acme:common)',
+    ]);
+  });
+});
