@@ -1,9 +1,19 @@
-import { strykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
-import { testRunnerConfigChanges } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config-changes.mjs';
-import { typescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
-import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
-import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
-import { importLinterChanges } from './import-linter-changes.mjs';
+import {
+  jscpdConfigChanges,
+  projectConfigChanges,
+  strykerConfigChanges,
+  testRunnerConfigChanges,
+  typescriptConfigChanges,
+} from '../types/tool-views.mts';
+import type {
+  AppliedValues,
+  ChangePart,
+  FileChange,
+  PolicyScope,
+  ToolConfigEntry,
+  ToolFileEntry,
+} from '../types/policy-types.mts';
+import { importLinterChanges } from './import-linter-changes.mts';
 
 const OWN_APPLIED_CHANGES = new Map([
   ['jscpd', jscpdConfigChanges],
@@ -12,29 +22,35 @@ const OWN_APPLIED_CHANGES = new Map([
   ['tests', testRunnerConfigChanges],
 ]);
 
-function appliedChanges({ tool, applied }) {
-  return OWN_APPLIED_CHANGES.has(tool)
-    ? OWN_APPLIED_CHANGES.get(tool)(applied)
-    : projectConfigChanges(tool, applied);
+function appliedChanges({ tool, applied }: { tool: string; applied: AppliedValues }): FileChange[] {
+  const own = OWN_APPLIED_CHANGES.get(tool);
+  return own === undefined
+    ? projectConfigChanges(tool, applied)
+    : own({ file: undefined, ...applied });
 }
 
-function fileChange(tool, file, { base, head, evidence, optsIn }) {
+function fileChange(
+  tool: string,
+  file: string,
+  { base, head, evidence, optsIn }: ToolFileEntry,
+): FileChange | undefined {
   if (base.get(file) === head.get(file)) {
     return undefined;
   }
+  const blob = evidence?.get(file);
   return head.has(file)
     ? {
         loosened: {
           text: `${tool} project config changed: ${file}`,
-          kind: optsIn === true ? 'tool-config-opt-in' : 'tool-config',
+          kind: optsIn ? 'tool-config-opt-in' : 'tool-config',
           files: [file],
-          ...(evidence?.has(file) ? { blobs: { [file]: evidence.get(file) } } : {}),
+          ...(blob === undefined ? {} : { blobs: { [file]: blob } }),
         },
       }
     : { changed: `${tool} project config removed: ${file}` };
 }
 
-function replacedOptionChanges({ replacedOptions, head }) {
+function replacedOptionChanges({ replacedOptions, head }: ToolFileEntry): FileChange[] {
   if (replacedOptions === undefined) {
     return [];
   }
@@ -50,12 +66,12 @@ function replacedOptionChanges({ replacedOptions, head }) {
   return texts.map((text) => ({ loosened: { text, kind: 'tool-config', files } }));
 }
 
-function fileChanges(entry) {
+function fileChanges(entry: ToolConfigEntry): (FileChange | undefined)[] {
   if (entry.importLinter !== undefined) {
     return importLinterChanges(entry.importLinter);
   }
   if (entry.applied !== undefined) {
-    return appliedChanges(entry);
+    return appliedChanges({ tool: entry.tool, applied: entry.applied });
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return [
@@ -64,8 +80,8 @@ function fileChanges(entry) {
   ];
 }
 
-export function toolConfigChanges(scope) {
-  const results = (scope.toolConfigs ?? []).flatMap(fileChanges).filter(Boolean);
+export function toolConfigChanges(scope: PolicyScope): ChangePart {
+  const results = scope.toolConfigs.flatMap(fileChanges).filter((result) => result !== undefined);
   return {
     loosened: results.flatMap((result) => result.loosened ?? []),
     changed: results.flatMap((result) => result.changed ?? []),

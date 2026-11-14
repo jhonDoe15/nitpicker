@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
+import type { ReplacedOptions } from '../../types/policy-types.mts';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mts';
 
 describe('the ESLint flat config the project opted into', () => {
-  const at = (config, rules = "export default { 'no-console': 'error' };\n") => ({
+  const at = (config: string, rules = "export default { 'no-console': 'error' };\n") => ({
     'eslint.config.mjs': config,
     'eslint/rules.mjs': rules,
     'eslint/unused.mjs': 'export default {};\n',
@@ -57,7 +58,7 @@ describe('the ESLint flat config the project opted into', () => {
 
   it('lists every file an opt-in starts reading, the opt-in itself included', () => {
     const files = { ...at(CONFIG), '.gitignore': 'dist/\n' };
-    const config = (precedence) => ({ tools: { eslint: { precedence } } });
+    const config = (precedence: string[]) => ({ tools: { eslint: { precedence } } });
 
     expect(
       between({
@@ -75,7 +76,7 @@ describe('the ESLint flat config the project opted into', () => {
 
   it('counts the ignore file the config reads, but not a comment after code', () => {
     const optedIn = { tools: { eslint: { precedence: ['project'] } } };
-    const ignoring = (gitignore, config = 'export default [ignored];\n') => ({
+    const ignoring = (gitignore: string, config = 'export default [ignored];\n') => ({
       ...at(
         `import { includeIgnoreFile } from '@eslint/compat';\nconst ignored = includeIgnoreFile(new URL('.gitignore', import.meta.url).pathname);\n${config}`,
       ),
@@ -96,14 +97,14 @@ describe('the ESLint flat config the project opted into', () => {
   });
 
   it('lists the nitpicker rules whose options the project replaces once a reviewed file changes', () => {
-    const config = (precedence) => ({ tools: { eslint: { precedence } } });
+    const config = (precedence: string[]) => ({ tools: { eslint: { precedence } } });
     const base = at(CONFIG);
     const head = at(
       CONFIG,
       "export default { 'no-empty': ['error', { allowEmptyCatch: true }] };\n",
     );
-    const replacedOptions = () => ({ rules: ['no-empty'] });
-    const unloadable = () => ({
+    const replacedOptions = (): ReplacedOptions => ({ rules: ['no-empty'] });
+    const unloadable = (): ReplacedOptions => ({
       error: 'ESLint config eslint.config.mjs could not be loaded: boom',
     });
 
@@ -131,7 +132,7 @@ describe('the ESLint flat config the project opted into', () => {
 
   it('follows the config file ESLint itself loads first', () => {
     const optedIn = { tools: { eslint: { precedence: ['project'] } } };
-    const both = (javascript) => ({ ...at(CONFIG), 'eslint.config.js': javascript });
+    const both = (javascript: string) => ({ ...at(CONFIG), 'eslint.config.js': javascript });
 
     expect(
       between({

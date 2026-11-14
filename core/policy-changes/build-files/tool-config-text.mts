@@ -1,13 +1,21 @@
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
-import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
+import { parseJsonc as untypedParseJsonc } from '../../../shared/jsonc/jsonc.mjs';
 import { selectTypeScriptApi } from '../../../languages/typescript/typescript-api/api-selection.mjs';
+import { isTypeScriptApi } from '../../../shared/values/typescript-guard.mts';
+import { parseJson, textOf } from '../../../shared/values/readers.mts';
+import { globMatcher } from '../types/typed-views.mts';
+
+type JsonText =
+  { readonly kind: 'json'; readonly text: string } | { readonly kind: 'malformed-json' };
+
+const parseJsonc: (text: string) => unknown = untypedParseJsonc;
+const SCRIPT_FILE_NAMES: readonly string[] = codeExtensionNames;
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_FILES = ['A.kt', 'A.kts'];
-const PRETTIER_FILES = [...codeExtensionNames, 'json', 'yaml', 'yml'].map((name) => `a.${name}`);
+const PRETTIER_FILES = [...SCRIPT_FILE_NAMES, 'json', 'yaml', 'yml'].map((name) => `a.${name}`);
 const SECTION = /^\[(.*)\]$/u;
 const EDITORCONFIG_COMMENT = /^[#;]/u;
 const HASH_COMMENT = /^#/u;
@@ -19,7 +27,7 @@ const MIXED_FILES = new Set(['.prettierrc', '.prettierignore']);
 const IGNORE_FILE = /^\.\w*ignore$/u;
 const SCRIPT_EXTENSIONS = new Set(['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts']);
 
-function keptLines(text, isComment, trimStart = true) {
+function keptLines(text: string, isComment: (line: string) => boolean, trimStart = true): string {
   return text
     .split(/\r?\n/u)
     .map((line) => (trimStart ? line.trim() : line.trimEnd()))
@@ -27,10 +35,10 @@ function keptLines(text, isComment, trimStart = true) {
     .join('\n');
 }
 
-function closesBraces(glob) {
+function closesBraces(glob: string): boolean {
   let depth = 0;
   for (const character of glob) {
-    depth += { '{': 1, '}': -1 }[character] ?? 0;
+    depth += ({ '{': 1, '}': -1 } as const)[character] ?? 0;
     if (depth < 0) {
       return false;
     }
@@ -38,7 +46,7 @@ function closesBraces(glob) {
   return depth === 0;
 }
 
-function sectionApplies(glob, names) {
+function sectionApplies(glob: string, names: readonly string[]): boolean {
   if (glob.includes('/') || !closesBraces(glob)) {
     return true;
   }
@@ -46,8 +54,8 @@ function sectionApplies(glob, names) {
   return names.some((name) => matcher.test(name));
 }
 
-function editorconfigText(text, names) {
-  const kept = [];
+function editorconfigText(text: string, names: readonly string[]): string {
+  const kept: string[] = [];
   let applies = true;
   for (const line of keptLines(text, (trimmed) => EDITORCONFIG_COMMENT.test(trimmed)).split('\n')) {
     const glob = SECTION.exec(line)?.[1];
@@ -59,7 +67,7 @@ function editorconfigText(text, names) {
   return kept.join('\n');
 }
 
-function xmlText(text) {
+function xmlText(text: string): string {
   return text
     .replaceAll(XML_COMMENT, ' ')
     .replaceAll(/\s+/gu, ' ')
@@ -67,17 +75,20 @@ function xmlText(text) {
     .trim();
 }
 
-function scriptText(text) {
+function scriptText(text: string): string {
   return keptLines(text.replaceAll(BLOCK_COMMENT, ''), (trimmed) => SLASH_COMMENT.test(trimmed));
 }
 
-function printedScript(file, text) {
-  const ts = createRequire(import.meta.url)(selectTypeScriptApi().file);
+function printedScript(file: string, text: string): string {
+  const ts: unknown = createRequire(import.meta.url)(textOf(selectTypeScriptApi().file));
+  if (!isTypeScriptApi(ts)) {
+    throw new TypeError('The selected TypeScript API does not load');
+  }
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
   return ts.createPrinter({ removeComments: true }).printFile(source);
 }
 
-function jsonText(text, parse) {
+function jsonText(text: string, parse: (text: string) => unknown): JsonText {
   try {
     return { kind: 'json', text: JSON.stringify(parse(text)) };
   } catch {
@@ -85,10 +96,10 @@ function jsonText(text, parse) {
   }
 }
 
-export function toolConfigText(tool, file, text) {
+export function toolConfigText(tool: string, file: string, text: string): string {
   const name = path.posix.basename(file);
   const extension = path.posix.extname(file);
-  const parse = tool === 'typescript' ? parseJsonc : JSON.parse;
+  const parse = tool === 'typescript' ? parseJsonc : parseJson;
   const json = extension === '.json' || name === '.prettierrc' ? jsonText(text, parse) : undefined;
   if (json?.kind === 'json') {
     return json.text;
@@ -105,7 +116,7 @@ export function toolConfigText(tool, file, text) {
   return lineCommentText(name, extension, text);
 }
 
-function lineCommentText(name, extension, text) {
+function lineCommentText(name: string, extension: string, text: string): string {
   if (HASH_FILES.has(extension) || (IGNORE_FILE.test(name) && !MIXED_FILES.has(name))) {
     return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed), false);
   }

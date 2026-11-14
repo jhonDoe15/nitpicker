@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from './test-support/policy-fixtures.mts';
 
 const CLASS = 'package a;\nclass A {}\n';
 
-function gradle(buildScript, extra = {}) {
+function gradle(buildScript: string, extra: Record<string, string> = {}) {
   return {
     'build.gradle': buildScript,
     'src/main/java/a/A.java': CLASS,
@@ -13,7 +13,7 @@ function gradle(buildScript, extra = {}) {
   };
 }
 
-function maven(pluginsXml, buildXml = '') {
+function maven(pluginsXml: string, buildXml = '') {
   return {
     'pom.xml': `<project><modelVersion>4.0.0</modelVersion><build>${buildXml}<plugins>${pluginsXml}</plugins></build></project>`,
     'src/main/java/a/A.java': CLASS,
@@ -21,7 +21,7 @@ function maven(pluginsXml, buildXml = '') {
   };
 }
 
-const surefire = (configuration) =>
+const surefire = (configuration: string) =>
   `<plugin><artifactId>maven-surefire-plugin</artifactId><configuration>${configuration}</configuration></plugin>`;
 
 describe('Gradle build files', () => {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from './test-support/policy-fixtures.mjs';
+import { between, changesOf } from './test-support/policy-fixtures.mts';
 
 const PYTHON = { preset: 'python' };
 const OPTIONS = '[tool.pytest.ini_options]\n';
-const files = (pyproject, extra = {}) => ({
+const files = (pyproject: string, extra: Record<string, string> = {}) => ({
   'pyproject.toml': pyproject,
   'src/app/__init__.py': '',
   'src/app/core.py': 'x = 1\n',
@@ -11,7 +11,7 @@ const files = (pyproject, extra = {}) => ({
   'src/app/test_inner.py': 'def test_y():\n    pass\n',
   ...extra,
 });
-const run = (base, head, extra = {}) =>
+const run = (base: string, head: string, extra: Record<string, string> = {}) =>
   between({ base: files(base, extra), head: files(head, extra), config: PYTHON });
 const QUIET = `${OPTIONS}addopts = "-q"\n`;
 

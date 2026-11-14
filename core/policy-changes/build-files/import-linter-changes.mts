@@ -1,4 +1,14 @@
-import { shownSetting } from '../../../shared/config.mjs';
+import { shownSetting as untypedShownSetting } from '../../../shared/config.mjs';
+import { changedKeys } from '../../../shared/values/changed-keys.mts';
+import type {
+  FileChange,
+  ImportLinterConfig,
+  ImportLinterOptions,
+} from '../types/policy-types.mts';
+
+type OptionValue = ImportLinterOptions[string];
+
+const shownSetting: (value: unknown) => string = untypedShownSetting;
 
 const KIND = 'tool-config';
 const NEUTRAL = new Set(['name', 'cache_dir']);
@@ -13,17 +23,20 @@ const NARROWED_BY_REMOVAL = new Set([
 const WIDENED_BY_ADDITION = new Set(['ignore_imports', 'allowed_importers', 'exhaustive_ignores']);
 const ALERTING = ['none', 'warn', 'error'];
 const LOOSENED_WHEN_ON = new Set(['allow_indirect_imports', 'exclude_type_checking_imports']);
-const LOOSENED_WHEN_OFF = { exhaustive: false, as_packages: true };
+const LOOSENED_WHEN_OFF: Readonly<Record<string, boolean>> = {
+  exhaustive: false,
+  as_packages: true,
+};
 
-function listOf(value) {
+function listOf(value: OptionValue): string[] {
   return [value ?? []].flat();
 }
 
-function isOn(value, fallback) {
+function isOn(value: OptionValue, fallback: boolean): boolean {
   return value === undefined ? fallback : String(value).trim().toLowerCase() === 'true';
 }
 
-function keepsOrder(before, after) {
+function keepsOrder(before: readonly string[], after: readonly string[]): boolean {
   const matched = after.reduce(
     (position, value) => position + (value === before[position] ? 1 : 0),
     0,
@@ -31,7 +44,7 @@ function keepsOrder(before, after) {
   return matched === before.length;
 }
 
-function alertingRank(value) {
+function alertingRank(value: OptionValue): number {
   return ALERTING.indexOf(
     String(value ?? 'error')
       .trim()
@@ -39,7 +52,7 @@ function alertingRank(value) {
   );
 }
 
-function loosens(key, before, after) {
+function loosens(key: string, before: OptionValue, after: OptionValue): boolean {
   if (key === 'layers') {
     return !keepsOrder(listOf(before), listOf(after));
   }
@@ -56,30 +69,30 @@ function loosens(key, before, after) {
     return isOn(after, false) && !isOn(before, false);
   }
   if (Object.hasOwn(LOOSENED_WHEN_OFF, key)) {
-    const fallback = LOOSENED_WHEN_OFF[key];
+    const fallback = LOOSENED_WHEN_OFF[key] ?? false;
     return !isOn(after, fallback) && isOn(before, fallback);
   }
   return !NEUTRAL.has(key);
 }
 
-function entry(text, loosened, file) {
+function entry(text: string, loosened: boolean, file: string): FileChange {
   return loosened ? { loosened: { text, kind: KIND, files: [file] } } : { changed: text };
 }
 
-function optionChanges(label, { base, head, file }) {
-  const keys = [...new Set([...Object.keys(base), ...Object.keys(head)])].toSorted();
-  return keys
-    .filter((key) => JSON.stringify(base[key]) !== JSON.stringify(head[key]))
-    .map((key) =>
-      entry(
-        `${label} ${key}: ${shownSetting(base[key])} -> ${shownSetting(head[key])}`,
-        loosens(key, base[key], head[key]),
-        file,
-      ),
-    );
+function optionChanges(
+  label: string,
+  { base, head, file }: { base: ImportLinterOptions; head: ImportLinterOptions; file: string },
+): FileChange[] {
+  return changedKeys(base, head).map((key) =>
+    entry(
+      `${label} ${key}: ${shownSetting(base[key])} -> ${shownSetting(head[key])}`,
+      loosens(key, base[key], head[key]),
+      file,
+    ),
+  );
 }
 
-function contractChanges(base, head) {
+function contractChanges(base: ImportLinterConfig, head: ImportLinterConfig): FileChange[] {
   const before = new Map(base.contracts.map(({ id, options }) => [id, options]));
   const after = new Map(head.contracts.map(({ id, options }) => [id, options]));
   return [...new Set([...before.keys(), ...after.keys()])].toSorted().flatMap((id) => {
@@ -90,11 +103,21 @@ function contractChanges(base, head) {
     if (!before.has(id)) {
       return [entry(`${label} added`, false, head.file)];
     }
-    return optionChanges(label, { base: before.get(id), head: after.get(id), file: head.file });
+    return optionChanges(label, {
+      base: before.get(id) ?? {},
+      head: after.get(id) ?? {},
+      file: head.file,
+    });
   });
 }
 
-export function importLinterChanges({ base, head }) {
+export function importLinterChanges({
+  base,
+  head,
+}: {
+  base: ImportLinterConfig | undefined;
+  head: ImportLinterConfig | undefined;
+}): FileChange[] {
   if (head === undefined) {
     return base === undefined
       ? []

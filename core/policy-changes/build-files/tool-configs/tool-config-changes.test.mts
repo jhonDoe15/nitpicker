@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mts';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 
 describe('project tool configs the project opted into', () => {
   const java = { preset: 'java', tools: { pmd: PROJECT, checkstyle: PROJECT } };
-  const files = (ruleset, checkstyle = '<module/>') => ({
+  const files = (ruleset: string, checkstyle = '<module/>') => ({
     'config/pmd/ruleset.xml': ruleset,
     'config/checkstyle/checkstyle.xml': checkstyle,
     'config/checkstyle/suppressions.xml': '<suppressions/>',
@@ -42,7 +42,7 @@ describe('project tool configs the project opted into', () => {
 
   it('counts an edit of the golangci-lint config whose formatter options the Go project opted into', () => {
     const go = { preset: 'go', tools: { gofumpt: PROJECT } };
-    const at = (golangci) => ({
+    const at = (golangci: string) => ({
       '.golangci.yml': golangci,
       'go.mod': 'module m\n',
       'a.go': 'package a\n',
@@ -59,7 +59,7 @@ describe('project tool configs the project opted into', () => {
 
   it('counts an edit of any staticcheck.conf the Go project opted into', () => {
     const go = { preset: 'go', tools: { staticcheck: PROJECT } };
-    const at = (checks) => ({
+    const at = (checks: string) => ({
       'staticcheck.conf': 'checks = ["all"]\n',
       'shop/staticcheck.conf': checks,
       'go.mod': 'module m\n',
@@ -81,7 +81,7 @@ describe('project tool configs the project opted into', () => {
 
   it('counts an edit of the detekt config and editorconfig the Kotlin project opted into', () => {
     const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
-    const at = (detekt, editorconfig) => ({
+    const at = (detekt: string, editorconfig: string) => ({
       'config/detekt/detekt.yml': detekt,
       '.editorconfig': editorconfig,
       'src/main/kotlin/A.kt': 'class A\n',
@@ -101,7 +101,7 @@ describe('project tool configs the project opted into', () => {
   });
 
   it('ignores the project detekt config while the project did not opt into it', () => {
-    const at = (text) => ({
+    const at = (text: string) => ({
       'config/detekt/detekt.yml': text,
       'src/main/kotlin/A.kt': 'class A\n',
     });
@@ -114,7 +114,7 @@ describe('project tool configs the project opted into', () => {
 
   it('counts an edit of the Prettier config the project opted into, and only its own key in package.json', () => {
     const typescript = { tools: { prettier: PROJECT } };
-    const at = (prettierrc, packageJson) => ({
+    const at = (prettierrc: string, packageJson: Record<string, unknown>) => ({
       '.prettierrc': prettierrc,
       'package.json': JSON.stringify(packageJson),
       'src/a.ts': 'export const a = 1;\n',
@@ -148,14 +148,19 @@ describe('project tool configs the project opted into', () => {
     'reads what an edit of the knip config a %s project opted into applies, imports included',
     (preset) => {
       const config = { ...(preset === undefined ? {} : { preset }), tools: { knip: PROJECT } };
-      const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
-      const manifest = (extra) => JSON.stringify({ name: 'x', ...extra });
+      const at = (files: Record<string, string>) => ({
+        'src/a.ts': 'export const a = 1;\n',
+        ...files,
+      });
+      const manifest = (extra: Record<string, unknown> = {}) =>
+        JSON.stringify({ name: 'x', ...extra });
       const base = at({
         'knip.ts': "import ignore from './tools/ignore.js';\nexport default { ignore };\n",
         'tools/ignore.js': 'export default [];\n',
         'package.json': manifest(),
       });
-      const edited = (files) => between({ base, head: at({ ...base, ...files }), config });
+      const edited = (files: Record<string, string>) =>
+        between({ base, head: at({ ...base, ...files }), config });
 
       expect(changesOf(edited({ 'tools/ignore.js': "export default ['src/**'];\n" }))).toEqual({
         policyLoosenings: ['knip knip.ts ignore: [] -> ["src/**"]'],
@@ -178,9 +183,9 @@ describe('project tool configs the project opted into', () => {
   );
   it('reads a knip.jsonc edit per key, without comments, order or removed ignores loosening', () => {
     const config = { preset: 'typescript', tools: { knip: PROJECT } };
-    const at = (knip) => ({ 'knip.jsonc': knip, 'src/a.ts': 'export const a = 1;\n' });
+    const at = (knip: string) => ({ 'knip.jsonc': knip, 'src/a.ts': 'export const a = 1;\n' });
     const base = at('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"] }');
-    const changes = (knip) => changesOf(between({ base, head: at(knip), config }));
+    const changes = (knip: string) => changesOf(between({ base, head: at(knip), config }));
 
     expect(changes('// ours\n{ "entry": ["x.ts"], "ignore": ["b/**", "a/**"], }')).toEqual({
       policyLoosenings: [],
@@ -197,7 +202,7 @@ describe('project tool configs the project opted into', () => {
   });
   it('falls back to the files when a side of the knip config cannot be read', () => {
     const config = { preset: 'typescript', tools: { knip: PROJECT } };
-    const at = (knip) => ({ 'knip.json': knip, 'src/a.ts': 'export const a = 1;\n' });
+    const at = (knip: string) => ({ 'knip.json': knip, 'src/a.ts': 'export const a = 1;\n' });
     expect(
       between({ base: at('{ "ignore": [] }'), head: at('{ "ignore": ['), config }).policyLoosenings,
     ).toEqual(['knip project config changed: knip.json']);
@@ -210,7 +215,7 @@ describe('project tool configs the project opted into', () => {
         tools: { 'dependency-cruiser': PROJECT },
       };
       const rule = "{ name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } }";
-      const at = (rules) => ({
+      const at = (rules: string) => ({
         'src/a.ts': 'export const a = 1;\n',
         'tools/rules.cjs': `module.exports = [${rules}];\n`,
         '.dependency-cruiser.cjs':
@@ -229,11 +234,12 @@ describe('project tool configs the project opted into', () => {
     const config = { preset: 'typescript', tools: { 'dependency-cruiser': PROJECT } };
     const rule = { name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } };
     const unnamed = { from: { path: '^src' }, to: { path: '^vendor' } };
-    const at = (cruiser) => ({
+    const at = (cruiser: Record<string, unknown>) => ({
       'src/a.ts': 'export const a = 1;\n',
       '.dependency-cruiser.json': JSON.stringify({ forbidden: [rule], ...cruiser }),
     });
-    const changes = (cruiser) => changesOf(between({ base: at({}), head: at(cruiser), config }));
+    const changes = (cruiser: Record<string, unknown>) =>
+      changesOf(between({ base: at({}), head: at(cruiser), config }));
     const label = 'dependency-cruiser .dependency-cruiser.json';
 
     expect(changes({ options: { tsPreCompilationDeps: false, outputType: 'dot' } })).toEqual({
@@ -267,7 +273,7 @@ describe('project tool configs the project opted into', () => {
   it.each(['typescript', 'python', 'java', 'kotlin'])(
     'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
     (preset) => {
-      const at = (jscpd) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
+      const at = (jscpd: string) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
       const config = { preset, tools: { jscpd: PROJECT } };
       const base = at('{"minTokens": 50}');
 
@@ -311,7 +317,7 @@ describe('project tool configs the project opted into', () => {
 
 describe('what an edit of .jscpd.json changes', () => {
   const config = { preset: 'python', tools: { jscpd: PROJECT } };
-  const at = (jscpd) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
+  const at = (jscpd: unknown) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
 
   it.each([
     [{ minLines: 5 }, { minLines: 9 }, 'loosened', 'minLines: 5 -> 9'],
@@ -346,7 +352,7 @@ describe('what an edit of .jscpd.json changes', () => {
 
 describe('what counts as an edit of a project tool config', () => {
   const java = { preset: 'java', tools: { checkstyle: PROJECT } };
-  const checkstyle = (rules, extra = {}) => ({
+  const checkstyle = (rules: string, extra: Record<string, string> = {}) => ({
     'config/checkstyle/checkstyle.xml': rules,
     'src/main/java/A.java': 'class A {}\n',
     ...extra,
@@ -380,7 +386,7 @@ describe('what counts as an edit of a project tool config', () => {
 
   it('reads only the editorconfig sections that apply to Kotlin files, and detekt rules without comments', () => {
     const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
-    const at = (editorconfig, detekt = 'style:\n  MaxLineLength:\n    active: true\n') => ({
+    const at = (editorconfig: string, detekt = 'style:\n  MaxLineLength:\n    active: true\n') => ({
       '.editorconfig': editorconfig,
       'config/detekt/detekt.yml': detekt,
       'src/main/kotlin/A.kt': 'class A\n',
@@ -403,7 +409,7 @@ describe('what counts as an edit of a project tool config', () => {
 
   it('reads only the editorconfig sections Prettier formats and ignores layout in its config', () => {
     const typescript = { tools: { prettier: PROJECT } };
-    const at = (editorconfig, prettierrc = '{"semi": true}\n') => ({
+    const at = (editorconfig: string, prettierrc = '{"semi": true}\n') => ({
       '.editorconfig': editorconfig,
       '.prettierrc': prettierrc,
       'src/a.ts': 'export const a = 1;\n',
@@ -430,16 +436,16 @@ describe('what counts as an edit of a project tool config', () => {
 describe('build-declared tool settings the project opted into', () => {
   const SOURCE = { 'src/main/java/A.java': 'class A {}\n' };
   const FILTER = '<FindBugsFilter><Match><Bug pattern="EI_EXPOSE_REP"/></Match></FindBugsFilter>';
-  const gradle = (spotbugs, filter = FILTER, extra = '') => ({
+  const gradle = (spotbugs: string, filter = FILTER, extra = '') => ({
     ...SOURCE,
     'build.gradle': `plugins { id 'java' }\n${extra}spotbugs {\n${spotbugs}\n}\n`,
     'config/spotbugs/exclude.xml': filter,
   });
   const SETTINGS = "  effort = 'max'\n  excludeFilter = file('config/spotbugs/exclude.xml')";
-  const optedIn = (preset) => ({ preset, tools: { spotbugs: PROJECT } });
+  const optedIn = (preset: string) => ({ preset, tools: { spotbugs: PROJECT } });
 
   it('counts an edit of the SpotBugs settings or of the filter they name, with Gradle or Maven', () => {
-    const pom = (effort) => ({
+    const pom = (effort: string) => ({
       ...SOURCE,
       'pom.xml': `<project><build><plugins><plugin><artifactId>spotbugs-maven-plugin</artifactId><configuration><effort>${effort}</effort></configuration></plugin></plugins></build></project>`,
     });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between } from './test-support/policy-fixtures.mjs';
+import { between } from './test-support/policy-fixtures.mts';
 
 const CLASS = 'package a;\nclass A {}\n';
 const SOURCES = {
@@ -8,9 +8,15 @@ const SOURCES = {
   'src/test/java/a/slow/SlowTest.java': CLASS,
   'src/test/java/a/FastTest.java': CLASS,
 };
-const groovy = (script) => ({ 'build.gradle': `plugins { id 'java' }\n${script}`, ...SOURCES });
-const kotlin = (script) => ({ 'build.gradle.kts': `plugins { java }\n${script}`, ...SOURCES });
-const loosenedBy = (files, head) =>
+const groovy = (script: string) => ({
+  'build.gradle': `plugins { id 'java' }\n${script}`,
+  ...SOURCES,
+});
+const kotlin = (script: string) => ({
+  'build.gradle.kts': `plugins { java }\n${script}`,
+  ...SOURCES,
+});
+const loosenedBy = (files: (script: string) => Record<string, string>, head: string) =>
   between({ base: files(''), head: files(head) }).policyLoosenings;
 
 describe('Gradle test task filters written outside a task block', () => {
@@ -21,7 +27,7 @@ describe('Gradle test task filters written outside a task block', () => {
     ['an onlyIf that is always false', kotlin, 'tasks.test { onlyIf { false } }\n'],
   ])('counts %s as switching the tests off', (_, files, head) => {
     expect(loosenedBy(files, head)).toEqual([
-      `Gradle test excludes in ${Object.keys(files(''))[0]} added: enabled = false`,
+      `Gradle test excludes in ${Object.keys(files('')).slice(0, 1).join('')} added: enabled = false`,
     ]);
   });
 
@@ -30,7 +36,7 @@ describe('Gradle test task filters written outside a task block', () => {
     ['tasks.test.configure', kotlin, 'tasks.test.configure { exclude("**/slow/**") }\n'],
   ])('counts an exclude written with %s', (_, files, head) => {
     expect(loosenedBy(files, head)).toEqual([
-      `Gradle test excludes in ${Object.keys(files(''))[0]} added: **/slow/**`,
+      `Gradle test excludes in ${Object.keys(files('')).slice(0, 1).join('')} added: **/slow/**`,
     ]);
   });
 });
@@ -45,7 +51,7 @@ describe('Gradle include filters', () => {
     ['include', groovy, "test { include '**/FastTest*' }\n"],
   ])('counts a test %s that leaves a test out', (_, files, head) => {
     expect(loosenedBy(files, head)).toEqual([
-      `Gradle test includes in ${Object.keys(files(''))[0]} leave out checked code: src/test/java/a/slow/SlowTest.java`,
+      `Gradle test includes in ${Object.keys(files('')).slice(0, 1).join('')} leave out checked code: src/test/java/a/slow/SlowTest.java`,
     ]);
   });
 

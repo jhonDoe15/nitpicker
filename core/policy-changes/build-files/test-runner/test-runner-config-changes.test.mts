@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from '../test-support/policy-fixtures.mjs';
+import type { PolicyConfig } from '../../types/policy-types.mts';
+import { between, changesOf } from '../test-support/policy-fixtures.mts';
 
 const OPT_IN = { precedence: ['project', 'nitpicker'] };
 const vitestConfig = { tools: { tests: { ...OPT_IN, runner: 'vitest' } } };
@@ -7,18 +8,22 @@ const mochaConfig = { tools: { tests: { ...OPT_IN, runner: 'mocha' } } };
 const NONE = { policyLoosenings: [], policyChanges: [] };
 const PRESETS = [undefined, 'javascript'];
 
-const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
-const retrying = (retry, file = 'vitest.config.mjs') => ({
-  [file]: `export default { test: { retry: ${retry} } };\n`,
+const at = (files: Record<string, string>) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
+const retrying = (retry: number | string, file = 'vitest.config.mjs') => ({
+  [file]: `export default { test: { retry: ${String(retry)} } };\n`,
 });
-const manifest = (mocha) => ({
+const manifest = (mocha: unknown) => ({
   'package.json': JSON.stringify({ name: 'p', version: '1.0.0', mocha }),
 });
-const rc = (retries) => ({ '.mocharc.json': JSON.stringify({ retries }) });
-const loosened = (text) => ({ policyLoosenings: [text], policyChanges: [text] });
-const changed = (text) => ({ policyLoosenings: [], policyChanges: [text] });
+const rc = (retries: number) => ({ '.mocharc.json': JSON.stringify({ retries }) });
+const loosened = (text: string) => ({ policyLoosenings: [text], policyChanges: [text] });
+const changed = (text: string) => ({ policyLoosenings: [], policyChanges: [text] });
 
-function judged(base, head, config = vitestConfig) {
+function judged(
+  base: Record<string, string>,
+  head: Record<string, string>,
+  config: PolicyConfig = vitestConfig,
+) {
   return changesOf(between({ base: at(base), head: at(head), config }));
 }
 
@@ -84,7 +89,9 @@ describe('the Vitest retry the project opted into', () => {
   });
 
   it('follows a value the config imports', () => {
-    const shared = (retry) => ({ 'vitest.shared.ts': `export const retry: number = ${retry};\n` });
+    const shared = (retry: number) => ({
+      'vitest.shared.ts': `export const retry: number = ${String(retry)};\n`,
+    });
     const config = {
       'vitest.config.ts':
         "import { retry } from './vitest.shared.ts';\nexport default { test: { retry } };\n",
@@ -124,7 +131,8 @@ describe('the Vitest retry the project opted into', () => {
 });
 
 describe('the Mocha retries the project opted into', () => {
-  const judgedMocha = (base, head) => judged(base, head, mochaConfig);
+  const judgedMocha = (base: Record<string, string>, head: Record<string, string>) =>
+    judged(base, head, mochaConfig);
 
   it.each(PRESETS)('lists more retries as a loosening with the %s preset', (preset) => {
     const config = { preset, tools: mochaConfig.tools };
@@ -183,10 +191,10 @@ describe('the Mocha retries the project opted into', () => {
   });
 
   it('reads the config the test script names', () => {
-    const script = (config) => ({
+    const script = (config: string) => ({
       'package.json': JSON.stringify({ name: 'p', scripts: { test: `mocha --config ${config}` } }),
     });
-    const files = (retries) => ({
+    const files = (retries: number) => ({
       ...script('config/mocha.json'),
       'config/mocha.json': JSON.stringify({ retries }),
       ...rc(0),
