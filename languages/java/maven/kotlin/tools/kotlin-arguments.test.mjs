@@ -4,10 +4,10 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readPinnedTools } from '../../../builds/java-build.mjs';
 import { toolDependencies } from '../../maven-tools.mjs';
-import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mjs';
-import { kotlinTools } from './kotlin-dependencies.mjs';
-import { ktfmtArguments, ktlintArguments } from './kotlin-format.mjs';
-import { psiArguments } from './kotlin-programs.mjs';
+import { detektArguments, detektClasspath, jdkHome } from './kotlin-detekt.mts';
+import { kotlinTools } from './kotlin-dependencies.mts';
+import { ktfmtArguments, ktlintArguments } from './kotlin-format.mts';
+import { psiArguments } from './kotlin-programs.mts';
 
 const roots = [];
 const module = {

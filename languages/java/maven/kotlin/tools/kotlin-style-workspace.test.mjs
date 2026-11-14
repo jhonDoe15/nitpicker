@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { withStyleWorkspace } from './kotlin-style-workspace.mjs';
+import { withStyleWorkspace } from './kotlin-style-workspace.mts';
 
 const roots = [];
 
