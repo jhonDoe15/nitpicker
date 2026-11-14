@@ -1,17 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import type { ProjectRecipe } from '../../typed/project-types.mts';
 import { useFixtureProjects } from '../../test-support/fixture-project.mts';
-import { forcedPartialRecipe, spansOf } from '../test-support/forced.mjs';
+import { forcedPartialRecipe, spansOf } from '../test-support/forced.mts';
 import {
   headerCopy,
   headerPair,
   validationCopy,
   validationPair,
-} from '../test-support/partial-sources.mjs';
-import { partialRunExtractRecipe as recipe } from './partial-run-extract.mjs';
+} from '../test-support/partial-sources.mts';
+import type { LineSpan } from '../typed/extract-types.mts';
+import { partialRunExtractRecipe as recipe } from './partial-run-extract.mts';
 
 const projects = useFixtureProjects();
 
-function outcome(source, use) {
+function outcome(
+  source: string,
+  use: ProjectRecipe,
+): { source: string | undefined; notes: string[] } {
   const result = projects.fix(
     { 'src/a.ts': source },
     { recipe: use, rule: 'structure/near-duplicate' },
@@ -19,21 +24,25 @@ function outcome(source, use) {
   return { source: result.tree['src/a.ts'], notes: result.notes };
 }
 
-function note(line, reason) {
-  return [`--fix left src/a.ts:${line} near-duplicate: ${reason}`];
+function note(line: number, reason: string): string[] {
+  return [`--fix left src/a.ts:${String(line)} near-duplicate: ${reason}`];
 }
 
-function forced(source, [first, last]) {
+function forced(source: string, [first, last]: [string, string]): ProjectRecipe {
   return forcedPartialRecipe({ runs: spansOf(source, first, last) });
 }
 
-function longer(source) {
+function longer(source: string): ProjectRecipe {
   const runs = spansOf(source, ...HEADER_RUN);
   runs[1].end += 1;
   return forcedPartialRecipe({ runs });
 }
 
-function pairWith(afterFirst, afterSecond, change = (text) => text) {
+function pairWith(
+  afterFirst: string,
+  afterSecond: string,
+  change: (text: string) => string = (text) => text,
+): string {
   return change(
     [
       headerCopy('headerNames', { after: afterFirst }),
@@ -42,8 +51,8 @@ function pairWith(afterFirst, afterSecond, change = (text) => text) {
   );
 }
 
-const HEADER_RUN = ['const headers', 'const names'];
-const CHECK_RUN = ['if (name.length === 0)', 'const trimmed'];
+const HEADER_RUN: [string, string] = ['const headers', 'const names'];
+const CHECK_RUN: [string, string] = ['if (name.length === 0)', 'const trimmed'];
 const early = headerPair().replaceAll(
   "const index = line.indexOf(':');",
   "const index = line.indexOf(':');\n    if (line === '') {\n      return {};\n    }",
@@ -61,7 +70,7 @@ const writes = headerPair()
 const closure = pairWith(
   '  scale += 1;\n  return names.join(",");',
   '  scale += 1;\n  return names.length + total;',
-  (text) =>
+  (text: string) =>
     text
       .replaceAll('const headers', 'let scale = 1;\n  const headers')
       .replaceAll('.sort();', '.sort().map((name) => name + String(scale));'),
@@ -116,7 +125,7 @@ const methods = `export class Reader {\n  limit = 3;\n${headerPair()
   .replaceAll('export function ', '  ')
   .replaceAll('limit)', 'this.limit)')}}\n`;
 
-const CASES = [
+const CASES: [string, string, ProjectRecipe | undefined, string[]][] = [
   [
     'an early return',
     early,
@@ -231,7 +240,7 @@ describe('partialRunExtractRecipe declines', () => {
   it('declines a run that starts inside a statement', () => {
     const source = validationCopy('first', { message: 'a', after: '  return trimmed;' });
     const text = `${source}\n${source.replace('first', 'second')}`;
-    const runs = [
+    const runs: [LineSpan, LineSpan] = [
       { start: 2, end: 4 },
       { start: 2, end: 4 },
     ];

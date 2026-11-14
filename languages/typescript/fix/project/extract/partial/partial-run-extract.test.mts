@@ -1,46 +1,63 @@
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { reuseFindingsFor } from '../../reuse/reuse-findings.mjs';
+import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
+import { fieldOf } from '../../../../../../shared/values/readers.mts';
+import type { ProjectRecipe } from '../../typed/project-types.mts';
 import { useFixtureProjects } from '../../test-support/fixture-project.mts';
-import { forcedPartialRecipe, spansOf } from '../test-support/forced.mjs';
+import { forcedPartialRecipe, spansOf } from '../test-support/forced.mts';
+import { remainingNearDuplicates as remaining } from '../test-support/near-duplicates-left.mts';
 import {
   headerCopy,
   headerPair,
   returningPair,
   validationCopy,
   validationPair,
-} from '../test-support/partial-sources.mjs';
-import { partialRunExtractRecipe as recipe } from './partial-run-extract.mjs';
+} from '../test-support/partial-sources.mts';
+import { partialRunExtractRecipe as recipe } from './partial-run-extract.mts';
 
+type Loaded = Record<string, (...args: unknown[]) => unknown>;
+
+const ts = typescriptApi();
 const projects = useFixtureProjects();
 
-function fix(files, use = recipe) {
+function fix(files: Record<string, string>, use: ProjectRecipe = recipe) {
   return projects.fix(files, { recipe: use, rule: 'structure/near-duplicate' });
 }
 
-function remaining(result) {
-  return reuseFindingsFor({ projectRoot: result.projectRoot }, 'near-duplicate');
+function isLoaded(value: unknown): value is Loaded {
+  return typeof value === 'object' && value !== null;
 }
 
-function load(source, names) {
+function load(source: string, names: string[]): Loaded {
   const { outputText } = ts.transpileModule(source.replaceAll('export ', ''), {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   });
-  return vm.runInNewContext(`${outputText}\n({ ${names.join(', ')} })`);
+  const loaded: unknown = vm.runInNewContext(`${outputText}\n({ ${names.join(', ')} })`);
+  if (!isLoaded(loaded)) {
+    throw new TypeError('The transpiled source does not load');
+  }
+  return loaded;
 }
 
-function outcome(call) {
+function outcome(call: () => unknown): { value: unknown } | { thrown: unknown } {
   try {
     return { value: call() };
   } catch (error) {
-    return { thrown: error.message };
+    return { thrown: fieldOf(error, 'message') };
   }
 }
 
-function behaviours(source, calls) {
+function behaviours(source: string, calls: [string, ...unknown[]][]) {
   const functions = load(source, [...new Set(calls.map(([name]) => name))]);
-  return calls.map(([name, ...args]) => outcome(() => functions[name](...args)));
+  return calls.map(([name, ...args]) =>
+    outcome(() => {
+      const target = functions[name];
+      if (target === undefined) {
+        throw new TypeError(`${name} is not loaded`);
+      }
+      return target(...args);
+    }),
+  );
 }
 
 describe('partialRunExtractRecipe', () => {
@@ -54,7 +71,7 @@ describe('partialRunExtractRecipe', () => {
 
   it('keeps the line endings of a file that uses CRLF', () => {
     const result = fix({ 'src/a.ts': headerPair().replaceAll('\n', '\r\n') });
-    const text = result.tree['src/a.ts'];
+    const text = result.tree['src/a.ts'] ?? '';
     expect([
       text.includes('sharedHeaderNamesSteps('),
       text.replaceAll('\r\n', '').includes('\n'),
@@ -92,13 +109,13 @@ describe('partialRunExtractRecipe', () => {
   });
 
   it('keeps the results of both header readers', () => {
-    const calls = [
+    const calls: [string, ...unknown[]][] = [
       ['headerNames', ['a: 1', 'B:2', 'bad'], 5],
       ['headerCount', ['a: 1', 'B:2', 'bad'], 1],
       ['headerCount', [], 3],
     ];
     const source = headerPair();
-    const after = fix({ 'src/a.ts': source }).tree['src/a.ts'];
+    const after = fix({ 'src/a.ts': source }).tree['src/a.ts'] ?? '';
     expect(behaviours(after, calls)).toEqual(behaviours(source, calls));
   });
 
@@ -134,7 +151,7 @@ describe('partialRunExtractRecipe', () => {
   });
 
   it('keeps what both validators return and throw', () => {
-    const calls = [
+    const calls: [string, ...unknown[]][] = [
       ['createUser', 'Ann', 3],
       ['createUser', '', 3],
       ['createUser', 'Ann', -1],
@@ -143,7 +160,7 @@ describe('partialRunExtractRecipe', () => {
       ['renameUser', '', 4],
     ];
     const source = validationPair();
-    const after = fix({ 'src/a.ts': source }).tree['src/a.ts'];
+    const after = fix({ 'src/a.ts': source }).tree['src/a.ts'] ?? '';
     expect(behaviours(after, calls)).toEqual(behaviours(source, calls));
   });
 
@@ -188,11 +205,12 @@ describe('partialRunExtractRecipe', () => {
   });
 
   it('writes no types for a JavaScript file', () => {
-    const untyped = (text) =>
-      text
+    function untyped(text: string): string {
+      return text
         .replaceAll(': string[]', '')
         .replaceAll(': number', '')
         .replaceAll(': Record<string, string>', '');
+    }
     const result = fix({ 'src/a.js': untyped(headerPair()) });
     expect(result.tree['src/a.js']).toMatchInlineSnapshot(`
       "export function headerNames(raw, limit) {

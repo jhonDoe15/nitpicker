@@ -7,15 +7,17 @@ const LOOP = `  const headers: Record<string, string> = {};
   }
   const names = Object.keys(headers).sort();`;
 
+type HeaderOptions = { before?: string; after?: string; loop?: string };
+
 export function headerCopy(
-  name,
-  { before = '', after = '  return names.join(",");', loop = LOOP } = {},
-) {
+  name: string,
+  { before = '', after = '  return names.join(",");', loop = LOOP }: HeaderOptions = {},
+): string {
   const lead = before === '' ? '' : `${before}\n`;
   return `export function ${name}(raw: string[], limit: number) {\n${lead}${loop}\n${after}\n}\n`;
 }
 
-export function headerPair(options = {}) {
+export function headerPair(options: HeaderOptions = {}): string {
   return [
     headerCopy('headerNames', options),
     headerCopy('headerCount', {
@@ -26,7 +28,7 @@ export function headerPair(options = {}) {
   ].join('\n');
 }
 
-function validationChecks(message) {
+function validationChecks(message: string): string {
   return `  if (name.length === 0) {
     throw new Error('${message}');
   }
@@ -39,14 +41,18 @@ function validationChecks(message) {
   const trimmed = name.trim().toLowerCase();`;
 }
 
-export function validationCopy(name, { message, after, binds = true }) {
-  const checks = binds
-    ? validationChecks(message)
-    : validationChecks(message).replace(/\n.*trimmed.*$/u, '');
+export function validationCopy(
+  name: string,
+  { message, after, binds }: { message: string; after: string; binds?: false },
+): string {
+  const checks =
+    binds === false
+      ? validationChecks(message).replace(/\n.*trimmed.*$/u, '')
+      : validationChecks(message);
   return `export function ${name}(name: string, age: number) {\n${checks}\n${after}\n}\n`;
 }
 
-export function validationPair() {
+export function validationPair(): string {
   return [
     validationCopy('createUser', {
       message: 'name is required',
@@ -59,7 +65,7 @@ export function validationPair() {
   ].join('\n');
 }
 
-export function returningPair() {
+export function returningPair(): string {
   const loop = `${LOOP}\n  return names.join(',');`;
   return [
     headerCopy('headerLine', {
