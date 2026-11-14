@@ -5,12 +5,13 @@ import {
   initializeProject,
   kotlinE2eEnabled,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { ALLOWED_FILES, GUARD_ROOT, summary } from '../test-support/guards/kotlin-guard-data.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import { ALLOWED_FILES, GUARD_ROOT, summary } from '../test-support/guards/kotlin-guard-data.mts';
+import type { DiffResult, KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset allowed source forms end to end', () => {
-  let project;
-  let allowed;
+  let project: KotlinProject;
+  let allowed: DiffResult;
 
   beforeAll(() => {
     project = initializeProject();

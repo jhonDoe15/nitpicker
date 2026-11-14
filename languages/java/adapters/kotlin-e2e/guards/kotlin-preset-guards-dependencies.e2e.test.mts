@@ -2,14 +2,15 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../../java-diff.mjs';
-import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../test-support/kotlin-e2e-project.mjs';
+import { gradle, kotlinE2eEnabled, kotlinPolicy } from '../__tests__/kotlin-e2e-project.mts';
+import { collectJavaFindings } from '../test-support/views/kotlin-e2e-views.mts';
+import type { Finding } from '../../../../../shared/values/findings.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-project');
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset unused declared dependency end to end', () => {
-  let root;
-  let findings;
+  let root: string;
+  let findings: Finding[];
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-dependencies-'));
@@ -18,7 +19,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset unused declared dependency end
   });
 
   afterAll(() => {
-    if (root !== undefined) {
+    if (typeof root === 'string') {
       rmSync(root, { recursive: true, force: true });
     }
   });

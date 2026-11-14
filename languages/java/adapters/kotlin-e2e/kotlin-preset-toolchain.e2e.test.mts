@@ -2,8 +2,6 @@ import path from 'node:path';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { analyzeWithIncludedBuild } from '../test-support/gradle-e2e.mjs';
 import {
   commitBranch,
   copyJdkWithNativeImage,
@@ -15,11 +13,16 @@ import {
   kotlinPolicy,
   removeProject,
   TOOLCHAIN_PROBE,
-} from './test-support/kotlin-e2e-project.mjs';
+} from './__tests__/kotlin-e2e-project.mts';
+import {
+  analyzeWithIncludedBuild,
+  collectJavaFindings,
+} from './test-support/views/kotlin-e2e-views.mts';
+import type { KotlinProject } from './__tests__/kotlin-e2e-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset JDK selection end to end', () => {
-  let project;
-  let toolchainJdk;
+  let project: KotlinProject;
+  let toolchainJdk: string;
 
   beforeAll(() => {
     project = initializeProject();
@@ -38,10 +41,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset JDK selection end to end', () 
     rmSync(path.dirname(toolchainJdk), { recursive: true, force: true });
   });
   it('resolves detekt types against the JDK that runs Gradle when the project declares no toolchain, and against its toolchain JDK when it does', () => {
-    const jdkOf = (branch) => {
+    const jdkOf = (branch: string) => {
       git(project, 'checkout', '-q', branch);
       collectJavaFindings(project.root, { gradle, policy: kotlinPolicy });
-      const read = (name) => readFileSync(path.join(project.root, 'build', name), 'utf8');
+      const read = (name: string) => readFileSync(path.join(project.root, 'build', name), 'utf8');
       return { detekt: read('jdk-home.txt'), gradle: read('gradle-jvm-home.txt') };
     };
 

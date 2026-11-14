@@ -5,7 +5,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../../test-support/gradle-e2e.mjs';
-import { gradle, kotlinE2eEnabled } from '../test-support/kotlin-e2e-project.mjs';
+import { gradle, kotlinE2eEnabled } from '../__tests__/kotlin-e2e-project.mts';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../../fixtures/kotlin-caller-gaps');
 
@@ -16,13 +17,13 @@ gradle.projectsEvaluated {
 }
 `;
 
-function gapOf(facts, label) {
-  return facts.gaps.find((gap) => gap.label === label);
+function gapOf(facts: unknown, label: string): unknown {
+  return listOf(fieldOf(facts, 'gaps')).find((gap) => fieldOf(gap, 'label') === label);
 }
 
 describe.skipIf(!kotlinE2eEnabled)('caller gaps the init script records for unused-option', () => {
-  let root;
-  let facts;
+  let root: string;
+  let facts: unknown;
 
   beforeAll(() => {
     root = mkdtempSync(path.join(tmpdir(), 'nitpicker-caller-gaps-'));
@@ -39,13 +40,13 @@ describe.skipIf(!kotlinE2eEnabled)('caller gaps the init script records for unus
   }, 180_000);
 
   afterAll(() => {
-    if (root !== undefined) {
+    if (typeof root === 'string') {
       rmSync(root, { recursive: true, force: true });
     }
   });
 
   it('follows only the main compile and runtime classpaths into project dependencies', () => {
-    expect(facts.dependencies).toEqual({
+    expect(fieldOf(facts, 'dependencies')).toEqual({
       ':': [],
       ':api': [':core'],
       ':app': [':api', ':core'],
@@ -87,12 +88,16 @@ describe.skipIf(!kotlinE2eEnabled)('caller gaps the init script records for unus
   });
 
   it('records a project outside the analysis root with the projects it uses', () => {
-    expect(gapOf(facts, 'the project :legacy outside the analysis root')?.reaches).toEqual([
-      ':core',
-    ]);
+    expect(
+      fieldOf(gapOf(facts, 'the project :legacy outside the analysis root'), 'reaches'),
+    ).toEqual([':core']);
   });
 
   it('matches included-build coordinates whole and in named arguments, not as a prefix', () => {
-    expect(gapOf(facts, 'the included build client')?.reaches).toEqual([':api', ':core', ':tools']);
+    expect(fieldOf(gapOf(facts, 'the included build client'), 'reaches')).toEqual([
+      ':api',
+      ':core',
+      ':tools',
+    ]);
   });
 });
