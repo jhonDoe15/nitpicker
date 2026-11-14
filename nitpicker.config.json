@@ -95,7 +95,7 @@
       "paths": [
         "languages/java/adapters/jpa/jpa-source-filters.mjs",
         "languages/java/adapters/test-times/slow-tests.mjs",
-        "languages/java/builds/project-wide.mjs"
+        "languages/java/builds/project-wide.mts"
       ],
       "reason": "These readers join the report directory nitpicker itself created, the file names the build tools wrote into it, and the source roots the build reported for the project under analysis; none of them comes from user input or from the code under analysis."
     },

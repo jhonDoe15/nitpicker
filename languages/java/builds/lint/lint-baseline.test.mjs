@@ -1,7 +1,7 @@
 import { chmodSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { zipOf } from '../test-support/zip-writer.mjs';
+import { zipOf } from '../test-support/zip-writer.mts';
 import {
   JAVAC,
   RAW_NAMES,
