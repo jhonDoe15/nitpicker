@@ -2110,11 +2110,19 @@ warning on stderr.
 Monorepo: 3 projects listed in "projects" of nitpicker.config.json.
   run  web (typescript): 1 changed file
   run  api (python): 2 changed files
-  skip service (java): no changed files
+  skip 1 project: no changed files (--details lists them)
 == web (typescript) ==
 ...
 Monorepo summary: 1 failed, 1 passed, 1 skipped (3 projects)
+  ✖ web (typescript): 2 new enforceable violations
+  ✓ api (python): no new violations
+  - 1 project: no changed files (--details lists them)
 ```
+
+The plan and the summary print one line per project that runs and one line per reason for the
+skipped ones; `--details` lists every project, and `summary.json` always does. Projects are listed in
+natural order (`p2` before `p10`). A project that fails to run prints its error once, on stderr in
+its section and in its `report.txt`; its summary line keeps the first line and names that file.
 
 ### Plan the projects of a run
 

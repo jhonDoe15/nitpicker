@@ -34,7 +34,7 @@ function sortKey(entry) {
 }
 
 function byPath(left, right) {
-  return sortKey(left).localeCompare(sortKey(right));
+  return sortKey(left).localeCompare(sortKey(right), 'en', { numeric: true });
 }
 
 function nestedPython(directories) {

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
@@ -39,8 +40,7 @@ describe('a run at the top of a monorepo', () => {
     expect(result.summary).toBe(
       'Monorepo summary: 1 failed, 2 skipped (3 projects)\n' +
         '  ✖ web (typescript): 1 new enforceable violation\n' +
-        '  - api (python): skipped (no changed files)\n' +
-        '  - tools/app (java): skipped (no changed files)\n' +
+        '  - 2 projects: no changed files (--details lists them)\n' +
         'Combined report: <reports>/summary.json\n',
     );
     expect(result.json('web/new-findings.json')).toHaveLength(1);
@@ -77,9 +77,7 @@ describe('a run at the top of a monorepo', () => {
     expect(result.exitCode).toBe(0);
     expect(result.summary).toBe(
       'Monorepo summary: 3 skipped (3 projects)\n' +
-        '  - web (typescript): skipped (no changed files)\n' +
-        '  - api (python): skipped (no changed files)\n' +
-        '  - tools/app (java): skipped (no changed files)\n' +
+        '  - 3 projects: no changed files (--details lists them)\n' +
         'Combined report: <reports>/summary.json\n',
     );
     expect(result.json('summary.json').counts.run).toBe(0);
@@ -110,6 +108,54 @@ describe('a run at the top of a monorepo', () => {
     expect(statuses(result)).toEqual({ web: 'skipped', api: 'error', 'tools/app': 'passed' });
     expect(result.err.split('. Allowed keys:')[0]).toBe(
       'nitpicker failed in api: nitpicker.config.json: unknown key "colour"',
+    );
+  });
+
+  it('prints a project failure once on stderr and its first line in the summary', () => {
+    const root = monorepo();
+    writeFiles(root, {
+      'api/nitpicker.config.json': '{"colour":"red"}',
+      'api/src/b.py': 'B = 2\n',
+    });
+
+    const result = run(root);
+    const message = result.err.replace('nitpicker failed in api: ', '').trim();
+
+    expect(result.exitCode).toBe(2);
+    expect(result.err.split(message)).toHaveLength(2);
+    expect(result.out.split(message)).toHaveLength(2);
+    expect(result.summary).toContain(
+      `  ! api (python): failed to run: ${message.split('\n')[0]} (api/report.txt)\n`,
+    );
+    expect(readFileSync(`${result.reports}/api/report.txt`, 'utf8')).toContain(message);
+  });
+
+  it('keeps the console short in a workspace of many packages', () => {
+    const packages = Array.from({ length: 12 }, (_, index) => `p${String(index + 1)}`);
+    const root = repository({
+      'package.json': JSON.stringify({ name: 'top', workspaces: ['packages/*'] }),
+      ...Object.assign(
+        {},
+        ...packages.map((name) =>
+          projectFiles(`packages/${name}`, {
+            'package.json': JSON.stringify({ name, version: '1.0.0' }),
+            'src/index.ts': 'export const value = 1;\n',
+          }),
+        ),
+      ),
+    });
+    writeFiles(root, { 'packages/p2/src/index.ts': 'export const value = 2;\n' });
+
+    const result = run(root);
+    const lines = result.out.split('\n').filter((line) => line !== '');
+    const section = lines.findIndex((line) => line.startsWith('== '));
+    const after = lines.findIndex((line) => line.startsWith('Monorepo summary:'));
+
+    expect(result.exitCode).toBe(0);
+    expect(lines.slice(0, section)).toHaveLength(3);
+    expect(lines.slice(after)).toHaveLength(4);
+    expect(result.json('summary.json').projects.map(({ path }) => path)).toEqual(
+      packages.map((name) => `packages/${name}`),
     );
   });
 

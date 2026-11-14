@@ -33,7 +33,9 @@ function globMatches(entry, { root, files }) {
     (directory) =>
       directory !== '.' && matcher.test(directory) && !isBuildModule(directory, context),
   );
-  return outermost(matched);
+  return outermost(matched).toSorted((left, right) =>
+    left.localeCompare(right, 'en', { numeric: true }),
+  );
 }
 
 function expand(entry, { root, files }) {

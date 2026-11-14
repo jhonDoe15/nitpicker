@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 function readJson(file) {
@@ -36,4 +36,12 @@ export function outcomeOf({ exitCode, reportRoot, error }) {
     status: statusOf(facts),
     complete: error === undefined && counts.toolErrors === 0 && exitCode !== 2,
   };
+}
+
+export function writeFailureReport(reportRoot, projectPath, message) {
+  mkdirSync(reportRoot, { recursive: true });
+  writeFileSync(
+    path.join(reportRoot, 'report.txt'),
+    `Nitpicker could not run project ${projectPath}:\n${message}\n`,
+  );
 }

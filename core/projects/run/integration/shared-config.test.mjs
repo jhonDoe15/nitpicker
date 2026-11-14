@@ -77,7 +77,7 @@ describe('projects that extend a shared config', () => {
     expect(result.plan.split('\n').slice(1)).toEqual([
       '  run  web (typescript): shared config shared/base.json changed',
       '  run  api (typescript): shared config shared/base.json changed',
-      '  skip tools (typescript): no changed files',
+      '  skip 1 project: no changed files (--details lists them)',
     ]);
   });
 

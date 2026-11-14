@@ -45,9 +45,8 @@ describe('projects found without a "projects" setting', () => {
       'Monorepo: 3 projects detected (package.json workspaces). ' +
         'List them in "projects" of nitpicker.config.json to choose them; ' +
         '"projects": [] keeps this repository one project.',
-      '  skip packages/core (typescript): no changed files',
       '  run  packages/docs (typescript): 1 changed file',
-      '  skip packages/ui (typescript): no changed files',
+      '  skip 2 projects: no changed files (--details lists them)',
     ]);
     expect(result.exitCode).toBe(1);
     expect(result.json('summary.json').source).toBe('detected');
@@ -81,8 +80,8 @@ describe('projects that depend on a changed one', () => {
     });
     expect(result.plan.split('\n').slice(1)).toEqual([
       '  run  packages/core (typescript): 1 changed file',
-      '  skip packages/docs (typescript): no changed files',
       '  run  packages/ui (typescript): depends on packages/core',
+      '  skip 1 project: no changed files (--details lists them)',
     ]);
   });
 
@@ -144,9 +143,8 @@ describe('--project, --all and --defer-exit', () => {
       'packages/ui': 'skipped',
     });
     expect(result.plan.split('\n').slice(1)).toEqual([
-      '  skip packages/core (typescript): not requested',
       '  run  packages/docs (typescript): requested with --project',
-      '  skip packages/ui (typescript): not requested',
+      '  skip 2 projects: not requested (--details lists them)',
     ]);
   });
 
