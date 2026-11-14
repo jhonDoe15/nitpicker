@@ -89,6 +89,23 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Rows read with `for await` (any source that is not an array) are handled as they arrive: flush
   a fixed-size batch inside the loop and the rest after it, never one array of every row
   (`nitpicker/no-collected-stream-rows`).
+- Never run a query or a request once per item of a loop: fetch or write the items in one query
+  (`findByIds`, `createMany`, `WHERE id IN (...)`), also when a helper of yours does the I/O and inside
+  `Promise.all(items.map(...))`. For a remote API without a batch endpoint use a limiter or fixed-size
+  chunks. Paging loops, retries, a call that takes a whole chunk and broker publishes pass
+  (`nitpicker/no-io-in-loop`).
+- Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
+  created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
+- Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
+  `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
+- Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
+  commits (and outside the lock), and keep only the shared-state change under the lock
+  (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
+- A retried write carries one key for all attempts: a Stripe `idempotencyKey`, a `MessageDeduplicationId`,
+  `jobId` or `msgID`, `ON CONFLICT` on an insert, or retry only the read
+  (`nitpicker/no-retry-without-idempotency`).
+- Don't write to the database and publish a message in one function: write an outbox row in the same
+  transaction and let a relay publish it (`nitpicker/no-dual-write`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

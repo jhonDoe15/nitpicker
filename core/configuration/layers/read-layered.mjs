@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME, configError, isPlainObject } from '../../../shared/config.mjs';
 import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
+import { withKotlinRuleAliases } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { SUPPORTED_PRESETS, validateConfig, validateKeys } from '../validate.mjs';
 import { inheritedLayers } from './inherited.mjs';
 import { readLayers } from './layers.mjs';
@@ -77,7 +78,10 @@ function ownLayers(projectRoot, repositoryRoot) {
 }
 
 function checkedLayers(layers) {
-  const canonical = layers.map((layer) => ({ ...layer, config: withCanonicalRules(layer.config) }));
+  const canonical = layers.map((layer) => ({
+    ...layer,
+    config: withCanonicalRules(withKotlinRuleAliases(layer.config)),
+  }));
   for (const layer of canonical) {
     checkLayer(layer);
   }
