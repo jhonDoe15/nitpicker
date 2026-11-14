@@ -10,7 +10,7 @@ import {
   libraryBranchCount,
   libraryCalls,
   suspensionCall,
-} from './kotlin-branches.mjs';
+} from './kotlin-branches.mts';
 
 type BranchOptions = {
   readonly tool?: string;

@@ -7,7 +7,7 @@ import {
   libraryBranchCount,
   libraryCalls,
   suspensionCall,
-} from './kotlin-branches.mjs';
+} from './kotlin-branches.mts';
 
 const fixtures = path.resolve(import.meta.dirname, '..', 'fixtures');
 const report = readFileSync(path.join(fixtures, 'jacoco-kotlin.xml'), 'utf8');
