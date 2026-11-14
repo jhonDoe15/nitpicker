@@ -160,7 +160,7 @@ export function findUnusedPublicContractMethods(program, { sourceRoot }) {
   );
 }
 
-export function analyzePublicContractUsage(configPath) {
+export function analyzePublicContractUsage(configPath, { displayRoot } = {}) {
   const absoluteConfig = path.resolve(configPath);
   const config = ts.readConfigFile(absoluteConfig, (fileName) => ts.sys.readFile(fileName));
   if (config.error)
@@ -173,9 +173,15 @@ export function analyzePublicContractUsage(configPath) {
         .join('\n'),
     );
   const program = ts.createProgram(parsed.fileNames, parsed.options);
-  return findUnusedPublicContractMethods(program, {
-    sourceRoot: parsed.options.rootDir ?? path.dirname(absoluteConfig),
-  });
+  const sourceRoot = parsed.options.rootDir ?? path.dirname(absoluteConfig);
+  const findings = findUnusedPublicContractMethods(program, { sourceRoot });
+  if (displayRoot === undefined) {
+    return findings;
+  }
+  return findings.map((item) => ({
+    ...item,
+    file: path.relative(displayRoot, path.resolve(sourceRoot, item.file)).replaceAll('\\', '/'),
+  }));
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
