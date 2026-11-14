@@ -49,7 +49,10 @@ afterAll(() => {
 async function lint(body: string) {
   const code = `import { useEffect, useState } from 'react';\nexport function Panel({ id }: { id: string }) {\n  const [name, setName] = useState('');\n  useEffect(() => {\n    ${body}\n  }, [id]);\n  return <div>{name}</div>;\n}`;
   const [result] = await eslint.lintText(code, { filePath: path.join(root, 'src/panel.tsx') });
-  return result?.messages ?? [];
+  if (result === undefined) {
+    throw new Error('ESLint returned no result');
+  }
+  return result.messages;
 }
 
 async function messageIds(body: string) {
