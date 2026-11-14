@@ -1,4 +1,5 @@
 import { afterEffects, effectsOf, fact, patternNames } from './facts.mjs';
+import { assignedFacts } from './flow/assignments.mjs';
 import { recordCaptures } from './flow/closures.mjs';
 
 const JUMPS = new Map([
@@ -180,7 +181,12 @@ function otherFlow(node, facts, context) {
   recordCaptures(own, facts, context);
   const checks = own.map((expression) => ({ expression, facts: after }));
   const entry = KEPT_ENTRY.has(node.type) ? facts : after;
-  return { checks, children: lists.map((statements) => ({ statements, facts: entry })), after };
+  const { sourceCode } = context;
+  return {
+    checks,
+    children: lists.map((statements) => ({ statements, facts: entry })),
+    after: [...after, ...assignedFacts(node, sourceCode)],
+  };
 }
 
 function statementFlow(node, facts, context) {

@@ -104,7 +104,9 @@ describe('decided-condition on Java', () => {
       '  }',
     );
 
-    expect(decided(text)).toEqual([]);
+    expect(decided(text)).toEqual([
+      '11: `k > 2` is always false here: `k` is set to `0` on line 10, so the code it guards never runs',
+    ]);
   });
 
   it('keeps one identity per condition text so line moves do not count as new', () => {
@@ -185,7 +187,9 @@ describe('decided-condition on Kotlin', () => {
       '}',
     ].join('\n');
 
-    expect(decided(text, 'src/main/kotlin/shop/Rules.kt')).toEqual([]);
+    expect(decided(text, 'src/main/kotlin/shop/Rules.kt')).toEqual([
+      '3: `seen > 0` is always false here: `seen` is set to `0` on line 2, so the code it guards never runs',
+    ]);
   });
 
   it('forgets a field after a member write and keeps a Double name apart from an Int one', () => {
