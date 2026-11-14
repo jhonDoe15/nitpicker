@@ -17,7 +17,7 @@ function measure(source: string, coverage: string) {
   });
 }
 
-let metricsByName = new Map<string, FunctionMetric>();
+let metricsByName: Map<string, FunctionMetric>;
 
 beforeAll(() => {
   metricsByName = new Map(

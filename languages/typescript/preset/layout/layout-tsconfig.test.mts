@@ -1,16 +1,11 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { parseJson } from '../../../../shared/values/readers.mts';
 import { linkPolicyFile as untypedLinkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { readDefaultTsconfig } from './test-support/layout-readers.mts';
-import {
-  customLayout,
-  defaults,
-  removeTemporaryRoots,
-  temporaryProject,
-} from './test-support/layout-config-helpers.mts';
+import { customLayout, defaults, temporaryProject } from './test-support/layout-config-loading.mts';
 import {
   parseTsconfig,
   resolveLayout,
@@ -23,8 +18,6 @@ const linkPolicyFile: (
   target: string,
   transform: (text: string, targetPath: string) => string,
 ) => { readonly targetPath: string; remove(): void } = untypedLinkPolicyFile;
-
-afterAll(removeTemporaryRoots);
 
 describe('layout-aware tsconfig', () => {
   const defaultLayout = resolveLayout();

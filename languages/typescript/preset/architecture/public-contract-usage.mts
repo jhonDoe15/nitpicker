@@ -67,6 +67,12 @@ function accessedSymbol(
   return symbol;
 }
 
+function interfaceDeclaration(
+  symbol: TypeScript.Symbol | undefined,
+): TypeScript.InterfaceDeclaration | undefined {
+  return symbol?.declarations?.find(ts.isInterfaceDeclaration);
+}
+
 function implementedContracts(
   statement: TypeScript.ClassDeclaration,
   { checker, sourceRoot }: Context,
@@ -76,7 +82,7 @@ function implementedContracts(
     .flatMap((clause) => [...clause.types])
     .map((heritage) => checker.getTypeAtLocation(heritage));
   return types.flatMap((type) => {
-    const declaration = type.symbol?.declarations?.find(ts.isInterfaceDeclaration);
+    const declaration = interfaceDeclaration(type.symbol);
     return declaration &&
       isExported(declaration) &&
       isProductionSource(declaration.getSourceFile(), sourceRoot)

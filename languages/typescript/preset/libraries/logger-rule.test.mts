@@ -1,5 +1,7 @@
 import { structuredCatchLoggingRule } from '../eslint-plugin/rules/errors/structured-catch-logging.mjs';
-import { tester } from './test-support/rule-tester.mts';
+import { createTester } from './test-support/rule-tester.mts';
+
+const tester = createTester();
 
 const VALUE_MESSAGE = `Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string.`;
 const EITHER_MESSAGE = `Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error).`;

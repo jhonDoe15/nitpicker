@@ -27,12 +27,17 @@ describe('the test-console-project fixture', () => {
   });
 
   function commitLeakingTimer() {
-    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'test-console' });
+    const root = createCleanProject({
+      fixtureRoot,
+      gitTemplateRoot,
+      name: 'test-console',
+      environment: process.env,
+    });
     temporaryRoots.push(root);
     const widget = path.join(root, 'src/main/widget.ts');
     writeFileSync(widget, readFileSync(widget, 'utf8').replace('      clearTimeout(timer);\n', ''));
-    git(root, 'add', '-A');
-    git(root, 'commit', '-q', '-m', 'stop clearing the timer');
+    git(root, process.env, 'add', '-A');
+    git(root, process.env, 'commit', '-q', '-m', 'stop clearing the timer');
     return root;
   }
 

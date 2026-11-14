@@ -155,8 +155,7 @@ export function analyzeTestRuntime(
   graph: Graph | undefined,
   {
     layout = defaultLayout,
-    productionRoot = layout.sourceRoot,
-    productionRoots = [productionRoot],
+    productionRoots = [layout.sourceRoot],
     sourceTexts = new Map<string, string>(),
     subprocessBridges = defaultBridges(layout),
   }: AnalyzeOptions = {},

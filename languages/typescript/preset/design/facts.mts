@@ -1,7 +1,7 @@
 import type TypeScript from 'typescript';
 import { ts } from './syntax/typed.mts';
 import { callableFact } from './callables/callable-facts.mts';
-import { indexConstants, moduleReferences } from './callables/calls/references.mts';
+import { constantNamesOf, moduleReferences } from './callables/calls/references.mts';
 import { collectCallbackSites, collectNamedSites } from './callables/sites.mts';
 import { globMatcher } from '../unused-api/test-only/typed/layout-views.mts';
 import { moduleFacts, ownedFiles } from './project.mts';
@@ -24,7 +24,7 @@ function projectModuleTest(options: TypeScript.CompilerOptions): (specifier: str
     pattern.endsWith('*') ? pattern.slice(0, -1) : pattern,
   );
   return (specifier: string) =>
-    options.baseUrl !== undefined ||
+    Reflect.get(options, 'baseUrl') !== undefined ||
     ts.isExternalModuleNameRelative(specifier) ||
     patterns.some((prefix) => specifier.startsWith(prefix));
 }
@@ -47,7 +47,9 @@ function createState({
       entries: [],
       typeIds: new Map(),
       typeByNode: new Map(),
-      exportedByFile: new Map(),
+      exportedByFile: new Map(
+        files.map(({ sourceFile, exported }) => [sourceFile.fileName, exported]),
+      ),
       sites: [],
       siteCounts: new Map(),
       siteNames: new Set(),
@@ -58,7 +60,7 @@ function createState({
       enumNames: new Set(),
       fieldNames: new Set(),
       enumCases: new Set(),
-      constantNames: new Set(),
+      constantNames: new Set(files.flatMap(({ sourceFile }) => constantNamesOf(sourceFile))),
       heldByConstant: new Map(),
     },
   };
@@ -138,12 +140,14 @@ export function designFacts({
   indexTypes(state.registry);
   collectNamedSites(files, state);
   collectCallbackSites(files, state);
-  indexConstants(files, state.registry);
   const surface = publicSurface({ checker: context.checker, projectRoot, packagesInfo, layout });
   const { entries, sites } = state.registry;
   const types = entries.map((entry) =>
     marked(withModuleReferences(state, entry), isPublishedType(surface, entry)),
   );
+  for (const [index, entry] of entries.entries()) {
+    entry.fieldNames = new Set((types[index]?.fields ?? []).map(({ name }) => name));
+  }
   indexFields(state.registry, types);
   return {
     modules: moduleFacts(files, layout),

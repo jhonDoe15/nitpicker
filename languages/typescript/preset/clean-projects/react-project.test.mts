@@ -53,7 +53,13 @@ describe('the react-project fixture', () => {
       ...(manifest === undefined ? {} : { 'package.json': JSON.stringify(manifest) }),
       ...(config === undefined ? {} : { 'nitpicker.config.json': JSON.stringify(config) }),
     };
-    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'react-project', files });
+    const root = createCleanProject({
+      fixtureRoot,
+      gitTemplateRoot,
+      name: 'react-project',
+      environment: process.env,
+      files,
+    });
     temporaryRoots.push(root);
     return root;
   }

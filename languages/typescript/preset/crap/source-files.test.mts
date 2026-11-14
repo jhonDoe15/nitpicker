@@ -30,7 +30,7 @@ const PROJECT = {
   'src/ok/r.mts': ONE_FUNCTION,
 };
 
-let root = '';
+let root: string;
 
 beforeAll(() => {
   root = mkdtempSync(path.join(tmpdir(), 'nitpicker-crap-files-'));

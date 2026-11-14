@@ -1,6 +1,8 @@
 import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
 import { unknownInDomainRule as untypedUnknownInDomainRule } from '../eslint-plugin/rules/boundaries/no-unknown-in-domain.mjs';
-import { tester } from './test-support/rule-tester.mts';
+import { createTester } from './test-support/rule-tester.mts';
+
+const tester = createTester();
 
 const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
 const unknownInDomainRule: (options: { validation: string[] }) => unknown =

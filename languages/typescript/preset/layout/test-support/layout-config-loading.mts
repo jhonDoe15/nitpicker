@@ -8,6 +8,7 @@ import {
 } from './layout-views.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { onTestFinished } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,16 +27,10 @@ export const customLayout = resolveLayout({ sourceRoots: ['lib'], testRoots: ['s
   'lib/legacy/**',
 ]);
 
-const temporaryRoots: string[] = [];
-
 export function trackTemporaryRoot(root: string): void {
-  temporaryRoots.push(root);
-}
-
-export function removeTemporaryRoots(): void {
-  for (const root of temporaryRoots.splice(0)) {
+  onTestFinished(() => {
     rmSync(root, { recursive: true, force: true });
-  }
+  });
 }
 
 export function readDefault(name: string): unknown {

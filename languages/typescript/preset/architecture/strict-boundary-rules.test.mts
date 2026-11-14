@@ -2,7 +2,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { DEPENDENCY_RULES as untypedDependencyRules } from '../../../../shared/exceptions/rule-tools.mjs';
 import untypedCruiserConfig from '../defaults/dependency-cruiser.config.mjs';
-import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 import { NO_IMPORT_OUTSIDE_ROOTS } from './outside-roots/outside-roots.mjs';
 import { cruiseStrict, outputText } from './test-support/strict-cruise.mts';
 import {
@@ -192,7 +192,9 @@ describe('the shared module a domain file reaches I/O through', () => {
   it('reaches nothing through a type-only import, a direct import or another domain file', async () => {
     const paths = await reachPaths('domain-reaches-io-only-directly');
 
-    expect(paths.map(([from]) => from).sort()).toEqual([
+    expect(
+      paths.map(([from]) => textOf(from)).toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual([
       'src/main/features/calc/domain/direct.ts',
       'src/main/features/calc/domain/typed.ts',
       'src/main/features/calc/domain/user.ts',

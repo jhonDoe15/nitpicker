@@ -14,8 +14,11 @@ const TYPESCRIPT_EXTENSIONS = ['ts', 'tsx', 'mts', 'cts'];
 const readLayout: () => Layout & { readonly extensions: readonly string[] } = readUntypedLayout;
 
 const layout = readLayout();
+const configuredRoot = process.env['NITPICKER_PROJECT_ROOT'];
 const projectRoot = path.resolve(
-  process.env['NITPICKER_PROJECT_ROOT'] ?? path.resolve(import.meta.dirname, '../../../..'),
+  configuredRoot === undefined || configuredRoot === ''
+    ? path.resolve(import.meta.dirname, '../../../..')
+    : configuredRoot,
 );
 const coverageReportPath = path.resolve(projectRoot, config.coverageReportPath);
 const outputPath = path.resolve(projectRoot, config.outputPath);

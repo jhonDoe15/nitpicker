@@ -105,13 +105,14 @@ function isProjectTsconfigs(value: unknown): value is ProjectTsconfigs {
   return typeof value === 'function';
 }
 
-const tsconfigsCandidate: unknown = untypedProjectTsconfigs;
-
-if (!isProjectTsconfigs(tsconfigsCandidate)) {
-  throw new TypeError('projectTsconfigs does not load as a function');
+function loadedProjectTsconfigs(candidate: unknown): ProjectTsconfigs {
+  if (!isProjectTsconfigs(candidate)) {
+    throw new TypeError('projectTsconfigs does not load as a function');
+  }
+  return candidate;
 }
 
-export const projectTsconfigs: ProjectTsconfigs = tsconfigsCandidate;
+export const projectTsconfigs: ProjectTsconfigs = loadedProjectTsconfigs(untypedProjectTsconfigs);
 
 export const codeExtensionNames: string[] = untypedCodeExtensionNames;
 
@@ -129,13 +130,14 @@ function isReuseFindings(value: unknown): value is ReuseFindings {
   return typeof value === 'function';
 }
 
-const reuseCandidate: unknown = untypedReuseFindings;
-
-if (!isReuseFindings(reuseCandidate)) {
-  throw new TypeError('reuseFindings does not load as a function');
+function loadedReuseFindings(candidate: unknown): ReuseFindings {
+  if (!isReuseFindings(candidate)) {
+    throw new TypeError('reuseFindings does not load as a function');
+  }
+  return candidate;
 }
 
-export const reuseFindings: ReuseFindings = reuseCandidate;
+export const reuseFindings: ReuseFindings = loadedReuseFindings(untypedReuseFindings);
 
 export const firstFileIn: (root: string, names: readonly string[]) => string | undefined =
   untypedFirstFileIn;

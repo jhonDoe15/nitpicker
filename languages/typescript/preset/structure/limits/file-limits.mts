@@ -6,7 +6,7 @@ import { typescriptFolderDepthFindings } from './folder-depth.mts';
 export function typescriptFileLimitFindings(
   projectRoot: string,
   analyzerName: string,
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: NodeJS.ProcessEnv,
 ): Finding[] {
   const policy = readHeadPolicy(environment);
   const { thresholds, exceptions } = policy;

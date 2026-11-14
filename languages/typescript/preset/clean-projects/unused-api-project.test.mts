@@ -47,6 +47,7 @@ describe('unused props, options and exports in a project', () => {
       fixtureRoot: path.join(fixturesRoot, fixture),
       gitTemplateRoot,
       name: fixture,
+      environment: process.env,
     });
     temporaryRoots.push(root);
     return root;
@@ -95,7 +96,7 @@ describe('unused props, options and exports in a project', () => {
       'footer?: string; dense?: boolean }',
     ]);
     replaceIn(root, 'src/main/app.tsx', [' footer="done"', '']);
-    git(root, 'commit', '-q', '-a', '-m', 'head');
+    git(root, process.env, 'commit', '-q', '-a', '-m', 'head');
     const output = path.join(root, 'reports/diff');
     const { exitCode } = runNitpicker(root, ['--base', 'HEAD~1', ...ANALYZERS, '--output', output]);
 

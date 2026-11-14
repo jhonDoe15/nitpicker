@@ -27,10 +27,10 @@ const copyGitTemplate: (template: string, root: string) => void = untypedCopyGit
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const GIT_TIMEOUT_MS = 30_000;
 
-export function git(root: string, ...args: string[]): Buffer {
+export function git(root: string, environment: NodeJS.ProcessEnv, ...args: string[]): Buffer {
   return execFileSync('git', args, {
     cwd: root,
-    env: { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
+    env: { ...environment, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' },
     timeout: GIT_TIMEOUT_MS,
   });
 }
@@ -47,11 +47,13 @@ export function createCleanProject({
   fixtureRoot,
   gitTemplateRoot,
   name,
+  environment,
   files = {},
 }: {
   readonly fixtureRoot: string;
   readonly gitTemplateRoot: string;
   readonly name: string;
+  readonly environment: NodeJS.ProcessEnv;
   readonly files?: Readonly<Record<string, string>>;
 }): string {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-`));
@@ -60,8 +62,8 @@ export function createCleanProject({
   symlinkSync(path.join(packageRoot, 'node_modules'), path.join(root, 'node_modules'));
   writeFiles(root, files);
   copyGitTemplate(gitTemplateRoot, root);
-  git(root, 'add', '-A');
-  git(root, 'commit', '-q', '-m', 'fixture');
+  git(root, environment, 'add', '-A');
+  git(root, environment, 'commit', '-q', '-m', 'fixture');
   return root;
 }
 

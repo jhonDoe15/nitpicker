@@ -1,4 +1,4 @@
-import { loadConfig, readDefault } from './layout-config-helpers.mts';
+import { loadConfig, readDefault } from './layout-config-loading.mts';
 import { type ConfigEntry, type Policy, type Tsconfig, parseTsconfig } from './layout-views.mts';
 
 export function readDefaultTsconfig(name: string): Tsconfig {

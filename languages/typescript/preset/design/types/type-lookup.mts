@@ -92,7 +92,7 @@ export function entryOfNodeOrType(
 export function withoutGenerics(text: string): string {
   let depth = 0;
   let result = '';
-  for (const [index, char] of [...text].entries()) {
+  for (const [index, char] of Array.from(text).entries()) {
     if (char === '<') {
       depth += 1;
     } else if (char === '>' && text[index - 1] !== '=' && depth > 0) {

@@ -25,12 +25,6 @@ export function isNestedBoundary(node: TypeScript.Node): boolean {
   return NESTED_BOUNDARY_KINDS.has(node.kind);
 }
 
-export function appendAll<T>(target: T[], items: readonly T[]): void {
-  for (const item of items) {
-    target.push(item);
-  }
-}
-
 export function childrenOf(node: TypeScript.Node): TypeScript.Node[] {
   const children: TypeScript.Node[] = [];
   ts.forEachChild(node, (child) => {
@@ -44,10 +38,11 @@ export function nodesOwnedBy(root: TypeScript.Node): TypeScript.Node[] {
   const pending = [root];
   for (const node of pending) {
     owned.push(node);
-    appendAll(
-      pending,
-      childrenOf(node).filter((child) => !isNestedBoundary(child)),
-    );
+    for (const child of childrenOf(node)) {
+      if (!isNestedBoundary(child)) {
+        pending.push(child);
+      }
+    }
   }
   return owned;
 }

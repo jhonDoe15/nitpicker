@@ -14,13 +14,16 @@ type ReactRow = readonly [
   styling?: keyof typeof reactConfigs,
 ];
 
+const CSS_IN_JS = 'css-in-js';
+const INLINE_STYLE_BOX = "export const Box = () => <div style={{ color: 'red' }} />;";
+const DATA_FETCH_IN_EFFECT = `useEffect(() => { fetch(\`/items/\${a}\`); }, [a]);`;
 const filename = 'src/main/ui/fixture.tsx';
 const parserConfig = { languageOptions: { parser: tseslint.parser } };
 const reactConfigs = {
   'class-names': [parserConfig, ...(await reactSyntaxConfigFor(defaultResolvedLayout))],
-  'css-in-js': [
+  [CSS_IN_JS]: [
     parserConfig,
-    ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: 'css-in-js' })),
+    ...(await reactSyntaxConfigFor(defaultResolvedLayout, { styling: CSS_IN_JS })),
   ],
   'inline-style': [
     parserConfig,
@@ -94,26 +97,14 @@ const reactSyntaxRows = [
     panel('const [x, setX] = useState(0); useEffect(() => { setX(a * 2); }, [a]);'),
     'external system',
   ],
-  [
-    'data fetching in an effect names a query library',
-    panel('useEffect(() => { fetch(`/items/${a}`); }, [a]);'),
-    'useQuery',
-  ],
+  ['data fetching in an effect names a query library', panel(DATA_FETCH_IN_EFFECT), 'useQuery'],
   [
     'data fetching in an effect names when an exception fits',
-    panel('useEffect(() => { fetch(`/items/${a}`); }, [a]);'),
+    panel(DATA_FETCH_IN_EFFECT),
     'analytics beacon',
   ],
-  [
-    'inline style names className',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    '`className`',
-  ],
-  [
-    'inline style names the runtime-value form',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
-    'values computed at runtime',
-  ],
+  ['inline style names className', INLINE_STYLE_BOX, '`className`'],
+  ['inline style names the runtime-value form', INLINE_STYLE_BOX, 'values computed at runtime'],
   [
     'another styling approach names the styling setting',
     "import styled from 'styled-components';",
@@ -126,15 +117,15 @@ const reactSyntaxRows = [
   ],
   [
     'inline style names styled components when the project uses CSS-in-JS',
-    "export const Box = () => <div style={{ color: 'red' }} />;",
+    INLINE_STYLE_BOX,
     'styled components',
-    'css-in-js',
+    CSS_IN_JS,
   ],
   [
     'stylesheet import names styled components when the project uses CSS-in-JS',
     "import './box.css';",
     'styled components',
-    'css-in-js',
+    CSS_IN_JS,
   ],
   [
     'stylesheet import names inline style objects when the project uses them',

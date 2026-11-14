@@ -54,10 +54,11 @@ export function localKey(
   ) {
     return undefined;
   }
-  if (!scope.keys.has(symbol)) {
-    const seen = scope.nameCounts.get(symbol.name) ?? 0;
-    scope.nameCounts.set(symbol.name, seen + 1);
-    scope.keys.set(symbol, seen === 0 ? symbol.name : `${symbol.name}#${String(seen + 1)}`);
+  const { keys, nameCounts } = scope;
+  if (!keys.has(symbol)) {
+    const seen = nameCounts.get(symbol.name) ?? 0;
+    nameCounts.set(symbol.name, seen + 1);
+    keys.set(symbol, seen === 0 ? symbol.name : `${symbol.name}#${String(seen + 1)}`);
   }
-  return scope.keys.get(symbol);
+  return keys.get(symbol);
 }

@@ -14,7 +14,7 @@ async function analyzeFixture(name: string, options: AnalyzeOptions = {}) {
   const root = `${fixtureRoot}/${name}`;
   const graph = await cruise([root], { typeScriptRoot: root });
   return analyzeTestRuntime(graph, {
-    productionRoot: `${root}/src/main`,
+    productionRoots: [`${root}/src/main`],
     sourceTexts: await loadModuleSources(graph, projectRoot),
     subprocessBridges: [`${root}/tests/fixtures/app-process.ts`],
     ...options,
