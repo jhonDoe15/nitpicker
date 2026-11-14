@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mts';
 
-const enabled = process.env.NITPICKER_JAVA_E2E === '1';
-const maven = process.env.NITPICKER_MAVEN;
-const roots = [];
+const enabled = process.env['NITPICKER_JAVA_E2E'] === '1';
+const maven = process.env['NITPICKER_MAVEN'];
+const roots: string[] = [];
 
 const PARENT_POM = `<project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion>
