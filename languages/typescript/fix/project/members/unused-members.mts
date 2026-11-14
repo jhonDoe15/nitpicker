@@ -1,22 +1,44 @@
-import { ts } from '../../../typescript-api/typescript-api.mjs';
-import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
-import { isReactProject } from '../../../preset/eslint-config/scope-support.mjs';
-import { createContext } from '../../../preset/unused-api/context.mjs';
-import { unusedApiFindings } from '../../../preset/unused-api/findings.mjs';
-import { collectReferences } from '../../../preset/unused-api/references/references.mjs';
+import type TypeScript from 'typescript';
+import { typescriptApi } from '../../../adapters/typed/typescript-program.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { layoutOf, withProject } from '../model/project-model.mts';
+import type {
+  FixContext,
+  Planned,
+  Project,
+  ProjectRecipe,
+  ReplaceEdit,
+} from '../typed/project-types.mts';
+import { isReactProject } from '../typed/policy-views.mts';
+import { declined, replaceEdit, verifyEdits } from '../typed/project-views.mts';
 import {
+  collectReferences,
   collectTargets,
+  createContext,
+  exceptionMatcher,
+  loadPackages,
+  recordPlan,
   registerWrapperAliases,
-} from '../../../preset/unused-api/syntax/declarations.mjs';
-import { loadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { declined, replaceEdit } from '../edits/text-edits.mjs';
-import { verifyEdits } from '../edits/verify-edits.mjs';
-import { layoutOf, withProject } from '../model/project-model.mjs';
-import { recordPlan } from '../plan/record-plan.mjs';
+  unusedApiFindings,
+} from '../typed/reuse-views.mts';
+import type {
+  PlanResult,
+  ToolFinding,
+  UnusedRegistry,
+  UnusedTarget,
+} from '../typed/reuse-views.mts';
 
-const RULES = { 'unused-prop': 'component', 'unused-option': 'function' };
+const ts = typescriptApi();
 
-function registryOf(context, project) {
+const RULES: Readonly<Record<string, string>> = {
+  'unused-prop': 'component',
+  'unused-option': 'function',
+};
+
+function registryOf(
+  context: FixContext,
+  project: Project,
+): { readonly registry: UnusedRegistry; readonly findings: readonly ToolFinding[] } {
   const layout = layoutOf(context.inputs);
   const react = isReactProject({
     projectRoot: context.projectRoot,
@@ -34,7 +56,7 @@ function registryOf(context, project) {
   const registry = collectTargets(analysis);
   registerWrapperAliases(analysis, registry);
   collectReferences(analysis, registry);
-  const isExcepted = exceptionMatcher(context.inputs?.headPolicy?.exceptions ?? []);
+  const isExcepted = exceptionMatcher(fieldOf(context.inputs?.headPolicy, 'exceptions') ?? []);
   return {
     registry,
     findings: unusedApiFindings(registry, {
@@ -45,8 +67,11 @@ function registryOf(context, project) {
   };
 }
 
-function functionNodeOf(sourceFile, name) {
-  for (const statement of sourceFile.statements) {
+function functionNodeOf(
+  sourceFile: TypeScript.SourceFile | undefined,
+  name: string,
+): TypeScript.FunctionLikeDeclaration | undefined {
+  for (const statement of sourceFile?.statements ?? []) {
     if (ts.isFunctionDeclaration(statement) && statement.name?.text === name) {
       return statement;
     }
@@ -64,10 +89,10 @@ function functionNodeOf(sourceFile, name) {
   return undefined;
 }
 
-function removeMember(project, declaration) {
+function removeMember(project: Project, declaration: TypeScript.Node): ReplaceEdit {
   const sourceFile = declaration.getSourceFile();
   const { text } = sourceFile;
-  const name = project.nameOf(sourceFile.fileName);
+  const name = project.nameOf(sourceFile.fileName) ?? '';
   const first = declaration.getStart(sourceFile, true);
   const lineStart = text.lastIndexOf('\n', first - 1) + 1;
   if (text.slice(lineStart, first).trim() === '') {
@@ -78,7 +103,10 @@ function removeMember(project, declaration) {
   return replaceEdit(name, [start, declaration.end], '');
 }
 
-function destructuringEdit(project, { target, member }) {
+function destructuringEdit(
+  project: Project,
+  { target, member }: { readonly target: UnusedTarget; readonly member: string },
+): { readonly declined?: string; readonly edit?: ReplaceEdit } {
   const sourceFile = project.sourceFile(target.path);
   const fn = functionNodeOf(sourceFile, target.name);
   const patterns = (fn?.parameters ?? []).map(({ name }) => name).filter(ts.isObjectBindingPattern);
@@ -104,7 +132,19 @@ function destructuringEdit(project, { target, member }) {
   return {};
 }
 
-function planFinding(context, project, { target, member, memberDeclaration }) {
+function planFinding(
+  context: FixContext,
+  project: Project,
+  {
+    target,
+    member,
+    memberDeclaration,
+  }: {
+    readonly target: UnusedTarget;
+    readonly member: string;
+    readonly memberDeclaration: TypeScript.Node;
+  },
+): Planned {
   const own = destructuringEdit(project, { target, member });
   if (own.declined !== undefined) {
     return declined(`${target.name}.${member} ${own.declined}`);
@@ -118,7 +158,14 @@ function planFinding(context, project, { target, member, memberDeclaration }) {
   return unsafe === undefined ? { edits } : declined(unsafe);
 }
 
-function targetFor(registry, { name, finding, kind }) {
+function targetFor(
+  registry: UnusedRegistry,
+  {
+    name,
+    finding,
+    kind,
+  }: { readonly name: string; readonly finding: ToolFinding; readonly kind: string },
+): UnusedTarget | undefined {
   for (const candidate of registry.targets) {
     if (candidate.name === name && candidate.path === finding.path && candidate.kind === kind) {
       return candidate;
@@ -127,7 +174,7 @@ function targetFor(registry, { name, finding, kind }) {
   return undefined;
 }
 
-function recipeFor(rule) {
+function recipeFor(rule: string): ProjectRecipe {
   return {
     id: `typescript-${rule}`,
     rules: [{ tool: 'structure', rule }],
@@ -138,17 +185,21 @@ function recipeFor(rule) {
       const changed = new Set(context.files.map(({ path }) => path));
       return withProject(context, (project) => {
         const { registry, findings } = registryOf(context, project);
-        const result = { fixes: [], notes: [] };
+        const result: PlanResult = { fixes: [], notes: [] };
         for (const finding of findings.filter(
           (found) => found.rule === rule && changed.has(found.path),
         )) {
-          const [name, member] = finding.symbol.split('.');
-          const target = targetFor(registry, { name, finding, kind: RULES[rule] });
+          const [name = '', member = ''] = finding.symbol.split('.');
+          const target = targetFor(registry, { name, finding, kind: RULES[rule] ?? '' });
+          const memberDeclaration = target?.members.get(member);
+          if (target === undefined || memberDeclaration === undefined) {
+            continue;
+          }
           const line = finding.location?.line ?? 1;
           const planned = planFinding(context, project, {
             target,
             member,
-            memberDeclaration: target.members.get(member),
+            memberDeclaration,
           });
           const located = { tool: finding.tool, rule, path: finding.path, line };
           recordPlan(result, { planned, finding: located, rule });
