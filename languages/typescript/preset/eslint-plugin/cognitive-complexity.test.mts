@@ -1,27 +1,12 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { rule as cognitiveComplexity } from './rules/analysis/cognitive-complexity.mjs';
 
-RuleTester.afterAll = afterAll;
-
-RuleTester.afterEach = afterEach;
-
-RuleTester.beforeAll = beforeAll;
-
-RuleTester.beforeEach = beforeEach;
-
-RuleTester.describe = describe;
-
-RuleTester.it = it;
-
-RuleTester.itOnly = it.only;
-
-const ruleTester = new RuleTester({
+const ruleTester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
-const complexityOf = (value) => [{ messageId: 'tooComplex', data: { value, max: '0' } }];
+const complexityOf = (value: string) => [{ messageId: 'tooComplex', data: { value, max: '0' } }];
 ruleTester.run('cognitive-complexity', cognitiveComplexity, {
   valid: [
     { code: 'function plain(a: number) { return a + 1; }', options: [0] },

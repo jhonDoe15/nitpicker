@@ -1,22 +1,13 @@
-import { RuleTester } from 'eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import tseslint from 'typescript-eslint';
+import { configuredRuleTester } from './test-support/rule-tester.mts';
 import { lintFixture } from '../failure-messages/test-support/harness.mjs';
 import { strictDomainConfig } from '../eslint-config/strict/strict-domain.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
+const tester = configuredRuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 
@@ -128,7 +119,7 @@ tester.run('no-unknown-in-domain', noUnknownInDomain, {
 
 describe('strict domain config scope', () => {
   const code = 'function f() { throw new Error("x"); }';
-  const ruleIds = (filename) =>
+  const ruleIds = (filename: string) =>
     lintFixture({ config: strictDomainConfig, filename, code })
       .map((m) => m.ruleId)
       .filter(Boolean);
