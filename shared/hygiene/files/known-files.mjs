@@ -34,6 +34,9 @@ const TOOLING_PATHS = [
 ];
 const KEY_FILE = /^id_(?:rsa|dsa|ecdsa|ed25519)$|\.(?:p12|pfx|jks|keystore|ppk)$/iu;
 const TRUST_STORE = /truststore|cacerts/iu;
+const LOCAL_PROTOCOL = /^(?:file|link|portal):/u;
+const RELATIVE_PATH = /^\.\.?\//u;
+const BARE_ARCHIVE = /^[\w.-]+(?:\/[\w.-]+)*\.(?:tgz|tar\.gz)$/u;
 const DEPENDENCY_SECTIONS = [
   'dependencies',
   'devDependencies',
@@ -59,12 +62,21 @@ export function committedTooling(projectRoot, files) {
     packedDependencies.has(file) || TOOLING_PATHS.some((pattern) => pattern.test(file));
 }
 
+function localPath(spec) {
+  const protocol = LOCAL_PROTOCOL.exec(spec);
+  if (protocol !== null) {
+    return spec.slice(protocol[0].length);
+  }
+  return RELATIVE_PATH.test(spec) || BARE_ARCHIVE.test(spec) ? spec : undefined;
+}
+
 function localPackageFiles(projectRoot, manifest) {
   const { value } = readJson(path.join(projectRoot, manifest));
   const directory = path.posix.dirname(manifest);
   return DEPENDENCY_SECTIONS.flatMap((section) => Object.values(value?.[section] ?? {}))
-    .filter((spec) => typeof spec === 'string' && spec.startsWith('file:'))
-    .map((spec) => path.posix.normalize(path.posix.join(directory, spec.slice('file:'.length))));
+    .map((spec) => (typeof spec === 'string' ? localPath(spec) : undefined))
+    .filter((local) => local !== undefined)
+    .map((local) => path.posix.normalize(path.posix.join(directory, local)));
 }
 
 export function trackedText(projectRoot, file) {

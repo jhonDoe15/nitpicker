@@ -202,7 +202,7 @@ gh release download "v$VERSION" --repo jhonDoe15/nitpicker --pattern 'nitpicker-
 npm install --save-dev "./vendor/nitpicker-$VERSION.tgz" vitest @vitest/coverage-v8 typescript @types/node
 ```
 
-`package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. The peers are the
+`package.json` then records `"nitpicker": "file:vendor/nitpicker-<version>.tgz"`. Yarn 1 records `./vendor/...` instead; `repository-hygiene` accepts that, `link:` and `portal:` too, so the committed tarball is not a `committed-binary` finding. The peers are the
 TypeScript preset's; for another preset, install the tarball with the peers its guide lists, if any.
 `gh` signs in with your GitHub account, which a private repository needs. On a public repository,
 `npm install` takes the asset URL directly:
