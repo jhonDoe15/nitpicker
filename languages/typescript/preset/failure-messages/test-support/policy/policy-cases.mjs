@@ -74,6 +74,16 @@ export const policyFailureMessageCases = [
     'push into an array',
   ),
   adapterCase(
+    'remote call in a transaction names the outbox',
+    'export async function run(prisma, url) { await prisma.$transaction(async (tx) => { await tx.order.create({}); await fetch(url); }); }',
+    'outbox row',
+  ),
+  adapterCase(
+    'remote call under a lock names releasing it first',
+    'export async function run(mutex, url) { await mutex.runExclusive(async () => { await fetch(url); }); }',
+    'after releasing it',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

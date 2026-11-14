@@ -494,6 +494,42 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   and awaits the lazy relation of that parameter in its body is reported at the call, with the
   message naming the helper and the access it awaits. Prisma has no lazy loading, and Sequelize
   association getters are explicit calls that `nitpicker/no-io-in-loop` reports.
+- Remote calls while a connection or lock is held (`nitpicker/no-remote-call-in-transaction` and
+  `nitpicker/no-remote-call-under-lock`, needing the type checker for the full analysis): a remote
+  call (HTTP, gRPC, a cloud SDK call that is not a store or a broker), direct or through project
+  helpers (the message names the path), inside an open transaction is reported when the
+  transaction also runs a query, which proves it holds a connection. Transactions are the callback
+  of Prisma's interactive `$transaction` and of `transaction(...)`/`transactional(...)`, and the
+  calls between a begin (`startTransaction()`, `beginTransaction()`, an awaited `transaction()`
+  without a callback, or SQL `BEGIN`/`START TRANSACTION` text) and the next `commit`,
+  `commitTransaction`, `rollback`, `rollbackTransaction` or SQL `COMMIT`/`ROLLBACK`, including
+  callbacks that run there (`await Promise.all(items.map(() => axios.post(...)))`). With the type
+  checker a begin must be declared by a database package (TypeORM `QueryRunner`, Sequelize, knex,
+  `pg`), so an APM `apm.startTransaction('job')` is not one, a callback opener must be declared by
+  a database package or by the project, and the proof is a query recognized in the transaction;
+  without it, any receiver counts and a call on the callback's parameter also proves the
+  connection. An end inside a branch (an `if`, a `catch`, a `switch` case, `?:`) ends the
+  transaction only in that branch, so a guard clause with an early rollback leaves the calls after
+  it in the transaction. A handler registered inside the transaction (`setTimeout`, `on`) runs
+  later and is not judged. The connection stays held for the remote latency, so the pool runs dry
+  under load: make the remote call before the transaction starts or after it commits, or, when its
+  side effect must match the transaction's outcome, write an outbox row inside the transaction and
+  send it from a worker. The lock rule reports a remote call, direct or through helpers, while a
+  lock is held: the callback of `runExclusive`, async-lock `acquire(key, fn)`,
+  `navigator.locks.request` and redlock `using`, or the calls between `await lock.acquire()` and
+  the next `release()`/`unlock()`. With the type checker the lock is decided by its type: an
+  async-mutex `Mutex`, a `Semaphore` constructed with one permit, async-lock, redlock and
+  `navigator.locks` are locks, while a `Semaphore` with more permits bounds concurrency
+  (`limiter.runExclusive(() => axios.get(url))` is the bounded form `nitpicker/no-io-in-loop` asks
+  for) and is not reported; receiver names (`lock`, `mutex`, `semaphore`, `redlock`, or
+  `runExclusive`) decide only when the type is unknown or declared by the project. A `release()`
+  inside a branch ends the lock only in that branch. A fill-once block stays allowed: the call under
+  an `if` that tests the state the block then sets (`if (!token) { token = await refresh(); }`, or
+  `if (cache.has(key)) return;` before `cache.set(key, await download(key))`), or assigned with
+  `??=`/`||=`, so callers wait for one request instead of each sending their own; a guard on any
+  other state does not exempt the call, and inside a transaction it never does. Every waiter queues
+  behind the remote latency: make the remote call before taking the lock or after releasing it and
+  keep only the shared-state change under it. Broker publishes are `nitpicker/no-dual-write`'s.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

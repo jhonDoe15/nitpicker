@@ -115,6 +115,8 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-io-in-loop': 'error',
     'nitpicker/no-accumulator-concat': 'error',
     'nitpicker/no-lazy-relation-in-loop': 'error',
+    'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
     'nitpicker/no-orm-query-logging': 'error',
