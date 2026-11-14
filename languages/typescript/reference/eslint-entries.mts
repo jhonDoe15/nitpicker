@@ -1,9 +1,9 @@
-import { counterpartsOf } from '../../../shared/reference/counterparts.mjs';
-import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { reactRuleIds, reactTestRuleIds } from '../preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../preset/eslint-config/i18n/i18n-rules.mjs';
-import { readEslintInventory } from './eslint-inventory.mjs';
-import { ruleSets } from './rule-sets.mjs';
+import { readEslintInventory } from './eslint-inventory.mts';
+import { ruleSets, type RuleSet } from './rule-sets.mts';
+import { counterpartsOf, ruleEntry, type RuleEntry } from './typed/entry-types.mts';
+import type { RuleFacts, RuleForm } from './typed/inventory-types.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
 const FIX_TOOL = 'eslint-lint';
@@ -24,9 +24,10 @@ const WHY = {
   restricted:
     'The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.',
 };
+const WHY_OF_SET = new Map(Object.entries(WHY));
 const REACT_WHY =
   'The React scope turns on the rules of this plugin, so that components follow the rules of React: hooks, effects, state and the DOM.';
-const PLUGIN_WHY = {
+const PLUGIN_WHY: Readonly<Record<string, string>> = {
   'react-hooks': REACT_WHY,
   'react-x': REACT_WHY,
   'react-dom': REACT_WHY,
@@ -44,12 +45,12 @@ const REACT_SCOPE = 'A TypeScript project with React: `react` in package.json or
 const I18N_SCOPE = 'A TypeScript project with `i18n.enabled` or an i18n library.';
 const TYPESCRIPT_ONLY_SCOPE = 'The TypeScript preset only.';
 const JAVASCRIPT_ONLY_SCOPE = 'The JavaScript preset only.';
-const PRESET_VARIANTS = {
+const PRESET_VARIANTS: Readonly<Record<string, readonly string[]>> = {
   typescript: ['typescript', 'typescript-react'],
   javascript: ['javascript'],
 };
 
-function pageOf(id) {
+function pageOf(id: string): string {
   if (id.startsWith(NITPICKER_PREFIX)) {
     return 'typescript-nitpicker';
   }
@@ -58,7 +59,7 @@ function pageOf(id) {
     : 'typescript-plugins';
 }
 
-function whyOf(id, sets) {
+function whyOf(id: string, sets: readonly RuleSet[]): string | undefined {
   if (id.startsWith(NITPICKER_PREFIX)) {
     return WHY.nitpicker;
   }
@@ -66,10 +67,12 @@ function whyOf(id, sets) {
     return WHY.restricted;
   }
   const own = sets.find(({ rules }) => rules.has(id));
-  return own === undefined ? (PLUGIN_WHY[id.split('/')[0]] ?? WHY.extra) : WHY[own.id];
+  return own === undefined
+    ? (PLUGIN_WHY[id.split('/')[0] ?? ''] ?? WHY.extra)
+    : WHY_OF_SET.get(own.id);
 }
 
-function scopeOf(id, presets) {
+function scopeOf(id: string, presets: readonly string[]): string | undefined {
   if (REACT_IDS.has(id)) {
     return REACT_SCOPE;
   }
@@ -82,7 +85,7 @@ function scopeOf(id, presets) {
   return presets.includes('typescript') ? undefined : JAVASCRIPT_ONLY_SCOPE;
 }
 
-function guideAnchorOf(id) {
+function guideAnchorOf(id: string): string | undefined {
   if (REACT_IDS.has(id)) {
     return 'react';
   }
@@ -92,7 +95,7 @@ function guideAnchorOf(id) {
   return TEST_PREFIXES.some((prefix) => id.startsWith(prefix)) ? 'inside-tests' : undefined;
 }
 
-function docsOf(id) {
+function docsOf(id: string): readonly object[] {
   const anchor = guideAnchorOf(id);
   return [
     { label: 'Strict preset guide', path: GUIDE, ...(anchor === undefined ? {} : { anchor }) },
@@ -100,7 +103,7 @@ function docsOf(id) {
   ];
 }
 
-function formsOf({ forms, messages }, id) {
+function formsOf({ forms, messages }: RuleFacts, id: string): readonly RuleForm[] {
   if (forms.length > 0) {
     return forms;
   }
@@ -109,21 +112,28 @@ function formsOf({ forms, messages }, id) {
     : [];
 }
 
-function summaryOf({ description, messages }) {
+function summaryOf({ description, messages }: RuleFacts): string {
   return description ?? messages?.[0] ?? 'Reported by the rule.';
 }
 
-function fixablePresets(analyzers) {
+function fixablePresets(analyzers: Readonly<Record<string, readonly string[]>>): string[] {
   return Object.entries(analyzers)
     .filter(([, tools]) => tools.includes(FIX_TOOL))
     .map(([preset]) => preset);
 }
 
-function entryOf(id, byVariant, sets) {
+function entryOf(
+  id: string,
+  byVariant: Readonly<Record<string, RuleFacts | undefined>>,
+  sets: readonly RuleSet[],
+): RuleEntry {
   const facts = Object.values(byVariant).find((found) => found !== undefined);
+  if (facts === undefined) {
+    throw new Error(`No variant reports the rule ${id}`);
+  }
   const analyzers = Object.fromEntries(
     Object.entries(PRESET_VARIANTS)
-      .map(([preset, variants]) => [
+      .map(([preset, variants]): [string, string[]] => [
         preset,
         [...new Set(variants.flatMap((variant) => byVariant[variant]?.tools ?? []))],
       ])
@@ -151,8 +161,7 @@ function entryOf(id, byVariant, sets) {
   });
 }
 
-/** The entries of every ESLint rule the TypeScript and JavaScript presets turn on, from their config inventory. */
-export function eslintEntries() {
+export function eslintEntries(): RuleEntry[] {
   const inventory = readEslintInventory();
   const sets = ruleSets();
   const ids = [...new Set(Object.values(inventory).flatMap((rules) => Object.keys(rules)))].sort();

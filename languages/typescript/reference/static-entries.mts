@@ -1,10 +1,9 @@
-import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { wordsOfKebab } from '../../../shared/reference/build/words.mjs';
 import dependencyCruiser from '../preset/defaults/dependency-cruiser.config.mjs';
+import { ruleEntry, wordsOfKebab, type RuleEntry } from './typed/entry-types.mts';
 
 const GUIDE = 'docs/typescript-strict-preset.md';
 const TYPESCRIPT_AND_JAVASCRIPT = ['typescript', 'javascript'];
-const CRUISER_NOTES = {
+const CRUISER_NOTES: Readonly<Record<string, readonly string[]>> = {
   'no-production-to-test': [
     'Production code imports a test file or a file under a test root.',
     'Code that ships must not depend on code that only tests use.',
@@ -21,7 +20,13 @@ const CRUISER_WHY =
 const NO_EXCEPTION_OUTSIDE_ROOTS =
   'It has no exception: move the code under a source root, or add its folder to `layout.sourceRoots`.';
 
-function cruiserEntry({ name, comment }) {
+function cruiserEntry({
+  name,
+  comment,
+}: {
+  readonly name: string;
+  readonly comment: string;
+}): RuleEntry {
   const [summary, why, allowed] = CRUISER_NOTES[name] ?? [wordsOfKebab(name), CRUISER_WHY, comment];
   const outsideRoots = name === 'no-import-outside-roots';
   return ruleEntry({
@@ -65,16 +70,23 @@ const OTHER_ROWS = [
   },
 ];
 
-function otherEntry({ tool, ...fields }) {
+function otherEntry({
+  tool,
+  rule,
+  ...fields
+}: {
+  readonly tool: string;
+  readonly rule: string;
+} & Readonly<Record<string, unknown>>): RuleEntry {
   return ruleEntry({
     tool,
+    rule,
     page: 'typescript-static',
     analyzers: Object.fromEntries(TYPESCRIPT_AND_JAVASCRIPT.map((preset) => [preset, [tool]])),
     ...fields,
   });
 }
 
-/** The entries of the TypeScript and JavaScript checks that are neither ESLint nor in the shared catalog. */
-export function staticEntries() {
+export function staticEntries(): RuleEntry[] {
   return [...dependencyCruiser.forbidden.map(cruiserEntry), ...OTHER_ROWS.map(otherEntry)];
 }

@@ -1,19 +1,40 @@
 import { execFile } from 'node:child_process';
-import { mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import type { Linter } from 'eslint';
+import { mkdtempSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
+import type { Environment } from '../../../shared/processes/environment.mts';
 import { TOOL_TIMEOUT_MS } from '../../../shared/processes/deadlines.mjs';
+import { fieldOf } from '../../../shared/values/readers.mts';
+import {
+  inventoryOf,
+  variantInventoryOf,
+  type EslintInventory,
+  type VariantInventory,
+} from './typed/inventory-types.mts';
+import {
+  activeRules,
+  metaOf,
+  ruleOf,
+  unionForms,
+  type ConfigEntry,
+} from './typed/active-rules.mts';
 
 const run = promisify(execFile);
 const INVENTORY_FILE = new URL('./eslint-inventory.json', import.meta.url);
 const INVENTORY_OUTPUT = 'inventory.json';
 const POLICY_FILE = 'policy.json';
-const CORE_PLUGIN = '@';
 const POLICIES = new URL('../preset/eslint-config/policies/', import.meta.url);
 
-export const ESLINT_CONFIGS = [
+type ProjectVariant = {
+  readonly files: readonly string[];
+  readonly project: Readonly<Record<string, string>>;
+};
+
+export const ESLINT_CONFIGS: readonly (readonly [string, URL])[] = [
   ['eslint-lint', new URL('../preset/defaults/eslint.config.mjs', import.meta.url)],
   ['eslint-errors', new URL('errors.config.mjs', POLICIES)],
   ['eslint-logging', new URL('logging.config.mjs', POLICIES)],
@@ -55,8 +76,7 @@ const JAVASCRIPT_SAMPLES = [
   'e2e/flow.spec.js',
 ];
 
-/** The projects the inventory reads the configs for: what the analyzed project holds, and the files it asks about. */
-export const ESLINT_VARIANTS = {
+export const ESLINT_VARIANTS: Readonly<Record<string, ProjectVariant>> = {
   typescript: {
     files: TYPESCRIPT_SAMPLES,
     project: {
@@ -81,80 +101,40 @@ export const ESLINT_VARIANTS = {
   },
 };
 
-function isActive(setting) {
-  const severity = Array.isArray(setting) ? setting[0] : setting;
-  return severity !== 'off' && severity !== 0;
+function isConfig(value: unknown): value is Linter.Config {
+  return typeof value === 'object' && value !== null;
 }
 
-function optionObjects(option) {
-  if (Array.isArray(option)) {
-    return option;
+export function configOfModule(loaded: unknown): Linter.Config {
+  const config = fieldOf(loaded, 'default');
+  if (!isConfig(config)) {
+    throw new Error('The ESLint config module has no default export');
   }
-  return option !== null && typeof option === 'object' ? [option] : [];
+  return config;
 }
 
-function formsOf(id, options) {
-  const entries = options.flatMap(optionObjects);
-  if (id === 'vitest/no-restricted-matchers') {
-    return entries.flatMap((option) =>
-      Object.entries(option).map(([name, message]) => ({ label: name, message })),
-    );
+export function variantOf(variant: string): ProjectVariant {
+  const found = ESLINT_VARIANTS[variant];
+  if (found === undefined) {
+    throw new Error(`Unknown ESLint inventory variant ${variant}`);
   }
-  return entries
-    .filter(({ message }) => typeof message === 'string')
-    .map(({ message, name, object, property }) => ({
-      message,
-      ...(name === undefined ? {} : { label: name }),
-      ...(object === undefined ? {} : { label: `${object}.${property}` }),
-    }));
+  return found;
 }
 
-function unionForms(forms) {
-  const seen = new Map(forms.map((form) => [`${form.label ?? ''}\0${form.message}`, form]));
-  return [...seen.values()];
-}
-
-function ruleOf(plugins, id) {
-  const slash = id.lastIndexOf('/');
-  return slash === -1
-    ? plugins.get(CORE_PLUGIN)?.rules?.[id]
-    : plugins.get(id.slice(0, slash))?.rules?.[id.slice(slash + 1)];
-}
-
-function metaOf(rule) {
-  const meta = rule?.meta;
-  return {
-    ...(meta?.docs?.description === undefined ? {} : { description: meta.docs.description }),
-    ...(meta?.docs?.url === undefined ? {} : { url: meta.docs.url }),
-    ...(meta?.messages === undefined ? {} : { messages: Object.values(meta.messages) }),
-    ...(meta?.deprecated === true ? { deprecated: true } : {}),
-    ...(meta?.fixable === 'code' || meta?.fixable === 'whitespace' ? { fixable: true } : {}),
-  };
-}
-
-async function activeRules({ ESLint, cwd, files }, [tool, config]) {
-  const eslint = new ESLint({ cwd, overrideConfigFile: true, overrideConfig: config });
-  const configs = await Promise.all(files.map((file) => eslint.calculateConfigForFile(file)));
-  return configs.flatMap((calculated) =>
-    Object.entries(calculated?.rules ?? {})
-      .filter(([, setting]) => isActive(setting))
-      .map(([id, setting]) => ({
-        id,
-        tool,
-        plugins: calculated.plugins ?? {},
-        forms: formsOf(id, Array.isArray(setting) ? setting.slice(1) : []),
-      })),
-  );
-}
-
-/**
- * The ESLint rules that `configs` (each `[tool, flat config]`, loaded for one variant's project) turn on
- * for the variant's files: `{ [ruleId]: { tools, forms, description, url, messages } }`.
- */
-export async function inventoryOfConfigs({ configs, cwd, files }) {
-  const { ESLint } = await import('eslint');
+export async function inventoryOfConfigs({
+  configs,
+  cwd,
+  files,
+}: {
+  configs: readonly ConfigEntry[];
+  cwd: string;
+  files: readonly string[];
+}): Promise<VariantInventory> {
+  const { ESLint: eslintClass } = await import('eslint');
   const active = (
-    await Promise.all(configs.map((config) => activeRules({ ESLint, cwd, files }, config)))
+    await Promise.all(
+      configs.map((config) => activeRules({ ESLint: eslintClass, cwd, files }, config)),
+    )
   ).flat();
   const plugins = new Map(active.flatMap(({ plugins: found }) => Object.entries(found)));
   const ids = [...new Set(active.map(({ id }) => id))].sort();
@@ -173,10 +153,9 @@ export async function inventoryOfConfigs({ configs, cwd, files }) {
   );
 }
 
-/** A temporary project with the files of `variant`; the caller removes it. */
-export function variantProject(variant) {
+export function variantProject(variant: string): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-rule-reference-'));
-  for (const [name, text] of Object.entries(ESLINT_VARIANTS[variant].project)) {
+  for (const [name, text] of Object.entries(variantOf(variant).project)) {
     const file = path.resolve(root, name);
     if (!file.startsWith(root + path.sep)) {
       throw new Error(`The project file ${name} is outside the project`);
@@ -186,15 +165,14 @@ export function variantProject(variant) {
   return root;
 }
 
-/** The environment the ESLint configs read the analyzed project from. */
-export function variantEnvironment(root) {
+export function variantEnvironment(root: string): Environment {
   return {
     NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
     NITPICKER_POLICY: path.join(root, POLICY_FILE),
   };
 }
 
-async function liveInventoryOf(variant) {
+async function liveInventoryOf(variant: string): Promise<VariantInventory> {
   const root = variantProject(variant);
   try {
     await run(process.execPath, [fileURLToPath(import.meta.url), variant, root], {
@@ -202,43 +180,45 @@ async function liveInventoryOf(variant) {
       env: variantEnvironment(root),
       timeout: TOOL_TIMEOUT_MS,
     });
-    return JSON.parse(readFileSync(path.join(root, INVENTORY_OUTPUT), 'utf8'));
+    const inventory: unknown = JSON.parse(
+      await readFile(path.join(root, INVENTORY_OUTPUT), 'utf8'),
+    );
+    return variantInventoryOf(inventory);
   } finally {
-    rmSync(root, { recursive: true, force: true });
+    await rm(root, { recursive: true, force: true });
   }
 }
 
-/**
- * The ESLint rules the presets enable, read from the configs one process per variant whose
- * environment holds only the variant's settings, so the caller's cannot change it.
- */
-export async function liveEslintInventory() {
+export async function liveEslintInventory(): Promise<EslintInventory> {
   const names = Object.keys(ESLINT_VARIANTS);
-  const inventories = await Promise.all(names.map(liveInventoryOf));
-  return Object.fromEntries(names.map((name, index) => [name, inventories[index]]));
+  return Object.fromEntries(
+    await Promise.all(names.map(async (name) => [name, await liveInventoryOf(name)] as const)),
+  );
 }
 
-/** The ESLint inventory that the reference is built from, which `npm run gen:rules` builds. */
-export function readEslintInventory() {
-  return JSON.parse(readFileSync(INVENTORY_FILE, 'utf8'));
+export function readEslintInventory(): EslintInventory {
+  const inventory: unknown = JSON.parse(readFileSync(INVENTORY_FILE, 'utf8'));
+  return inventoryOf(inventory);
 }
 
-/** Writes the built ESLint inventory as `text`. */
-export function writeEslintInventory(text) {
+export function writeEslintInventory(text: string): void {
   const temporary = new URL(`./eslint-inventory.${String(process.pid)}.tmp`, import.meta.url);
   writeFileSync(temporary, text);
   renameSync(temporary, INVENTORY_FILE);
 }
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [variant, root] = process.argv.slice(2);
+  const [variant = '', root = ''] = process.argv.slice(2);
   const configs = await Promise.all(
-    ESLINT_CONFIGS.map(async ([tool, url]) => [tool, (await import(url.href)).default]),
+    ESLINT_CONFIGS.map(async ([tool, url]): Promise<ConfigEntry> => [
+      tool,
+      configOfModule(await import(url.href)),
+    ]),
   );
   const inventory = await inventoryOfConfigs({
     configs,
     cwd: root,
-    files: ESLINT_VARIANTS[variant].files,
+    files: variantOf(variant).files,
   });
   writeFileSync(path.join(root, INVENTORY_OUTPUT), JSON.stringify(inventory));
 }

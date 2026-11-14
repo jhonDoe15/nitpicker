@@ -4,13 +4,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ESLINT_CONFIGS,
   ESLINT_VARIANTS,
+  configOfModule,
   inventoryOfConfigs,
   readEslintInventory,
   variantEnvironment,
+  variantOf,
   variantProject,
-} from './eslint-inventory.mjs';
+} from './eslint-inventory.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -19,19 +21,19 @@ afterEach(() => {
   }
 });
 
-async function liveInventory(variant) {
+async function liveInventory(variant: string) {
   const root = variantProject(variant);
   roots.push(root);
   for (const [name, value] of Object.entries(variantEnvironment(root))) {
     vi.stubEnv(name, value);
   }
   const configs = await Promise.all(
-    ESLINT_CONFIGS.map(async ([tool, url]) => [
-      tool,
-      (await import(`${url.href}?variant=${variant}`)).default,
-    ]),
+    ESLINT_CONFIGS.map(
+      async ([tool, url]) =>
+        [tool, configOfModule(await import(`${url.href}?variant=${variant}`))] as const,
+    ),
   );
-  return inventoryOfConfigs({ configs, cwd: root, files: ESLINT_VARIANTS[variant].files });
+  return inventoryOfConfigs({ configs, cwd: root, files: variantOf(variant).files });
 }
 
 describe('the built ESLint inventory of the rule reference', () => {
