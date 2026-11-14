@@ -13,7 +13,7 @@ import { nearestManifest as untypedNearestManifest } from '../../../preset/eslin
 import { moveToDependencies as untypedMoveToDependencies } from '../manifest/manifest-move.mjs';
 import type { FixHeadPolicy, FixLayout, ProjectEdit } from './project-types.mts';
 
-export type GlobMatcher = { test(name: string): boolean };
+type GlobMatcher = { test(name: string): boolean };
 
 const helperName: (
   filename: string,
