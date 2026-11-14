@@ -16,6 +16,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
+import nitpicker.effects.deleted.InMemory;
+import nitpicker.effects.deleted.InMemory;
 import nitpicker.effects.deleted.QueryFilter;
 import nitpicker.effects.deleted.SoftDelete;
 import nitpicker.effects.flow.Program;
@@ -103,7 +105,8 @@ public final class Effects {
     new LoopIo(program, summaries, report).run();
     new AccumulatorCopy(program, report).run();
     new GraphqlFields(program, summaries, listTypes, report).run();
-    new LazyRelation(program, new Entities(program.index, batchFetchSize(options) > 1), report).run();
+    Entities entities = new Entities(program.index, batchFetchSize(options) > 1);
+    new LazyRelation(program, entities, report).run();
     new ReactiveLookups(program, summaries, report).run();
     Scopes scopes = new Scopes(program);
     new HeldScope(program, summaries, scopes, report).run();
@@ -114,7 +117,10 @@ public final class Effects {
     new StaleRetry(program, summaries, report).run();
     new AsyncBlocking(program, summaries, report).run();
     new JobLoops(program, summaries, report).run();
-    new QueryFilter(program, new SoftDelete(program.index), report).run();
+    SoftDelete soft = new SoftDelete(program.index);
+    QueryFilter filter = new QueryFilter(program, soft, report);
+    filter.run();
+    new InMemory(program, soft, entities, filter.reported(), report).run();
   }
 
   private static long longOption(Map<String, String> options, String key) {

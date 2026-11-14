@@ -58,6 +58,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Soft delete: a read of an entity with a `deletedAt`, `deleted` or `archived` flag repeats the condition the project's
   other reads use, or the entity carries `@SQLRestriction` (or `@Where`, `@FilterDef`)
   (`effects/SoftDeleteFilterMissing`).
+- Soft delete in memory: a loop or stream over an entity's collection (`basket.getItems()`) skips the deleted items the
+  way the project's other loops do, or the collection carries `@SQLRestriction`, `@Where` or `@Filter`
+  (`effects/DeletedItemInMemory`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

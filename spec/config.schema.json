@@ -2328,6 +2328,7 @@
                             "effects/WaitOnAsyncTwin",
                             "effects/JobLoopWithoutItemIsolation",
                             "effects/SoftDeleteFilterMissing",
+                            "effects/DeletedItemInMemory",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

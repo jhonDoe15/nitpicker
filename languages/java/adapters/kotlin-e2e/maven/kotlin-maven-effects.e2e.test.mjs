@@ -32,6 +32,7 @@ const KOTLIN_FILES = [
   'jobs/JobsAllowed.kt',
   'jobs/NightlyJobs.kt',
   'trash/ProductService.kt',
+  'carts/BasketReports.kt',
 ];
 
 describe.skipIf(!kotlinE2eEnabled)('the effects engine on a Kotlin Maven project', () => {

@@ -127,6 +127,9 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
 - Apply the soft-delete or visibility filter the rest of the project applies to a table (`deletedAt IS NULL`, the
   `withDefaultVisibility` helper) to every new read or join of it; a trash or admin query that reads those rows on
   purpose takes the exception (`nitpicker/no-unfiltered-soft-delete-read`).
+- Skip deleted items the way the project does in every new loop, `find` or `filter` over a collection that carries
+  `isDeleted` (a guard, a helper such as `getNonDeletedElements`, or the narrowed type `NonDeleted<T>`); undo and
+  restore code that reads them on purpose takes the exception (`nitpicker/no-unguarded-deleted-items`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

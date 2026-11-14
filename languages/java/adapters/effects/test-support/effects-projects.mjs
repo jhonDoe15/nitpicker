@@ -103,6 +103,8 @@ export const JAVA_EFFECTS = [
   'SoftDeleteFilterMissing 26 ProductService.ownedBy Product.deletedAt ProductRepository.findByOwner()',
   'SoftDeleteFilterMissing 30 ProductService.like Product.deletedAt ProductRepository.matching()',
   'SoftDeleteFilterMissing 35 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
+  'DeletedItemInMemory 85 BasketReports.count Item.deletedAt Basket.getItems()',
+  'DeletedItemInMemory 92 BasketReports.quantities Item.deletedAt Basket.getItems()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -195,6 +197,8 @@ export const KOTLIN_EFFECTS = [
   'SoftDeleteFilterMissing 17 ProductService.ownedBy Product.deletedAt ProductRepository.findByOwner()',
   'SoftDeleteFilterMissing 19 ProductService.like Product.deletedAt ProductRepository.matching()',
   'SoftDeleteFilterMissing 23 ProductService.bySku Product.deletedAt EntityManager.createQuery()',
+  'DeletedItemInMemory 73 BasketReports.count Item.deletedAt Basket.getItems()',
+  'DeletedItemInMemory 79 BasketReports.quantities Item.deletedAt Basket.getItems()',
 ];
 
 function summaryOf(violation) {
@@ -218,7 +222,12 @@ function summaryOf(violation) {
     async,
     job,
     column,
+    flag,
+    source,
   } = violation;
+  if (flag !== undefined) {
+    return [rule, line, method, `${entity}.${flag}`, source].join(' ');
+  }
   if (column !== undefined) {
     return [rule, line, method, `${entity}.${column}`, read].join(' ');
   }

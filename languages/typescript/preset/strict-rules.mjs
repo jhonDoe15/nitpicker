@@ -34,6 +34,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-check-then-write',
   'nitpicker/no-unisolated-job-loop',
   'nitpicker/no-unfiltered-soft-delete-read',
+  'nitpicker/no-unguarded-deleted-items',
   'nitpicker/no-retry-without-idempotency',
   'nitpicker/no-stale-retry-after-conflict',
   'nitpicker/no-remote-call-under-lock',
