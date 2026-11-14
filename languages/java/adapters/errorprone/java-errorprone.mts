@@ -60,7 +60,7 @@ export function readErrorProneFindings(context: ReportContext): Finding[] {
   );
   return [
     ...listOf(fieldOf(ingested, 'findings'))
-      .filter((finding) => isFormatterOwned(finding, context['javaStyle']) !== true)
+      .filter((finding) => !isFormatterOwned(finding, context['javaStyle']))
       .map((finding) => withExceptionRoute(fieldsOf(finding), testRoots, checks)),
     ...(placement.outside.size === 0 ? [] : [unmappedError(placement.outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
