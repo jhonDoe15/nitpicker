@@ -2084,15 +2084,30 @@ whose copies sit in one file (TypeScript, JavaScript) or in one class (Java). Th
 the shared function: a module-level function after the first copy, or a private method (static when
 it reads no instance state). Both bodies become one call, and each signature stays. Differing
 literals become parameters named after what they flow into. Any other differing value is passed as
-an arrow function (TypeScript and JavaScript) so it is evaluated where it was. A recipe leaves the
+an arrow function (TypeScript and JavaScript) so it is evaluated where it was. In Java a differing
+call or name read becomes a `Supplier` parameter (`IntSupplier`, `LongSupplier`, `DoubleSupplier` or
+`BooleanSupplier` for those primitives) that the shared method calls where the copy evaluated it,
+when its type is written where it flows: a declared local, a `return` or an `if` condition. A
+differing type becomes a type parameter (`<T>`, then `<U>` and so on) of the shared function. The
+TypeScript recipe passes the types at each call (`shared<string>(items)`); Java infers them. Java
+extracts the methods of two anonymous classes of one class into a private static method of the
+enclosing class. A recipe leaves the
 finding for its fix plan, and prints why in a "Fix notes:" line, when: a differing value reads a
 variable the copies write, a copy reads `this` or a variable of an enclosing scope (TypeScript,
-JavaScript), the helper name is taken, the copies differ in types, exceptions or the comments one of
-them holds, a copy takes part in more than one pair, a string or template literal spans lines
+JavaScript), the helper name is taken, the copies differ in exceptions or the comments one of
+them holds, the copies differ in a type that a type parameter cannot stand for (a type after `new`,
+in a cast, in an `instanceof` or in a class literal, a type that names a generic class or a
+primitive, or code that calls a method on a value of that type or passes it to a call, in Java; any
+type that the compiler rejects as a type parameter in TypeScript), a differing Java
+expression reads a local of the copied code, sits in a `final` local, a loop condition, a `try`
+block, a lambda or a nested class, or a method that throws, or has no declared type where it flows
+(a hole that appears with two declared types gets one parameter for each), an anonymous class reads instance state of
+the enclosing class, declares more than methods, or sits in a generic method or next to a local type, a copy takes part in more than one pair, a string or template literal spans lines
 (TypeScript, JavaScript), a differing literal sits where Java needs a constant (a `case` label, a
 `final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
 name that a superclass may declare, a call with a static and an instance overload), or the copies
-differ in a way a parameter cannot carry. A pair in two files or two classes is not looked at. The
+differ in a way a parameter cannot carry. A pair in two files, or in two classes other than anonymous
+classes of one class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
 whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,

@@ -2,7 +2,8 @@ import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { bindPair } from '../../../../../shared/fix/recipes/extract/bijection.mjs';
 import { addHole } from './holes.mjs';
 import { isInRegion, isLocalSymbol } from './scope.mjs';
-import { childrenOf, normalizedText, roleOf, symbolAt } from './syntax.mjs';
+import { childrenOf, roleOf, symbolAt } from './syntax.mjs';
+import { NOT_A_TYPE, typePairStep } from './type-holes/types.mjs';
 
 const SHAPE = 'the copies are shaped differently';
 const FLAGS_MASK = ts.NodeFlags.BlockScoped;
@@ -65,12 +66,12 @@ function leafStep(env, x, y) {
 }
 
 function step(env, x, y) {
+  const typed = typePairStep(env, x, y);
+  if (typed !== NOT_A_TYPE) {
+    return typed;
+  }
   if (x.kind !== y.kind) {
     return addHole(env, x, y);
-  }
-  if (ts.isTypeNode(x)) {
-    const same = normalizedText(x, env.sourceFile) === normalizedText(y, env.sourceFile);
-    return same ? undefined : 'the copies use different types';
   }
   if (ts.isIdentifier(x)) {
     return identifierStep(env, x, y);
@@ -93,6 +94,7 @@ export function alignRegions(pairs, shared) {
     backward: new Map(),
     holes: new Map(),
     inputs: new Map(),
+    typeSites: new Set(),
     pending: [...pairs],
   };
   for (const [x, y] of env.pending) {
@@ -101,5 +103,9 @@ export function alignRegions(pairs, shared) {
       return { declined: problem };
     }
   }
-  return { holes: [...env.holes.values()], inputs: [...env.inputs.values()] };
+  return {
+    holes: [...env.holes.values()],
+    inputs: [...env.inputs.values()],
+    typeSites: env.typeSites.size,
+  };
 }

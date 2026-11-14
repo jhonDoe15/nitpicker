@@ -1,5 +1,4 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { normalizedText } from '../syntax.mjs';
 
 const UNIT_TESTS = [
   ts.isFunctionDeclaration,
@@ -39,19 +38,20 @@ function kindProblem([a, b]) {
     : undefined;
 }
 
-function signatureProblem([a, b], sourceFile) {
+function signatureProblem([a, b]) {
   if (isAsync(a) !== isAsync(b) || a.parameters.length !== b.parameters.length) {
     return 'the copies differ in async or in their parameters';
   }
-  const returns = [a, b].map(({ type }) => type && normalizedText(type, sourceFile));
-  return returns[0] === returns[1] ? undefined : 'the copies declare different return types';
+  return (a.type === undefined) === (b.type === undefined)
+    ? undefined
+    : 'the copies declare different return types';
 }
 
-export function unitProblem(units, sourceFile) {
+export function unitProblem(units) {
   const parameters = units.flatMap((unit) => [...unit.parameters]);
   return (
     kindProblem(units) ??
-    signatureProblem(units, sourceFile) ??
+    signatureProblem(units) ??
     parameters.map(parameterProblem).find((found) => found !== undefined)
   );
 }
