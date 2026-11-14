@@ -9,11 +9,13 @@ import {
   lintCompilerOf,
   posixOf as posix,
 } from '../typed/javac-views.mts';
-import { lombokPath } from './lint-arguments.mts';
+import { lombokPath } from './lint-arguments.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
 import { fieldOf } from '../../../../shared/values/readers.mts';
 import { type LintPlan } from '../typed/lint-plan.mts';
 import { inheritedLombokConfigs, lombokConfigs } from './lint-staging.mjs';
+
+const lombokJars: (plan: LintPlan) => string[] = lombokPath;
 
 export const LINT_CACHE = 'javac-lint.txt';
 export const LINT_FINGERPRINT = 'javac-lint-fingerprint.txt';
@@ -87,7 +89,7 @@ export function lintFingerprint(plan: LintPlan): string {
       arg.replaceAll(plan.root, '<root>'),
     ),
     classpath: digests(plan.root, plan.classpath),
-    lombok: digests(plan.root, lombokPath(plan)),
+    lombok: digests(plan.root, lombokJars(plan)),
     lombokConfigs: digests(plan.root, lombokConfigs({ root: plan.root, sources })),
     inheritedLombokConfigs: inheritedLombokConfigs(plan.root).map((config) => fileDigest(config)),
   };

@@ -58,14 +58,24 @@ tester.run(
     valid: [inCatch("logger.error({ err: e }, 'failed')")],
     invalid: [
       { code: inCatch("logger.error({ error: e }, 'failed')"), errors: [{ message: ERR_MESSAGE }] },
-      { code: inCatch("logger.error('failed', e)"), errors: [{ message: ERR_MESSAGE }] },
+      {
+        code: inCatch("logger.error('failed', e)"),
+        output: inCatch("logger.error({ err: e }, 'failed')"),
+        errors: [{ message: ERR_MESSAGE }],
+      },
     ],
   },
 );
 
 tester.run('catch logging without a detected logger', structuredCatchLoggingRule(undefined), {
   valid: [inCatch("logger.error({ err: e }, 'failed')")],
-  invalid: [{ code: inCatch("logger.error('failed', e)"), errors: [{ message: ERR_MESSAGE }] }],
+  invalid: [
+    {
+      code: inCatch("logger.error('failed', e)"),
+      output: inCatch("logger.error({ err: e }, 'failed')"),
+      errors: [{ message: ERR_MESSAGE }],
+    },
+  ],
 });
 
 for (const logger of [

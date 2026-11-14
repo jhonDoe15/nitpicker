@@ -42,7 +42,7 @@ Recommendation: strict replaces the current rules in a single release, adopted t
 
 1. Ship the strict preset as a new major version, with a changelog listing every rule that fails.
 2. The policy hash changes with the preset. The gate analyzes both the base worktree and the head
-   (`core/diff/comparison/run-diff.mjs`), so existing violations appear on both sides and are baselined, not
+   (`core/diff/comparison/run-diff.mts`), so existing violations appear on both sides and are baselined, not
    failed. The upgrade PR itself should be verified once to confirm the base side is analyzed with
    the new rules (checked in S13: the base side is analyzed with the head's policy, and a test shows a legacy
    violation staying baselined when the edit is elsewhere in the file).

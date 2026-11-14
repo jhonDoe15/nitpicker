@@ -4,7 +4,7 @@ import path from 'node:path';
 import { runJavaDuplicates } from '../metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from '../kotlin/kotlin-duplicates.mjs';
 import { readOptions } from '../options/java-read-options.mts';
-import { toolConfigChoices } from '../tool-config/tool-config-choices.mts';
+import { toolConfigChoices } from '../tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from '../reporting/java-reports.mts';
 import { readReportModules } from '../gradle-reports/report-modules.mts';
 import { runMavenPreset } from '../../maven/maven-build.mts';
@@ -174,7 +174,7 @@ function mavenFindings(projectRoot: string, options: JavaRunOptions): JavaReport
 }
 
 export function buildFindings(projectRoot: string, options: JavaRunOptions): JavaReport {
-  return detectJavaBuild(projectRoot) === 'maven'
+  return detectJavaBuild(projectRoot, options.policy?.['buildTool']) === 'maven'
     ? mavenFindings(projectRoot, options)
     : withGradleReports(projectRoot, options);
 }

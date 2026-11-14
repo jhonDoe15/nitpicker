@@ -3,13 +3,16 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
-import { entryProblems } from './build.mjs';
+import { entryProblems } from './build.mts';
 import {
   formattedText,
   referenceDataFiles,
   referenceFiles,
   staleReferenceFiles,
-} from './generate.mjs';
+} from './generate.mts';
+import { ALL_RECIPES } from '../fix/engine/all-recipes.mjs';
+import { defineRecipes } from '../fix/engine/recipes.mjs';
+import { DEFAULT_FIX_SOURCES } from '../fix/status/fix-status.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
 import { ruleEntry } from '../../shared/reference/entry.mjs';
 
@@ -111,6 +114,33 @@ describe('staleReferenceFiles', () => {
     ]);
 
     expect(staleReferenceFiles(root, generated)).toEqual(['b.md', 'c.md', 'e.json']);
+  });
+});
+
+describe('the fix status of the reference', () => {
+  const recipe = {
+    id: 'demo-tab-character',
+    rules: [{ tool: 'checkstyle', rule: 'FileTabCharacter' }],
+    presets: ['java'],
+    scope: 'file',
+    safety: 'safe',
+    plan: () => ({ fixes: [], notes: [] }),
+  };
+
+  it('makes the stale check fail when a recipe is added without regenerating', () => {
+    const files = referenceDataFiles(REPOSITORY_ROOT);
+    const committed = project(
+      Object.fromEntries([...files].map(([file, text]) => [file, `${text}\n`])),
+    );
+    const sources = {
+      ...DEFAULT_FIX_SOURCES,
+      recipes: defineRecipes([...ALL_RECIPES, recipe]),
+    };
+
+    expect(staleReferenceFiles(committed, files)).toEqual([]);
+    expect(staleReferenceFiles(committed, referenceDataFiles(REPOSITORY_ROOT, sources))).toEqual([
+      'shared/reference/rules/java-checkstyle.json',
+    ]);
   });
 });
 

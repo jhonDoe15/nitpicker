@@ -9,7 +9,7 @@ import { type KotlinPinned, kotlinTools } from './kotlin-dependencies.mts';
 import { ktfmtArguments, ktlintArguments } from './kotlin-format.mts';
 import { psiArguments } from './kotlin-programs.mts';
 import { textOf } from '../../../../../shared/values/readers.mts';
-import type { KotlinRoots } from '../kotlin-roots.mts';
+import type { KotlinRoots } from '../../typed/kotlin-types.mts';
 
 const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
 const toolDependencies: (

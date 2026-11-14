@@ -1,6 +1,12 @@
 import type { JavaSpawn } from '../../adapters/typed/java-values.mts';
-import type { ToolchainContext } from './toolchain-types.mts';
-import type { KotlinRoots } from '../kotlin/kotlin-roots.mts';
+import type { JdkRequirements, ToolchainContext } from './toolchain-types.mts';
+
+export type KotlinRoots = {
+  readonly jdkToolchain: JdkRequirements | undefined;
+  readonly allOpen: { readonly annotations: string[]; readonly presets: string[] };
+  readonly sourceRoots: string[];
+  readonly testSourceRoots: string[];
+};
 
 export type KotlinModule = {
   readonly basedir: string;

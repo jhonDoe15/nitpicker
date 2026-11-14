@@ -1,4 +1,5 @@
-import type { KotlinRoots } from '../kotlin/kotlin-roots.mts';
+import { readReactor } from '../maven-project.mjs';
+import type { KotlinRoots } from './kotlin-types.mts';
 
 export type ModuleBase = {
   readonly basedir: string;
@@ -24,3 +25,6 @@ export type ModuleBase = {
 };
 
 export type ModuleDescription = ModuleBase & { readonly kotlin: KotlinRoots | undefined };
+
+export const reactorModules: (projectRoot: string, effectivePom: string) => ModuleDescription[] =
+  readReactor;

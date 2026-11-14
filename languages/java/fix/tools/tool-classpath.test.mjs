@@ -9,7 +9,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fakeJvmTools } from '../test-support/fake-jvm-tools.mts';
+import { fakeJvmTools } from '../test-support/fake-jvm-tools.mjs';
 import {
   FIX_TOOLS_BUILD,
   TOOL_RESOLUTION_TIMEOUT_MS,

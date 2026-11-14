@@ -2,22 +2,24 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { readReactor } from './maven-project.mts';
-import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mts';
+import { readReactor } from './maven-project.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mts';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { archunitTool, formatTool, resolveTools } from './maven-tools.mjs';
+import { archunitTool, effectsTool, formatTool, resolveTools } from './maven-tools.mjs';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mts';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mts';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
-import { processorTool } from './errorprone/maven-errorprone.mts';
+import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mts';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
+import { effectsOptions } from '../adapters/effects/effects-options.mjs';
+import { dependencyFile } from './quick/maven-build-arguments.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
 import { buildOrSkipTests, jacocoExecFiles } from './quick/maven-test-phase.mts';
-import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
+import { fieldOf, listOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
   type JavaEnvironment,
   type JavaPolicy,
@@ -30,6 +32,10 @@ import {
   mavenModuleOf,
 } from './typed/maven-values.mts';
 
+const dependencyEntries: (text: string) => Dependency[] = parseDependencyList;
+const classpathsOf: (module: MavenModule, dependencies: readonly Dependency[]) => Classpaths =
+  moduleClasspaths;
+
 type MavenRun = {
   readonly projectRoot: string;
   readonly maven: string | undefined;
@@ -37,6 +43,7 @@ type MavenRun = {
   readonly timeoutMs: number | undefined;
   readonly pinned: unknown;
   readonly quick: boolean;
+  readonly mutationOff: boolean;
 };
 type AnalyzedModule = {
   readonly module: MavenModule;
@@ -53,6 +60,7 @@ type AnalyzeRequest = MavenRun & {
   readonly since: number;
   readonly project: unknown;
   readonly testsSkipped: boolean;
+  readonly effectsOptions: unknown;
 };
 type ToolsRequest = {
   readonly modules: readonly MavenModule[];
@@ -78,17 +86,13 @@ type MavenPresetRun = {
 
 const CLOCK_SLACK_MS = 2000;
 
-function dependencyFile(work: string, module: MavenModule): string {
-  const [groupId = '', artifactId = ''] = module.coordinates.split(':');
-  return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
-}
-
 function readClasspaths(
   work: string,
   module: MavenModule,
 ): Classpaths & { readonly dependencies: readonly Dependency[] } {
-  const dependencies = parseDependencyList(readFileSync(dependencyFile(work, module), 'utf8'));
-  return { ...moduleClasspaths(module, dependencies), dependencies };
+  const file = textOf(callUntyped(dependencyFile, work, module));
+  const dependencies = dependencyEntries(readFileSync(file, 'utf8'));
+  return { ...classpathsOf(module, dependencies), dependencies };
 }
 
 function guardProject(
@@ -146,7 +150,14 @@ function readModules({
   return { modules, effectivePom };
 }
 
-function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeRequest): unknown[] {
+function analyzeAll({
+  analyzed,
+  policy,
+  kotlin,
+  work,
+  effectsOptions: moduleEffects,
+  ...shared
+}: AnalyzeRequest): unknown[] {
   const indentation: unknown = checkstyleIndentation(policy.conventions);
   const style = { javaStyle: policy.javaStyle, indentation };
   const springRoles: unknown = writeSpringRoles(policy['springRoles'], work);
@@ -165,6 +176,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }: AnalyzeReques
         springRoles,
         springRules,
         mutationScope: policy['mutationScope'],
+        effectsOptions: moduleEffects,
       }),
     )
     .filter((failure) => failure !== undefined);
@@ -178,6 +190,7 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }: ToolsRequest)
     ...listOf(callUntyped(formatTool, policy.javaStyle, pinned)),
     ...listOf(fieldOf(kotlin, 'extraTools')),
     ...listOf(callUntyped(archunitTool, buildRunsArchRules(policy, analyzed), pinned)),
+    ...listOf(callUntyped(effectsTool, pinned)),
   ];
 }
 
@@ -203,7 +216,15 @@ function presetInWork(
   work: string,
 ): MavenPresetRun {
   const pinned: unknown = readPinnedTools();
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
+  const run = {
+    projectRoot,
+    maven,
+    spawn,
+    timeoutMs,
+    pinned,
+    quick: policy.quick === true,
+    mutationOff: policy['mutationOff'] === true,
+  };
   const { modules, effectivePom } = readModules({ ...run, work });
   const setup = { ...run, policy, modules, effectivePom, work, environment };
   const kotlin = callUntyped(kotlinSetup, setup);
@@ -215,7 +236,7 @@ function presetInWork(
   }));
   const tools = callUntyped(resolveTools, {
     ...run,
-    launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
+    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
     extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
   });
   const testsFailures = analyzeAll({
@@ -229,6 +250,7 @@ function presetInWork(
     policy,
     kotlin,
     work,
+    effectsOptions: effectsOptions(projectRoot),
     project: guardProject(projectRoot, policy, modules),
   });
   return {

@@ -8,6 +8,8 @@ import { ROUND_TRIP_HINTS } from './hints/tests/round-trip-hints.mjs';
 import { CONTAINER_HINTS } from './hints/containers/containers.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
+import { EFFECT_HINTS } from './hints/effects/index.mjs';
+import { WRITE_HINTS } from './hints/writes/index.mjs';
 import { MOCK_HINTS } from './hints/tests/mock-hints.mjs';
 import { REGEX_DEFECT_HINTS } from './regexes/regex-defects.mjs';
 import { ORM_HINTS } from './hints/persistence/ast-orm.mjs';
@@ -67,6 +69,8 @@ export const RULE_HINTS = [
   ...CONTRACT_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
+  ...EFFECT_HINTS,
+  ...WRITE_HINTS,
   ...MOCK_HINTS,
   ...REGEX_DEFECT_HINTS,
   ...SIGNATURE_HINTS,

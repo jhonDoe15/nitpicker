@@ -3,8 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { temporaryTrees } from '../../test-support/temporary-trees.mts';
 import { moduleManifest } from '../manifest/maven-manifest.mts';
-import { readReactor } from '../maven-project.mts';
-import type { ModuleDescription } from '../typed/module-description.mts';
+import { type ModuleDescription, reactorModules } from '../typed/module-description.mts';
 
 const trees = temporaryTrees('nitpicker-maven-kotlin-');
 
@@ -18,7 +17,7 @@ function moduleWith(build: string, directories: readonly string[]): ModuleDescri
     mkdirSync(path.join(root, directory), { recursive: true });
   }
   const pom = `<project><groupId>demo</groupId><artifactId>shop</artifactId><build>${build}</build></project>`;
-  const [module] = readReactor(root, pom);
+  const [module] = reactorModules(root, pom);
   if (module === undefined) {
     throw new Error('The reactor has no module');
   }

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
-import { compare, type GuardFinding } from '../typed/guard-compare.mts';
+import { compare, type GuardFinding } from './guard-compare.mts';
 
 function writeProjectFile(root: string, name: string, text: string): void {
   const target = path.resolve(root, name);

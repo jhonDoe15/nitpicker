@@ -21,6 +21,7 @@ const RUFF_CODE = /"([A-Z]+\d*)"/g;
 const RUFF_CONFIG_TEXT = readFileSync(RUFF_CONFIG, 'utf8');
 export const RUFF_SELECT = codesOf('select');
 export const RUFF_IGNORE = codesOf('ignore');
+export const RUFF_PROMOTED_FIXES = codesOf('extend-safe-fixes');
 
 function codesOf(key) {
   const list = new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]`, 'm').exec(RUFF_CONFIG_TEXT);

@@ -8,6 +8,8 @@ import {
   isTestFactoryMember,
   isTestFunctionName,
 } from '../../analysis/test-code-analysis.mjs';
+import { suggestible } from '../../../fixes/support/descriptors.mjs';
+import { raisedTimeoutFix } from '../../../fixes/tests/raised-timeout-fix.mjs';
 import { isFunctionNode } from '../../analysis/constant-resolution.mjs';
 
 export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
@@ -80,19 +82,27 @@ function reportTimeout(context, { node: timeout, hook }, limits) {
     return;
   }
   if (value <= 0 || value > ceiling) {
-    context.report({ node: timeout, messageId: 'raisedTimeout', data });
+    const plan = raisedTimeoutFix(context.sourceCode, timeout);
+    context.report(
+      suggestible(
+        { node: timeout, messageId: 'raisedTimeout', data },
+        { messageId: 'dropTimeout', plan },
+      ),
+    );
   }
 }
 
 export const rule = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     schema: [],
     messages: {
       raisedTimeout:
         'Keep the {{kind}} timeout between 1 and {{ceiling}} ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',
       unknownTimeout:
         'Give the {{kind}} timeout as a number between 1 and {{ceiling}} ms written in this file, or keep the default.',
+      dropTimeout: 'Remove the timeout and keep the default.',
     },
   },
   create(context) {

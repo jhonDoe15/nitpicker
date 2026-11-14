@@ -62,6 +62,7 @@ export function moduleManifest({
     resourceRoots: relative(module, rootsOf(module, 'resourceRoots')),
     ...fieldsOf(springFacts(classpaths)),
     springClasspath: springClasspath(classpaths),
+    effects: true,
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),

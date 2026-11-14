@@ -6,10 +6,11 @@ import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
-import { runErrorProne } from '../errorprone/maven-errorprone.mts';
+import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mts';
 import { runGuards } from '../guards/maven-guards.mts';
+import { runEffects } from '../effects/maven-effects.mjs';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';
 import { readTestRuns, runCoverageTools } from '../quick/maven-test-phase.mts';
@@ -101,6 +102,7 @@ function analyzeSources(options: ModuleOptions): unknown {
   });
   runSourceTools({ ...options, kotlin: { ...fieldsOf(kotlin), spring: options['spring'] } });
   callUntyped(runGuards, options, options['project']);
+  callUntyped(runEffects, { ...options, options: options['effectsOptions'] });
   runArchitecture({ ...options, module: fieldOf(kotlin, 'coverageModule') });
   return kotlin;
 }

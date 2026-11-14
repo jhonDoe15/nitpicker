@@ -1,9 +1,10 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { javaStyleProperties } from '../style/java-style.mjs';
-import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mts';
+import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mjs';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mts';
+import { effectsProperties } from '../effects/effects-options.mjs';
 import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mts';
 import { textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
@@ -69,6 +70,7 @@ function headFactProperties(projectRoot: string, policy: JavaPolicy, directory: 
   const springRules: unknown = writeSpringRuleset(projectRoot, directory);
   return [
     ...styleProperties(policy),
+    ...textsOf(callUntyped(effectsProperties, projectRoot)),
     ...(policy['spring'] === true ? ['-Pnitpicker.spring=true'] : []),
     ...(policy['featureFolders'] === true ? ['-Pnitpicker.featureFolders=true'] : []),
     ...(roles === undefined ? [] : [`-Pnitpicker.spring.roles=${textOf(roles)}`]),
@@ -99,6 +101,7 @@ export function gradleStages(
   const common = [
     ...baseArguments,
     ...(policy.quick === true ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
+    ...(policy['mutationOff'] === true ? ['-Pnitpicker.mutation=off'] : []),
   ];
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const choices = toolConfigChoices(projectRoot, policy);

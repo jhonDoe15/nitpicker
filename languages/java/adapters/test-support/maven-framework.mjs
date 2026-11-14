@@ -2,11 +2,11 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
-import { lifecycleArgs, readReactor } from '../../maven/maven-project.mts';
+import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
 import {
   moduleClasspaths,
   parseDependencyList,
-} from '../../maven/configuration/maven-classpaths.mts';
+} from '../../maven/configuration/maven-classpaths.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
   archunitMatcher,
