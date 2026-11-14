@@ -44,11 +44,14 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   elements with one call and join in memory (`effects/ReactiveLookupPerElement`).
 - Bulk changes: never load rows only to set the same value on each and save them, or to delete them; use one
   `@Modifying @Query` update or delete, or `deleteAllInBatch` (`effects/RowsChangedInMemory`).
-- Reads: never load whole entities to read one column (`findByTeam(id).map { it.email }`; select a projection) or to
-  test existence (`countByEmail(e) > 0`, `findByEmail(e).isPresent()`; use `existsByEmail`)
+- Reads: never load whole entities to read one column (`findByTeam(id).stream().map(User::getEmail)`; select a
+  projection) or to test existence (`countByEmail(e) > 0`, `findByEmail(e).isPresent()`; use `existsByEmail`)
   (`effects/EntityLoadedForOneColumn`, `effects/EntityLoadedForExistence`).
 - Optimistic-lock retries: read the row by id and apply the change inside the retried scope (`Mono.defer`, the loop
   body, or a `@Retryable` method that takes the id); never resend the object that conflicted (`effects/RetryWithStaleObject`).
+- Async methods: do not return `immediateFuture`/`completedFuture` of a database or HTTP call made on the calling thread
+  (submit it to an executor or make the method synchronous), and do not wait with `.get()`/`.join()` on `fooAsync()` when
+  `foo()` exists (`effects/AsyncMethodDoesBlockingWork`, `effects/WaitOnAsyncTwin`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

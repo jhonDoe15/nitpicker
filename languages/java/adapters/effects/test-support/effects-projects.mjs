@@ -69,6 +69,8 @@ export const JAVA_EFFECTS = [
   'RetryWithStaleObject 25 OrderSaves.captured Reactor retry order ReactiveOrders.save()',
   'RetryWithStaleObject 31 OrderSaves.loop retry loop order OrderRepository.save()',
   'RetryWithStaleObject 41 OrderSaves.annotated @Retryable order OrderRepository.save()',
+  'AsyncMethodDoesBlockingWork 20 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
+  'WaitOnAsyncTwin 32 OrderFutures.waits OrderFutures.findAsync()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -135,6 +137,8 @@ export const KOTLIN_EFFECTS = [
   'RetryWithStaleObject 14 OrderSaves.captured Reactor retry order ReactiveOrders.save()',
   'RetryWithStaleObject 19 OrderSaves.loop retry loop order OrderRepository.save()',
   'RetryWithStaleObject 28 OrderSaves.annotated @Retryable order OrderRepository.save()',
+  'AsyncMethodDoesBlockingWork 11 OrderFutures.wrapped CompletableFuture.completedFuture() OrderRepository.findById()',
+  'WaitOnAsyncTwin 18 OrderFutures.waits OrderFutures.findAsync()',
 ];
 
 function summaryOf(violation) {
@@ -154,10 +158,17 @@ function summaryOf(violation) {
     object,
     write,
     read,
-    write,
+    wrapper,
+    async,
   } = violation;
   if (read !== undefined) {
     return [rule, line, method, read, write].join(' ');
+  }
+  if (wrapper !== undefined) {
+    return [rule, line, method, wrapper, calls.join('>')].join(' ');
+  }
+  if (async !== undefined) {
+    return [rule, line, method, async].join(' ');
   }
   if (object !== undefined) {
     return [rule, line, method, scope, object, write].join(' ');

@@ -178,13 +178,16 @@ function reactiveLookup({ method, kind, path, limited }) {
     .join(' ');
 }
 
-const LIFECYCLE =
-  'An entity with `@Version`, `@PreUpdate`/`@PreRemove`, `@EntityListeners`, auditing, domain events or cascades is not reported, because a bulk statement skips what these run.';
+const LIFECYCLE = [
+  'An entity with `@Version`, `@PreUpdate`/`@PreRemove`, `@EntityListeners`, auditing, domain events or cascades',
+  'is not reported, because a bulk statement skips what these run.',
+].join(' ');
 
 function rowsChanged({ method, form, origin, entity }) {
   if (form === 'delete') {
     return [
-      'Delete the rows with one statement (`deleteAllInBatch`, or a `@Modifying` delete query with the same where clause)',
+      'Delete the rows with one statement (`deleteAllInBatch`, or a `@Modifying` delete query with the same',
+      'where clause)',
       `instead of loading them first: ${code(`${method}()`)} loads ${code(entity)} rows with ${code(origin)} only to`,
       `delete them. ${LIFECYCLE}`,
     ].join(' ');
@@ -202,8 +205,9 @@ function oneColumn({ method, entity, property, origin }) {
   const column = property.replace(/^(get|is)/u, '');
   const name = column.charAt(0).toLowerCase() + column.slice(1);
   return [
-    `Select only the column with a projection (\`@Query("select e.${name} from ${entity} e where ...")\`, an interface or`,
-    `record projection): ${code(`${method}()`)} loads whole ${code(entity)} entities with ${code(origin)}`,
+    `Select only the column with a projection (\`@Query("select e.${name} from ${entity} e where ...")\`,`,
+    `an interface or record projection): ${code(`${method}()`)} loads whole ${code(entity)} entities with`,
+    `${code(origin)}`,
     `only to read ${code(`${property}()`)} from each, with their eager relations.`,
   ].join(' ');
 }
@@ -223,11 +227,30 @@ function staleRetry({ method, scope, object, write }) {
   const where =
     scope === '@Retryable'
       ? 'is retried by `@Retryable` after an optimistic-lock conflict but takes the object to save as a parameter'
-      : `retries after an optimistic-lock conflict (${scope}) but sends an object that was read or built outside the retry`;
+      : `retries after an optimistic-lock conflict (${scope}) but sends an object that was read or built outside` +
+        ' the retry';
   return [
-    'Re-read the row by id and re-apply the change inside the retried scope (`Mono.defer { findById(id).map(change).flatMap(save) }`,',
-    `a loop that loads the row on each attempt, or a \`@Retryable\` method that takes the id): ${code(`${method}()`)} ${where},`,
-    `then calls ${code(write)} with ${code(object)}, which keeps the old version, so every attempt fails the same way.`,
+    'Re-read the row by id and re-apply the change inside the retried scope',
+    '(`Mono.defer { findById(id).map(change).flatMap(save) }`, a loop that loads the row on each attempt,',
+    `or a \`@Retryable\` method that takes the id): ${code(`${method}()`)} ${where},`,
+    `then calls ${code(write)} with ${code(object)}, which keeps the old version,`,
+    'so every attempt fails the same way.',
+  ].join(' ');
+}
+
+function asyncBlocking({ method, wrapper, path }) {
+  return [
+    'Submit the work to an executor (`executor.submit`, `supplyAsync(..., executor)`),',
+    "use the client's real async API, or make the method synchronous:",
+    `${code(`${method}()`)} ${callPath(path)} on the calling thread and only wraps the`,
+    `result with ${code(wrapper)}, so a caller on an event-loop or single-thread executor waits on it.`,
+  ].join(' ');
+}
+
+function asyncTwin({ method, async, sync }) {
+  return [
+    `Call the synchronous ${code(sync)} instead: ${code(`${method}()`)} waits on ${code(async)}, which takes an`,
+    'executor thread, blocks the caller anyway and turns every failure into an `ExecutionException`.',
   ].join(' ');
 }
 
@@ -246,6 +269,8 @@ export const EFFECTS_MESSAGES = {
   EntityLoadedForExistence: existence,
   RetryWithStaleObject: staleRetry,
   ...RACE_MESSAGES,
+  AsyncMethodDoesBlockingWork: asyncBlocking,
+  WaitOnAsyncTwin: asyncTwin,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

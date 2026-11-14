@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 41,
+      classes: 45,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -235,6 +235,18 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     expect(methodsOf(run.report, 'CheckThenWriteWithoutLock')).toEqual([
       'Races.reserve',
       'Races.claim',
+    ]);
+  });
+
+  it('reports async methods that block and waits on a method that has a synchronous twin', () => {
+    expect(methodsOf(run.report, 'AsyncMethodDoesBlockingWork')).toEqual([
+      'Waits.guava',
+      'Waits.completed',
+    ]);
+    expect(methodsOf(run.report, 'WaitOnAsyncTwin')).toEqual([
+      'Waits.waits',
+      'Waits.joins',
+      'Waits.unchecked',
     ]);
   });
 
