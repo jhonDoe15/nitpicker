@@ -7,7 +7,7 @@ import {
   withTroubleshooting,
 } from '../../../../shared/messages/troubleshooting.mjs';
 import { pitTimeoutMs, runPit } from '../../maven/pit/maven-pit.mts';
-import { pitFailureFindings } from './pit-failure.mjs';
+import { pitFailureFindings } from './pit-failure.mts';
 
 const roots = [];
 

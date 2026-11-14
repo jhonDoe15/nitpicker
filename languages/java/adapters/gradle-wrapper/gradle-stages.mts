@@ -4,7 +4,7 @@ import { javaStyleProperties } from '../style/java-style.mjs';
 import { toolConfigChoices, toolConfigProperties } from '../tool-config/tool-config-choices.mts';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../spring/proxies/proxy-ruleset.mts';
-import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mjs';
+import { pitHistoryProperties } from '../../builds/pit-history/pit-history.mts';
 import { textOf, textsOf } from '../../../../shared/values/readers.mts';
 import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 import type { JavaBudget } from '../typed/java-run-options.mts';

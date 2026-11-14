@@ -7,7 +7,7 @@ import { dependencyFindings, readDependencyFindings } from './dependencies.mjs';
 import {
   classWithStrings,
   descriptorOfLength,
-} from '../builds/classes/test-support/class-bytes.mjs';
+} from '../builds/classes/test-support/class-bytes.mts';
 
 const roots = [];
 afterEach(() => {

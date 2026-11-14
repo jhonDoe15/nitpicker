@@ -3,12 +3,12 @@ import path from 'node:path';
 import { runJava } from '../maven-command.mjs';
 import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
-import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
-import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
+import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mts';
+import { writePitFailure } from '../../builds/pit-failure/pit-failure.mts';
 import {
   writeSkippedTests,
   writeUnmutatedFailures,
-} from '../../builds/pit-failure/pit-skipped.mjs';
+} from '../../builds/pit-failure/pit-skipped.mts';
 import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
 import { pitRunTargets } from '../module/pit-scope.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';

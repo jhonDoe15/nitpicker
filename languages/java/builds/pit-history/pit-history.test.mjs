@@ -9,7 +9,7 @@ import {
   pitHistoryArguments,
   pitHistoryOf,
   pitHistoryProperties,
-} from './pit-history.mjs';
+} from './pit-history.mts';
 
 const roots = [];
 const BUILD = { 'pom.xml': '<project/>', 'lib/build.gradle': "plugins { id 'java' }" };

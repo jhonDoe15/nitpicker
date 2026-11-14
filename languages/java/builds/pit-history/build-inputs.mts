@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, type Dirent } from 'node:fs';
 import path from 'node:path';
 
 const SKIPPED_DIRECTORIES = new Set([
@@ -21,9 +21,9 @@ const BUILD_FILE_NAMES = new Set([
 ]);
 const BUILD_FILE_SUFFIXES = ['.gradle', '.gradle.kts', '.versions.toml'];
 
-function isBuildInput(relativePath) {
+function isBuildInput(relativePath: string): boolean {
   const segments = relativePath.split(path.sep);
-  const name = segments.at(-1);
+  const name = segments.at(-1) ?? '';
   return (
     BUILD_FILE_NAMES.has(name) ||
     BUILD_FILE_SUFFIXES.some((suffix) => name.endsWith(suffix)) ||
@@ -31,7 +31,7 @@ function isBuildInput(relativePath) {
   );
 }
 
-function isAnalyzed(entry, root) {
+function isAnalyzed(entry: Dirent, root: string): boolean {
   const relativePath = path.relative(root, path.join(entry.parentPath, entry.name));
   return (
     entry.isFile() &&
@@ -40,7 +40,7 @@ function isAnalyzed(entry, root) {
   );
 }
 
-function readInside(root, entry) {
+function readInside(root: string, entry: Dirent): [string, Buffer][] {
   const file = path.resolve(entry.parentPath, entry.name);
   if (!file.startsWith(`${root}${path.sep}`)) {
     return [];
@@ -48,7 +48,7 @@ function readInside(root, entry) {
   return [[path.relative(root, file), readFileSync(file)]];
 }
 
-function buildInputs(directory) {
+function buildInputs(directory: string): Map<string, Buffer> {
   const root = path.resolve(directory);
   return new Map(
     readdirSync(root, { recursive: true, withFileTypes: true })
@@ -57,8 +57,16 @@ function buildInputs(directory) {
   );
 }
 
-export function sameBuildInputs(headRoot, baseRoot) {
-  if (![headRoot, baseRoot].every((root) => root !== undefined && existsSync(root))) {
+export function sameBuildInputs(
+  headRoot: string | undefined,
+  baseRoot: string | undefined,
+): boolean {
+  if (
+    headRoot === undefined ||
+    baseRoot === undefined ||
+    !existsSync(headRoot) ||
+    !existsSync(baseRoot)
+  ) {
     return false;
   }
   const head = buildInputs(headRoot);
