@@ -7,6 +7,7 @@ import { nitpickerRules } from '../eslint-plugin/index.mjs';
 import { errorWrappingPolicy } from '../eslint-config/policies/error-wrapping-policy.mjs';
 import { strictPresetConfig } from '../eslint-config/strict.mjs';
 import {
+  UNUSED_PARAMETERS,
   usesRouteHandlerFramework,
   productionLayoutConfigFor,
 } from '../eslint-config/policy/production-policy.mjs';
@@ -171,6 +172,7 @@ const presetConfig = defineConfig(
     },
     rules: {
       ...vitest.configs.recommended.rules,
+      '@typescript-eslint/no-unused-vars': ['error', UNUSED_PARAMETERS],
       'nitpicker/integration-test-uses-approved-harness': 'error',
       'nitpicker/container-pause-requires-finally-unpause': 'error',
       'nitpicker/bounded-container-teardown': 'error',

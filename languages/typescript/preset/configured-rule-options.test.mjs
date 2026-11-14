@@ -75,8 +75,7 @@ describe('vitest/expect-expect', () => {
         languageOptions: { parser: tseslint.parser },
         rules: { 'vitest/expect-expect': rules['vitest/expect-expect'] },
       }));
-    const reported = (name) =>
-      new Linter().verify(code, entries, name).map(({ ruleId }) => ruleId);
+    const reported = (name) => new Linter().verify(code, entries, name).map(({ ruleId }) => ruleId);
     expect(reported('test/api.test.ts')).toEqual(['vitest/expect-expect']);
     expect(reported('test/api.spec.tsx')).toEqual(['vitest/expect-expect']);
     expect(reported('test/api.test-d.ts')).toEqual([]);
@@ -88,6 +87,26 @@ describe('vitest/expect-expect', () => {
     expect(
       vitestMessages('vitest/expect-expect', "it('runs', () => { greet('a'); });\n"),
     ).toHaveLength(1);
+  });
+});
+
+describe('@typescript-eslint/no-unused-vars', () => {
+  const code = 'export const two = (_state: unknown, _props: unknown, other: unknown) => 2;\n';
+  const entries = presetConfig
+    .filter((entry) => entry.rules?.['@typescript-eslint/no-unused-vars'] !== undefined)
+    .map(({ files, ignores, rules }) => ({
+      ...(files === undefined ? {} : { files }),
+      ...(ignores === undefined ? {} : { ignores }),
+      plugins: { '@typescript-eslint': tseslint.plugin },
+      languageOptions: { parser: tseslint.parser },
+      rules: { '@typescript-eslint/no-unused-vars': rules['@typescript-eslint/no-unused-vars'] },
+    }));
+  const reported = (name) =>
+    new Linter().verify(code, entries, name).map(({ message }) => message.split(' ')[0]);
+
+  it('accepts a leading underscore on a parameter in test files as in production code', () => {
+    expect(reported('test/arity.test.ts')).toEqual(["'other'"]);
+    expect(reported('src/main/arity.ts')).toEqual(["'other'"]);
   });
 });
 
