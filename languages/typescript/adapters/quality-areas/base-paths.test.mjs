@@ -4,8 +4,8 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { withMovesFile } from '../../../../core/diff/git/patches/moves-file.mts';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { runQualityArea } from '../quality-areas-runner.mjs';
-import { parseArguments } from './arguments.mjs';
+import { runQualityArea } from '../quality-areas-runner.mts';
+import { parseArguments } from './arguments.mts';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 
 const PRICE = [

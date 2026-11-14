@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect, onTestFinished } from 'vitest';
-import { normalizeEslintResults } from '../normalize.mjs';
+import { normalizeEslintResults } from '../normalize.mts';
 
 export function makeTemporaryRoot(prefix) {
   const root = mkdtempSync(path.join(tmpdir(), prefix));

@@ -7,7 +7,7 @@ import { isDependencyCruiserOwnedOption } from '../../../preset/project-tools/co
 import {
   layeredDependencyCruiserConfig,
   projectExcludePaths,
-} from './dependency-cruiser-layers.mjs';
+} from './dependency-cruiser-layers.mts';
 
 const POLICY = {
   forbidden: [
@@ -128,7 +128,7 @@ describe('layered dependency-cruiser config', () => {
     const { default: policy } =
       await import('../../../preset/dependency-graph/dependency-cruiser.config.mjs');
     const graphSource = readFileSync(
-      path.join(import.meta.dirname, '../project-dependency-graph.mjs'),
+      path.join(import.meta.dirname, '../project-dependency-graph.mts'),
       'utf8',
     );
     const flags = [...graphSource.matchAll(/'--([a-z-]+)'/gu)]

@@ -251,7 +251,7 @@ describe('applyLayout', () => {
         '--tool-root',
         '/p',
         packageRoot,
-        `${packageRoot}/languages/typescript/adapters/eslint-runner.mjs`,
+        `${packageRoot}/languages/typescript/adapters/eslint-runner.mts`,
         'eslint-lint',
         'languages/typescript/preset/defaults/eslint.config.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',

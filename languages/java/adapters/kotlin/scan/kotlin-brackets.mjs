@@ -1,3 +1,4 @@
+import { chainOf } from '../../../../../shared/traversal.mjs';
 const BRACKETS = { '(': /[()]/g, '{': /[{}]/g, '[': /[[\]]/g };
 const ARGUMENT_MARK = /[()[\]{},]/g;
 
@@ -71,4 +72,15 @@ export function enclosingOpen(code, offset) {
     }
   }
   return open.at(-1) ?? -1;
+}
+
+function nextArgumentsEnd(code, from) {
+  const next = /\s*[({]/y;
+  next.lastIndex = from;
+  return next.exec(code) === null ? undefined : closingIndex(code, next.lastIndex - 1) + 1;
+}
+
+/** The offset after the argument lists and trailing lambdas that follow `from` in `code`. */
+export function afterCall(code, from) {
+  return chainOf(from, (position) => nextArgumentsEnd(code, position)).at(-1) ?? from;
 }

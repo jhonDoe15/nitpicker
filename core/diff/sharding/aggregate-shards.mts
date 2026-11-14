@@ -125,7 +125,9 @@ function unchangedReport(
     configOverrides,
     comparison: commonSummary(shards[0].summary),
     startedAt: Date.now(),
-    additionalToolErrors: sortByToolAndPath(shards.flatMap(({ toolErrors }) => toolErrors)),
+    additionalToolErrors: sortByToolAndPath(
+      withoutRepeats(shards.flatMap(({ toolErrors }) => toolErrors)),
+    ),
   });
   report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
   return report;
@@ -154,7 +156,7 @@ function mergeShardEntries(
   shardReports: readonly ShardReport[],
   analyzerResolutionErrors: readonly Entry[],
 ): ShardEntries {
-  const toolErrors = mergeEntries(shardReports, 'toolErrors');
+  const toolErrors = withoutRepeats(mergeEntries(shardReports, 'toolErrors'));
   for (const error of analyzerResolutionErrors) {
     if (!toolErrors.some(({ tool }) => tool === error.tool)) {
       toolErrors.push(error);
@@ -214,6 +216,10 @@ export function runAggregateCli({
 
 function aggregationFailure(error: unknown): string {
   return withTroubleshooting(describeError(error), TROUBLESHOOTING_ANCHORS.shardAggregationFails);
+}
+
+function withoutRepeats<T>(entries: readonly T[]): T[] {
+  return [...new Map(entries.map((entry) => [JSON.stringify(entry), entry])).values()];
 }
 
 function mergeEntries(shardReports: readonly ShardReport[], property: keyof ShardEntries): Entry[] {

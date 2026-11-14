@@ -6,7 +6,7 @@ import { withHeadPolicyFile } from '../../languages/typescript/preset/head-polic
 import { runAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
-import type { ReportEntry } from '../../shared/values/findings.mts';
+import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 
 type Finding = ReportEntry;
 
@@ -26,6 +26,7 @@ type SnapshotRequest = {
   readonly startedAt?: number;
   readonly headPolicy?: object | undefined;
   readonly scope: Scope;
+  readonly setupErrors?: readonly object[];
   readonly [option: string]: unknown;
 };
 
@@ -74,9 +75,10 @@ export function runQualitySnapshot({
   startedAt = Date.now(),
   headPolicy = {},
   scope,
+  setupErrors = [],
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
+  const { reports, toolErrors: runErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
     runAnalyzers({
       analyzers,
       projectRoot,
@@ -94,6 +96,7 @@ export function runQualitySnapshot({
     }),
   );
 
+  const toolErrors = [...entriesOf(setupErrors), ...runErrors];
   const { findings, tools, outside } = collectSnapshotFindings({
     analyzers,
     reports,

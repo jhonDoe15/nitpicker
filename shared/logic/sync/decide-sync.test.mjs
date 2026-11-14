@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { decide } from '../decide.mjs';
 import { and, binary, name, not, number, or } from '../test-support/build.mjs';
-import { decideSync } from './decide-sync.mjs';
+import { counterexampleSync, decideSync } from './decide-sync.mjs';
 
 const count = name('count');
 const cases = [
@@ -14,6 +14,16 @@ const cases = [
 describe('decide for synchronous callers', () => {
   it.each(cases)('answers like decide: %s', async (_label, conditions, query) => {
     expect(decideSync(conditions, query)).toBe(await decide(conditions, query));
+  });
+
+  it('explains a refused claim with the values that break it', () => {
+    const query = binary('>', count, number('20'));
+
+    expect(counterexampleSync([], query, { integers: true })).toBe('name:"count" = 20');
+  });
+
+  it('has no counterexample for a claim the conditions settle', () => {
+    expect(counterexampleSync(...cases[1].slice(1))).toBeUndefined();
   });
 
   it('counts a solver that does not answer in time as open', () => {

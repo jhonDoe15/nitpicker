@@ -54,6 +54,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      pull-requests: read
     uses: ./.github/workflows/container.yml
     with:
       commit: ${{ inputs.commit }}

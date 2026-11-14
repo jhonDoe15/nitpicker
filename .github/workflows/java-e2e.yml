@@ -17,7 +17,7 @@ on:
       - 'vitest.config.mts'
       - 'nitpicker.config.json'
       - 'scripts/test-shards/**'
-      - 'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs'
+      - 'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mts'
       - 'evals/**/*.test.mjs'
       - 'evals/**/*.test.mts'
       - 'scripts/ci/**'

@@ -34,6 +34,10 @@ Part of the [Java preset guide](../java-preset.md).
   checks' findings are kept. Each crashed check is one more report entry,
   `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
   check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  A crash nitpicker knows as an Error Prone bug is a descriptive notice instead, so it does not
+  change the exit code of a clean project: `UnnecessarilyFullyQualified` throwing a
+  `ClassCastException` (`JCIdent` cannot be cast to `MemberSelectTree`), seen on classes with fully
+  qualified Lombok annotations. Any other crash of that check stays a tool error.
   The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
   off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
@@ -68,7 +72,9 @@ Part of the [Java preset guide](../java-preset.md).
   1.8, by version), which the runner gives javac as `-source 8 -target 8`, the oldest level JDK
   21's javac takes; plugin 4.x has no such default and javac's own applies. An `annotationProcessorPaths` entry without a version takes it from the effective
   `dependencyManagement`, as `maven-compiler-plugin` does; one with no version there, or an
-  unresolved one, is a tool error that names the coordinate, never a guessed version. Without
+  unresolved one, is a tool error that names the module and the coordinate, never a guessed
+  version. Only modules that compile are read: an aggregator (packaging `pom`) compiles nothing,
+  so its unresolved entries do not matter, as in Maven. Without
   `annotationProcessorPaths` the processors come from the classpath, as javac finds them. The main
   classpath ends with `target/classes`, so classes that code generators (protobuf, JAXB, OpenAPI,
   jOOQ, ANTLR) compiled there resolve; the module's own sources are compiled from source and take

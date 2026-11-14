@@ -6,6 +6,7 @@
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mts",
       "shared/logic/sync/decide-worker.mts",
+      "languages/java/adapters/near-duplicates/jvm-trees-process.mts",
       "languages/java/maven/parallel/tool-supervisor.mts",
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",
@@ -38,8 +39,8 @@
       "languages/java/adapters/gradle-reports/gradle-guards.mts",
       "languages/java/builds/rulesets/write-rules.mts",
       "languages/java/builds/tools/tool-commands.mjs",
-      "languages/typescript/adapters/eslint-runner.mjs",
-      "languages/typescript/adapters/quality-areas-runner.mjs",
+      "languages/typescript/adapters/eslint-runner.mts",
+      "languages/typescript/adapters/quality-areas-runner.mts",
       "languages/typescript/adapters/static-checks-runner.mts",
       "languages/typescript/preset/test-environment/read-environment.mjs",
       "languages/typescript/preset/architecture/public-contract-usage.mjs",
@@ -171,11 +172,6 @@
       "rule": "@typescript-eslint/restrict-plus-operands",
       "paths": ["**/*.mjs"],
       "reason": "Type-aware rule: plain .mjs has no type information, so every imported value is any and the rule only reports noise."
-    },
-    {
-      "rule": "@typescript-eslint/no-deprecated",
-      "paths": ["languages/typescript/adapters/oxlint/stage/oxlint-paths.mjs"],
-      "reason": "The project's tsconfig may still set baseUrl, which TypeScript 6 deprecates and TypeScript 7 removes. The file reads it to rewrite paths into the form tsgolint accepts, so the deprecated option is the input being migrated."
     },
     {
       "rule": "nitpicker/no-default-export",

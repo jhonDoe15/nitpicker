@@ -8,6 +8,19 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
+- A `close`, `aclose`, `__exit__`, `__aexit__` or fixture teardown that releases several resources registers them on
+  `contextlib.ExitStack` / `AsyncExitStack` (or `gather(..., return_exceptions=True)`, or `try`/`finally`), never
+  `await a.aclose()` then `await b.aclose()` (`cleanup-skipped-on-failure`).
+- A `close` that clears a dict of futures kept for pending requests fails every one first
+  (`future.set_exception(ConnectionError("closed"))` or `future.cancel()`), so no awaiting caller hangs
+  (`pending-unsettled-on-close`).
+- A class with a `close` keeps the handle of every `loop.call_later`, `call_at` or `threading.Timer` and cancels it
+  there, and removes its `add_signal_handler` registrations (`handle-unreleased-on-close`).
+- A task or future kept on an attribute and awaited on later calls is cleared in an `except` only while it still
+  is this attempt (`if self._connection is attempt: self._connection = None`); never `functools.cache` on an
+  `async def` (`cached-rejection`).
+- A dict, set or list attribute that a method adds per request or session to is popped, deleted or cleared when that
+  ends, bounded with a `len` check or a `deque(maxlen=...)` (`unbounded-collection`).
 - Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
   `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
   blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`
@@ -52,6 +65,12 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
 - Child processes: give every wait a deadline: `subprocess.run(args, timeout=30, check=True)`,
   `process.communicate(timeout=30)`, and asyncio process waits inside `async with asyncio.timeout(30):`
   (`subprocess-without-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- Blocking helpers stay out of `async def`: `await asyncio.to_thread(fetch_profile, url)` or
+  `loop.run_in_executor(None, fetch_profile, url)` for a plain function that calls `requests`, `httpx.get`,
+  `time.sleep` or `subprocess.run`, or an async client (`blocking-helper-in-async`; startup work takes an exception).
+- Waits for a worker have a deadline: `future.result(timeout=30)`, `concurrent.futures.wait(futures, timeout=30)`,
+  `thread.join(timeout=30)` and then `thread.is_alive()`; never the no-argument form
+  (`unbounded-wait`; a shutdown that joins the worker it just stopped takes an exception).
 - Pages of rows: a query that takes a page (`limit`, `offset`, a queryset slice, SQL `LIMIT`) or builds an
   `array_agg`/`json_agg` list orders on a unique key: `select(User).order_by(User.created.desc(), User.id).limit(20)`,
   `Order.objects.order_by("-created", "id")[:20]`, `func.array_agg(aggregate_order_by(...))` (`unordered-query`).

@@ -109,8 +109,13 @@ const domainRules = {
 };
 
 const productionSourceRules = {
+  'nitpicker/no-boolean-flag-parameter': 'error',
   'nitpicker/no-self-recursion': 'error',
+  'nitpicker/no-cleanup-skipped-on-failure': 'error',
   'nitpicker/no-task-outliving-resource': 'error',
+  'nitpicker/settle-pending-on-close': 'error',
+  'nitpicker/release-listeners-on-close': 'error',
+  'nitpicker/no-add-only-collection': 'error',
   'nitpicker/no-tri-state-boolean': 'error',
   'nitpicker/no-unhandled-url-parse': 'error',
   'nitpicker/reusable-object-per-call': 'error',
@@ -175,6 +180,7 @@ function typedProductionRules(layout, options) {
       'error',
       { runners: options.detachedWorkRunners ?? [] },
     ],
+    'nitpicker/no-cached-rejection': 'error',
     'nitpicker/exhaustive-union-predicate': 'error',
     'nitpicker/no-forwarding-method-alias': 'error',
     'nitpicker/no-forwarding-wrapper': 'error',
@@ -214,6 +220,13 @@ function strictTypedConfigFor(layout, parserOptions, options = {}) {
       languageOptions: { parser: tseslint.parser, parserOptions },
       plugins: { nitpicker: nitpickerRules },
       rules: { ...truthinessRules, 'nitpicker/simpler-boolean-logic': 'error' },
+    },
+    {
+      files: testAreaGlobsFor(layout),
+      ignores: layout.excludedGlobs,
+      languageOptions: { parser: tseslint.parser, parserOptions },
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-dropped-test-callback': 'error' },
     },
     ...strictAdaptersTypedConfig.map((entry) => ({
       ...entry,

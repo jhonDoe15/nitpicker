@@ -2,7 +2,7 @@ package g4
 
 import "golang.org/x/crypto/ssh"
 
-func Remembering(config *ssh.ServerConfig, last *ssh.PublicKey) {
+func Remembering(config *ssh.ServerConfig, last *ssh.PublicKey) { // want ptrToRefParam
 	config.PublicKeyCallback = func(_ ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) { // want G408
 		*last = key
 		return &ssh.Permissions{}, nil

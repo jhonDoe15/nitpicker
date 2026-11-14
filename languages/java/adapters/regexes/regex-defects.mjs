@@ -1,5 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
+import { withMessage } from '../../../../shared/messages/advice/finding-advice.mjs';
+import { ROUTE_SENTENCE, appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { JVM_REGEX_RULES, jvmPatternFlags } from '../../../../shared/rules/regex/jvm-patterns.mjs';
 import {
@@ -105,11 +107,11 @@ function defectFindings(finding, { projectRoot, occurrences }) {
       const key = `${defect.rule}\0${site.pattern}`;
       const occurrence = nextOccurrence(occurrences, `${finding.path}\0${key}`);
       const suffix = occurrence === 1 ? '' : `#${String(occurrence)}`;
-      return {
-        ...finding,
-        identity: `${finding.rule}:${hash(key)}${suffix}`,
-        message: defect.message,
-      };
+      const route = ROUTE_SENTENCE.exec(finding.message)?.[0];
+      return withMessage(
+        { ...finding, identity: `${finding.rule}:${hash(key)}${suffix}` },
+        { message: appendSentence(defect.message, route) },
+      );
     });
 }
 

@@ -44,7 +44,12 @@ function callerEscapes(caller, index) {
       const member = index.callable(call.target);
       return { caller, call, member, escaped: escapedField(member, index) };
     })
-    .filter(({ escaped }) => escaped !== undefined && escaped.owner.file !== caller.file);
+    .filter(
+      ({ escaped }) =>
+        escaped !== undefined &&
+        escaped.owner.file !== caller.file &&
+        escaped.owner.id !== caller.owner,
+    );
 }
 
 export function mutableStateEscapeFindings(index, finding) {

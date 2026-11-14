@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
-import { nativeRuleIndex, translatePlan, translateRule } from '../oxlint-translation.mjs';
+import { nativeRuleIndex, translatePlan, translateRule } from '../oxlint-translation.mts';
 import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
 import {
   ownedNativeChecker,
@@ -10,7 +10,7 @@ import {
   ownedNativeName,
   ownedNativePlugins,
   ownedNativeRuleIds,
-} from './owned-native-rules.mjs';
+} from './owned-native-rules.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const NATIVE = 'oxc/no-accumulating-spread';
