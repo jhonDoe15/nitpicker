@@ -1,5 +1,5 @@
 import { isInside } from '../discovery/repository-files.mjs';
-import { dependentsOf, deepestProject } from './dependencies/graph.mts';
+import { dependentsOf, deepestProject, edgeLabel } from './dependencies/graph.mts';
 import { isToolchainFileFor } from './toolchain-files.mjs';
 import { presetChecksFile } from '../../command/policy-review/unchecked-languages.mts';
 import type { DependencyGraph } from './dependencies/graph.mts';
@@ -179,6 +179,11 @@ export function selectProjects({
     };
   }
   const { touched, outside } = touchedBy({ projects, changed, prefix, rootConfigFiles });
-  const dependents = dependentsOf(graph, new Set(touched.keys()));
+  const dependents = new Map(
+    [...dependentsOf(graph, new Set(touched.keys()))].map(([project, dependency]) => {
+      const via = edgeLabel(graph, project, dependency);
+      return [project, via === undefined ? dependency : `${dependency} (${via})`];
+    }),
+  );
   return { selection: changedSelection(projects, { touched, dependents }), outside };
 }

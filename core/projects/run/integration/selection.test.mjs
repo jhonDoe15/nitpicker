@@ -446,3 +446,29 @@ describe('one folder gated by two presets', () => {
     );
   });
 });
+
+describe('TypeScript projects wired through tsconfig paths', () => {
+  it('runs the app that imports a changed library and says why', () => {
+    const root = repository({
+      'package.json': JSON.stringify({ name: 'root', workspaces: ['apps/*', 'libs/*'] }),
+      'tsconfig.base.json': JSON.stringify({
+        compilerOptions: { baseUrl: '.', paths: { '@acme/ui': ['libs/ui/src/index.ts'] } },
+      }),
+      ...projectFiles('apps/web', {
+        'package.json': manifest('web'),
+        'tsconfig.json': JSON.stringify({ extends: '../../tsconfig.base.json' }),
+        'src/main.ts': "export { button } from '@acme/ui';\n",
+      }),
+      ...projectFiles('libs/ui', {
+        'package.json': manifest('ui'),
+        'src/index.ts': 'export const button = 1;\n',
+      }),
+    });
+    writeFiles(root, { 'libs/ui/src/index.ts': 'export const button = 2;\n' });
+
+    expect(run(root).plan.split('\n').slice(1)).toEqual([
+      '  run  apps/web (typescript): depends on libs/ui (tsconfig paths)',
+      '  run  libs/ui (typescript): 1 changed file',
+    ]);
+  });
+});

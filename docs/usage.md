@@ -2155,8 +2155,11 @@ Nitpicker compares the files changed against the merge base (plus untracked file
 - every project that depends on a touched one, where its build tool says so: `package.json`
   dependencies by name, by npm alias (`"ui": "npm:@acme/ui@^1"`) or by `file:`, `link:` and
   `portal:` path, uv `workspace = true` and `path` sources, Poetry path dependencies, Nx
-  `implicitDependencies` in `project.json`, Gradle `includeBuild`, and a Maven `<parent>` or
-  `<module>` outside the build;
+  `implicitDependencies` in `project.json`, a `compilerOptions.paths` alias of the project's
+  `tsconfig.json` (its `extends` followed) that the project's sources import and that points into
+  another project, a tsconfig project `references` entry, Gradle `includeBuild`, and a Maven
+  `<parent>` or `<module>` outside the build. The plan line names the link when it is not a
+  package dependency (`depends on libs/ui (tsconfig paths)`);
 - every project that extends a shared config file that changed (see below);
 - every project, when the top `nitpicker.config.json` or a file it extends changed;
 - every project whose config has an error, so the error is reported;

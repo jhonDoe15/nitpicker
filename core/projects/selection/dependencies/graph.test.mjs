@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
-import { dependencyGraph, dependentsOf, deepestProject } from './graph.mts';
+import { dependencyGraph, dependentsOf, deepestProject, edgeLabel } from './graph.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const git = useGitFixtures();
@@ -186,5 +186,49 @@ describe('deepestProject', () => {
     expect(deepestProject(['.', 'a', 'a/b'], 'a/b/c')).toBe('a/b');
     expect(deepestProject(['.', 'a'], 'x/y')).toBe('.');
     expect(deepestProject(['a'], 'x')).toBeUndefined();
+  });
+});
+
+describe('TypeScript compiler dependencies', () => {
+  const base = JSON.stringify({
+    compilerOptions: {
+      baseUrl: '.',
+      paths: { '@acme/ui': ['libs/ui/src/index.ts'], '@acme/data/*': ['libs/data/src/*'] },
+    },
+  });
+  const extending = JSON.stringify({ extends: '../../tsconfig.base.json' });
+
+  it('follows a paths alias the project imports, through the extended tsconfig', () => {
+    const files = {
+      'tsconfig.base.json': base,
+      'apps/web/tsconfig.json': extending,
+      'apps/web/src/main.ts': "import { button } from '@acme/ui';\n",
+      'apps/admin/tsconfig.json': extending,
+      'apps/admin/src/main.ts': "import { rows } from '@acme/data/rows';\n",
+      'libs/ui/src/index.ts': 'export const button = 1;\n',
+      'libs/data/src/rows.ts': 'export const rows = 1;\n',
+    };
+    const projects = ['apps/web', 'apps/admin', 'libs/ui', 'libs/data'];
+    const root = layout(files);
+    const graph = dependencyGraph(root, projects);
+
+    expect(Object.fromEntries([...graph].map(([key, needs]) => [key, [...needs]]))).toEqual({
+      'apps/web': ['libs/ui'],
+      'apps/admin': ['libs/data'],
+      'libs/ui': [],
+      'libs/data': [],
+    });
+    expect(edgeLabel(graph, 'apps/web', 'libs/ui')).toBe('tsconfig paths');
+  });
+
+  it('follows project references', () => {
+    const files = {
+      'apps/web/tsconfig.json': JSON.stringify({ references: [{ path: '../../libs/ui' }] }),
+      'libs/ui/tsconfig.json': JSON.stringify({ compilerOptions: { composite: true } }),
+    };
+    const graph = dependencyGraph(layout(files), ['apps/web', 'libs/ui']);
+
+    expect([...(graph.get('apps/web') ?? [])]).toEqual(['libs/ui']);
+    expect(edgeLabel(graph, 'apps/web', 'libs/ui')).toBe('tsconfig references');
   });
 });
