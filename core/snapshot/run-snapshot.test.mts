@@ -2,20 +2,30 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
+import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../shared/paths/checkout-module.mjs';
+import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mts';
 import { runQualitySnapshot as runQualitySnapshotWithSubprocesses } from './run-snapshot.mts';
 
-// Most tests here are about snapshot report logic, so the analyzer task graph and the fixture
-// analyzers run in-process. A test that passes `runTasks: undefined` keeps the real
-// analyzer-scheduler subprocess path (exit codes, invalid JSON, timeouts).
-const runQualitySnapshot = (options) =>
-  runQualitySnapshotWithSubprocesses({ runTasks: runTasksInProcess, ...options });
+type SnapshotOptions = {
+  analyzers: readonly unknown[];
+  projectRoot: string;
+  [option: string]: unknown;
+};
 
-const fakeAnalyzerPath = path.join(
-  import.meta.dirname,
-  '../diff/execution/test-support/fake-analyzer.mjs',
+function runQualitySnapshot(options: SnapshotOptions) {
+  return runQualitySnapshotWithSubprocesses({
+    runTasks: runTasksInProcess,
+    scope: undefined,
+    ...options,
+  });
+}
+
+const fakeAnalyzerPath = fileURLToPath(
+  checkoutModuleUrl(new URL('../diff/execution/test-support/fake-analyzer.mjs', import.meta.url)),
 );
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -151,7 +161,7 @@ describe('quality snapshot run', () => {
   });
 });
 
-function createFixtureRoot(files) {
+function createFixtureRoot(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'quality-snapshot-fixture-'));
   temporaryRoots.push(root);
   for (const [relativePath, contents] of Object.entries(files)) {
@@ -162,13 +172,21 @@ function createFixtureRoot(files) {
   return root;
 }
 
-function fakeAnalyzer(overrides = {}) {
+function fakeAnalyzer(overrides: Record<string, unknown> = {}) {
   return {
     name: 'fake-quality-analyzer',
     version: '1.0.0',
     configurationHash: 'fixture-policy',
     exclusions: [],
-    createInvocation({ projectRoot, policyRoot, toolRoot }) {
+    createInvocation({
+      projectRoot,
+      policyRoot,
+      toolRoot,
+    }: {
+      projectRoot: string;
+      policyRoot: string;
+      toolRoot: string;
+    }) {
       return {
         command: process.execPath,
         args: [
@@ -185,23 +203,4 @@ function fakeAnalyzer(overrides = {}) {
     },
     ...overrides,
   };
-}
-
-function finding(overrides = {}) {
-  return {
-    tool: 'fake-quality-analyzer',
-    rule: 'fixture-rule',
-    identity: 'fixture-identity',
-    message: 'Fixture finding',
-    classification: 'enforceable',
-    ...overrides,
-  };
-}
-
-function findingLine(value, marker = 'QUALITY_FINDING') {
-  return `// ${marker} ${JSON.stringify(value)}\n`;
-}
-
-function policy(overrides = {}) {
-  return `${JSON.stringify({ marker: 'QUALITY_FINDING', ...overrides }, null, 2)}\n`;
 }

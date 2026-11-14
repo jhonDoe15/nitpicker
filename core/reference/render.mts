@@ -1,8 +1,8 @@
 import path from 'node:path';
 import { entryFacts, entryLinks } from '../../shared/reference/facts.mjs';
 import { PAGES } from '../../shared/reference/pages.mjs';
-import { pageCredits } from './credits.mts';
-import { pageExceptionTexts } from './page-exceptions.mts';
+import { pageCredits } from './pages/credits.mts';
+import { pageExceptionTexts } from './pages/page-exceptions.mts';
 import type { ReferenceEntry } from './build.mts';
 import { textOf } from '../../shared/values/readers.mts';
 import { markdownTableLines } from '../../shared/markdown/table.mts';

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
+import { JAVA_TOOLS as UNTYPED_JAVA_TOOLS } from '../../languages/java/adapters/gradle-presets.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../shared/policy.mjs';
 import { JAVA_SIZE_RULES } from '../../shared/project-rules/size-rules.mjs';
-import { validateConfig } from '../configuration/validate.mjs';
+import { validateConfig } from '../configuration/validate.mts';
+
+const JAVA_TOOLS: readonly string[] = UNTYPED_JAVA_TOOLS;
 
 describe('config exceptions', () => {
   describe('java exceptions', () => {
@@ -64,7 +66,7 @@ describe('config exceptions', () => {
       },
     );
 
-    const COVERAGE_TOOLS = {
+    const COVERAGE_TOOLS: Readonly<Record<string, string>> = {
       typescript: 'coverage',
       java: 'jacoco',
       kotlin: 'jacoco',
@@ -90,13 +92,13 @@ describe('config exceptions', () => {
             exceptions: [
               {
                 ...coverage,
-                rule: `${COVERAGE_TOOLS[preset]}/changed-branch-coverage`,
+                rule: `${COVERAGE_TOOLS[preset] ?? ''}/changed-branch-coverage`,
                 function: undefined,
               },
             ],
           }),
         ).toThrow(
-          `"exceptions[0].function" is required for ${COVERAGE_TOOLS[preset]}/changed-branch-coverage`,
+          `"exceptions[0].function" is required for ${COVERAGE_TOOLS[preset] ?? ''}/changed-branch-coverage`,
         );
       },
     );
@@ -153,7 +155,7 @@ describe('config exceptions', () => {
       function: 'save',
       reason: 'A reviewed reason.',
     };
-    const rejected = (override) => () =>
+    const rejected = (override: object) => () =>
       validateConfig({ exceptions: [{ ...entry, ...override }] });
 
     it('rejects a tool prefix that is not the tool of the rule', () => {
@@ -198,7 +200,7 @@ describe('config exceptions', () => {
   });
 
   describe('exceptions of the Python preset', () => {
-    const pythonEntry = (rule, extra = {}) => ({
+    const pythonEntry = (rule: string, extra: object = {}) => ({
       rule,
       paths: ['src/a.py'],
       reason: 'A reviewed reason.',
@@ -257,7 +259,11 @@ describe('config exceptions', () => {
   });
 
   describe('exceptions of the Java and Kotlin presets', () => {
-    const printed = (rule) => ({ rule, paths: ['src/main/java/a/A.java'], reason: 'A reason.' });
+    const printed = (rule: string) => ({
+      rule,
+      paths: ['src/main/java/a/A.java'],
+      reason: 'A reason.',
+    });
 
     it.each(['java', 'kotlin'])('accept %s findings of every tool as printed', (preset) => {
       const exceptions = JAVA_TOOLS.map((tool) => printed(`${tool}/SomeRule`));

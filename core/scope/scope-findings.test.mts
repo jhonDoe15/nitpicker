@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { isInScope, scopeLine, scopeNotes, scopeOutcomes } from './scope-findings.mjs';
+import {
+  isInScope,
+  scopeLine,
+  scopeNotes,
+  scopeOutcomes as untypedScopeOutcomes,
+} from './scope-findings.mjs';
+
+const scopeOutcomes: (outcomes: object[], scope: { paths: string[] } | undefined) => object[] =
+  untypedScopeOutcomes;
 
 const scope = { paths: ['src/orders', 'src/billing/bill.ts'] };
 

@@ -2,10 +2,12 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { docsUrl } from '../../shared/messages/docs-url.mjs';
+import { docsUrl as untypedDocsUrl } from '../../shared/messages/docs-url.mjs';
+import { parseJson, textOf } from '../../shared/values/readers.mts';
 import { writeSnapshotReports } from './reporters.mts';
 
-const roots = [];
+const docsUrl: (page: string, anchor?: string) => string | undefined = untypedDocsUrl;
+const roots: string[] = [];
 const KNOWN = {
   tool: 'pmd',
   rule: 'UnusedLocalVariable',
@@ -15,7 +17,7 @@ const KNOWN = {
   classification: 'enforceable',
 };
 const UNKNOWN = { ...KNOWN, tool: 'custom', rule: 'text-file', identity: 'b' };
-const REFERENCE_LINE = `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`;
+const REFERENCE_LINE = `Rule reference: ${docsUrl('docs/rules/README.md') ?? ''} (nitpicker explain <tool/rule> prints one rule)`;
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -23,17 +25,19 @@ afterEach(() => {
   }
 });
 
-function written(findings) {
+function written(findings: object[]) {
   const outputRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-snapshot-reports-'));
   roots.push(outputRoot);
-  const text = writeSnapshotReports(outputRoot, {
-    summary: { overallStatus: 'violations', tools: [], elapsedMs: 0 },
-    findings,
-    toolErrors: [],
-  });
+  const text = textOf(
+    writeSnapshotReports(outputRoot, {
+      summary: { overallStatus: 'violations', tools: [], elapsedMs: 0 },
+      findings,
+      toolErrors: [],
+    }),
+  );
   return {
     text,
-    findings: JSON.parse(readFileSync(path.join(outputRoot, 'findings.json'), 'utf8')),
+    findings: parseJson(readFileSync(path.join(outputRoot, 'findings.json'), 'utf8')),
   };
 }
 

@@ -3,11 +3,14 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mts';
-import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
-import { useCliFixtures } from '../command/test-support/cli-harness.mjs';
-import { checkoutModulePath } from '../../shared/paths/checkout-module.mjs';
+import { policy } from '../diff/execution/test-support/analyzer-findings.mts';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mts';
+import { writeFiles } from '../diff/git/test-support/fixture-files.mts';
+import { useCliFixtures } from '../command/test-support/cli-harness.mts';
+import type { FixtureRepository } from '../command/test-support/fixture-types.mts';
+import { checkoutModulePath as untypedCheckoutModulePath } from '../../shared/paths/checkout-module.mjs';
+
+const checkoutModulePath: (file: string) => string = untypedCheckoutModulePath;
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot } = useCliFixtures(nitpickerCli);
 
@@ -16,7 +19,17 @@ const CLI_URL = pathToFileURL(
 ).href;
 const EMPTY_REPORT = String.raw`process.stdout.write(JSON.stringify({ findings: [] }) + '\n');`;
 
-function hookScript({ baseRef, outputRoot, flags, exitFile }) {
+function hookScript({
+  baseRef,
+  outputRoot,
+  flags,
+  exitFile,
+}: {
+  baseRef: string;
+  outputRoot: string;
+  flags: string[];
+  exitFile: string;
+}) {
   const analyzer = {
     name: 'empty-analyzer',
     version: '1.0.0',
@@ -38,7 +51,7 @@ function hookScript({ baseRef, outputRoot, flags, exitFile }) {
   ].join('\n');
 }
 
-function installHook(project, flags) {
+function installHook(project: FixtureRepository, flags: string[]) {
   const scriptRoot = makeTemporaryRoot('nitpicker-hook-script-');
   const script = path.join(scriptRoot, 'hook.mjs');
   const exitFile = path.join(scriptRoot, 'exit-code');
@@ -55,11 +68,11 @@ function installHook(project, flags) {
   return exitFile;
 }
 
-function committedFiles(root) {
+function committedFiles(root: string) {
   return fixtureGit(root, ['show', '--name-only', '--format=', 'HEAD']).trim().split('\n');
 }
 
-function stagedFiles(root) {
+function stagedFiles(root: string) {
   return fixtureGit(root, ['diff', '--cached', '--name-only']).trim().split('\n');
 }
 

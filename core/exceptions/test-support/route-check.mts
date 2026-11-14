@@ -1,36 +1,39 @@
-import { applyFindingExceptions } from '../../../shared/exceptions/finding-exceptions.mjs';
-import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
-import { applyPythonExceptions } from '../../../languages/python/adapters/configuration/python-exceptions.mjs';
-import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
-import { validateConfig } from '../../configuration/validate.mjs';
+import {
+  applyFindingExceptions,
+  applyPythonExceptions,
+  routeFields,
+  withCanonicalRules,
+} from '../route-views.mts';
+import type { Finding, Route } from '../route-views.mts';
+import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
+import { validateConfig } from '../../configuration/validate.mts';
 
 const REASON = 'The test accepts this finding.';
 
-function configFor(preset, { entry, key }) {
-  const accepted = { ...entry, reason: REASON };
+function configFor(preset: string, { entry, key }: Route) {
+  const accepted = { ...fieldsOf(entry), reason: REASON };
   return key === 'python.exceptions'
     ? { preset, python: { exceptions: [accepted] } }
     : { preset, exceptions: [accepted] };
 }
 
-function remaining(finding, config, key) {
+function remaining(finding: Finding, config: object, key: string | undefined) {
   const canonical = withCanonicalRules(config);
   return key === 'python.exceptions'
     ? applyPythonExceptions([finding], canonical.python.exceptions)
     : applyFindingExceptions([finding], canonical.exceptions);
 }
 
-function validationProblem(config) {
+function validationProblem(config: object) {
   try {
     validateConfig(config);
     return undefined;
   } catch (error) {
-    return error.message;
+    return textOf(fieldOf(error, 'message'));
   }
 }
 
-/** What is wrong with the route that `message` ends with: empty when its own preset accepts it and it lifts `finding`. */
-export function routeProblems(finding, message, preset) {
+export function routeProblems(finding: Finding, message: string, preset: string): string[] {
   const { exception, exceptionList } = routeFields(message);
   if (exception === undefined) {
     return ['the message does not end with an exception route'];
@@ -46,8 +49,7 @@ export function routeProblems(finding, message, preset) {
     : ['the route does not lift the finding'];
 }
 
-/** The findings as an analyzer wrote them: without the route fields that parsing derives from the message. */
-export function withoutRouteFields(findings) {
+export function withoutRouteFields(findings: readonly Finding[]): Record<string, unknown>[] {
   return findings.map((finding) =>
     Object.fromEntries(
       Object.entries(finding).filter(([key]) => key !== 'exception' && key !== 'exceptionList'),
