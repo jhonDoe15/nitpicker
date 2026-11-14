@@ -76,6 +76,36 @@ describe('sarifFindings', () => {
     expect(sarifFindings(context).map(({ rule }) => rule)).toEqual(['timeout-abandons-operation']);
   });
 
+  it('reports a file PMD could not process next to its findings, from the same report', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    const log = JSON.parse(PMD(context.projectRoot));
+    log.runs[0].invocations = [
+      {
+        executionSuccessful: false,
+        toolExecutionNotifications: [
+          {
+            message: { text: 'ContextedRuntimeException: boom\nat Foo' },
+            locations: [
+              {
+                physicalLocation: {
+                  artifactLocation: {
+                    uri: `file://${context.projectRoot}/src/test/java/shop/CartTest.java`,
+                  },
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    writeFileSync(path.join(context.reportRoot, 'pmd.sarif'), JSON.stringify(log));
+
+    expect(sarifFindings(context).map(({ rule, path: file }) => [rule, file])).toEqual([
+      ['FixedSleepInTest', 'src/test/java/shop/CartTest.java'],
+      ['processing-error', 'src/test/java/shop/CartTest.java'],
+    ]);
+  });
+
   it('reads blank reports as empty logs and still rejects a truncated one', () => {
     const context = moduleReports({ 'blank.sarif': ' \n', 'broken.sarif': '{"runs": [' });
 
