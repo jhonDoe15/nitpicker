@@ -358,7 +358,19 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
     expect(run.rulesets.slice(3).every((file) => path.dirname(file) === run.reportDir)).toBe(true);
-    expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
+    expect(run.mainRules).toEqual([
+      shipped('pmd-main-ruleset.xml'),
+      `${shipped('pmd-main-ruleset.xml')}/IoCallInLoop`,
+      shipped('spring-ruleset.xml'),
+    ]);
+    expect(
+      readFileSync(path.join(run.reportDir, 'pmd-main.xml'), 'utf8')
+        .split('\n')
+        .filter((line) => line.includes('IoCallInLoop')),
+    ).toEqual([
+      `  <rule ref="${shipped('pmd-main-ruleset.xml')}"><exclude name="IoCallInLoop"/></rule>`,
+      `  <rule ref="${shipped('pmd-main-ruleset.xml')}/IoCallInLoop"><properties><property name="springData" value="true"/></properties></rule>`,
+    ]);
     expect(run.testRules).toEqual([
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
@@ -378,7 +390,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   it('takes the Spring rule set written for the project when it names annotations of its own', () => {
     const own = path.join(tmpdir(), 'spring-ruleset-project.xml');
 
-    expect(pmdRun(true, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml'), own]);
+    expect(pmdRun(true, own).mainRules.at(-1)).toBe(own);
     expect(pmdRun(false, own).mainRules).toEqual([shipped('pmd-main-ruleset.xml')]);
   });
 

@@ -9,6 +9,10 @@ import { guidePages, guideText } from '../../../../../shared/reference/build/gui
 const root = path.resolve(import.meta.dirname, '../../../../..');
 const ruleset = readFileSync(path.join(root, 'languages/java/gradle/spring-ruleset.xml'), 'utf8');
 const docs = guidePages('docs/java-preset.md').map(guideText).join('\n');
+const mainRuleset = readFileSync(
+  path.join(root, 'languages/java/gradle/pmd-main-ruleset.xml'),
+  'utf8',
+);
 const testRuleset = readFileSync(
   path.join(root, 'languages/java/gradle/spring-test-ruleset.xml'),
   'utf8',
@@ -23,6 +27,13 @@ const PMD_RULESETS = [
   'spring-ruleset.xml',
   'spring-test-ruleset.xml',
 ];
+const XPATH = /<!\[CDATA\[\n(?<xpath>[\s\S]*?)\]\]>/u;
+const FLUSH_FILTER = '\n  [not(';
+const RETURN = '\nreturn (\n';
+const CHUNK_FILTER = '\n    [not($chunkUpdate(.))]';
+const LOOP_FILTER = ')[$loop(.)]\n|\n';
+const xpathOf = (text, name) =>
+  XPATH.exec(text.slice(text.indexOf(`<rule name="${name}"`))).groups.xpath.trimEnd();
 const JAKARTA_TYPE = /'jakarta\.(?<type>[\w.]+)'/g;
 
 describe('spring-ruleset.xml', () => {
@@ -38,6 +49,29 @@ describe('spring-ruleset.xml', () => {
     expect(names.length).toBeGreaterThan(40);
     expect(new Set(names).size).toBe(names.length);
     expect(ruleset.match(/<rule name=/g)).toHaveLength(names.length);
+  });
+
+  it('leaves to the Spring rules exactly the writes, flushes and row writes they report', () => {
+    const ioCallInLoop = xpathOf(mainRuleset, 'IoCallInLoop');
+    const flushes = xpathOf(ruleset, 'SpringDataNoFlush');
+    const rows = xpathOf(ruleset, 'SpringDataRowWriteInLoop');
+    const [bindings, report] = rows.split(RETURN);
+    const [updates, references] = report.split(CHUNK_FILTER);
+    const [, methodReferences] = references.split(LOOP_FILTER);
+
+    expect({
+      writes: ioCallInLoop.includes(xpathOf(ruleset, 'SpringDataNoSaveInLoop')),
+      flushes: ioCallInLoop.includes(flushes.slice(0, flushes.indexOf(FLUSH_FILTER))),
+      rowBindings: ioCallInLoop.includes(bindings),
+      rowUpdates: ioCallInLoop.includes(updates),
+      rowReferences: ioCallInLoop.includes(methodReferences.trim()),
+    }).toEqual({
+      writes: true,
+      flushes: true,
+      rowBindings: true,
+      rowUpdates: true,
+      rowReferences: true,
+    });
   });
 
   it('leaves the exception route to the gate, which adds the shared sentence', () => {

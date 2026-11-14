@@ -360,8 +360,14 @@ def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, 
     def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
     def rules = [mainRules] + (spring ? [new File(springRules)] : []) +
         (reactor ? [new File(rulesetDir, 'reactor-ruleset.xml')] : [])
-    rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
-        rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
+    def references = rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }
+    if (spring) {
+        def main = escapeXml(mainRules.absolutePath)
+        references = ["  <rule ref=\"${main}\"><exclude name=\"IoCallInLoop\"/></rule>".toString(),
+            "  <rule ref=\"${main}/IoCallInLoop\"><properties><property name=\"springData\" value=\"true\"/></properties></rule>".toString()] +
+            references.drop(1)
+    }
+    rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.", references, testDirectories)
 }
 
 def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, Collection<File> mainDirectories ->
