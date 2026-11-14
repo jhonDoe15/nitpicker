@@ -11,6 +11,7 @@ import { findingLabeler, labelCounts } from '../labels/finding-labels.mts';
 import { areaOf } from '../diff/reporting/format/rule-groups/finding-areas.mts';
 import { labeledFindings, labelRun } from '../labels/label-filter.mts';
 import type { LabelFilter } from '../labels/taxonomy.mts';
+import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 
 type Finding = ReportEntry;
 
@@ -62,6 +63,8 @@ const withPolicyFile: (
   headPolicy: object,
   run: (headPolicyFile: unknown) => SnapshotRun,
 ) => SnapshotRun = withHeadPolicyFile;
+const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
+  withSharedUnusedDirectives;
 const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
 
@@ -86,22 +89,25 @@ export function runQualitySnapshot({
   labels,
   ...execution
 }: SnapshotRequest): QualitySnapshot {
-  const { reports, toolErrors: runErrors } = withPolicyFile(headPolicy, (headPolicyFile) =>
-    runAnalyzers({
-      analyzers,
-      projectRoot,
-      policyRoot,
-      toolRoot,
-      liveProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      mutationScope: fieldOf(scope, 'paths'),
-      baselineRoot: execution['baselineRoot'],
-      baselineMovesFile: execution['baselineMovesFile'],
-      logRoot: execution['logRoot'],
-      runTasks: execution['runTasks'],
-      ...execution,
-    }),
+  const { reports, toolErrors: runErrors } = reconcileDirectives(
+    withPolicyFile(headPolicy, (headPolicyFile) =>
+      runAnalyzers({
+        analyzers,
+        projectRoot,
+        policyRoot,
+        toolRoot,
+        liveProjectRoot,
+        headPolicyFile,
+        snapshot: 'head',
+        mutationScope: fieldOf(scope, 'paths'),
+        baselineRoot: execution['baselineRoot'],
+        baselineMovesFile: execution['baselineMovesFile'],
+        logRoot: execution['logRoot'],
+        runTasks: execution['runTasks'],
+        ...execution,
+      }),
+    ),
+    analyzers,
   );
 
   const toolErrors = [...entriesOf(setupErrors), ...runErrors];
