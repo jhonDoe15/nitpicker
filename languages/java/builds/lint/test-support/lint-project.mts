@@ -50,7 +50,7 @@ function inside(root: string, name: string): string {
   return target;
 }
 
-export function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
+export function writeFiles(root: string, files: Readonly<Record<string, string | Buffer>>): void {
   for (const [name, text] of Object.entries(files)) {
     const target = inside(root, name);
     mkdirSync(path.dirname(target), { recursive: true });
@@ -134,8 +134,8 @@ export function lint(
   };
 }
 
-export function warningHeaders(report: readonly string[]): string[] {
-  return report.filter((line) => line.includes(': warning: ['));
+export function warningHeaders(report: readonly string[] | undefined): string[] {
+  return (report ?? []).filter((line) => line.includes(': warning: ['));
 }
 
 export const RAW_NAMES = 'package demo;\nclass A {\n  java.util.List names;\n}\n';

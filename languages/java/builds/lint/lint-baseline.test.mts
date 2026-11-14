@@ -18,7 +18,7 @@ import {
 
 const temporaries = createTemporaries();
 
-function fakeJavac(directory) {
+function fakeJavac(directory: string): string {
   const javac = path.join(directory, 'bin/javac');
   writeFiles(directory, { 'bin/javac': '#!/bin/sh\necho "javac 0.0-other"\n' });
   chmodSync(javac, 0o755);
@@ -61,7 +61,7 @@ describe('the differential lint', () => {
   it.each([
     [
       'a library changed since the base',
-      (base) => {
+      (base: string) => {
         baseCache(javaPlan(base, { classpath: [path.join(base, 'lib/dep.jar')] }), [
           warning('src/main/java/demo/A.java', 9),
         ]);
@@ -69,7 +69,7 @@ describe('the differential lint', () => {
     ],
     [
       'the base report has no fingerprint',
-      (base) => {
+      (base: string) => {
         writeFiles(base, {
           'target/nitpicker-lint/javac-lint.txt': `${warning('src/main/java/demo/A.java', 9)}\n`,
         });
@@ -146,10 +146,10 @@ describe('the differential lint', () => {
 
     expect(lint(plan, base).report).toEqual([oldWarning, '']);
 
-    const oldSize = statSync(classpath[0]).size;
+    const oldSize = statSync(path.join(external, entry)).size;
     writeFiles(external, after);
 
-    expect(statSync(classpath[0]).size).toBe(oldSize);
+    expect(statSync(path.join(external, entry)).size).toBe(oldSize);
     expect(lint(plan, base).report).toEqual([
       ...namesWarning('src/main/java/demo/A.java'),
       '1 warning',
@@ -182,7 +182,7 @@ describe('the differential lint', () => {
     const head = temporaries.directory();
     writeFiles(base, { 'src/main/java/demo/A.java': RAW_NAMES });
     writeFiles(head, { 'src/main/java/demo/A.java': RAW_NAMES });
-    const argsUnder = (root) => ({ args: [`-Aproject.folder=${root}/src`] });
+    const argsUnder = (root: string) => ({ args: [`-Aproject.folder=${root}/src`] });
     baseCache(javaPlan(base, { compiler: argsUnder(base) }), [
       warning('src/main/java/demo/A.java', 9),
     ]);
@@ -230,7 +230,7 @@ describe('the differential lint', () => {
         'package demo;\nclass Caller {\n  String name() {\n    return new Sub().label();\n  }\n}\n',
       'src/main/java/demo/Other.java': 'package demo;\nclass Other {}\n',
     };
-    const box = (annotation) =>
+    const box = (annotation: string) =>
       `package demo;\npublic class Box {\n  ${annotation}public String label() {\n    return "";\n  }\n}\n`;
     writeFiles(base, { ...unchanged, 'src/main/java/demo/Box.java': box('') });
     writeFiles(head, { ...unchanged, 'src/main/java/demo/Box.java': box('@Deprecated ') });
@@ -260,7 +260,7 @@ describe('the differential lint', () => {
       '}',
       '',
     ].join('\n');
-    const box = (type, annotation) =>
+    const box = (type: string, annotation: string) =>
       [
         'package shop;',
         `public class Box${type === 'T' ? '<T>' : ''} {`,
