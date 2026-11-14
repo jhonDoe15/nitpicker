@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
 import { RETRY_RULE } from './retry-tests.mjs';
 
-const retries = (text) => rulesOf(text, RETRY_RULE);
+function retries(text: string): string[] {
+  return rulesOf(text, RETRY_RULE);
+}
 
-describe('JVM retries in Kotlin tests', () => {
-  it('reports JUnit Pioneer and rerunner-jupiter annotations and spares repeated tests', () => {
-    const text = `${JUNIT_HEAD}import org.junit.jupiter.api.RepeatedTest
+const cases: { title: string; text: string; expected: string[] }[] = [
+  {
+    title: 'reports JUnit Pioneer and rerunner-jupiter annotations and spares repeated tests',
+    text: `${JUNIT_HEAD}import org.junit.jupiter.api.RepeatedTest
 import org.junitpioneer.jupiter.RetryingTest
 import io.github.artsok.RepeatedIfExceptionsTest
 
@@ -26,29 +29,23 @@ class AccountTest {
     @Test
     fun plain() { assertEquals(1, 1) }
 }
-`;
-
-    expect(retries(text)).toEqual([
-      'AccountTest.pioneer@14',
-      'AccountTest.rerunner@17',
-      'AccountTest.qualified@20',
-    ]);
-  });
-
-  it('follows an import alias of the annotation', () => {
-    const text = `${JUNIT_HEAD}import org.junitpioneer.jupiter.RetryingTest as Again
+`,
+    expected: ['AccountTest.pioneer@14', 'AccountTest.rerunner@17', 'AccountTest.qualified@20'],
+  },
+  {
+    title: 'follows an import alias of the annotation',
+    text: `${JUNIT_HEAD}import org.junitpioneer.jupiter.RetryingTest as Again
 
 class AccountTest {
     @Again(3)
     fun aliased() { assertEquals(1, 1) }
 }
-`;
-
-    expect(retries(text)).toEqual(['AccountTest.aliased@12']);
-  });
-
-  it('reports a TestNG retryAnalyzer on a test or a class and spares a plain TestNG test', () => {
-    const text = `package demo
+`,
+    expected: ['AccountTest.aliased@12'],
+  },
+  {
+    title: 'reports a TestNG retryAnalyzer on a test or a class and spares a plain TestNG test',
+    text: `package demo
 
 import org.testng.annotations.Test
 
@@ -67,13 +64,12 @@ class FlowTest {
 class WholeTest {
     fun inside() { }
 }
-`;
-
-    expect(retries(text)).toEqual(['FlowTest.onMethod@6', 'WholeTest@16']);
-  });
-
-  it('reports a class or object implementing IRetryAnalyzer or extending RetryAnalyzerCount', () => {
-    const text = `package demo
+`,
+    expected: ['FlowTest.onMethod@6', 'WholeTest@16'],
+  },
+  {
+    title: 'reports a class or object implementing IRetryAnalyzer or extending RetryAnalyzerCount',
+    text: `package demo
 
 import org.testng.IRetryAnalyzer
 import org.testng.ITestResult
@@ -96,13 +92,12 @@ class Holder {
 class Unrelated : Runnable {
     override fun run() { }
 }
-`;
-
-    expect(retries(text)).toEqual(['Again@7', 'Counted@11', 'Holder.object@16']);
-  });
-
-  it('reports setRetryAnalyzer calls, for example in an annotation transformer', () => {
-    const text = `package demo
+`,
+    expected: ['Again@7', 'Counted@11', 'Holder.object@16'],
+  },
+  {
+    title: 'reports setRetryAnalyzer calls, for example in an annotation transformer',
+    text: `package demo
 
 import org.testng.IAnnotationTransformer
 import org.testng.annotations.ITestAnnotation
@@ -112,9 +107,42 @@ class Everywhere : IAnnotationTransformer {
         annotation?.setRetryAnalyzer(Again::class.java)
     }
 }
-`;
+`,
+    expected: ['Everywhere@8'],
+  },
+  {
+    title: 'reports a grouped annotation',
+    text: `${JUNIT_HEAD}class AccountTest {
+    @[RetryingTest(3) Test]
+    fun grouped() { assertEquals(1, 1) }
 
-    expect(retries(text)).toEqual(['Everywhere@8']);
+    @[Test]
+    fun plain() { assertEquals(1, 1) }
+}
+`,
+    expected: ['AccountTest@10'],
+  },
+  {
+    title: 'reports setRetryAnalyzer calls but not a declaration with that name',
+    text: `package demo
+
+class Registry {
+    fun setRetryAnalyzer(attempts: Int) { }
+}
+
+fun Registry.setRetryAnalyzer(name: String) { }
+
+fun install(registry: Registry) {
+    registry.setRetryAnalyzer(1)
+}
+`,
+    expected: ['top level@10'],
+  },
+];
+
+describe('JVM retries in Kotlin tests', () => {
+  it.each(cases)('$title', ({ text, expected }) => {
+    expect(retries(text)).toEqual(expected);
   });
 
   it('keeps ordinary tests and names that only look like retries', () => {
@@ -128,35 +156,5 @@ class Everywhere : IAnnotationTransformer {
 `;
 
     expect(summaryOf(text)).toEqual([]);
-  });
-
-  it('reports a grouped annotation', () => {
-    const text = `${JUNIT_HEAD}class AccountTest {
-    @[RetryingTest(3) Test]
-    fun grouped() { assertEquals(1, 1) }
-
-    @[Test]
-    fun plain() { assertEquals(1, 1) }
-}
-`;
-
-    expect(retries(text)).toEqual(['AccountTest@10']);
-  });
-
-  it('reports setRetryAnalyzer calls but not a declaration with that name', () => {
-    const text = `package demo
-
-class Registry {
-    fun setRetryAnalyzer(attempts: Int) { }
-}
-
-fun Registry.setRetryAnalyzer(name: String) { }
-
-fun install(registry: Registry) {
-    registry.setRetryAnalyzer(1)
-}
-`;
-
-    expect(retries(text)).toEqual(['top level@10']);
   });
 });

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mts';
 import { DISABLED_RULE } from './skipped-tests.mjs';
 
-const skipped = (text) => rulesOf(text, DISABLED_RULE);
+function skipped(text: string): string[] {
+  return rulesOf(text, DISABLED_RULE);
+}
 
 describe('skipped JUnit and kotlin.test tests', () => {
   it.each([

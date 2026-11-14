@@ -1,27 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
 import { WEAK_RULE } from './weak-reports.mjs';
 
 const FIRST_BODY_LINE = 12;
 const MARK = ' // weak';
-const inTest = (body) => `${JUNIT_HEAD}class OrderTest {
+function inTest(body: string): string {
+  return `${JUNIT_HEAD}class OrderTest {
     @Test
     fun checks() {
 ${body}
     }
 }
 `;
-const flagged = (body) => {
+}
+function flagged(body: string): string[] {
   const lines = body.split('\n');
   return rulesOf(inTest(body), WEAK_RULE).map((entry) =>
-    lines[Number(entry.split('@')[1]) - FIRST_BODY_LINE].replace(MARK, '').trim(),
+    (lines[Number(entry.split('@')[1]) - FIRST_BODY_LINE] ?? '').replace(MARK, '').trim(),
   );
-};
-const marked = (body) =>
-  body
+}
+function marked(body: string): string[] {
+  return body
     .split('\n')
     .filter((line) => line.endsWith(MARK))
     .map((line) => line.replace(MARK, '').trim());
+}
 
 describe('weak assertions in JUnit tests', () => {
   it.each([

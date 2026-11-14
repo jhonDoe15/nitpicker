@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, rulesOf } from '../../../test-support/sources.mts';
 import { CONTROL_FLOW_RULE } from './assertion-flow.mjs';
 
-const flow = (text, names) => rulesOf(text, CONTROL_FLOW_RULE, undefined, names);
-const inTest = (body, head = JUNIT_HEAD, helpers = '') => `${head}class OrderTest {
+function flow(text: string, names?: string[]): string[] {
+  return rulesOf(text, CONTROL_FLOW_RULE, undefined, names);
+}
+function inTest(body: string, head = JUNIT_HEAD, helpers = ''): string {
+  return `${head}class OrderTest {
     @Test
     fun checks() {
 ${body}
@@ -11,7 +14,10 @@ ${body}
 ${helpers}
 }
 `;
-const IN_LOOP = (call) => `        for (order in orders()) {\n            ${call}\n        }`;
+}
+function IN_LOOP(call: string): string {
+  return `        for (order in orders()) {\n            ${call}\n        }`;
+}
 
 describe('what counts as an assertion', () => {
   it('counts an imported function whose name starts with expect', () => {

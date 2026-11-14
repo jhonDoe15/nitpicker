@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../test-support/sources.mts';
 import { FOCUSED_RULE } from './focused-tests.mjs';
 
-const focused = (text) => rulesOf(text, FOCUSED_RULE);
+function focused(text: string): string[] {
+  return rulesOf(text, FOCUSED_RULE);
+}
 
-describe('focused Kotest tests', () => {
-  it('reports the f: name prefix in every registration style', () => {
-    const text = `${KOTEST_HEAD}class MySpec : FunSpec({
+const cases: { title: string; text: string; expected: string[] }[] = [
+  {
+    title: 'reports the f: name prefix in every registration style',
+    text: `${KOTEST_HEAD}class MySpec : FunSpec({
     test("f: first") { 1 shouldBe 1 }
     test("second") { 1 shouldBe 1 }
     context("f:third") {
@@ -24,18 +27,17 @@ class TreeSpec : FreeSpec({
         "seventh" { 1 shouldBe 1 }
     }
 })
-`;
-
-    expect(focused(text)).toEqual([
+`,
+    expected: [
       'MySpec > f: first@8',
       'MySpec > f:third@10',
       'TextSpec > f: fourth@16',
       'TreeSpec > f: sixth@21',
-    ]);
-  });
-
-  it('reports the f-prefixed registrations', () => {
-    const text = `${KOTEST_HEAD}class MySpec : FunSpec({
+    ],
+  },
+  {
+    title: 'reports the f-prefixed registrations',
+    text: `${KOTEST_HEAD}class MySpec : FunSpec({
     ftest("a") { 1 shouldBe 1 }
     fcontext("b") { test("inside") { 1 shouldBe 1 } }
     fdescribe("c") { fit("d") { 1 shouldBe 1 } }
@@ -43,19 +45,12 @@ class TreeSpec : FreeSpec({
     fgiven("f") { }
     test("fine") { 1 shouldBe 1 }
 })
-`;
-
-    expect(focused(text)).toEqual([
-      'MySpec > a@8',
-      'MySpec > b@9',
-      'MySpec > c@10',
-      'MySpec > e@11',
-      'MySpec > f@12',
-    ]);
-  });
-
-  it('reports a focused test inside an init block and a config chain', () => {
-    const text = `${KOTEST_HEAD}class MySpec : DescribeSpec() {
+`,
+    expected: ['MySpec > a@8', 'MySpec > b@9', 'MySpec > c@10', 'MySpec > e@11', 'MySpec > f@12'],
+  },
+  {
+    title: 'reports a focused test inside an init block and a config chain',
+    text: `${KOTEST_HEAD}class MySpec : DescribeSpec() {
     init {
         describe("group") {
             fit("only this") { 1 shouldBe 1 }
@@ -63,9 +58,23 @@ class TreeSpec : FreeSpec({
         }
     }
 }
-`;
+`,
+    expected: ['MySpec > group > only this@10'],
+  },
+  {
+    title: 'has no focus form for JUnit tests',
+    text: `${JUNIT_HEAD}class AccountTest {
+    @Test
+    fun \`f: reads like a focus\`() { assertEquals(1, 1) }
+}
+`,
+    expected: [],
+  },
+];
 
-    expect(focused(text)).toEqual(['MySpec > group > only this@10']);
+describe('focused Kotest tests', () => {
+  it.each(cases)('$title', ({ text, expected }) => {
+    expect(focused(text)).toEqual(expected);
   });
 
   it('keeps names that merely look like a focus', () => {
@@ -79,15 +88,5 @@ class TreeSpec : FreeSpec({
 `;
 
     expect(summaryOf(text)).toEqual([]);
-  });
-
-  it('has no focus form for JUnit tests', () => {
-    const text = `${JUNIT_HEAD}class AccountTest {
-    @Test
-    fun \`f: reads like a focus\`() { assertEquals(1, 1) }
-}
-`;
-
-    expect(focused(text)).toEqual([]);
   });
 });

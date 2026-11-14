@@ -1,20 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD, rulesOf, summaryOf } from '../../../test-support/sources.mts';
 import { CONTROL_FLOW_RULE } from './assertion-flow.mjs';
 
 const MOCK_HEAD = `${JUNIT_HEAD.trimEnd()}
 import io.mockk.verify
 
 `;
-const flow = (text) => rulesOf(text, CONTROL_FLOW_RULE);
-const inTest = (body, head = JUNIT_HEAD) => `${head}class OrderTest {
+function flow(text: string): string[] {
+  return rulesOf(text, CONTROL_FLOW_RULE);
+}
+function inTest(body: string, head = JUNIT_HEAD): string {
+  return `${head}class OrderTest {
     @Test
     fun checks() {
 ${body}
     }
 }
 `;
-const mocked = (body) => inTest(body, MOCK_HEAD);
+}
+function mocked(body: string): string {
+  return inTest(body, MOCK_HEAD);
+}
 
 describe('assertions in conditionals of JUnit tests', () => {
   it.each([
