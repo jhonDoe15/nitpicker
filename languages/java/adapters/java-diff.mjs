@@ -19,6 +19,7 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { lintBaselineProperties, withGradleReports } from './reporting/gradle-run.mjs';
@@ -132,11 +133,11 @@ function collectBothSnapshots({
           baselineRoot: path.join(baseWorktree, projectRelativePath),
         });
         const notes = testFailuresOf({ findings: collectedBase });
-        return {
+        return withoutSkippedTools({
           notes,
           baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
           headFindings,
-        };
+        });
       },
     );
   });

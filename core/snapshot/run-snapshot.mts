@@ -8,6 +8,7 @@ import { isInScope, scopeSummary } from '../scope/scope-findings.mjs';
 import { fieldOf, textOf } from '../../shared/values/readers.mts';
 import { type ReportEntry, entriesOf } from '../../shared/values/findings.mts';
 import { withoutCrossToolOverlaps } from '../../shared/findings/overlaps/cross-tool.mjs';
+import { withSharedUnusedDirectives } from '../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 
 type Finding = ReportEntry;
 
@@ -56,6 +57,8 @@ const withPolicyFile: (
   headPolicy: object,
   run: (headPolicyFile: unknown) => SnapshotRun,
 ) => SnapshotRun = withHeadPolicyFile;
+const reconcileDirectives: (run: SnapshotRun, analyzers: readonly unknown[]) => SnapshotRun =
+  withSharedUnusedDirectives;
 const inScope: (findingPath: unknown, scope: Scope) => boolean = isInScope;
 const withoutOverlaps: (run: SnapshotRun) => SnapshotRun = withoutCrossToolOverlaps;
 const scopeFields: (scope: Scope, outside: number) => object = scopeSummary;
@@ -81,22 +84,25 @@ export function runQualitySnapshot({
   ...execution
 }: SnapshotRequest): QualitySnapshot {
   const { reports, toolErrors: runErrors } = withoutOverlaps(
-    withPolicyFile(headPolicy, (headPolicyFile) =>
-      runAnalyzers({
-        analyzers,
-        projectRoot,
-        policyRoot,
-        toolRoot,
-        liveProjectRoot,
-        headPolicyFile,
-        snapshot: 'head',
-        mutationScope: fieldOf(scope, 'paths'),
-        baselineRoot: execution['baselineRoot'],
-        baselineMovesFile: execution['baselineMovesFile'],
-        logRoot: execution['logRoot'],
-        runTasks: execution['runTasks'],
-        ...execution,
-      }),
+    reconcileDirectives(
+      withPolicyFile(headPolicy, (headPolicyFile) =>
+        runAnalyzers({
+          analyzers,
+          projectRoot,
+          policyRoot,
+          toolRoot,
+          liveProjectRoot,
+          headPolicyFile,
+          snapshot: 'head',
+          mutationScope: fieldOf(scope, 'paths'),
+          baselineRoot: execution['baselineRoot'],
+          baselineMovesFile: execution['baselineMovesFile'],
+          logRoot: execution['logRoot'],
+          runTasks: execution['runTasks'],
+          ...execution,
+        }),
+      ),
+      analyzers,
     ),
   );
 

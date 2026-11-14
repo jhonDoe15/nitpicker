@@ -14,6 +14,7 @@ import {
 } from './base-red/compare-analyzers.mts';
 import { withoutSharedCrossToolOverlaps } from '../../../shared/findings/overlaps/cross-tool.mjs';
 import { withCoChangeDependencies } from '../../../shared/history/co-change/dependencies/join.mjs';
+import { withSharedUnusedDirectives } from '../../../languages/typescript/adapters/eslint/merge/unused-directives.mjs';
 import { runProfileSummary } from '../../quick/summary.mjs';
 import { skippedSummary } from '../skipping/lines.mts';
 import { scopeNotes, scopeOutcomes, scopeSummary } from '../../scope/scope-findings.mjs';
@@ -99,6 +100,8 @@ const withoutSharedOverlaps: (runs: { readonly baseRun: unknown; readonly headRu
 const skippedFields: (context: {
   readonly skippedAnalyzers?: readonly string[] | undefined;
 }) => object = skippedSummary;
+const withSharedDirectives: (run: AnalyzerRun, analyzers: readonly unknown[]) => AnalyzerRun =
+  withSharedUnusedDirectives;
 const profileSummary: (context: { readonly quick: unknown; readonly staged: unknown }) => object =
   runProfileSummary;
 const scopedOutcomes: (
@@ -111,8 +114,14 @@ const scopedSummary: (scope: unknown, outside: number) => object = scopeSummary;
 export function combineAnalyzerReports(context: CombineRequest): DiffReport {
   const { additionalToolErrors, policies = {} } = context;
   const deduplicated = withoutSharedOverlaps(context);
-  const baseRun = withDependencies(deduplicated.baseRun, objectOf(policies.base));
-  const headRun = withDependencies(deduplicated.headRun, objectOf(policies.head));
+  const baseRun = withSharedDirectives(
+    withDependencies(deduplicated.baseRun, objectOf(policies.base)),
+    context.analyzers,
+  );
+  const headRun = withSharedDirectives(
+    withDependencies(deduplicated.headRun, objectOf(policies.head)),
+    context.analyzers,
+  );
   const toolErrors = [...additionalToolErrors, ...baseRun.toolErrors, ...headRun.toolErrors];
   const compared = compareAnalyzers({ ...context, baseRun, headRun, toolErrors });
   const outcomes = scopedOutcomes(compared.outcomes, context.scope);
