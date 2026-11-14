@@ -1,5 +1,5 @@
 import { RULES_TOOL } from '../tool.mjs';
-import { ROW_HINTS } from './row-hints.mjs';
+import { NARROW_HINTS, ROW_HINTS } from './row-hints.mjs';
 
 const QUERY_WORK = {
   count: 'counted or tested for none',
@@ -54,4 +54,5 @@ export const PERSISTENCE_HINTS = [
       'Ask the database: `.count()` or `.exists()` instead of `len()` or a truth test; `.filter()`/`.exclude()` (Django) or `.where()` (SQLAlchemy) instead of a comprehension, `filter()` or `next()`, and `.filter(...).exists()` instead of `any()` or `all()`; `.order_by()` instead of `sorted()`, `.sort()` or `max(key=)`; `.aggregate()`/`.annotate()` (Django) or `func.sum`/`func.count` with `group_by` (SQLAlchemy) instead of `sum()`, `max()`, `min()` or `Counter`. An exception fits only for a small fixed lookup table that is meant to be loaded whole.',
   },
   ...ROW_HINTS,
+  ...NARROW_HINTS,
 ];

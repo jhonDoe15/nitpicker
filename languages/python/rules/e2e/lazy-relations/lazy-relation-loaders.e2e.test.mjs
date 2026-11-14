@@ -3,7 +3,13 @@ import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, findingsOf } = createScripts({
-  hidden: ['unindexed-foreign-key', 'eager-relationship', 'io-in-loop', 'unordered-query'],
+  hidden: [
+    'unindexed-foreign-key',
+    'eager-relationship',
+    'io-in-loop',
+    'unordered-query',
+    'row-for-one-column',
+  ],
 });
 afterEach(cleanup);
 

@@ -118,6 +118,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-lookup-per-element': 'error',
     'nitpicker/no-query-per-parent': 'error',
     'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-whole-rows-for-one-value': 'error',
     'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-retry-without-idempotency': 'error',
     'nitpicker/no-dual-write': 'error',

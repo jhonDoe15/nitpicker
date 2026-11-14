@@ -128,6 +128,11 @@ SQLAlchemy query only to set the same values on each and write them back (`bulk_
 statement does it; models with a `save()` override, signals, `before_update` listeners, `auto_now` fields or a version
 column are left alone, and a loop of per-row deletes stays with `io-in-loop`.
 
+Rows read for less: `row-for-one-column` and `row-for-existence` in the Python preset report rows that a Django or
+SQLAlchemy query loads whole only to read one known column (`[u.email for u in User.objects.filter(...)]`) or only to test
+for existence (`.count() > 0`, `.first() is not None`); `values_list`, `select(User.email)` and `.exists()` are the
+allowed forms, and relationships, properties and already narrowed queries stay quiet.
+
 Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
 `lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
 `resolver-query-per-parent` (a Strawberry or Graphene field resolver of a type returned as a list that queries per parent; a `DataLoader` is the allowed form),
@@ -272,6 +277,12 @@ query rows (TypeORM, Prisma, Sequelize, MikroORM, Drizzle) loaded only to assign
 and save them back (`save(rows)`, `bulkCreate`, `flush()`), to `remove(rows)`, or to pass their ids to a delete or an
 update; one `update`, `updateMany` or `delete` statement does it without loading anything. Entities with hooks,
 subscribers or a version column, and loops that read the row or call functions, are not reported.
+
+Whole rows for one value: `nitpicker/no-whole-rows-for-one-value` (production source, in `eslint-lint`, type-aware
+for the column form) reports query rows (TypeORM, Prisma, Sequelize, MikroORM) loaded only to map them to one
+declared column, a `count` only compared with zero or one, and a `findOne`/`findFirst` result only used as a
+condition: select the column, or ask `exists`/`findFirst` with `select`. A query that already selects, a paged
+query and rows used another way are not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

@@ -97,12 +97,12 @@ function isPaged(call) {
   return keys.some((key) => PAGES.has(key)) || namesOf(call).some((name) => PAGES.has(name));
 }
 
-function isListQuery(scope, call) {
+export function isOrmCall(scope, call, methods = LIST_QUERIES) {
   const names = receiverNames(call.callee.object);
   const prisma = names.some((name) => PRISMA_NAME.test(name));
   const textual = stringValue(unwrapped(call.arguments[0])) !== undefined;
   return (
-    LIST_QUERIES.has(memberName(call.callee)) &&
+    methods.has(memberName(call.callee)) &&
     !textual &&
     (scope.orm || prisma) &&
     isRepositoryLike(names)
@@ -118,5 +118,5 @@ export function isQueryResult(scope, node) {
   if (call.arguments.some((argument) => isFunctionNode(unwrapped(argument))) || isPaged(call)) {
     return false;
   }
-  return isListQuery(scope, call) || isDrizzleSelect(scope, call);
+  return isOrmCall(scope, call) || isDrizzleSelect(scope, call);
 }

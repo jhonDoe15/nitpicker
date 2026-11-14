@@ -96,6 +96,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Change or delete many rows with one statement (`update(criteria, values)`, `updateMany`, `delete(criteria)`,
   `deleteMany`, `nativeUpdate`), not by loading them, assigning a constant to each and saving them back
   (`nitpicker/no-loaded-rows-saved-back`).
+- Select the one column you read (`select: { email: true }`) and test existence with `exists`/`existsBy`
+  (TypeORM) or `findFirst({ where, select: { id: true } })` (Prisma), not by loading whole rows or counting
+  (`nitpicker/no-whole-rows-for-one-value`).
 - Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
   that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
   one (`foreign-key-index`).
