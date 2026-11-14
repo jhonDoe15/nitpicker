@@ -1,5 +1,6 @@
 import {
   prettierPrecedence as untypedPrettierPrecedence,
+  readHeadPolicy as readUntypedHeadPolicy,
   readLayout as readUntypedLayout,
   typecheckEngine as untypedTypecheckEngine,
   usesLayeredPrettier as untypedUsesLayeredPrettier,
@@ -10,12 +11,34 @@ import { globMatcher as untypedGlobMatcher } from '../../../../shared/paths/glob
 export const globMatcher: (pattern: string) => { test(value: string): boolean } =
   untypedGlobMatcher;
 
+export type EslintToolSettings = { readonly engine?: string };
+
+export type HeadPolicy = {
+  readonly exceptions: unknown[];
+  readonly testConsole: { readonly allow?: unknown[] };
+  readonly tools: { readonly knip?: unknown; readonly eslint?: EslintToolSettings };
+  readonly history: unknown;
+  readonly thresholds?: unknown;
+};
+
 export type Layout = {
   readonly exclude: readonly string[];
   readonly graphRoots: readonly string[];
+  readonly sourceRoots: readonly string[];
+  readonly javascript: boolean;
   isExcluded(relativePath: string): boolean;
-  projectCodeFiles(projectRoot: string): readonly string[];
+  readonly isSourceFile: (relativePath: string) => boolean;
+  readonly isRunnableTestFile: (relativePath: string) => boolean;
+  readonly isTestFile: (relativePath: string) => boolean;
+  readonly testRoots: readonly string[];
+  readonly sourceGlobs: readonly string[];
+  readonly sourceTestDirectoryGlobs: readonly string[];
+  readonly excludedGlobs: readonly string[];
+  readonly isEndToEndTest: (relativePath: string) => boolean;
+  projectCodeFiles(projectRoot: string, roots?: readonly string[]): readonly string[];
 };
+
+export const readHeadPolicy: () => HeadPolicy = readUntypedHeadPolicy;
 
 export const readLayout: () => Layout = readUntypedLayout;
 

@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { Linter } from 'eslint';
 import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
-import { eslintRoute } from '../../../adapters/hints/eslint-hints.mjs';
+import { eslintRoute } from '../../../adapters/hints/eslint-routes.mts';
 
 const linter = new Linter();
 

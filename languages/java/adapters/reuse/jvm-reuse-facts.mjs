@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs';
+import { readJvmUnits } from '../near-duplicates/jvm-trees.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
@@ -14,7 +15,14 @@ import {
 const REUSE_TOOL = 'structure';
 const COUPLING_TOOL = 'coupling';
 const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+  'decided-condition',
+  'duplicate-branch',
+];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
 
@@ -68,7 +76,23 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
       ),
     ),
     imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
+    nearDuplicateUnits: unitFacts(projectRoot, files),
   };
+}
+
+function unitFacts(projectRoot, files) {
+  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+  return readJvmUnits(projectRoot, sources).map(
+    ({ file, name, start, end, tokens, final, tree }) => ({
+      file,
+      name,
+      start,
+      end,
+      tokens,
+      final,
+      tree,
+    }),
+  );
 }
 
 function baselineReader(projectRoot, { baselineRoot, baselineMovesFile }) {

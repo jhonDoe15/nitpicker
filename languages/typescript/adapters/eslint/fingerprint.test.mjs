@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
-import { normalizeEslintResults } from './normalize.mjs';
+import { normalizeEslintResults } from './normalize.mts';
 import { findingFor, makeTemporaryRoot, positionOf } from './test-support/finding-for.mjs';
 
 function compare(base, head) {

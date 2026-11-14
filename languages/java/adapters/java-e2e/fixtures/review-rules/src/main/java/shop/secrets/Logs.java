@@ -22,7 +22,7 @@ public final class Logs {
   }
 
   void environment(String token) {
-    log.info("{}", System.getenv("API_TOKEN")); // violation: SecretInLog, ConfigurationReadOutsideCompositionRoot
+    log.info("{}", System.getenv("API_TOKEN")); // violation: SecretInLog
     MDC.put("token", token); // violation: SecretInLog
     log.info("{}", token == null ? "none" : token); // violation: SecretInLog
   }

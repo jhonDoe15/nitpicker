@@ -41,7 +41,7 @@ import { runInitCommand } from './init/run-init.mts';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
-import { fieldOf, numberOr, textOf } from '../shared/values/readers.mts';
+import { fieldOf, listOf, numberOr, textOf } from '../shared/values/readers.mts';
 import {
   type ComparisonCli,
   type ConfiguredCli,
@@ -61,6 +61,7 @@ import type {
   Subcommand,
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
+import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
 
 const selectFrom: (analyzers: unknown, names: readonly string[]) => readonly unknown[] =
   selectAnalyzers;
@@ -188,6 +189,7 @@ function runConfigured(cli: ConfiguredCli): ExitCode {
     analyzers: profiled.analyzers,
     quick: profiled.quick,
     captureHead: stagedCapture(cli, currentProjectRoot),
+    setupErrors: emptySourcesErrors(config, currentProjectRoot, { headPolicy, ...options }),
   };
   writeNotes(cli.stderr, describeDisableCascade(presetSet, config));
   const selected = selectFrom(setup.analyzers, options.analyzerNames);
@@ -276,7 +278,7 @@ function runComparisonCli(cli: ComparisonCli): unknown {
     captureHead: cli.captureHead,
     quick: cli.quick,
     staged: options.staged,
-    additionalToolErrors: fieldOf(fixResult, 'toolErrors'),
+    additionalToolErrors: [...listOf(fieldOf(fixResult, 'toolErrors')), ...cli.setupErrors],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),

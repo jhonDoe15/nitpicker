@@ -136,3 +136,107 @@ describe('a PIT run that failed on one side', () => {
     });
   });
 });
+
+describe('a head whose tests fail in one module while the analyzer keeps its other findings', () => {
+  const headFailure = {
+    tool: 'tests',
+    rule: 'tests-failed',
+    path: '.',
+    identity: 'tests-failed:shop',
+    symbol: 'shop',
+    message: '1 test fails in shop; coverage, CRAP and mutation were skipped there.',
+    classification: 'tool-error',
+  };
+  const finding = (rule, file) => ({
+    tool: rule === 'UnusedPrivateField' ? 'pmd' : 'pit',
+    rule,
+    path: file,
+    identity: `${rule}:${file}`,
+    message: rule,
+    classification: 'enforceable',
+    location: { line: 3 },
+  });
+  const MUTANT = finding('mutant-survived', 'shop/src/Cart.java');
+  const OTHER_MUTANT = finding('mutant-survived', 'web/src/Page.java');
+  const PMD = finding('UnusedPrivateField', 'shop/src/Cart.java');
+  const NEW_PMD = finding('UnusedPrivateField', 'shop/src/Order.java');
+
+  function comparedSides(baseFindings, headFindings) {
+    const toolErrors = [];
+    const { outcomes, notes } = compareAnalyzers({
+      analyzers: [{ name: 'java' }],
+      baseRun: run(baseFindings),
+      headRun: run(headFindings),
+      toolErrors,
+      touchedCode: { changedLines: new Map(), isStrictRule: () => false },
+    });
+    const { result } = outcomes[0];
+    return {
+      new: result.newFindings.map(({ identity }) => identity),
+      unchanged: result.unchangedFindings.map(({ identity }) => identity),
+      resolved: result.resolvedFindings.map(({ identity }) => identity),
+      toolErrors: toolErrors.map(({ tool, snapshot, rule }) => `${tool} ${snapshot} ${rule}`),
+      notes: notes.map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+    };
+  }
+
+  it('compares the other findings and resolves no test result of that module', () => {
+    expect(comparedSides([MUTANT, OTHER_MUTANT, PMD], [headFailure, PMD, NEW_PMD])).toEqual({
+      new: [NEW_PMD.identity],
+      unchanged: [PMD.identity],
+      resolved: [OTHER_MUTANT.identity],
+      toolErrors: ['tests head tests-failed'],
+      notes: [],
+    });
+  });
+
+  it('counts no test result of that module on the head as new either', () => {
+    const slow = { ...finding('slow-test', 'shop/src/CartTest.java'), tool: 'test-times' };
+
+    expect(comparedSides([PMD], [headFailure, PMD, slow]).new).toEqual([]);
+  });
+
+  it('still reads a base whose tests fail too as a red base', () => {
+    const baseFailure = {
+      ...headFailure,
+      tool: 'java',
+      message: 'Tests fail on the base in shop:',
+    };
+
+    expect(comparedSides([baseFailure, PMD], [headFailure, PMD, NEW_PMD])).toEqual({
+      new: [NEW_PMD.identity],
+      unchanged: [PMD.identity],
+      resolved: [],
+      toolErrors: ['tests head tests-failed'],
+      notes: ['base tests-failed'],
+    });
+  });
+
+  it('reads a build that timed out on either side like failing tests of the whole analyzer', () => {
+    const timedOut = { ...headFailure, rule: 'tests-timed-out', symbol: '.' };
+
+    expect([
+      comparedSides([MUTANT, PMD], [{ ...timedOut }, PMD, NEW_PMD]),
+      comparedSides([{ ...timedOut, tool: 'java' }, PMD], [PMD, NEW_PMD, OTHER_MUTANT]),
+    ]).toEqual([
+      {
+        new: [NEW_PMD.identity],
+        unchanged: [PMD.identity],
+        resolved: [],
+        toolErrors: ['tests head tests-timed-out'],
+        notes: [],
+      },
+      {
+        new: [NEW_PMD.identity],
+        unchanged: [OTHER_MUTANT.identity, PMD.identity],
+        resolved: [],
+        toolErrors: [],
+        notes: ['base tests-timed-out'],
+      },
+    ]);
+  });
+
+  it('blocks the comparison as before when the failing tests are the analyzer own tool error', () => {
+    expect(comparedSides([PMD], [{ ...headFailure, tool: 'java' }, PMD, NEW_PMD]).new).toEqual([]);
+  });
+});

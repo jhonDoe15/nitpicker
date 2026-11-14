@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeV8Coverage } from './v8-coverage.mjs';
+import { writeV8Coverage } from './v8-coverage.mts';
 
 const SOURCE = [
   'export function pick(flag: boolean): number {',

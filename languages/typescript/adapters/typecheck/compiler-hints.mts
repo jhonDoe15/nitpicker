@@ -1,5 +1,5 @@
 import type TypeScript from 'typescript';
-import { formatDiagnostic, withoutProjectRoot } from '../typed/typescript-program.mts';
+import { formatDiagnostic, withoutProjectRoot } from './typescript-program.mts';
 
 const INDEX_SIGNATURE_ACCESS = 4111;
 

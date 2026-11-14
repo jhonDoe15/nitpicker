@@ -18,6 +18,9 @@ import { duplicateDefinitionFindings } from '../reuse/duplicate-definitions.mjs'
 import { exportedNameCollisionFindings } from '../reuse/name-collisions.mjs';
 import { uniqueFindings } from '../reuse/reuse-finding.mjs';
 import { siblingCopyEditFindings } from '../reuse/sibling-copy-edits.mjs';
+import { nearDuplicateFindings } from '../near-duplicates/near-duplicates.mjs';
+import { decidedConditionFindings } from '../decided/decided-conditions.mjs';
+import { duplicateBranchFindings } from '../branches/duplicate-branches.mjs';
 import { testOnlyFactFindings } from '../test-only/test-only-uses.mjs';
 import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
@@ -48,6 +51,12 @@ const EVALUATORS = {
       baselineFile: options.baselineFile,
       acrossPackages: options.siblingCopiesAcrossPackages === true,
     }),
+  'near-duplicate': ({ facts, context }) =>
+    nearDuplicateFindings(facts.nearDuplicateUnits, context),
+  'decided-condition': ({ facts, context }) =>
+    decidedConditionFindings(facts.nearDuplicateUnits, context),
+  'duplicate-branch': ({ facts, context }) =>
+    duplicateBranchFindings(facts.nearDuplicateUnits, context),
   'public-alternative-bypass': ({ facts, context }) =>
     publicAlternativeFindings(publicAlternativeBypasses(facts), context),
   'test-only-export': ({ facts, context }) => testOnlyFactFindings(facts, context),

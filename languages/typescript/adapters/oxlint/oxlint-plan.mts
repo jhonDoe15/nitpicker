@@ -4,6 +4,7 @@ import { ESLint } from 'eslint';
 import { listNativeRules } from './plan/rule-listing.mts';
 import { parsedTsconfig } from '../../preset/modules/tsconfig-files.mjs';
 import { isInvokedModule } from '../typed/static-checks.mts';
+import { incompatiblePackageMessage } from '../lint-engine/compatibility/incompatible-package.mts';
 import { fieldOf, fieldsOf } from '../../../../shared/values/readers.mts';
 
 type Settings = Readonly<Record<string, unknown>>;
@@ -35,11 +36,16 @@ if (isInvokedModule(import.meta.url)) {
   try {
     process.stdout.write(`${JSON.stringify(await lintPlan(projectRoot, patterns))}\n`);
   } catch (error) {
-    process.stderr.write(
-      `oxlint planning failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`oxlint planning failed: ${planningFailure(error)}\n`);
     process.exitCode = 2;
   }
+}
+
+function planningFailure(error: unknown): string {
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+  return incompatiblePackageMessage(error.stack ?? '', { cwd: process.cwd() }) ?? error.message;
 }
 
 async function lintPlan(root: string, globs: readonly string[]) {
