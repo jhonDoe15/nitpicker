@@ -232,7 +232,8 @@
       "summary": "Loop control variable `{name}` not used within loop body",
       "whatItDoes": "Checks for unused variables in loops (e.g., `for` and `while` statements).",
       "why": "Defining a variable in a loop statement that is never used can confuse readers. If the variable is intended to be unused (e.g., to facilitate destructuring of a tuple or other object), prefix it with an underscore to indicate the intent. Otherwise, remove the variable entirely.",
-      "useInstead": "for i, _j in foo:\n    bar(i)"
+      "useInstead": "for i, _j in foo:\n    bar(i)",
+      "safeFix": true
     },
     {
       "code": "B009",
@@ -277,7 +278,8 @@
       "summary": "A length-one tuple literal is redundant in exception handlers",
       "whatItDoes": "Checks for single-element tuples in exception handlers (e.g., `except (ValueError,):`).",
       "why": "A tuple with a single element can be more concisely and idiomatically expressed as a single value.",
-      "useInstead": "try:\n    ...\nexcept ValueError:\n    ..."
+      "useInstead": "try:\n    ...\nexcept ValueError:\n    ...",
+      "safeFix": true
     },
     {
       "code": "B014",
@@ -286,7 +288,8 @@
       "summary": "Exception handler with duplicate exception: `{name}`",
       "whatItDoes": "Checks for exception handlers that catch duplicate exceptions.",
       "why": "Including the same exception multiple times in the same handler is redundant, as the first exception will catch the exception, making the second exception unreachable. The same applies to exception hierarchies, as a handler for a parent exception (like `Exception`) will also catch child exceptions (like `ValueError`).",
-      "useInstead": "try:\n    ...\nexcept Exception:\n    ..."
+      "useInstead": "try:\n    ...\nexcept Exception:\n    ...",
+      "safeFix": true
     },
     {
       "code": "B015",
@@ -457,7 +460,8 @@
       "summary": "Sets should not contain duplicate item `{value}`",
       "whatItDoes": "Checks for set literals that contain duplicate items.",
       "why": "In Python, sets are unordered collections of unique elements. Including a duplicate item in a set literal is redundant, as the duplicate item will be replaced with a single item at runtime.",
-      "useInstead": "{1, 2, 3}"
+      "useInstead": "{1, 2, 3}",
+      "safeFix": true
     },
     {
       "code": "B034",
@@ -796,7 +800,8 @@
       "summary": "Multiple imports on one line",
       "whatItDoes": "Check for multiple imports on one line.",
       "why": "According to PEP 8, \"imports should usually be on separate lines.\"",
-      "useInstead": "import os\nimport sys"
+      "useInstead": "import os\nimport sys",
+      "safeFix": true
     },
     {
       "code": "E402",
@@ -832,7 +837,8 @@
       "summary": "Statement ends with an unnecessary semicolon",
       "whatItDoes": "Checks for statements that end with an unnecessary semicolon.",
       "why": "A trailing semicolon is unnecessary and should be removed.",
-      "useInstead": "do_four()"
+      "useInstead": "do_four()",
+      "safeFix": true
     },
     {
       "code": "E711",
@@ -859,7 +865,8 @@
       "summary": "Test for membership should be `not in`",
       "whatItDoes": "Checks for membership tests using `not {element} in {collection}`.",
       "why": "Testing membership with `{element} not in {collection}` is more readable.",
-      "useInstead": "Z = X not in Y\nif X.B not in Y:\n    pass"
+      "useInstead": "Z = X not in Y\nif X.B not in Y:\n    pass",
+      "safeFix": true
     },
     {
       "code": "E714",
@@ -868,7 +875,8 @@
       "summary": "Test for object identity should be `is not`",
       "whatItDoes": "Checks for identity comparisons using `not {foo} is {bar}`.",
       "why": "According to PEP8, testing for an object's identity with `is not` is more readable.",
-      "useInstead": "if X is not Y:\n    pass\nZ = X.B is not Y"
+      "useInstead": "if X is not Y:\n    pass\nZ = X.B is not Y",
+      "safeFix": true
     },
     {
       "code": "E721",
@@ -947,7 +955,8 @@
       "summary": "`{name}` imported but unused; consider using `importlib.util.find_spec` to test for availability",
       "whatItDoes": "Checks for unused imports.",
       "why": "Unused imports add a performance overhead at runtime, and risk creating import cycles. They also increase the cognitive load of reading the code. If an import statement is used to check for the availability or existence of a module, consider using `importlib.util.find_spec` instead.",
-      "useInstead": "def area(radius):\n    return 3.14 * radius**2"
+      "useInstead": "def area(radius):\n    return 3.14 * radius**2",
+      "safeFix": true
     },
     {
       "code": "F402",
@@ -1126,7 +1135,8 @@
       "summary": "f-string without any placeholders",
       "whatItDoes": "Checks for f-strings that do not contain any placeholder expressions.",
       "why": "f-strings are a convenient way to format strings, but they are not necessary if there are no placeholder expressions to format. In this case, a regular string should be used instead, as an f-string without placeholders can be confusing for readers, who may expect such a placeholder to be present. An f-string without any placeholders could also indicate that the author forgot to add a placeholder expression.",
-      "useInstead": "\"Hello, world!\""
+      "useInstead": "\"Hello, world!\"",
+      "safeFix": true
     },
     {
       "code": "F601",
@@ -1178,7 +1188,8 @@
       "summary": "Use `==` to compare constant literals",
       "whatItDoes": "Checks for `is` and `is not` comparisons against literals, like integers, strings, or lists.",
       "why": "The `is` and `is not` comparators operate on identity, in that they check whether two objects are the same object. If the objects are not the same object, the comparison will always be `False`. Using `is` and `is not` with constant literals often works \"by accident\", but are not guaranteed to produce the expected result. As of Python 3.8, using `is` and `is not` with constant literals will produce a `SyntaxWarning`.",
-      "useInstead": "x = 200\nif x == 200:\n    print(\"It's 200!\")"
+      "useInstead": "x = 200\nif x == 200:\n    print(\"It's 200!\")",
+      "safeFix": true
     },
     {
       "code": "F633",
@@ -1254,7 +1265,8 @@
       "summary": "Redefinition of unused `{name}` from {row}",
       "whatItDoes": "Checks for variable definitions that redefine (or \"shadow\") unused variables.",
       "why": "Redefinitions of unused names are unnecessary and often indicative of a mistake.",
-      "useInstead": "import foo\nimport bar"
+      "useInstead": "import foo\nimport bar",
+      "safeFix": true
     },
     {
       "code": "F821",
@@ -1307,7 +1319,8 @@
       "summary": "`raise NotImplemented` should be `raise NotImplementedError`",
       "whatItDoes": "Checks for `raise` statements that raise `NotImplemented`.",
       "why": "`NotImplemented` is a special value returned by binary special methods to indicate that an operation is not implemented with respect to a particular type. Because `NotImplemented` is not an exception, it cannot be raised. Raise `NotImplementedError` instead, which is used to indicate that a method is abstract or not implemented in the derived class.",
-      "useInstead": "class Foo:\n    def bar(self):\n        raise NotImplementedError"
+      "useInstead": "class Foo:\n    def bar(self):\n        raise NotImplementedError",
+      "safeFix": true
     },
     {
       "code": "FLY002",
@@ -1361,7 +1374,8 @@
       "summary": "Logging statement uses f-string",
       "whatItDoes": "Checks for uses of f-strings to format logging messages.",
       "why": "The `logging` module provides a mechanism for passing additional values to be logged using the `extra` keyword argument. This is more consistent, more efficient, and less error-prone than formatting the string directly. Using f-strings to format a logging message requires that Python eagerly format the string, even if the logging statement is never executed (e.g., if the log level is above the level of the logging statement), whereas using the `extra` keyword argument defers formatting until required.",
-      "useInstead": "import logging\n\nlogging.basicConfig(format=\"%(user_id)s - %(message)s\", level=logging.INFO)\n\nuser = \"Maria\"\n\nlogging.info(\"Something happened\", extra=dict(user_id=user))"
+      "useInstead": "import logging\n\nlogging.basicConfig(format=\"%(user_id)s - %(message)s\", level=logging.INFO)\n\nuser = \"Maria\"\n\nlogging.info(\"Something happened\", extra=dict(user_id=user))",
+      "safeFix": true
     },
     {
       "code": "G010",
@@ -1370,7 +1384,8 @@
       "summary": "Logging statement uses `warn` instead of `warning`",
       "whatItDoes": "Checks for uses of `logging.warn` and `logging.Logger.warn`.",
       "why": "`logging.warn` and `logging.Logger.warn` are deprecated in favor of `logging.warning` and `logging.Logger.warning`, which are functionally equivalent.",
-      "useInstead": "import logging\n\nlogging.warning(\"Something happened\")"
+      "useInstead": "import logging\n\nlogging.warning(\"Something happened\")",
+      "safeFix": true
     },
     {
       "code": "G101",
@@ -1442,7 +1457,8 @@
       "summary": "Use of undocumented `logging.WARN` constant",
       "whatItDoes": "Checks for uses of `logging.WARN`.",
       "why": "The `logging.WARN` constant is an undocumented alias for `logging.WARNING`. Although it’s not explicitly deprecated, `logging.WARN` is not mentioned in the `logging` documentation. Prefer `logging.WARNING` instead.",
-      "useInstead": "import logging\n\n\nlogging.basicConfig(level=logging.WARNING)"
+      "useInstead": "import logging\n\n\nlogging.basicConfig(level=logging.WARNING)",
+      "safeFix": true
     },
     {
       "code": "LOG014",
@@ -1639,7 +1655,8 @@
       "summary": "Use {message_str} to create a transformed list",
       "whatItDoes": "Checks for `for` loops that can be replaced by a list comprehension.",
       "why": "When creating a transformed list from an existing list using a for-loop, prefer a list comprehension. List comprehensions are more readable and more performant. Using the below as an example, the list comprehension is ~10% faster on Python 3.11, and ~25% faster on Python 3.10.",
-      "useInstead": "original = list(range(10000))\nfiltered = [x for x in original if x % 2]"
+      "useInstead": "original = list(range(10000))\nfiltered = [x for x in original if x % 2]",
+      "safeFix": true
     },
     {
       "code": "PERF402",
@@ -1657,7 +1674,8 @@
       "summary": "Use a dictionary comprehension instead of {modifier} for-loop",
       "whatItDoes": "Checks for `for` loops that can be replaced by a dictionary comprehension.",
       "why": "When creating or extending a dictionary in a for-loop, prefer a dictionary comprehension. Comprehensions are more readable and more performant. For example, when comparing `{x: x for x in list(range(1000))}` to the `for` loop version, the comprehension is ~10% faster on Python 3.11.",
-      "useInstead": "pairs = ((\"a\", 1), (\"b\", 2))\nresult = {x: y for x, y in pairs if y % 2}"
+      "useInstead": "pairs = ((\"a\", 1), (\"b\", 2))\nresult = {x: y for x, y in pairs if y % 2}",
+      "safeFix": true
     },
     {
       "code": "PIE790",
@@ -1693,7 +1711,8 @@
       "summary": "Unnecessary spread `**`",
       "whatItDoes": "Checks for unnecessary dictionary unpacking operators (`**`).",
       "why": "Unpacking a dictionary into another dictionary is redundant. The unpacking operator can be removed, making the code more readable.",
-      "useInstead": "foo = {\"A\": 1, \"B\": 2}\nbar = {**foo, \"C\": 3}"
+      "useInstead": "foo = {\"A\": 1, \"B\": 2}\nbar = {**foo, \"C\": 3}",
+      "safeFix": true
     },
     {
       "code": "PIE804",
@@ -1711,7 +1730,8 @@
       "summary": "Prefer `{container}` over useless lambda",
       "whatItDoes": "Checks for lambdas that can be replaced with the `list` or `dict` builtins.",
       "why": "Using container builtins are more succinct and idiomatic than wrapping the literal in a lambda.",
-      "useInstead": "from dataclasses import dataclass, field\n\n\n@dataclass\nclass Foo:\n    bar: list[int] = field(default_factory=list)\n    baz: dict[str, int] = field(default_factory=dict)"
+      "useInstead": "from dataclasses import dataclass, field\n\n\n@dataclass\nclass Foo:\n    bar: list[int] = field(default_factory=list)\n    baz: dict[str, int] = field(default_factory=dict)",
+      "safeFix": true
     },
     {
       "code": "PIE808",
@@ -1720,7 +1740,8 @@
       "summary": "Unnecessary `start` argument in `range`",
       "whatItDoes": "Checks for `range` calls with an unnecessary `start` argument.",
       "why": "`range(0, x)` is equivalent to `range(x)`, as `0` is the default value for the `start` argument. Omitting the `start` argument makes the code more concise and idiomatic.",
-      "useInstead": "range(3)"
+      "useInstead": "range(3)",
+      "safeFix": true
     },
     {
       "code": "PIE810",
@@ -1969,7 +1990,8 @@
       "summary": "Invalid unescaped character backspace, use \"\\b\" instead",
       "whatItDoes": "Checks for strings that contain the control character `BS`.",
       "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\b` sequence in lieu of the `BS` control character, the string will contain the same value, but will render visibly in all editors.",
-      "useInstead": "x = \"\\b\""
+      "useInstead": "x = \"\\b\"",
+      "safeFix": true
     },
     {
       "code": "PLE2512",
@@ -1978,7 +2000,8 @@
       "summary": "Invalid unescaped character SUB, use \"\\x1a\" instead",
       "whatItDoes": "Checks for strings that contain the raw control character `SUB`.",
       "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\x1a` sequence in lieu of the `SUB` control character, the string will contain the same value, but will render visibly in all editors.",
-      "useInstead": "x = \"\\x1a\""
+      "useInstead": "x = \"\\x1a\"",
+      "safeFix": true
     },
     {
       "code": "PLE2513",
@@ -1987,7 +2010,8 @@
       "summary": "Invalid unescaped character ESC, use \"\\x1b\" instead",
       "whatItDoes": "Checks for strings that contain the raw control character `ESC`.",
       "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\x1b` sequence in lieu of the `ESC` control character, the string will contain the same value, but will render visibly in all editors.",
-      "useInstead": "x = \"\\x1b\""
+      "useInstead": "x = \"\\x1b\"",
+      "safeFix": true
     },
     {
       "code": "PLE2514",
@@ -1996,7 +2020,8 @@
       "summary": "Invalid unescaped character NUL, use \"\\0\" instead",
       "whatItDoes": "Checks for strings that contain the raw control character `NUL` (0 byte).",
       "why": "Control characters are displayed differently by different text editors and terminals. By using the `\\0` sequence in lieu of the `NUL` control character, the string will contain the same value, but will render visibly in all editors.",
-      "useInstead": "x = \"\\0\""
+      "useInstead": "x = \"\\0\"",
+      "safeFix": true
     },
     {
       "code": "PLE2515",
@@ -2005,7 +2030,8 @@
       "summary": "Invalid unescaped character zero-width-space, use \"\\u200B\" instead",
       "whatItDoes": "Checks for strings that contain the zero width space character.",
       "why": "This character is rendered invisibly in some text editors and terminals. By using the `\\u200B` sequence, the string will contain the same value, but will render visibly in all editors.",
-      "useInstead": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space"
+      "useInstead": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space",
+      "safeFix": true
     },
     {
       "code": "PLR0124",
@@ -2023,7 +2049,8 @@
       "summary": "Useless `return` statement at end of function",
       "whatItDoes": "Checks for functions that end with an unnecessary `return` or `return None`, and contain no other `return` statements.",
       "why": "Python implicitly assumes a `None` return at the end of a function, making it unnecessary to explicitly write `return None`.",
-      "useInstead": "def f():\n    print(5)"
+      "useInstead": "def f():\n    print(5)",
+      "safeFix": true
     },
     {
       "code": "PLR1714",
@@ -2059,7 +2086,8 @@
       "summary": "`else` clause on loop without a `break` statement; remove the `else` and dedent its contents",
       "whatItDoes": "Checks for `else` clauses on loops without a `break` statement.",
       "why": "When a loop includes an `else` statement, the code inside the `else` clause will be executed if the loop terminates \"normally\" (i.e., without a `break`). If a loop always terminates \"normally\" (i.e., does not contain a `break`), then the `else` clause is redundant, as the code inside the `else` clause will always be executed.",
-      "useInstead": "for item in items:\n    print(item)\nprint(\"All items printed\")"
+      "useInstead": "for item in items:\n    print(item)\nprint(\"All items printed\")",
+      "safeFix": true
     },
     {
       "code": "PLW0127",
@@ -2130,7 +2158,8 @@
       "summary": "`super` call is missing parentheses",
       "whatItDoes": "Detects attempts to use `super` without parentheses.",
       "why": "The [`super()` callable](https://docs.python.org/3/library/functions.html#super) can be used inside method definitions to create a proxy object that delegates attribute access to a superclass of the current class. Attempting to access attributes on `super` itself, however, instead of the object returned by a call to `super()`, will raise `AttributeError`.",
-      "useInstead": "class Animal:\n    @staticmethod\n    def speak():\n        return \"This animal says something.\"\n\n\nclass Dog(Animal):\n    @staticmethod\n    def speak():\n        original_speak = super().speak()  # Correct: `super().speak()`\n        return f\"{original_speak} But as a dog, it barks!\""
+      "useInstead": "class Animal:\n    @staticmethod\n    def speak():\n        return \"This animal says something.\"\n\n\nclass Dog(Animal):\n    @staticmethod\n    def speak():\n        original_speak = super().speak()  # Correct: `super().speak()`\n        return f\"{original_speak} But as a dog, it barks!\"",
+      "safeFix": true
     },
     {
       "code": "PLW0406",
@@ -2271,7 +2300,8 @@
       "summary": "`scope='function'` is implied in `@pytest.fixture()`",
       "whatItDoes": "Checks for `pytest.fixture` calls with `scope=\"function\"`.",
       "why": "`scope=\"function\"` can be omitted, as it is the default.",
-      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef my_fixture(): ..."
+      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef my_fixture(): ...",
+      "safeFix": true
     },
     {
       "code": "PT006",
@@ -2280,7 +2310,8 @@
       "summary": "Wrong type passed to first argument of `pytest.mark.parametrize`; expected {expected_string}",
       "whatItDoes": "Checks for the type of parameter names passed to `pytest.mark.parametrize`.",
       "why": "The `argnames` argument of `pytest.mark.parametrize` takes a string or a sequence of strings. For a single parameter, it's preferable to use a string. For multiple parameters, it's preferable to use the style configured via the `lint.flake8-pytest-style.parametrize-names-type` setting.",
-      "useInstead": "import pytest\n\n\n@pytest.mark.parametrize(\"param\", [1, 2, 3])\ndef test_foo(param): ...\n\n\n@pytest.mark.parametrize((\"param1\", \"param2\"), [(1, 2), (3, 4)])\ndef test_bar(param1, param2): ..."
+      "useInstead": "import pytest\n\n\n@pytest.mark.parametrize(\"param\", [1, 2, 3])\ndef test_foo(param): ...\n\n\n@pytest.mark.parametrize((\"param1\", \"param2\"), [(1, 2), (3, 4)])\ndef test_bar(param1, param2): ...",
+      "safeFix": true
     },
     {
       "code": "PT007",
@@ -2289,7 +2320,8 @@
       "summary": "Wrong values type in `pytest.mark.parametrize` expected `{values}`",
       "whatItDoes": "Checks for the type of parameter values passed to `pytest.mark.parametrize`.",
       "why": "The `argvalues` argument of `pytest.mark.parametrize` takes an iterator of parameter values, which can be provided as lists or tuples. To aid in readability, it's recommended to use a consistent style for the list of values rows, and, in the case of multiple parameters, for each row of values.",
-      "useInstead": "import pytest\n\n\n@pytest.mark.parametrize(\"param\", [1, 2, 3])\ndef test_foo(param): ...\n\n\n@pytest.mark.parametrize((\"param1\", \"param2\"), [(1, 2), (3, 4)])\ndef test_bar(param1, param2): ..."
+      "useInstead": "import pytest\n\n\n@pytest.mark.parametrize(\"param\", [1, 2, 3])\ndef test_foo(param): ...\n\n\n@pytest.mark.parametrize((\"param1\", \"param2\"), [(1, 2), (3, 4)])\ndef test_bar(param1, param2): ...",
+      "safeFix": true
     },
     {
       "code": "PT008",
@@ -2397,7 +2429,8 @@
       "summary": "`@pytest.yield_fixture` is deprecated, use `@pytest.fixture`",
       "whatItDoes": "Checks for `pytest.yield_fixture` usage.",
       "why": "`pytest.fixture` has supported `yield` since pytest 3.0, which left `pytest.yield_fixture` as a plain alias for it. The alias has been deprecated since pytest 6.2, now raises a `PytestRemovedIn10Warning`, and will be removed in pytest 10. The two are the same function, so switching to `pytest.fixture` is a rename with no other consequence.",
-      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef my_fixture():\n    obj = SomeClass()\n    yield obj\n    obj.cleanup()"
+      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef my_fixture():\n    obj = SomeClass()\n    yield obj\n    obj.cleanup()",
+      "safeFix": true
     },
     {
       "code": "PT021",
@@ -2433,7 +2466,8 @@
       "summary": "`pytest.mark.asyncio` is unnecessary for fixtures",
       "whatItDoes": "Checks for unnecessary `@pytest.mark.asyncio` decorators applied to fixtures.",
       "why": "`pytest.mark.asyncio` is unnecessary for fixtures.",
-      "useInstead": "import pytest\n\n\n@pytest.fixture()\nasync def my_fixture():\n    return 0"
+      "useInstead": "import pytest\n\n\n@pytest.fixture()\nasync def my_fixture():\n    return 0",
+      "safeFix": true
     },
     {
       "code": "PT025",
@@ -2442,7 +2476,8 @@
       "summary": "`pytest.mark.usefixtures` has no effect on fixtures",
       "whatItDoes": "Checks for `pytest.mark.usefixtures` decorators applied to `pytest` fixtures.",
       "why": "The `pytest.mark.usefixtures` decorator has no effect on `pytest` fixtures.",
-      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef a():\n    pass\n\n\n@pytest.fixture()\ndef b(a):\n    pass"
+      "useInstead": "import pytest\n\n\n@pytest.fixture()\ndef a():\n    pass\n\n\n@pytest.fixture()\ndef b(a):\n    pass",
+      "safeFix": true
     },
     {
       "code": "PT026",
@@ -2451,7 +2486,8 @@
       "summary": "Useless `pytest.mark.usefixtures` without parameters",
       "whatItDoes": "Checks for `@pytest.mark.usefixtures()` decorators that aren't passed any arguments.",
       "why": "A `@pytest.mark.usefixtures()` decorator that isn't passed any arguments is useless and should be removed.",
-      "useInstead": "def test_something(): ..."
+      "useInstead": "def test_something(): ...",
+      "safeFix": true
     },
     {
       "code": "PT028",
@@ -2487,7 +2523,8 @@
       "summary": "`os.path.abspath()` should be replaced by `Path.resolve()`",
       "whatItDoes": "Checks for uses of `os.path.abspath`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.resolve()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.abspath()`).",
-      "useInstead": "from pathlib import Path\n\nfile_path = Path(\"../path/to/file\").resolve()"
+      "useInstead": "from pathlib import Path\n\nfile_path = Path(\"../path/to/file\").resolve()",
+      "safeFix": true
     },
     {
       "code": "PTH101",
@@ -2496,7 +2533,8 @@
       "summary": "`os.chmod()` should be replaced by `Path.chmod()`",
       "whatItDoes": "Checks for uses of `os.chmod`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.chmod()` can improve readability over the `os` module's counterparts (e.g., `os.chmod()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").chmod(0o444)"
+      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").chmod(0o444)",
+      "safeFix": true
     },
     {
       "code": "PTH102",
@@ -2505,7 +2543,8 @@
       "summary": "`os.mkdir()` should be replaced by `Path.mkdir()`",
       "whatItDoes": "Checks for uses of `os.mkdir`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.mkdir()` can improve readability over the `os` module's counterparts (e.g., `os.mkdir()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"./directory/\").mkdir()"
+      "useInstead": "from pathlib import Path\n\nPath(\"./directory/\").mkdir()",
+      "safeFix": true
     },
     {
       "code": "PTH103",
@@ -2514,7 +2553,8 @@
       "summary": "`os.makedirs()` should be replaced by `Path.mkdir(parents=True)`",
       "whatItDoes": "Checks for uses of `os.makedirs`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.mkdir(parents=True)` can improve readability over the `os` module's counterparts (e.g., `os.makedirs()`.",
-      "useInstead": "from pathlib import Path\n\nPath(\"./nested/directory/\").mkdir(parents=True)"
+      "useInstead": "from pathlib import Path\n\nPath(\"./nested/directory/\").mkdir(parents=True)",
+      "safeFix": true
     },
     {
       "code": "PTH104",
@@ -2523,7 +2563,8 @@
       "summary": "`os.rename()` should be replaced by `Path.rename()`",
       "whatItDoes": "Checks for uses of `os.rename`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.rename()` can improve readability over the `os` module's counterparts (e.g., `os.rename()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"old.py\").rename(\"new.py\")"
+      "useInstead": "from pathlib import Path\n\nPath(\"old.py\").rename(\"new.py\")",
+      "safeFix": true
     },
     {
       "code": "PTH105",
@@ -2532,7 +2573,8 @@
       "summary": "`os.replace()` should be replaced by `Path.replace()`",
       "whatItDoes": "Checks for uses of `os.replace`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.replace()` can improve readability over the `os` module's counterparts (e.g., `os.replace()`). Note that `os` functions may be preferable if performance is a concern, e.g., in hot loops.",
-      "useInstead": "from pathlib import Path\n\nPath(\"old.py\").replace(\"new.py\")"
+      "useInstead": "from pathlib import Path\n\nPath(\"old.py\").replace(\"new.py\")",
+      "safeFix": true
     },
     {
       "code": "PTH106",
@@ -2541,7 +2583,8 @@
       "summary": "`os.rmdir()` should be replaced by `Path.rmdir()`",
       "whatItDoes": "Checks for uses of `os.rmdir`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.rmdir()` can improve readability over the `os` module's counterparts (e.g., `os.rmdir()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"folder/\").rmdir()"
+      "useInstead": "from pathlib import Path\n\nPath(\"folder/\").rmdir()",
+      "safeFix": true
     },
     {
       "code": "PTH107",
@@ -2550,7 +2593,8 @@
       "summary": "`os.remove()` should be replaced by `Path.unlink()`",
       "whatItDoes": "Checks for uses of `os.remove`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.unlink()` can improve readability over the `os` module's counterparts (e.g., `os.remove()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").unlink()"
+      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").unlink()",
+      "safeFix": true
     },
     {
       "code": "PTH108",
@@ -2559,7 +2603,8 @@
       "summary": "`os.unlink()` should be replaced by `Path.unlink()`",
       "whatItDoes": "Checks for uses of `os.unlink`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.unlink()` can improve readability over the `os` module's counterparts (e.g., `os.unlink()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").unlink()"
+      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").unlink()",
+      "safeFix": true
     },
     {
       "code": "PTH109",
@@ -2568,7 +2613,8 @@
       "summary": "`os.getcwd()` should be replaced by `Path.cwd()`",
       "whatItDoes": "Checks for uses of `os.getcwd` and `os.getcwdb`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.cwd()` can improve readability over the `os` module's counterparts (e.g., `os.getcwd()`).",
-      "useInstead": "from pathlib import Path\n\ncwd = Path.cwd()"
+      "useInstead": "from pathlib import Path\n\ncwd = Path.cwd()",
+      "safeFix": true
     },
     {
       "code": "PTH110",
@@ -2577,7 +2623,8 @@
       "summary": "`os.path.exists()` should be replaced by `Path.exists()`",
       "whatItDoes": "Checks for uses of `os.path.exists`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.exists()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.exists()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").exists()"
+      "useInstead": "from pathlib import Path\n\nPath(\"file.py\").exists()",
+      "safeFix": true
     },
     {
       "code": "PTH111",
@@ -2586,7 +2633,8 @@
       "summary": "`os.path.expanduser()` should be replaced by `Path.expanduser()`",
       "whatItDoes": "Checks for uses of `os.path.expanduser`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.expanduser()` can improve readability over the `os.path` module's counterparts (e.g., as `os.path.expanduser()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"~/films/Monty Python\").expanduser()"
+      "useInstead": "from pathlib import Path\n\nPath(\"~/films/Monty Python\").expanduser()",
+      "safeFix": true
     },
     {
       "code": "PTH112",
@@ -2595,7 +2643,8 @@
       "summary": "`os.path.isdir()` should be replaced by `Path.is_dir()`",
       "whatItDoes": "Checks for uses of `os.path.isdir`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.is_dir()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.isdir()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_dir()"
+      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_dir()",
+      "safeFix": true
     },
     {
       "code": "PTH113",
@@ -2604,7 +2653,8 @@
       "summary": "`os.path.isfile()` should be replaced by `Path.is_file()`",
       "whatItDoes": "Checks for uses of `os.path.isfile`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.is_file()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.isfile()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_file()"
+      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_file()",
+      "safeFix": true
     },
     {
       "code": "PTH114",
@@ -2613,7 +2663,8 @@
       "summary": "`os.path.islink()` should be replaced by `Path.is_symlink()`",
       "whatItDoes": "Checks for uses of `os.path.islink`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.is_symlink()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.islink()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_symlink()"
+      "useInstead": "from pathlib import Path\n\nPath(\"docs\").is_symlink()",
+      "safeFix": true
     },
     {
       "code": "PTH115",
@@ -2622,7 +2673,8 @@
       "summary": "`os.readlink()` should be replaced by `Path.readlink()`",
       "whatItDoes": "Checks for uses of `os.readlink`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.readlink()` can improve readability over the `os` module's counterparts (e.g., `os.readlink()`).",
-      "useInstead": "from pathlib import Path\n\nPath(file_name).readlink()"
+      "useInstead": "from pathlib import Path\n\nPath(file_name).readlink()",
+      "safeFix": true
     },
     {
       "code": "PTH116",
@@ -2631,7 +2683,8 @@
       "summary": "`os.stat()` should be replaced by `Path.stat()`, `Path.owner()`, or `Path.group()`",
       "whatItDoes": "Checks for uses of `os.stat`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `Path` object methods such as `Path.stat()` can improve readability over the `os` module's counterparts (e.g., `os.path.stat()`).",
-      "useInstead": "from pathlib import Path\n\nfile_path = Path(file_name)\nstat = file_path.stat()\nowner_name = file_path.owner()\ngroup_name = file_path.group()"
+      "useInstead": "from pathlib import Path\n\nfile_path = Path(file_name)\nstat = file_path.stat()\nowner_name = file_path.owner()\ngroup_name = file_path.group()",
+      "safeFix": true
     },
     {
       "code": "PTH117",
@@ -2640,7 +2693,8 @@
       "summary": "`os.path.isabs()` should be replaced by `Path.is_absolute()`",
       "whatItDoes": "Checks for uses of `os.path.isabs`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.is_absolute()` can improve readability over the `os.path` module's counterparts (e.g., as `os.path.isabs()`).",
-      "useInstead": "from pathlib import Path\n\nif Path(file_name).is_absolute():\n    print(\"Absolute path!\")"
+      "useInstead": "from pathlib import Path\n\nif Path(file_name).is_absolute():\n    print(\"Absolute path!\")",
+      "safeFix": true
     },
     {
       "code": "PTH118",
@@ -2658,7 +2712,8 @@
       "summary": "`os.path.basename()` should be replaced by `Path.name`",
       "whatItDoes": "Checks for uses of `os.path.basename`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.name` can improve readability over the `os.path` module's counterparts (e.g., `os.path.basename()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).name"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).name",
+      "safeFix": true
     },
     {
       "code": "PTH120",
@@ -2667,7 +2722,8 @@
       "summary": "`os.path.dirname()` should be replaced by `Path.parent`",
       "whatItDoes": "Checks for uses of `os.path.dirname`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.parent` can improve readability over the `os.path` module's counterparts (e.g., `os.path.dirname()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).parent"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).parent",
+      "safeFix": true
     },
     {
       "code": "PTH121",
@@ -2676,7 +2732,8 @@
       "summary": "`os.path.samefile()` should be replaced by `Path.samefile()`",
       "whatItDoes": "Checks for uses of `os.path.samefile`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.samefile()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.samefile()`).",
-      "useInstead": "from pathlib import Path\n\nPath(\"f1.py\").samefile(\"f2.py\")"
+      "useInstead": "from pathlib import Path\n\nPath(\"f1.py\").samefile(\"f2.py\")",
+      "safeFix": true
     },
     {
       "code": "PTH122",
@@ -2694,7 +2751,8 @@
       "summary": "`open()` should be replaced by `Path.open()`",
       "whatItDoes": "Checks for uses of the `open()` builtin.",
       "why": "`pathlib` offers a high-level API for path manipulation. When possible, using `Path` object methods such as `Path.open()` can improve readability over the `open` builtin.",
-      "useInstead": "from pathlib import Path\n\nwith Path(\"f1.py\").open(\"wb\") as fp:\n    ..."
+      "useInstead": "from pathlib import Path\n\nwith Path(\"f1.py\").open(\"wb\") as fp:\n    ...",
+      "safeFix": true
     },
     {
       "code": "PTH124",
@@ -2721,7 +2779,8 @@
       "summary": "`os.path.getsize` should be replaced by `Path.stat().st_size`",
       "whatItDoes": "Checks for uses of `os.path.getsize`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.stat()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.getsize()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_size"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_size",
+      "safeFix": true
     },
     {
       "code": "PTH203",
@@ -2730,7 +2789,8 @@
       "summary": "`os.path.getatime` should be replaced by `Path.stat().st_atime`",
       "whatItDoes": "Checks for uses of `os.path.getatime`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.stat()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.getatime()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_atime"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_atime",
+      "safeFix": true
     },
     {
       "code": "PTH204",
@@ -2739,7 +2799,8 @@
       "summary": "`os.path.getmtime` should be replaced by `Path.stat().st_mtime`",
       "whatItDoes": "Checks for uses of `os.path.getmtime`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.stat()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.getmtime()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_mtime"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_mtime",
+      "safeFix": true
     },
     {
       "code": "PTH205",
@@ -2748,7 +2809,8 @@
       "summary": "`os.path.getctime` should be replaced by `Path.stat().st_ctime`",
       "whatItDoes": "Checks for uses of `os.path.getctime`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.path`. When possible, using `Path` object methods such as `Path.stat()` can improve readability over the `os.path` module's counterparts (e.g., `os.path.getctime()`).",
-      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_ctime"
+      "useInstead": "from pathlib import Path\n\nPath(__file__).stat().st_ctime",
+      "safeFix": true
     },
     {
       "code": "PTH206",
@@ -2775,7 +2837,8 @@
       "summary": "Use `pathlib.Path.iterdir()` instead.",
       "whatItDoes": "Checks for uses of `os.listdir`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os`. When possible, using `pathlib`'s `Path.iterdir()` can improve readability over `os.listdir()`.",
-      "useInstead": "p = Path(\".\")\nfor d in p.iterdir():\n    ...\n\nif any(p.iterdir()):\n    ...\n\nif (p / \"file\").exists():\n    ..."
+      "useInstead": "p = Path(\".\")\nfor d in p.iterdir():\n    ...\n\nif any(p.iterdir()):\n    ...\n\nif (p / \"file\").exists():\n    ...",
+      "safeFix": true
     },
     {
       "code": "PTH210",
@@ -2793,7 +2856,8 @@
       "summary": "`os.symlink` should be replaced by `Path.symlink_to`",
       "whatItDoes": "Checks for uses of `os.symlink`.",
       "why": "`pathlib` offers a high-level API for path manipulation, as compared to the lower-level API offered by `os.symlink`.",
-      "useInstead": "from pathlib import Path\n\nPath(\"tmp/python\").symlink_to(\"usr/bin/python\")"
+      "useInstead": "from pathlib import Path\n\nPath(\"tmp/python\").symlink_to(\"usr/bin/python\")",
+      "safeFix": true
     },
     {
       "code": "RET501",
@@ -2811,7 +2875,8 @@
       "summary": "Do not implicitly `return None` in function able to return non-`None` value",
       "whatItDoes": "Checks for the presence of a `return` statement with no explicit value, for functions that return non-`None` values elsewhere.",
       "why": "Including a `return` statement with no explicit value can cause confusion when other `return` statements in the function return non-`None` values. Python implicitly assumes return `None` if no other return value is present. Adding an explicit `return None` can make the code more readable by clarifying intent.",
-      "useInstead": "def foo(bar):\n    if not bar:\n        return None\n    return 1"
+      "useInstead": "def foo(bar):\n    if not bar:\n        return None\n    return 1",
+      "safeFix": true
     },
     {
       "code": "RET503",
@@ -2820,7 +2885,8 @@
       "summary": "Missing explicit `return` at the end of function able to return non-`None` value",
       "whatItDoes": "Checks for missing explicit `return` statements at the end of functions that can return non-`None` values.",
       "why": "The lack of an explicit `return` statement at the end of a function that can return non-`None` values can cause confusion. Python implicitly returns `None` if no other return value is present. Adding an explicit `return None` can make the code more readable by clarifying intent.",
-      "useInstead": "def foo(bar):\n    if not bar:\n        return 1\n    return None"
+      "useInstead": "def foo(bar):\n    if not bar:\n        return 1\n    return None",
+      "safeFix": true
     },
     {
       "code": "RET504",
@@ -2829,7 +2895,8 @@
       "summary": "Unnecessary assignment to `{name}` before `return` statement",
       "whatItDoes": "Checks for variable assignments that immediately precede a `return` of the assigned variable.",
       "why": "The variable assignment is not necessary, as the value can be returned directly.",
-      "useInstead": "def foo():\n    return 1"
+      "useInstead": "def foo():\n    return 1",
+      "safeFix": true
     },
     {
       "code": "RET505",
@@ -2838,7 +2905,8 @@
       "summary": "Unnecessary `{branch}` after `return` statement",
       "whatItDoes": "Checks for `else` statements with a `return` statement in the preceding `if` block.",
       "why": "The `else` statement is not needed as the `return` statement will always break out of the enclosing function. Removing the `else` will reduce nesting and make the code more readable.",
-      "useInstead": "def foo(bar, baz):\n    if bar:\n        return 1\n    return baz"
+      "useInstead": "def foo(bar, baz):\n    if bar:\n        return 1\n    return baz",
+      "safeFix": true
     },
     {
       "code": "RET506",
@@ -2847,7 +2915,8 @@
       "summary": "Unnecessary `{branch}` after `raise` statement",
       "whatItDoes": "Checks for `else` statements with a `raise` statement in the preceding `if` block.",
       "why": "The `else` statement is not needed as the `raise` statement will always break out of the current scope. Removing the `else` will reduce nesting and make the code more readable.",
-      "useInstead": "def foo(bar, baz):\n    if bar == \"Specific Error\":\n        raise Exception(bar)\n    raise Exception(baz)"
+      "useInstead": "def foo(bar, baz):\n    if bar == \"Specific Error\":\n        raise Exception(bar)\n    raise Exception(baz)",
+      "safeFix": true
     },
     {
       "code": "RET507",
@@ -2856,7 +2925,8 @@
       "summary": "Unnecessary `{branch}` after `continue` statement",
       "whatItDoes": "Checks for `else` statements with a `continue` statement in the preceding `if` block.",
       "why": "The `else` statement is not needed, as the `continue` statement will always continue onto the next iteration of a loop. Removing the `else` will reduce nesting and make the code more readable.",
-      "useInstead": "def foo(bar, baz):\n    for i in bar:\n        if i < baz:\n            continue\n        x = 0"
+      "useInstead": "def foo(bar, baz):\n    for i in bar:\n        if i < baz:\n            continue\n        x = 0",
+      "safeFix": true
     },
     {
       "code": "RET508",
@@ -2865,7 +2935,8 @@
       "summary": "Unnecessary `{branch}` after `break` statement",
       "whatItDoes": "Checks for `else` statements with a `break` statement in the preceding `if` block.",
       "why": "The `else` statement is not needed, as the `break` statement will always break out of the loop. Removing the `else` will reduce nesting and make the code more readable.",
-      "useInstead": "def foo(bar, baz):\n    for i in bar:\n        if i > baz:\n            break\n        x = 0"
+      "useInstead": "def foo(bar, baz):\n    for i in bar:\n        if i > baz:\n            break\n        x = 0",
+      "safeFix": true
     },
     {
       "code": "RUF005",
@@ -2972,7 +3043,8 @@
       "summary": "Unnecessary key check before dictionary access",
       "whatItDoes": "Checks for unnecessary key checks prior to accessing a dictionary.",
       "why": "When working with dictionaries, the `get` can be used to access a value without having to check if the dictionary contains the relevant key, returning `None` if the key is not present.",
-      "useInstead": "if dct.get(\"key\"):\n    ..."
+      "useInstead": "if dct.get(\"key\"):\n    ...",
+      "safeFix": true
     },
     {
       "code": "RUF020",
@@ -2981,7 +3053,8 @@
       "summary": "`{never_like} | T` is equivalent to `T`",
       "whatItDoes": "Checks for uses of `typing.NoReturn` and `typing.Never` in union types.",
       "why": "`typing.NoReturn` and `typing.Never` are special types, used to indicate that a function never returns, or that a type has no values. Including `typing.NoReturn` or `typing.Never` in a union type is redundant, as, e.g., `typing.Never | T` is equivalent to `T`.",
-      "useInstead": "def func() -> int: ..."
+      "useInstead": "def func() -> int: ...",
+      "safeFix": true
     },
     {
       "code": "RUF021",
@@ -2990,7 +3063,8 @@
       "summary": "Parenthesize `a and b` expressions when chaining `and` and `or` together, to make the precedence clear",
       "whatItDoes": "Checks for chained operators where adding parentheses could improve the clarity of the code.",
       "why": "`and` always binds more tightly than `or` when chaining the two together, but this can be hard to remember (and sometimes surprising). Adding parentheses in these situations can greatly improve code readability, with no change to semantics or performance. For example:",
-      "useInstead": "a, b, c = 1, 0, 2\nx = a or (b and c)\n\nd, e, f = 0, 1, 2\ny = (d and e) or f"
+      "useInstead": "a, b, c = 1, 0, 2\nx = a or (b and c)\n\nd, e, f = 0, 1, 2\ny = (d and e) or f",
+      "safeFix": true
     },
     {
       "code": "RUF022",
@@ -3079,7 +3153,8 @@
       "summary": "`None` not at the end of the type union.",
       "whatItDoes": "Checks for type annotations where `None` is not at the end of a union.",
       "why": "Type annotation unions are commutative, meaning that the order of the elements does not matter. The `None` literal represents the absence of a value. For readability, it's preferred to write the more informative type expressions first.",
-      "useInstead": "def func(arg: int | None): ..."
+      "useInstead": "def func(arg: int | None): ...",
+      "safeFix": true
     },
     {
       "code": "RUF037",
@@ -3150,7 +3225,8 @@
       "summary": "Use `pop` instead of `key in dict` followed by `del dict[key]`",
       "whatItDoes": "Checks for `if key in dictionary: del dictionarykey`.",
       "why": "To remove a key-value pair from a dictionary, it's more concise to use `.pop(..., None)`.",
-      "useInstead": "dictionary = {}\ndictionary.pop(key, None)"
+      "useInstead": "dictionary = {}\ndictionary.pop(key, None)",
+      "safeFix": true
     },
     {
       "code": "RUF053",
@@ -3186,7 +3262,8 @@
       "summary": "Unpacked variable `{name}` is never used",
       "whatItDoes": "Checks for the presence of unused variables in unpacked assignments.",
       "why": "A variable that is defined but never used can confuse readers. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern.",
-      "useInstead": "def foo():\n    x, _ = get_pair()\n    return x"
+      "useInstead": "def foo():\n    x, _ = get_pair()\n    return x",
+      "safeFix": true
     },
     {
       "code": "RUF060",
@@ -3204,7 +3281,8 @@
       "summary": "Use context-manager form of `pytest.{}()`",
       "whatItDoes": "Checks for non-context-manager use of `pytest.raises`, `pytest.warns`, and `pytest.deprecated_call`.",
       "why": "The context-manager form is more readable, easier to extend, and supports additional keyword arguments.",
-      "useInstead": "import pytest\n\n\nwith pytest.raises(ValueError) as excinfo:\n    int(\"hello\")\nwith pytest.warns(UserWarning):\n    my_function(arg)\nwith pytest.deprecated_call():\n    my_deprecated_function(arg1, arg2)"
+      "useInstead": "import pytest\n\n\nwith pytest.raises(ValueError) as excinfo:\n    int(\"hello\")\nwith pytest.warns(UserWarning):\n    my_function(arg)\nwith pytest.deprecated_call():\n    my_deprecated_function(arg1, arg2)",
+      "safeFix": true
     },
     {
       "code": "RUF063",
@@ -3230,7 +3308,8 @@
       "summary": "`__all__` contains duplicate entries",
       "whatItDoes": "Detects duplicate elements in `__all__` definitions.",
       "why": "Duplicate elements in `__all__` serve no purpose and can indicate copy-paste errors or incomplete refactoring.",
-      "useInstead": "__all__ = [\n    \"DatabaseConnection\",\n    \"Product\",\n    \"User\",\n]"
+      "useInstead": "__all__ = [\n    \"DatabaseConnection\",\n    \"Product\",\n    \"User\",\n]",
+      "safeFix": true
     },
     {
       "code": "RUF071",
@@ -3248,7 +3327,8 @@
       "summary": "`{original}` is a redirect to `{target}`",
       "whatItDoes": "Checks for `noqa` directives that use redirected rule codes.",
       "why": "When one of Ruff's rule codes has been redirected, the implication is that the rule has been deprecated in favor of another rule or code. To keep your codebase consistent and up-to-date, prefer the canonical rule code over the deprecated code.",
-      "useInstead": "x = eval(command)  # noqa: S307"
+      "useInstead": "x = eval(command)  # noqa: S307",
+      "safeFix": true
     },
     {
       "code": "RUF102",
@@ -3266,7 +3346,8 @@
       "summary": "Invalid suppression comment: {msg}",
       "whatItDoes": "Checks for invalid suppression comments",
       "why": "Invalid suppression comments are ignored by Ruff, and should either be fixed or removed to avoid confusion.",
-      "useInstead": "# ruff: disable[E501]"
+      "useInstead": "# ruff: disable[E501]",
+      "safeFix": true
     },
     {
       "code": "RUF104",
@@ -3671,7 +3752,8 @@
       "summary": "Multiple `isinstance` calls for `{name}`, merge into a single call",
       "whatItDoes": "Checks for multiple `isinstance` calls on the same target.",
       "why": "To check if an object is an instance of any one of multiple types or classes, it is unnecessary to use multiple `isinstance` calls, as the second argument of the `isinstance` built-in function accepts a tuple of types and classes. Using a single `isinstance` call implements the same behavior with more concise code and clearer intent.",
-      "useInstead": "if isinstance(obj, (int, float)):\n    pass"
+      "useInstead": "if isinstance(obj, (int, float)):\n    pass",
+      "safeFix": true
     },
     {
       "code": "SIM102",
@@ -3680,7 +3762,8 @@
       "summary": "Use a single `if` statement instead of nested `if` statements",
       "whatItDoes": "Checks for nested `if` statements that can be collapsed into a single `if` statement.",
       "why": "Nesting `if` statements leads to deeper indentation and makes code harder to read. Instead, combine the conditions into a single `if` statement with an `and` operator.",
-      "useInstead": "if foo and bar:\n    ..."
+      "useInstead": "if foo and bar:\n    ...",
+      "safeFix": true
     },
     {
       "code": "SIM103",
@@ -3707,7 +3790,8 @@
       "summary": "Use ternary operator `{contents}` instead of `if`-`else`-block",
       "whatItDoes": "Check for `if`-`else`-blocks that can be replaced with a ternary or binary operator.",
       "why": "`if`-`else`-blocks that assign a value to a variable in both branches can be expressed more concisely by using a ternary or binary operator.",
-      "useInstead": "bar = x if foo else y"
+      "useInstead": "bar = x if foo else y",
+      "safeFix": true
     },
     {
       "code": "SIM109",
@@ -3752,7 +3836,8 @@
       "summary": "Combine `if` branches using logical `or` operator",
       "whatItDoes": "Checks for `if` branches with identical arm bodies.",
       "why": "If multiple arms of an `if` statement have the same body, using `or` better signals the intent of the statement.",
-      "useInstead": "if x == 1 or x == 2:\n    print(\"Hello\")"
+      "useInstead": "if x == 1 or x == 2:\n    print(\"Hello\")",
+      "safeFix": true
     },
     {
       "code": "SIM115",
@@ -3779,7 +3864,8 @@
       "summary": "Use a single `with` statement with multiple contexts instead of nested `with` statements",
       "whatItDoes": "Checks for the unnecessary nesting of multiple consecutive context managers.",
       "why": "In Python 3, a single `with` block can include multiple context managers. Combining multiple context managers into a single `with` statement will minimize the indentation depth of the code, making it more readable.",
-      "useInstead": "with A() as a, B() as b:\n    pass"
+      "useInstead": "with A() as a, B() as b:\n    pass",
+      "safeFix": true
     },
     {
       "code": "SIM118",
@@ -3815,7 +3901,8 @@
       "summary": "Use `{expr}` instead of `not (not {expr})`",
       "whatItDoes": "Checks for double negations (i.e., multiple `not` operators).",
       "why": "A double negation is redundant and less readable than omitting the `not` operators entirely.",
-      "useInstead": "a"
+      "useInstead": "a",
+      "safeFix": true
     },
     {
       "code": "SIM210",
@@ -3833,7 +3920,8 @@
       "summary": "Use `not ...` instead of `False if ... else True`",
       "whatItDoes": "Checks for `if` expressions that can be replaced by negating a given condition.",
       "why": "`if` expressions that evaluate to `False` for a truthy condition and `True` for a falsey condition can be replaced with `not` operators, which are more concise and readable.",
-      "useInstead": "not a"
+      "useInstead": "not a",
+      "safeFix": true
     },
     {
       "code": "SIM212",
@@ -3842,7 +3930,8 @@
       "summary": "Use `{expr_else} if {expr_else} else {expr_body}` instead of `{expr_body} if not {expr_else} else {expr_else}`",
       "whatItDoes": "Checks for `if` expressions that check against a negated condition.",
       "why": "`if` expressions that check against a negated condition are more difficult to read than `if` expressions that check against the condition directly.",
-      "useInstead": "a if a else b"
+      "useInstead": "a if a else b",
+      "safeFix": true
     },
     {
       "code": "SIM220",
@@ -3850,7 +3939,8 @@
       "linter": "flake8-simplify",
       "summary": "Use `False` instead of `{name} and not {name}`",
       "whatItDoes": "Checks for `and` expressions that include both an expression and its negation.",
-      "why": "An `and` expression that includes both an expression and its negation will always evaluate to `False`."
+      "why": "An `and` expression that includes both an expression and its negation will always evaluate to `False`.",
+      "safeFix": true
     },
     {
       "code": "SIM221",
@@ -3858,7 +3948,8 @@
       "linter": "flake8-simplify",
       "summary": "Use `True` instead of `{name} or not {name}`",
       "whatItDoes": "Checks for `or` expressions that include both an expression and its negation.",
-      "why": "An `or` expression that includes both an expression and its negation will always evaluate to `True`."
+      "why": "An `or` expression that includes both an expression and its negation will always evaluate to `True`.",
+      "safeFix": true
     },
     {
       "code": "SIM222",
@@ -3867,7 +3958,8 @@
       "summary": "Use `{expr}` instead of `{replaced}`",
       "whatItDoes": "Checks for `or` expressions that contain truthy values.",
       "why": "If the expression is used as a condition, it can be replaced in-full with `True`. In other cases, the expression can be short-circuited to the first truthy value.",
-      "useInstead": "if True:\n    pass\n\na = x or [1]"
+      "useInstead": "if True:\n    pass\n\na = x or [1]",
+      "safeFix": true
     },
     {
       "code": "SIM223",
@@ -3876,7 +3968,8 @@
       "summary": "Use `{expr}` instead of `{replaced}`",
       "whatItDoes": "Checks for `and` expressions that contain falsey values.",
       "why": "If the expression is used as a condition, it can be replaced in-full with `False`. In other cases, the expression can be short-circuited to the first falsey value.",
-      "useInstead": "if False:\n    pass\n\na = x and []"
+      "useInstead": "if False:\n    pass\n\na = x and []",
+      "safeFix": true
     },
     {
       "code": "SIM300",
@@ -3885,7 +3978,8 @@
       "summary": "Yoda condition detected",
       "whatItDoes": "Checks for conditions that position a constant on the left-hand side of the comparison operator, rather than the right-hand side.",
       "why": "These conditions (sometimes referred to as \"Yoda conditions\") are less readable than conditions that place the variable on the left-hand side of the comparison operator. In some languages, Yoda conditions are used to prevent accidental assignment in conditions (i.e., accidental uses of the `=` operator, instead of the `==` operator). However, Python does not allow assignments in conditions unless using the `:=` operator, so Yoda conditions provide no benefit in this regard.",
-      "useInstead": "if foo == \"Foo\":\n    ..."
+      "useInstead": "if foo == \"Foo\":\n    ...",
+      "safeFix": true
     },
     {
       "code": "SIM401",
@@ -3894,7 +3988,8 @@
       "summary": "Use `{contents}` instead of an `if` block",
       "whatItDoes": "Checks for `if` statements that can be replaced with `dict.get` calls.",
       "why": "`dict.get()` calls can be used to replace `if` statements that assign a value to a variable in both branches, falling back to a default value if the key is not found. When possible, using `dict.get` is more concise and more idiomatic. Under [preview mode](https://docs.astral.sh/ruff/preview), this rule will also suggest replacing `if`-`else` expressions with `dict.get` calls.",
-      "useInstead": "foo = {}\nvalue = foo.get(\"bar\", 0)"
+      "useInstead": "foo = {}\nvalue = foo.get(\"bar\", 0)",
+      "safeFix": true
     },
     {
       "code": "SIM905",
@@ -3912,7 +4007,8 @@
       "summary": "Use `{expected}` instead of `{actual}`",
       "whatItDoes": "Checks for `dict.get()` calls that pass `None` as the default value.",
       "why": "`None` is the default value for `dict.get()`, so it is redundant to pass it explicitly.",
-      "useInstead": "ages = {\"Tom\": 23, \"Maria\": 23, \"Dog\": 11}\nage = ages.get(\"Cat\")"
+      "useInstead": "ages = {\"Tom\": 23, \"Maria\": 23, \"Dog\": 11}\nage = ages.get(\"Cat\")",
+      "safeFix": true
     },
     {
       "code": "SIM911",
@@ -3921,7 +4017,8 @@
       "summary": "Use `{expected}` instead of `{actual}`",
       "whatItDoes": "Checks for use of `zip()` to iterate over keys and values of a dictionary at once.",
       "why": "The `dict` type provides an `.items()` method which is faster and more readable.",
-      "useInstead": "flag_stars = {\"USA\": 50, \"Slovenia\": 3, \"Panama\": 2, \"Australia\": 6}\n\nfor country, stars in flag_stars.items():\n    print(f\"{country}'s flag has {stars} stars.\")"
+      "useInstead": "flag_stars = {\"USA\": 50, \"Slovenia\": 3, \"Panama\": 2, \"Australia\": 6}\n\nfor country, stars in flag_stars.items():\n    print(f\"{country}'s flag has {stars} stars.\")",
+      "safeFix": true
     },
     {
       "code": "T100",
@@ -4009,7 +4106,8 @@
       "summary": "Use format specifiers instead of percent format",
       "whatItDoes": "Checks for `printf`-style string formatting, and offers to replace it with `str.format` calls.",
       "why": "`printf`-style string formatting has a number of quirks, and leads to less readable code than using `str.format` calls or f-strings. In general, prefer the newer `str.format` and f-strings constructs over `printf`-style string formatting.",
-      "useInstead": "\"{}, {}\".format(\"Hello\", \"World\")  # \"Hello, World\""
+      "useInstead": "\"{}, {}\".format(\"Hello\", \"World\")  # \"Hello, World\"",
+      "safeFix": true
     },
     {
       "code": "UP032",
@@ -4018,7 +4116,8 @@
       "summary": "Use f-string instead of `format` call",
       "whatItDoes": "Checks for `str.format` calls that can be replaced with f-strings.",
       "why": "f-strings are more readable and generally preferred over `str.format` calls.",
-      "useInstead": "f\"{foo}\""
+      "useInstead": "f\"{foo}\"",
+      "safeFix": true
     }
   ]
 }

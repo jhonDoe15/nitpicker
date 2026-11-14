@@ -119,9 +119,12 @@ JPA and Spring Data:
 - Index every foreign key in the Flyway or Liquibase migration that adds it:
   `CREATE INDEX ON orders (customer_id)`, or an index or primary key that starts with the column.
   PostgreSQL does not create one (`foreign-key-index`).
-- Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
-  that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
-  `collectList()`. Query text is constant (a text block) and
+- Filter, count, sort and total in the query, not on the rows a repository method returned
+  (`findAll()`, `findAllById`, a `@Query` method, a page's content): no `size()`, `isEmpty()` or
+  `count()` (use a count or exists query), no `filter`/`anyMatch` on stored fields (a where
+  clause), no `sorted(comparing(Row::getX))` (order by or a `Sort` argument), no `mapToLong(...)
+.sum()`, `reduce` or `groupingBy(..., counting())` (an aggregate `@Query`), reactive `Flux`
+  forms included. Mapping rows to DTOs is fine. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Fetch at most one collection per query (`join fetch`, Criteria `fetch` or an entity graph); load
   the others in their own query or with `@BatchSize` or `@Fetch(FetchMode.SUBSELECT)`

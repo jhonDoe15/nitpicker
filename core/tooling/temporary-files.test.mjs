@@ -20,7 +20,7 @@ function runScenario(body) {
   const target = path.join(root, '.nitpicker-test.json');
   const script = [
     `import { writeFileSync } from 'node:fs';`,
-    `import { trackTemporaryPath, untrackTemporaryPath } from ${JSON.stringify(moduleUrl)};`,
+    `import { trackCleanup, trackTemporaryPath, untrackTemporaryPath } from ${JSON.stringify(moduleUrl)};`,
     `const target = ${JSON.stringify(target)};`,
     'trackTemporaryPath(target);',
     `writeFileSync(target, '{}');`,
@@ -51,6 +51,18 @@ describe('tracked temporary files', () => {
     expect(existsSync(target)).toBe(false);
   });
 
+  it('runs a tracked cleanup when the process is terminated by SIGTERM', () => {
+    const { result, target } = scenarios.cleanedUp;
+    expect(result.status).toBe(143);
+    expect(existsSync(`${target}.cleaned`)).toBe(true);
+  });
+
+  it('does not run a cleanup that was stopped', () => {
+    const { result, target } = scenarios.stoppedCleanup;
+    expect(result.status).toBe(0);
+    expect(existsSync(`${target}.cleaned`)).toBe(false);
+  });
+
   it('keeps files that were untracked', () => {
     const { result, target } = scenarios.untracked;
     expect(result.status).toBe(0);
@@ -68,6 +80,11 @@ beforeAll(() => {
     `process.kill(process.pid, 'SIGINT'); setTimeout(() => {}, 10_000);`,
   );
   scenarios.untracked = runScenario('untrackTemporaryPath(target);');
+  const cleanup = `trackCleanup(() => writeFileSync(target + '.cleaned', 'done'))`;
+  scenarios.cleanedUp = runScenario(
+    `${cleanup}; process.kill(process.pid, 'SIGTERM'); setTimeout(() => {}, 10_000);`,
+  );
+  scenarios.stoppedCleanup = runScenario(`${cleanup}();`);
 });
 
 it('untracks a registered temporary path in the running process', () => {

@@ -124,11 +124,6 @@ export function kotlinGeneratedFilter({ reportRoot }) {
   }
 }
 
-function leftToFanOut(calls) {
-  return ({ rule, path: file, location }) =>
-    rule !== 'IoCallInLoop' || !calls.has(`${file}:${String(location?.line)}`);
-}
-
 function reviewViews(context) {
   const { reportRoot, manifest, projectRoot, modules, kotlinBuild, foreignKeys } = context;
   const assertionHelpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
@@ -154,9 +149,7 @@ export function readKotlinFindings(context, crapLimit) {
           spring: manifest.spring === true,
           testRoots,
         }),
-        ...readKotlinSourceFindings(projectRoot, manifest, runners).filter(
-          leftToFanOut(fanOut.calls),
-        ),
+        ...readKotlinSourceFindings(projectRoot, manifest, runners),
         ...fanOut.findings,
         ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
       ]),

@@ -4,7 +4,7 @@ import { configuredAnalyzers } from '../../../../../languages/typescript/preset/
 import { PACKAGE_ROOT, resolveTool } from '../../../../tooling/tool-resolution.mjs';
 import { runQualitySnapshot } from '../../../../snapshot/run-snapshot.mts';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
-import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mjs';
+import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mts';
 import { planAnalyzerShards } from '../../../sharding/sharding.mts';
 import { fileURLToPath } from 'node:url';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';

@@ -7,7 +7,7 @@ import {
   fakeGradle,
   runTasksWithFakeGradle,
 } from '../command/java/test-support/java-cli-harness.mjs';
-import { cacheKey } from '../diff/cache/findings-cache.mjs';
+import { cacheKey } from '../diff/cache/findings-cache.mts';
 import { baseSetupResolver } from '../command/policy-review/base-setup.mts';
 import { runCli } from '../cli.mts';
 
@@ -83,7 +83,7 @@ describe('conventions in a run', () => {
 
     expect(exitCode).toBe(2);
     expect(errors).toBe(
-      `nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: java, repository-hygiene\n`,
+      `nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: java, mutation, repository-hygiene\n`,
     );
   });
 
