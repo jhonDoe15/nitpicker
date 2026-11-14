@@ -13,7 +13,7 @@ import {
   withHeadPolicyFile,
 } from '../../../../languages/typescript/preset/head-policy.mjs';
 import { compareFindings } from '../../comparison/compare.mjs';
-import { runAnalyzers } from '../../execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../execution/run-analyzers.mts';
 
 const packageAnalyzers = configuredAnalyzers();
 const LOST_CAUSE = [

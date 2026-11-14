@@ -1,5 +1,5 @@
 import { describeConfigOverrides } from '../config.mjs';
-import { policyHash } from '../../diff/reporting/report-model.mjs';
+import { policyHash } from '../../diff/reporting/report-model.mts';
 import { describe, expect, it } from 'vitest';
 import { validateConfig } from '../validate.mjs';
 

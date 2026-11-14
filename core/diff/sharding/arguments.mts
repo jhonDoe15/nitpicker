@@ -1,4 +1,4 @@
-import { takeOptionValue, unknownArgumentError } from '../comparison/cli.mjs';
+import { takeOptionValue, unknownArgumentError } from '../comparison/cli.mts';
 
 type OptionValues = {
   readonly values: Partial<Record<string, string>>;
@@ -15,13 +15,6 @@ export type ParsedArguments =
       readonly policyRoot: string | undefined;
       readonly details: boolean;
     };
-
-const takeValue: (remaining: Iterator<string>, argument: string) => string = takeOptionValue;
-const unknownArgument: (
-  argument: string,
-  candidates: readonly string[],
-  guidance: string,
-) => Error = unknownArgumentError;
 
 const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
 const HELP = '--help';
@@ -41,13 +34,13 @@ function collectOptionValues(commandArguments: readonly string[]): OptionValues 
       continue;
     }
     if (!OPTION_NAMES.includes(argument)) {
-      throw unknownArgument(
+      throw unknownArgumentError(
         argument,
         AGGREGATE_OPTIONS,
         'Run nitpicker aggregate --help for the options.',
       );
     }
-    values[argument] = takeValue(remaining, argument);
+    values[argument] = takeOptionValue(remaining, argument);
   }
   return { values, details };
 }

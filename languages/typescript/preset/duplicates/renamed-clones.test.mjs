@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
-import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { applyLayout, configuredAnalyzers } from '../diff/configured-analyzers.mjs';
 import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';

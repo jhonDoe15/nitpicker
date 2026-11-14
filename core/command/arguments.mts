@@ -1,8 +1,9 @@
 import {
   DRILL_DOWN_OPTIONS,
+  type DrillDownOptions,
   parseDrillDownOptions,
   unknownArgumentError,
-} from '../diff/comparison/cli.mjs';
+} from '../diff/comparison/cli.mts';
 import { validateRunProfile } from '../quick/validate.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
@@ -10,24 +11,14 @@ type BooleanOption =
   'all' | 'details' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
 type ValueOption = 'baseRef' | 'outputRoot';
 
-type DrillDown = {
-  readonly analyzerNames: readonly string[];
-  readonly ruleFilters: readonly string[];
-  readonly shardCount: number | undefined;
-  readonly shardIndex: number | undefined;
-  readonly deferExit: boolean;
-  readonly remainingArguments: readonly string[];
-};
-
 type CommandOptions = Record<BooleanOption, boolean> &
   Partial<Record<ValueOption, string>> & {
     acceptPolicyChange?: string;
     readonly paths: string[];
   };
 
-export type ParsedArguments = CommandOptions & Omit<DrillDown, 'remainingArguments'>;
+export type ParsedArguments = CommandOptions & Omit<DrillDownOptions, 'remainingArguments'>;
 
-const drillDownOptions: (arguments_: readonly string[]) => DrillDown = parseDrillDownOptions;
 const closestSuggestion: (
   argument: string,
   candidates: readonly string[],
@@ -171,7 +162,7 @@ function validateModes(options: ParsedArguments): void {
 }
 
 export function parseArguments(commandArguments: readonly string[]): ParsedArguments {
-  const { remainingArguments, ...drillDown } = drillDownOptions(commandArguments);
+  const { remainingArguments, ...drillDown } = parseDrillDownOptions(commandArguments);
   const options = { ...remainingOptions(remainingArguments), ...drillDown };
   validateModes(options);
   validateRunProfile(options);

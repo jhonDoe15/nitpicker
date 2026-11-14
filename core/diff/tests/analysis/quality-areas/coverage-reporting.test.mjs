@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
-import { runAnalyzers } from '../../../execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../execution/run-analyzers.mts';
 import {
   coverageFailureFindings,
   formatTestFailures,

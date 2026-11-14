@@ -9,7 +9,7 @@ import {
   toEntryPointDiffFindings,
 } from '../../../../languages/typescript/adapters/entry-points.mjs';
 import { configuredAnalyzers } from '../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { runAnalyzers } from '../../execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../execution/run-analyzers.mts';
 import { fileURLToPath } from 'node:url';
 
 const packageAnalyzers = configuredAnalyzers();

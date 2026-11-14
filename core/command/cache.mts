@@ -4,12 +4,16 @@ import { resolveProjectRoot } from '../configuration/project-checks/project-root
 import { publishHeadPolicy } from '../conventions/resolve.mjs';
 import { configureAll, presetAnalyzers } from '../configuration/preset-analyzers.mts';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
-import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
+import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
-import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-stores.mjs';
+import {
+  type CacheStore,
+  createLayeredStore,
+  resolveCacheStore,
+} from '../diff/cache/cache-stores.mts';
 import { publishBaseSnapshot } from '../diff/cache/publish-cache.mts';
 import { runGit } from '../diff/git/repository/command.mjs';
-import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
+import { selectAnalyzers } from '../diff/execution/run-analyzers.mts';
 import { selectAnalyzerShard } from '../diff/sharding/sharding.mts';
 import { CACHE_PUBLISH_USAGE_TEXT } from '../help/usage-text.mts';
 import {
@@ -34,14 +38,14 @@ type CacheCli = {
   readonly arguments_: readonly string[];
   readonly stdout: TextOutput;
   readonly stderr: TextOutput;
-  readonly environment?: NodeJS.ProcessEnv | undefined;
+  readonly environment: NodeJS.ProcessEnv;
   readonly currentProjectRoot?: string | undefined;
   readonly analyzers?: readonly Analyzer[] | undefined;
   readonly runTasks?: unknown;
 };
 
 type ShardOptions = {
-  readonly analyzerNames: unknown;
+  readonly analyzerNames: readonly string[];
   readonly shardCount: number | undefined;
   readonly shardIndex: number | undefined;
 };
@@ -65,9 +69,9 @@ function selectedAnalyzers(
   return selected;
 }
 
-function writableStore(projectRoot: string, cli: CacheCli): unknown {
+function writableStore(projectRoot: string, cli: CacheCli): CacheStore {
   const { remote, warnings } = resolveCacheStore({ projectRoot, environment: cli.environment });
-  for (const warning of textsOf(warnings)) cli.stderr.write(`nitpicker: ${warning}\n`);
+  for (const warning of warnings) cli.stderr.write(`nitpicker: ${warning}\n`);
   if (remote === undefined) {
     throw troubleshootingError(
       'nitpicker cache publish requires NITPICKER_CACHE_URL',
@@ -154,7 +158,7 @@ export function runCacheCommand(cli: CacheCli): number {
   );
   const config: NitpickerConfig = loadConfig(projectRoot);
   const headPolicy: unknown = publishHeadPolicy(config, projectRoot, {
-    maven: cli.environment?.['NITPICKER_MAVEN'],
+    maven: cli.environment['NITPICKER_MAVEN'],
   });
   const selected = selectedAnalyzers(
     configureAll(presetAnalyzers(config, cli.analyzers), config, headPolicy),
