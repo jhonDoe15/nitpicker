@@ -1,16 +1,16 @@
 import path from 'node:path';
-import {
-  TYPESCRIPT_TEST_ONLY_MESSAGES,
-  testOnlyFindings,
-} from '../../../../../shared/rules/test-only/test-only-judgement.mjs';
-import { entriesOf, keyOf } from './knip-report.mjs';
-import { reexportedTestOnlyEntries } from './reexported-exports.mjs';
+import type { Finding } from '../../../../../shared/values/findings.mts';
+import type { PackagesInfo } from '../workspace/workspace-types.mts';
+import { entriesOf, keyOf } from './knip-report.mts';
+import type { KnipReport } from './typed/knip-types.mts';
+import { type ReexportLayout, reexportedTestOnlyEntries } from './reexported-exports.mts';
+import { TYPESCRIPT_TEST_ONLY_MESSAGES, testOnlyFindings } from './typed/judgement-views.mts';
 
-function isPublishedFile(packagesInfo, absoluteFile) {
+function isPublishedFile(packagesInfo: PackagesInfo, absoluteFile: string): boolean {
   return packagesInfo.packageOf(absoluteFile)?.published === true;
 }
 
-export function needsProductionRun(packagesInfo, projectRoot) {
+export function needsProductionRun(packagesInfo: PackagesInfo, projectRoot: string): boolean {
   const ownPackageIsPublished = isPublishedFile(
     packagesInfo,
     path.join(projectRoot, 'package.json'),
@@ -18,20 +18,25 @@ export function needsProductionRun(packagesInfo, projectRoot) {
   return !ownPackageIsPublished || packagesInfo.packages.some(({ published }) => !published);
 }
 
-/**
- * The exports, types and modules that knip reports once tests are left out but not in its normal
- * run: nothing in production code imports them, and a test does. A re-export is not an import:
- * knip counts one from an entry as a use, so the exports it keeps alive count too (see
- * `reexported-exports.mjs`). Modules under `test-support/` are meant for tests, and a published
- * package's own tests count as callers, so neither is judged.
- */
 export function testOnlyExportFindings({
   normal,
   production,
   entryExportsRun,
   packagesInfo,
   context,
-}) {
+}: {
+  normal: KnipReport;
+  production: KnipReport;
+  entryExportsRun: () => KnipReport;
+  packagesInfo: PackagesInfo;
+  context: {
+    layout: ReexportLayout;
+    projectRoot: string;
+    entryPatterns: readonly string[];
+    analyzerName: string;
+    isExcepted: (rule: string, ...candidates: readonly unknown[]) => boolean;
+  };
+}): Finding[] {
   const unusedEverywhere = new Set(entriesOf(normal).map(keyOf));
   const reexported = reexportedTestOnlyEntries({
     production,

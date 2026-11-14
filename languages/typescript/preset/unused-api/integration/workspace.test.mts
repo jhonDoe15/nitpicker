@@ -6,7 +6,7 @@ import {
   createProject,
   removeProject,
   summarize,
-} from '../test-support/project.mjs';
+} from '../test-support/project.mts';
 
 const COMPONENT = `type BadgeProps = { tone?: string; size?: number; icon?: string };
 export function Badge(props: BadgeProps) { return <i>{props.tone}</i>; }
@@ -22,7 +22,7 @@ const CALLERS = {
 };
 const LIBRARY = { name: 'library', main: 'src/index.ts' };
 
-function iconMessage(scope) {
+function iconMessage(scope: string) {
   return (
     'Prop Badge.icon is never passed. Remove it, or pass it from a real caller ' +
     `(${scope}). If this is intended, add ` +
@@ -31,7 +31,7 @@ function iconMessage(scope) {
   );
 }
 
-function without(files, name) {
+function without(files: Readonly<Record<string, unknown>>, name: string) {
   return Object.fromEntries(Object.entries(files).filter(([file]) => file !== name));
 }
 
@@ -83,8 +83,8 @@ export const Old = () => <Chip icon="i" />;
 `,
 };
 
-let root;
-let findings;
+let root: string;
+let findings: string[];
 
 beforeAll(() => {
   root = createProject(WORKSPACE);

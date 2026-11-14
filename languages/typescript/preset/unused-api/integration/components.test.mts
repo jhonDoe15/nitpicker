@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { analyzeFiles, findingsIn } from '../test-support/project.mjs';
+import { analyzeFiles, findingsIn } from '../test-support/project.mts';
 
 const WRAPPERS = {
   'src/wrappers/ui/button.tsx': `import type { ButtonHTMLAttributes } from 'react';
@@ -109,7 +109,7 @@ export const Use = () => <><Gauge value={1} /><Dial angle={2} /><Knob grip={3} /
 `,
 };
 
-let findings;
+let findings: ReturnType<typeof analyzeFiles>;
 
 beforeAll(() => {
   findings = analyzeFiles({ ...WRAPPERS, ...PASSING, ...RENDERED, ...REEXPORTED });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { textsOf } from '../../../../../shared/values/readers.mts';
 import { resolveLayoutFor } from '../../layout.mjs';
-import { layoutKnipProductionConfig } from './production-config.mjs';
+import { layoutKnipProductionConfig } from './production-config.mts';
 
 const CODE = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}';
 const TEST_RUNNERS = [
@@ -63,11 +64,11 @@ describe('the knip config without tests', () => {
       layout,
     );
 
-    expect(config.workspaces).toEqual({
+    expect(config['workspaces']).toEqual({
       'packages/lib': { entry: ['src/index.ts'] },
       'packages/app': {
         entry: ['src/app.ts'],
-        project: ['src/**', ...config.project.slice(1)],
+        project: ['src/**', ...textsOf(config['project']).slice(1)],
       },
     });
   });

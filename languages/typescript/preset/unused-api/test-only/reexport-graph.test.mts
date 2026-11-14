@@ -5,19 +5,28 @@ import {
   isCovered,
   moduleLinks,
   reexportGraph,
-} from './reexport-graph.mjs';
+} from './reexport-graph.mts';
+import type { GraphLink, ModuleExports, Reference } from './typed/graph-types.mts';
 
-function named(exported, source, imported = exported, extra = {}) {
+function named(
+  exported: string,
+  source: string,
+  imported = exported,
+  extra: { readonly namespace?: true; readonly viaImport?: true } = {},
+): GraphLink {
   return { exported, imported, source, ...extra };
 }
 
-function graphOf(modules) {
+function graphOf(modules: Readonly<Record<string, readonly GraphLink[]>>) {
   return reexportGraph((file) => ({ edges: modules[file] ?? [], references: [] }));
 }
 
-function surface(modules, entries) {
+function surface(
+  modules: Readonly<Record<string, readonly GraphLink[]>>,
+  entries: readonly string[],
+) {
   const used = graphOf(modules).surfaceOf(entries);
-  return (file, name) => isCovered(used, { file, name });
+  return (file: string, name: string) => isCovered(used, { file, name });
 }
 
 describe('the public surface of entries', () => {
@@ -112,7 +121,17 @@ describe('the links of one module', () => {
   const NO_EXPORTS = { aliases: [], locals: [], namespaces: [], reexports: [] };
   const IMPORTS = [{ specifier: './api', named: [{ local: 'handle', imported: 'handle' }] }];
 
-  function linksOf({ exports = {}, referenced = [], members = new Map(), imports = IMPORTS }) {
+  function linksOf({
+    exports = {},
+    referenced = [],
+    members = new Map(),
+    imports = IMPORTS,
+  }: {
+    exports?: Partial<ModuleExports>;
+    referenced?: readonly string[];
+    members?: ReadonlyMap<string, readonly string[] | undefined>;
+    imports?: Parameters<typeof moduleLinks>[0]['imports'];
+  }) {
     return moduleLinks({
       imports,
       dynamicImports: [],
@@ -161,7 +180,7 @@ describe('the links of one module', () => {
         { local: 'serve', exported: 'run' },
       ],
     };
-    const edge = (exported) => ({
+    const edge = (exported: string) => ({
       exported,
       imported: 'handle',
       specifier: './api',
@@ -169,7 +188,9 @@ describe('the links of one module', () => {
     });
 
     expect(
-      linksOf({ exports }).edges.toSorted((a, b) => a.exported.localeCompare(b.exported)),
+      linksOf({ exports }).edges.toSorted((a, b) =>
+        (a.exported ?? '').localeCompare(b.exported ?? ''),
+      ),
     ).toEqual(['default', 'run', 'serve', 'wrapped'].map(edge));
   });
 
@@ -218,7 +239,7 @@ describe('the declarations a reference reaches', () => {
     '/barrel.ts': [named('api', '/main.ts')],
   };
 
-  function reached(reference) {
+  function reached(reference: Reference) {
     const used = graphOf(modules).usedBy([reference]);
     return ['handle', 'other'].filter((name) => isCovered(used, { file: '/api.ts', name }));
   }
