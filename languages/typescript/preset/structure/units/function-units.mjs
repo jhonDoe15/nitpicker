@@ -35,6 +35,15 @@ function inner(node) {
   return chain.at(-1);
 }
 
+function curriedBody(node) {
+  if (!ts.isArrowFunction(node) || ts.isBlock(node.body)) {
+    return undefined;
+  }
+  const body = inner(node.body);
+  const isFunction = ts.isArrowFunction(body) || ts.isFunctionExpression(body);
+  return isFunction && body.name === undefined ? body : undefined;
+}
+
 function unwrap(node) {
   const chain = [node];
   for (const current of chain) {
@@ -43,6 +52,22 @@ function unwrap(node) {
     }
   }
   return chain.at(-1);
+}
+
+export function curriedChain(node) {
+  const chain = [node];
+  for (const current of chain) {
+    const next = curriedBody(current);
+    if (next !== undefined) {
+      chain.push(next);
+    }
+  }
+  return chain;
+}
+
+export function isCurriedInner(node) {
+  const outer = unwrap(node).parent;
+  return outer !== undefined && isFunctionLike(outer) && curriedBody(outer) === node;
 }
 
 function bindingName(sourceFile, node) {
@@ -118,6 +143,9 @@ function functionScope({ sourceFile, anonymousCounts }, node, scope) {
   if (!isFunctionLike(node)) {
     return undefined;
   }
+  if (isCurriedInner(node)) {
+    return { scope, unit: { kind: 'function', range: node, folded: true } };
+  }
   return {
     scope: [...scope, uniqueName(localName(sourceFile, node), scope, anonymousCounts)],
     unit: { kind: 'function', range: node },
@@ -163,6 +191,7 @@ function unitEntry(sourceFile, node, { scope, unit }) {
     at: node.getStart(sourceFile),
     name: scope.join('.'),
     kind: unit.kind,
+    folded: unit.folded === true,
     ...lineRange(sourceFile, unit.range),
   };
 }
@@ -184,6 +213,7 @@ export function functionUnits(sourceFile) {
     found.filter(({ kind }) => kind === 'function').map(({ node, name }) => [node, name]),
   );
   const units = found
+    .filter(({ folded }) => !folded)
     .toSorted((left, right) => left.at - right.at)
     .map(({ name, kind, start, end }) => ({ name, kind, start, end }));
   return { names, units };
