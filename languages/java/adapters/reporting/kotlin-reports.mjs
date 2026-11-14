@@ -30,10 +30,11 @@ import {
   readKotlinFanOutFindings,
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
-import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mjs';
 import { readKotlinNotes } from './kotlin-notes.mjs';
 import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
 import { springRoots } from '../spring/transactions/transaction-filters.mjs';
+import { withoutSpringCoveredReads } from '../spring/configuration/covered-reads.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -47,7 +48,7 @@ const PACKAGE_DECLARATION = /^\s*package\s+([\w.`]+)/m;
 export function requireKotlinManifest(manifest) {
   if (manifest.kotlin !== true) {
     throw new Error(
-      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm for Gradle, kotlin-maven-plugin for Maven); this one does not',
+      'The kotlin preset needs a project that applies the Kotlin plugin (org.jetbrains.kotlin.jvm, org.jetbrains.kotlin.multiplatform or org.jetbrains.kotlin.android for Gradle, kotlin-maven-plugin for Maven); this one does not',
     );
   }
 }
@@ -128,14 +129,23 @@ function leftToFanOut(calls) {
     rule !== 'IoCallInLoop' || !calls.has(`${file}:${String(location?.line)}`);
 }
 
+function reviewViews(context) {
+  const { reportRoot, manifest, projectRoot, modules, kotlinBuild, foreignKeys } = context;
+  const assertionHelpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  return {
+    ...{ reportRoot, projectRoot, manifest, modules, foreignKeys },
+    buildViews: kotlinBuild,
+    assertionHelpers,
+  };
+}
+
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
-  const { modules, kotlinBuild: buildViews } = context;
-  const views = { reportRoot, projectRoot, manifest, modules, buildViews };
+  const views = reviewViews(context);
   const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
-  const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
+  const runners = context.conventions?.['kotlin.detachedWorkRunners'] ?? [];
   const ruleFindings = withDetektCountRatchets(
     applyKotlinRuleMessages(
       withoutCoveredCasts([
@@ -144,7 +154,9 @@ export function readKotlinFindings(context, crapLimit) {
           spring: manifest.spring === true,
           testRoots,
         }),
-        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...readKotlinSourceFindings(projectRoot, manifest, runners).filter(
+          leftToFanOut(fanOut.calls),
+        ),
         ...fanOut.findings,
         ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
       ]),
@@ -152,8 +164,8 @@ export function readKotlinFindings(context, crapLimit) {
     metrics.detektCounts,
     functionUnitLocator({ ...context, kotlin: true }),
   );
-  const findings = withoutCoveredSourceFindings(
-    [
+  const findings = withoutCoveredFindings(
+    withoutSpringCoveredReads([
       ...ruleFindings,
       ...readKotlinNotes(reportRoot),
       ...readSuppressionFindings(projectRoot, {
@@ -164,7 +176,7 @@ export function readKotlinFindings(context, crapLimit) {
         sourceRoots: manifest.kotlinSourceRoots ?? [],
         testRoots,
       }),
-      ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+      ...readTestAssertionFindings(projectRoot, testRoots, views.assertionHelpers),
       ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
       ...readKotlinReviewFindings(views),
       ...readKotlinStructureFindings(metrics, projectRoot),
@@ -172,7 +184,7 @@ export function readKotlinFindings(context, crapLimit) {
       ...(jacoco === undefined
         ? []
         : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
-    ],
+    ]),
     context.classLimits,
   );
   return withoutTransactionAwareCacheWrites(findings, { projectRoot, roots: springRoots(context) });

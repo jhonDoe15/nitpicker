@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planAnalyzerShards, selectAnalyzerShard } from './sharding.mjs';
+import { planAnalyzerShards, selectAnalyzerShard } from './sharding.mts';
 
 function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
   return { name, dependencies, shardWeight };
@@ -46,5 +46,21 @@ describe('quality analyzer sharding', () => {
     expect(() =>
       planAnalyzerShards([analyzer('dependent', { dependencies: ['missing'] })], 1),
     ).toThrow(/requires unknown analyzer missing/);
+  });
+
+  it('keeps an analyzer on the shard of the analyzers it is colocated with', () => {
+    const analyzers = [
+      analyzer('coupling', { shardWeight: 5 }),
+      analyzer('lint', { shardWeight: 5 }),
+      { ...analyzer('change-history'), colocatedWith: ['coupling', 'not-selected'] },
+    ];
+
+    expect(planAnalyzerShards(analyzers, 2).map((shard) => shard.map(({ name }) => name))).toEqual([
+      ['coupling', 'change-history'],
+      ['lint'],
+    ]);
+    expect(() => planAnalyzerShards([{ ...analyzer('history'), colocatedWith: [''] }], 1)).toThrow(
+      /colocatedWith must contain non-empty strings/,
+    );
   });
 });

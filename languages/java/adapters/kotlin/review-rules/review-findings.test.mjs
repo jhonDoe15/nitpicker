@@ -5,18 +5,21 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
 import { buildViews } from './build-view.mjs';
-import { readKotlinFacts } from './kotlin-facts.mjs';
+import { REVIEW_TOOL, SOURCE_TOOL, withoutCoveredFindings } from './review-finding.mjs';
+import { readKotlinFacts } from './report/kotlin-report.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
 import {
   call,
+  cleanupCall,
   file,
   fn,
   klass,
   parameter,
   testFile,
   testMethod,
+  useLaunch,
   wait,
 } from './test-support/facts.mjs';
 
@@ -34,7 +37,10 @@ function projectWith(facts) {
   const reportRoot = path.join(root, 'build/nitpicker');
   mkdirSync(reportRoot, { recursive: true });
   if (facts !== undefined) {
-    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify(facts));
+    writeFileSync(
+      path.join(reportRoot, 'kotlin-facts.json'),
+      JSON.stringify({ design: { modules: [], types: [], callables: [] }, ...facts }),
+    );
   }
   return { root, reportRoot };
 }
@@ -64,6 +70,16 @@ describe('readKotlinReviewFindings', () => {
             }),
           ],
           calls: [call('Mailer')],
+          handlers: [
+            {
+              line: 5,
+              symbol: 'Mailer.send',
+              type: 'InterruptedException',
+              name: 'e',
+              cancellation: false,
+              interrupt: true,
+            },
+          ],
         }),
         testFile({
           classes: [klass('SampleTest')],
@@ -78,9 +94,45 @@ describe('readKotlinReviewFindings', () => {
 
     expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
       'pmd/FixedSleepInTest',
+      'pmd/SwallowedInterrupt',
       'structure/unused-option',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
+describe('readKotlinReviewFindings for coroutine lifetimes', () => {
+  it('reads the cleanup and use-block facts of a file into kotlin-source findings the schema accepts', () => {
+    const facts = {
+      files: [
+        file({
+          imports: [{ path: 'kotlinx.coroutines', all: true }],
+          cleanupCalls: [cleanupCall('delay')],
+          useLaunches: [useLaunch()],
+        }),
+      ],
+    };
+    const { root, reportRoot } = projectWith(facts);
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/SuspendFunInFinallySection',
+    ]);
+  });
+});
+
+describe('readKotlinReviewFindings design facts', () => {
+  it('adds a tool error when the facts report lacks the design facts of its files', () => {
+    const { root, reportRoot } = projectWith({ files: [file()] });
+    writeFileSync(path.join(reportRoot, 'kotlin-facts.json'), JSON.stringify({ files: [file()] }));
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ rule, classification }) => `${rule} ${classification}`)).toEqual([
+      'design-facts tool-error',
+    ]);
   });
 });
 
@@ -104,7 +156,7 @@ describe('readKotlinReviewFindings on the test sources', () => {
 
     expect(
       findings.map(({ tool, rule, path: file, location }) => [tool, rule, file, location.line]),
-    ).toEqual([['pmd', 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
+    ).toEqual([[REVIEW_TOOL, 'DisabledTest', 'src/test/kotlin/SkippedTest.kt', 3]]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
   });
 });
@@ -238,20 +290,42 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ServerOrContainerPerTest',
       'pmd/AssertionInControlFlow',
       'pmd/CoroutineEscapesTest',
+      'pmd/FloatEqualityInTest',
+      'pmd/WeakAssertionInTest',
+      'pmd/DroppedCallbackInTest',
+      'pmd/MessageAfterAssertion',
       'pmd/GlobalStateLeakInTest',
+      'pmd/SharedTestState',
       'pmd/MockedSubjectInTest',
       'pmd/StaticMockOfProjectType',
+      'pmd/RelaxedMockInTest',
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
+      'pmd/ForwardingMethodAlias',
       'pmd/SingularAndPluralMember',
+      'pmd/timeout-abandons-operation',
+      'pmd/NonAtomicUpdateAcrossSuspension',
+      'pmd/SwallowedInterrupt',
+      'pmd/SwallowedCancellation',
+      'pmd/LockOrderInversion',
+      'pmd/InconsistentFieldLocking',
+      'pmd/ServiceLocatorLookup',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
       'pmd/UnboundedThreadPool',
       'pmd/RecursiveMapUpdate',
+      'pmd/StreamedRowsCollected',
+      'pmd/ReusableObjectPerCall',
+      'pmd/GeneratedMemberCycle',
+      'pmd/GeneratedEqualsSkipsSuperclass',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
+      'kotlin-source/SuspendFunInFinallySection',
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/BlockingCallInCoroutine',
+      'kotlin-source/TimeoutWithoutSuspension',
     ]);
   });
 
@@ -287,5 +361,73 @@ describe('Kotlin exception rules for the review rules', () => {
     expect(() => {
       validateKotlinOptions(onKotlinSource('pmd/SpringFieldInjection'));
     }).toThrow('reported in .java files only: its paths name Kotlin sources');
+  });
+});
+
+describe('withoutCoveredFindings', () => {
+  const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
+
+  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 9),
+      at(SOURCE_TOOL, 'IoCallInLoop', 3),
+      at(SOURCE_TOOL, 'IoCallInLoop', 7),
+      at(REVIEW_TOOL, 'SpringDataNoSaveInLoop', 7),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[2],
+      findings[3],
+      findings[5],
+    ]);
+  });
+
+  it('keeps the blocking-call finding when an unbounded wait is reported on the same line', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'UnboundedWait', 3),
+      at(SOURCE_TOOL, 'BlockingCallInCoroutine', 3),
+      at(SOURCE_TOOL, 'ReactorBlockWithoutTimeout', 5),
+      at(SOURCE_TOOL, 'BlockingCallInCoroutine', 5),
+      at(SOURCE_TOOL, 'UnboundedWait', 9),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([findings[1], findings[3], findings[4]]);
+  });
+
+  it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'HttpWithoutTimeout', 3),
+      at(REVIEW_TOOL, 'SpringHttpClientPerCall', 3),
+    ];
+    const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
+
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'app' })).toEqual(findings);
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'other' })).toEqual(
+      findings.slice(1),
+    );
+  });
+
+  it('keeps one finding for a swallowed cancellation or interrupt and for a fixed sleep in a test', () => {
+    const findings = [
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 4),
+      at(REVIEW_TOOL, 'SwallowedInterrupt', 4),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 8),
+      at(REVIEW_TOOL, 'SwallowedCancellation', 8),
+      at(SOURCE_TOOL, 'CatchOnlyLogsOrReturnsDefault', 12),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 15),
+      at(REVIEW_TOOL, 'FixedSleepInTest', 15),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 20),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[3],
+      findings[4],
+      findings[6],
+      findings[7],
+    ]);
   });
 });

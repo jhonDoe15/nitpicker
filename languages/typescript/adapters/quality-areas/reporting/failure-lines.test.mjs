@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { formatTestFailures } from './test-report.mjs';
-import { assertionDetails } from './failure-lines.mjs';
+import { formatTestFailures } from './test-report.mts';
+import { assertionDetails } from './failure-lines.mts';
 
 const headline = '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:';
 

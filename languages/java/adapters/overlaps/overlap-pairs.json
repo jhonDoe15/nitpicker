@@ -102,6 +102,11 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/RegexPartDefect"],
+    "secondary": ["spotbugs/RE_POSSIBLE_UNINTENDED_PATTERN"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/RandomCast"],
     "secondary": ["spotbugs/RV_01_TO_INT"],
     "scope": "line"
@@ -136,11 +141,6 @@
     "scope": "line"
   },
   {
-    "primary": ["errorprone/FieldCanBeStatic"],
-    "secondary": ["spotbugs/SS_SHOULD_BE_STATIC"],
-    "scope": "line"
-  },
-  {
     "primary": ["errorprone/UnnecessarySemicolon"],
     "secondary": [
       "spotbugs/UCF_USELESS_CONTROL_FLOW_NEXT_LINE",
@@ -167,6 +167,16 @@
   {
     "primary": ["errorprone/NonAtomicVolatileUpdate"],
     "secondary": ["spotbugs/VO_VOLATILE_INCREMENT"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/InconsistentFieldLocking"],
+    "secondary": [
+      "spotbugs/IS2_INCONSISTENT_SYNC",
+      "spotbugs/AT_STALE_THREAD_WRITE_OF_PRIMITIVE",
+      "spotbugs/AT_NONATOMIC_64BIT_PRIMITIVE",
+      "errorprone/NonAtomicVolatileUpdate"
+    ],
     "scope": "line"
   },
   {
@@ -302,14 +312,19 @@
     "scope": "member"
   },
   {
+    "primary": ["pmd/SwallowedInterrupt"],
+    "secondary": ["errorprone/EmptyCatch", "pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
+    "scope": "catch"
+  },
+  {
     "primary": ["errorprone/EmptyCatch"],
     "secondary": ["pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["pmd/EmptyCatchBlock"],
     "secondary": ["checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["errorprone/MultiVariableDeclaration"],
@@ -330,9 +345,9 @@
     "primary": ["errorprone/IdentifierName"],
     "secondary": [
       "checkstyle/CatchParameterName",
+      "checkstyle/GoogleNonConstantFieldName",
       "checkstyle/LambdaParameterName",
       "checkstyle/LocalVariableName",
-      "checkstyle/MemberName",
       "checkstyle/MethodName",
       "checkstyle/ParameterName",
       "checkstyle/PatternVariableName",
@@ -419,6 +434,41 @@
     "scope": "line"
   },
   {
+    "primary": ["errorprone/StreamResourceLeak"],
+    "secondary": ["pmd/StreamResourceNotClosed"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/PatternMatchingInstanceof"],
+    "secondary": ["pmd/InstanceofThenCast"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/ThrowSpecificExceptions"],
+    "secondary": ["pmd/AvoidThrowingRawExceptionTypes"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/legacy-date-time"],
+    "secondary": ["errorprone/JavaUtilDate"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/clock-now"],
+    "secondary": ["errorprone/JavaTimeDefaultTimeZone"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/thread-sleep"],
+    "secondary": ["errorprone/PreferJavaTimeOverload"],
+    "scope": "line"
+  },
+  {
+    "primary": ["forbiddenapis/java-deserialization"],
+    "secondary": ["errorprone/BanSerializableRead"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/MissingOverride"],
     "secondary": ["pmd/MissingOverride"],
     "scope": "line"
@@ -464,11 +514,6 @@
     "scope": "line"
   },
   {
-    "primary": ["errorprone/ForEachIterable"],
-    "secondary": ["pmd/ForLoopCanBeForeach"],
-    "scope": "line"
-  },
-  {
     "primary": ["errorprone/Finally"],
     "secondary": ["pmd/DoNotThrowExceptionInFinally", "pmd/ReturnFromFinallyBlock"],
     "scope": "line"
@@ -504,13 +549,24 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/MixedTimeUnits"],
+    "secondary": ["errorprone/TimeUnitMismatch"],
+    "scope": "line"
+  },
+  {
     "primary": ["pmd/LegacyCalendarApi"],
     "secondary": [
       "pmd/AvoidCalendarDateCreation",
       "pmd/SimpleDateFormatNeedsLocale",
       "errorprone/DefaultLocale",
-      "errorprone/DateFormatConstant"
+      "errorprone/DateFormatConstant",
+      "forbiddenapis/legacy-date-time"
     ],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/DefaultTimeZone"],
+    "secondary": ["forbiddenapis/legacy-date-time"],
     "scope": "line"
   },
   {
@@ -688,6 +744,24 @@
       "spotbugs/LI_LAZY_INIT_STATIC",
       "spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED"
     ],
+    "scope": "line"
+  },
+  {
+    "primary": ["kotlin-source/ChildCoroutineOutlivesResource"],
+    "secondary": ["pmd/CoroutineEscapesTest"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/SqlConcatenation"],
+    "secondary": [
+      "spotbugs/SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE",
+      "spotbugs/SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING"
+    ],
+    "scope": "line"
+  },
+  {
+    "primary": ["checkstyle/MagicNumber"],
+    "secondary": ["pmd/AvoidLiteralsInIfCondition"],
     "scope": "line"
   }
 ]

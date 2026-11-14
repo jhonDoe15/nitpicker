@@ -1,5 +1,5 @@
 {
-  "version": "4.9.3",
+  "version": "4.9.8",
   "rules": {
     "AA_ASSERTION_OF_ARGUMENTS": {
       "anchor": "aa-assertion-is-used-to-validate-an-argument-of-a-public-method-aa-assertion-of-arguments",
@@ -22,7 +22,7 @@
       "category": "SECURITY"
     },
     "AT_NONATOMIC_64BIT_PRIMITIVE": {
-      "anchor": "at-this-write-of-this-64-bit-primitive-variable-may-not-atomic-at-nonatomic-64bit-primitive",
+      "anchor": "at-this-write-of-this-64-bit-primitive-variable-may-not-be-atomic-at-nonatomic-64bit-primitive",
       "category": "MT_CORRECTNESS"
     },
     "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE": {
@@ -192,6 +192,10 @@
       "anchor": "ct-be-wary-of-letting-constructors-throw-exceptions-ct-constructor-throw",
       "category": "BAD_PRACTICE"
     },
+    "CWO_CLOSED_WITHOUT_OPENED": {
+      "anchor": "cwo-method-releases-lock-without-opening-it-cwo-closed-without-opened",
+      "category": "MT_CORRECTNESS"
+    },
     "DB_DUPLICATE_BRANCHES": {
       "anchor": "db-method-uses-the-same-code-for-two-branches-db-duplicate-branches",
       "category": "STYLE"
@@ -339,6 +343,10 @@
     "DMI_LONG_BITS_TO_DOUBLE_INVOKED_ON_INT": {
       "anchor": "dmi-double-longbitstodouble-invoked-on-an-int-dmi-long-bits-to-double-invoked-on-int",
       "category": "CORRECTNESS"
+    },
+    "DMI_MISLEADING_SUBSTRING": {
+      "anchor": "dmi-invocation-of-substring-0-which-returns-the-same-as-tostring-dmi-misleading-substring",
+      "category": "STYLE"
     },
     "DMI_NONSERIALIZABLE_OBJECT_WRITTEN": {
       "anchor": "dmi-non-serializable-object-written-to-objectoutput-dmi-nonserializable-object-written",

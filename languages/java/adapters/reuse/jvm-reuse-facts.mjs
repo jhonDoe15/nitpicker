@@ -1,41 +1,30 @@
 import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
-import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { pathInside, sourceFilesUnder } from '../review-rules/java-sources.mjs';
+import { pathInside, projectSourceFiles } from '../review-rules/java-sources.mjs';
+import { readJvmUnits } from '../near-duplicates/jvm-trees.mjs';
 import { definitionKey } from './jvm-definition-keys.mjs';
 import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
+import {
+  aliasEntryFields,
+  kotlinEntryPointFindings,
+  typeAliasReexports,
+} from './kotlin-type-aliases.mjs';
 
 const REUSE_TOOL = 'structure';
-const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
-const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
+const COUPLING_TOOL = 'coupling';
+const SHARED_USAGE_RULES = ['shared-used-by-one-feature'];
+const REUSE_RULES = [
+  'duplicate-definition',
+  'exported-name-collision',
+  'sibling-copy-edit',
+  'near-duplicate',
+  'decided-condition',
+  'duplicate-branch',
+];
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
-const NOTHING_SKIPPED = new Set();
 const UNKNOWN_BASE = { unchanged: false, definitions: [] };
-
-function sourceRootsOf(project, kotlin) {
-  return [
-    ...(project.sourceRoots ?? []),
-    ...(kotlin ? (project.kotlinSourceRoots ?? []) : []),
-  ].filter((root) => root !== '' && !OUTSIDE_SOURCES.test(root));
-}
-
-function projectSources(projectRoot, { project, kotlin }) {
-  const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
-  return [...new Set(sourceRootsOf(project, kotlin))]
-    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions, NOTHING_SKIPPED))
-    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
-}
-
-function sourceFiles(projectRoot, { projects, kotlin, exclude = [] }) {
-  const excluded = exclude.map((glob) => globMatcher(glob));
-  const found = projects
-    .flatMap((project) => projectSources(projectRoot, { project, kotlin }))
-    .filter(([file]) => !excluded.some((matcher) => matcher.test(file)));
-  return new Map(found.toReversed());
-}
 
 function parse(text, file) {
   return readJvmDefinitions(text, { kotlin: file.endsWith('.kt') });
@@ -55,7 +44,7 @@ function neutralDefinition(file, definition, context) {
 }
 
 export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }) {
-  const owners = sourceFiles(projectRoot, { projects, kotlin, exclude });
+  const owners = projectSourceFiles(projectRoot, { projects, kotlin, exclude });
   const files = [...owners].map(([file, project]) => ({
     file,
     module: project.qualifier ?? '',
@@ -67,11 +56,15 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
     bindings: fileBindings(index, entry),
     scope: referenceScope(index, entry),
   }));
+  const aliases = bound.flatMap((entry) => typeAliasReexports(index, entry));
   return {
-    modules: bound.map(({ file, parsed }) => ({
-      file,
+    modules: bound.map((entry) => ({
+      file: entry.file,
       role: 'production',
-      ...(parsed.definitions.some(({ entry }) => entry === true) ? { entry: true } : {}),
+      ...(entry.parsed.definitions.some(({ entry: isEntry }) => isEntry === true)
+        ? { entry: true }
+        : {}),
+      ...aliasEntryFields(entry, aliases),
     })),
     packages: projects.map((project) => ({
       root: project.qualifier ?? '',
@@ -82,8 +75,24 @@ export function jvmReuseFacts(projectRoot, { projects, kotlin = false, exclude }
         neutralDefinition(entry.file, definition, entry),
       ),
     ),
-    imports: bound.flatMap((entry) => importFacts(index, entry)),
+    imports: [...bound.flatMap((entry) => importFacts(index, entry)), ...aliases],
+    nearDuplicateUnits: unitFacts(projectRoot, files),
   };
+}
+
+function unitFacts(projectRoot, files) {
+  const sources = files.map(({ file }) => file).filter((file) => /\.(?:java|kt)$/u.test(file));
+  return readJvmUnits(projectRoot, sources).map(
+    ({ file, name, start, end, tokens, final, tree }) => ({
+      file,
+      name,
+      start,
+      end,
+      tokens,
+      final,
+      tree,
+    }),
+  );
 }
 
 function baselineReader(projectRoot, { baselineRoot, baselineMovesFile }) {
@@ -117,14 +126,30 @@ function baselineOf(projectRoot, policy) {
   return onHead ? { readFile: baselineReader(projectRoot, policy) } : undefined;
 }
 
-export function readJvmReuseFindings(projectRoot, { projects, kotlin = false, policy = {} }) {
+export function readJvmReuseFindings(projectRoot, options) {
+  return readJvmReuse(projectRoot, options).findings;
+}
+
+export function readJvmReuse(projectRoot, { projects, kotlin = false, policy = {} }) {
   const facts = jvmReuseFacts(projectRoot, { projects, kotlin, exclude: policy.exclude });
-  return sharedFactFindings(facts, {
-    language: kotlin ? 'kotlin' : 'java',
-    analyzerName: REUSE_TOOL,
-    rules: REUSE_RULES,
-    policy: { exceptions: policy.exceptions ?? [] },
-    baseline: baselineOf(projectRoot, policy),
-    collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
-  });
+  const language = kotlin ? 'kotlin' : 'java';
+  const exceptions = policy.exceptions ?? [];
+  const findings = [
+    ...sharedFactFindings(facts, {
+      language,
+      analyzerName: REUSE_TOOL,
+      rules: REUSE_RULES,
+      policy: { exceptions },
+      baseline: baselineOf(projectRoot, policy),
+      collisionFixFor: (importer) => (importer.endsWith('.java') ? JAVA_COLLISION_FIX : undefined),
+    }),
+    ...sharedFactFindings(facts, {
+      language,
+      analyzerName: COUPLING_TOOL,
+      rules: SHARED_USAGE_RULES,
+      policy: { exceptions, ...(policy.layout === undefined ? {} : { layout: policy.layout }) },
+    }),
+    ...(kotlin ? kotlinEntryPointFindings(facts, exceptions) : []),
+  ];
+  return { findings, imports: facts.imports };
 }

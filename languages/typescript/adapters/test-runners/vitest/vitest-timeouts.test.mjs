@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
-import { runVitest } from './vitest.mjs';
+import { runVitest } from './vitest.mts';
 
 const projects = createRunnerProjects();
 

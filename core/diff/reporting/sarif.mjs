@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import { sarifRunProfile } from '../../quick/report-formats.mjs';
 import { plainText } from '../../../shared/reference/facts.mjs';
 import { entryForFinding, referenceLinks, referenceUrl } from '../../../shared/reference/store.mjs';
 import { noteText } from './format/notes.mjs';
@@ -88,7 +89,7 @@ function originalUriBaseIds({ projectPath, repositoryRoot }) {
   };
 }
 
-function notifications({ toolErrors, notes, dropped }) {
+function notifications({ toolErrors, notes, dropped, profile }) {
   return [
     ...toolErrors.map((error) => ({
       level: 'error',
@@ -96,10 +97,11 @@ function notifications({ toolErrors, notes, dropped }) {
     })),
     ...notes.map((note) => ({ level: 'note', message: { text: noteText(note) } })),
     ...(dropped === undefined ? [] : [{ level: 'warning', message: { text: dropped } }]),
+    ...profile.notifications,
   ];
 }
 
-function renderSarifRun({ entries, toolErrors, notes, location, dropped, reference }) {
+function renderSarifRun({ entries, toolErrors, notes, location, dropped, reference, profile }) {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -120,7 +122,10 @@ function renderSarifRun({ entries, toolErrors, notes, location, dropped, referen
         invocations: [
           {
             executionSuccessful: toolErrors.length === 0,
-            toolExecutionNotifications: notifications({ toolErrors, notes, dropped }),
+            toolExecutionNotifications: notifications({ toolErrors, notes, dropped, profile }),
+            ...(Object.keys(profile.properties).length === 0
+              ? {}
+              : { properties: profile.properties }),
           },
         ],
         results: entries.map((entry) => toSarifResult(entry, location.projectPath)),
@@ -138,8 +143,10 @@ function renderSarifLog({
   sources,
   newFirst = true,
   limits,
+  summary = {},
 }) {
   const reference = location.reference ?? referenceLinks();
+  const profile = sarifRunProfile(summary);
   return renderWithinUploadLimits(
     entries,
     (kept) =>
@@ -149,6 +156,7 @@ function renderSarifLog({
         notes,
         location,
         reference,
+        profile,
         dropped:
           kept.length === entries.length
             ? undefined
@@ -173,6 +181,7 @@ export function renderSarifReport(report, options = {}) {
     location: options,
     sources: 'new-findings.json',
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
+    summary: report.summary,
   });
 }
 
@@ -187,6 +196,7 @@ export function renderBaselineSarifReport(report, options = {}) {
     location: options,
     sources: 'new-findings.json with held-findings.json',
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
+    summary: report.summary,
   });
 }
 
@@ -198,5 +208,6 @@ export function renderSnapshotSarifReport(report, options = {}) {
     sources: 'findings.json',
     newFirst: false,
     limits: options.limits ?? SARIF_UPLOAD_LIMITS,
+    summary: report.summary,
   });
 }

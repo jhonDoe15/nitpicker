@@ -30,6 +30,81 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
+- `nitpicker/no-cleanup-skipped-on-failure`: cleanup must not stop at the first failed release. In a
+  function named `close`, `dispose`, `destroy`, `shutdown`, `stop`, `teardown`, `disconnect` or `end` (also
+  `onModuleDestroy`, `onApplicationShutdown`, `[Symbol.dispose]`), in an `afterAll`, `afterEach` or `after`
+  callback, in a callback registered for `SIGTERM`, `SIGINT` or `beforeExit`, and in an `onClose` hook (`app.addHook('onClose', ...)`), it reports a
+  release call, awaited or not, (`close`, `disconnect`, `destroy`, `end`, `quit`, `stop`, `terminate`, `unsubscribe`,
+  `dispose`) that a later statement of the same block follows with another release call or a state reset
+  (an assignment of `undefined`, `null`, a literal or a new collection, or `.clear()`), also when the release sits
+  in an `if`, a loop or a `return`, since a rejection
+  skips those steps and leaves the next start with a half-closed client. It also reports `Promise.all`
+  over two or more release calls or a `.map` callback that releases, which rejects at the first failure
+  and leaves the others unobserved. Allowed: `Promise.allSettled` over the releases and a rethrow of the
+  first failure, `try { await a.close(); } finally { this.a = undefined; }`, a `try`/`catch` around each
+  release, or one release per block.
+- `nitpicker/settle-pending-on-close`: a close function must settle the pending requests its scope keeps. For a
+  class or a factory function with a close, dispose, stop or shutdown function, it reports a `Map`, object or
+  array that gets `resolve` and `reject` pairs, deferreds or promise settle functions added (a function or an
+  object with such members under a name such as `resolve`, `reject`, `deferred`, `resolver` or `settle`, or any
+  function when the collection is named `pending`, `inFlight`, `waiting`, `waiters`, `callbacksById` or
+  `requests`; event handler registries such as `handlers` or `listeners` are not pending requests) when no
+  close function, nor a function it calls (three levels deep), passes the collection to a call or a
+  `forEach`, iterates it (also through a local alias or a snapshot) and settles or hands each entry on.
+  Failure paths that give up before close (a decode error, a give-up timeout) are not read: the preset has no
+  advisory level, and a report-only form would be a finding nobody can act on. A `.clear()` alone leaves every caller still waiting hanging forever. Allowed: reject
+  or resolve each entry before clearing, or hand the collection to a helper that does.
+- `nitpicker/release-listeners-on-close`: listeners and timers must be released by the scope that registers
+  them. In a class or factory with a close, dispose, stop or shutdown function, outside composition-root
+  files, it reports `on`, `addListener` and `addEventListener` on an emitter held in a field (`this.socket`),
+  a closure or module variable or `process` when nothing in the scope calls `off`, `removeListener`,
+  `removeEventListener` or `removeAllListeners` (or closes or destroys the emitter) on it, and a
+  `setInterval`, or a `setTimeout` whose handle is kept in a field or long-lived variable, that the scope
+  never passes to `clearInterval` or `clearTimeout`. Emitters created inside the method that uses them, a
+  registration in the constructor or at the top level of the factory that creates the emitter (it runs once per
+  emitter) and `process.on`, which the composition-root rule owns, `once: true`, an `AbortSignal` option and a `setTimeout` inside a `new Promise` executor are left alone.
+  Allowed: keep the handler or handle and release it in close, or register with a signal that close aborts.
+- `nitpicker/no-cached-rejection` (needs type information): a cached promise must not keep a rejection or let
+  a stale attempt win. When a class field (`this.conn`) or a closure or module variable that outlives the call is
+  assigned a promise (by type) and reused through a guard (`if (conn) return conn`, `conn ??= start()`,
+  `conn ||= start()`, `return conn ?? (conn = start())`, `if (!conn) conn = start(); return conn`), it reports
+  the assignment when no rejection path clears it (an assignment of `undefined`, `null` or `void 0` inside a
+  `catch` or a `.catch`, `.then` or `.finally` callback of the same function), and reports the clearing when it
+  never compares the binding with the attempt (`conn === attempt`). Unknown types are never findings, and
+  an assignment that always replaces the value without a guard is a fresh attempt and is left alone. Concurrent lazy loads that do not share one in-flight promise are not reported: that needs data flow across calls, and the rule reads one function at a time. A static field cached through the class name (`A.c ??= connect()`) is not tracked. A clear inside a `finally` block or a same-class helper that the rejection path calls counts. Allowed:
+  `const attempt = start(); conn = attempt; try { return await attempt; } catch (error) { if (conn === attempt)
+- `nitpicker/no-add-only-collection`: a long-lived collection must not only grow. For a `Map`, `Set` or array held
+  in a class field of a long-lived class (one with a close, dispose, stop or shutdown function, a decorator, or a
+  name ending in `Service`, `Manager`, `Registry`, `Store`, `Cache`, `Client`, `Server`, `Gateway` or `Repository`)
+  or in the closure variable of a factory function that has such a close function, that a method or returned function adds to (`set`,
+  `add`, `push`, `unshift`, `[key] =`) with a non-literal key outside the constructor, it reports the collection when
+  nothing in the scope removes from it (`delete`, `clear`, `splice`, `shift`, `pop`, `length = 0`, a reassignment),
+  reads its `size` or `length` (a bound), or hands it to a call. Registries are skipped: adds in the constructor, in
+  `init*`, `register*` or `on*Init` functions, or with a literal key, and a `WeakMap` or `WeakSet`. Module-level
+  bindings are not checked, also in files where the module state rule is off, because a module has no close
+  function to compare with, and collections that `nitpicker/settle-pending-on-close` owns are skipped. An access
+  through `const { m } = this` or `this['m']` counts like `this.m`. And callbacks passed to a call (`forEach`, `on`)
+  are not factory closures. Allowed: delete the entry when its request, session or run ends, in `finally` or the close
+  handler, bound it, or key a `WeakMap` by the object.
+  { conn = undefined; } throw error; }`.
+- `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
+  still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
+  closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),
+  it reports a use of that resource inside a call detached with `void`, inside the callback of
+  `setTimeout`, `setInterval`, `setImmediate`, `queueMicrotask` or `process.nextTick` (unless the callback
+  settles a promise the same function awaits in the block), and inside an async call that is returned
+  without `await` or stored in a variable nothing reads (an async function or arrow of the same file, or
+  an async IIFE). `await` the task before the block ends, `return await` it, or open and close the
+  resource inside the task. It needs no types and reads one function at a time, so these forms are not
+  seen: a promise that only type information shows (`const p = client.fetch(db)` of an imported
+  function); `try { return db.query(); } finally { await db.close(); }`, because without types a
+  synchronous call that returns a value cannot be told from one that returns a promise; a `.then`,
+  `.catch` or `.finally` chain on the task; a resource reached through an alias (`const alias = db`) or
+  a destructured member; a `finally` that closes with `await db?.close()`, with a conditional
+  (`if (db) { await db.close(); }`), through a helper or inside a nested statement, since only a
+  top-level `x.close()` statement of the `finally` names the resource; and a task started in another
+  function that receives the resource. `@typescript-eslint/no-floating-promises` already reports the
+  bare call, and this rule covers what `void` hides from it. Production code only.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `nitpicker/no-accumulating-spread`: an accumulator that grows is not spread into its own next
@@ -56,6 +131,82 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   reducer and a callback with one or three parameters are not reported either. A spread in `map`
   that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
   update and is not reported: copying one element per step is linear.
+- `nitpicker/no-costly-collection-form`: a collection form with a cheaper equivalent, in all
+  production code (not in tests). It reports an array declared with an array literal that gets
+  `push`, `unshift` or `xs = [...xs, x]` and is searched with `includes`, `indexOf(x) === -1` (or
+  another test against `-1` or `0`) or `some((y) => y === x)` inside a loop, a callback or a
+  recursive function such as a visitor; an array also used by position (`xs[i]`, `splice`, `sort`,
+  `pop`, `shift`, `at`, a positional `indexOf`) is left alone. Allowed form: a `Set` (`add`, `has`;
+  `[...set]` keeps insertion order). It reports `find`, `findIndex`, `findLast`,
+  `findLastIndex` or `some` whose callback only compares a property of the item with `===` or `==`
+  to a value that is not a literal (`handlers.find((h) => h.message === event.type)`), inside a
+  loop, an iteration callback (`map`, `forEach`, `filter`, `reduce` and the like) or a listener
+  (`on`, `once`, `addListener`, `prependListener`, `addEventListener`, `subscribe`), on a binding declared outside it that is never
+  reassigned or changed in place (`push`, `splice`, `sort` and the like), or a `this` field that
+  only the constructor assigns. Allowed form: a `Map` built once, before the loop or handler. It
+  reports `sort(...)` or `toSorted(...)` followed by `[0]`, `.at(0)`, `.at(-1)`, `.pop()`, `.shift()`
+  or a one-element destructuring (`const [first] = xs.toSorted(cmp)`); `xs.sort()` on a binding read
+  again later, or on a property, keeps the sorted array and is left alone. Allowed form: one pass
+  with `reduce`, or `Math.min`/`Math.max` for a few numbers. An exception fits only for a list that
+  always stays a handful of items. The rule reads no types, so it behaves the same in the
+  JavaScript preset; it reads local arrays only, not class fields or exported arrays. The same rules run as `list-used-as-set`, `linear-lookup-in-loop` and ruff
+  `FURB192` (Python), `pmd/ListUsedAsSet`, `pmd/LinearLookupInLoop` and `pmd/SortForExtreme` (Java)
+  and `kotlin-source/` rules of the same names (Kotlin). Only this rule also reads `indexOf`
+  and identity `some` as membership tests and listeners as repeated runs.
+- `nitpicker/no-collected-stream-rows`: every item of a stream, async generator or cursor
+  collected into one array, in all production code (not in tests). It reports `push` or `unshift` inside
+  `for await (const x of source)`, where `source` is not provably an array (an array
+  literal, an array method or `Array.from`, `Promise.all` and the like, or, with type information, a
+  value typed as an array are left alone; a source of unknown type counts, since `for await` is how a stream is read), `xs` is an array literal declared before the loop, the loop never drains it
+  (`splice`, `pop`, `shift`, `length = 0` or a reassignment; `xs = [...xs, x]` is
+  `nitpicker/no-accumulating-spread`'s) and code after the loop reads it. Bytes
+  that are joined after the loop (`Buffer.concat`, `join`, `new Blob`) and a loop that can `break`
+  or `return` early (a first page) are left alone. Allowed form:
+  flush a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`)
+  and the rest once after it. An exception fits only for a source that always stays small. The same
+  form runs as `streamed-rows-collected` (Python) and `pmd/StreamedRowsCollected` (Java and Kotlin).
+- `nitpicker/no-wasted-collection-step`: a collection or promise step that copies for nothing or
+  walks the data twice, in all production code (not in tests). It reports `filter(p)[0]` and
+  `filter(p).at(0)` with a callback `p` (allowed form: `find(p)`; a selector string, as in jQuery,
+  is left alone), `find(p)` with an inline callback used only as a test (`!== undefined`, `!= null`,
+  `!`, `Boolean(...)`, an `if`, loop or ternary test; allowed form: `some(p)`), `map(f).flat()`
+  (allowed form: `flatMap(f)`), a lone spread of an array that is already new (`[...xs.slice(1)]`,
+  `[...Object.keys(o)]`, `[...await Promise.all(ps)]`; not `map` or `filter`, which iterator
+  helpers share) or of an iterable into a call that copies it at once (`new Set([...xs])`,
+  `Array.from([...xs])`, `Promise.all([...ps])`; a spread before `for...of` or `yield*` is a
+  snapshot and stays), `{ ...(options || {}) }` and `?? {}` (spreading `undefined` adds nothing),
+  `xs.length > 0 && xs.some(p)` and `xs.length === 0 || xs.every(p)` when `xs` calls nothing,
+  `Promise.all([one])` (allowed form: `[await one]`) and `Promise.race([one])`, and an `await`
+  inside the list given to `Promise.all`, `allSettled`, `any` or `race`. With type information,
+  `@typescript-eslint/prefer-find` and `@typescript-eslint/prefer-includes` cover the typed forms.
+  The same stream forms run as `pmd/RedundantStreamStep` (Java), the detekt rules
+  `UseAnyOrNoneInsteadOfFind` and `UnnecessaryFilter` (Kotlin) and ruff `C4`, `PERF` and `RUF015`
+  (Python).
+- `nitpicker/no-hardcoded-secret`: a secret string written into production code. It reports a string
+  that looks like a secret (`shared/naming/secret-words.mjs`, the same definition as every other
+  preset: six characters or more with letters and digits, or three character classes; placeholders,
+  paths, message keys, URLs and a value equal to the name are not secrets) given to a name ending in
+  `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`,
+  `accessKey`, `secretKey`, `authKey`, `signingKey`, `encryptionKey`, `hmacKey` or `jwtKey`: a variable,
+  a class field, an object property, an assignment to a variable or member (`config["api_key"] = ...`), a
+  parameter default, and the fallback of an environment read (`process.env.API_TOKEN ?? "..."`,
+  `import.meta.env`, `Deno.env.get`). The literal may be built from parts (`"..." + suffix`), cast, trimmed
+  or wrapped in `Buffer.from`, or sit in either branch of a conditional or in a `||`/`??` fallback. It also
+  reports, anywhere, a string shaped like an AWS key, a GitHub or Slack token, a `sk_live_` or `sk-proj-` key,
+  a private key header, a URL with `user:password@`, or a `Bearer`/`Basic`/`Token` value. Allowed form: read
+  it from the environment or a secrets manager and inject it. Test code and the support folders (`test-support/`,
+  `mocks/`, `__fixtures__/`, stories) are not production code, so neither secret rule runs there. An exception fits a
+  public test key or a documented example. The same form runs as `hardcoded-secret` and `credential-shape` (Python and Go),
+  `pmd/HardcodedSecret` and `pmd/CredentialLiteral` (Java) and the `HardcodedSecret` and `CredentialLiteral`
+  source checks (Kotlin).
+- `nitpicker/no-secret-in-log`: a secret-named value passed to a `console` method, a logger call (`log`,
+  `logger`, `winston`, `pino`, `req.log`, `this.logger` and the like), `process.stdout.write`,
+  `process.stderr.write` or an `Error` constructor: as an argument, a member (not of a `tokenizer`), in a
+  template, in a `+`, in a `||`/`??`/conditional branch, as an object property or key, inside `String(...)`,
+  `JSON.stringify(...)` or `.toString()`, or an environment read of such a name. `hasToken`, `isSecret`, a
+  `SCREAMING_CASE` constant, `token.length`, `typeof token`, a masking call and a property whose value is a
+  status are fine. Allowed form: log that the secret is set, or a masked tail. The same form runs as
+  `secret-in-log` (Python and Go), `pmd/SecretInLog` (Java) and the `SecretInLog` source check (Kotlin).
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate
   fire-and-forget is written `void job();`, typescript-eslint's own form; `.then()` and `.catch()`
@@ -75,6 +226,57 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   banned. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Shared read/modify/write operations across `await` are rejected
+  (`nitpicker/require-atomic-updates`, which runs ESLint 10.9.1's `require-atomic-updates` with
+  `allowProperties: false` and keeps only some of its reports) in production and test code,
+  including the JavaScript dialect: `state.total += await load()`,
+  `total = total + (await load())` on a binding that closures or other calls share,
+  `state.items = [...state.items, await load()]`, a lazy initialization written as an operator
+  (`cached ??= await load()`), and a value read into a local before the `await` and written back
+  after it (`const current = total; const delta = await load(); total = current + delta`).
+- A plain `=` is reported only when its value reads the location it writes before the `await`:
+  directly, or through a local that holds such a read (followed through aliases, destructuring and
+  compound updates of the local). ESLint's rule alone also reports a write whose value never read
+  that location once anything of the same object was read before the `await`; nitpicker drops
+  those, so the advised local-first forms pass:
+  `const user = await verify(req.headers.token); req.user = user;`,
+  `const { id } = order; const items = await load(id); order.items = items;` and the lazy
+  initialization below.
+
+  ```ts
+  if (cached === undefined) {
+    const value = await load();
+    cached = value;
+  }
+  ```
+
+- Await the new value into a local first, then read and write the shared state in one step with no
+  `await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue is
+  not recognized: `mutex.runExclusive(async () => { state.total += await load(); })` and an update
+  between `acquire()` and `release()` are still reported. A value that only one call can observe (a
+  local, an object the function creates) passes, and so does `state.items.push(await load())`,
+  which mutates in place. When the state is already serialized or confined to one task, a reviewed
+  `exceptions` entry (`rule: "nitpicker/require-atomic-updates"`, `paths`, `reason`) is the route.
+- The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
+  It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and `strictTypeChecked`
+  do not include ESLint's rule); Oxlint 1.87.0 has no native equivalent, so the existing JavaScript
+  plugin bridge runs it, and the finding keeps the standard ESLint semantic identity. The message
+  adds the failure mechanism and the allowed forms to ESLint's evidence. Other immutability rules
+  can independently reject mutation; this rule specifically identifies stale reads across
+  suspension. `allowProperties: true` would disable the property check and is deliberately not the
+  preset default.
+- Limits of the upstream analysis, measured and not assumed: it does not follow `this`
+  (`this.total += await load()` passes; the preset bans classes outside `Error` subclasses, so this
+  mostly concerns tests, object-literal methods and framework classes), a local alias of a shared
+  object escapes detection (`const alias = state; alias.total += await load()`), and an update
+  through a method call is not an assignment (`cache.set(key, (cache.get(key) ?? 0) + await load())`
+  passes). Run over nitpicker's own sources and several open-source TypeScript and JavaScript
+  packages, the rule reported nothing; that measures false positives only, and the classes above
+  come from probes written for them.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)): a
+  saved local is followed, `this` is not, and no lock or semaphore is recognized. The Python rule
+  follows `self` and recognizes a proven shared lock and a one-slot semaphore; the Kotlin rule
+  recognizes `Mutex.withLock` and a one-permit `Semaphore`.
 - An `'error'` listener on every socket, file stream, child process and client the code creates
   (`nitpicker/require-error-listener`, production code). Node.js throws an `'error'` event that
   has no listener, so a dropped connection, a missing file or a failed spawn stops the whole
@@ -109,6 +311,48 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   (`new RedisStore({ client })`). Known limits: a static field, a parameter default and a
   constructor function outside a `class` are not read, and a variable assigned twice counts a
   listener on either value for both.
+- A rejection path in every `new Promise` that waits on something that can fail
+  (`nitpicker/require-promise-reject`, production code). When the executor settles through a
+  listener (`on`, `once`, `addListener`, `prependListener`, `prependOnceListener`, `addEventListener`
+  whose handler is `resolve` or calls it), a pipe into something that holds `resolve`
+  (`body.pipe(concat(resolve))`) or a callback passed to a call (an inline function that calls
+  `resolve`, `resolve` itself as in `server.listen(port, resolve)` or `task.then(resolve)`, or a call
+  that receives it, as in `concat(resolve)`), it must take `reject` and use it: called, passed as a
+  listener or callback, or stored (`{ resolve, reject }`). Otherwise the `'error'` event or the error a
+  callback reports never settles the promise and the caller waits forever. An executor without
+  `reject` passes when every such source already settles on failure: an `'error'` listener on the same
+  receiver settles it (`image.addEventListener('error', () => resolve(false))`), or the callback reads
+  its error argument (`fs.access(p, (err) => resolve(!err))`). The message names the first source that
+  does not. Callbacks that never reach `resolve` (`JSON.parse(text, (key, value) => value)`) are not
+  sources. Inside an executor that does take
+  `reject`, a node-style callback that calls `resolve` must read its error argument (a first
+  parameter named `err`, `error`, `e`, `ex`, `exc`, `exception` or `...Err`/`...Error`, with or without
+  leading underscores, or typed as an `Error` in TypeScript
+  files): `if (error) { reject(error); return; }`. With type information a callback that declares
+  no parameters where the callee passes an error first (`readFile(p, () => resolve())`, reported as
+  a missing error parameter), and
+  `resolve` passed straight where the callee passes an error first (`server.close(resolve)`), are
+  reported too. The forms that reject by themselves are the allowed alternative: `once` from
+  `node:events`, `pipeline` and `finished` from `node:stream/promises`, and `util.promisify`.
+  Timers (`setTimeout(resolve, ms)`, `setImmediate`, `process.nextTick`, `queueMicrotask`),
+  the DOM observers (`IntersectionObserver`, `MutationObserver`, `ResizeObserver`,
+  `PerformanceObserver`), `debounce`/`throttle`, in-place callbacks (`map`, `forEach`, `replace`), queues (`waiters.push(resolve)`, `add`, `set`),
+  events that cannot fail (`'abort'`, `'exit'`, `'beforeExit'`, `'DOMContentLoaded'`,
+  `'readystatechange'`, `'visibilitychange'`, `'load'` on `window`, `document`, `globalThis` or
+  `self`, and `process` signals) and `.then`/`.catch`/`.finally` callbacks for the error check are not reported. An
+  executor passed by name (`new Promise(executor)`) is not read. A design note, which does not fail
+  the change, goes with it (`nitpicker/promise-wait-deadline`): an executor that takes `reject` but
+  settles only from listeners on a network stream or socket (`Socket`, `TLSSocket`,
+  `IncomingMessage`, `ClientRequest`, `WebSocket` and the HTTP/2 streams by type, or a receiver
+  named `socket`, `sock`, `tlsSocket`, `ws`, `webSocket`, `websocket`, `conn`, `connection`, `req`,
+  `request`, `res`, `response` or `upstream` without types) when the enclosing function has
+  no deadline: no `'timeout'` literal and no identifier that contains `signal`, `timeout` or `deadline` (any
+  case, so `setTimeout`, `AbortSignal` and `withTimeout` count) or is exactly `race`. A peer that stops sending keeps such a promise pending; a timer that
+  rejects, `AbortSignal.timeout(ms)` or the socket's `setTimeout` bounds it. It stays a note because
+  the noise is structural: the code cannot tell a peer that may stay silent for good (a long-lived
+  subscription, a server push channel) from one that must answer, so no exception would make the
+  finding right. The adapter (`REPORT_ONLY_RULES` in `languages/typescript/adapters/eslint/normalize.mjs`)
+  records it as a design note for review.
 - Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
@@ -192,8 +436,119 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   function that tests the duration, Prisma `{ emit: 'event', level: 'query' }` with a handler that
   filters by duration) or the database's own slow-query log. Both rules skip tests; a local script
   under the source roots takes an `exceptions` entry.
+- No query rows counted, filtered, sorted or aggregated in memory (`nitpicker/no-in-memory-query`,
+  the counterpart of the Spring rule `pmd/SpringDataFilterInQuery` and of the Python
+  `in-memory-query`). A query result is an awaited `find`, `findBy`, `findByIds`, `findMany`,
+  `findAll` or query builder `getMany` (TypeORM, Prisma, Sequelize, MikroORM, Drizzle's relational
+  queries), or a Drizzle `select().from(...)` that does not already select `count()` or group, in a
+  file that imports the ORM (Prisma: `@prisma/client`, or a receiver named `prisma`, `prismaService` or `prismaClient`). The receiver
+  must look like a repository or model: a name with `repo`, `manager`, `model`, `prisma`, `orm` or
+  `entit` in it, `em`, `db`, `tx`, `trx` or `query`, or a capitalised model name. A paged query
+  (`take`, `skip`, `limit`, `offset` or `cursor`) and a call with a string first argument are left
+  alone. It is reported when the result, directly or through a variable assigned once and read
+  once outside a loop or a nested function, is only used for its `length` or lodash
+  `size`/`isEmpty` (use `count`, `exists` or `findFirst`); `filter`, `some`, `every`, `find`,
+  `findIndex` or `findLast` (use `where`); `sort` or `toSorted` with a comparator, or lodash
+  `sortBy`/`orderBy` (use `order`/`orderBy`); or `reduce`, `Math.max`/`Math.min` over a `map`,
+  `Object.groupBy`, `Map.groupBy` and the lodash `sumBy`, `maxBy`, `minBy`, `meanBy`, `groupBy` and
+  `countBy` (use the ORM's aggregate or `groupBy`). The callback may only read row fields (directly
+  or destructured), compare them with constants, parameters and locals, and call `localeCompare`,
+  `getTime`, `valueOf`, `startsWith`, `endsWith`, `includes`, `toLowerCase` or `toUpperCase` on a
+  field, or `includes`/`has` on a list that does not depend on the row. A callback that calls
+  anything else, uses `typeof`, reads the row as a whole or by a computed key, or (with type
+  information) reads a getter or a method of the row type is left alone, and so is a result the
+  code also uses another way. `for` loops over the rows and `.then(...)` callbacks are not
+  followed. Tests are skipped. A small fixed lookup list that is meant to be loaded whole takes an
+  `exceptions` entry.
+- No two to-many relations joined into one query (`nitpicker/no-multiple-collection-joins`, the
+  counterpart of the Spring rule `pmd/JpaMultipleCollectionFetch` and of the Python
+  `multiple-collection-joins`): the database returns one row for every pair of their elements. It
+  reads TypeORM `relations` (array or nested object) of `find`, `findOne`, `findOneOrFail` and
+  `findAndCount`, and query builder `leftJoinAndSelect`/`innerJoinAndSelect` chains from
+  `createQueryBuilder`; Sequelize `include` of `findAll`, `findOne`, `findByPk`, `findAndCountAll`
+  and `findOrCreate` (by `as`, `association`, a string or the model); and MikroORM `populate`, which
+  joins by default since MikroORM 6 (unless the find sets `strategy: 'select-in'`, the project's
+  `mikro-orm.config` file sets `loadStrategy: 'select-in'`, or MikroORM 5 is installed). Relations come from the declared entity types:
+  an array, a MikroORM `Collection` or `LoadedCollection` is to-many, and `Ref`, `Reference` and
+  `Promise` are unwrapped. A chain along one collection (`'lines'` and `'lines.parts'`), a
+  collection next to to-one relations, TypeORM `relationLoadStrategy: 'query'`, a Sequelize
+  include with `separate: true` and MikroORM's select-in strategy pass. Joins on a query builder
+  held in a variable are combined with later calls on it in the same block; calls inside an
+  `if` branch, and chains on `qb.clone()`, count as their own query. Prisma and
+  Drizzle relational queries are not reported: they load each relation in its own query or as a
+  nested JSON aggregate. Load the collections in separate queries, or batch them with a DataLoader.
+- No foreign key without an index that starts with its column (`nitpicker/no-unindexed-foreign-key`,
+  the model-side partner of the `foreign-key-index` repository rule): only MySQL indexes a
+  foreign-key column by itself. It reads TypeORM and MikroORM `@ManyToOne` properties of entity
+  classes (not `@ViewEntity`), and Drizzle Postgres tables (`pgTable`, also through a namespace
+  import, `pgSchema(...).table` and `pgTableCreator`, with the columns as an object or a callback)
+  whose columns call `.references(...)` or whose extra config has a `foreignKey(...)`. A TypeORM
+  relation is covered by `@Index()` on it, a class `@Index` or `@Unique` whose first column is the
+  property, its `@JoinColumn` name or `<property>Id`, an indexed or unique column of that name, or
+  being the first primary-key column; `createForeignKeyConstraints: false` passes. MikroORM is
+  covered by `index` or `unique` on `@ManyToOne`, `@Index()` or `@Unique()` on the property, a class
+  `@Index`/`@Unique` whose first property is it, or being the first primary key, and is only checked
+  with `@mikro-orm/postgresql` or `@mikro-orm/mssql`, because MikroORM indexes many-to-one columns
+  itself on its other platforms. Drizzle is covered by an `index`, `uniqueIndex`, `unique` or
+  `primaryKey` that starts with the column (`.asc()`, `.desc()` and `.op()` are read), or by
+  `.primaryKey()` or `.unique()` on it. A partial index (TypeORM `where`, Drizzle `.where(...)`)
+  does not count. A one-to-one join column is left alone (TypeORM and MikroORM make it unique), and
+  so is a project whose manifests (the nearest and the ones above it) name only MySQL or MariaDB
+  drivers. When the project has migration files (looked for up to six folders below the topmost
+  manifest), the migrations are checked instead (by `foreign-key-index`) and this rule stays quiet.
+  `EntitySchema`, `defineEntity` and the other Drizzle dialects are not read.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
+- Logic mistakes the bundled rules catch, in production code and tests of both presets
+  (`eslint-config/logic/logic-rules.mjs`): a `map`, `filter`, `find` or `reduce` callback with a
+  path that returns nothing (`array-callback-return`; `forEach` is banned anyway); `sort()` or
+  `toSorted()` on numbers without a compare function, which sorts them as strings
+  (`@typescript-eslint/require-array-sort-compare`, type-aware; a string array is fine, and an
+  untyped JavaScript one passes once JSDoc types it); a loop whose body always leaves on the first
+  pass (`no-unreachable-loop`); a loop condition nothing in the loop
+  changes (`no-unmodified-loop-condition`, for the loops config files and exceptions allow);
+  `${...}` inside a plain string (`no-template-curly-in-string`; an exception fits text another
+  tool fills, such as shell, CI or Kotlin source); a constructor that returns a value (`no-constructor-return`); a bare
+  `return;` at the end of a function (`no-useless-return`); a private class member nothing reads
+  (`@typescript-eslint/no-unused-private-class-members`); `'a' + 'b'` (`no-useless-concat`) and
+  `fn.call(undefined, x)` (`no-useless-call`). `no-promise-executor-return` and `no-loop-func` stay
+  off: their reports were almost all harmless forms such as an executor that returns
+  `server.listen(...)` and handlers that share a flag on purpose, and `for...of` with `const`
+  bindings already removes the late-binding bug `no-loop-func` exists for. Python's counterparts are ruff `PLE0101`,
+  `B023` and `PLR1711`; in Java and Kotlin a missing return does not compile and the existing
+  unused-member checks already report an unused private member.
+- Copy slips in operands (`nitpicker/no-operand-slip`, production code and tests of both presets,
+  both lint engines). Reported: the same side-effect-free operand on both sides of a comparison,
+  `-`, `/`, `%`, `&`, `|` or `^`, or twice in one `&&`/`||` chain
+  (`element.endArrowhead || element.endArrowhead`). Operands are compared in the shared logic
+  normal form, so `a.b === c && c === a.b` and `!(x && y) || !x` count. Also reported: two
+  comparisons of one operand against constants that cannot both hold (`x < 3 && x > 5`), that
+  always hold together (`x !== 1 || x !== 2`), or where one already decides the other
+  (`x > 5 && x > 3`, `x === 1 || x >= 1`); `x * 0` and `x & 0`; and `a += a + b`. `x !== x` names
+  `Number.isNaN(x)`. Operands after a call that may change state are not compared with those before
+  it. Java reports the same slips through Error Prone (`IdentityBinaryExpression`, `SelfComparison`,
+  `SelfEquals`, `ComparisonOutOfRange`). Python covers a name compared with itself and repeated
+  `==` comparisons of one name (ruff `PLR0124`, `PLR1714`), not the arithmetic, erasing or
+  contradicting-constant forms. Kotlin has no counterpart yet.
+- Boolean logic with a strictly simpler exact form (`nitpicker/simpler-boolean-logic`, production
+  and test files of both presets; the counterpart of the Java PMD rules `SimplifyBooleanReturns`,
+  `SimplifiedTernary`, `CollapsibleIfStatements`, `LogicInversion`, `ConfusingTernary` and
+  `NegatedOperands`). The message prints the simpler form: `if (c) { return true; } return false;`
+  is `return c;` (`return !c;` with the literals swapped); `c ? true : false` is `c`, and
+  `c ? x : false`, `c ? true : x`, `c ? false : x` and `c ? x : true` are `c && x`, `c || x`,
+  `!c && x` and `!c || x` when `x` is boolean too; `!(a === b)` is `a !== b`; `!!x` outside a
+  condition is `x`; an `if` whose only statement is another `if`, neither with an `else`, is one
+  `if (a && b)`; `if (!c) {A} else {B}` and `!c ? a : b` are `if (c) {B} else {A}` and
+  `c ? b : a`; and a `&&` or `||` chain whose every operand is negated is one negation
+  (`!a && !b` is `!(a || b)`). Each form keeps the value exactly: where dropping `!!` or a ternary
+  needs `c` to be boolean, it must be a comparison, a `!`, a `&&`/`||` of those or (with type
+  information) typed `boolean`, so `return !!name;` is never suggested. `!(a < b)` stays, since it
+  is not `a >= b` when either side is `NaN`; an `else if` chain and a ternary whose `else` is
+  another ternary are not swapped, and neither is a ternary whose `then` branch is a ternary (that
+  would make a nested ternary). Forms combine: `!a || !b ? x : y` is reported as `a && b ? y : x`. A
+  part that holds TypeScript-only syntax (`as`, `!`, `satisfies`, type arguments) is not reported,
+  since the printed form would drop it. `!!x` in a condition is left to `no-extra-boolean-cast` and
+  `x === true` to `@typescript-eslint/no-unnecessary-boolean-literal-compare`.
 - Identifier casing (`nitpicker/naming-convention`, which wraps
   `@typescript-eslint/naming-convention`): types and type parameters in PascalCase; functions,
   variables and parameters in camelCase; constants may be UPPER_CASE; a leading underscore is
@@ -228,6 +583,48 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   callee named `...Error` or `...Exception`: `res.status(404)`, `c.json(body, 201)`,
   `new HttpException('gone', 410)`), the digits of `toFixed(2)` and `toPrecision(3)`, default parameter values, array indexes, numeric literal types
   and object property values are allowed. `x % 7` is reported: name the divisor. Tests are exempt.
+- No generic names (`nitpicker/no-generic-name`, production code of both presets, both lint engines;
+  tests are exempt). A file, a folder, or a class, interface, type alias, enum or namespace whose
+  last name word is `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`,
+  `managers`, `common`, `commons`, `misc` or `miscellaneous` is reported (`string-utils.ts`,
+  `user.helper.ts`, `common/`, `OrderHelper`, `Utils`). Words are split at case changes, hyphens,
+  dots and underscores; trailing digits and version words such as `v2` are ignored; a closing
+  `functions`, `methods`, `module`, `mixin`, `base`, `classes` or `Impl` is dropped first
+  (`helper-functions.ts`, `UserManagerImpl`); and role suffixes of a file name (`.config`,
+  `.service`, `.module`, `.controller`, `.types`, `.d` and the like) are dropped, so
+  `utils.config.ts` and `common.module.ts` are reported. `AuthenticationManager`,
+  `TransactionManager`, `CacheManager`, `EntityManager`, `SessionManager`, `ConnectionManager`,
+  `LockManager` and `ResourceManager` pass, and so does a type that extends or implements a type
+  whose last word is the same (`class ModelManager extends EntityManager`). A manager that is a
+  domain term of the project (`PackageManager`) takes the exception. Allowed form: a name that says
+  what the code does (`price-rounding.ts`, `PriceRounder`); pure logic shared between features goes
+  in the shared folder under such a name. The word list is shared with Python, Kotlin and Go
+  (`shared/naming/smell-words.mjs`); Java reports the same as `pmd/GenericTypeName` and
+  `pmd/GenericPackageName`. An exception fits only for a name a tool or framework requires.
+- No repeated string literals (`nitpicker/no-repeated-string-literal`, production code of both
+  presets, both lint engines; tests are exempt). A string of five characters or more with a letter
+  or digit that appears three times or more in a file (a template literal without expressions counts
+  too) is reported from the third use on: name it once as a constant and use the constant. Not
+  counted: import and export sources, `require()`, `import()` and `vi.mock`/`jest.mock` arguments,
+  directives, object, class and enum member keys, the value under a `type`, `kind`, `tag` or
+  `variant` key, a string compared with `===`, `!==`, `==` or `!=` to a member named `type`, `kind`,
+  `tag` or `variant` (`node.type === "Identifier"`), the elements of an array literal or a
+  `new Set([...])` whose `includes` or `has` is called with such a member, the `"error"` severity of
+  a lint config entry (`"nitpicker/rule": "error"` or `["error", { ... }]` under a key that holds a
+  `/` or `-`), computed member keys (`row["customer_id"]`), the left side of `in`, `case` labels,
+  string literal types, JSX attribute values, strings inside a `className` expression or a `cn`,
+  `clsx`, `classnames` or `twMerge` call, the initializer of a `const` or an enum member, a `typeof`
+  comparison (`typeof x === "undefined"`), decorator arguments, the event name of `on`, `once`,
+  `off`, `emit`, `addListener`, `addEventListener` and their removals, the first argument of a
+  translation call (`t`, `formatMessage`, `getTranslations` and the like), tagged templates, and
+  idiomatic text (encodings, HTTP methods, MIME types, time formats). The lists and the thresholds
+  are shared with the Python, Kotlin and Go counterparts in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../../shared/literals/repeated-literal-exemptions.mjs).
+  An exception fits only for text that must stay inline. Java reports the same through PMD
+  `AvoidDuplicateLiterals`, Kotlin as `kotlin-source/RepeatedStringLiteral`, Python and Go as
+  `repeated-string-literal`. Python, Kotlin and Go exempt the discriminant comparison the same way;
+  the membership lists and the lint severity are TypeScript and JavaScript only, because the other
+  presets have no ESLint rule table and test a discriminant through `when` or `match`.
 - Security: no `eval` (`no-eval`); no regular expression with nested or overlapping quantifiers
   that backtracks super-linearly (`regexp/no-super-linear-backtracking`, from `eslint-plugin-regexp`);
   no shell command built from a variable or template (`nitpicker/no-shell-string-command`: `exec`
@@ -248,6 +645,44 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
+  synchronous Node call inside an `async` function or a request handler blocks the event loop, so
+  every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
+  `graceful-fs` (also `realpathSync.native` and `fs["readFileSync"]`), `execSync`, `execFileSync`
+  and `spawnSync` of `child_process`, `pbkdf2Sync`, `scryptSync`, `hkdfSync`, `generateKeySync`,
+  `generateKeyPairSync`, `generatePrimeSync` and `checkPrimeSync` of `crypto`, every `*Sync`
+  function of `zlib`, and `execaSync`/`execaCommandSync` of `execa`, found through the imports
+  (named, default, namespace, renamed, `require` and destructured `require`, and
+  `const { x } = fs`). A parameter or local that shadows the imported name is not the import. The
+  module lists are shared with `nitpicker/report-module-load-effects`, which reports the same
+  `*Sync` calls at import time. A request handler is a function passed to a route method (`get`,
+  `post`, `put`, `patch`, `delete`, `all`, `use`, `route`, ...) of an app or router created from
+  Express, Fastify, Koa, Hono, hapi, restify, connect, polka, h3 or itty-router (`const app =
+express()`, `express.Router()`, `new Router()`, also through a chain such as
+  `router.route("/").get(...)`, or a parameter typed with the framework's type, such as
+  `app: Express`), inline or declared in the file, or a method decorated with a NestJS `@Get`,
+  `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Head` or `@Options`. A route method on any other
+  receiver (a `Map`, an untyped parameter) is not a handler. Synchronous array callbacks (`map`,
+  `forEach`, `filter`, ...) are looked through; any other nested function (a stored callback, an
+  event listener, a returned closure) is not inspected. Not reported: module top level, an `async`
+  function invoked in place at module top level (`(async () => { ... })()`), a file that has a
+  shebang, a worker script (a file that reads `parentPort` or `workerData` from
+  `node:worker_threads`), the worker branch of an `isMainThread` test
+  (`if (!isMainThread) { ... }`, or the `else` of `if (isMainThread)`), config files, and an
+  `async` function that is declared in the file, never exported and only ever called from startup
+  code (a CLI `main`). Entry points are checked like any other file, because their request handlers
+  run per request; their startup code is already left alone by the rules above. The message names
+  the allowed form of the call: `await readFile()` from `node:fs/promises` (the call without
+  `Sync`), `access` or `stat` for `existsSync`, a `FileHandle` from `open()` for the descriptor
+  calls (`closeSync`, `readSync`, `fstatSync`, ...), `for await` over `glob()` for `globSync`,
+  `pathExists` and the other promise functions of `fs-extra`, `promisify(execFile)` for the
+  `child_process` calls, `promisify(...)` of the async `crypto` and `zlib` function, and `execa()`.
+  A bounded read that must finish before the function can continue goes in a reviewed
+  `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
+  `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
+  recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
+  whole.
 - Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
   timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
   `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
@@ -312,6 +747,74 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
     reported, and `axios.getUri` sends nothing. `fetch` is not checked in browser projects (React,
     Preact, Vue, Svelte, Solid, Angular, read from `package.json`). Allowed:
     `fetch(url, { signal: AbortSignal.timeout(10_000) })`.
+  - `nitpicker/require-client-timeout`: a database or AWS SDK client built without a timeout, whose
+    default wait has no limit. An AWS SDK v3 client (any client class from `@aws-sdk/client-*`, such as
+    `S3Client` or the aggregate `S3`)
+    needs a `requestHandler` (an options object, `new NodeHttpHandler(...)`, `NodeHttp2Handler`,
+    `FetchHttpHandler` or `NodeHttpHandler.create(...)`) with a non-zero `requestTimeout` or
+    `socketTimeout`. A PostgreSQL client needs a statement timeout: node-postgres `Pool` and `Client`
+    (`pg`, `pg-pool`) take `statement_timeout`, `query_timeout`, an `options` string with
+    `statement_timeout` or a connection string that carries one; postgres.js takes
+    `connection.statement_timeout`; a TypeORM `postgres` or `cockroachdb` data source (`new DataSource`,
+    `TypeOrmModule.forRoot`, a `forRootAsync` factory, an exported options object) takes them under
+    `extra`, Sequelize with the `postgres` dialect (option or URL) under `dialectOptions`, and Knex with a
+    PostgreSQL client in `connection` or through a `pool.afterCreate` hook. A zero value sets no limit. A
+    connection string read from the environment does not count, since the code cannot show that it carries
+    a timeout; when the timeout comes from `PGOPTIONS` or the database role
+    (`ALTER ROLE ... SET statement_timeout`), add an exception. Not reported: options the rule cannot read
+    (a parameter, an imported object, a helper call, a spread of either, a driver `type` from
+    configuration) and a `pg` pool or client with a `connect` listener, which can set the timeout itself. Kysely and Drizzle take a `pg` pool, which is checked where it is
+    built. Left out on purpose: boto3, the AWS SDK for Java, nodemailer and ImapFlow (their defaults
+    already bound each wait) and mysql2 (no pool-wide query timeout exists). Allowed:
+    `new Pool({ statement_timeout: 30_000 })`,
+    `new S3Client({ requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000, throwOnRequestTimeout: true } })`.
+  - `nitpicker/timeout-abandons-operation`: `Promise.race([operation(...), timeout])` where one
+    entry is a timeout and a losing entry is a call that gets no abort signal. `Promise.race` settles
+    with the first entry and never cancels the others, so when the timeout wins the operation keeps
+    running, holds its connection or lock and repeats its side effect if the caller retries. A
+    timeout entry is a timer that rejects: a `new Promise` whose executor passes its `reject`
+    parameter to `setTimeout` (also `globalThis.setTimeout` or `window.setTimeout`), a call to a
+    function of the same file that does nothing but wait and rejects (through such an executor, a
+    `throw` after an awaited timer in an `async` function, or `Promise.reject`), an imported helper
+    named `rejectAfter`, `rejectAfterTimeout`, `rejectOnTimeout`, `timeoutAfter` or `timeoutPromise`,
+    a constant bound to one of these, and a `.then()`, `.catch()` or `.finally()` chain on one. A
+    timer that only resolves (`new Promise((resolve) => setTimeout(resolve, ms))`, `setTimeout` from
+    `node:timers/promises`, `once(AbortSignal.timeout(ms), 'abort')`) is a hedge or a sleep, not a
+    timeout, and is not reported; it becomes one when a `.then()` on it throws or returns
+    `Promise.reject(...)`. The race is `Promise.race` on the global `Promise`, also through
+    `globalThis.Promise` or a constant (`const P = Promise`); `const { race } = Promise` is not
+    recognized, since calling it unbound throws a `TypeError` before any race starts. The losing
+    operation is each call among the other entries, looking through a `const` that holds the call,
+    a `.then()` chain, both branches of a `? :`, the calls a `new Promise` executor makes, the
+    callbacks of `Promise.resolve().then(...)`, and `Promise.all`, `allSettled`, `race` and `any`
+    lists; a loser that is itself a timer is skipped. The call passes when an argument is, or
+    resolves to, an object with a `signal`, `abortSignal` or `cancelToken` key (an object with a
+    spread counts, since its keys are unknown), a value named `signal`, `controller`,
+    `abortController`, `cancelToken` or `*Signal`, `x.signal`, `AbortSignal.timeout(...)`,
+    `AbortSignal.any(...)` or `AbortSignal.abort(...)`; an argument named `options`, `opts`, `init`
+    or `settings` is unknown and passes. A `timeout` key on an unknown function does not pass, since
+    nothing says the callee stops on it. It also passes when the callee is a function of the same
+    file that uses such a signal from its enclosing scope, or when `.abort()`, `.cancel()`,
+    `.destroy()`, `.kill()`, `.terminate()` or `.dispose()` is called on the operation's receiver or
+    one of its arguments anywhere in the function holding the race, or on anything in the timeout
+    path: the `catch` or `finally` of a `try` around the race, a `.catch()`, `.then()` or
+    `.finally()` callback on the race, or the timeout entry itself. A callee of the same file that
+    has a signal parameter (by name, or typed `AbortSignal`) the call leaves out gets the second
+    message, which names the parameter. HTTP client calls that `nitpicker/require-http-timeout`
+    recognizes (`fetch`, `axios` and an `axios.create(...)` instance, `got` and a `got.extend(...)`
+    instance, `http`/`https`) are left to that rule: without a timeout it reports them, so the code
+    gets one finding, and with one (`axios.get(url, { timeout })`, `axios.create({ timeout })`, a
+    project default) the call has its own deadline. A browser project's `fetch`, which that rule
+    does not check, is checked here. Allowed: create an `AbortController`, abort it in the timeout
+    path and pass `{ signal: controller.signal }`, or pass `AbortSignal.timeout(ms)` to an API that
+    takes `signal` and remove the race. Production source only: tests, stories and support files are
+    not checked. Not recognized (so never reported): a race built from a spread or a computed array,
+    an operation held in a parameter or a `let`, an inline async function, a timeout helper that is
+    imported under another name, a timer that resolves with a sentinel the caller then checks
+    (`sleep(ms).then(() => TIMEOUT)`), and a race on `Promise.any`. Whether a callee honours a signal
+    it receives, and whether a losing call is pure (`parse(text)`), are not checked: a pure loser is
+    reported like any other, and needs an exception. An intentional background task needs an
+    exception for the rule with its paths and a reason.
   - `nitpicker/no-unsafe-deserialization`: `node-serialize`, `funcster` and `cryo` (they rebuild
     functions, also through `import x = require(...)` and `import()`), `v8.deserialize` (and the
     `v8.deserialize(v8.serialize(x))` copy, whose allowed form is `structuredClone(x)`),
@@ -338,6 +841,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   hangs the program. A program whose purpose is to run a child to completion, such as a build
   wrapper, takes an exception. The rule reads no types, so it behaves the same in the JavaScript
   preset.
+- Waits without a timeout (`pmd/UnboundedWait`, `unbounded-wait`, `pmd/ReactorBlockWithoutTimeout` in the JVM and
+  Python presets) have no TypeScript or JavaScript counterpart: nothing blocks a thread on a promise, and a promise
+  that never settles is a missing deadline for `await`, which `nitpicker/require-client-timeout` and
+  `nitpicker/require-process-timeout` cover where the call is made.
+- Time values in one unit meet only values in the same unit (`nitpicker/time-unit-mismatch`, production
+  files). Units come from the API (`Date.now()`, `getTime()`, `Date.parse`, `Date.UTC` and `performance.now()`
+  in milliseconds, `process.uptime()` in seconds, `process.hrtime.bigint()` in nanoseconds, the JWT claims
+  `exp`, `iat`, `nbf` and `auth_time` in seconds) and from name suffixes (`Ms`, `Millis`, `Milliseconds`,
+  `Seconds`, `Secs`, `Nanos`, `Micros`, `Minutes`, in camel case, `snake_case` or `UPPER_CASE`; a ratio
+  such as `MS_PER_SECOND` has no unit). A `const` takes the unit of its initializer, and `* 1000`, `/ 1000`
+  (also through a unit-less `const`), `Math.floor` and the like convert or keep it. Reported: a `+`, `-` or
+  comparison of two units; a variable, property, class field, default or destructured name in one unit that
+  gets a value in another; an argument of one unit where the call takes another (`setTimeout` and
+  `setInterval` delays, `node:timers/promises` `setTimeout`, `AbortSignal.timeout`, `new Date(epochMs)`,
+  a function of the same file, or, with type information, any function whose parameter is named with a
+  unit); and an epoch time cut to 32 bits (`| 0`, `>> 0`, `<< 0`, `>>> 0`, `^ 0`, `~~`). The message names both units,
+  the factor and the conversion. A name with the wrong unit is fixed by renaming it. The same rule runs as
+  `time-unit-mismatch` (Python), `pmd/MixedTimeUnits` and `pmd/EpochNarrowedToInt` (Java) and
+  `kotlin-source/TimeUnitMismatch` (Kotlin).
 - Named exports list their names: no `export *`, which makes every internal export of a feature's
   `index.ts` public (`export { name } from './domain/x.js'`).
 - Cognitive complexity of at most 15 per function, tests included (`nitpicker/cognitive-complexity`).
@@ -372,8 +894,25 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
   `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
 
-- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
-  root, `process.stdout.write` and `process.stderr.write`.
+- `nitpicker/no-production-console` reports every reference to `console`, not only calls:
+  `console.log()`, `console['error']()`, `const log = console.log`, `const { log } = console`,
+  `items.forEach(console.log)`, `const c = console` and `globalThis.console`. `typeof console` and a
+  local binding named `console` are not findings.
+  It also reports every reference to `process.stdout` and `process.stderr` outside the composition
+  root, not only `.write()`: an alias (`const out = process.stdout`, `const p = process`,
+  `const g = globalThis`), a destructured `stdout`/`stderr` (also nested, assigned, or through a
+  `...rest`), an import or re-export from `node:process` (`export * from "node:process"` too), a
+  `require` or `await import()`, `globalThis.process`, a `as`, `satisfies`, `!` or `<T>` wrapper
+  around `process`, and an argument handed to a helper. A local binding named `process` is not the
+  global one, and type-only imports and exports are not findings. Code outside the root takes a
+  `{ write(text: string): void }` parameter; the composition root passes `process.stdout` and
+  `process.stderr` (or writes to them), and that line is not a finding. Files listed in
+  `layout.entryPoints` (and the detected framework entry) may reference the streams the same way;
+  `console.*` stays a finding there. Reading `isTTY`, `columns`, `rows` or `hasColors()` is a
+  reference too: the root reads the fact once and passes it down as a value, like the environment.
+  The JavaScript preset runs the same rule. The hop needs no coverage or mutation exemption: a test
+  calls the exported `main` with `vi.spyOn(process.stdout, 'write')` (as the eval fixtures do), so the
+  arrow that forwards to the stream is covered and killed.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
   the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in
@@ -384,6 +923,26 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   exempt.
 - Early returns; no `else` after a `return`; no nested ternaries.
 - A `switch` over a discriminated union must handle every case.
+- `nitpicker/no-decided-condition` (type-aware, production code and tests of both presets): a
+  condition that the guards before it in the same function already decide. Reported: an `if`,
+  `while`, `do`/`while` or `for` test, a ternary test, or one operand of an `&&`/`||` chain that is
+  always true or always false given an earlier `if` that returned, threw, broke or continued, the
+  `if` or `else` branch it sits in, the test of the loop it sits in, or the operands before it in
+  the same chain (`if (count > 10) return; if (count > 20) ...`). The message names the guard that
+  decides it. A fact is dropped when a name it reads is assigned (also as a loop variable or a
+  `catch` parameter); a fact that reads a member is dropped on any member write and on any call
+  that is not pure (`await`, `yield`, `new` and `import()` count as calls); and a fact that reads a
+  variable written elsewhere, an import or an unresolved global is dropped on such a call. The
+  conditions are decided by the shared logic module: a truth table first, and the Z3 solver when
+  values are compared. An order comparison counts as a number comparison only when both operands
+  are number-typed; otherwise it is an opaque fact, since `'10' < '9'`. Not reported: a check on a
+  value whose type is still a union, because TypeScript may need it to narrow; a truthiness test of
+  one value or its comparison with `null` or `undefined`, which TypeScript narrows itself and
+  `@typescript-eslint/no-unnecessary-condition` reports; an operand repeated
+  in the same chain, which `nitpicker/no-operand-slip` reports; anything the solver does not
+  answer within 20 seconds; and files without type information. Java's SpotBugs
+  `UC_USELESS_CONDITION` covers part of this; the Java, Python and Kotlin counterparts on the shared
+  logic module are not built yet.
 - `nitpicker/exhaustive-union-predicate` (type-aware): no `||` chain of `===` (or `&&` chain of
   `!==`) that compares one plain reference (`kind`, `props.kind`) with some string or number
   literals of a union that has at least three members, when the chain is a predicate's value: an
@@ -431,6 +990,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
   Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
   the co-owners) are the case for an exception with a reason.
+- `nitpicker/no-unmapped-exception` (type-aware, TypeScript preset only): a NestJS handler (a
+  method with a route or GraphQL decorator such as `@Get` or `@Query` in a `@Controller` or
+  `@Resolver` class) that can throw a project exception class no exception filter in scope maps, so
+  the client gets a 500. The walk follows calls into project functions and methods, resolved by the
+  type checker, four levels deep, and the message names the call path. A `throw` inside a `try`
+  that has a `catch`, or in the promise chain before a `.catch(...)`, is not followed, and neither is
+  a function stored in a variable (a callback passed to a call is followed). A class is mapped when it or a superclass is a framework
+  status class (`HttpException` and its subclasses, `RpcException`, `WsException`, `GraphQLError`,
+  `ApolloError`) or a filter in scope catches it or a superclass: `@UseFilters` on the method or
+  the class, `app.useGlobalFilters(...)`, or an `APP_FILTER` provider. A `@Catch()` or
+  `@Catch(Error)` filter maps only the classes it checks with `instanceof`, since the rest fall
+  through to a generic response. Exceptions from libraries, `throw error` of a variable, plain
+  `Error` and a class whose base is a call (a mixin) are left out. The JavaScript preset does not run it, since it has no type information. Allowed:
+  `class OrderNotFound extends NotFoundException {}`.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an
@@ -452,6 +1025,40 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-forwarding-method-alias` (type-aware, same rule in the JavaScript preset): the
+  member counterpart of the rule above. A method of a class declaration whose body is one
+  `return this.target(a, b)` (or the same call as a statement when both methods return `void` or
+  `Promise<void>`, or `return await` in an `async` method) that passes exactly its own parameters,
+  in order and unchanged, to another method of the same class is flagged when the parameter types,
+  optional and rest forms and the return type are identical. Static methods that forward through
+  `this` and `#private` targets count. Not flagged: methods with decorators, an `override`
+  modifier or a `@deprecated` tag, `of` and `from`, overloads, generators, type parameters, type
+  predicates, getters, setters and constructors, default or destructured parameters, calls with
+  type arguments, optional calls, `async` wrappers around a callee that is not `async`, a target
+  inherited from a base class, class properties holding an arrow function (they bind `this`), class
+  expressions and object literal methods. Also not flagged: a parameter decorator, a bare call in
+  an `async` method (a floating promise), an `abstract` target, a name that a merged
+  interface declares, and a name the class writes through `this` (`this.sum = ...`, or any
+  computed `this[key] = ...`). A method whose name exists on a base class or an implemented interface is an
+  override or implementation and passes, and so does every method of a class whose base class or
+  interface the compiler cannot resolve (a structural interface the class does not declare with
+  `implements` cannot be seen; a base-class alias that subclasses override is reported). Callback
+  parameters count as equal when their function types are mutually assignable, and string-literal
+  keys are matched by name. When two methods forward to each other only the later is reported.
+  The message says to call the target directly and delete the alias; when the target is `private`,
+  `protected` or `#private` and the alias is more visible it says to rename the target to the alias
+  name instead. Add an exception for a public alias that must stay.
+- `nitpicker/no-boolean-flag-parameter`: a `boolean` parameter that an exported function or a public
+  class member or a method of an exported object literal branches on (an `if`, `while`, `for`,
+  `switch` or ternary test, or `urgent && run()` as a statement, also through `!`, `&&`, `||` or
+  `=== true`) makes the call `send(order, true)` unreadable. Reported for a parameter typed `boolean`
+  or defaulted to `true` or `false`; the JavaScript preset also reads `@param {boolean}`. Not reported:
+  a parameter that is only passed on, stored or reassigned, an optional parameter (`urgent?: boolean`,
+  the tri-state rule's), a function that is not exported, a `private`, `protected`, `#private`,
+  `override`, getter, setter or constructor member, a member of a class that `extends` or `implements`
+  another type (the supertype dictates the signature), a `static create*` or `valueOf*` factory, a nested function, and the builders `set*`, `with*`,
+  `from*`, `of` and `builder`. The message names two functions, an options object or a union of string
+  literals.
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
@@ -478,6 +1085,41 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   reported; `new URL(url.href)` passes. The Java and Kotlin presets report `URI.create(text)` the
   same way (`pmd/UriCreateDynamic`, `kotlin-source/UriCreateDynamic`); Python has no counterpart,
   since `urllib.parse` does not raise on such text.
+- `nitpicker/reusable-object-per-call`: `new Intl.DateTimeFormat`, `NumberFormat`, `Collator`,
+  `PluralRules`, `RelativeTimeFormat`, `ListFormat`, `DisplayNames`, `DurationFormat` or
+  `Segmenter` (also called without `new`, or through `globalThis.Intl`), and `new Ajv(...)`
+  imported from `ajv`, with arguments that are all constants, inside a function that runs on every
+  call. Building one loads locale data or compiles schemas each time, and with fixed options one
+  shared instance does the same work. Allowed: module scope, a class field, a static block, a
+  constructor, a module-level IIFE, a `useMemo`, `useState`, `once`, `memoize` or `lazy` callback, a
+  function that returns it (also inside a returned object literal, or through a local that a returned
+  object or function uses), `??=`/`||=`, an assignment to a member or an outer variable, and
+  `map.set(key, ...)` (also of a local, the get-or-create cache). Arguments that read a parameter or local (a locale from the request) are not
+  reported. `new RegExp(constant)` is not reported: engines cache compiled patterns, and
+  `nitpicker/no-shared-stateful-regex` wants a `g` or `y` regex created where it is used. The Java,
+  Kotlin and Python presets report the same mistake as `pmd/ReusableObjectPerCall` and
+  `reusable-object-per-call`.
+- `nitpicker/no-undefined-only-env-check` (production code): an environment variable tested only
+  for being missing counts an empty value as set. `API_URL=` gives `''`, which passes
+  `process.env.API_URL !== undefined`, so the feature turns on with nothing to use. Reported: an
+  `===`, `!==`, `==` or `!=` against `undefined`, `null` or `void 0`, `typeof ... === 'undefined'`,
+  `'API_URL' in process.env`, `Object.hasOwn(process.env, 'API_URL')` and
+  `process.env.hasOwnProperty('API_URL')`, on `process.env.X` (also `process.env['X']` and
+  `globalThis.process.env.X`), `import.meta.env.X`, `Bun.env.X`, `Deno.env.get('X')`, or a `const`
+  holding one (`const url = process.env.API_URL`, `const { API_URL } = process.env`, or `env.X`
+  after `const env = process.env`); a local named `process`, `Bun` or `Deno` is not the global.
+  Also reported: `process.env.X ?? fallback`, `process.env.X ??= fallback` and a destructuring
+  default (`const { PORT = '3000' } = process.env`), which keep the empty value and skip the
+  fallback; a fallback of `''`, `undefined`, `null` or `void 0` gives the same result and passes,
+  and so do these fallbacks in a composition root, which `nitpicker/no-branch-in-composition-root`
+  already reports. The allowed forms test for a value: `if (!process.env.API_URL)`,
+  `process.env.API_URL || fallback`, or a test of the value next to the missing-value test in the
+  same `&&`/`||` condition (`url !== undefined && url !== ''`, `.length`, `Boolean(url)`, `url`
+  itself, `.trim()` first, or any method call on it, such as `url.startsWith('https')`), or a
+  schema that rejects empty strings (`z.string().min(1)`). The rule reads no types. When an empty value is
+  a real setting, add an exception for the rule. The Java and Kotlin presets report the same mistake
+  on Spring configuration (`pmd/SpringNullOnlyConfigCheck`) and the Python preset on `os.environ`
+  (`env-none-only-check`).
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
@@ -561,6 +1203,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   `eslint-plugin-regexp`, on for `g` and `y` only), so the two rules do not overlap. Allowed: create
   the regex where it is used, drop `g` when one match is enough, or `text.matchAll(pattern)` for
   every match.
+- Regular expressions with a part that never changes what they match or does not do what it looks
+  like (`eslint-plugin-regexp`, in production code). A part that can never match, always matches or repeats another part is either
+  a bug or dead weight, and tests seldom reach the input that tells which: an assertion that always
+  accepts or always rejects (`/a\bb/`), an alternative or quantifier an assertion rules out, a
+  duplicate alternative (`/a|b|a/`) or class member (`[\w_]`), an empty group, alternative or
+  lookaround, a lazy quantifier at the end of the pattern, a backreference that is always empty, a
+  zero quantifier, a capturing group that captures less than it reads, a set operand that never
+  changes the set, `[\b]`, a `$2` replacement with one group and a `replaceAll`/`matchAll` regex
+  without `g`. Forms with a shorter equivalent are reported too, with the fix: `a{1}`, `a{2,2}`,
+  `(?:a+)*`, `\w+\d*`, `(?:ab)c`, `[a]`, `[a-ab]`, `a{3}?`, `(?=(?=b))`, `a(?!\w)` (`\b`), and a
+  range such as `[ -~]` whose characters are not obvious (write `[\x20-\x7E]`). The rules are the
+  `regexp/` ids listed in `eslint-config/regexp/regexp-rules.mjs`. `regexp/no-super-linear-move` is
+  off: it reports the common trailing trim `replace(/\/+$/u, '')` and cannot tell bounded input
+  from attacker-controlled input.
 - `nitpicker/no-string-as-regex` (type-aware): `match()`, `matchAll()` and `search()` compile a
   string argument as a regex, so a string-typed argument on a string receiver is reported (also a
   literal: `text.match('a.b')`); use `includes`, `startsWith`, `indexOf` or `===` for plain text, or
@@ -584,6 +1240,20 @@ Part of the [TypeScript strict preset guide](../typescript-strict-preset.md).
   allowed. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
   JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
   the alias form is added.
+- `nitpicker/untested-round-trip` (Python: `untested-round-trip`; Java and Kotlin:
+  `pmd/UntestedRoundTrip`): two exported functions of one module, or two public methods of one
+  exported class, that turn values into each other, when no test calls both. Pairs differ only by a
+  direction word: `toX`/`fromX`, `dumps`/`loads`, `dump`/`load`, `encode`/`decode`,
+  `serialize`/`deserialize`, `marshal`/`unmarshal`, `parse`/`format`, `pack`/`unpack`,
+  `encrypt`/`decrypt`, `compress`/`decompress`, `escape`/`unescape`, alone or with the same rest
+  (`encodeToken`/`decodeToken`, `parseDate`/`formatDate`); `toString`/`fromString` is not a pair. A
+  test is one `it`, `test` or `specify` call (also `.each`, tagged `.each` tables, `.only` and the
+  like) in a test file of the layout, with its callback inline or passed by name, counting the
+  functions of test files that it calls, directly or through each other; names match by name.
+  Abstract and `private` or `protected` methods, functions that are not exported, and CommonJS
+  `module.exports` are not reported. The finding is on the later declaration. Allowed:
+  `expect(decodeToken(encodeToken(value))).toEqual(value)` with values that need escaping or
+  mapping. An exception goes in `exceptions` with the rule `nitpicker/untested-round-trip`.
 - Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and
   the standard library has no zone-aware replacement, so a check could only match literals. Reading
   the clock is already limited by `Date.now()` and `new Date()` in `domain/`, and a clock is passed

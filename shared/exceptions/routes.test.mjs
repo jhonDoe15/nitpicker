@@ -85,4 +85,12 @@ describe('withExceptionRoutes', () => {
       }),
     ]);
   });
+
+  it('keeps the one entry of a message that already names it', () => {
+    const named = finding('files', {
+      tool: 'dead-code',
+      message: `The base message. ${route('{"rule":"files","paths":["src/**"],"reason":"..."}')}`,
+    });
+    expect(withExceptionRoutes([named])).toEqual([named]);
+  });
 });

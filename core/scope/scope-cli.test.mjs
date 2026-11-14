@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import {
@@ -381,5 +381,32 @@ describe('nitpicker with paths', () => {
     expect(output.stderrText).toBe(
       'nitpicker failed: Paths cannot be combined with --shard-count; shards always cover the whole project\n',
     );
+  });
+
+  it('hands the paths to the head analyzers only, for mutation to narrow to', () => {
+    const repository = repositoryWithTwoFolders();
+    const seen = [];
+    const recording = {
+      ...fakeAnalyzer(),
+      createInvocation(context) {
+        seen.push([context.snapshot, context.mutationScope]);
+        return fakeAnalyzer().createInvocation(context);
+      },
+    };
+
+    runScoped({
+      repository,
+      arguments_: ['src/orders', '--base', repository.baseRef, '--no-cache'],
+      analyzers: [recording],
+    });
+    runScoped({ repository, arguments_: ['--all', 'src/orders'], snapshotAnalyzers: [recording] });
+    runScoped({ repository, arguments_: ['--all', '.'], snapshotAnalyzers: [recording] });
+
+    expect(seen).toEqual([
+      ['base', undefined],
+      ['head', ['src/orders']],
+      ['head', ['src/orders']],
+      ['head', undefined],
+    ]);
   });
 });

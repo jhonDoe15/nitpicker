@@ -44,6 +44,13 @@ export const failureMessageCases = [
     banned: 'console.log("started");',
     allowed: 'application logger',
   },
+  {
+    name: 'standard stream names the write port',
+    config: loggingConfig,
+    filename: 'src/service.ts',
+    banned: 'export const out = process.stdout;',
+    allowed: 'write(text: string)',
+  },
   ...[
     ['as assertion names narrowing', 'const value = input as string;', 'narrow'],
     ['angle-bracket assertion names narrowing', 'const value = <string>input;', 'narrow'],
@@ -178,6 +185,22 @@ export const failureMessageCases = [
       'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
     allowed,
   })),
+  {
+    name: 'forwarding method alias names the direct call',
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      'export class Cart {\n  sum(items: string[]): number { return items.length; }\n  total(items: string[]): number { return this.sum(items); }\n}',
+    allowed: 'call `sum` directly and delete `total`',
+  },
+  {
+    name: 'forwarding method alias of a less visible method names the rename',
+    config: typedStrictConfig,
+    filename: path.resolve('src/fixture.ts'),
+    banned:
+      'export class Cart {\n  private sum(items: string[]): number { return items.length; }\n  total(items: string[]): number { return this.sum(items); }\n}',
+    allowed: 'rename `sum` to `total` and delete the alias',
+  },
   ...signatureFailureMessageCases({
     typedConfig: typedStrictConfig,
     typedFile: path.resolve('src/fixture.ts'),

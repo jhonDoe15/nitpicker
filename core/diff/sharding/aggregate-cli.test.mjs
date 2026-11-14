@@ -2,10 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runAggregateCli } from './aggregate-shards.mjs';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
+import { runAggregateCli } from './aggregate-shards.mts';
 import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mjs';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
 const { createFixture } = useShardFixtures();
 
@@ -39,11 +41,11 @@ describe('quality shard aggregation command', () => {
 
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toEqual(`
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33monly/example\u001b[0m: example finding
+Quality gate summary
+✖ 1 new enforceable violation
+  only/example: example finding
     src/main/example.ts
-\u001b[2mFull diagnostics: ${fixture.outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${fixture.outputRoot}/report.txt
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
     expect(output.stderrText).toBe('');
@@ -173,15 +175,13 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
       [
         '--experimental-loader',
         loaderPath,
-        fileURLToPath(new URL('./aggregate-shards.mjs', import.meta.url)),
+        fileURLToPath(checkoutModuleUrl(new URL('./aggregate-shards.mjs', import.meta.url))),
         '--help',
       ],
-      { encoding: 'utf8' },
+      { encoding: 'utf8', timeout: 60_000 },
     );
 
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toBe(
-      'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory> --shard-count <count> [--output <directory>] [--policy-root <directory>] [--details]\n',
-    );
+    expect(result.stdout).toBe(AGGREGATE_USAGE_TEXT);
   });
 });

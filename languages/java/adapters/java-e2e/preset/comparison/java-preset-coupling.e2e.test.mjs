@@ -34,10 +34,43 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     );
     expect(
       metrics.find((finding) => finding.identity === 'package:stable:instability').metric,
-    ).toEqual({ name: 'instability', value: 0.3333 });
+    ).toEqual({ name: 'instability', value: expect.closeTo(0.3333, 10) });
     expect(
       metrics.find((finding) => finding.identity === 'package:churn:instability').metric,
-    ).toEqual({ name: 'instability', value: 0.5 });
+    ).toEqual({ name: 'instability', value: expect.closeTo(0.5, 10) });
+  }, 180_000);
+  it('fails a feature internal import, a feature cycle and a package cycle from the class graph', () => {
+    const result = fixture.diffOf('features');
+    const rules = ['feature-internal-import', 'feature-cycle', 'package-cycle'];
+
+    expect(
+      result.newEnforceable
+        .filter((finding) => finding.tool === 'coupling' && rules.includes(finding.rule))
+        .map(({ rule, path, identity }) => `${rule} ${path} ${identity}`)
+        .toSorted(),
+    ).toEqual([
+      'feature-cycle src/main/java/shop/features/billing/Invoice.java src/main/java/shop/features/shipping|feature-cycle',
+      'feature-cycle src/main/java/shop/features/shipping/ShippingApi.java src/main/java/shop/features/billing|feature-cycle',
+      'feature-internal-import src/main/java/shop/features/billing/Invoice.java feature-internal:src/main/java/shop/features/shipping/internal/Writer.java',
+      'package-cycle src/main/java/shop/catalog/Catalog.java cycle:shop.catalog',
+      'package-cycle src/main/java/shop/pricing/Prices.java cycle:shop.pricing',
+    ]);
+  }, 180_000);
+  it("fails domain infrastructure use and another feature's persistence from the class graph", () => {
+    const result = fixture.diffOf('domain');
+    const root = 'src/main/java/shop';
+
+    expect(
+      result.newEnforceable
+        .filter(({ rule }) => rule.startsWith('domain-') || rule === 'foreign-feature-persistence')
+        .map(({ rule, path, identity }) => `${rule} ${path} ${identity}`)
+        .toSorted(),
+    ).toEqual([
+      `domain-imports-io ${root}/orders/domain/OrderNumbers.java library:java.nio.file`,
+      `domain-imports-random ${root}/orders/domain/OrderNumbers.java library:java.util`,
+      `domain-reaches-io ${root}/orders/domain/Order.java domain-reach:${root}/common/Lookup.java`,
+      `foreign-feature-persistence ${root}/features/shipping/Label.java foreign-persistence:${root}/features/billing/InvoiceStore.java`,
+    ]);
   }, 180_000);
   it('keeps an existing stability-direction violation baselined when the package is edited', () => {
     runGitIn(repository, 'checkout', '-q', 'stability-edited');

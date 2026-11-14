@@ -114,7 +114,7 @@ function addPythonToken(state, token) {
   }
   state.out.push(token);
   state.lambdas += Number(atTop && token.kind === 'word' && token.text === 'lambda');
-  if (!atTop || !state.header || !isOp(token, COLON)) {
+  if (!(atTop && state.header && isOp(token, COLON))) {
     return;
   }
   if (state.lambdas > 0) {
@@ -164,7 +164,7 @@ export function pythonLayout(tokens, lines) {
 
 function isExpressionEnd(token, rules) {
   if (token.kind === 'word') {
-    return !rules.statementWords.has(token.text) && !rules.restricted.has(token.text);
+    return !(rules.statementWords.has(token.text) || rules.restricted.has(token.text));
   }
   if (token.kind === 'op') {
     return rules.operandEnds.has(token.text) && token.headerClose !== true;

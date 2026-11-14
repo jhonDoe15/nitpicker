@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { withoutSupersededMessages } from './overlapping-reports.mjs';
+import { withoutSupersededMessages } from './overlapping-reports.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const noLet = { ruleId: 'functional/no-let', line: 4, column: 3, endLine: 4, endColumn: 40 };
@@ -14,6 +14,19 @@ describe('withoutSupersededMessages', () => {
     const property = { ruleId: 'no-restricted-properties', line: 2, column: 9 };
     const elsewhere = { ...property, column: 10 };
     expect(withoutSupersededMessages([key, property, elsewhere])).toEqual([key, elsewhere]);
+  });
+
+  it('drops a costly collection report where the in-memory query rule reports the same start', () => {
+    const query = { ruleId: 'nitpicker/no-in-memory-query', line: 3, column: 43 };
+    const sort = { ruleId: 'nitpicker/no-costly-collection-form', line: 3, column: 43 };
+    expect(withoutSupersededMessages([query, sort])).toEqual([query]);
+  });
+
+  it('drops a wasted collection step report where the typed prefer-find reports the same start', () => {
+    const typed = { ruleId: '@typescript-eslint/prefer-find', line: 2, column: 9 };
+    const step = { ruleId: 'nitpicker/no-wasted-collection-step', line: 2, column: 9 };
+    const other = { ruleId: 'nitpicker/no-wasted-collection-step', line: 4, column: 9 };
+    expect(withoutSupersededMessages([typed, step, other])).toEqual([typed, other]);
   });
 
   it('drops a loop accumulator report inside a let declaration that no-let already reports', () => {

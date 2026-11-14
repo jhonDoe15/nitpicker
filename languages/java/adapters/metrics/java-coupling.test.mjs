@@ -45,6 +45,23 @@ classes -> classes
 const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const analyze = () => analyzeJavaCoupling({ classes: CLASSES, edges: parseJdeps(JDEPS), fileOf });
 const packageOf = (report, name) => report.packages.find((entry) => entry.name === name);
+function packageUnit(root, files) {
+  const [name] = files[0].split('/');
+  return {
+    unit: `package ${name}`,
+    folders: [`${root}/${name}`],
+    files: files.map((file) => `${root}/${file}`),
+    count: files.length,
+  };
+}
+const STABLE_CAUSE = {
+  folders: ['src/main/java/stable'],
+  units: [
+    ['churn/U.java'],
+    ['client/A.java', 'client/B.java', 'client/C.java'],
+    ['leaf/L.java'],
+  ].map((files) => packageUnit('src/main/java', files)),
+};
 
 describe('parseJdeps', () => {
   it('reads class edges and skips the headers', () => {
@@ -150,7 +167,7 @@ describe('analyzeJavaCoupling', () => {
 
   it('lists package edges that point at a less stable package', () => {
     expect(analyze().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1 },
+      { source: 'stable', target: 'churn', delta: 0.1, cause: STABLE_CAUSE },
     ]);
   });
 });
@@ -196,6 +213,7 @@ describe('readCouplingFindings', () => {
         identity: 'package-edge:stable->churn',
         message: 'stable depends on less stable package churn',
         classification: 'enforceable',
+        cause: STABLE_CAUSE,
       },
     ]);
     expect(findings.filter((finding) => finding.classification !== 'enforceable')).not.toHaveLength(
@@ -274,7 +292,17 @@ describe('Kotlin classes', () => {
 
   it('finds a stability direction violation between Kotlin packages', () => {
     expect(analyzeKotlin().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1667 },
+      {
+        source: 'stable',
+        target: 'churn',
+        delta: 0.1667,
+        cause: {
+          folders: ['src/main/kotlin/stable'],
+          units: ['churn/Volatile.kt', 'client/Orders.kt', 'leaf/Leaf.kt', 'other/Reports.kt'].map(
+            (file) => packageUnit('src/main/kotlin', [file]),
+          ),
+        },
+      },
     ]);
   });
 
@@ -303,5 +331,42 @@ describe('Kotlin classes', () => {
         .filter((finding) => finding.classification === 'enforceable')
         .map(({ rule, identity }) => ({ rule, identity })),
     ).toEqual([{ rule: 'stability-direction', identity: 'package-edge:stable->churn' }]);
+  });
+});
+
+describe('cycles', () => {
+  function cycleRules(jdeps, permits) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cycle-coupling-'));
+    temporaryRoots.push(root);
+    const reportRoot = path.join(root, 'build/nitpicker');
+    mkdirSync(reportRoot, { recursive: true });
+    writeFileSync(path.join(reportRoot, 'jdeps.txt'), `classes -> java.base\n${jdeps}`);
+    writeFileSync(path.join(reportRoot, 'jdeps-classes.txt'), 'cyc.a.Alpha\ncyc.b.Beta\n');
+    if (permits !== undefined) {
+      writeFileSync(path.join(reportRoot, 'permits.txt'), permits);
+    }
+    return readCouplingFindings(reportRoot, { projectRoot: root, sourceRoots: ['src/main/java'] })
+      .filter((finding) => finding.classification === 'enforceable')
+      .map(({ rule, path: file, identity }) => ({ rule, path: file, identity }));
+  }
+
+  it('reports each package of a cycle from the jdeps graph', () => {
+    const findings = cycleRules(
+      '   cyc.a.Alpha    -> cyc.b.Beta     classes\n   cyc.b.Beta     -> cyc.a.Alpha    classes\n',
+    );
+
+    expect(findings).toEqual([
+      { rule: 'package-cycle', path: 'src/main/java/cyc/a/Alpha.java', identity: 'cycle:cyc.a' },
+      { rule: 'package-cycle', path: 'src/main/java/cyc/b/Beta.java', identity: 'cycle:cyc.b' },
+    ]);
+  });
+
+  it('ignores the edge from a sealed type to the subtypes it permits', () => {
+    const findings = cycleRules(
+      '   cyc.a.Alpha    -> cyc.b.Beta     classes\n   cyc.b.Beta     -> cyc.a.Alpha    classes\n',
+      'cyc.a.Alpha -> cyc.b.Beta\n',
+    );
+
+    expect(findings).toEqual([]);
   });
 });

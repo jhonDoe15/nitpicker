@@ -27,7 +27,8 @@ describe('policy findings', () => {
         `exclude added: src/**. ${POLICY_GUIDANCE.exclusion}`,
         'If the policy change is intended, stop and ask a person reviewing this change:',
         'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
-        'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+        'at an interactive terminal, NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI,',
+        'or the accept-policy-change label of a GitHub pull request, with the nitpicker approval workflow.',
       ].join(' '),
     );
   });
@@ -47,7 +48,33 @@ describe('policy findings', () => {
     expect(
       policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'ffffffffffff' }),
     ).toHaveLength(2);
-    expect(isPolicyChangeAccepted([], 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toBe(false);
-    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', undefined)).toBe(false);
+    expect(isPolicyChangeAccepted([], 'd1e2f3a4b5c6', { acceptedDigest: 'd1e2f3a4b5c6' })).toBe(
+      false,
+    );
+    expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6')).toBe(false);
+  });
+
+  it('accepts a commit only when it is the gated head, and never as a digest', () => {
+    const head = 'a'.repeat(40);
+    const other = 'b'.repeat(40);
+    const accepting = (acceptedDigest, headSha) =>
+      policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest, headSha });
+    const note =
+      ` The acceptance names commit ${head}, but the gated head is ${other}` +
+      ' (uncommitted changes make a new head), so it accepts nothing here.';
+
+    expect(accepting(`commit:${head}`, head)).toEqual([]);
+    expect(isPolicyChangeAccepted(loosenings, 'commit:', { acceptedDigest: 'commit:' })).toBe(
+      false,
+    );
+    expect(
+      isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', {
+        acceptedDigest: 'commit:d1e2f3a4b5c6',
+        headSha: head,
+      }),
+    ).toBe(false);
+    expect(accepting(`commit:${head}`, other).map(({ message }) => message)).toEqual(
+      accepting('ffffffffffff', other).map(({ message }) => `${message}${note}`),
+    );
   });
 });

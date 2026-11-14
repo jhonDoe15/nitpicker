@@ -184,12 +184,15 @@ function isTestClass(owner, file) {
   );
 }
 
-function isBoundary(scope) {
-  return BOUNDARIES.has(scope.k) && !(scope.k === 'lambda' && INLINE_HOSTS.has(scope.host));
+function isBoundary(scope, inlineHosts) {
+  return (
+    BOUNDARIES.has(scope.k) &&
+    !(scope.k === 'lambda' && (INLINE_HOSTS.has(scope.host) || inlineHosts.has(scope.host)))
+  );
 }
 
-function isSpared(wait, file, isProduction) {
-  const boundary = wait.scopes.find(isBoundary);
+function isSpared(wait, { file, isProduction, inlineHosts }) {
+  const boundary = wait.scopes.find((scope) => isBoundary(scope, inlineHosts));
   const owner = ownerOf(wait);
   if (boundary?.k === 'loop' && isPolling(boundary)) {
     return true;
@@ -219,7 +222,7 @@ export function isInlineHost(name) {
   return INLINE_HOSTS.has(name);
 }
 
-export function waitMessage(found, awaitility = false) {
+export function waitMessage(found, awaitility) {
   const { rule, kind } = found;
   if (rule === NEGATIVE_WAIT_RULE) {
     return NEGATIVE_MESSAGE;
@@ -243,6 +246,20 @@ function projectFunctionNames(files) {
   return new Set(files.flatMap((file) => file.functions.map(({ name }) => name)));
 }
 
+function projectInlineHosts(files) {
+  const inlined = new Map();
+  for (const { name, modifiers, parameters } of files.flatMap((file) => file.functions)) {
+    const looked =
+      modifiers.includes('inline') && parameters.every(({ inlining }) => inlining === undefined);
+    inlined.set(name, (inlined.get(name) ?? true) && looked);
+  }
+  return new Set(
+    [...inlined]
+      .filter(([name, looked]) => looked && !SPARED_HOSTS.has(name))
+      .map(([name]) => name),
+  );
+}
+
 function isReported(found, wait, context) {
   if (found === undefined) {
     return false;
@@ -250,17 +267,21 @@ function isReported(found, wait, context) {
   if (found.kind === 'delay' && !runsInRunBlocking(wait)) {
     return false;
   }
-  return !(found.exemptable && isSpared(wait, context.file, context.isProduction));
+  return !(found.exemptable && isSpared(wait, context));
 }
 
-export function testWaitFindings(files, { isProduction, finding, awaitility = false }) {
+export function testWaitFindings(
+  files,
+  { isProduction, finding, awaitility = false, declaredIn = files },
+) {
   const declared = projectFunctionNames(files);
+  const inlineHosts = projectInlineHosts(declaredIn);
   return files
     .filter(({ test }) => test)
     .flatMap((file) =>
       file.waits.flatMap((wait) => {
         const found = classify(wait, file, declared);
-        if (!isReported(found, wait, { file, isProduction })) {
+        if (!isReported(found, wait, { file, isProduction, inlineHosts })) {
           return [];
         }
         const symbol = symbolOf(wait);

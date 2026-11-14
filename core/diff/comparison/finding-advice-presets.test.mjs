@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mjs';
+import { routedEslintFields } from '../../../languages/typescript/adapters/hints/eslint-hints.mts';
 import { applyRuleHints } from '../../../languages/python/rules/rule-hints.mjs';
 import { withRuleMessage } from '../../../languages/java/messages/rule-messages.mjs';
 import { ingestErrorProne } from '../../../languages/java/ingest/errorprone/errorprone.mjs';
@@ -112,7 +112,7 @@ const SPLIT_FORM = 'Split it into files by responsibility.';
 const NULL_FORM =
   "Annotate what may be null with the @Nullable the project already uses (JSpecify's org.jspecify.annotations.Nullable if it uses none) and check it before use; otherwise give it a non-null value.";
 const LOGGING_FORM =
-  'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.';
+  'Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.';
 const NULL_SAFE_FORM =
   'Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.';
 const JAVA = 'src/main/java/A.java';

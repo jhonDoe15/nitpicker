@@ -6,6 +6,18 @@ import {
   PACKAGE_RULE_IDS,
 } from '../project-rules/hygiene-rules.mjs';
 import { SIZE_RULE_IDS } from '../project-rules/size-rules.mjs';
+import { DOMAIN_RULE_IDS } from '../project-rules/domain/domain-rules.mjs';
+
+const STRUCTURE_TOOL = 'structure';
+const MUTATION_TOOL = 'mutation';
+const MUTMUT_TOOL = 'mutmut';
+const DUPLICATES_TOOL = 'duplicates';
+const DEAD_CODE_TOOL = 'dead-code';
+const FACTS_TOOL = 'facts';
+const CODING_STANDARDS_TOOL = 'coding-standards';
+const COUPLING_TOOL = 'coupling';
+const TEST_RUNTIME_TOOL = 'test-runtime';
+const REPOSITORY_HYGIENE_TOOL = 'repository-hygiene';
 
 const STRUCTURE_RULES = [
   ...Object.values(FUNCTION_STRUCTURE_LIMITS).map(({ ruleId }) => ruleId),
@@ -37,41 +49,50 @@ export const DEPENDENCY_RULES = [
 ];
 
 const RULE_TOOLS = new Map([
-  ...STRUCTURE_RULES.map((rule) => [rule, ['structure']]),
+  ...STRUCTURE_RULES.map((rule) => [rule, [STRUCTURE_TOOL]]),
   [RULE_IDS.crapScoreLimit, ['crap']],
   [RULE_IDS.crapCoverageUnknown, ['crap']],
   [RULE_IDS.changedBranchCoverage, ['coverage', 'jacoco', 'coverage-py']],
-  [RULE_IDS.mutantSurvived, ['mutation', 'pit', 'mutmut']],
-  [RULE_IDS.mutantNoCoverage, ['mutation', 'pit', 'mutmut']],
-  [RULE_IDS.duplicateClone, ['duplicates']],
-  [RULE_IDS.stabilityDirection, ['coupling']],
-  ...DEAD_CODE_RULES.map((rule) => [rule, ['dead-code']]),
-  ...Object.values(HYGIENE_RULE_IDS).map((rule) => [rule, ['repository-hygiene']]),
+  [RULE_IDS.mutantSurvived, [MUTATION_TOOL, 'pit', MUTMUT_TOOL]],
+  [RULE_IDS.mutantNoCoverage, [MUTATION_TOOL, 'pit', MUTMUT_TOOL]],
+  [RULE_IDS.duplicateClone, [DUPLICATES_TOOL]],
+  [RULE_IDS.stabilityDirection, [COUPLING_TOOL]],
+  ...DEAD_CODE_RULES.map((rule) => [rule, [DEAD_CODE_TOOL]]),
+  ...Object.values(HYGIENE_RULE_IDS).map((rule) => [rule, [REPOSITORY_HYGIENE_TOOL]]),
   ...Object.values(HISTORY_RULE_IDS).map((rule) => [rule, [CHANGE_HISTORY_TOOL]]),
-  ...Object.values(PACKAGE_RULE_IDS).map((rule) => [rule, ['dead-code']]),
-  [RULE_IDS.slowTest, ['test-runtime']],
-  [RULE_IDS.noProductionRuntime, ['test-runtime']],
-  [RULE_IDS.typeOnlyProductionDependency, ['test-runtime']],
+  ...Object.values(PACKAGE_RULE_IDS).map((rule) => [rule, [DEAD_CODE_TOOL]]),
+  [RULE_IDS.slowTest, [TEST_RUNTIME_TOOL]],
+  [RULE_IDS.noProductionRuntime, [TEST_RUNTIME_TOOL]],
+  [RULE_IDS.typeOnlyProductionDependency, [TEST_RUNTIME_TOOL]],
   [RULE_IDS.publicAlternativeBypass, ['entry-points']],
-  [RULE_IDS.unusedProp, ['structure']],
-  [RULE_IDS.unusedOption, ['structure']],
-  [RULE_IDS.testOnlyExport, ['dead-code', 'coupling']],
-  [RULE_IDS.sharedUsedByOneFeature, ['coupling']],
-  [RULE_IDS.duplicateDefinition, ['structure']],
-  [RULE_IDS.siblingCopyEdit, ['structure']],
-  [RULE_IDS.exportedNameCollision, ['structure']],
-  [RULE_IDS.redefinedLibraryComponent, ['structure']],
-  [RULE_IDS.newIconAsset, ['structure']],
-  [RULE_IDS.componentStoryMissing, ['structure']],
-  [RULE_IDS.javascriptInTypescriptProject, ['structure']],
-  [RULE_IDS.docCommentContent, ['facts']],
-  ...CODING_STANDARDS_RULES.map((rule) => [rule, ['coding-standards']]),
+  [RULE_IDS.unusedProp, [STRUCTURE_TOOL]],
+  [RULE_IDS.unusedOption, [STRUCTURE_TOOL]],
+  [RULE_IDS.testOnlyExport, [DEAD_CODE_TOOL, COUPLING_TOOL]],
+  [RULE_IDS.sharedUsedByOneFeature, [COUPLING_TOOL]],
+  [RULE_IDS.featureInternalImport, [COUPLING_TOOL]],
+  [RULE_IDS.sharedImportsFeature, [COUPLING_TOOL]],
+  [RULE_IDS.featureCycle, [COUPLING_TOOL]],
+  [RULE_IDS.packageCycle, [COUPLING_TOOL]],
+  [RULE_IDS.foreignFeaturePersistence, [COUPLING_TOOL, STRUCTURE_TOOL]],
+  ...Object.values(DOMAIN_RULE_IDS).map((rule) => [rule, [COUPLING_TOOL]]),
+  [RULE_IDS.duplicateDefinition, [STRUCTURE_TOOL]],
+  [RULE_IDS.siblingCopyEdit, [STRUCTURE_TOOL]],
+  [RULE_IDS.nearDuplicate, [STRUCTURE_TOOL]],
+  [RULE_IDS.decidedCondition, [STRUCTURE_TOOL]],
+  [RULE_IDS.duplicateBranch, [STRUCTURE_TOOL]],
+  [RULE_IDS.exportedNameCollision, [STRUCTURE_TOOL]],
+  [RULE_IDS.redefinedLibraryComponent, [STRUCTURE_TOOL]],
+  [RULE_IDS.newIconAsset, [STRUCTURE_TOOL]],
+  [RULE_IDS.componentStoryMissing, [STRUCTURE_TOOL]],
+  [RULE_IDS.javascriptInTypescriptProject, [STRUCTURE_TOOL]],
+  [RULE_IDS.docCommentContent, [FACTS_TOOL]],
+  ...CODING_STANDARDS_RULES.map((rule) => [rule, [CODING_STANDARDS_TOOL]]),
   ...DEPENDENCY_RULES.map((rule) => [rule, ['dependency-architecture']]),
 ]);
 
 const PREFIXED_RULE_TOOLS = CODING_STANDARDS_RULE_PREFIXES.map((prefix) => [
   prefix,
-  ['coding-standards'],
+  [CODING_STANDARDS_TOOL],
 ]);
 
 /** The tools that print `rule` when nitpicker adds it, or undefined. */
@@ -82,29 +103,34 @@ export function toolsOf(rule) {
 }
 
 const TYPESCRIPT_TOOLS = [
-  'structure',
-  'repository-hygiene',
+  STRUCTURE_TOOL,
+  REPOSITORY_HYGIENE_TOOL,
   CHANGE_HISTORY_TOOL,
   'crap',
   'coverage',
-  'mutation',
-  'duplicates',
-  'coupling',
-  'dead-code',
-  'test-runtime',
+  MUTATION_TOOL,
+  DUPLICATES_TOOL,
+  COUPLING_TOOL,
+  DEAD_CODE_TOOL,
+  TEST_RUNTIME_TOOL,
   'entry-points',
-  'coding-standards',
+  CODING_STANDARDS_TOOL,
   'dependency-architecture',
 ];
-const SHARED_TOOLS = ['structure', 'test-runtime', 'repository-hygiene', CHANGE_HISTORY_TOOL];
+const SHARED_TOOLS = [
+  STRUCTURE_TOOL,
+  TEST_RUNTIME_TOOL,
+  REPOSITORY_HYGIENE_TOOL,
+  CHANGE_HISTORY_TOOL,
+];
 const JVM_ANALYZER_TOOLS = [
   ...SHARED_TOOLS,
   'crap',
   'jacoco',
   'pit',
-  'duplicates',
-  'coupling',
-  'facts',
+  DUPLICATES_TOOL,
+  COUPLING_TOOL,
+  FACTS_TOOL,
 ];
 
 /** The tools of each preset that print rules an `exceptions` entry can name. */
@@ -113,6 +139,14 @@ export const PRESET_TOOLS = {
   javascript: TYPESCRIPT_TOOLS,
   java: JVM_ANALYZER_TOOLS,
   kotlin: JVM_ANALYZER_TOOLS,
-  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling', 'facts'],
-  go: SHARED_TOOLS,
+  python: [
+    ...SHARED_TOOLS,
+    'crap',
+    'coverage-py',
+    MUTMUT_TOOL,
+    DUPLICATES_TOOL,
+    COUPLING_TOOL,
+    FACTS_TOOL,
+  ],
+  go: [...SHARED_TOOLS, FACTS_TOOL],
 };

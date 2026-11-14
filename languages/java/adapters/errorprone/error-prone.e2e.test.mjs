@@ -184,6 +184,25 @@ dependencies {
 }
 `;
 
+const SEGMENTS = `package demo;
+
+public final class Segments {
+  sealed interface Segment permits And, Leaf {}
+
+  record And(Segment left, Segment right) implements Segment {}
+
+  record Leaf(String value) implements Segment {}
+  private Segments() {}
+
+  static int count(Segment segment) {
+    return switch (segment) {
+      case And(var left, var right) -> count(left) + count(right);
+      case Leaf leaf -> 1;
+    };
+  }
+}
+`;
+
 const BREAK_ONLY_THE_EXTRA_COMPILE = `
 tasks.named('nitpickerErrorProne') {
     doFirst { file('src/main/java/demo/Broken.java').text = 'package demo; class Broken { int x = "s"; }' }
@@ -436,6 +455,31 @@ describe.skipIf(!enabled)('Error Prone through the init script', () => {
       `${path.join(broken, 'src/main/java/demo/Broken.java')}:1: incompatible types: java.lang.String cannot be converted to int`,
     );
     expect(existsSync(path.join(broken, 'build/nitpicker/errorprone.json'))).toBe(false);
+  }, 180_000);
+
+  it('turns off a check that crashes, names it, and keeps the findings of the others', () => {
+    const crashing = writeProject(DEPENDENCIES, { 'src/main/java/demo/Segments.java': SEGMENTS });
+    const settings = path.join(crashing, 'errorprone-settings.json');
+    writeFileSync(settings, JSON.stringify(['-Xep:ForEachIterable:WARN']));
+    const turnedOn = `-Pnitpicker.errorprone.settings=${settings}`;
+    const result = runGradle(crashing, turnedOn, 'nitpickerErrorProne');
+    const findings = readErrorProneFindings({
+      reportRoot: path.join(crashing, 'build/nitpicker'),
+      roots: [crashing],
+      lintedRoots: ['src/main/java'],
+    });
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(findings.some((finding) => finding.rule === 'FutureReturnValueIgnored')).toBe(true);
+    expect(
+      findings
+        .filter((finding) => finding.classification === 'tool-error')
+        .map((finding) => finding.message),
+    ).toEqual([
+      "Error Prone's ForEachIterable check crashed on src/main/java/demo/Segments.java:13 " +
+        '(java.lang.AssertionError: isSameType UNKNOWN), so it was turned off for this run and the ' +
+        'findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.',
+    ]);
   }, 180_000);
 
   it.each(LEVEL_FORMS)(

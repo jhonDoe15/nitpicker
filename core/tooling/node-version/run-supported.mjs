@@ -1,0 +1,31 @@
+import { readFile } from 'node:fs/promises';
+import { unloadableNodeMessage, unsupportedNodeMessage } from './node-version.mjs';
+
+async function loadCli(load) {
+  try {
+    return await load();
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { loadError: error };
+    }
+    throw error;
+  }
+}
+
+export async function runSupported(stderr, load) {
+  const manifest = JSON.parse(
+    await readFile(new URL('../../../package.json', import.meta.url), 'utf8'),
+  );
+  const nodeVersion = process.versions.node;
+  const unsupported = unsupportedNodeMessage(nodeVersion, manifest.engines.node);
+  if (unsupported !== undefined) {
+    stderr.write(`${unsupported}\n`);
+    return 2;
+  }
+  const cli = await loadCli(load);
+  if (cli.loadError !== undefined) {
+    stderr.write(`${unloadableNodeMessage(nodeVersion, manifest.engines.node, cli.loadError)}\n`);
+    return 2;
+  }
+  return cli.runCli();
+}

@@ -32,6 +32,11 @@ export const ONE_WAY_VIOLATIONS = [
 export const HIDDEN_ERROR =
   'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
 
+export const UNLINKED_TEST = 'def test_arithmetic():\n    assert 1 + 1 == 2\n';
+
+export const TYPE_ONLY_TEST =
+  'from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from demo.greeter import greet\n\n\ndef test_arithmetic() -> None:\n    handler: greet | None = None\n    assert handler is None\n';
+
 export const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
 
 export const WEAKENED_PYRIGHT = JSON.stringify({
@@ -98,6 +103,23 @@ export const LAYERED_FILES = {
     'from shop.domain import pricing\nfrom shop.infra import store\n\n\ndef show(amounts: list[float]) -> str:\n    return f"{store.total(amounts)} {pricing.price_with_tax(1, 0)}"\n',
   'tests/test_shop.py':
     'from shop.domain import pricing\nfrom shop.web import views\n\n\ndef test_show():\n    assert views.show([10]) == "11.0 1"\n\n\ndef test_total():\n    assert pricing.order_total([(2, 3), (2, 3)], 0) == 12\n',
+};
+
+export const FEATURE_FILES = {
+  'src/shop/features/__init__.py': '',
+  'src/shop/features/billing/__init__.py':
+    'from shop.features.billing.invoice import invoice_total\n',
+  'src/shop/features/billing/_rates.py': 'def rate() -> int:\n    return 2\n',
+  'src/shop/features/billing/invoice.py':
+    'from shop.features.billing import _rates\nfrom shop.features.shipping import fees\n\n\ndef invoice_total(amount: int) -> int:\n    return amount * _rates.rate() + fees.fee()\n',
+  'src/shop/features/shipping/__init__.py': '',
+  'src/shop/features/shipping/fees.py':
+    'from shop.features import billing\nfrom shop.features.billing import _rates\n\n\ndef fee() -> int:\n    return _rates.rate() - 1\n\n\ndef billed(amount: int) -> int:\n    return billing.invoice_total(amount)\n',
+  'src/shop/shared/__init__.py': '',
+  'src/shop/shared/money.py':
+    'from shop.features.billing import invoice_total\n\n\ndef doubled(amount: int) -> int:\n    return 2 * invoice_total(amount)\n',
+  'tests/test_billing.py':
+    'from shop.features.billing import invoice_total\nfrom shop.shared import money\n\n\ndef test_invoice_total():\n    assert invoice_total(10) == 21\n\n\ndef test_doubled():\n    assert money.doubled(1) == 6\n',
 };
 
 export const SIGNS = 'def sign(x):\n    if x < 0:\n        return -1\n    return 1\n';

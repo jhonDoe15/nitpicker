@@ -6,6 +6,7 @@ from credentials.spec import (
     EMBEDDED_SECRET_PATTERNS,
     IDENTIFIER_PATTERNS,
     MARKER_TOKEN_WORDS,
+    MASKED_NAME_WORDS,
     NOT_SECRET_PATTERNS,
     PASSPHRASE_LENGTH,
     PASSPHRASE_NAME_WORDS,
@@ -21,8 +22,16 @@ def any_of(patterns):
     return "(?:" + "|".join(patterns) + ")"
 
 
+def uncovered_words(words):
+    return [
+        word
+        for word in words
+        if not any(other != word and other in word for other in words)
+    ]
+
+
 SECRET_NAME = re.compile(any_of(SECRET_NAME_WORDS) + "$")
-SECRET_WORD = re.compile(any_of(SECRET_NAME_WORDS))
+SECRET_WORD = re.compile(any_of(uncovered_words(SECRET_NAME_WORDS)))
 PASSPHRASE_NAME = re.compile(any_of(PASSPHRASE_NAME_WORDS) + "$")
 PLACEHOLDER = re.compile(any_of(PLACEHOLDER_PATTERNS), re.IGNORECASE | re.ASCII)
 NOT_SECRET = re.compile(any_of(NOT_SECRET_PATTERNS), re.ASCII)
@@ -54,7 +63,8 @@ def joined_letters(words):
 def is_secret_name(name):
     words = name_words(name)
     marker = len(words) > 1 and words[-1] == "token" and words[-2] in MARKER_TOKEN_WORDS
-    return not marker and bool(SECRET_NAME.search(joined_letters(words)))
+    masked = any(word in MASKED_NAME_WORDS for word in words)
+    return not (marker or masked) and bool(SECRET_NAME.search(joined_letters(words)))
 
 
 def is_candidate(text):

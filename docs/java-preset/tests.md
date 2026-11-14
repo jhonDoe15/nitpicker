@@ -8,10 +8,17 @@ Part of the [Java preset guide](../java-preset.md).
   always on. The enum filter, the test-only class check and the Awaitility advice.
 - `languages/java/messages/rule-messages.test.mjs`: fast, always on. Short Checkstyle names, fix
   text, the exception route, and the shape of every catalog entry.
+- `languages/java/messages/exception-sentences.test.mjs`: fast, always on. No Java message source
+  writes its own exception route.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests `rule-catalog.e2e.test.mjs` and `languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
-  warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
+- `languages/java/adapters/java-e2e/preset/**/*.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1`
+  (`npm run test:java`, which also runs the other `java-e2e/` files, `spring/e2e/*.e2e.test.mjs`,
+  `suppressions/escape-hatches*.e2e.test.mjs`, `languages/java/maven/preset/**/*.e2e.test.mjs`, the
+  Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the
+  Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central;
+  CI splits the files over the shards described in `scripts/test-shards/README.md`.
+  `.github/workflows/java-e2e.yml` runs them (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.

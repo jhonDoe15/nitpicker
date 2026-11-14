@@ -17,7 +17,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
-- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+- Signatures: a public method does not branch on a `boolean` parameter (`pmd/BooleanFlagParameter`):
+  write two methods or take an enum. A value with three states is an `enum`, not a boxed `Boolean` parameter, field,
   return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
   fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
   method returns a new collection or array instead of changing a parameter (`items.add`,
@@ -29,6 +30,10 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
+  unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
+  and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an
+  `Instant`, never `(int) (System.currentTimeMillis() / 1000)` (`pmd/EpochNarrowedToInt`).
 - URIs from runtime text: build them with an encoding builder
   (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
   parse where the failure is handled (`URI.create(text)` in a `try` that catches
@@ -37,17 +42,48 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
+  Every part of a literal pattern must change what it matches (`"a|b|a"`, `"[\\w_]"` and `"x{1}"` are
+  `pmd/RegexPartDefect`), and nested quantifiers such as `"(\\s*\\w+)*x"` are `pmd/BacktrackingRegex`.
 - Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
   changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
   cleanup to the returned value:
   `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
+- Lombok: a back reference (a child's `parent`, an item's `order`) carries `@ToString.Exclude` and
+  `@EqualsAndHashCode.Exclude`, or the generated members recurse until `StackOverflowError`
+  (`pmd/GeneratedMemberCycle`). `@Data` or `@EqualsAndHashCode` on a subclass of a class with fields
+  states `callSuper = true`, or `callSuper = false` when the inherited fields do not count
+  (`pmd/GeneratedEqualsSkipsSuperclass`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
   `s == PAID || s == SHIPPED`, `Set.of(...).contains(s)` or a boolean `switch` with
   `default -> false` (`ExhaustiveEnumPredicate`).
-- No static method that only passes its parameters on to another method; call that method.
+- No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
+  parameters on to another method of the same class; call that method (or, when it is less visible, rename it to the alias's name and delete the alias).
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
+- Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
+  created per use); never look it up where it is used from a Guice `Injector`, `CDI.current()`, a
+  `BeanManager` or JNDI (`ServiceLocatorLookup`). Only `main`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` methods, `@Bean` methods of a `@Configuration` class and CDI extensions
+  look dependencies up.
+- Test a configuration string (a `@ConfigurationProperties` field, a `@Value` string) with
+  `StringUtils.hasText(x)`, not only `x != null`: an empty property binds as `""`, which passes a null
+  check (`SpringNullOnlyConfigCheck`).
+- Pick the cheaper collection form: a `HashSet` (or `LinkedHashSet`) for items you test with
+  `contains` while you collect them (`pmd/ListUsedAsSet`), a `Map` built once with
+  `Collectors.toMap` before a loop instead of `stream().filter(x -> x.getKey().equals(key)).findFirst()`
+  in it (`pmd/LinearLookupInLoop`), and `min(comparator)`/`max(comparator)` instead of
+  `sorted(...).findFirst()` (`pmd/SortForExtreme`).
+- Skip a collection step whose result is thrown away: `anyMatch(...)` instead of
+  `filter(...).findFirst().isPresent()` or `filter(...).count() > 0`, and `size()` or `isEmpty()` on
+  the source instead of on a `toList()` or `new ArrayList<>(source)` copy
+  (`pmd/RedundantStreamStep`).
+- A `Stream` from a repository, `getResultStream()` or `queryForStream` is handled row by row in
+  `forEach`, flushing a fixed-size batch there, never collected with `toList()` or `collect`
+  (`pmd/StreamedRowsCollected`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`,
+  `token`, `apiKey` and the like (`pmd/HardcodedSecret`, `pmd/CredentialLiteral`), and a log call or
+  exception message says a secret is set or shows a masked tail, never the value (`pmd/SecretInLog`).

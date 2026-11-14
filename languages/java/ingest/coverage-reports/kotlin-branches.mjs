@@ -46,7 +46,7 @@ const BRANCHING_SYNTAX = new RegExp(
 );
 const STRING_LITERAL = /"""[\s\S]*?"""|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])'/g;
 const STRING_TEMPLATE = '${';
-const TYPE_ARGUMENTS = /(?<=\w)<[\w?., *<>]*>/g;
+const TYPE_ARGUMENTS = /\b<[\w?., *<>]*>/g;
 const LINE_COMMENT = /\/\/.*$/;
 
 function codeOf(sourceLine) {

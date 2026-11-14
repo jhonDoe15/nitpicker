@@ -1,0 +1,20 @@
+import { afterAll, describe, expect, it } from 'vitest';
+import { UNBOUND_FINDINGS, unboundProjects } from './unbound-project.mts';
+
+const projects = unboundProjects();
+
+const enabled = process.env.NITPICKER_JAVA_E2E === '1';
+const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const maven = process.env.NITPICKER_MAVEN;
+
+describe.skipIf(!enabled)('Unbound Spring property keys with the Java preset', () => {
+  afterAll(projects.remove);
+
+  it('reports the same keys on Gradle, with the Boot metadata from the classpath', () => {
+    expect(projects.findings('gradle', { gradle, policy: {} })).toEqual(UNBOUND_FINDINGS);
+  }, 180_000);
+
+  it('reports the same keys on Maven', () => {
+    expect(projects.findings('maven', { maven, policy: {} })).toEqual(UNBOUND_FINDINGS);
+  }, 180_000);
+});

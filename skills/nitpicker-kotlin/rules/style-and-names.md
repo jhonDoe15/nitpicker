@@ -12,6 +12,12 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Merge an `if` that sits alone inside another `if` into one `if (a && b)`
+  (`CollapsibleIfStatements`); nesting stays when the outer `if` has an `else` or other statements.
+- Write boolean logic in its simplest exact form (`kotlin-source/SimplerBooleanLogic`): `return a < b`,
+  not an `if` that returns `true` and `false`; `c`, not `if (c) true else false`; `a != b`, `x !is T` and
+  `n !in r`, not `!(a == b)`, `!(x is T)` and `!(n in r)`; `if (c) B else A`, not `if (!c) A else B`;
+  `!(a || b)`, not `!a && !b`.
 - Names and comments (`kotlin-source` rules): name packages, files and types for their job
   (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
   also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as

@@ -1,6 +1,7 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from '../manifest/maven-manifest.mjs';
 import { buildAndTest } from '../maven-build.mjs';
@@ -45,7 +46,11 @@ describe('moduleManifest', () => {
     expect(
       moduleManifest({
         module: singleModule(),
-        classpaths: { mainCompile: ['/m2/spring-boot-3.3.5.jar'], testCompile: [] },
+        classpaths: {
+          mainCompile: ['/m2/spring-boot-3.3.5.jar'],
+          testCompile: ['/m2/spring-boot-test-3.3.5.jar'],
+          testRuntime: ['target/test-classes', 'target/classes', '/m2/spring-boot-3.3.5.jar'],
+        },
         pinned,
       }),
     ).toEqual({
@@ -54,9 +59,16 @@ describe('moduleManifest', () => {
       sourceRoots: ['src/main/java'],
       kotlinSourceRoots: [],
       testSourceRoots: ['src/test/java'],
+      kotlinTestSourceRoots: [],
       resourceRoots: ['src/main/resources'],
       spring: true,
       springArch: true,
+      springClasspath: [
+        'target/test-classes',
+        'target/classes',
+        '/m2/spring-boot-3.3.5.jar',
+        '/m2/spring-boot-test-3.3.5.jar',
+      ],
       guava: false,
       testGuava: false,
       testAwaitility: false,
@@ -133,5 +145,25 @@ describe('buildAndTest', () => {
       aotArguments({ testJvmArgs: [] }),
       aotArguments({ testJvmArgs: ['-Dspring.aot.enabled=true'] }),
     ]).toEqual([['-Dspring-boot.aot.skip=true'], []]);
+  });
+});
+
+describe('the tools a module runs in parallel processes', () => {
+  it('names each tool function in the module that a process imports it from', async () => {
+    const directory = path.dirname(fileURLToPath(import.meta.url));
+    const source = readFileSync(path.join(directory, 'maven-module.mjs'), 'utf8');
+    const urls = Object.fromEntries(
+      [...source.matchAll(/const (\w+_URL) = new URL\('([^']+)'/gu)].map(([, name, file]) => [
+        name,
+        pathToFileURL(path.join(directory, file)).href,
+      ]),
+    );
+    const tasks = [...source.matchAll(/sourceTask\((\w+), (\w+_URL)/gu)];
+    const exported = await Promise.all(
+      tasks.map(async ([, tool, url]) => [tool, typeof (await import(urls[url]))[tool]]),
+    );
+
+    expect(tasks.length).toBeGreaterThan(5);
+    expect(exported.filter(([, type]) => type !== 'function')).toEqual([]);
   });
 });

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeArchitectureViolations } from '../../../../../languages/typescript/adapters/static-checks-runner.mjs';
+import { normalizeArchitectureViolations } from '../../../../../languages/typescript/adapters/static-checks-runner.mts';
 import { withDefaultAnalyzerParallelism } from '../../../execution/test-support/analyzer-parallelism.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
 import { configuredAnalyzers } from '../../../../../languages/typescript/preset/diff/configured-analyzers.mjs';
@@ -81,7 +81,8 @@ describe('static differential adapters', () => {
         rule: 'prettier/prettier',
         path: 'src/main/auth/drift.ts',
         identity: 'format-diff:9f7a98502a664a32843099ca',
-        message: 'Format these lines with Prettier',
+        message:
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },
@@ -90,7 +91,8 @@ describe('static differential adapters', () => {
         rule: 'prettier/prettier',
         path: 'src/main/auth/logic.ts',
         identity: 'format-diff:30a09f8cdd43aeffcc325cbc',
-        message: 'Format these lines with Prettier',
+        message:
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 3 },
       },
@@ -117,7 +119,8 @@ describe('static differential adapters', () => {
         rule: 'prettier/prettier',
         path: driftPath,
         identity: 'format-diff:9f7a98502a664a32843099ca',
-        message: 'Format these lines with Prettier',
+        message:
+          'These lines are not formatted with Prettier. Run `nitpicker --fix` to format the changed files; it skips a file that was already unformatted on the base, so format such lines by hand.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },

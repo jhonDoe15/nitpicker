@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- Nitpicker's PMD rules: the errorprone, bestpractices, performance and multithreading categories
-     plus a catch rule from design, run over main and test sources (the security category runs on
-     main sources only, from pmd-main-ruleset.xml). Two test rules are left out because they set an
+     plus a catch rule and the boolean simplification rules from design, run over main and test
+     sources (the security category runs on main sources only, from pmd-main-ruleset.xml). Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
      assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
      and mutation testing catches weak ones. Rules that report the same code as Error Prone,
@@ -18,6 +18,8 @@
     <exclude name="AvoidFieldNameMatchingMethodName"/>
     <exclude name="AvoidLiteralsInIfCondition"/>
     <exclude name="AssignmentInOperand"/>
+    <exclude name="ReplaceJavaUtilCalendar"/>
+    <exclude name="ReplaceJavaUtilDate"/>
   </rule>
   <rule ref="category/java/errorprone.xml/AvoidFieldNameMatchingMethodName"
         message="Field {0} has the same name as a method. Rename one of them; a method named exactly like its field with at most one parameter (an accessor, a fluent setter or builder step) is allowed.">
@@ -47,10 +49,29 @@
   </rule>
   <rule ref="category/java/bestpractices.xml">
     <exclude name="AbstractClassWithoutAbstractMethod"/>
+    <exclude name="ExhaustiveSwitchHasDefault"/>
     <exclude name="GuardLogStatement"/>
+    <exclude name="ImplicitFunctionalInterface"/>
     <exclude name="UnitTestAssertionsShouldIncludeMessage"/>
     <exclude name="UnitTestContainsTooManyAsserts"/>
     <exclude name="UnitTestShouldIncludeAssert"/>
+    <exclude name="UnnecessaryWarningSuppression"/>
+    <exclude name="UnusedFormalParameter"/>
+  </rule>
+  <rule ref="category/java/bestpractices.xml/UnusedFormalParameter">
+    <properties>
+      <property name="checkAll" value="true"/>
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+./ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+  [ModifierList/Annotation
+   or (@Name = 'main' and @Static = true() and FormalParameters/@Size = 1
+       and FormalParameters/FormalParameter[1]/*[2][self::ArrayType or ../@Varargs = true()])]
+| ./ancestor-or-self::FormalParameter[ModifierList/Annotation]
+| ./ancestor::MethodDeclaration[@Overridden = true()]
+]]></value>
+      </property>
+    </properties>
   </rule>
   <rule ref="category/java/bestpractices.xml/AbstractClassWithoutAbstractMethod">
     <properties>
@@ -139,3 +160,57 @@
     </properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
+  <!-- Boolean logic with an exact simpler form: each message names the simpler form. -->
+  <rule ref="category/java/design.xml/SimplifyBooleanReturns"
+        message="Return the condition instead of branching to true or false: if (c) return true; return false; is return c;, and if (c) return true; return x; is return c || x;.">
+    <properties>
+      <!-- In a method returning Boolean, return x; may return null where return c || x; unboxes x
+           and throws, so only methods returning boolean are reported. -->
+      <property name="violationSuppressXPath"
+                value=".[not(ancestor::*[self::MethodDeclaration or self::LambdaExpression][1][self::MethodDeclaration]/PrimitiveType[@Kind = 'boolean'])]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/design.xml/SimplifyBooleanExpressions"
+        message="Drop the comparison with a boolean literal: x == true and x != false are x, x == false and x != true are !x."/>
+  <rule ref="category/java/design.xml/SimplifiedTernary"
+        message="Write the boolean ternary with a logical operator: c ? true : x is c || x, c ? false : x is !c &amp;&amp; x, c ? x : true is !c || x, c ? x : false is c &amp;&amp; x.">
+    <properties>
+      <!-- A ternary whose other branch is not a boolean (Object o = c ? true : name) has no
+           logical-operator form. -->
+      <property name="violationSuppressXPath"
+                value=".[*[position() > 1][not(self::BooleanLiteral)][not(pmd-java:typeIs('boolean') or pmd-java:typeIs('java.lang.Boolean'))]]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/design.xml/SimplifyConditional"
+        message="Drop the null check: x instanceof Foo is already false when x is null."/>
+  <rule ref="category/java/design.xml/CollapsibleIfStatements"
+        message="Merge the nested if into its parent with &amp;&amp;: if (a) '{' if (b) '{' ... } } is if (a &amp;&amp; b) '{' ... }."/>
+  <rule ref="category/java/design.xml/LogicInversion"
+        message="Use the opposite operator instead of negating the comparison: !(a == b) is a != b, !(a &lt; b) is a &gt;= b.">
+    <properties>
+      <!-- !(a < b) and a >= b differ when a or b is NaN, so floating-point order comparisons stay. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[@Operator = ('<', '>', '<=', '>=')]
+  [*[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+     or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/codestyle.xml/ConfusingTernary"
+        message="Drop the negation and swap the branches: if (!c) A else B is if (c) B else A, and !c ? a : b is c ? b : a.">
+    <properties>
+      <property name="ignoreElseIf" value="true"/>
+      <!-- Only a negated condition has a shorter swapped form; if (a != b) and if (a == b) are the
+           same length. A branch that is a boolean literal is left to SimplifyBooleanReturns and
+           SimplifiedTernary, whose form drops the branches altogether. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[not(*[1][self::UnaryExpression][@Operator = '!'])
+  or self::ConditionalExpression[BooleanLiteral]
+  or self::IfStatement[*[position() > 1]/(self::ReturnStatement | self::Block[count(*) = 1]/ReturnStatement)/BooleanLiteral]]
+]]></value>
+      </property>
+    </properties>
+  </rule>

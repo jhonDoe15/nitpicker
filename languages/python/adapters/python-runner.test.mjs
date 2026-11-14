@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 let savedTemporaryDirectory;
@@ -148,7 +149,7 @@ describe('analyzing a Python snapshot', () => {
       'python-rules frozen-dataclass Order',
     ]);
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'Incompatible return value type (got "int", expected "str"). Fix the type; inline ignores are banned. If this is intended, add {"rule":"return-value","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'Dataclass Order is not frozen. Declare records as `@dataclass(frozen=True)` and build a changed copy with `dataclasses.replace`. If this is intended, add {"rule":"frozen-dataclass","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     ]);
@@ -172,7 +173,7 @@ describe('analyzing a Python snapshot', () => {
     const findings = withoutCoupling(analyze(root));
 
     expect(findings.map(({ message }) => message)).toEqual([
-      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      '`print` found. Use loguru: `from loguru import logger`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       'marshmallow is imported outside an adapters/ package. Use marshmallow only in an `adapters/` package to parse untrusted input (`Schema().load(data)`), and pass frozen dataclasses on from there. If this is intended, add {"rule":"pydantic-boundary","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       '`logger.error(...)` logs a caught error without its traceback. Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes. If this is intended, add {"rule":"catch-log-without-exception","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     ]);
@@ -245,8 +246,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'mutation-failed',
         path: '.',
         identity: 'mutation-failed',
-        message:
-          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+        message: `mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json. ${linkSentence('mutmutFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -277,8 +277,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'mutation-failed',
         path: '.',
         identity: 'mutation-failed',
-        message:
-          'mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
+        message: `mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x). ${linkSentence('mutmutFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -338,7 +337,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'ruff-failed',
         path: '.',
         identity: 'ruff-failed',
-        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff check exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
       {
@@ -346,7 +345,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'format-failed',
         path: '.',
         identity: 'format-failed',
-        message: 'ruff format exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff format exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
       {
@@ -362,7 +361,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'rules-failed',
         path: '.',
         identity: 'rules-failed',
-        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff check exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -379,7 +378,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'environment-failed',
         path: '.',
         identity: 'environment-failed',
-        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
+        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`,
         classification: 'tool-error',
       },
     ]);
@@ -467,7 +466,7 @@ describe('runner arguments', () => {
   it('rejects unknown options', () => {
     expect(() => parsePythonArguments(['--project-root', '/p', '--nope', 'x'])).toThrow(
       new Error(
-        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--<tool>-precedence <layers>]...',
+        'Usage: python-runner.mjs --project-root <directory> [--snapshot base|head] [--policy-root <directory>] [--baseline-root <directory>] [--log-root <directory> --log-label <path>] [--crap-limit <number>] [--exclude <glob>]... [--exception <json>]... [--legacy-inventory <path>] [--kotlin-detekt-config <path>] [--file-limits <json>] [--test-seconds <json>] [--test-console-allow <json array>] [--duplicate-skipped-folders <json array>] [--mutation-scope <json array>] [--<tool>-precedence <layers>]...',
       ),
     );
   });

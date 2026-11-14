@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { describeConfigOverrides } from '../configuration/config.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
@@ -245,18 +245,18 @@ describe('nitpicker config file', () => {
     expect(output.stdoutText).toEqual(
       expect.stringMatching(exactText`Base: HEAD (argument)
 
-\u001b[1m\u001b[32mQuality gate summary\u001b[0m
-\u001b[32m✓ No new enforceable violations\u001b[0m
-\u001b[1m\u001b[33mPolicy changed in this change (nitpicker.config.json, head against base):\u001b[0m
+Quality gate summary
+✓ No new enforceable violations
+Policy changed in this change (nitpicker.config.json, head against base):
   base: not set -> "does-not-exist"
-\u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
+Full diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     );
   });
   it('skips disabled analyzers, reports the override, and changes the policy hash', () => {
     const acceptedPolicyHeading =
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
-      'loosening accepted by exact digest):';
+      'loosening accepted):';
     const analyzers = [fakeAnalyzer(), fakeAnalyzer('second-analyzer')];
     const plain = runWithConfig({}, { analyzers });
     const disabled = runWithConfig(
@@ -331,7 +331,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toEqual(
-      'nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: fake-quality-analyzer\n',
+      `nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: fake-quality-analyzer\n`,
     );
   });
   it('reports every parsed key and changes the policy hash for each', () => {
@@ -371,6 +371,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
         'quality-policy.json': policy(),
         'custom-analyzer.mjs': customAnalyzerScript,
         'src/main/old.txt': 'legacy\n',
+        'src/main/code.ts': 'export const code = true;\n',
       });
       writeFiles(repository.root, {
         'nitpicker.config.json': JSON.stringify({ analyzers: [customAnalyzerEntry('files')] }),
@@ -407,13 +408,13 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
       });
       expect(output.stdoutText).toEqual(`Base: ${repository.baseRef} (argument)
 
-\u001b[1m\u001b[31mQuality gate summary\u001b[0m
-\u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mcustom/text-file\u001b[0m: Text file new.txt
+Quality gate summary
+✖ 1 new enforceable violation
+  custom/text-file: Text file new.txt
     src/main/new.txt
-\u001b[1m\u001b[33mPolicy changed in this change (nitpicker.config.json, head against base):\u001b[0m
+Policy changed in this change (nitpicker.config.json, head against base):
   analyzer added: custom
-\u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
+Full diagnostics: ${outputRoot}/report.txt
 `);
     });
     it.each([
@@ -436,7 +437,7 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
 
       expect(exitCode).toBe(2);
       expect(output.stderrText).toEqual(
-        'nitpicker failed: nitpicker.config.json: analyzers entry "fake-quality-analyzer" clashes with another analyzer name\n',
+        `nitpicker failed: nitpicker.config.json: analyzers entry "fake-quality-analyzer" clashes with another analyzer name\n`,
       );
     });
   });

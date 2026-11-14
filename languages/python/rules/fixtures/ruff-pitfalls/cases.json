@@ -367,7 +367,7 @@
   {
     "tool": "ruff",
     "rule": "PLW1508",
-    "mention": "int(os.getenv(\"PORT\", \"8080\"))"
+    "mention": "int(os.getenv(\"PORT\") or \"8080\")"
   },
   {
     "tool": "ruff",
@@ -403,5 +403,20 @@
     "tool": "ruff",
     "rule": "PLW3301",
     "mention": "max(a, b, c)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR1711",
+    "mention": "Remove the `return`"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR0124",
+    "mention": "math.isnan(value)"
+  },
+  {
+    "tool": "ruff",
+    "rule": "PLR1714",
+    "mention": "Test membership once"
   }
 ]

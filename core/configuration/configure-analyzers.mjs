@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { configError } from '../../shared/config.mjs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../shared/legacy-inventory.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import {
@@ -18,10 +19,19 @@ import {
   applyThresholds,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
+import { applyAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { GO_ANALYZER_NAME } from '../../languages/go/adapters/go-analyzer.mjs';
 import { formatterChoiceFiles } from '../../languages/go/adapters/formatting/go-formatters.mjs';
 
 export function configureAnalyzers(analyzers, config, headPolicy) {
+  return applyAnalyzerTimeouts(
+    configuredWithoutTimeouts(analyzers, config, headPolicy),
+    config.analyzerTimeoutMinutes,
+    [...analyzers, ...(config.analyzers ?? [])].map(({ name }) => name),
+  );
+}
+
+function configuredWithoutTimeouts(analyzers, config, headPolicy) {
   return applyLegacyInventory(
     addCustomAnalyzers(
       applyJavaConfig(
@@ -59,7 +69,7 @@ function applyJavaConfig(analyzers, config) {
     ...GRADLE_PRESETS,
     PYTHON_ANALYZER_NAME,
     GO_ANALYZER_NAME,
-    ...(config.preset === 'python' ? [MUTATION_ANALYZER_NAME] : []),
+    ...(['python', 'go'].includes(config.preset) ? [MUTATION_ANALYZER_NAME] : []),
   ];
   return analyzers.map((analyzer) =>
     names.includes(analyzer.name)
@@ -89,6 +99,7 @@ function createCustomAnalyzer({ name, command, args = [] }) {
   return {
     name,
     version: 'custom',
+    custom: true,
     configurationHash: createHash('sha256')
       .update(JSON.stringify({ name, command, args }))
       .digest('hex'),
@@ -113,9 +124,7 @@ function addCustomAnalyzers(analyzers, entries = []) {
   const taken = new Set(analyzers.map(({ name }) => name));
   const custom = entries.map((entry) => {
     if (taken.has(entry.name)) {
-      throw new Error(
-        `nitpicker.config.json: analyzers entry "${entry.name}" clashes with another analyzer name`,
-      );
+      throw configError(`analyzers entry "${entry.name}" clashes with another analyzer name`);
     }
     taken.add(entry.name);
     return createCustomAnalyzer(entry);

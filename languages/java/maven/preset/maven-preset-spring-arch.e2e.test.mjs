@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { parseFinding } from '../../../../core/diff/comparison/finding-schema.mjs';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import {
@@ -17,7 +18,7 @@ import {
   maven,
   fixtures,
   copyOf,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 
 const DDD_ONLY_FIXTURE = path.join(SPRING_ARCH_FIXTURE, '..', 'ddd-only-project');
 const SPRING_LAYOUT_FINDINGS = [
@@ -111,6 +112,7 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
         .map((finding) => `${finding.path} ${finding.identity}`),
     ).toEqual(SPRING_LAYOUT_FINDINGS);
     expect(rulePaths(findings, 'spring-test-placement')).toEqual(SPRING_TEST_PLACEMENT_FINDINGS);
+    expect(() => findings.map((finding) => parseFinding(finding))).not.toThrow();
     expect(rulePaths(findings, 'spring-feature-boundary')).toEqual([
       'src/main/java/shop/billing/BillingService.java',
       'src/main/java/shop/billing/Invoices.java',

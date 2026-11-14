@@ -10,7 +10,7 @@ import {
   copyOf,
   copiedTestCases,
   lineCoverage,
-} from '../__tests__/maven-preset-project.mjs';
+} from '../__tests__/maven-preset-project.mts';
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
@@ -33,7 +33,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(findings.filter((finding) => finding.tool === 'jacoco')).toEqual([
       lineCoverage('100% (3/3)', 100),
     ]);
-    expect(findings.filter((finding) => finding.tool === 'test-runtime')).toEqual([
+    expect(findings.filter((finding) => finding.rule === 'slow-test')).toEqual([
       {
         tool: 'test-runtime',
         rule: 'slow-test',

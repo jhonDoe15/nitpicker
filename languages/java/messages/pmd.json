@@ -203,6 +203,10 @@
     "fix": "Open the resource in a try-with-resources header so it is closed on every path, including exceptions.",
     "mayBeIntended": true
   },
+  "CollapsibleIfStatements": {
+    "fix": "Merge into if (a && b), with a condition that holds || in parentheses; nesting stays when the outer if has an else or other statements.",
+    "mayBeIntended": true
+  },
   "CompareObjectsWithEquals": {
     "fix": "Compare objects with Objects.equals(a, b) or a.equals(b); use == only for primitives, enums and identity checks on purpose.",
     "mayBeIntended": true
@@ -214,6 +218,10 @@
   "ConfusingArgumentToVarargsMethod": {
     "fix": "Pass an explicit array of the right type (new Object[] {x}) or cast the null so the intended varargs call is made.",
     "mayBeIntended": false
+  },
+  "ConfusingTernary": {
+    "fix": "Write if (c) B else A; an if (a != b) with an else, and an else-if chain, are allowed.",
+    "mayBeIntended": true
   },
   "ConsecutiveAppendsShouldReuse": {
     "fix": "Chain the appends on the same builder in one statement: sb.append(a).append(b).",
@@ -299,6 +307,10 @@
     "fix": "Replace x.equals(null) with x == null.",
     "mayBeIntended": false
   },
+  "ExhaustiveSwitchHasDefault": {
+    "fix": "Remove the default branch: the switch already names every constant, and without default the compiler flags the switch when a constant is added.",
+    "mayBeIntended": true
+  },
   "FinalizeDoesNotCallSuperFinalize": {
     "fix": "Delete finalize() and clean up with try-with-resources or Cleaner; if it stays, end it with super.finalize() in a finally.",
     "mayBeIntended": false
@@ -334,6 +346,10 @@
   "IdempotentOperations": {
     "fix": "Delete the self-assignment (x = x), or assign the value you meant.",
     "mayBeIntended": false
+  },
+  "ImplicitFunctionalInterface": {
+    "fix": "Annotate the interface with @FunctionalInterface if lambdas implement it; otherwise give it the second abstract method it is missing.",
+    "mayBeIntended": true
   },
   "ImplicitSwitchFallThrough": {
     "fix": "Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.",
@@ -413,6 +429,10 @@
   },
   "LiteralsFirstInComparisons": {
     "fix": "Put the literal first: \"yes\".equals(value), so a null value cannot throw.",
+    "mayBeIntended": false
+  },
+  "LogicInversion": {
+    "fix": "!(a <= b) is a > b, and !(a != b) is a == b. Floating-point order comparisons are not reported: NaN makes !(a < b) and a >= b differ.",
     "mayBeIntended": false
   },
   "LooseCoupling": {
@@ -515,6 +535,14 @@
     "fix": "Declare Map and create a HashMap, or a ConcurrentHashMap when threads share it.",
     "mayBeIntended": true
   },
+  "ReplaceJavaUtilCalendar": {
+    "fix": "Use java.time instead of Calendar: ZonedDateTime, LocalDate or Instant, with a Clock for the current time.",
+    "mayBeIntended": true
+  },
+  "ReplaceJavaUtilDate": {
+    "fix": "Use java.time instead of java.util.Date: Instant or LocalDateTime; convert at an old API's boundary with Date.from and toInstant.",
+    "mayBeIntended": true
+  },
   "ReplaceVectorWithList": {
     "fix": "Declare List and create an ArrayList, or use CopyOnWriteArrayList when threads share it.",
     "mayBeIntended": true
@@ -532,7 +560,23 @@
     "mayBeIntended": false
   },
   "SimplifiableTestAssertion": {
-    "fix": "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "fix": "Use the named assertion. For assertTrue(x != null) or assertTrue(!c.isEmpty()), assertNotNull or assertFalse(isEmpty()) is weak too: assert the exact value.",
+    "mayBeIntended": false
+  },
+  "SimplifiedTernary": {
+    "fix": "c ? true : false is c, and c ? false : true is !c; wrap an operand that holds || or ?: in parentheses.",
+    "mayBeIntended": false
+  },
+  "SimplifyBooleanExpressions": {
+    "fix": "Wrap a compared expression in parentheses when negating it: (a != b) == false is !(a != b), or a == b. For a nullable Boolean, write Boolean.TRUE.equals(x).",
+    "mayBeIntended": false
+  },
+  "SimplifyBooleanReturns": {
+    "fix": "The other one-literal pairs: false then x is !c && x, x then true is !c || x, x then false is c && x; swapped literals are return !c;.",
+    "mayBeIntended": true
+  },
+  "SimplifyConditional": {
+    "fix": "To use the cast value, write if (x instanceof Foo foo) and use foo.",
     "mayBeIntended": false
   },
   "SingleMethodSingleton": {
@@ -571,12 +615,16 @@
     "fix": "Write the character as a unicode escape (\\u0008) or a three-digit octal escape so the digits are not read together.",
     "mayBeIntended": false
   },
+  "SwallowedInterrupt": {
+    "fix": "Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.",
+    "mayBeIntended": true
+  },
   "SwitchStmtsShouldHaveDefault": {
     "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
     "mayBeIntended": false
   },
   "SystemPrintln": {
-    "fix": "Write through a logger, or take a PrintStream as a parameter so callers choose the stream.",
+    "fix": "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.",
     "mayBeIntended": true
   },
   "TestClassWithoutTestCases": {
@@ -635,6 +683,10 @@
     "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",
     "mayBeIntended": false
   },
+  "UnnecessaryWarningSuppression": {
+    "fix": "Remove the @SuppressWarnings value or NOPMD comment that suppresses nothing.",
+    "mayBeIntended": true
+  },
   "UnsynchronizedStaticFormatter": {
     "fix": "Format dates with a static final DateTimeFormatter; create any other Format (DecimalFormat, MessageFormat) as a local where it is used.",
     "mayBeIntended": true
@@ -644,7 +696,7 @@
     "mayBeIntended": false
   },
   "UnusedFormalParameter": {
-    "fix": "Remove the parameter and update the callers, or use it in the method body.",
+    "fix": "Remove the parameter and update the callers, or use it; when a framework fixes the signature, name it unusedX or ignoredX.",
     "mayBeIntended": true
   },
   "UnusedLocalVariable": {

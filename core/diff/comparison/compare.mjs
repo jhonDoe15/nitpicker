@@ -1,12 +1,17 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
 import { baseMoves, comparisonKey } from './fingerprint.mjs';
+import { againstMissingReports } from './notices/missing-reports.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { addGrowthAdvice, holdRatchetedFindings } from './ratchet/ratchet.mjs';
-import { withWorseMessage } from '../../../shared/messages/finding-advice.mjs';
+import { withWorseMessage } from '../../../shared/messages/advice/finding-advice.mjs';
 import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
 import { pairedKeys } from './positions/occurrences.mjs';
 import { withEditedLineReason } from './positions/touched-lines.mjs';
+import {
+  withoutCauses,
+  withUntouchedCause,
+} from '../../../shared/rules/stability/untouched-cause.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -40,19 +45,21 @@ export function compareFindings({
     moves,
     touchedCode,
   });
-  present.newFindings = [
+  const advised = [
     ...addGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves }),
     ...anchored.grown,
   ];
+  const explained = withUntouchedCause(advised, touchedCode);
+  present.newFindings = againstMissingReports(explained, baseFindings, moves);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
-  return {
+  return withoutCauses({
     newFindings: sortFindings(present.newFindings),
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
-  };
+  });
 }
 
 function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {

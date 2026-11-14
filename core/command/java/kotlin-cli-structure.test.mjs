@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { useGradleFixtures } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
@@ -161,6 +161,15 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
           'This code repeats src/main/kotlin/demo/Right.kt:3 (46 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Left.kt or src/main/kotlin/demo/Right.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/kotlin/demo/Left.kt|src/main/kotlin/demo/Right.kt:clone',
+          value: 283,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/kotlin/demo/Left.kt', startLine: 3, endLine: 48 },
+            { path: 'src/main/kotlin/demo/Right.kt', startLine: 3, endLine: 48 },
+          ],
+        },
       },
     ]);
   });
@@ -186,6 +195,15 @@ describe('nitpicker with "preset": "kotlin" and function structure', () => {
           'This code repeats src/main/kotlin/demo/Parcel.kt:3 (17 lines). Keep one copy and call it from both places. If the repetition is intended, add src/main/kotlin/demo/Invoice.kt or src/main/kotlin/demo/Parcel.kt to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/kotlin/demo/Invoice.kt|src/main/kotlin/demo/Parcel.kt:clone',
+          value: 131,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/kotlin/demo/Invoice.kt', startLine: 3, endLine: 19 },
+            { path: 'src/main/kotlin/demo/Parcel.kt', startLine: 3, endLine: 19 },
+          ],
+        },
       },
     ]);
   });

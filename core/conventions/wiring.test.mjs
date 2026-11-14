@@ -8,8 +8,8 @@ import {
   runTasksWithFakeGradle,
 } from '../command/java/test-support/java-cli-harness.mjs';
 import { cacheKey } from '../diff/cache/findings-cache.mjs';
-import { baseSetupResolver } from '../command/policy-review/base-setup.mjs';
-import { runCli } from '../cli.mjs';
+import { baseSetupResolver } from '../command/policy-review/base-setup.mts';
+import { runCli } from '../cli.mts';
 
 const { createGitRepository } = useGitFixtures();
 
@@ -68,6 +68,7 @@ describe('conventions in a run', () => {
       path.join(root, 'nitpicker.config.json'),
       '{ "preset": "java", "disable": ["nope"] }\n',
     );
+    writeFileSync(path.join(root, 'build.gradle'), '');
     let errors = '';
 
     const exitCode = runCli({
@@ -82,7 +83,7 @@ describe('conventions in a run', () => {
 
     expect(exitCode).toBe(2);
     expect(errors).toBe(
-      'nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: java, repository-hygiene\n',
+      `nitpicker failed: nitpicker.config.json: "disable" names unknown analyzers: nope. Known analyzers: java, repository-hygiene\n`,
     );
   });
 

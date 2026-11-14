@@ -74,6 +74,11 @@ export const policyFailureMessageCases = [
     'execFile',
   ),
   adapterCase(
+    'synchronous fs call in an async function names the promise API',
+    "import { readFileSync } from 'node:fs'; export async function load(path) { return readFileSync(path, 'utf8'); }",
+    'node:fs/promises',
+  ),
+  adapterCase(
     'path join names the containment check',
     "import { readFileSync } from 'node:fs'; import path from 'node:path'; export function read(name) { return readFileSync(path.join('/srv', name)); }",
     'startsWith',
@@ -102,6 +107,16 @@ export const policyFailureMessageCases = [
     'fetch without a timeout names AbortSignal.timeout',
     'export function get(url) { return fetch(url); }',
     'AbortSignal.timeout',
+  ),
+  adapterCase(
+    'timeout race names the abort controller',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    'AbortController',
+  ),
+  adapterCase(
+    'timeout race names the signal option',
+    'const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms));\nexport const run = () => Promise.race([sendPayment(), rejectAfter(10)]);',
+    '{ signal: controller.signal }',
   ),
   adapterCase(
     'unsafe deserialization names JSON.parse',

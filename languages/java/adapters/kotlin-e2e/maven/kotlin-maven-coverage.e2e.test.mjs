@@ -22,7 +22,7 @@ const mavenDiffOf = mavenDiffRunner(maven);
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structure', () => {
   const fixture = useKotlinCoverageProject({ initialize: initializeMavenProject });
-  it('fails a changed Kotlin branch that no test takes together with its surviving mutant', () => {
+  it('fails a changed Kotlin branch that no test takes together with its surviving mutants', () => {
     const result = mavenDiffOf(fixture.project, 'one-sided-branch');
 
     expect(result.failed).toBe(true);
@@ -35,11 +35,14 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
         .map(({ message, location }) => ({ message, location })),
     ).toEqual([
       {
-        message: `Branch coverage is 50.00%; minimum is 95%. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
+        message: `Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. ${exceptionRoute({ rule: 'changed-branch-coverage', path: `${kotlinSources}/Label.kt`, function: 'Label.larger' })}`,
         location: { line: 4 },
       },
     ]);
-    expect(fromTool(result.newEnforceable, 'pit')).toEqual(['pit mutant-survived Label.kt']);
+    expect(fromTool(result.newEnforceable, 'pit')).toEqual([
+      'pit mutant-survived Label.kt',
+      'pit mutant-survived Label.kt',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = mavenDiffOf(fixture.project, 'multiline-branch');
@@ -78,11 +81,17 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'utf8',
     );
     const generatedFile = report.slice(report.indexOf('<sourcefile name="Generated.kt">'));
-    const missedLines = [...generatedFile.matchAll(/<line nr="(\d+)"[^>]* mb="([1-9]\d*)"/g)].map(
-      ([, line]) => Number(line),
-    );
+    const linesWith = (counter) =>
+      [
+        ...generatedFile.matchAll(
+          new RegExp(`<line nr="(\\d+)"[^>]* ${counter}="[1-9]\\d*"`, 'gu'),
+        ),
+      ].map(([, line]) => Number(line));
 
-    expect(missedLines).toEqual([33, 34, 35]);
+    expect({ covered: linesWith('cb'), missed: linesWith('mb') }).toEqual({
+      covered: [15, 22],
+      missed: [],
+    });
     expect(findings.filter(({ rule }) => rule === 'changed-branch-coverage')).toEqual([]);
   });
   it('applies the structure, CRAP, clone and stability rules to one change', () => {
@@ -114,6 +123,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',
       'structure function-statements-limit rank',
+      'structure near-duplicate classify(Int)',
+      'structure near-duplicate rank(Int)',
+      'structure near-duplicate rank(Int)',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
       `depth nests control flow 3 deep (limit 2). Return early instead of nesting. ${routeOf('function-control-nesting-limit', 'change/Deep.kt', 'depth')}`,
@@ -181,25 +193,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
     expect(rulesOf(result.newEnforceable, 'structure', 'crap')).toEqual([]);
     expect(rulesOf(result.unchangedFindings, 'structure', 'crap')).toEqual(legacy);
   });
-  it('reports a Maven failure as a tool error instead of throwing', () => {
+  it('reports a Maven compile failure as compile-error findings at the broken file', () => {
     git(fixture.project, 'checkout', '-q', 'broken');
 
     const { findings } = analyzeJavaSnapshot(fixture.project.root, { maven, policy: kotlinPolicy });
 
-    expect(
-      findings.map(({ tool, rule, classification, message }) => ({
-        tool,
-        rule,
-        classification,
-        namesTheBrokenFile: message.includes('Broken.kt'),
-      })),
-    ).toEqual([
-      {
-        tool: 'kotlin',
-        rule: 'maven-failure',
-        classification: 'tool-error',
-        namesTheBrokenFile: true,
-      },
+    expect([
+      ...new Set(
+        findings.map(
+          ({ tool, rule, classification, path: file }) =>
+            `${tool}/${rule} ${classification} ${file}`,
+        ),
+      ),
+    ]).toEqual([
+      `build/compile-error enforceable ${kotlinSources}/Broken.kt`,
+      'kotlin/compile-failed-skipped tool-error .',
     ]);
   });
 });

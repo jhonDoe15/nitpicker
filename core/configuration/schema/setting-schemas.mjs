@@ -112,3 +112,34 @@ export const history = {
   properties: Object.fromEntries(HISTORY_KEYS.map((key) => [key, historyProperties[key]])),
   dependencies: Object.fromEntries(HISTORY_THRESHOLD_KEYS.map((key) => [key, ['coChange']])),
 };
+
+function memberNames(description) {
+  return {
+    description,
+    type: 'array',
+    minItems: 1,
+    items: { type: 'string', minLength: 1 },
+  };
+}
+
+export const protocols = {
+  description:
+    'Lifecycle contracts for the protocol-contract rule: a type whose open member must be followed by a close member on every exit.',
+  type: 'array',
+  items: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['type', 'open', 'close'],
+    properties: {
+      type: {
+        description: 'The class or interface name, such as "Session".',
+        type: 'string',
+        minLength: 1,
+      },
+      open: memberNames('Members that start the lifecycle.'),
+      close: memberNames('Members that end the lifecycle; one must run on every exit.'),
+      steps: memberNames('Members that must come after an open member.'),
+      reason: { description: 'Why the contract exists.', type: 'string', pattern: String.raw`\S` },
+    },
+  },
+};

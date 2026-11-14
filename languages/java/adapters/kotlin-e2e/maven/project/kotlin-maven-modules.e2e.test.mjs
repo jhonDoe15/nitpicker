@@ -18,6 +18,15 @@ const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const adapters = path.resolve(import.meta.dirname, '../../..');
 const temporary = [];
 
+const WAITS = `package demo
+
+import kotlinx.coroutines.delay
+
+suspend fun pause() {
+    delay(1)
+}
+`;
+
 const comparable = (findings) => findings.map((finding) => JSON.stringify(finding)).sort();
 
 function gradleCopy() {
@@ -45,6 +54,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
     const mavenProject = mavenCopy('kotlin-single');
     for (const root of [gradleProject, mavenProject]) {
       writeFileSync(path.join(root, kotlinSources, 'Bad.kt'), BAD);
+      writeFileSync(path.join(root, kotlinSources, 'Waits.kt'), WAITS);
     }
     const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: kotlinPolicy });
     const fromMaven = collectJavaFindings(mavenProject, { maven, policy: kotlinPolicy });
@@ -56,6 +66,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
       'jacoco',
       'ktlint',
       'pit',
+      'test-runtime',
     ]);
   });
 
@@ -94,6 +105,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: equivalence and modu
     expect(
       findings
         .filter((finding) => finding.tool === 'test-runtime')
+        .filter((finding) => finding.classification === 'enforceable')
         .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`),
     ).toEqual([
       'slow-test core/src/test/kotlin/demo/core/AdderTest.kt test:demo.core.AdderTest#adds',

@@ -22,7 +22,7 @@ the junk it drops and the look-alike it keeps. Adversarial runs of PIT on other 
 and kinds that leaked; the rules above include what they found. The filter is still a list, and a
 project that meets a kind it does not know takes the exception route and reports it.
 
-**What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
+**What runs.** The Java preset's `nitpickerPit` (PIT 1.22.1 with the test plugins the project's
 framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, the Java preset's mutator
 list, the project's own tests) mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
 classes next to the Java ones; the other class tools keep to `compileJava`'s output. PIT's
@@ -35,7 +35,8 @@ arguments. They reach PIT through a Java argument file, so spaces, quotes and co
 what is left out. The ingester finds a class's source file under both kinds of source root from
 PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
 built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
-not enough.
+not enough. A comparison mutates the lines the change wrote and the classes its changed tests use,
+as for Java (see [Mutation in a comparison](../java-preset/mutation-in-a-comparison.md)).
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](structure-limits.md)) writes a

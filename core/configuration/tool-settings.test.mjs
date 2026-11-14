@@ -100,10 +100,32 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
       );
       const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
       expect(validateConfig(layered)).toEqual(layered);
+    },
+  );
+
+  it.each([
+    ['java', ['nitpicker']],
+    ['java', ['project']],
+    ['kotlin', ['project', 'nitpicker']],
+    ['kotlin', ['nitpicker', 'project']],
+  ])(
+    'accepts the build-declared tools with the %s preset in the order %j',
+    (preset, precedence) => {
+      const tools = { spotbugs: { precedence }, errorprone: { precedence }, pit: { precedence } };
+      expect(validateConfig({ preset, tools })).toEqual({ preset, tools });
+      expect(() =>
+        validateConfig({ preset: 'python', tools: { spotbugs: { precedence } } }),
+      ).toThrow('"tools" names unknown tool "spotbugs"');
+      expect(() =>
+        validateConfig({ preset: 'python', tools: { errorprone: { precedence } } }),
+      ).toThrow('"tools" names unknown tool "errorprone"');
+      expect(() => validateConfig({ preset: 'python', tools: { pit: { precedence } } })).toThrow(
+        '"tools" names unknown tool "pit"',
+      );
     },
   );
 

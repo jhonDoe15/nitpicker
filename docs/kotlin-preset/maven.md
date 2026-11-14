@@ -26,7 +26,7 @@ Gradle. The code is in `languages/java/maven/kotlin/` (roots, setup, Java classe
 
 | Tool               | On Maven                                                                                                                                                                                                                                                                                                                                              |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin tests that Maven's Surefire runs (JUnit 5, JUnit 4, TestNG and Kotest through its JUnit platform runner) work as in the Java preset. A compile error is `kotlin/maven-failure` and names the file.                                                                                   |
+| Compile and tests  | The project's own `mvn` run with the JaCoCo agent, so the Kotlin tests that Maven's Surefire runs (JUnit 5, JUnit 4, TestNG and Kotest through its JUnit platform runner) work as in the Java preset. A compile error on head is a `build/compile-error` finding at its line; on the base it is `kotlin/maven-failure` and names the file.            |
 | detekt             | Run outside Maven with the pinned jars. `--base-path` is the module directory, so paths and fingerprints match Gradle's. Exit codes 0 and 2 (findings) are accepted, as on Gradle.                                                                                                                                                                    |
 | ktlint, ktfmt      | Run outside Maven with the pinned jars on the Kotlin files of the module; the formatter is detected from the effective POM (see [Format check](format-check-ktlint-ktfmt-or-none.md)).                                                                                                                                                                |
 | kotlin-psi         | The same `kotlin-psi` program as on Gradle (metrics and the facts of the [review rules](review-rules.md)), compiled once per run with the `javac` of the JDK that runs Maven and run on the pinned `kotlin-compiler-embeddable` (2.4.21) for each module. Structure limits, CRAP, the review rules, and the clone and stability inputs are identical. |
@@ -80,7 +80,8 @@ that make sense for Kotlin, on Gradle and on Maven. Three kinds of check exist, 
 for each whether it applies and what differs.
 
 **Source-independent checks apply unchanged.** The configuration checks (`spring/open-in-view`,
-`spring/ddl-auto`, `spring/risky-startup-flags`, the secret and profile checks) read the project's
+`spring/ddl-auto`, `spring/risky-startup-flags`, `spring/datasource-without-timeout`, the secret and
+profile checks) read the project's
 `application*.properties` and `application*.yml`, not the sources, so Kotlin projects get all of
 them. `spring/open-in-view` looks for JPA in the main sources and now scans `.kt` files for the
 `jakarta.persistence` and `javax.persistence` imports as well as `.java`. The ArchUnit rules (layers,

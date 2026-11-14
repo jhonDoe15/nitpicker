@@ -51,3 +51,17 @@ def strip(lines):
 
 def largest(a, b, c):
     return max(a, b, c)
+
+
+def log(lines, line):
+    if not line:
+        return
+    lines.append(line)
+
+
+def same(value, other):
+    return value == other
+
+
+def either(kind):
+    return kind in {"a", "b"}

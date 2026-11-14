@@ -6,7 +6,14 @@ import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
+import path from 'node:path';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { LOG_DIRECTORY } from '../reporting/reporters.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -18,7 +25,9 @@ const SCHEDULER_GRACE_MS = 60 * 1000;
 
 const TASK_STOP_GRACE_MS = 5 * 1000;
 
-const schedulerPath = fileURLToPath(new URL('./analyzer-scheduler.mjs', import.meta.url));
+const schedulerPath = fileURLToPath(
+  checkoutModuleUrl(new URL('./analyzer-scheduler.mjs', import.meta.url)),
+);
 
 export function selectAnalyzers(analyzers, analyzerNames) {
   if (analyzerNames.length === 0) {
@@ -69,7 +78,9 @@ export function runAnalyzers({
   baselineMovesFile,
   liveProjectRoot,
   headPolicyFile,
-  runTasks = runScheduler,
+  mutationScope,
+  logRoot,
+  runTasks,
 }) {
   if (typeof liveProjectRoot !== 'string' || liveProjectRoot.length === 0) {
     throw new TypeError('liveProjectRoot is required');
@@ -83,9 +94,15 @@ export function runAnalyzers({
     baselineRoot,
     baselineMovesFile,
     liveProjectRoot,
+    mutationScope,
+    logRoot,
   });
 
-  const scheduled = scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot });
+  const scheduled = scheduleTasks(tasks, {
+    runTasks: runTasks ?? runScheduler,
+    headPolicyFile,
+    snapshot,
+  });
   return namedRun(scheduled, toolErrors, { projectRoot, liveProjectRoot, snapshot });
 }
 
@@ -163,14 +180,19 @@ export function runScheduler(tasks, headPolicyFile, { progress } = {}) {
   }
   if (result.status !== 0) {
     const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`);
+    throw troubleshootingError(
+      `Analyzer scheduler crashed with exit ${String(result.status)}: ${detail}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    );
   }
   try {
     return JSON.parse(result.stdout);
   } catch (error) {
-    throw new Error('Analyzer scheduler returned invalid JSON', {
-      cause: error,
-    });
+    throw troubleshootingError(
+      'Analyzer scheduler returned invalid JSON',
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      { cause: error },
+    );
   }
 }
 
@@ -199,6 +221,23 @@ function prepareTasks(analyzers, context) {
   return { tasks, toolErrors };
 }
 
+export function analyzerRunOptions({ outputRoot, runTasks }) {
+  return {
+    runTasks,
+    logRoot:
+      outputRoot === undefined ? undefined : path.join(path.resolve(outputRoot), LOG_DIRECTORY),
+  };
+}
+
+function logLocation(logRoot, liveProjectRoot) {
+  if (logRoot === undefined) {
+    return {};
+  }
+  const relative = path.relative(liveProjectRoot, logRoot);
+  const inside = relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  return { logRoot, logLabel: inside ? relative.split(path.sep).join('/') : logRoot };
+}
+
 function createTask(analyzer, context) {
   const { projectRoot, policyRoot, toolRoot, snapshot, liveProjectRoot } = context;
   resolveAnalyzerMetadata(analyzer, { liveProjectRoot, policyRoot });
@@ -212,6 +251,8 @@ function createTask(analyzer, context) {
     baselineRoot: context.baselineRoot,
     baselineMovesFile: context.baselineMovesFile,
     liveProjectRoot,
+    ...(context.mutationScope === undefined ? {} : { mutationScope: context.mutationScope }),
+    ...logLocation(context.logRoot, liveProjectRoot),
   });
   validateInvocation(analyzer.name, invocation);
   return {
@@ -222,6 +263,7 @@ function createTask(analyzer, context) {
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
     timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
+    configuredTimeout: analyzer.configuredTimeout === true,
     reportedTools: analyzer.reportedTools ?? [],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
     invocation,

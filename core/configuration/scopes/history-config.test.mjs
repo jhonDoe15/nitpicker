@@ -4,10 +4,11 @@ import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { baseConfigCoveringHead } from '../../policy-changes/base-coverage.mjs';
 import { describeConfigOverrides } from '../config.mjs';
 import { configureAnalyzers } from '../configure-analyzers.mjs';
-import { presetAnalyzers } from '../preset-analyzers.mjs';
+import { presetAnalyzers } from '../preset-analyzers.mts';
 import { validateConfig } from '../validate.mjs';
+import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
-const ENTRY = fileURLToPath(new URL('../../cli.mjs', import.meta.url));
+const ENTRY = fileURLToPath(checkoutModuleUrl(new URL('../../cli.mjs', import.meta.url)));
 const PRESETS = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
 
 describe('history config', () => {
@@ -54,28 +55,33 @@ describe('history config', () => {
     expect(() => validateConfig(config)).toThrow(message);
   });
 
-  it.each(['java', 'kotlin', 'python'])(
-    'takes layout.featureRoots with %s once co-change is on, and not before',
-    (preset) => {
-      const layout = { featureRoots: ['**/modules'] };
-      const accepted = { preset, layout, history: { coChange: true } };
+  it('takes layout.featureRoots with python, which runs the feature folder rules, without co-change', () => {
+    const config = { preset: 'python', layout: { featureRoots: ['**/modules'] } };
 
-      expect(() => validateConfig({ preset, layout })).toThrow(/not supported with "preset"/u);
-      expect(() => validateConfig({ preset, layout, history: { coChange: false } })).toThrow(
-        /not supported/u,
-      );
-      expect(validateConfig(accepted)).toEqual(accepted);
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it.each(['java', 'kotlin'])(
+    'takes layout.featureRoots and sharedRoots with %s, which runs the contract rule, with or without co-change',
+    (preset) => {
+      const layout = { featureRoots: ['**/modules'], sharedRoots: ['**/common'] };
+      const configs = [
+        { preset, layout },
+        { preset, layout, history: { coChange: true } },
+      ];
+
+      expect(configs.map((config) => validateConfig(config))).toEqual(configs);
     },
   );
 
-  it('keeps layout.sharedRoots out of the presets that do not run its rule', () => {
+  it('keeps the source folder layout keys out of the other presets when co-change is on', () => {
     expect(() =>
       validateConfig({
         preset: 'java',
-        layout: { sharedRoots: ['**/shared'] },
+        layout: { sourceRoots: ['app'] },
         history: { coChange: true },
       }),
-    ).toThrow(/sharedRoots/u);
+    ).toThrow(/sourceRoots/u);
   });
 
   it.each(PRESETS)('takes co-change exceptions with %s', (preset) => {
@@ -109,6 +115,21 @@ describe('the change-history analyzer', () => {
       off: names({ preset, history: { coChange: false, commits: 500 } }),
       on: names({ preset, history: { coChange: true } }),
     }).toEqual({ before: false, off: without, on: [...without, 'change-history'] });
+  });
+
+  it.each([
+    ['typescript', ['coupling']],
+    ['javascript', ['coupling']],
+    ['java', ['java']],
+    ['kotlin', ['kotlin']],
+    ['python', ['python']],
+    ['go', []],
+  ])('shares a shard with the %s analyzers that publish imports', (preset, publishers) => {
+    const analyzer = presetAnalyzers({ preset, history: { coChange: true } }).find(
+      ({ name }) => name === 'change-history',
+    );
+
+    expect(analyzer.colocatedWith).toEqual(publishers);
   });
 
   it('can be disabled like any analyzer, and does not replace injected analyzers', () => {

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mjs';
+import { normalizeEslintResults } from '../../../adapters/eslint/normalize.mts';
 import { lintFixture } from '../../failure-messages/test-support/harness.mjs';
 import { defaultResolvedLayout } from '../../layout.mjs';
 import { isStrictRule, mustMeetOnEditedLines } from '../../strict-rules.mjs';
@@ -17,13 +17,17 @@ const BRANCH_STRICT_RULES = [
   'curly',
   'nitpicker/naming-convention',
   'nitpicker/no-disabled-tls-verification',
+  'nitpicker/no-in-memory-query',
   'nitpicker/no-magic-numbers',
   'nitpicker/no-module-level-mutable-state',
+  'nitpicker/no-multiple-collection-joins',
   'nitpicker/no-orm-query-logging',
   'nitpicker/no-orm-schema-sync',
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-sql-string-building',
+  'nitpicker/no-sync-node-api-in-async',
+  'nitpicker/no-unindexed-foreign-key',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-weak-hash',
@@ -88,12 +92,12 @@ describe('production rule classification', () => {
   it('keeps the layout rules out of the strict set', () => {
     const ruleIds = ruleIdsOf(productionLayoutConfigFor(layout));
 
-    expect(ruleIds).toEqual(['nitpicker/no-unknown-main-folder']);
+    expect(ruleIds).toEqual(['nitpicker/no-generic-name', 'nitpicker/no-unknown-main-folder']);
     expect(ruleIds.filter((rule) => isStrictRule(rule))).toEqual([]);
   });
 
   it('does not count an edit to line 1 of a legacy file in an unknown folder as new', () => {
-    const file = 'src/main/utils/format.ts';
+    const file = 'src/main/billing/format.ts';
     const base = findingsFor(file, 'export const label = "a";\n');
     const head = findingsFor(file, 'export const label = "b";\n');
 
@@ -109,7 +113,7 @@ describe('production rule classification', () => {
   });
 
   it('still counts a strict finding on an edited line 1 as new', () => {
-    const file = 'src/main/utils/format.ts';
+    const file = 'src/main/billing/format.ts';
     const base = findingsFor(file, 'export const label = "a";\n');
     const head = findingsFor(file, 'export const label = eval("a");\n');
 

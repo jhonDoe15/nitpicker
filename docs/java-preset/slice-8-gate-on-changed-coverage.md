@@ -16,6 +16,9 @@ Part of the [Java preset guide](../java-preset.md).
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
   rule name is unaffected (its identity keys on branch source; the predicate is tool-scoped).
+- **The `main` method.** Branch coverage is judged there as everywhere else: a `main` that only
+  passes `System.out` to the code it starts has no branch, and one with branches needs a test (the
+  `static void main` exemption of [Slice 7](#slice-7-mutation-with-pit) covers mutants, not branches).
 - **Identity.** A hash of the line's source text without formatting (tokens, so spacing, `;` and
   trailing commas do not count), `branch-source:<16 hex>`,
   with `#2`, `#3` for identical lines in one file, in order. No line number: inserting code above

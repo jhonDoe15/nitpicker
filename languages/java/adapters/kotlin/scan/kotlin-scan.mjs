@@ -1,10 +1,11 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
-import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { generatedFile } from './rules/markers.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 import { directoryRules } from './rules/source-rules.generated.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
@@ -21,35 +22,21 @@ export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
 const MAIN_RULES = directoryRules.flatMap(({ main = [] }) => main);
 const TEST_RULES = directoryRules.flatMap(({ test = [] }) => test);
 
-const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
-const ROOT_MARKERS = [
-  /@(?:[\w.]+\.)?SpringBootApplication\b/,
-  /(?<![\w.])fun\s+Application\s*\.\s*\w+\s*\(/,
-];
-
 function kotlinFiles(projectRoot, sourceRoots) {
   const files = sourceRoots.flatMap((sourceRoot) => {
     const directory = pathInside(projectRoot, sourceRoot);
-    if (directory === undefined || !existsSync(directory)) {
+    if (directory === undefined) {
       return [];
     }
-    return readdirSync(directory, { recursive: true })
+    return projectFilePaths(directory)
       .filter((entry) => entry.endsWith('.kt'))
       .map((entry) => ({
-        file: path.posix.join(sourceRoot, entry.replaceAll('\\', '/')),
-        absolute: path.join(directory, entry),
+        file: path.posix.join(sourceRoot, entry),
+        absolute: path.join(directory, ...entry.split('/')),
       }));
   });
   const byFile = new Map(files.map((entry) => [entry.file, entry]));
   return [...byFile.values()].toSorted((left, right) => (left.file < right.file ? -1 : 1));
-}
-
-export function isCompositionRoot(scanned) {
-  const depths = braceDepths(scanned.code);
-  const declaresMain = [...scanned.code.matchAll(TOP_LEVEL_MAIN)].some(
-    ({ index }) => depths[index] === 0,
-  );
-  return declaresMain || ROOT_MARKERS.some((marker) => marker.test(scanned.code));
 }
 
 function finding({ file, scanned, occurrences }, reported) {
@@ -77,8 +64,11 @@ function scannedFiles(projectRoot, sourceRoots) {
     .filter(({ scanned }) => !generatedFile(scanned));
 }
 
-function scanFiles(files, rules) {
-  const context = { declarations: kotlinDeclarations(files.map(({ scanned }) => scanned)) };
+function scanFiles(files, rules, runners) {
+  const context = {
+    declarations: kotlinDeclarations(files.map(({ scanned }) => scanned)),
+    runners,
+  };
   return files.flatMap(({ file, scanned }) => {
     const occurrences = new Map();
     return rules
@@ -88,9 +78,13 @@ function scanFiles(files, rules) {
   });
 }
 
-export function readKotlinSourceFindings(projectRoot, manifest) {
+export function readKotlinSourceFindings(projectRoot, manifest, runners = []) {
   return [
-    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinSourceRoots ?? []), MAIN_RULES),
-    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []), TEST_RULES),
+    ...scanFiles(scannedFiles(projectRoot, manifest.kotlinSourceRoots ?? []), MAIN_RULES, runners),
+    ...scanFiles(
+      scannedFiles(projectRoot, manifest.kotlinTestSourceRoots ?? []),
+      TEST_RULES,
+      runners,
+    ),
   ];
 }

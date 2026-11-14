@@ -23,7 +23,13 @@ import {
   PALANTIR_ROOMY,
 } from '../test-support/java-preset-data.mjs';
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
-import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from '../test-support/wide-sources.mjs';
+import { DOMAIN_FILES, FEATURE_FILES } from '../test-support/boundaries/feature-sources.mjs';
+import {
+  WIDE,
+  WIDE_EXTENDED,
+  WIDE_REFORMATTED,
+  pricingClass,
+} from '../test-support/wide-sources.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
@@ -57,13 +63,10 @@ const BASELINED_FINDINGS = [
   'jacoco uncovered-method Greeter.java',
   'jacoco uncovered-method Legacy.java',
   'jacoco uncovered-method Wide.java',
-  'pit mutant-nocoverage Branchy.java',
-  'pit mutant-nocoverage Greeter.java',
-  'pit mutant-nocoverage Legacy.java',
-  'pit mutant-nocoverage Wide.java',
-  'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling coupling .',
@@ -82,13 +85,11 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'jacoco uncovered-method Greeter.java',
   'jacoco uncovered-method Legacy.java',
   'jacoco uncovered-method Wide.java',
-  'pit mutant-nocoverage Branchy.java',
   'pit mutant-nocoverage Greeter.java',
-  'pit mutant-nocoverage Legacy.java',
-  'pit mutant-nocoverage Wide.java',
-  'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 // Each file gets its own fixture tree and retains the original setup and cleanup.
 export function useJavaPresetProject() {
@@ -125,6 +126,10 @@ export function useJavaPresetProject() {
     branchWith('branch-added', { 'Branchy.java': BRANCHY_ADDED });
     branchWith('structure-new', { 'Wide.java': WIDE_EXTENDED });
     branchWith('structure-moved', { 'Wide.java': WIDE_REFORMATTED });
+    branchWith('near-copy', {
+      'OrderPricing.java': pricingClass('OrderPricing', 'orders'),
+      'InvoicePricing.java': pricingClass('InvoicePricing', 'invoices'),
+    });
     // --- coupling (SH6) branches ---
     branchWith('stability', STABILITY_FILES);
     runGitIn(repository, 'checkout', '-q', '-b', 'stability-edited', 'stability');
@@ -138,6 +143,8 @@ export function useJavaPresetProject() {
     );
     runGitIn(repository, 'add', '-A');
     runGitIn(repository, 'commit', '-q', '-m', 'stability-edited');
+    branchWith('features', FEATURE_FILES);
+    branchWith('domain', DOMAIN_FILES);
     // --- end coupling branches ---
   });
   afterAll(() => {

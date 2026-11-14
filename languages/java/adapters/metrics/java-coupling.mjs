@@ -2,10 +2,16 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { outerClass } from '../../ingest/class-names.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
+import { cycleFindings } from '../../guards/cycles.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';
 const JDEPS_CLASSES = 'jdeps-classes.txt';
+const PERMITS_REPORT = 'permits.txt';
 const ROOT_PACKAGE = '(root)';
 
 export function parseJdeps(text) {
@@ -24,7 +30,30 @@ function packageOf(className) {
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
-export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass }) {
+function featurePackage(module, directory) {
+  const name = packageOf(module);
+  const qualifier = name.slice(0, name.lastIndexOf('/') + 1);
+  const parts = name.slice(qualifier.length).split('.');
+  const length = parts
+    .map((_, index) => parts.length - index)
+    .find((count) => {
+      const folder = parts.slice(0, count).join('/');
+      return directory === folder || directory.endsWith(`/${folder}`);
+    });
+  return length === undefined ? directory : `${qualifier}${parts.slice(0, length).join('.')}`;
+}
+
+function packageRoles(layout, fileOf) {
+  const roleOfFile = featureRoleContract(layout ?? {}, PUBLIC_FACES.jvm);
+  return (module) => {
+    const role = roleOfFile(fileOf(module));
+    return role.kind === 'feature'
+      ? { ...role, directory: featurePackage(module, role.directory) }
+      : role;
+  };
+}
+
+export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass, layout }) {
   return buildCouplingReport({
     modules: [...new Set(classes.map(moduleOf))].sort(),
     edges: edges.map((edge) => ({
@@ -33,10 +62,14 @@ export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerCl
     })),
     packageOf,
     fileOf,
+    roleOf: packageRoles(layout, fileOf),
   });
 }
 
-export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin, files }) {
+export function readCouplingFindings(
+  reportRoot,
+  { projectRoot, sourceRoots, kotlin, files, layout, features },
+) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
   if (!existsSync(jdeps) || !existsSync(classList)) {
@@ -44,7 +77,10 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
   }
   const classes = readFileSync(classList, 'utf8').split(/\r?\n/).filter(Boolean);
   function fileOf(className) {
-    const known = kotlin?.fileOf.get(className) ?? files?.get(className);
+    const known =
+      kotlin?.fileOf.get(className) ??
+      features?.classFiles?.get(className) ??
+      files?.get(className);
     if (known !== undefined) {
       return known;
     }
@@ -56,14 +92,44 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
       relative
     );
   }
-  const report = analyzeJavaCoupling({
-    classes,
-    edges: parseJdeps(readFileSync(jdeps, 'utf8')),
-    fileOf,
-    moduleOf: (className) => {
-      const outer = outerClass(className);
-      return kotlin?.moduleOf.get(outer) ?? outer;
+  function moduleOf(className) {
+    const outer = outerClass(className);
+    return kotlin?.moduleOf.get(outer) ?? outer;
+  }
+  const edges = parseJdeps(readFileSync(jdeps, 'utf8'));
+  const report = analyzeJavaCoupling({ classes, edges, fileOf, moduleOf, layout });
+  return [
+    ...evaluateCoupling(report, COUPLING_TOOL),
+    ...packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }, features),
+  ];
+}
+
+function permittedEdges(reportRoot) {
+  const permits = path.join(reportRoot, PERMITS_REPORT);
+  return new Set(
+    existsSync(permits)
+      ? parseJdeps(
+          readFileSync(permits, 'utf8')
+            .split(/\r?\n/)
+            .map((line) => `  ${line}`)
+            .join('\n'),
+        ).map((edge) => `${edge.source}\0${edge.target}`)
+      : [],
+  );
+}
+
+function packageCycles({ reportRoot, classes, edges, moduleOf, fileOf }, features) {
+  const permitted = permittedEdges(reportRoot);
+  return cycleFindings(
+    {
+      modules: [...new Set(classes.map(moduleOf))],
+      edges: edges
+        .filter((edge) => !permitted.has(`${edge.source}\0${edge.target}`))
+        .map((edge) => ({ source: moduleOf(edge.source), target: moduleOf(edge.target) })),
+      packageOf,
+      fileOf,
     },
-  });
-  return evaluateCoupling(report, COUPLING_TOOL);
+    COUPLING_TOOL,
+    features,
+  );
 }
