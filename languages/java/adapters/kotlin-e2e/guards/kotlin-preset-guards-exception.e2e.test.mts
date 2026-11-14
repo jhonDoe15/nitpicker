@@ -6,16 +6,17 @@ import {
   kotlinE2eEnabled,
   kotlinPolicy,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
 import {
   BANNED_FILES,
   EXPECTED_BANNED,
   GUARD_ROOT,
   summary,
-} from '../test-support/guards/kotlin-guard-data.mjs';
+} from '../test-support/guards/kotlin-guard-data.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset source guard exceptions end to end', () => {
-  let project;
+  let project: KotlinProject;
 
   beforeAll(() => {
     project = initializeProject();

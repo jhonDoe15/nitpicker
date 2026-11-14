@@ -1,23 +1,24 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { exceptionHint } from '../test-support/views/kotlin-e2e-views.mts';
 import {
   commitBranch,
   diffOf,
   initializeProject,
   kotlinE2eEnabled,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
 import {
   BANNED_FILES,
   EXPECTED_BANNED,
   guardFindings,
   printedRule,
   summary,
-} from '../test-support/guards/kotlin-guard-data.mjs';
+} from '../test-support/guards/kotlin-guard-data.mts';
+import type { DiffResult, KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset banned source guards end to end', () => {
-  let project;
-  let banned;
+  let project: KotlinProject;
+  let banned: DiffResult;
 
   beforeAll(() => {
     project = initializeProject();

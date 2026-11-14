@@ -2,12 +2,13 @@ import { cpSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { gradle, kotlinE2eEnabled, kotlinPolicy } from './test-support/kotlin-e2e-project.mjs';
+import { fieldOf, textOf } from '../../../../shared/values/readers.mts';
+import { gradle, kotlinE2eEnabled, kotlinPolicy } from './__tests__/kotlin-e2e-project.mts';
+import { collectJavaFindings } from './test-support/views/kotlin-e2e-views.mts';
 
 const fixture = path.resolve(import.meta.dirname, '../fixtures/test-frameworks/kotest');
 const CALC = 'src/main/kotlin/demo/Calc.kt';
-const temporary = [];
+const temporary: string[] = [];
 
 afterAll(() => {
   for (const root of temporary.splice(0)) {
@@ -42,8 +43,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on a Kotest project', () => {
       findings
         .filter(({ tool }) => ['archunit', 'pit'].includes(tool))
         .map(({ tool, rule, path: file, identity, metric }) =>
-          [tool, rule, file, identity, metric?.value]
+          [tool, rule, file, identity, fieldOf(metric, 'value')]
             .filter((part) => part !== undefined)
+            .map(textOf)
             .join(' '),
         )
         .sort(),

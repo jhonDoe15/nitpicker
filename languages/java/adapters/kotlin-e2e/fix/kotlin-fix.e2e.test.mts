@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { fixReport, useFixProject } from '../../../../../core/fix/test-support/fix-project.mjs';
+import { fixReport, useFixProject } from './test-support/kotlin-fix-views.mts';
+import type { FixRequest, FixResult } from './test-support/kotlin-fix-views.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const { fix } = useFixProject();
 
 const SOURCES = 'src/main/kotlin/demo';
@@ -18,21 +19,24 @@ const MAVEN_BUILD = {
 const FORMATTED = 'package demo\n\nclass Changed\n';
 const FORMAT_TOOLS = new Set(['ktlint', 'ktfmt']);
 
-function messy(name, body = 'a+b') {
+type Formatter = 'ktlint' | 'ktfmt';
+
+function messy(name: string, body = 'a+b'): string {
   return `package demo\n\nclass ${name} {\n    fun add( a:Int,b:Int ):Int { return ${body} }\n}\n`;
 }
 
 const FUNCTIONS = {
-  ktlint: (body) => `    fun add(\n        a: Int,\n        b: Int,\n    ): Int = ${body}\n`,
-  ktfmt: (body) => `    fun add(a: Int, b: Int): Int {\n        return ${body}\n    }\n`,
+  ktlint: (body: string) =>
+    `    fun add(\n        a: Int,\n        b: Int,\n    ): Int = ${body}\n`,
+  ktfmt: (body: string) => `    fun add(a: Int, b: Int): Int {\n        return ${body}\n    }\n`,
 };
-const MESSY_ADD = (body) => `    fun add( a:Int,b:Int ):Int { return ${body} }\n`;
+const MESSY_ADD = (body: string) => `    fun add( a:Int,b:Int ):Int { return ${body} }\n`;
 
-function formatted(name, formatter) {
+function formatted(name: string, formatter: Formatter): string {
   return `package demo\n\nclass ${name} {\n${FUNCTIONS[formatter]('a + b')}}\n`;
 }
 
-function legacy(add) {
+function legacy(add: string): string {
   return `package demo\n\nclass Legacy {\n${add}\n    fun mul(a: Int, b: Int): Int = a * b\n\n${MESSY_ADD('a-b').replace('add', 'sub')}}\n`;
 }
 
@@ -41,11 +45,17 @@ const LEGACY_NOTES = {
   ktfmt: `ktfmt left ${SOURCES}/Legacy.kt as is: already unformatted before your change`,
 };
 
-function windows(text) {
+function windows(text: string): string {
   return text.replaceAll('\n', '\r\n');
 }
 
-function repository({ build, formatter }) {
+function repository({
+  build,
+  formatter,
+}: {
+  build: Readonly<Record<string, string>>;
+  formatter: Formatter;
+}): FixRequest {
   return {
     committed: {
       ...build,
@@ -65,14 +75,14 @@ function repository({ build, formatter }) {
   };
 }
 
-function gateFormatFindings(result) {
+function gateFormatFindings(result: FixResult): string[] {
   return result
     .newFindings()
     .filter(({ tool }) => FORMAT_TOOLS.has(tool))
     .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
 }
 
-function outcomeOf(result) {
+function outcomeOf(result: FixResult) {
   return {
     exitCode: result.exitCode,
     report: fixReport(result.stdout),
@@ -88,7 +98,7 @@ function outcomeOf(result) {
   };
 }
 
-function expectedOutcome(formatter) {
+function expectedOutcome(formatter: Formatter) {
   return {
     exitCode: 0,
     report: `Fixed files:
@@ -112,7 +122,7 @@ Fix notes:
 }
 
 describe.skipIf(!enabled)('nitpicker --fix for Kotlin', () => {
-  it.each(['ktlint', 'ktfmt'])(
+  it.each<Formatter>(['ktlint', 'ktfmt'])(
     'formats the changed files of a Gradle project with %s, so the gate finds no format finding in them',
     (formatter) => {
       const result = fix({

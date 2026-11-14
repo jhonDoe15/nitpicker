@@ -5,9 +5,11 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import { writeSpringRoles } from '../spring-arch/spring-roles.mjs';
+import { fieldOf, listOf, parseJson, textOf } from '../../../../shared/values/readers.mts';
+import { assigned } from './test-support/views/assigned.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 const fixture = path.resolve(import.meta.dirname, '../fixtures/spring-arch-kotlin-project');
 
 const ROLES = { controller: ['shop.wiring.Endpoint'], repository: ['shop.wiring.Store'] };
@@ -62,7 +64,7 @@ const EXPECTED = [
 ];
 
 describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project', () => {
-  let projectRoot;
+  let projectRoot: string;
 
   beforeAll(() => {
     projectRoot = path.join(
@@ -78,7 +80,7 @@ describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project'
         '--quiet',
         '-I',
         INIT_SCRIPT,
-        `-Pnitpicker.spring.roles=${roles}`,
+        `-Pnitpicker.spring.roles=${assigned(roles, 'roles file')}`,
         'nitpickerSpringArch',
       ],
       { cwd: projectRoot, encoding: 'utf8', timeout: 170_000 },
@@ -89,20 +91,22 @@ describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project'
   });
 
   afterAll(() => {
-    if (projectRoot !== undefined) {
+    if (typeof projectRoot === 'string') {
       rmSync(path.dirname(projectRoot), { recursive: true, force: true });
     }
   });
 
   it('reports Kotlin classes against their .kt files, leaving out accessors and web entry points', () => {
-    const report = JSON.parse(
+    const report = parseJson(
       readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'spring-arch.json'), 'utf8'),
     );
 
-    expect(report.root).toBe('shop');
+    expect(fieldOf(report, 'root')).toBe('shop');
     expect(
-      report.violations.map(
-        ({ rule, className, detail, fileName }) => `${rule} ${className} ${detail} ${fileName}`,
+      listOf(fieldOf(report, 'violations')).map((violation) =>
+        ['rule', 'className', 'detail', 'fileName']
+          .map((key) => textOf(fieldOf(violation, key)))
+          .join(' '),
       ),
     ).toEqual(EXPECTED);
   });

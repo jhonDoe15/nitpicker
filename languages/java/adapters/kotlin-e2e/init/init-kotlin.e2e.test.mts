@@ -1,14 +1,12 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import {
-  copyFixtureRepository,
-  runInitThenAll,
-} from '../../../../../core/init/test-support/init-then-all.mjs';
+import { copyFixtureRepository, runInitThenAll } from '../test-support/views/kotlin-e2e-views.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
 const FIXTURE = path.resolve(import.meta.dirname, '../../fixtures/kotlin-project');
-const roots = [];
+const roots: string[] = [];
 
 describe.skipIf(!enabled)('nitpicker init then --all on a Kotlin project', () => {
   afterAll(() => {
@@ -36,6 +34,6 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Kotlin project', () =>
     expect(result.config).toBe('{ "preset": "kotlin" }\n');
     expect(result.all.exitCode, result.all.text).not.toBe(2);
     expect(result.toolErrors).toEqual([]);
-    expect(result.summary.overallStatus).not.toBe('tool-error');
+    expect(fieldOf(result.summary, 'overallStatus')).not.toBe('tool-error');
   });
 });
