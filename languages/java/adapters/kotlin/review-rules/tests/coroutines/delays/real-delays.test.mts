@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { FIXED_SLEEP_RULE } from '../../../../../../messages/wait-advice.mjs';
-import { flagsFor, JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mjs';
+import { flagsFor, JUNIT_HEAD, KOTEST_HEAD, rulesOf } from '../../../test-support/sources.mts';
 
-const delays = (text, flags) => rulesOf(text, FIXED_SLEEP_RULE, flags);
-const junit = (members, extra = '') => `${JUNIT_HEAD}${extra}class ClockTest {
+function delays(text: string, flags?: unknown): string[] {
+  return rulesOf(text, FIXED_SLEEP_RULE, flags);
+}
+function junit(members: string, extra = ''): string {
+  return `${JUNIT_HEAD}${extra}class ClockTest {
 ${members}
 }
 `;
+}
 
 describe('delay on a real dispatcher in a JUnit test', () => {
   it.each([
@@ -250,13 +254,15 @@ class MainCoroutineRule : TestWatcher() {
     }
 }
 `;
-  const applied = (annotation, member = '') => `${JUNIT_HEAD}${annotation}class ClockTest${member} {
+  function applied(annotation: string, member = ''): string {
+    return `${JUNIT_HEAD}${annotation}class ClockTest${member} {
     @Test
     fun main() = runTest {
         withContext(Dispatchers.Main) { delay(500) }
     }
 }
 `;
+  }
 
   it.each([
     ['no rule at all', MAIN, [MAIN]],

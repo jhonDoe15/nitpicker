@@ -1,10 +1,36 @@
 import { describe, expect, it } from 'vitest';
-import { classesOf } from './declarations.mjs';
-import { functionsOf } from './functions.mjs';
-import { discoverSuites, scanTestFile, testBodies } from './test-units.mjs';
+import { classesOf as untypedClassesOf } from './declarations.mjs';
+import { functionsOf as untypedFunctionsOf } from './functions.mjs';
+import {
+  discoverSuites as untypedDiscoverSuites,
+  scanTestFile as untypedScanTestFile,
+  testBodies as untypedTestBodies,
+} from './test-units.mjs';
 
-const names = (items) => items.map(({ name }) => name);
-const symbols = (nodes) => nodes.map(({ symbol }) => symbol);
+type Scanned = { code: string } | undefined;
+type Named = { name: string };
+type Symbolic = { symbol: string };
+type ClassNode = {
+  name: string;
+  annotations: { name: string; args: string }[];
+  supers: Named[];
+  bodyOpen: number;
+};
+type FunctionNode = { name: string; body: { start: number; end: number; expression: boolean } };
+type Suite = Symbolic & { nodes: (Symbolic & { prefix: string })[] };
+
+const scanTestFile: (text: string) => Scanned = untypedScanTestFile;
+const classesOf: (scanned: Scanned) => ClassNode[] = untypedClassesOf;
+const functionsOf: (scanned: Scanned) => FunctionNode[] = untypedFunctionsOf;
+const discoverSuites: (scanned: Scanned) => Suite[] = untypedDiscoverSuites;
+const testBodies: (scanned: Scanned, suites: Suite[]) => Symbolic[] = untypedTestBodies;
+
+function names(items: Named[]): string[] {
+  return items.map(({ name }) => name);
+}
+function symbols(nodes: Symbolic[]): string[] {
+  return nodes.map(({ symbol }) => symbol);
+}
 
 describe('Kotlin declarations in test sources', () => {
   it('reads classes with and without a body, with supertypes and annotations', () => {
@@ -22,14 +48,14 @@ val reference = Plain::class
     const classes = classesOf(scanned);
 
     expect(names(classes)).toEqual(['Plain', 'Child', 'Inner', 'Port', 'object']);
-    expect(classes[0].annotations.map(({ name, args }) => [name, args])).toEqual([
+    expect(classes[0]?.annotations.map(({ name, args }) => [name, args])).toEqual([
       ['Tag', '"slow"'],
       ['Nested', ''],
     ]);
-    expect(classes[0].bodyOpen).toBe(-1);
-    expect(classes[1].supers.map(({ name }) => name)).toEqual(['Base', 'Marker', 'Other']);
-    expect(classes[1].bodyOpen).toBeGreaterThan(0);
-    expect(classes[3].bodyOpen).toBe(-1);
+    expect(classes[0]?.bodyOpen).toBe(-1);
+    expect(classes[1]?.supers.map(({ name }) => name)).toEqual(['Base', 'Marker', 'Other']);
+    expect(classes[1]?.bodyOpen).toBeGreaterThan(0);
+    expect(classes[3]?.bodyOpen).toBe(-1);
   });
 
   it('reads functions with block and expression bodies, receivers, generics and backticked names', () => {
@@ -60,10 +86,12 @@ val reference = Plain::class
       'expression',
       'next',
     ]);
-    const body = (fn) => scanned.code.slice(fn.body.start, fn.body.end).trim();
+    function body(fn: FunctionNode | undefined): string | undefined {
+      return fn && scanned?.code.slice(fn.body.start, fn.body.end).trim();
+    }
     expect(body(functions[1])).toBe('runTest {\n        call()\n    }');
     expect(body(functions[4])).toBe('call(1,\n            2)');
-    expect(functions[5].body.expression).toBe(true);
+    expect(functions[5]?.body.expression).toBe(true);
   });
 
   it('ignores comments, strings and class literals when it looks for declarations', () => {
@@ -146,13 +174,13 @@ class PlainClass {
       'FeatureExample',
       'ExpectExample',
     ]);
-    expect(symbols(suites[0].nodes)).toEqual(['OuterTest.top']);
-    expect(symbols(suites[2].nodes)).toEqual([
+    expect(symbols(suites[0]?.nodes ?? [])).toEqual(['OuterTest.top']);
+    expect(symbols(suites[2]?.nodes ?? [])).toEqual([
       'ShouldSpecExample > ctx',
       'ShouldSpecExample > ctx > do it',
       'ShouldSpecExample > ctx > skip it',
     ]);
-    expect(symbols(suites[3].nodes)).toEqual([
+    expect(symbols(suites[3]?.nodes ?? [])).toEqual([
       'BehaviorExample > a',
       'BehaviorExample > a > b',
       'BehaviorExample > a > b > c',
@@ -160,17 +188,20 @@ class PlainClass {
       'BehaviorExample > d > e',
       'BehaviorExample > d > e > f',
     ]);
-    expect(symbols(suites[4].nodes)).toEqual([
+    expect(symbols(suites[4]?.nodes ?? [])).toEqual([
       'FreeExample > outer',
       'FreeExample > outer > inner',
     ]);
-    expect(symbols(suites[5].nodes)).toEqual([
+    expect(symbols(suites[5]?.nodes ?? [])).toEqual([
       'WordExample > a thing',
       'WordExample > a thing > work',
       'WordExample > another',
     ]);
-    expect(symbols(suites[6].nodes)).toEqual(['FeatureExample > f', 'FeatureExample > f > s']);
-    expect(symbols(suites[7].nodes)).toEqual(['ExpectExample > c', 'ExpectExample > c > e']);
+    expect(symbols(suites[6]?.nodes ?? [])).toEqual([
+      'FeatureExample > f',
+      'FeatureExample > f > s',
+    ]);
+    expect(symbols(suites[7]?.nodes ?? [])).toEqual(['ExpectExample > c', 'ExpectExample > c > e']);
   });
 
   it('reads the leaf bodies, leaves out test factories and keeps tests registered in a loop', () => {
@@ -240,7 +271,7 @@ fun sharedTests() = funSpec { test("from function") { } }
 }
 `);
 
-    expect(symbols(discoverSuites(scanned)[0].nodes)).toEqual([
+    expect(symbols(discoverSuites(scanned)[0]?.nodes ?? [])).toEqual([
       'NamesTest.returns empty (when none)',
       'NamesTest.maps {a=1} to [a]',
       'NamesTest.after',
