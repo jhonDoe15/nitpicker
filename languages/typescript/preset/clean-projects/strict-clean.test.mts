@@ -87,7 +87,12 @@ describe('the strict-clean fixture project', () => {
   });
 
   function createProject(): string {
-    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'strict-clean' });
+    const root = createCleanProject({
+      fixtureRoot,
+      gitTemplateRoot,
+      name: 'strict-clean',
+      environment: process.env,
+    });
     temporaryRoots.push(root);
     return root;
   }
@@ -165,8 +170,8 @@ describe('the strict-clean fixture project', () => {
     () => {
       const root = createProject();
       appendFileSync(path.join(root, 'src/main/features/greeting/domain/greet.ts'), REFUSED_CODE);
-      git(root, 'add', '-A');
-      git(root, 'commit', '-q', '-m', 'add code the gate refuses');
+      git(root, process.env, 'add', '-A');
+      git(root, process.env, 'commit', '-q', '-m', 'add code the gate refuses');
       runNitpicker(root, [
         '--base',
         'HEAD~1',
@@ -199,6 +204,7 @@ describe('the strict-clean fixture project', () => {
         fixtureRoot,
         gitTemplateRoot,
         name: 'strict-clean',
+        environment: process.env,
         files: LEGACY_FILES,
       });
     });
@@ -208,7 +214,7 @@ describe('the strict-clean fixture project', () => {
     });
 
     function runBranch(branch: string, files: Record<string, string>) {
-      git(sharedRoot, 'switch', '-q', '-f', '-c', branch, 'main');
+      git(sharedRoot, process.env, 'switch', '-q', '-f', '-c', branch, 'main');
       for (const [file, text] of Object.entries(files)) {
         writeFileSync(path.join(sharedRoot, file), text);
       }

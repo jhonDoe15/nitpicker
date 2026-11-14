@@ -1,5 +1,7 @@
 import { boundaryGuardRule as untypedBoundaryGuardRule } from '../eslint-plugin/rules/boundaries/no-handwritten-boundary-guard.mjs';
-import { tester } from './test-support/rule-tester.mts';
+import { createTester } from './test-support/rule-tester.mts';
+
+const tester = createTester();
 
 const boundaryGuardRule: (options: { validation: string[] }) => unknown = untypedBoundaryGuardRule;
 

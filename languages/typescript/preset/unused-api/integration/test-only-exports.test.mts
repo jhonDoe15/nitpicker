@@ -1,7 +1,7 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { runDeadCode } from '../../../adapters/quality-areas/runners/repository.mts';
 import type { QualityAreaOptions } from '../../../adapters/quality-areas/typed/area-types.mts';
 import { createProject } from '../test-support/project.mts';
@@ -138,8 +138,6 @@ it('uses them', () => { GET(); POST(); HomePage(); audit(); return metadata; });
 `,
 };
 
-let directories: string[] = [];
-
 function deadCode({
   sources = SOURCES,
   manifest = PRIVATE_APP,
@@ -151,7 +149,6 @@ function deadCode({
 } = {}) {
   const root = createProject(sources, { manifest });
   const policyDirectory = mkdtempSync(path.join(tmpdir(), 'nitpicker-policy-'));
-  directories.push(root, policyDirectory);
   const policyFile = path.join(policyDirectory, 'policy.json');
   const fullPolicy = {
     exclude: [],
@@ -180,6 +177,8 @@ function deadCode({
     return runDeadCode(options).filter(({ rule }) => rule === 'test-only-export');
   } finally {
     vi.unstubAllEnvs();
+    rmSync(root, { recursive: true, force: true });
+    rmSync(policyDirectory, { recursive: true, force: true });
   }
 }
 
@@ -263,11 +262,6 @@ let privateFindings: ReturnType<typeof deadCode>;
 
 beforeAll(() => {
   privateFindings = deadCode();
-});
-
-afterEach(() => {
-  for (const directory of directories) rmSync(directory, { recursive: true, force: true });
-  directories = [];
 });
 
 describe('exports and modules only tests import', () => {

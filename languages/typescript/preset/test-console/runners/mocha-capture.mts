@@ -19,7 +19,7 @@ const loadMochaClassTyped: (script: string) => Promise<MochaClass> = loadMochaCl
 const recordConsoleTyped: (
   linesPath: string,
   locate: () => Place,
-  options: { target: Console },
+  options: { target: Console | undefined },
 ) => void = recordConsole;
 
 const EACH_HOOK_LISTS = ['_beforeEach', '_afterEach'] as const;
@@ -51,7 +51,7 @@ function hookPlace(hook: MochaHook, loadedHookFiles: WeakMap<MochaHook, string>)
   const suite = hook.parent;
   return {
     file: absolute(hook.file ?? suite?.file ?? loadedHookFiles.get(hook)),
-    test: suite === undefined || suite.root === true ? '' : titleOf(suite),
+    test: suite === undefined || suite.root ? '' : titleOf(suite),
   };
 }
 
@@ -154,11 +154,11 @@ export function trackMocha(
 export async function captureMocha({
   environment,
   script,
-  target = globalThis.console,
+  target,
 }: {
   readonly environment: NodeJS.ProcessEnv;
   readonly script: string;
-  readonly target?: Console;
+  readonly target?: Console | undefined;
 }): Promise<{ readonly capturing: boolean } | { readonly unavailable: unknown }> {
   const linesPath = environment[LINES_VARIABLE] ?? '';
   if (linesPath === '' || script === '') {

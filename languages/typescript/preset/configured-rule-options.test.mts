@@ -147,9 +147,10 @@ async function ruleSettings(policy?: object) {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
   }
   importCount += 1;
-  const { default: config } = await import(
+  const loaded: unknown = await import(
     `${presetConfigUrl.href}?conventions=${String(importCount)}`
   );
+  const config = fieldOf(loaded, 'default');
   const settingOf = (ruleId: string): unknown =>
     listOf(config)
       .map((entry) => fieldOf(fieldOf(entry, 'rules'), ruleId))

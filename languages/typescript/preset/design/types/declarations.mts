@@ -138,9 +138,6 @@ function markImplemented(state: State): void {
 
 export function collectTypes(files: readonly OwnedFile[], state: State): void {
   for (const file of files) {
-    state.registry.exportedByFile.set(file.sourceFile.fileName, file.exported);
-  }
-  for (const file of files) {
     addFileTypes(state, file);
   }
   markImplemented(state);
@@ -165,7 +162,6 @@ function fieldsOf(state: State, entry: TypeEntry) {
 export function typeFact(state: State, entry: TypeEntry): TypeFact {
   const fields = fieldsOf(state, entry);
   const supertypes = supertypeIds(state, entry);
-  entry.fieldNames = new Set(fields.map(({ name }) => name));
   return {
     id: entry.id,
     file: entry.file,

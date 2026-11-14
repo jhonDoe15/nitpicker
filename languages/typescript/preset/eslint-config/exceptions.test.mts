@@ -20,7 +20,7 @@ async function ruleSeverity(config: Linter.Config[], file: string, name = rule) 
     overrideConfigFile: true,
     overrideConfig: config,
   });
-  const result = await eslint.calculateConfigForFile(file);
+  const result: unknown = await eslint.calculateConfigForFile(file);
   return listOf(fieldOf(fieldOf(result, 'rules'), name))[0];
 }
 

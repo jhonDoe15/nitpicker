@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterAll } from 'vitest';
-import { testMustUseProductionRuntime } from './test-support/runtime-rule.mts';
+import { productionRuntimeRule } from './test-support/runtime-rule.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-render-helper-'));
 const renderLine = 'import { render } from "@testing-library/react";';
@@ -87,7 +87,7 @@ new RuleTester({
     parser: tseslint.parser,
     parserOptions: { ecmaFeatures: { jsx: true } },
   },
-}).run('test-must-use-production-runtime through a test helper', testMustUseProductionRuntime, {
+}).run('test-must-use-production-runtime through a test helper', productionRuntimeRule(), {
   valid: [
     throughHelper('render-app.js'),
     throughHelper('reexport'),

@@ -1,11 +1,10 @@
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { securitySupportGlobs } from '../eslint-config/policy/security-facts.mjs';
 import {
   customPolicy as policy,
   loadConfig,
-  removeTemporaryRoots,
   temporaryProject,
-} from './test-support/layout-config-helpers.mts';
+} from './test-support/layout-config-loading.mts';
 import { loadDefaultConfig, selectFilesAndIgnores } from './test-support/layout-readers.mts';
 import { type ConfigEntry, sortedUnique } from './test-support/layout-views.mts';
 
@@ -31,7 +30,6 @@ function buildProduction(module: PolicyConfigs): ConfigEntry[] {
   return module.productionPolicyConfig({});
 }
 
-afterAll(removeTemporaryRoots);
 afterEach(() => {
   vi.unstubAllEnvs();
 });

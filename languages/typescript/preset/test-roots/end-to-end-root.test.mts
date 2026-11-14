@@ -2,7 +2,7 @@ import { RuleTester } from 'eslint';
 import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
-import { testMustUseProductionRuntime } from './test-support/runtime-rule.mts';
+import { productionRuntimeRule } from './test-support/runtime-rule.mts';
 import { END_TO_END_ROOT, resolveLayout as untypedResolveLayout } from '../layout.mjs';
 import { analyzeTestRuntime } from '../test-runtime/analyze.mts';
 
@@ -17,7 +17,7 @@ const playwrightSpec = "import { test } from '@playwright/test'; test('login', a
 
 new RuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-}).run('test-must-use-production-runtime for the e2e root', testMustUseProductionRuntime, {
+}).run('test-must-use-production-runtime for the e2e root', productionRuntimeRule(), {
   valid: [
     { filename: projectFile('e2e/login.spec.ts'), code: playwrightSpec },
     { filename: projectFile('e2e/flows/checkout.test.ts'), code: playwrightSpec },

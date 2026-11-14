@@ -99,7 +99,7 @@ function messageSource(lines: readonly string[], message: Linter.LintMessage): s
   const line = message.line;
   const last = message.endLine ?? line;
   const sourceLines = lines.slice(line - 1, last);
-  if (message.endColumn)
+  if (message.endColumn !== undefined && message.endColumn > 0)
     sourceLines[sourceLines.length - 1] = (sourceLines.at(-1) ?? '').slice(
       0,
       message.endColumn - 1,

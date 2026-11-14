@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
@@ -12,9 +12,8 @@ import { readDefaultTsconfig } from './test-support/layout-readers.mts';
 import {
   customLayout,
   readDefault,
-  removeTemporaryRoots,
   trackTemporaryRoot,
-} from './test-support/layout-config-helpers.mts';
+} from './test-support/layout-config-loading.mts';
 import {
   compareText,
   isCustomLayout,
@@ -31,8 +30,6 @@ import {
 const globMatcher: (glob: string) => RegExp = untypedGlobMatcher;
 
 const { gitCheckout } = useGitCheckouts();
-
-afterAll(removeTemporaryRoots);
 
 describe('resolveLayout', () => {
   it('marks the layout colocated only when no test root exists in the project', () => {

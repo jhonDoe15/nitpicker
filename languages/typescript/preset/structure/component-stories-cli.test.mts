@@ -30,7 +30,12 @@ describe('component-story-missing through the CLI', () => {
   });
 
   it('reports the component without a story in a Storybook project where most components have one', () => {
-    const root = createCleanProject({ fixtureRoot, gitTemplateRoot, name: 'storybook-project' });
+    const root = createCleanProject({
+      fixtureRoot,
+      gitTemplateRoot,
+      name: 'storybook-project',
+      environment: process.env,
+    });
     temporaryRoots.push(root);
     const { exitCode } = runNitpicker(root, [
       '--all',

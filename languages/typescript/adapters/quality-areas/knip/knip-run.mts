@@ -1,6 +1,7 @@
 import { unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { checkoutModuleUrl } from '../../../../../shared/paths/checkout-module.mjs';
+import { parseJson } from '../../../../../shared/values/readers.mts';
 import { trackTemporaryPath } from '../../typed/tooling.mts';
 import {
   hasEncodedRegExp as untypedHasEncodedRegExp,
@@ -29,6 +30,18 @@ function manifestGuard(manifestPath: string): string {
   ].join('\n');
   return `data:text/javascript,${encodeURIComponent(source)}`;
 }
+function isKnipReport(value: unknown): value is KnipReport {
+  return typeof value === 'object' && value !== null;
+}
+
+function readKnipReport(text: string): KnipReport {
+  const report = parseJson(text);
+  if (!isKnipReport(report)) {
+    throw new TypeError('knip did not print a JSON object');
+  }
+  return report;
+}
+
 const CONFIG_BASENAME = '.nitpicker-diff-knip';
 
 export function withProjectKnipConfig(config: KnipConfig): KnipConfig {
@@ -63,7 +76,7 @@ export function knipReport(options: QualityAreaOptions, config: KnipConfig): Kni
       arguments_: ['--config', file.path, '--reporter', 'json'],
       acceptedStatuses: [0, 1],
     });
-    return JSON.parse(result.stdout);
+    return readKnipReport(result.stdout);
   } finally {
     unlinkSync(file.path);
   }

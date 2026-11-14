@@ -13,7 +13,7 @@ import {
   propertyName,
   type Naming,
 } from './names.mts';
-import { appendAll, childrenOf } from './own-nodes.mts';
+import { childrenOf } from './own-nodes.mts';
 
 const ts = typescriptApi();
 
@@ -111,7 +111,9 @@ function describeNode(
 export function describeFunctions(sourceFile: TypeScript.SourceFile): FunctionDescriptor[] {
   const nodes: TypeScript.Node[] = [sourceFile];
   for (const node of nodes) {
-    appendAll(nodes, childrenOf(node));
+    for (const child of childrenOf(node)) {
+      nodes.push(child);
+    }
   }
   return nodes
     .sort((left, right) => left.pos - right.pos)

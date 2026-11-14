@@ -48,7 +48,6 @@ export type RuntimeReport = {
 
 export type AnalyzeOptions = {
   readonly layout?: AnalysisLayout;
-  readonly productionRoot?: string;
   readonly productionRoots?: readonly string[];
   readonly sourceTexts?: ReadonlyMap<string, string>;
   readonly subprocessBridges?: readonly string[];

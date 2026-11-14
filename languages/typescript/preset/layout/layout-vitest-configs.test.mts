@@ -1,12 +1,9 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   customPolicy as policy,
-  removeTemporaryRoots,
   resolveVitestConfig,
-} from './test-support/layout-config-helpers.mts';
+} from './test-support/layout-config-loading.mts';
 import { sortedUnique } from './test-support/layout-views.mts';
-
-afterAll(removeTemporaryRoots);
 
 describe('copied vitest configs', () => {
   it('the copied vitest configs run the custom roots and skip excluded paths', async () => {

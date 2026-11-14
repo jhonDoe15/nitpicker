@@ -5,7 +5,7 @@ import { wrappedFunction } from '../../syntax/function-values.mts';
 import { isAssignmentOperator, isWrapper, outsideClosures } from '../../syntax/nodes.mts';
 import { symbolOf } from '../scope.mts';
 import { targetSite, valueSite } from './targets.mts';
-import type { OwnedFile, Registry, Scope, Site, State } from '../../design-types.mts';
+import type { Scope, Site, State } from '../../design-types.mts';
 
 type Node = TypeScript.Node;
 
@@ -143,19 +143,13 @@ function uniqueIds(sites: readonly Site[], ownId: string | undefined): string[] 
   return [...new Set(sites.map(({ id }) => id))].filter((id) => id !== ownId);
 }
 
-function constantNamesOf(sourceFile: TypeScript.SourceFile): string[] {
+export function constantNamesOf(sourceFile: TypeScript.SourceFile): string[] {
   return sourceFile.statements
     .filter(ts.isVariableStatement)
     .map(({ declarationList }) => declarationList)
     .filter((list) => (list.flags & ts.NodeFlags.Const) !== 0)
     .flatMap(({ declarations }) => declarations)
     .flatMap((declaration) => (ts.isIdentifier(declaration.name) ? [declaration.name.text] : []));
-}
-
-export function indexConstants(files: readonly OwnedFile[], registry: Registry): void {
-  for (const name of files.flatMap(({ sourceFile }) => constantNamesOf(sourceFile))) {
-    registry.constantNames.add(name);
-  }
 }
 
 export function referenceFacts(scope: Scope): string[] {

@@ -2,18 +2,12 @@ import { fieldOf, parseJson } from '../../../../shared/values/readers.mts';
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
-import { afterAll, describe, expect, it } from 'vitest';
-import {
-  readDefault,
-  removeTemporaryRoots,
-  temporaryProject,
-} from '../layout/test-support/layout-config-helpers.mts';
+import { describe, expect, it } from 'vitest';
+import { readDefault, temporaryProject } from '../layout/test-support/layout-config-loading.mts';
 import {
   resolveLayoutFor,
   tsconfigTransform as layoutTransformFor,
 } from '../layout/test-support/layout-views.mts';
-
-afterAll(removeTemporaryRoots);
 
 describe('explicit TypeScript project config', () => {
   it.each(['tsconfig.quality.json', 'tsconfig.stryker.json'])(
