@@ -128,6 +128,44 @@ describe('binaries and large files', () => {
     ]);
   });
 
+  it.each([
+    ['a relative path (Yarn 1)', 'package.json', './vendor/nitpicker-1.0.0.tgz'],
+    ['a parent path', 'web/package.json', '../vendor/nitpicker-1.0.0.tgz'],
+    ['a bare relative archive', 'package.json', 'vendor/nitpicker-1.0.0.tgz'],
+    ['a link: spec', 'package.json', 'link:vendor/nitpicker-1.0.0.tgz'],
+    ['a portal: spec', 'package.json', 'portal:vendor/nitpicker-1.0.0.tgz'],
+  ])('leaves a tarball a dependency points at with %s', (_name, manifest, spec) => {
+    const findings = check({
+      'vendor/nitpicker-1.0.0.tgz': 'x',
+      'vendor/other-1.0.0.tgz': 'x',
+      [manifest]: JSON.stringify({ devDependencies: { nitpicker: spec } }),
+    });
+
+    expect(summary(findings)).toEqual(['committed-binary vendor/other-1.0.0.tgz']);
+  });
+
+  it('does not exempt an archive that no dependency spec points at', () => {
+    const findings = check({
+      'vendor/a-1.0.0.tgz': 'x',
+      'vendor/b-1.0.0.tgz': 'x',
+      'vendor/c-1.0.0.tgz': 'x',
+      'package.json': JSON.stringify({
+        dependencies: {
+          a: 'https://example.test/vendor/a-1.0.0.tgz',
+          b: 'owner/vendor',
+          c: '^1.0.0',
+        },
+        scripts: { pack: 'tar -xzf vendor/c-1.0.0.tgz' },
+      }),
+    });
+
+    expect(summary(findings)).toEqual([
+      'committed-binary vendor/a-1.0.0.tgz',
+      'committed-binary vendor/b-1.0.0.tgz',
+      'committed-binary vendor/c-1.0.0.tgz',
+    ]);
+  });
+
   it('flags a committed file over the size limit, but not lock files or tooling', () => {
     const oversize = 'a'.repeat(LARGE_FILE_BYTES + 1);
     const findings = check({

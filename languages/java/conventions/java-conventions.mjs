@@ -26,10 +26,11 @@ const JAVA_INDENTATION = {
 const JAVA_FORMATTERS = {
   id: JAVA_FORMATTER,
   label: 'Java formatter',
-  options: ['google', 'palantir', 'none'],
+  options: ['google', 'palantir', 'spring', 'none'],
   optionLabels: {
     google: 'google-java-format',
     palantir: 'palantir-java-format',
+    spring: 'Spring Java Format',
     none: 'no Java formatter runs',
   },
   fallback: 'google',

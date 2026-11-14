@@ -74,7 +74,16 @@ function uninstalledSentence(names: readonly string[]): string {
   return `${namesOf(names)} ${names.length > 1 ? 'are' : 'is'} in package.json but not installed`;
 }
 
-function installHeading({ missing, uninstalled }: Peers): string {
+function missingSentence({ missing, absent, outdated }: Peers): string {
+  const names = absent ?? missing;
+  return [
+    ...(names.length === 0 ? [] : [`missing: ${names.join(', ')}`]),
+    ...(outdated ?? []),
+  ].join('; ');
+}
+
+function installHeading(peers: Peers): string {
+  const { missing, uninstalled } = peers;
   if (missing.length === 0) {
     return `${uninstalledSentence(uninstalled)}. Install ${uninstalled.length > 1 ? 'them' : 'it'}:`;
   }
@@ -82,7 +91,7 @@ function installHeading({ missing, uninstalled }: Peers): string {
     uninstalled.length === 0
       ? ''
       : `; ${uninstalledSentence(uninstalled)}, which this installs too`;
-  return `Install what nitpicker needs from your project (missing: ${missing.join(', ')}${declared}):`;
+  return `Install what nitpicker needs from your project (${missingSentence(peers)}${declared}):`;
 }
 
 function installLines(peers: Peers): string[] {

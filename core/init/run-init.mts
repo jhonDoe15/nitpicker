@@ -82,7 +82,7 @@ function placeFiles(
   const workflowFile = workflowPath(projectRoot, repository);
   checkTargets(projectRoot, options, { repository, workflowFile });
   return {
-    config: placeConfig(projectRoot, project.preset),
+    config: placeConfig(projectRoot, project.preset, project.settings),
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
     approval: options.ci.length === 0 ? undefined : placeApprovalWorkflow(repository),
     workflowFile,

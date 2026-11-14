@@ -130,6 +130,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
   return {
     name: kotlin ? 'kotlin' : 'java',
     publishesModuleImports: true,
+    switchableParts: ['mutation'],
     version: readPinnedVersions(),
     resolveVersion: () => {
       runtimeVersion ??= javaRuntimeVersion();

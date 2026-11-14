@@ -4,6 +4,7 @@ import {
   pathInside,
   readJavaSource,
   sourceFilesUnder,
+  withoutGenerics,
 } from '../../review-rules/java-sources.mjs';
 
 const INHERITING_RULES = new Set([
@@ -42,19 +43,6 @@ function prefixOf(text, index) {
     start -= 1;
   }
   return text.slice(start, index);
-}
-
-function withoutGenerics(text) {
-  let depth = 0;
-  return text
-    .split('')
-    .filter((character) => {
-      depth += character === '<' ? 1 : 0;
-      const kept = depth === 0;
-      depth -= character === '>' ? 1 : 0;
-      return kept && character !== '>';
-    })
-    .join('');
 }
 
 function supertypes(tail) {

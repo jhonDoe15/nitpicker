@@ -123,6 +123,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
       quick: options.quick === true,
+      mutationOff: options.mutationOff === true,
       jacoco:
         options.quick === true || module.manifest.testsFailed === true
           ? undefined
@@ -163,7 +164,7 @@ function readModuleFindings(context, crapLimit) {
     ...archunitFindings(context),
     ...springArchFindings(context),
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
-    ...(context.quick ? [] : pitFindings(context)),
+    ...(context.quick || context.mutationOff ? [] : pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot, context.reactorRoot),
     ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),

@@ -7,10 +7,14 @@ import { analyzeJavaSnapshot, readRunnerPolicy } from '../java-runner.mjs';
 import { readJavaFindings as readFindings } from '../reporting/java-reports.mjs';
 import { fakeGradleRun } from '../test-support/in-process-gradle.mjs';
 import { readingFrom, reportBaseOf, writeModules } from '../test-support/report-base.mjs';
-import { javaLineLength, javaStyle, javaStyleProperties } from './java-style.mjs';
+import {
+  javaLineLength,
+  javaStyle,
+  javaStyleProperties,
+  NOT_YOUR_JAVA_FORMATTER,
+} from './java-style.mjs';
 
-const NOT_YOUR_FORMATTER =
-  'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';
+const NOT_YOUR_FORMATTER = NOT_YOUR_JAVA_FORMATTER;
 const roots = [];
 
 afterEach(() => {
@@ -32,6 +36,7 @@ describe('javaStyleProperties', () => {
 
     expect(properties('aosp')).toEqual(['-Pnitpicker.java.style=aosp']);
     expect(properties('palantir')).toEqual(['-Pnitpicker.java.style=palantir']);
+    expect(properties('spring')).toEqual(['-Pnitpicker.java.style=spring']);
     expect(properties('google')).toEqual([]);
     expect(properties(undefined)).toEqual([]);
   });

@@ -55,6 +55,56 @@ describe('a Vitest failure from a missing component test setup', () => {
   });
 });
 
+describe('a failure from a missing environment variable', () => {
+  const hint =
+    'Hint: the tests need environment variables that are not set. ' +
+    'Ignored files such as `.env` are not in the snapshots; export the variables in the shell that runs nitpicker.';
+  const fileFailing = (message, { snapshot, runnerName = RUNNER_NAMES.vitest } = {}) =>
+    formatTestFailures(
+      {
+        numFailedTests: 0,
+        testResults: [
+          { name: '/p/test/env.test.ts', status: 'failed', message, assertionResults: [] },
+        ],
+      },
+      '/p',
+      { runnerName, snapshot },
+    );
+
+  it.each([[RUNNER_NAMES.vitest], [RUNNER_NAMES.jest]])(
+    'names the cause on the head under %s',
+    (runnerName) => {
+      expect(fileFailing('Error: Invalid env provided.', { runnerName }).split('\n').at(-1)).toBe(
+        hint,
+      );
+    },
+  );
+
+  it('names the cause on the base', () => {
+    const message = fileFailing('Error: Invalid env provided.', { snapshot: 'base' });
+
+    expect(message.split('\n').at(-1)).toBe(hint);
+  });
+
+  it.each(['Missing required environment variable DATABASE_URL', 'API_KEY is required'])(
+    'matches a test file that fails to load with %s',
+    (failure) => {
+      expect(fileFailing(`Error: ${failure}`)).toContain(hint);
+    },
+  );
+
+  it.each(['EMAIL_ADDRESS is required', 'Invalid env provided'])(
+    'stays silent when a running test asserts %s',
+    (failure) => {
+      expect(messageFor(`AssertionError: ${failure}`)).not.toContain('environment variables');
+    },
+  );
+
+  it('stays silent for an ordinary failure', () => {
+    expect(messageFor('AssertionError: expected 1 to be 2')).not.toContain('environment variables');
+  });
+});
+
 describe('a failure under another runner', () => {
   it('gets no Vitest setup hint', () => {
     expect(messageFor('ReferenceError: document is not defined', RUNNER_NAMES.jest)).toBe(

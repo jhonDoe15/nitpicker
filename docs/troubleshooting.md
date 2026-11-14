@@ -393,6 +393,13 @@ JavaScript, the runner's own command with coverage (`vitest run --coverage`, `je
 Python, the project's test runner under `coverage run`; for Java and Kotlin, `./gradlew test` or
 `mvn test`. The message shows the first failures, with the runner's output.
 
+When a test file fails to load with a message that reads like missing configuration (`Invalid env`, a
+missing environment variable), the message ends with a hint. The cause is usually a git-ignored file such as `.env`: both
+snapshots are built from git, so ignored files are not in them. Export the variables in the
+environment that runs nitpicker; both snapshots inherit it (see
+[Test environment](usage.md#test-environment)). Mutation testing then reports `mutation skipped`
+instead of a second error.
+
 ### Tests fail on the base
 
 **Symptom.** A note, not a tool error: `Tests fail on the base:` (or `Tests fail on the base in
@@ -412,7 +419,9 @@ compile failure, a non-zero exit that names no test, a timeout), there is nothin
 fails, because there is no base result to hold it against: test that code or split it. A change that
 removes tests gets no help from the red base, and a `tests-removed` note says so. When the base tests
 did not run, rebase or merge the base branch once it is green, or compare against a passing ref with
-`--base <ref>`; if the failure is flaky, rerun. `nitpicker --all` has no baseline. See
+`--base <ref>`; if the failure is flaky, rerun. If the base fails on missing configuration (`Invalid env`), the
+cause is an ignored `.env` file that the base checkout does not have: export the variables in the
+environment that runs nitpicker (see [Test environment](usage.md#test-environment)). `nitpicker --all` has no baseline. See
 [A base whose tests fail](usage.md#a-base-whose-tests-fail).
 
 ### The test runner ran no tests
@@ -655,6 +664,11 @@ Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the 
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
 
+A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
+killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)
+...Warning` lines) are left out of the message, so they are not mistaken for the cause. Run fewer jobs
+at once with `NITPICKER_MAX_PARALLEL` or give the job more memory.
+
 **Fix.** The message ends with the tool's own output: run the same tool in the project
 (`npx prettier --check .`, `npx eslint .`, `npx tsc --noEmit`, the project's test command with
 coverage) and fix what it reports. When only nitpicker fails, rerun the analyzer alone with
@@ -778,6 +792,11 @@ the merge base, so check it out to reproduce. A runner without network access ne
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
 
+A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
+output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
+give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
+SIGKILL`, with the same remedy.
+
 ### The Maven build fails
 
 **Symptom.** A `maven-failure` tool error of the `java` analyzer holding Maven's `[ERROR]` lines (up to
@@ -874,6 +893,12 @@ keeps the other findings when PIT is the step that runs long. On Gradle, PIT run
 inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
 reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
+
+To run the Java or Kotlin gate without mutation testing when PIT is too slow for the project, add
+`"mutation"` to `disable` in `nitpicker.config.json`. PIT then runs on neither the base nor the head,
+no mutation findings are reported, and the run says on stderr that the config turned mutation off.
+Everything else (tests, coverage, CRAP and the other tools) still runs. `--quick` also skips mutation,
+but drops tests and coverage too.
 
 ### Error Prone cannot find a JDK
 

@@ -1,8 +1,8 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { GRADLE_PRESETS } from '../gradle-presets.mjs';
 import { configError, isPlainObject } from '../../../../shared/config.mjs';
 import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
+import { validateJvmSection } from '../settings/jvm-section.mjs';
 
 export const SPRING_ROLES = ['controller', 'service', 'repository'];
 export const SPRING_KEYS = ['roles'];
@@ -10,24 +10,10 @@ const ROLES_FILE = 'spring-roles.txt';
 export const BINARY_NAME = /^[\p{L}_$][\p{L}\p{N}_$]*(?:\.[\p{L}_$][\p{L}\p{N}_$]*)+$/u;
 
 export function validateSpringOptions(config) {
-  const { spring } = config;
-  if (spring === undefined) {
-    return;
+  const spring = validateJvmSection(config, 'spring', SPRING_KEYS);
+  if (spring !== undefined) {
+    validateRoles(spring.roles);
   }
-  if (!GRADLE_PRESETS.includes(config.preset)) {
-    throw configError(
-      `"spring" is only supported with ${GRADLE_PRESETS.map((preset) => `"preset": "${preset}"`).join(' or ')}`,
-    );
-  }
-  if (!isPlainObject(spring)) {
-    throw configError('"spring" must be an object');
-  }
-  for (const key of Object.keys(spring)) {
-    if (!SPRING_KEYS.includes(key)) {
-      throw configError(`unknown key "spring.${key}"${suggestionOrAllowed(key, SPRING_KEYS)}`);
-    }
-  }
-  validateRoles(spring.roles);
 }
 
 function validateRoles(roles) {

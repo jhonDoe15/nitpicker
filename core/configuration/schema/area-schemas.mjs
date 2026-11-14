@@ -1,3 +1,5 @@
+import { JAVA_KEYS } from '../../../languages/java/builds/build-tool/build-tool-setting.mjs';
+import { JAVA_BUILD_TOOLS } from '../../../languages/java/builds/java-build.mjs';
 import {
   DUPLICATES_KEYS,
   SKIPPED_FOLDER_NAME,
@@ -260,6 +262,13 @@ export const kotlin = scope('Kotlin preset settings.', KOTLIN_KEYS, {
     description: 'Path of the detekt config inside the project; detected when absent.',
     ...projectPath,
   },
+});
+
+export const java = scope('Java and Kotlin build settings (java and kotlin presets).', JAVA_KEYS, {
+  buildTool: enumeration(
+    'The build tool when the project has both a pom.xml and a Gradle build: "maven" or "gradle". Without it nitpicker picks Gradle, or Maven when mvnw exists and gradlew does not.',
+    JAVA_BUILD_TOOLS,
+  ),
 });
 
 export const go = scope('Go preset settings.', GO_SETTING_KEYS, {

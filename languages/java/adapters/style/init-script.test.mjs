@@ -43,8 +43,9 @@ describe('the Gradle init script node runner', () => {
       `throw new GradleException("\${failure}: could not run \${nodeCommand}: \${error.message}")`,
       '}',
       "def log = process.inputStream.getText('UTF-8')",
-      'if (process.waitFor() != 0) {',
-      `throw new GradleException("\${failure}: \${log.trim()}")`,
+      'def exit = process.waitFor()',
+      'if (exit != 0) {',
+      `throw new GradleException("\${failure}: \${processFailure(nodeCommand, exit, log)}")`,
       '}',
       '}',
     ]);
@@ -59,11 +60,17 @@ describe('the Gradle init script and the formatter style', () => {
     ]);
   });
 
-  it('puts the palantir jar on the formatter classpath for palantir, the google jar unless none', () => {
+  it('runs a formatter only for the styles nitpicker has one for, not for none or spring', () => {
+    expect(linesContaining('def javaFormatterRuns')).toEqual([
+      "def javaFormatterRuns = !(javaStyle in ['none', 'spring'])",
+    ]);
+  });
+
+  it('puts the palantir jar on the formatter classpath for palantir, the google jar when one runs', () => {
     expect(blockStartingWith("if (javaStyle == 'palantir') {")).toEqual([
       "if (javaStyle == 'palantir') {",
       'nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"',
-      "} else if (javaStyle != 'none') {",
+      '} else if (javaFormatterRuns) {',
       'nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"',
       '}',
     ]);
@@ -75,7 +82,7 @@ describe('the Gradle init script and the formatter style', () => {
       "group = 'nitpicker'",
       'classpath = configurations.nitpickerFormat',
       "mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'",
-      "enabled = javaStyle != 'none'",
+      'enabled = javaFormatterRuns',
       'onlyIf {',
       'if (!javaFiles().isEmpty()) {',
       'return true',
@@ -117,8 +124,8 @@ describe('the Gradle init script and the formatter style', () => {
   });
 
   it('writes an empty format report when no formatter runs, and when the formatter did not run', () => {
-    expect(blockStartingWith("if (javaStyle == 'none' || !formatReport.exists()) {")).toEqual([
-      "if (javaStyle == 'none' || !formatReport.exists()) {",
+    expect(blockStartingWith('if (!javaFormatterRuns || !formatReport.exists()) {')).toEqual([
+      'if (!javaFormatterRuns || !formatReport.exists()) {',
       "formatReport.text = ''",
       '}',
     ]);

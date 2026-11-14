@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.*
 
-data class OrderRequest(val item: String)
+data class OrderRequest(@field:jakarta.validation.constraints.NotBlank val item: String)
 
 @RestController
 @RequestMapping("/orders")

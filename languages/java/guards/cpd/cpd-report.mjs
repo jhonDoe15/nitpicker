@@ -3,6 +3,7 @@ import path from 'node:path';
 import { rootsScope } from '../../builds/module-path.mjs';
 import { reportRootPattern } from '../../builds/tools/tool-commands.mjs';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
+import { signalEnd } from '../../../../shared/processes/process-failure.mjs';
 
 const CPD_REPORT = 'cpd.xml';
 const CPD_FAILURE = 'cpd-failed.txt';
@@ -31,7 +32,7 @@ function failedRun(status) {
   if (status === 'ETIMEDOUT') {
     return 'did not finish within the tool timeout';
   }
-  return /^SIG[A-Z0-9]+$/u.test(status) ? `was stopped by ${status}` : `could not run (${status})`;
+  return /^SIG[A-Z0-9]+$/u.test(status) ? signalEnd(status) : `could not run (${status})`;
 }
 
 function lexErrors(xml) {

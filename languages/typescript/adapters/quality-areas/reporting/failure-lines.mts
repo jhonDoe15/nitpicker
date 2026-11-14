@@ -98,6 +98,30 @@ export function missingSetupHints(failures: readonly { readonly assertion: strin
     .map(({ hint }) => hint.join(' '));
 }
 
+const MISSING_ENVIRONMENT = new RegExp(
+  [
+    String.raw`\b(?:invalid|missing) (?:required )?env(?:ironment)?\b`,
+    String.raw`\benv(?:ironment)? (?:var(?:iable)?s? )?(?:is |are )?(?:missing|required|not set|undefined)`,
+  ].join('|'),
+  'iu',
+);
+const MISSING_VARIABLE =
+  /\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+ (?:is|are) (?:required|missing|not set|undefined)\b/u;
+const ENVIRONMENT_HINT = [
+  'Hint: the tests need environment variables that are not set.',
+  'Ignored files such as `.env` are not in the snapshots; export the variables in the shell that runs nitpicker.',
+].join(' ');
+
+export function missingEnvironmentHints(
+  failures: readonly { readonly assertion: string }[],
+): string[] {
+  return failures.some(
+    ({ assertion }) => MISSING_ENVIRONMENT.test(assertion) || MISSING_VARIABLE.test(assertion),
+  )
+    ? [ENVIRONMENT_HINT]
+    : [];
+}
+
 const TIMEOUT_MARKER = 'STACK_TRACE_ERROR';
 const UNHANDLED_HEADER = /^⎯+ (Unhandled Rejection|Uncaught Exception|Unhandled Error) ⎯+$/gmu;
 const ORIGIN_PATTERN = /This error originated in "([^"]+)" test file/u;
