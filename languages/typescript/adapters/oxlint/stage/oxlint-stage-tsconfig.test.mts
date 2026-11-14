@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createProject, lintProject, TYPED_POLICY } from '../test-support/oxlint-project.mjs';
+import { createProject, lintProject, TYPED_POLICY } from '../test-support/oxlint-project.mts';
 
 const PINNED_OPTIONS = { types: [], lib: ['ES2022'] };
 const CONSUMER = [
@@ -11,7 +11,7 @@ const CONSUMER = [
   '',
 ].join('\n');
 
-function lintConfig(types = []) {
+function lintConfig(types: readonly string[] = []) {
   return JSON.stringify({
     extends: './tsconfig.json',
     compilerOptions: { allowJs: true, noEmit: true, skipLibCheck: true, lib: ['ES2022'], types },
@@ -84,7 +84,7 @@ const PROJECTS = [
   },
 ];
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });

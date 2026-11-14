@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../oxlint-runner.mts';
+import type { LintResult } from '../plan/oxlint-shapes.mts';
+import { oxlintOptions } from '../test-support/oxlint-runs.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const preset = path.join(packageRoot, 'languages/typescript/preset');
@@ -79,17 +81,18 @@ for (const [file, lines] of Object.entries(files)) {
 
 const OXLINT_TIMEOUT_MS = 30_000;
 describe('the React test rules under the oxlint engine', () => {
-  let results;
+  let results: LintResult[];
 
   beforeAll(async () => {
     results = await lintWithOxlint({
-      options: { projectRoot: root, patterns: ['test/**/*.ts', 'test/**/*.tsx'] },
+      options: oxlintOptions(root, ['test/**/*.ts', 'test/**/*.tsx']),
+      projectConfigPath: undefined,
       environment: {
         ...process.env,
         NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
         NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
       },
-      runEslintCli: () => [],
+      runEslintCli: () => Promise.resolve([]),
     });
   }, OXLINT_TIMEOUT_MS);
 
@@ -97,8 +100,11 @@ describe('the React test rules under the oxlint engine', () => {
     expect(
       results.flatMap(({ filePath, messages }) =>
         messages
-          .filter(({ ruleId }) => ruleId === null || checkedRules.has(ruleId))
-          .map(({ ruleId, line }) => `${path.relative(root, filePath)}:${String(line)} ${ruleId}`),
+          .filter(({ ruleId }) => ruleId === undefined || checkedRules.has(ruleId))
+          .map(
+            ({ ruleId, line }) =>
+              `${path.relative(root, filePath)}:${String(line)} ${String(ruleId)}`,
+          ),
       ),
     ).toEqual([
       'test/ui/mocked-react.test.ts:2 nitpicker/react-test-no-implementation-details',

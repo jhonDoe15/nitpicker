@@ -2,9 +2,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { firstOf } from '../eslint/test-support/finding-comparison.mts';
 import { oxlintBinary } from './oxlint-process.mts';
+import type { LintResult } from './plan/oxlint-shapes.mts';
 import { rejectedRuleIds } from './oxlint-translation.mts';
-import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
+import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mts';
 
 const PLUGIN = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
 
@@ -14,7 +16,7 @@ vi.mock('node:os', async (importOriginal) => ({
 }));
 
 vi.mock('node:child_process', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal<typeof import('node:child_process')>();
   return { ...actual, spawn: vi.fn(actual.spawn) };
 });
 
@@ -66,10 +68,10 @@ const SOURCES = {
   'src/bom.ts': '\uFEFFconst x = 1; debugger;\nexport { x };\n',
 };
 
-let root;
-let results;
+let root: string;
+let results: readonly LintResult[];
 
-function messagesOf(relativePath) {
+function messagesOf(relativePath: string) {
   const result = results.find((entry) => entry.filePath === path.join(root, relativePath));
   return (result?.messages ?? []).map(({ ruleId, line, column }) => ({ ruleId, line, column }));
 }
@@ -91,8 +93,29 @@ describe('lintWithOxlint', () => {
     expect(messagesOf('src/atomic-local.ts')).toEqual([]);
   });
 
-  it('honors disable comments and reports columns in UTF-16 units like ESLint', () => {
-    expect(messagesOf('src/plain.ts')).toEqual([{ ruleId: 'no-debugger', line: 3, column: 16 }]);
+  it.each([
+    [
+      'honors disable comments and reports columns in UTF-16 units like ESLint',
+      'src/plain.ts',
+      [{ ruleId: 'no-debugger', line: 3, column: 16 }],
+    ],
+    [
+      'applies disable comments to rules loaded from ESLint plugins',
+      'src/bridged.ts',
+      [{ ruleId: 'local/no-foo', line: 3, column: 20 }],
+    ],
+    [
+      'ignores oxlint disable comments, which ESLint would not honor',
+      'src/oxlint-directive.ts',
+      [{ ruleId: 'no-debugger', line: 2, column: 1 }],
+    ],
+    [
+      'lints files whose names contain glob characters',
+      'src/[id].ts',
+      [{ ruleId: 'no-debugger', line: 1, column: 1 }],
+    ],
+  ])('%s', (_name, file, expected) => {
+    expect(messagesOf(file)).toEqual(expected);
   });
 
   it('ignores disable comments where the config locks inline configuration, and says so', () => {
@@ -104,22 +127,12 @@ describe('lintWithOxlint', () => {
   });
 
   it('reports the message id the ESLint rule used', () => {
-    const locked = results.find(
-      (entry) => entry.filePath === path.join(root, 'src/strict/locked.ts'),
+    const locked = firstOf(
+      results.filter((entry) => entry.filePath === path.join(root, 'src/strict/locked.ts')),
     );
-    expect(locked.messages.find((message) => message.ruleId === 'local/no-foo').messageId).toBe(
-      'foo',
-    );
-  });
-
-  it('applies disable comments to rules loaded from ESLint plugins', () => {
-    expect(messagesOf('src/bridged.ts')).toEqual([{ ruleId: 'local/no-foo', line: 3, column: 20 }]);
-  });
-
-  it('ignores oxlint disable comments, which ESLint would not honor', () => {
-    expect(messagesOf('src/oxlint-directive.ts')).toEqual([
-      { ruleId: 'no-debugger', line: 2, column: 1 },
-    ]);
+    expect(
+      firstOf(locked.messages.filter((message) => message.ruleId === 'local/no-foo')).messageId,
+    ).toBe('foo');
   });
 
   it('counts lines and columns the way ESLint does', () => {
@@ -129,18 +142,14 @@ describe('lintWithOxlint', () => {
     ]);
     expect(messagesOf('src/bom.ts')).toEqual([{ ruleId: 'no-debugger', line: 1, column: 14 }]);
   });
-
-  it('lints files whose names contain glob characters', () => {
-    expect(messagesOf('src/[id].ts')).toEqual([{ ruleId: 'no-debugger', line: 1, column: 1 }]);
-  });
 });
 
 const TYPED_SOURCE =
   'declare const maybe: string | null;\nexport const needed = maybe as string;\ndeclare const sure: string;\nexport const redundant = sure as string;\n';
 
 describe('lintWithOxlint with type-aware rules', () => {
-  let typedRoot;
-  let typedResults;
+  let typedRoot: string;
+  let typedResults: readonly LintResult[];
 
   beforeAll(async () => {
     typedRoot = createProject('nitpicker-oxlint-typed-test-', {
@@ -167,7 +176,7 @@ describe('lintWithOxlint with type-aware rules', () => {
   });
 
   it('checks every file against the lint config, not a nested tsconfig.json', () => {
-    const lines = (relativePath) =>
+    const lines = (relativePath: string) =>
       typedResults
         .find((entry) => entry.filePath === path.join(typedRoot, relativePath))
         ?.messages.map(({ ruleId, line }) => ({ ruleId, line }));
@@ -179,10 +188,10 @@ describe('lintWithOxlint with type-aware rules', () => {
 });
 
 describe('lintWithOxlint with rule options oxlint rejects', () => {
-  let rejectedRoot;
-  let rejectedResults;
-  let policyLoads;
-  let oxlintRejected;
+  let rejectedRoot: string;
+  let rejectedResults: readonly LintResult[];
+  let policyLoads: number;
+  let oxlintRejected: readonly string[];
 
   beforeAll(async () => {
     rejectedRoot = createProject('nitpicker-oxlint-rejected-', {
@@ -240,7 +249,7 @@ export default [
     const check = spawnSync(
       process.execPath,
       [oxlintBinary(), '--config', 'eslint-defaults.json', 'src/caught.ts'],
-      { cwd: rejectedRoot, encoding: 'utf8' },
+      { cwd: rejectedRoot, encoding: 'utf8', timeout: 120_000 },
     );
     oxlintRejected = rejectedRuleIds(
       check.stdout,
@@ -257,19 +266,21 @@ export default [
   });
 
   it('runs the rule through ESLint and loads the ESLint policy only to plan and lint once', () => {
-    expect(rejectedResults[0].messages.map(({ ruleId, line }) => ({ ruleId, line }))).toEqual([
-      { ruleId: 'preserve-caught-error', line: 5 },
-      { ruleId: 'local/no-foo', line: 8 },
-    ]);
+    expect(firstOf(rejectedResults).messages.map(({ ruleId, line }) => ({ ruleId, line }))).toEqual(
+      [
+        { ruleId: 'preserve-caught-error', line: 5 },
+        { ruleId: 'local/no-foo', line: 8 },
+      ],
+    );
     expect(policyLoads).toBe(2);
   });
 });
 
 describe('lintWithOxlint over many files', () => {
   const FILE_COUNT = 800;
-  let manyRoot;
-  let manyResults;
-  let lintProcesses;
+  let manyRoot: string;
+  let manyResults: readonly LintResult[];
+  let lintProcesses: readonly unknown[];
 
   beforeAll(async () => {
     manyRoot = createProject('nitpicker-oxlint-many-', {
@@ -298,7 +309,7 @@ describe('lintWithOxlint over many files', () => {
     expect(
       manyResults.map(({ filePath, messages }) => [
         path.relative(manyRoot, filePath),
-        messages.map(({ ruleId, line }) => `${ruleId}:${String(line)}`),
+        messages.map(({ ruleId, line }) => `${String(ruleId)}:${String(line)}`),
       ]),
     ).toEqual(
       Array.from({ length: FILE_COUNT }, (_file, index) => [

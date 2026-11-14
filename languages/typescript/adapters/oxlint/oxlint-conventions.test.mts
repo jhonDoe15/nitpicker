@@ -1,11 +1,12 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createProject, lintProject } from './test-support/oxlint-project.mjs';
+import { createProject, lintProject } from './test-support/oxlint-project.mts';
+import { residualRecorder } from './test-support/oxlint-runs.mts';
 
 const PLUGIN_URL = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
 
-function policy({ fixStyle, casing }) {
+function policy({ fixStyle, casing }: { readonly fixStyle: string; readonly casing: string }) {
   return `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { nitpickerRules } from ${JSON.stringify(PLUGIN_URL)};
 
@@ -37,13 +38,13 @@ const SOURCES = {
   'src/valueStyle.ts': "import { Name } from './types';\nexport const c: Name = 'c';\n",
 };
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-async function findings(options) {
+async function findings(options: { readonly fixStyle: string; readonly casing: string }) {
   const root = createProject('nitpicker-oxlint-conventions-', {
     'policy.mjs': policy(options),
     ...SOURCES,
@@ -101,7 +102,7 @@ export default [
 `;
 }
 
-async function decoratorRun(compilerOptions) {
+async function decoratorRun(compilerOptions: Readonly<Record<string, boolean>>) {
   const root = createProject('nitpicker-oxlint-decorators-', {
     'policy.mjs': decoratorPolicy(),
     'tsconfig.json': JSON.stringify({ compilerOptions, include: ['src'] }),
@@ -121,17 +122,12 @@ async function decoratorRun(compilerOptions) {
       "import { Store } from './store';\nexport const size = (store: Store) => store.size;\n",
   });
   roots.push(root);
-  const residualRuns = [];
-  const results = await lintProject({
-    root,
-    patterns: ['src/**/*.ts'],
-    runEslintCli: (files, environment) => {
-      residualRuns.push({ files, rules: JSON.parse(environment.NITPICKER_DIFF_ESLINT_ONLY_RULES) });
-      return [];
-    },
-  });
+  const { runs: residualRuns, runEslintCli } = residualRecorder();
+  const results = await lintProject({ root, patterns: ['src/**/*.ts'], runEslintCli });
   const ruleIds = results.flatMap((result) =>
-    result.messages.map(({ ruleId }) => `${path.relative(root, result.filePath)}:${ruleId}`),
+    result.messages.map(
+      ({ ruleId }) => `${path.relative(root, result.filePath)}:${String(ruleId)}`,
+    ),
   );
   return { ruleIds, residualRuns };
 }

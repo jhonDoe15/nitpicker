@@ -1,8 +1,11 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lintWithOxlint } from '../oxlint-runner.mts';
+import type { LintResult } from '../plan/oxlint-shapes.mts';
+import { oxlintOptions, residualRecorder, type ResidualRun } from '../test-support/oxlint-runs.mts';
+import { writeFileTree } from '../../test-support/file-tree.mts';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../../..');
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-react-')));
@@ -99,18 +102,12 @@ const files = {
   ],
 };
 
-for (const [file, contents] of Object.entries(files)) {
-  mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-  writeFileSync(
-    path.join(root, file),
-    Array.isArray(contents) ? `${contents.join('\n')}\n` : contents,
-  );
-}
+writeFileTree(root, files);
 
 async function lintedWithResidualRun() {
-  const residualRuns = [];
+  const { runs: residualRuns, runEslintCli } = residualRecorder();
   const results = await lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.ts', 'src/**/*.tsx'] },
+    options: oxlintOptions(root, ['src/**/*.ts', 'src/**/*.tsx']),
     projectConfigPath: path.join(root, 'tsconfig.nitpicker.json'),
     environment: {
       ...process.env,
@@ -118,13 +115,7 @@ async function lintedWithResidualRun() {
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: path.join(root, 'tsconfig.nitpicker.json'),
     },
-    runEslintCli: (patterns, environment) => {
-      residualRuns.push({
-        files: patterns,
-        rules: JSON.parse(environment.NITPICKER_DIFF_ESLINT_ONLY_RULES),
-      });
-      return [];
-    },
+    runEslintCli,
   });
   return { results, residualRuns };
 }
@@ -132,13 +123,13 @@ async function lintedWithResidualRun() {
 const OXLINT_TIMEOUT_MS = 30_000;
 
 describe('the React rules under the oxlint engine', () => {
-  let run;
+  let run: { results: LintResult[]; residualRuns: ResidualRun[] };
 
   beforeAll(async () => {
     run = await lintedWithResidualRun();
   }, OXLINT_TIMEOUT_MS);
 
-  function findingsOf(rule) {
+  function findingsOf(rule: string) {
     return run.results.flatMap(({ filePath, messages }) =>
       messages
         .filter(({ ruleId }) => ruleId === rule)
@@ -150,7 +141,7 @@ describe('the React rules under the oxlint engine', () => {
     const { results, residualRuns } = run;
 
     expect(
-      results.flatMap(({ messages }) => messages.filter(({ ruleId }) => ruleId === null)),
+      results.flatMap(({ messages }) => messages.filter(({ ruleId }) => ruleId === undefined)),
     ).toEqual([]);
     expect(residualRuns).toEqual([
       {

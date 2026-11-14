@@ -1,7 +1,7 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
+import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mts';
 
 const CONSUMER = [
   'import { value } from "@/dep";',
@@ -16,7 +16,7 @@ const PROJECTS = [
   { name: 'paths with a leading ./', target: './src/*' },
 ];
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });

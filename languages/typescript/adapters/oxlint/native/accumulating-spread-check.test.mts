@@ -4,7 +4,7 @@ import { accumulatingSpreadCheck, accumulatingSpreadReport } from './accumulatin
 const REDUCE = 'Do not spread accumulators in Array.prototype.reduce()';
 const LOOP = 'Do not spread accumulators in loops';
 
-function spreadAt(offset) {
+function spreadAt(offset: number) {
   return [
     { label: 'From this spread', span: { offset, length: 6 } },
     { label: 'For this reduce', span: { offset: 0, length: 9 } },
@@ -24,7 +24,13 @@ describe('accumulatingSpreadReport', () => {
     ],
     [LOOP, 'Consider using `Array.prototype.push()` to mutate …', 'loopArray', false],
   ])('reads "%s" with help "%s" as %s', (message, help, messageId, reducer) => {
-    const diagnostic = { code: 'oxc(no-accumulating-spread)', message, help, labels: spreadAt(23) };
+    const diagnostic = {
+      filename: 'a.ts',
+      code: 'oxc(no-accumulating-spread)',
+      message,
+      help,
+      labels: spreadAt(23),
+    };
     expect(accumulatingSpreadReport(diagnostic, 'src/main/features/a/adapters/a.ts')).toEqual({
       messageId,
       check: { reducer, spreadOffset: 23 },
@@ -32,7 +38,7 @@ describe('accumulatingSpreadReport', () => {
   });
 
   it('picks the domain/ message by path and reads a report without help as the general one', () => {
-    const diagnostic = { message: REDUCE, labels: spreadAt(4) };
+    const diagnostic = { filename: 'a.ts', message: REDUCE, labels: spreadAt(4) };
     expect(accumulatingSpreadReport(diagnostic, 'src/main/features/a/domain/a.ts').messageId).toBe(
       'domainReduce',
     );
@@ -45,15 +51,35 @@ describe('accumulatingSpreadReport', () => {
   });
 
   it('fails loudly when oxlint stops labelling the spread', () => {
-    const diagnostic = { code: 'oxc(no-accumulating-spread)', message: REDUCE, labels: [] };
+    const diagnostic = {
+      filename: 'a.ts',
+      code: 'oxc(no-accumulating-spread)',
+      message: REDUCE,
+      labels: [],
+    };
     expect(() => accumulatingSpreadReport(diagnostic, 'src/a.ts')).toThrow(
       `oxlint's oxc(no-accumulating-spread) report has no "From this spread" label`,
     );
   });
 });
 
-function kept(code, column, { reducer = true, line = 1, filePath = 'src/a.ts' } = {}) {
-  return accumulatingSpreadCheck(filePath, code)({ reducer, spread: { line, column } });
+function kept(
+  code: string,
+  column: number,
+  {
+    reducer = true,
+    line = 1,
+    filePath = 'src/a.ts',
+  }: { reducer?: boolean; line?: number; filePath?: string } = {},
+) {
+  return accumulatingSpreadCheck(
+    filePath,
+    code,
+  )({
+    ruleId: 'oxc(no-accumulating-spread)',
+    reducer,
+    spread: { line, column },
+  });
 }
 
 describe('accumulatingSpreadCheck for reduce reports', () => {
@@ -101,7 +127,7 @@ describe('accumulatingSpreadCheck for accumulators that cannot grow', () => {
   });
 
   it('applies the same bounds to loop accumulators', () => {
-    const loop = (next) => `let out = [];\nfor (const x of xs) {\n  out = ${next};\n}`;
+    const loop = (next: string) => `let out = [];\nfor (const x of xs) {\n  out = ${next};\n}`;
     expect(kept(loop('[...out, x].slice(-3)'), 10, { reducer: false, line: 3 })).toBe(false);
     expect(kept(loop('[...out, x]'), 10, { reducer: false, line: 3 })).toBe(true);
   });
