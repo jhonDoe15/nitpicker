@@ -1,9 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { typescriptRestatingDocCommentRecipe as recipe } from './restating-doc-comment.mjs';
 
-function apply(name, text, inputs = {}) {
-  const { fixes } = recipe.plan({ files: [{ path: name, text }], inputs });
-  const edits = fixes.flatMap((fix) => fix.edits).sort((left, right) => right.start - left.start);
+type Edit = { readonly start: number; readonly end: number; readonly text: string };
+type PlannedFix = { readonly edits: readonly Edit[]; readonly finding: { readonly line: number } };
+
+type PlanInput = {
+  readonly files: readonly { readonly path: string; readonly text: string }[];
+  readonly inputs: Readonly<Record<string, unknown>>;
+};
+
+const recipePlan: { plan: (input: PlanInput) => { readonly fixes: readonly PlannedFix[] } } =
+  recipe;
+
+function plan(input: PlanInput): { readonly fixes: readonly PlannedFix[] } {
+  return recipePlan.plan(input);
+}
+
+function apply(name: string, text: string, inputs: Readonly<Record<string, unknown>> = {}) {
+  const { fixes } = plan({ files: [{ path: name, text }], inputs });
+  const edits = fixes
+    .flatMap((fix) => fix.edits)
+    .toSorted((left, right) => right.start - left.start);
   return {
     fixes,
     text: edits.reduce(

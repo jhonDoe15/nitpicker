@@ -1,10 +1,17 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import cases from './fixtures/suggestion-cases.json' with { type: 'json' };
-import { applySuggestions } from './apply-suggestions.mjs';
-import { isRuleSelected, suggestionName, suggestionRules } from './suggestion-rules.mjs';
-import { lintCases } from './test-support/lint-cases.mjs';
+import casesJson from './fixtures/suggestion-cases.json' with { type: 'json' };
+import { applySuggestions } from './apply-suggestions.mts';
+import { lintCases } from './test-support/lint-cases.mts';
+import {
+  isRuleSelected,
+  suggestionName,
+  suggestionRules,
+  type LintMessage,
+} from './typed/suggestion-views.mts';
 
-const expected = {
+const cases: Readonly<Record<string, string>> = casesJson;
+
+const expected: Readonly<Record<string, string>> = {
   'no-case-declarations':
     'export function pick(x: number): number {\n  switch (x) {\n    case 1:\n      { const y = 1;\n      return y; }\n    default:\n      return 0;\n  }\n}\n',
   'no-prototype-builtins':
@@ -36,14 +43,38 @@ const expected = {
 
 const everything = Object.keys(suggestionRules).map(suggestionName);
 
-let linted;
+let linted: Map<string, readonly LintMessage[]>;
+
+function caseText(name: string): string {
+  const text = cases[name];
+  if (text === undefined) {
+    throw new Error(`No case ${name}`);
+  }
+  return text;
+}
+
+function expectedText(name: string): string {
+  const text = expected[name];
+  if (text === undefined) {
+    throw new Error(`No expectation ${name}`);
+  }
+  return text;
+}
+
+function messagesOf(name: string): readonly LintMessage[] {
+  const messages = linted.get(name);
+  if (messages === undefined) {
+    throw new Error(`No messages for ${name}`);
+  }
+  return messages;
+}
 
 beforeAll(async () => {
   linted = await lintCases(cases);
 });
 
-function suggest(name, selectedRules = []) {
-  return applySuggestions({ text: cases[name], messages: linted.get(name), selectedRules });
+function suggest(name: string, selectedRules: readonly string[] = []) {
+  return applySuggestions({ text: caseText(name), messages: messagesOf(name), selectedRules });
 }
 
 describe('applySuggestions with the rules ESLint reports', () => {
@@ -54,44 +85,53 @@ describe('applySuggestions with the rules ESLint reports', () => {
   it.each(Object.keys(expected))('turns the %s fixture into the allowed form', (rule) => {
     const { text, applied } = suggest(rule, everything);
 
-    expect(text).toBe(expected[rule]);
-    expect(applied).toEqual([{ rule: suggestionName(rule), line: expect.any(Number) }]);
+    expect(text).toBe(expectedText(rule));
+    expect(applied.map((entry) => entry.rule)).toEqual([suggestionName(rule)]);
+    expect(typeof applied[0]?.line).toBe('number');
   });
 
   it.each(Object.keys(expected).filter((rule) => suggestionRules[rule] === 'safe'))(
     'applies the safe rule %s without a selection',
-    (rule) => {
-      expect(suggest(rule).text).toBe(expected[rule]);
+    (rule: string) => {
+      expect(suggest(rule).text).toBe(expectedText(rule));
     },
   );
 
   it.each(Object.keys(expected).filter((rule) => suggestionRules[rule] === 'review'))(
     'leaves the review rule %s alone unless it is selected',
     (rule) => {
-      expect(suggest(rule).text).toBe(cases[rule]);
+      expect(suggest(rule).text).toBe(caseText(rule));
       expect(suggest(rule, [suggestionName('use-isnan')]).text).toBe(
-        rule === 'use-isnan' ? expected[rule] : cases[rule],
+        rule === 'use-isnan' ? expectedText(rule) : caseText(rule),
       );
-      expect(suggest(rule, [suggestionName(rule)]).text).toBe(expected[rule]);
+      expect(suggest(rule, [suggestionName(rule)]).text).toBe(expectedText(rule));
     },
   );
 
   it('leaves a rule that offers two suggestions alone', () => {
-    const messages = linted.get('two-suggestions');
+    const messages = messagesOf('two-suggestions');
 
-    expect(messages.map(({ ruleId, suggestions }) => [ruleId, suggestions.length])).toEqual([
+    expect(messages.map(({ ruleId, suggestions }) => [ruleId, suggestions?.length])).toEqual([
       ['no-compare-neg-zero', 2],
     ]);
     expect(suggest('two-suggestions', everything)).toEqual({
-      text: cases['two-suggestions'],
+      text: caseText('two-suggestions'),
       applied: [],
     });
   });
 });
 
 describe('applySuggestions on reported messages', () => {
-  const suggestion = (range, text) => ({ fix: { range, text } });
-  const message = (ruleId, suggestions, extra = {}) => ({ ruleId, line: 1, suggestions, ...extra });
+  function suggestion(range: readonly number[], text: string) {
+    return { fix: { range, text } };
+  }
+  function message(
+    ruleId: string,
+    suggestions: readonly ReturnType<typeof suggestion>[] | undefined,
+    extra: Partial<LintMessage> = {},
+  ): LintMessage {
+    return { ruleId, line: 1, ...(suggestions === undefined ? {} : { suggestions }), ...extra };
+  }
 
   it('ignores a rule that is not on the allowlist, even with one suggestion', () => {
     const messages = [message('no-empty', [suggestion([0, 1], 'x')])];

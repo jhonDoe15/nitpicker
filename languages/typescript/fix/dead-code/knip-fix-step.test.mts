@@ -1,4 +1,3 @@
-import { directWriter } from '../../../../core/fix/engine/writer.mjs';
 import {
   existsSync,
   mkdirSync,
@@ -11,15 +10,19 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 import { spawnInvocation } from '../../../../core/fix/run-fix.mts';
-import { resolveHeadPolicy } from '../../preset/head-policy.mjs';
-import { resolveLayoutFor } from '../../preset/layout.mjs';
+import type { FixInvocation } from '../../../../core/fix/typed/fix-types.mts';
+import {
+  directWriter,
+  linkSentence,
+  resolveHeadPolicy,
+  resolveLayoutFor,
+} from '../test-support/fix-test-support.mts';
 import project from './fixtures/project.json' with { type: 'json' };
-import { knipFixStep } from './knip-fix-step.mts';
-import { knipFixTypes } from './knip-fix-types.mjs';
+import { knipFixStep, type KnipFixSettings } from './knip-fix-step.mts';
+import { knipFixTypes } from './knip-fix-types.mts';
 
-const roots = [];
+const roots: string[] = [];
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -37,23 +40,44 @@ function createProject() {
   return root;
 }
 
-function fix(root, names, selectedRules = [], execute = spawnInvocation) {
+function settingsFor(root: string, overrides: Partial<KnipFixSettings>): KnipFixSettings {
   const policy = resolveHeadPolicy();
+  return {
+    repositoryRoot: root,
+    projectRoot: root,
+    baseRef: 'base',
+    scope: undefined,
+    allFiles: false,
+    dryRun: false,
+    config: undefined,
+    headPolicy: undefined,
+    selectedRules: [],
+    executeFixCommand: () => undefined,
+    recipes: undefined,
+    writer: directWriter(root),
+    layout: resolveLayoutFor(policy),
+    knipSettings: policy.tools?.knip,
+    policyEnvironment: {},
+    ...overrides,
+  };
+}
+
+function fix(
+  root: string,
+  names: readonly string[],
+  selectedRules: readonly string[] = [],
+  execute: (invocation: FixInvocation) => unknown = (invocation) =>
+    spawnInvocation(invocation, undefined),
+) {
   return knipFixStep(
-    {
-      projectRoot: root,
-      writer: directWriter(root),
-      layout: resolveLayoutFor(policy),
-      knipSettings: policy.tools?.knip,
-      policyEnvironment: {},
-      executeFixCommand: (invocation) => execute(invocation),
-      selectedRules,
-    },
+    settingsFor(root, { executeFixCommand: (invocation) => execute(invocation), selectedRules }),
     names.map((name) => ({ path: name })),
   );
 }
 
-const read = (root, name) => readFileSync(path.join(root, name), 'utf8');
+function read(root: string, name: string): string {
+  return readFileSync(path.join(root, name), 'utf8');
+}
 
 describe('knipFixTypes', () => {
   it('fixes only dependencies by default, because a dropped export leaves an unused declaration', () => {
@@ -109,12 +133,12 @@ describe('knipFixStep', () => {
 
   it('puts back the final newline that knip dropped from a package.json', () => {
     const root = createProject();
-    const dropping = (invocation) => {
-      const result = spawnInvocation(invocation);
+    function dropping(invocation: FixInvocation): unknown {
+      const result = spawnInvocation(invocation, undefined);
       const copy = path.join(invocation.cwd, 'package.json');
       writeFileSync(copy, readFileSync(copy, 'utf8').trimEnd());
       return result;
-    };
+    }
 
     fix(root, ['package.json'], [], dropping);
 
@@ -149,13 +173,10 @@ describe('knipFixStep', () => {
   it('reports a knip failure as a tool error', () => {
     const root = createProject();
     const failing = knipFixStep(
-      {
-        projectRoot: root,
-        layout: resolveLayoutFor(resolveHeadPolicy()),
-        policyEnvironment: {},
+      settingsFor(root, {
         executeFixCommand: () => ({ status: 2, stdout: '', stderr: 'boom' }),
         selectedRules: ['dead-code/exports'],
-      },
+      }),
       [{ path: 'src/lib.ts' }],
     );
 
@@ -169,6 +190,6 @@ describe('knipFixStep', () => {
   });
 });
 
-function readdirNames(root) {
+function readdirNames(root: string): string[] {
   return readdirSync(root).toSorted();
 }
