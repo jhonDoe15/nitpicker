@@ -52,7 +52,7 @@ checkout and `base` is the merge base.
 ### Invalid arguments
 
 **Symptom.** `nitpicker failed: Unknown argument: --foo`, `--base requires a value`,
-`--fix cannot be combined with --all`, `--all cannot be combined with --base`,
+`--fix --all rewrites the whole project, so it needs the rule to fix`, `--all cannot be combined with --base`,
 `--shard-count and --shard-index must be provided together`,
 `NITPICKER_MAX_PARALLEL must be a positive integer`, `Unknown cache command`, and similar. Exit code 2.
 
@@ -62,7 +62,7 @@ Nothing was analyzed.
 **Fix.** Run `nitpicker --help` for the accepted forms, or read the
 [command line reference](usage.md#command-line). The combinations that are refused:
 
-- `--all` cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
+- `--all` cannot be combined with `--base`, sharding or `--defer-exit`, and `--fix --all` needs `--rule <tool/rule>`.
 - `--shard-count` and `--shard-index` go together, and `--analyzer` cannot be combined with them.
 - `--shard-count` cannot exceed the number of independent analyzer groups, and `--shard-index` must be
   a whole number from 0 to `--shard-count` minus 1.
@@ -380,7 +380,7 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 ### Tests fail
 
 **Symptom.** A tool error on `head` that lists the failing tests: `<n> tests fail; <what was skipped>. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
-test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail; coverage, CRAP and mutation were skipped. Fix the tests and rerun:` with the rule `tests-failed` on Java and Kotlin. The analyzers that need the
+test file could not even load) on TypeScript, JavaScript and Python, or `<n> tests fail<in module>; coverage, CRAP and mutation were skipped there, the other checks ran. Fix the tests and rerun:` as the `tests/tests-failed` of each failing Java or Kotlin module. The analyzers that need the
 tests (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit
 code 2 when there is no new finding.
 
@@ -392,6 +392,13 @@ that cannot be imported, a runner that cannot start), so nothing derived from it
 JavaScript, the runner's own command with coverage (`vitest run --coverage`, `jest --coverage`); for
 Python, the project's test runner under `coverage run`; for Java and Kotlin, `./gradlew test` or
 `mvn test`. The message shows the first failures, with the runner's output.
+
+When a test file fails to load with a message that reads like missing configuration (`Invalid env`, a
+missing environment variable), the message ends with a hint. The cause is usually a git-ignored file such as `.env`: both
+snapshots are built from git, so ignored files are not in them. Export the variables in the
+environment that runs nitpicker; both snapshots inherit it (see
+[Test environment](usage.md#test-environment)). Mutation testing then reports `mutation skipped`
+instead of a second error.
 
 ### Tests fail on the base
 
@@ -412,7 +419,9 @@ compile failure, a non-zero exit that names no test, a timeout), there is nothin
 fails, because there is no base result to hold it against: test that code or split it. A change that
 removes tests gets no help from the red base, and a `tests-removed` note says so. When the base tests
 did not run, rebase or merge the base branch once it is green, or compare against a passing ref with
-`--base <ref>`; if the failure is flaky, rerun. `nitpicker --all` has no baseline. See
+`--base <ref>`; if the failure is flaky, rerun. If the base fails on missing configuration (`Invalid env`), the
+cause is an ignored `.env` file that the base checkout does not have: export the variables in the
+environment that runs nitpicker (see [Test environment](usage.md#test-environment)). `nitpicker --all` has no baseline. See
 [A base whose tests fail](usage.md#a-base-whose-tests-fail).
 
 ### The test runner ran no tests
@@ -504,6 +513,21 @@ shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node
 `Cannot read properties of null (reading 'edgesOut')` while installing Vitest 4.1, see
 [npm 10 and Vitest 4.1](usage.md#npm-10-and-vitest-41).
 
+### No source files under the source roots
+
+**Symptom.** The run exits 2 with the `source-roots` tool error `No TypeScript or JavaScript files under
+<roots>; nothing was analyzed. Set "layout.sourceRoots" (...)`. It appears on every run, full or comparison.
+`nitpicker init` prints the same sentence instead of "No TypeScript or JavaScript sources under src yet".
+
+**Cause.** The TypeScript or JavaScript preset found no source file under `layout.sourceRoots` (default
+`src`) and no test file under `layout.testRoots`, so the code analyzers had nothing to check. A
+workspace root whose code sits in `packages/*/src` is the usual case. The message lists up to three
+folders that hold TypeScript or JavaScript files (package `src` folders, or top-level folders),
+skipping dependency folders, build output, hidden folders and ignored files.
+
+**Fix.** Set `layout.sourceRoots` in `nitpicker.config.json` to the folders that hold the code, for
+example `{ "preset": "typescript", "layout": { "sourceRoots": ["packages", "excalidraw-app"] } }`.
+
 ### Dependencies are not installed
 
 **Symptom.** `Dependencies are not installed: <dir>/node_modules is missing. Run `npm install` in
@@ -582,6 +606,18 @@ the project.
 Switching engines reports the differences between them as new once; see
 [Lint engine](usage.md#lint-engine).
 
+### A project package does not support this ESLint
+
+**Symptom.** `@typescript-eslint/utils 8.46.2 cannot run with ESLint 10 (it supports eslint ^8.57.0 || ^9.0.0). Update it, or the package that depends on it, to a version that supports ESLint 10.`
+It replaces the raw `TypeError` that the package throws while the project's ESLint config loads.
+
+**Cause.** nitpicker loads your ESLint config with its own ESLint, so the config's plugins run on that
+version. A package in the config chain declares a peer range for `eslint` that does not include it, and
+fails to load. Switching to `"engine": "eslint"` loads the same chain and fails the same way.
+
+**Fix.** Update the named package, or the package that depends on it, to a version that supports the
+ESLint major in the message, then reinstall.
+
 ### The TypeScript config cannot be read
 
 **Symptom.** `The TypeScript config could not be read: ...`, a TypeScript diagnostic such as
@@ -627,6 +663,11 @@ usable result. Typical reasons are a project config the tool rejects (a broken E
 Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the tool cannot parse,
 a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
 out of memory), or a tool version that does not match the config.
+
+A tool that was killed by a signal reads `ESLint was killed by SIGKILL (usually the out-of-memory
+killer; ...)` instead of an exit status. Warnings the tool printed at startup (Node's `(node:NNN)
+...Warning` lines) are left out of the message, so they are not mistaken for the cause. Run fewer jobs
+at once with `NITPICKER_MAX_PARALLEL` or give the job more memory.
 
 **Fix.** The message ends with the tool's own output: run the same tool in the project
 (`npx prettier --check .`, `npx eslint .`, `npx tsc --noEmit`, the project's test command with
@@ -751,6 +792,11 @@ the merge base, so check it out to reproduce. A runner without network access ne
 distribution that the snapshot's `gradle-wrapper.properties` names, and the dependencies, in its cache.
 If the build passes by itself and only fails under nitpicker, open an issue with the output.
 
+A helper process of the build (Error Prone, `StructureMetrics`, the Spring rules) that dies without
+output reads `exited with 137 (killed, usually by the out-of-memory killer; ...), and its log is empty`:
+give the job more memory or run fewer jobs at once. A killed Maven or Java tool reads `was killed by
+SIGKILL`, with the same remedy.
+
 ### The Maven build fails
 
 **Symptom.** A `maven-failure` tool error of the `java` analyzer holding Maven's `[ERROR]` lines (up to
@@ -787,9 +833,20 @@ wrapper helps.
 
 ### Gradle or Maven times out
 
-**Symptom.** `Gradle did not finish within 15 minutes and was stopped. Set NITPICKER_GRADLE_TIMEOUT_MINUTES
-to give each Gradle command more time`, `Maven did not finish in <dir> within 15 minutes and was stopped`, or
-`NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1 to 17895 (minutes)`.
+**Symptom.** A `tests-timed-out` tool error, `Gradle did not finish the tests, coverage and mutation
+testing within 15 minutes, so they were skipped and the other checks ran without them` (or `Maven did
+not finish ...`); `Gradle did not finish within 15 minutes and was stopped. Set
+NITPICKER_GRADLE_TIMEOUT_MINUTES to give each Gradle command more time`, `Maven did not finish in <dir>
+within 15 minutes and was stopped`; or `NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1
+to 17895 (minutes)`.
+
+When the full analysis command (tests, JaCoCo and PIT included) times out, nitpicker runs it once more
+without any test, coverage or mutation step, so PMD, SpotBugs, Error Prone, Checkstyle, the formatter
+check, structure, duplicates and the ArchUnit rule classes still report. The run then has no
+coverage, CRAP, slow-test or mutation results: on the head it is a `tests/tests-timed-out` tool error
+(exit 2) and none of the base's results of those rules counts as resolved; on the base it is a note,
+and the head's results of those rules count as new only on changed lines, as for a base whose tests
+fail. A `--quick` run, which runs no tests, and a second timeout stay the plain timeout error above.
 
 **Cause.** Each Gradle command has a 15 minute budget (two commands per analyzer, the optional
 Checkstyle export and the analysis), and each Maven command 15 minutes. A cold Gradle cache, a wrapper
@@ -820,14 +877,28 @@ its `base` mutants.
 slow tests or Spring application contexts make it the longest step. `--all` mutates every class; see
 [Mutation in a comparison](java-preset/mutation-in-a-comparison.md) for what a comparison mutates. PIT
 also fails when a test fails or hangs under its agent, or when it cannot start the project's test
-engine.
+engine. PIT stops when a test does not pass on the unmutated code, which happens when an earlier test
+leaves state that only PIT's single-JVM run exposes. Nitpicker then runs PIT once more with PIT's own
+`--skipFailingTests` (this retry is nitpicker's; a project's `skipFailingTests` is still never taken from
+its config) and keeps the mutation findings of the remaining tests. A `pit-skipped-tests` notice, not
+an error, says `15 tests in ExampleTest did not pass without mutation under PIT; they pass under the
+build's test task`, names the first five skipped tests and the count of the rest, and warns that
+mutants only the skipped tests would kill may count as surviving. When the second run fails too, the
+`pit-failure` tool error leads with that same summary line. On Maven the retry uses only the analyzer
+time that is left and is not started with less than a minute left.
 
 **Fix.** On Maven, set `NITPICKER_MAVEN_TIMEOUT_MINUTES` to give PIT more time. Each module's PIT run
 gets at most that limit, cut so that it ends two minutes before the Java analyzer's own deadline, which
 keeps the other findings when PIT is the step that runs long. On Gradle, PIT runs
 inside the analysis command, so `NITPICKER_GRADLE_TIMEOUT_MINUTES` sets its limit, and a Gradle timeout
-stops the whole analysis. For a failure, read PIT's output in the message: a test that fails only under
+reruns the analysis without tests, coverage and mutation (see "Gradle or Maven times out"). For a failure, read PIT's output in the message: a test that fails only under
 PIT usually depends on test order or on state another test left behind.
+
+To run the Java or Kotlin gate without mutation testing when PIT is too slow for the project, add
+`"mutation"` to `disable` in `nitpicker.config.json`. PIT then runs on neither the base nor the head,
+no mutation findings are reported, and the run says on stderr that the config turned mutation off.
+Everything else (tests, coverage, CRAP and the other tools) still runs. `--quick` also skips mutation,
+but drops tests and coverage too.
 
 ### Error Prone cannot find a JDK
 

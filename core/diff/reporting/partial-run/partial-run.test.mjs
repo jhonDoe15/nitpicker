@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { partialRunField, partialRunLines, partialRunOf } from './partial-run.mjs';
+import { partialRunField, partialRunLines, partialRunOf } from './partial-run.mts';
 
 const analyzers = ['coverage', 'crap', 'eslint-lint', 'prettier-format'].map((name) => ({ name }));
 

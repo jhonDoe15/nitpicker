@@ -15,6 +15,7 @@ type VitestInputs = {
   readonly addCommand: string;
 };
 
+const OPEN_LOWER_BOUND = /^>=\s*(?<version>[^\s<>=]+)$/u;
 const UPPER_BOUND = /<\s*\d[\w.-]*/u;
 const CLAUSE_VERSION = /\^\s*(?<version>\d[\w.-]*)/gu;
 
@@ -101,4 +102,14 @@ export function chooseVitest(inputs: VitestInputs): VitestChoice {
 
 export function minimumOf(range: unknown): string | undefined {
   return firstVersionIn(textOf(range));
+}
+
+export function lowestClause(range: string): string | undefined {
+  const [first = ''] = range.split('||');
+  const clause = first.trim();
+  const version = OPEN_LOWER_BOUND.exec(clause)?.groups?.['version'];
+  if (clause === '') {
+    return undefined;
+  }
+  return version === undefined ? clause : `^${version}`;
 }

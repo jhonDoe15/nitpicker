@@ -57,9 +57,16 @@ export const PAGES = [
   },
   {
     id: 'java-errorprone',
-    title: 'Java and Kotlin: Error Prone and NullAway checks',
+    title: 'Java and Kotlin: Error Prone checks A to L',
     summary:
-      'The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle.',
+      'The Error Prone checks from A to L that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle.',
+    guide: 'docs/java-preset/error-prone-and-nullaway.md',
+  },
+  {
+    id: 'java-errorprone-m-z',
+    title: 'Java and Kotlin: Error Prone checks M to Z and NullAway',
+    summary:
+      'The Error Prone checks from M to Z and NullAway that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle.',
     guide: 'docs/java-preset/error-prone-and-nullaway.md',
   },
   {

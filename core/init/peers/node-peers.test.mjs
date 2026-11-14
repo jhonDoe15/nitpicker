@@ -11,6 +11,7 @@ import {
   vitestPeers,
 } from './node-peers.mts';
 import { javascriptApiPin } from '../test-support/typescript-pin.mjs';
+import { lowestClause } from './peer-pins.mts';
 
 const project = useProjects();
 const NITPICKER = `nitpicker@${packageVersion()}`;
@@ -177,7 +178,7 @@ describe('Node peer needs', () => {
     });
   });
 
-  it('asks again for an installed peer older than nitpicker supports, without pinning to it', () => {
+  it('asks again for an installed peer older than nitpicker supports, naming the supported range', () => {
     const root = project({
       'package.json': '{"devDependencies":{"vitest":"^3.2.0","@vitest/coverage-v8":"^3.2.0"}}',
       ...installed('typescript', '6.0.3'),
@@ -186,7 +187,7 @@ describe('Node peer needs', () => {
     });
 
     expect(nodePeerNeeds(root, NAMES)).toEqual({
-      add: ['vitest', '@vitest/coverage-v8'],
+      add: ['vitest@^4.1.11', '@vitest/coverage-v8@^4.1.11'],
       uninstalled: [],
       absent: [],
       outdated: [
@@ -199,9 +200,9 @@ describe('Node peer needs', () => {
 
   it.each([
     ['a declared range that admits a supported version', '^4', []],
-    ['a declared range below the supported one', '~4.0.5', ['vitest']],
+    ['a declared range below the supported one', '~4.0.5', ['vitest@^4.1.11']],
     ['a workspace protocol range', 'workspace:^1.2.3', []],
-    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest']],
+    ['an npm alias below the supported range', 'npm:vitest@^3.2.0', ['vitest@^4.1.11']],
   ])('judges %s by its major and minor version', (_name, range, add) => {
     const root = project({
       'package.json': JSON.stringify({ devDependencies: { vitest: range } }),
@@ -272,5 +273,18 @@ describe('the Vite ranges of the Vitest majors', () => {
 
   it('keep a constant row for the other majors', () => {
     expect(Object.keys(vitestPeers()).map(Number)).toEqual([4, 5]);
+  });
+});
+
+describe('the lowest clause of a supported range', () => {
+  it.each([
+    ['^4.1.11 || ^5.0.0', '^4.1.11'],
+    ['>=5.7', '^5.7'],
+    ['>= 20', '^20'],
+    ['>=1.2 <3', '>=1.2 <3'],
+    ['>=1.2 <3 || ^4', '>=1.2 <3'],
+    ['', undefined],
+  ])('takes %j as %j', (range, clause) => {
+    expect(lowestClause(range)).toBe(clause);
   });
 });

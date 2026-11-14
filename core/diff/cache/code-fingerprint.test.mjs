@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../git/test-support/fixture-files.mjs';
-import { fingerprintPackageCode } from './code-fingerprint.mjs';
-import { createFindingsCache } from './findings-cache.mjs';
+import { fingerprintPackageCode } from './code-fingerprint.mts';
+import { createFindingsCache } from './findings-cache.mts';
 
 const roots = [];
 

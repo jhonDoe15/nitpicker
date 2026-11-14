@@ -132,6 +132,21 @@ function jacocoSettings(plugin, basedir) {
   };
 }
 
+function packagingOf(project) {
+  return textAt(project, 'packaging') ?? 'jar';
+}
+
+function moduleCompiler(project) {
+  if (packagingOf(project) === 'pom') {
+    return undefined;
+  }
+  try {
+    return compilerSettings(project);
+  } catch (error) {
+    throw new Error(`Maven module ${coordinates(project)}: ${error.message}`, { cause: error });
+  }
+}
+
 function resourceRootsOf(build, basedir) {
   return [
     ...new Set(
@@ -176,7 +191,7 @@ function describeModule(project, { basedir, pomFile }) {
     basedir,
     pomFile,
     coordinates: coordinates(project),
-    packaging: textAt(project, 'packaging') ?? 'jar',
+    packaging: packagingOf(project),
     buildDirectory,
     ...layoutOf({ build, plugins, basedir, buildDirectory }),
     surefireReports: reports
@@ -192,7 +207,7 @@ function describeModule(project, { basedir, pomFile }) {
     published: isPublished(project, plugins),
     ...jacocoSettings(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
-    compiler: compilerSettings(project),
+    compiler: moduleCompiler(project),
   };
 }
 

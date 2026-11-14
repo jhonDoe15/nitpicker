@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { writeFiles } from '../../git/test-support/fixture-files.mjs';
-import { scopeToTouchedFiles } from './scope.mjs';
+import { scopeToTouchedFiles } from './scope.mts';
 
 const roots = [];
 

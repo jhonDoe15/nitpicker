@@ -191,7 +191,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .sort(),
     ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
-  it('reports a failing test as a tests-failed tool error that names the test', () => {
+  it('reports a failing test as a tests-failed tool error of its module that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
     const finding = analyzeJavaSnapshot(project, { maven, policy: {} }).findings.find(
@@ -203,10 +203,12 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       rule: 'tests-failed',
       path: '.',
       identity: 'tests-failed:core',
+      symbol: 'core',
       classification: 'tool-error',
       symbol: 'core',
       message: [
-        '1 test fails in core; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
+        '1 test fails in core; coverage, CRAP and mutation were skipped there, the other checks ran. ' +
+          'Fix the tests and rerun:',
         '  demo/core/AdderTest.java:10 > demo.core.AdderTest.adds: expected: <4> but was: <3>',
       ].join('\n'),
     });

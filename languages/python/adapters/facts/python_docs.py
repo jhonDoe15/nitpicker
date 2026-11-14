@@ -94,6 +94,8 @@ def doc_comments(tree):
             found.append(
                 {
                     "line": node.body[0].lineno,
+                    "span": [node.body[0].lineno, node.body[0].end_lineno],
+                    "only": len(node.body) == 1,
                     "name": node.name,
                     "qualifier": ".".join(scope),
                     "lines": prose,

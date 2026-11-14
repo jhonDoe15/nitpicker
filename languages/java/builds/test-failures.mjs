@@ -100,9 +100,12 @@ function modulesOf(failures) {
   return modules.length === 0 ? '' : ` in ${modules.join(', ')}`;
 }
 
-export function failingTestsText(failures, consequence, where = modulesOf(failures)) {
+export function failingTestsText(failures, consequence) {
   const count = failures.reduce((total, { tests }) => total + tests.length, 0);
-  return [testsFailHeadline(count, consequence, where), ...listedFailures(failures)].join('\n');
+  return [
+    testsFailHeadline(count, consequence, modulesOf(failures)),
+    ...listedFailures(failures),
+  ].join('\n');
 }
 
 export function failingTestsError(failures) {

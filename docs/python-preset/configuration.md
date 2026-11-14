@@ -27,7 +27,7 @@ top-level `exceptions` is accepted only for the rules shared with the other lang
 `unused-option`, whose messages name it, the
 [dependency and repository checks](../usage.md#dependency-and-repository-checks), the
 [fact rules](../../spec/checks.md#custom-rules) every preset shares (`test-console-output`, `test-only-export`, `duplicate-definition`,
-`exported-name-collision`, `sibling-copy-edit`, `doc-comment-content`, `public-alternative-bypass`), which the Python preset runs over its facts scan, and
+`exported-name-collision`, `sibling-copy-edit`, `near-duplicate`, `doc-comment-content`, `public-alternative-bypass`), which the Python preset runs over its facts scan, and
 `co-change` of the [change history](../usage.md#change-history) check (with a `<module>/**` glob); the
 Python equivalent of `exceptions` for every other rule is `python.exceptions`. Each list rejects the
 other's rules (a function or file rule in `python.exceptions`, or a ruff code in `exceptions`, is a
@@ -190,7 +190,7 @@ The run prints, once at the start, the command that formats the code the way nit
 black prints `<empty file>` for the config it writes), and one line when a project config is
 ignored: `Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with
 "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (the flake8-pytest-style options
-are read without the opt-in). Each format finding refers to the command and names
+are read without the opt-in). Each format finding asks for `nitpicker --fix` and names
 `python.formatter` (when detected), the setting that changes the formatter.
 
 **Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the

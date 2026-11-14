@@ -1,7 +1,7 @@
 import { existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mjs';
+import { REPORT_FILE_NAMES } from '../../../reporting/reporters.mts';
 import {
   commitFiles,
   comparisonOptions,
@@ -11,7 +11,7 @@ import {
   worktreePaths,
 } from '../test-support/quality-diff-harness.mjs';
 import { runCli } from '../../../../cli.mts';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
 import {
   finding,
@@ -210,12 +210,12 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'unknown-analyzer-0',
         snapshot: 'base',
-        message: "Cannot read properties of null (reading 'resolveVersion')",
+        message: 'Analyzer configuration must be an object',
       },
       {
         tool: 'unknown-analyzer-0',
         snapshot: 'head',
-        message: "Cannot read properties of null (reading 'resolveVersion')",
+        message: 'Analyzer configuration must be an object',
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);

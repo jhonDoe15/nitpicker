@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
+import { sourceTextReader } from '../../reporting/function-locator.mjs';
+import { withoutUnconstrainedBodies } from '../web/request-body-constraints.mjs';
 import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -21,7 +23,8 @@ const reviewFixture = path.join(
   'fixtures',
   'review-rules',
 );
-const SPRING_RULE = /^(?:Spring|Jpa)/;
+const SPRING_RULE = /^(?:Spring|Jpa|IoCallInLoop$)/;
+const SOURCE_ROOT = 'src/main/java';
 const VIOLATION_MARKER = /\/\/ violation: (.*)$/;
 const CHECKSTYLE_VERSION = /<checkstyle version="([^"]+)">/;
 function javaFiles(root) {
@@ -48,15 +51,29 @@ function expectedViolations(sourceRoot) {
     )
     .sort();
 }
-function reportedViolations(sarifFile, sourceRoot) {
+function reportedViolations(sarifFile, projectRoot) {
   const [run] = JSON.parse(readFileSync(sarifFile, 'utf8')).runs;
-  return run.results
+  const findings = run.results
     .filter((result) => SPRING_RULE.test(result.ruleId))
     .map((result) => {
       const { artifactLocation, region } = result.locations[0].physicalLocation;
-      const file = path.relative(sourceRoot, new URL(artifactLocation.uri).pathname);
-      return `${file.split(path.sep).join('/')}:${String(region.startLine)} ${result.ruleId}`;
-    })
+      const file = path.relative(projectRoot, new URL(artifactLocation.uri).pathname);
+      return {
+        tool: 'pmd',
+        rule: result.ruleId,
+        path: file.split(path.sep).join('/'),
+        location: { line: region.startLine, column: region.startColumn },
+      };
+    });
+  return withoutUnconstrainedBodies(findings, {
+    projectRoot,
+    roots: [SOURCE_ROOT],
+    readText: sourceTextReader(projectRoot),
+  })
+    .map(
+      ({ rule, path: file, location }) =>
+        `${path.posix.relative(SOURCE_ROOT, file)}:${String(location.line)} ${rule}`,
+    )
     .sort();
 }
 const REVIEW_MARKER = /\/\/ violation: ([\w-]+(?:, [\w-]+)*)/u;
@@ -120,10 +137,13 @@ const REVIEW_RULES = new Set([
   'UnboundedQueryArray',
   'ConfigurationReadOutsideCompositionRoot',
   'SpringNullOnlyConfigCheck',
+  'IoCallInLoop',
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',
+  'RedundantStreamStep',
   'StreamedRowsCollected',
+  'SpringDataFilterInQuery',
   'HardcodedSecret',
   'CredentialLiteral',
   'SecretInLog',

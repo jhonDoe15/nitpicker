@@ -21,7 +21,7 @@ from effects.names import (
 )
 from environment.paths import path_method_calls
 from environment.purity import call_rule, loaded_io_module, reference_rule
-from smells.io_index import is_input_output_method
+from kinds.names import is_input_output_method
 
 KINDS = {"io-in-domain": "io", "clock-now": "clock", "random-in-domain": "random"}
 EXTERNAL = "external"

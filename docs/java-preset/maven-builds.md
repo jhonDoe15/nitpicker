@@ -4,9 +4,13 @@ Part of the [Java preset guide](../java-preset.md).
 
 A project is built with Maven when its root has a `pom.xml` and no Gradle build file
 (`settings.gradle(.kts)`, `build.gradle(.kts)`); with both, a lone `mvnw` (no `gradlew`) picks
-Maven, anything else Gradle. Nothing is configured and the choice is never a finding: both builds
-are valid, so nitpicker follows the one the project uses (`detectJavaBuild` in
-`languages/java/builds/java-build.mjs`). Maven 3.6.3 or newer is needed.
+Maven, anything else Gradle (`detectJavaBuild` in `languages/java/builds/java-build.mjs`). The choice
+is never a finding: both builds are valid. A project that has both can pick one with
+`"java": { "buildTool": "maven" }` (or `"gradle"`) in `nitpicker.config.json`; the setting replaces
+the detection for the Java and Kotlin presets. `nitpicker init` names the build it chose and why when
+both are present, and writes the setting into a new config file. A configured tool whose build file
+is missing (`pom.xml` for Maven, `settings.gradle(.kts)` or `build.gradle(.kts)` for Gradle) is a
+config error. Maven 3.6.3 or newer is needed.
 
 The Maven side produces the same reports as the init script, one set per module in
 `<module>/target/nitpicker/`, so the same ingesters read them and the findings are identical: the
@@ -76,14 +80,14 @@ by field. Per snapshot:
   with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
-  Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
+  Surefire's or Failsafe's reports, is a `tests/tests-failed` tool error of its module (exit 1) that names up to
   50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
   as well (the Test retries bullet above has the message); with `tools.tests.precedence` listing
-  `"project"` the POM's count is passed on as the `-D` value and those cases pass. The highest count declared in any POM is passed for every module. On the base snapshot the failing tests
-  are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
-  `tests-failed` tool error for that module that the core reads as a red base, the same as a Gradle
-  base whose tests fail. The other modules keep their
+  `"project"` the POM's count is passed on as the `-D` value and those cases pass. The highest count declared in any POM is passed for every module. The failing tests are listed instead of
+  thrown: that module skips JaCoCo and PIT and the other checks run. On the base the failure is a
+  `java/tests-failed` tool error for that module that the core reads as a red base, the same as a
+  Gradle base whose tests fail; on the head it is the `tests/tests-failed` error above. The other modules keep their
   coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
   own source and test directories. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their

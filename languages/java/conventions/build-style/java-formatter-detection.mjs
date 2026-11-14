@@ -13,13 +13,17 @@ import {
   pomProperties,
 } from './declarations/maven-formatter-declarations.mjs';
 import { gradleValue } from './declarations/value-references.mjs';
+import {
+  declaresSpringJavaFormat,
+  SPRING_JAVA_FORMAT,
+} from './spring-format/spring-java-format.mjs';
 
 const PALANTIR_STYLE = 'palantir';
 const GOOGLE_STYLE = 'google';
 const PALANTIR = /palantirjavaformat|palantir-java-format|com\.palantir\.java-format/u;
 const GOOGLE = /googlejavaformat|google-java-format|com\.spotify\.fmt/u;
 const OTHER_FORMATTER = /\b(?:eclipse|prettier)\s*\(/iu;
-const PREFERENCE = [PALANTIR_STYLE, GOOGLE_STYLE, 'none'];
+const PREFERENCE = [PALANTIR_STYLE, GOOGLE_STYLE, SPRING_JAVA_FORMAT, 'none'];
 
 function legacyDeclaration(code) {
   const lower = code.toLowerCase();
@@ -29,6 +33,14 @@ function legacyDeclaration(code) {
   return GOOGLE.test(lower)
     ? { formatter: GOOGLE_STYLE, aosp: GOOGLE_AOSP.test(lower) }
     : undefined;
+}
+
+function definedEntries(...entries) {
+  return entries.filter((entry) => entry !== undefined);
+}
+
+function springDeclaration(code) {
+  return declaresSpringJavaFormat(code) ? { formatter: SPRING_JAVA_FORMAT } : undefined;
 }
 
 const GOOGLE_AOSP =
@@ -82,7 +94,7 @@ function declaredInCode({ file, text, kind }, context) {
     blocks?.some((block) => OTHER_FORMATTER.test(block)) === true
       ? { formatter: 'none' }
       : legacyDeclaration(blocks === undefined ? code : outsideSpotless(code));
-  return { entries: entry === undefined ? [] : [entry], notes: [] };
+  return { entries: definedEntries(entry, springDeclaration(code)), notes: [] };
 }
 
 function pickFormatter(entries) {
@@ -116,8 +128,8 @@ function declaredIn(file, context) {
     return declaredInPom(file, context.properties);
   }
   if (file.kind === 'toml') {
-    const entry = legacyDeclaration(withoutComments(file.text, 'toml'));
-    return { entries: entry === undefined ? [] : [entry], notes: [] };
+    const code = withoutComments(file.text, 'toml');
+    return { entries: definedEntries(legacyDeclaration(code), springDeclaration(code)), notes: [] };
   }
   return declaredInCode(file, context);
 }

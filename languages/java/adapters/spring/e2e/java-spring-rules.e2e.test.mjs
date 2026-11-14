@@ -56,7 +56,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
   it('reports exactly the violations marked in the fixture sources', () => {
     const sourceRoot = path.join(projectRoot, 'src', 'main', 'java');
     expect(
-      reportedViolations(path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'), sourceRoot),
+      reportedViolations(path.join(projectRoot, 'build', 'nitpicker', 'pmd.sarif'), projectRoot),
     ).toEqual(expectedViolations(sourceRoot));
   });
 

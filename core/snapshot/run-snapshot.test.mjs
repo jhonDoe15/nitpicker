@@ -37,6 +37,29 @@ describe('quality snapshot run', () => {
     expect(report.findings).toEqual([]);
   });
 
+  it('turns the status into a tool error when the run carries a setup error', () => {
+    const projectRoot = createFixtureRoot({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const setupError = {
+      tool: 'source-roots',
+      snapshot: 'head',
+      rule: 'empty-sources',
+      path: '',
+      message: 'No TypeScript or JavaScript files under src; nothing was analyzed.',
+    };
+
+    const report = runQualitySnapshot({
+      analyzers: [fakeAnalyzer()],
+      projectRoot,
+      setupErrors: [setupError],
+    });
+
+    expect(report.summary.overallStatus).toBe('tool-error');
+    expect(report.toolErrors).toEqual([setupError]);
+  });
+
   it('reports violations for every enforceable finding present right now, with no baseline', () => {
     const projectRoot = createFixtureRoot({
       'quality-policy.json': policy(),

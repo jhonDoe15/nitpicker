@@ -25,6 +25,7 @@ import {
   commonSummary,
   noChangesReport,
   sortByToolAndPath,
+  fixPlansFor,
   writeDiffReports,
   parseArguments,
   resolveProjectRoot,
@@ -33,19 +34,19 @@ import {
   displayPath,
   withoutAnsi,
 } from './aggregate-summary.mts';
-import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mjs';
+import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
-import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { renderConsoleSummary } from '../reporting/summary.mts';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
-import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mts';
 import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mjs';
-import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mjs';
+import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
 import type { NitpickerConfig } from '../../configuration/config-types.mts';
@@ -112,8 +113,10 @@ function writeAggregate(
   report: AggregateReport,
   { outputRoot, liveProjectRoot }: ReportTarget,
 ): AggregateReport {
-  report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
-  return report;
+  const location = repositoryLocationOf(liveProjectRoot);
+  const planned: AggregateReport = { ...report, fixPlans: fixPlansFor(report, location) };
+  planned.text = writeDiffReports(outputRoot, planned, location);
+  return planned;
 }
 
 function unchangedReport(
@@ -125,7 +128,9 @@ function unchangedReport(
     configOverrides,
     comparison: commonSummary(shards[0].summary),
     startedAt: Date.now(),
-    additionalToolErrors: sortByToolAndPath(shards.flatMap(({ toolErrors }) => toolErrors)),
+    additionalToolErrors: sortByToolAndPath(
+      withoutRepeats(shards.flatMap(({ toolErrors }) => toolErrors)),
+    ),
   });
   report.summary.elapsedMs = Math.max(...shards.map(({ summary }) => summary.elapsedMs));
   return report;
@@ -154,7 +159,7 @@ function mergeShardEntries(
   shardReports: readonly ShardReport[],
   analyzerResolutionErrors: readonly Entry[],
 ): ShardEntries {
-  const toolErrors = mergeEntries(shardReports, 'toolErrors');
+  const toolErrors = withoutRepeats(mergeEntries(shardReports, 'toolErrors'));
   for (const error of analyzerResolutionErrors) {
     if (!toolErrors.some(({ tool }) => tool === error.tool)) {
       toolErrors.push(error);
@@ -214,6 +219,10 @@ export function runAggregateCli({
 
 function aggregationFailure(error: unknown): string {
   return withTroubleshooting(describeError(error), TROUBLESHOOTING_ANCHORS.shardAggregationFails);
+}
+
+function withoutRepeats<T>(entries: readonly T[]): T[] {
+  return [...new Map(entries.map((entry) => [JSON.stringify(entry), entry])).values()];
 }
 
 function mergeEntries(shardReports: readonly ShardReport[], property: keyof ShardEntries): Entry[] {

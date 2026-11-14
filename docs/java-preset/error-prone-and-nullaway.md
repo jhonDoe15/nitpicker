@@ -28,12 +28,22 @@ Part of the [Java preset guide](../java-preset.md).
   `{file, line, column, position, kind, message, classAnnotations}`: `position` is the one offset
   Error Prone reports, `classAnnotations` the annotations (meta-annotations included) of every
   class around it, innermost first.
+- **Fix runs.** `--fix` runs the same task and the same runner with two more `--errorprone-flag=`
+  lines, `-XepPatchChecks:<checks>` and `-XepPatchLocation:<folder>`. Error Prone then runs only
+  the named checks and writes `error-prone.patch` into the folder. The runner appends a folder per
+  compile (one per arguments file, and one more for the Lombok pass) so that the compiles of the
+  main and test sources do not overwrite each other's patch. See
+  [Error Prone fixes](../usage.md#error-prone-fixes).
 - **A check that crashes.** When a check throws, Error Prone reports an unhandled exception with
   the `BugPattern: <Check>` it came from; the runner then turns that check off with
   `-Xep:<Check>:OFF` and compiles the source set again, for as many checks as crash, so the other
   checks' findings are kept. Each crashed check is one more report entry,
   `{crash, cause, file, line, ...}`, and one `errorprone/check-crashed` tool error that names the
   check, the file and line it crashed on and the exception, and says that it is an Error Prone bug.
+  A crash nitpicker knows as an Error Prone bug is a descriptive notice instead, so it does not
+  change the exit code of a clean project: `UnnecessarilyFullyQualified` throwing a
+  `ClassCastException` (`JCIdent` cannot be cast to `MemberSelectTree`), seen on classes with fully
+  qualified Lombok annotations. Any other crash of that check stays a tool error.
   The two checks seen crashing on real projects, `ForEachIterable` and `FieldCanBeStatic`, are
   off (see below); a project that turns one back on gets this tool error where it crashes.
 - **Which JDK.** Error Prone needs JDK 21 or newer. On Gradle the runner uses the JVM that runs
@@ -69,7 +79,9 @@ Part of the [Java preset guide](../java-preset.md).
   1.8, by version), which the runner gives javac as `-source 8 -target 8`, the oldest level JDK
   21's javac takes; plugin 4.x has no such default and javac's own applies. An `annotationProcessorPaths` entry without a version takes it from the effective
   `dependencyManagement`, as `maven-compiler-plugin` does; one with no version there, or an
-  unresolved one, is a tool error that names the coordinate, never a guessed version. Without
+  unresolved one, is a tool error that names the module and the coordinate, never a guessed
+  version. Only modules that compile are read: an aggregator (packaging `pom`) compiles nothing,
+  so its unresolved entries do not matter, as in Maven. Without
   `annotationProcessorPaths` the processors come from the classpath, as javac finds them. The main
   classpath ends with `target/classes`, so classes that code generators (protobuf, JAXB, OpenAPI,
   jOOQ, ANTLR) compiled there resolve; the module's own sources are compiled from source and take
@@ -201,6 +213,15 @@ Part of the [Java preset guide](../java-preset.md).
   on Lombok's generated code, and `UnnecessarilyFullyQualified`, `UnrecognisedJavadocTag`,
   `MissingBraces`, `MissingSummary` and `MultiVariableDeclaration`, which then report generated
   code at the annotation or field. The other sources keep every check, and the run does not fail.
+- **Reactor `using`.** `StreamResourceLeak` looks only for try-with-resources.
+  `adapters/errorprone/reactive/` drops its diagnostic when the flagged call is the resource
+  supplier of `Flux.using` or `Mono.using` (a lambda whose body is that expression, or a block that
+  only returns it) and the cleanup argument closes the stream: `BaseStream::close`,
+  `Stream::close`, `AutoCloseable::close` or another type's `::close`, or a lambda that calls
+  `close()` on its parameter. For `usingWhen` the resource is any publisher built around the call
+  and one of the async cleanups must close. A cleanup that does not close, a bound reference
+  such as `holder::close`, a stream opened in the mapper or outside `using`, and a source that
+  does not use Reactor's `Flux` or `Mono` keep the finding.
 - **Overlaps.** Where Error Prone, PMD, SpotBugs or Checkstyle report the same issue, it is
   reported once: every tool stays on, and after policy a finding is dropped only while the finding
   that stands for it (its primary, in the same line, member, Javadoc comment, class, field or
@@ -228,7 +249,8 @@ Part of the [Java preset guide](../java-preset.md).
   suggested-fix stability, one finding with a stable identity for a repeated diagnostic),
   `adapters/errorprone/java-errorprone.test.mjs` (paths, source roots, missing report, the
   exceptions route on test findings of certain bugs too, JDK forms without Guava, Lombok-generated
-  diagnostics),
+  diagnostics, streams closed by `Flux.using`),
+  `adapters/errorprone/reactive/closed-supplier.test.mjs` (which suppliers and cleanups count),
   `adapters/errorprone/exemptions/class-exemptions.test.mjs` (which class annotations spare which
   checks), `adapters/overlaps/static-overlaps.test.mjs` (each pair drops its secondary in its scope
   and not outside it, and the table has no cycle), `resolved-overlaps.test.mjs` (the cross-tool

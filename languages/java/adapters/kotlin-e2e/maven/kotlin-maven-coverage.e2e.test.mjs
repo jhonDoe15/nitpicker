@@ -123,6 +123,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'structure function-statements-limit Right.total',
       'structure function-statements-limit classify2',
       'structure function-statements-limit rank',
+      'structure near-duplicate classify(Int)',
+      'structure near-duplicate rank(Int)',
+      'structure near-duplicate rank(Int)',
     ]);
     expect(messageOf('function-control-nesting-limit', 'depth')).toBe(
       `depth nests control flow 3 deep (limit 2). Return early instead of nesting. ${routeOf('function-control-nesting-limit', 'change/Deep.kt', 'depth')}`,
@@ -137,6 +140,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: coverage and structu
       'crap crap-score-limit classify',
       'structure function-parameters-limit sum',
       'structure function-statements-limit classify',
+      'structure near-duplicate classify2(Int)',
     ]);
     expect(rulesOf(result.newEnforceable, 'duplicates')).toEqual([
       'duplicates duplicate-clone Left.kt',

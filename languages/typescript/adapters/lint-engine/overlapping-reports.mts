@@ -12,6 +12,7 @@ type Position = { readonly line: number; readonly column: number };
 const SAME_START_SUPERSEDING = new Map<unknown, string>([
   ['no-restricted-properties', 'nitpicker/react-no-random-key'],
   ['nitpicker/no-costly-collection-form', 'nitpicker/no-in-memory-query'],
+  ['nitpicker/no-wasted-collection-step', '@typescript-eslint/prefer-find'],
 ]);
 
 const ENCLOSING_SUPERSEDING = [

@@ -1,7 +1,6 @@
 import { textOf } from '../../../shared/values/readers.mts';
 import { assertTypeScriptNode, missingNodePeers } from './node-peers.mts';
 import type { PeerNeeds } from './node-peers.mts';
-import { minimumOf } from './peer-pins.mts';
 import { pythonPeerStatus } from './python-peers.mts';
 import type { InitProject, Peers } from '../init-types.mts';
 
@@ -54,7 +53,7 @@ function nameOfRequirement(requirement: string): string {
 function outdatedSentences(needs: PeerNeeds): string[] {
   return needs.outdated.map(
     ({ name, installed, range }) =>
-      `${name} ${textOf(installed)} is older than ${textOf(minimumOf(range))}`,
+      `${name} too old (have ${textOf(installed)}, need ${textOf(range)})`,
   );
 }
 

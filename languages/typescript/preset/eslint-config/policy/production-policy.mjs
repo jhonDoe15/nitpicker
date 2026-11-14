@@ -20,7 +20,7 @@ const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
 ];
 
-const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
+export const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
 
 const SUPPORT_OFF_RULES = [
   ...SECURITY_RULES,
@@ -49,7 +49,7 @@ const routeHandlerNames = {
   format: ['UPPER_CASE'],
 };
 
-function namingConvention({ react, routeHandlers }) {
+export function namingConvention({ react, routeHandlers }) {
   const underscores = 'allowSingleOrDouble';
   return [
     'error',
@@ -86,6 +86,7 @@ function productionRules({ react, routeHandlers }) {
     'nitpicker/no-accumulating-spread': 'error',
     'nitpicker/no-costly-collection-form': 'error',
     'nitpicker/no-collected-stream-rows': 'error',
+    'nitpicker/no-wasted-collection-step': 'error',
     'nitpicker/no-repeated-string-literal': 'error',
     'nitpicker/no-hardcoded-secret': 'error',
     'nitpicker/no-secret-in-log': 'error',
@@ -111,6 +112,13 @@ function productionGuardRules({ react, security }) {
       'error',
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
+    'nitpicker/no-io-in-loop': 'error',
+    'nitpicker/no-accumulator-concat': 'error',
+    'nitpicker/no-lazy-relation-in-loop': 'error',
+    'nitpicker/no-remote-call-in-transaction': 'error',
+    'nitpicker/no-remote-call-under-lock': 'error',
+    'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-dual-write': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
     'nitpicker/no-orm-query-logging': 'error',

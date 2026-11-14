@@ -4,8 +4,10 @@ import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { ingestErrorProne } from '../../ingest/errorprone/errorprone.mjs';
 import { isClassExempt } from './exemptions/class-exemptions.mjs';
+import { isFormatterOwned } from './layout/formatter-owned.mjs';
 import { isIntegrationTestName } from './exemptions/test-class-names.mjs';
 import { isLombokGenerated } from './lombok/lombok-generated.mjs';
+import { isClosedByUsing } from './reactive/closed-supplier.mjs';
 import { compiledSources, sourceReader } from './lombok/source-text.mjs';
 import { withoutFluentCalls } from './fluent/fluent-returns.mjs';
 
@@ -16,8 +18,21 @@ const CHECKS = JSON.parse(
   readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
 );
 const CERTAIN_BUGS = new Set(CHECKS.certainBugs);
+const KNOWN_CRASHES = new Map([
+  [
+    'UnnecessarilyFullyQualified',
+    /JCIdent cannot be cast to (?:class )?com\.sun\.source\.tree\.MemberSelectTree/u,
+  ],
+]);
 
-export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifest = {}, modules }) {
+export function readErrorProneFindings({
+  reportRoot,
+  roots,
+  lintedRoots,
+  manifest = {},
+  modules,
+  javaStyle,
+}) {
   const reportPath = path.join(reportRoot, ERROR_PRONE_REPORT);
   if (!existsSync(reportPath)) {
     return [toolError('missing-report', `Error Prone wrote no report at ${reportPath}.`)];
@@ -35,7 +50,9 @@ export function readErrorProneFindings({ reportRoot, roots, lintedRoots, manifes
     },
   );
   return [
-    ...findings.map((finding) => withExceptionRoute(finding, testRoots)),
+    ...findings
+      .filter((finding) => !isFormatterOwned(finding, javaStyle))
+      .map((finding) => withExceptionRoute(finding, testRoots)),
     ...(outside.size === 0 ? [] : [unmappedError(outside, roots)]),
     ...crashes.map((crash) => crashError(crash, roots)),
   ];
@@ -55,15 +72,26 @@ function isCrash(diagnostic) {
   return typeof diagnostic?.crash === 'string';
 }
 
+function isKnownCrash({ crash, cause }) {
+  return typeof cause === 'string' && KNOWN_CRASHES.get(crash)?.test(cause) === true;
+}
+
 function crashError({ crash, file, line, cause }, roots) {
   const [relative = file] = projectRelative(file, roots);
   const why = typeof cause === 'string' && cause !== '' ? ` (${cause})` : '';
+  const known = isKnownCrash({ crash, cause });
+  const consequence = known
+    ? ', a known Error Prone bug, so it was turned off for this run and only its findings are missing. ' +
+      'The crash is not a problem in this code.'
+    : ', so it was turned off for this run and the findings of the other checks are kept. ' +
+      'The crash is an Error Prone bug, not a problem in this code.';
   return {
     ...toolError(
       'check-crashed',
-      `Error Prone's ${crash} check crashed on ${relative}:${String(line)}${why}, so it was turned off for this run and the findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.`,
+      `Error Prone's ${crash} check crashed on ${relative}:${String(line)}${why}${consequence}`,
     ),
     identity: `check-crashed:${crash}`,
+    ...(known ? { classification: 'descriptive' } : {}),
   };
 }
 
@@ -103,7 +131,8 @@ function withoutExemptCode(diagnostics, readSource) {
       (diagnostic) =>
         !isClassExempt(diagnostic, CHECKS.classExemptions) &&
         !isIntegrationTestName(diagnostic) &&
-        !isLombokGenerated(diagnostic, textOf(diagnostic.file)),
+        !isLombokGenerated(diagnostic, textOf(diagnostic.file)) &&
+        !isClosedByUsing(diagnostic, textOf(diagnostic.file)),
     ),
   );
 }

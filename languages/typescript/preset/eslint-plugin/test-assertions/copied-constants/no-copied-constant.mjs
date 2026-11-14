@@ -7,6 +7,7 @@ import {
 import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
 import { isTestFunctionName, registrationRoot } from '../../rules/analysis/test-code-analysis.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
+import { definingModules } from './defining-modules.mjs';
 import { exportedConstants } from './exported-constants.mjs';
 import { importedModule, loadedModule } from './module-loads.mjs';
 import { byText } from '../../../../../../shared/text-order/by-text.mjs';
@@ -28,12 +29,15 @@ function isValueImport(statement) {
 function seenConstants(context, loads) {
   const seen = new Map();
   const imports = context.sourceCode.ast.body.filter(isValueImport).map(importedModule);
-  for (const { specifier, names } of [...imports, ...loads]) {
+  for (const { specifier, names, whole } of [...imports, ...loads]) {
     const target = resolveModuleSpecifier(specifier, context.filename);
     if (target.kind !== 'file') {
       continue;
     }
-    const constants = exportedConstants(target.path, { root: context.cwd });
+    const only = whole
+      ? undefined
+      : definingModules(target.path, names.keys(), { root: context.cwd });
+    const constants = exportedConstants(target.path, { root: context.cwd, only });
     for (const [name, value] of constants) {
       const member = name.split('.').at(-1);
       const mentions = [member, ...(member === name ? (names.get(name) ?? []) : [])];

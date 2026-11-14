@@ -48,7 +48,7 @@ public class BulkService {
     stock.touch(ids.get(0));
     int total = 0;
     for (Long id : ids) {
-      total += stock.countVersion(id);
+      total += stock.countVersion(id); // violation: IoCallInLoop
     }
   }
 

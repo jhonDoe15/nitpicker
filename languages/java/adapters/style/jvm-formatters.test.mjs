@@ -1,12 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  JAVA_FORMATTERS,
-  KOTLIN_FORMATTERS,
-  formatterOptionFlags,
-  javaFormatterCommand,
-} from './jvm-formatters.mjs';
+import { JAVA_FORMATTERS, KOTLIN_FORMATTERS, formatterOptionFlags } from './jvm-formatters.mjs';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
 
 const INIT_SCRIPT = ['nitpicker.init.gradle', 'kotlin/kotlin-format.gradle']
@@ -54,13 +49,6 @@ describe('the formatter table', () => {
     expect(
       INIT_SCRIPT.split('\n').filter((line) => line.includes(`[${flags}][javaStyle]`)).length,
     ).toBe(1);
-  });
-  it('prints the command a person runs to format by hand', () => {
-    expect(Object.keys(JAVA_FORMATTERS).map(javaFormatterCommand)).toEqual([
-      'google-java-format --replace <Java files>',
-      'google-java-format --aosp --replace <Java files>',
-      'palantir-java-format --palantir --replace <Java files>',
-    ]);
   });
 });
 

@@ -29,13 +29,13 @@ function olderApp(versions) {
 }
 
 describe('peer plan for an older React app', () => {
-  it('says "older than" for a package that is installed but too old', () => {
+  it('says "too old" for a package that is installed but too old', () => {
     const plan = planPeers(olderApp({ vite: '6.0.1' }), YARN);
 
     expect(plan.outdated).toEqual([
-      'typescript 5.4.5 is older than 5.7',
-      'vitest 2.1.4 is older than 4.1.11',
-      '@vitest/coverage-v8 2.1.4 is older than 4.1.11',
+      'typescript too old (have 5.4.5, need >=5.7)',
+      'vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
+      '@vitest/coverage-v8 too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
     ]);
     expect(plan.absent).toEqual([NITPICKER]);
   });
@@ -57,11 +57,11 @@ describe('peer plan for an older React app', () => {
     expect(plan.blockers).toEqual([]);
   });
 
-  it('keeps the newest Vitest for a Vite that it accepts', () => {
+  it('asks for the lowest supported Vitest over an old one when the installed Vite takes it', () => {
     const plan = planPeers(olderApp({ vite: '7.1.0' }), YARN);
 
     expect(plan.command).toBe(
-      `yarn add --dev ${NITPICKER} ${quotedTypescriptPin()} vitest @vitest/coverage-v8`,
+      `yarn add --dev ${NITPICKER} ${quotedTypescriptPin()} 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'`,
     );
   });
 
@@ -70,9 +70,9 @@ describe('peer plan for an older React app', () => {
 
     expect(plan.command).toBe(`yarn add --dev ${NITPICKER} ${quotedTypescriptPin()}`);
     expect(plan.outdated).toEqual([
-      'typescript 5.4.5 is older than 5.7',
-      'vitest 2.1.4 is older than 4.1.11',
-      '@vitest/coverage-v8 2.1.4 is older than 4.1.11',
+      'typescript too old (have 5.4.5, need >=5.7)',
+      'vitest too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
+      '@vitest/coverage-v8 too old (have 2.1.4, need ^4.1.11 || ^5.0.0)',
     ]);
     expect(plan.blockers).toEqual([
       [

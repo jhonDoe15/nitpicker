@@ -11,3 +11,4 @@ __pycache__/
 shared/reference/rules/
 languages/typescript/reference/eslint-inventory.json
 docs/rules/
+!languages/java/adapters/fixtures/*/src/main/*/shop/reports/

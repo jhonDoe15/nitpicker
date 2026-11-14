@@ -2,6 +2,7 @@ import { childAt, parseXml } from '../../../../../shared/ingest/common.mjs';
 import { stepFormatterDetails } from '../java-formatter-options.mjs';
 import { flagValue, versionValue } from './formatter-values.mjs';
 import { mavenValue } from './value-references.mjs';
+import { SPRING_JAVA_FORMAT, springFormatInPom } from '../spring-format/spring-java-format.mjs';
 
 const PALANTIR_STYLE = 'palantir';
 const GOOGLE_STYLE = 'google';
@@ -105,6 +106,7 @@ export function declaredInPom({ file, text }, properties) {
   const entries = [
     ...descendants(root, 'plugin').flatMap((plugin) => pluginDeclarations(plugin, reading)),
     ...artifacts,
+    ...(springFormatInPom(root) ? [{ formatter: SPRING_JAVA_FORMAT }] : []),
   ].filter((entry) => entry !== undefined);
   return { entries, notes: reading.notes };
 }

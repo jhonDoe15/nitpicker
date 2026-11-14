@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalize, REWRITE_NAMES } from './normalize.mjs';
-import { cannotThrow, isSideEffectFree } from './purity.mjs';
+import { cannotThrow, isSideEffectFree, pureCallKind } from './purity.mjs';
 import { term, withRange } from './terms.mjs';
 import { binary, call, member, name, not, number, text } from './test-support/build.mjs';
 
@@ -35,6 +35,21 @@ describe('side-effect-free operands', () => {
       sideEffectFree,
       safeToDrop,
     });
+  });
+});
+
+describe('kinds of pure library calls', () => {
+  it.each([
+    ['a static math call', member(name('Math'), 'abs'), 'static'],
+    [
+      'a string read, which can throw on a missing receiver',
+      member(name('label'), 'startsWith'),
+      'read',
+    ],
+    ['a random number', member(name('Math'), 'random'), undefined],
+    ['a call to own code', name('load'), undefined],
+  ])('classifies %s', (_case, callee, kind) => {
+    expect(pureCallKind(callee)).toBe(kind);
   });
 });
 

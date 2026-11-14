@@ -143,3 +143,32 @@ describe('SortForExtreme', () => {
     expect(found(body)).toEqual([]);
   });
 });
+
+describe('RedundantStreamStep', () => {
+  it.each([
+    ['map then flatten', 'fun f() = routes.map { it.parts }.flatten()'],
+    ['map with a reference then flatten', 'fun f() = routes.map(Route::parts)\n    .flatten()'],
+    ['a copy only to count', 'fun f() = routes.toList().size'],
+    [
+      'a copy only to test emptiness',
+      'fun f() = routes.asSequence().filter { it.live }.toMutableList().isEmpty()',
+    ],
+  ])('flags %s', (_name, body) => {
+    expect(found(body)).toEqual([['RedundantStreamStep', 2]]);
+  });
+
+  it.each([
+    ['flatMap', 'fun f() = routes.flatMap { it.parts }'],
+    ['map alone', 'fun f() = routes.map { it.parts }'],
+    ['a copy that is kept', 'fun f() = routes.toList()'],
+    ['a copy that is changed', 'fun f() = routes.toMutableList().apply { add(extra) }'],
+    ['a set copy, which drops repeats', 'fun f() = routes.toSet().size'],
+    [
+      'a copy then searched, which may be a map or a string',
+      'fun f(r: Route) = routes.toList().contains(r)',
+    ],
+    ['a size function of its own', 'fun f() = routes.toList().sizeInBytes()'],
+  ])('allows %s', (_name, body) => {
+    expect(found(body)).toEqual([]);
+  });
+});

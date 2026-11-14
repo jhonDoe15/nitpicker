@@ -127,6 +127,33 @@ describe('the project peers a run needs', () => {
       `nitpicker failed: vitest and @vitest/coverage-v8 are not installed in ${repository.root}. Run npm install --save-dev vitest @vitest/coverage-v8.\n`,
     );
   });
+
+  it.each([
+    [
+      'npm',
+      'package-lock.json',
+      "npm install --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+    ],
+    [
+      'pnpm',
+      'pnpm-lock.yaml',
+      "pnpm add --save-dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'",
+    ],
+    ['yarn', 'yarn.lock', "yarn add --dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'"],
+    ['bun', 'bun.lock', "bun add --dev 'vitest@^4.1.11' '@vitest/coverage-v8@^4.1.11'"],
+  ])(
+    'asks for the supported range of an outdated Vitest under %s',
+    (_manager, lockfile, command) => {
+      const root = project({
+        ...withPeers({ typescript: '6.0.3', vitest: '4.0.5', '@vitest/coverage-v8': '4.0.5' }),
+        [lockfile]: '',
+      });
+
+      expect(check(root)).toThrow(
+        `vitest 4.0.5 is installed and nitpicker needs ^4.1.11 || ^5.0.0; @vitest/coverage-v8 4.0.5 is installed and nitpicker needs ^4.1.11 || ^5.0.0. Run ${command}.`,
+      );
+    },
+  );
 });
 
 describe('the project peers when no supported Vitest runs on the installed Vite', () => {

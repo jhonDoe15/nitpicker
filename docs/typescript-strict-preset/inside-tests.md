@@ -434,6 +434,8 @@ hop, and type-only imports do not count.
   rule reports this: `no-floating-promises`, `no-unused-expressions` and `expect-expect` read other
   shapes. JavaScript projects have no type checker in the preset, so the rule does not apply there;
   Python does not need it, since a dropped callable is legal and common there.
+- `@typescript-eslint/no-unused-vars` takes the same `_` marker in test files as in production code: a parameter that only gives a function its arity, such as `(_state, _props) => ({})`, is not reported.
+- `vitest/expect-expect` needs an `expect`, `assert`, `expectTypeOf` or `assertType` call in every test, except in `*.test-d.*` and `*.spec-d.*` files (Vitest's type-test files): there the compiler is the assertion, so a test that only has to compile, or carries a `// @ts-expect-error`, passes.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
   Assertions inside loops are `nitpicker/no-assertion-in-loop`.
