@@ -35,11 +35,21 @@ the full run below, without them.
    without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
    first rewrites the changed Java files with the formatter the run names under "Following this
    project's conventions" (google-java-format 1.35.0, `--aosp` for the aosp style, or
-   palantir-java-format) and lists them under "Fixed files:". When the run says no Java formatter
-   runs, it leaves the files alone; keep the layout by hand. Then it runs the build on the merge
-   base and on head, with the project's `./gradlew` or `./mvnw` when there is one, otherwise
-   `gradle` or `mvn` from the PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It
-   takes minutes and prints a progress line for each slow analyzer.
+   palantir-java-format) and lists them under "Fixed files:", after its fix recipes, which list each
+   finding they fixed under "Fixed findings:". When the run says no Java formatter runs, it leaves
+   the files alone; keep the layout by hand. Then it runs the build on the merge base and on head,
+   with the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from
+   the PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It takes minutes and prints a
+   progress line for each slow analyzer. To look at the fixes first, run
+   `npx nitpicker --fix --dry-run`: it changes no file and writes `fix.patch` and `fixes.json` to
+   the output folder. `--fix --rule <tool/rule>` applies only the fixes of the rules you name,
+   including their `review` recipes. A recipe that makes things worse (its finding stays, it adds a
+   finding or a compile error) is rolled back and named under "Fix notes"; `--fix --verify full`
+   checks with the whole gate. To clear one rule across the whole project, run
+   `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in `nitpicker.legacy.json`.
+   For a finding no recipe fixes, read its plan in `fix-plans.json` (same folder): the target lines,
+   the context and the steps. Follow the steps; they are done when the finding named in `doneWhen`
+   stops.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer` or `--quick`: the summary then says
      `Ran only: ...` or names the skipped checks, and you run the gate again without them before you
@@ -133,3 +143,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 Under the kotlin preset the Java sources get the same checks. Kotlin sources follow the
 `nitpicker-kotlin` skill; if it isn't installed, install it with the
 command `npx nitpicker init` prints, with `--skill nitpicker-kotlin`.
+
+Why each fix decision was made, and what --fix leaves alone: [SOURCES.md](SOURCES.md).

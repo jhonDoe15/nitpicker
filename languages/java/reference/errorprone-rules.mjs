@@ -53,7 +53,7 @@ function checkEntry(name, checks, texts) {
   return ruleEntry({
     tool: 'errorprone',
     rule: name,
-    page: 'java-errorprone',
+    page: name < 'M' ? 'java-errorprone' : 'java-errorprone-m-z',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
     summary: flatText(text.summary),
@@ -73,7 +73,7 @@ function nullAwayEntry() {
   return ruleEntry({
     tool: 'errorprone',
     rule: 'NullAway',
-    page: 'java-errorprone',
+    page: 'java-errorprone-m-z',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
     summary: flatText(readToolText('errorprone').rules.NullAway.summary),

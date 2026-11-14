@@ -33,12 +33,21 @@ the full run below, without them.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
    without a pipe: you need its exit code. Wait for it: do not start a second run or kill it. It
    first rewrites the changed Kotlin and Java files with the formatter named at the start of the run
-   (ktlint or ktfmt, google-java-format for Java) and lists them under "Fixed files:". When a "Fix
-   notes:" line says no formatter was found, keep the layout by hand. Then it runs the project's
-   build (Gradle, or Maven with `kotlin-maven-plugin`) on the merge base and on head, with the
-   project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
+   (ktlint or ktfmt, google-java-format for Java) and lists them under "Fixed files:", after its fix
+   recipes, which list each finding they fixed under "Fixed findings:". When a "Fix notes:" line
+   says no formatter was found, keep the layout by hand. Then it runs the project's build (Gradle,
+   or Maven with `kotlin-maven-plugin`) on the merge base and on head, with the project's
+   `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
    (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both). It takes minutes and prints a progress
-   line for each slow analyzer.
+   line for each slow analyzer. To look at the fixes first, run `npx nitpicker --fix --dry-run`: it
+   changes no file and writes `fix.patch` and `fixes.json` to the output folder.
+   `--fix --rule <tool/rule>` applies only the fixes of the rules you name, including their `review`
+   recipes. A recipe that makes things worse (its finding stays, it adds a finding or a compile
+   error) is rolled back and named under "Fix notes"; `--fix --verify full` checks with the whole
+   gate. To clear one rule across the whole project, run `--fix --all --rule <tool/rule>`: it also
+   lowers the rule's allowance in `nitpicker.legacy.json`. For a finding no recipe fixes, read its
+   plan in `fix-plans.json` (same folder): the target lines, the context and the steps. Follow the
+   steps; they are done when the finding named in `doneWhen` stops.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer` or `--quick`: the summary then says
      `Ran only: ...` or names the skipped checks, and you run the gate again without them before you
@@ -118,3 +127,5 @@ The allowed forms are on one page per topic. Before you write code, read the pag
 
 - The gate fails committed secrets, binaries, build output and files over 1 MB; each message names
   the fix. Don't add an `exceptions` entry to get past one: stop and ask.
+
+Why each fix recipe rewrites what it does, and what it leaves alone: [SOURCES.md](SOURCES.md).

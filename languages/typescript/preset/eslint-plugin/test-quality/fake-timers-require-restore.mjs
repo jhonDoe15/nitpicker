@@ -1,4 +1,6 @@
 import { ancestorsOf } from '../rules/analysis/ancestry.mjs';
+import { fixable } from '../fixes/support/descriptors.mjs';
+import { restoreHookFix } from '../fixes/tests/restore-hook-fix.mjs';
 import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'onTestFinished']);
@@ -52,9 +54,22 @@ function messageIdFor(method, state) {
 
 const RESTORE_TIMERS = 'Restore them: `afterEach(() => { vi.useRealTimers(); });`.';
 
+function reportUnrestoredCalls(context, { calls, restored, state }) {
+  const planned = new Set();
+  const unrestored = calls.filter(({ method }) => !restored.has(RESTORES.get(method)));
+  for (const { node, method } of unrestored) {
+    const plan = planned.has(method) ? undefined : restoreHookFix(context.sourceCode, node, method);
+    if (plan !== undefined) {
+      planned.add(method);
+    }
+    context.report(fixable({ node, messageId: messageIdFor(method, state) }, plan));
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
+    fixable: 'code',
     docs: {
       description:
         'Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored',
@@ -114,11 +129,7 @@ export const rule = {
         }
       },
       'Program:exit'() {
-        for (const { node, method } of calls) {
-          if (!restored.has(RESTORES.get(method))) {
-            context.report({ node, messageId: messageIdFor(method, state) });
-          }
-        }
+        reportUnrestoredCalls(context, { calls, restored, state });
         for (const { node, messageId } of writes.unrestored()) {
           context.report({ node, messageId });
         }

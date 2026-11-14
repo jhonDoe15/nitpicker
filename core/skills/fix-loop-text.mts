@@ -67,3 +67,14 @@ export function wrap(text: string, indent = '', firstIndent = indent): string {
   lines.push(line);
   return lines.join('\n');
 }
+
+export const FIX_PREVIEW =
+  'To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes ' +
+  '`fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the ' +
+  'fixes of the rules you name, including their `review` recipes. A recipe that makes things ' +
+  'worse (its finding stays, it adds a finding or a compile error) is rolled back and named under ' +
+  '"Fix notes"; `--fix --verify full` checks with the whole gate. To clear one rule across the ' +
+  "whole project, run `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in " +
+  '`nitpicker.legacy.json`. For a finding no recipe fixes, read its plan in `fix-plans.json` ' +
+  '(same folder): the target lines, the context and the steps. Follow the steps; they are done ' +
+  'when the finding named in `doneWhen` stops.';

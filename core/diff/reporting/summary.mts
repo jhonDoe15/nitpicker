@@ -8,6 +8,7 @@ import { designNoteLines } from './format/design-notes.mts';
 import { areaCountLine } from './format/rule-groups/finding-areas.mts';
 import { byFixOrder, ruleGroupLines } from './format/rule-groups/rule-groups.mts';
 import { reviewSummaryLines } from './review/notices.mts';
+import { planCountLines } from '../../../shared/fix-plans/render.mjs';
 import { quickLines } from '../../quick/summary.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
 import { partialRunLines } from './partial-run/partial-run.mts';
@@ -54,6 +55,8 @@ const scopeLinesOf: (summary: unknown) => readonly string[] = scopeLine;
 const skippedLinesOf: (summary: unknown) => readonly string[] = skippedLines;
 const unaffected: (summary: unknown, names: unknown) => string = unaffectedLine;
 const analyzerLines: (tools: unknown) => readonly string[] = snapshotToolLines;
+
+const countLinesOf: (plans: unknown, diagnosticsPath: string) => string[] = planCountLines;
 
 const SHORT_SHA_LENGTH = 12;
 const FINDING = 'finding';
@@ -150,8 +153,11 @@ function renderGateSummary(
       style(text, [ANSI.bold, ANSI.yellow], { color }),
     ),
   );
-  lines.push(...heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }));
-  lines.push(...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }));
+  lines.push(
+    ...heldSummaryLines(report.unchangedFindings, { color, details, diagnosticsPath }),
+    ...countLinesOf(report.fixPlans, diagnosticsPath),
+    ...designNoteLines(report.newFindings, diagnosticsPath, { snapshot }),
+  );
   appendNoteSummary(lines, report.notes, color);
   lines.push(...toolErrorSummaryLines(otherErrors, { color, projectRoot }));
   lines.push(...closingLines(report, { color, diagnosticsPath, snapshot }));
