@@ -3,19 +3,62 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { pythonUsable } from '../../metrics/python-helpers.mjs';
-import { collectImports } from '../analysis/python-coupling.mjs';
-import { pythonFeatureAnalysis, pythonImportFacts } from './python-feature-facts.mjs';
-import { cycleFindings } from './python-import-rules.mjs';
+import { pythonUsable } from '../../metrics/python-helpers.mts';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import { fieldOf, fieldsOf, listOf } from '../../../../shared/values/readers.mts';
+import { collectImports as untypedCollect } from '../analysis/python-coupling.mjs';
+import { JSON_NULL } from '../analysis/typed/json-null.mts';
+import type {
+  ImportsReport,
+  ImportStatement,
+  JsonNull,
+  PythonModule,
+} from '../analysis/typed/python-graph-types.mts';
+import {
+  pythonFeatureAnalysis as untypedAnalysis,
+  pythonImportFacts as untypedFacts,
+} from './python-feature-facts.mjs';
+import { cycleFindings } from './python-import-rules.mts';
+import type { FeatureView } from './typed/import-rule-types.mts';
+
+type Row = Readonly<Record<string, unknown>>;
+type FactOptions = { readonly isGenerated?: (file: string) => boolean };
+type AnalysisOptions = {
+  readonly policy?: Row | undefined;
+  readonly persistence?: Map<string, string>;
+};
+
+function pythonImportFacts(
+  report: ImportsReport,
+  options?: FactOptions,
+): { modules: Row[]; imports: Row[] } {
+  const facts: unknown = Reflect.apply(untypedFacts, undefined, [report, options]);
+  return {
+    modules: listOf(fieldOf(facts, 'modules')).map(fieldsOf),
+    imports: listOf(fieldOf(facts, 'imports')).map(fieldsOf),
+  };
+}
+const pythonFeatureAnalysis: (
+  report: ImportsReport,
+  options?: AnalysisOptions,
+) => FeatureView & { findings: IngestedFinding[] } = untypedAnalysis;
+const collectImports: (
+  context: { projectRoot: string; reportRoot: string; project: { sourceRoots: string[] } },
+  run: (context: unknown, command: readonly string[]) => unknown,
+) => ImportsReport = untypedCollect;
 
 const FEATURES = 'src/app/features';
 
-const module = (name, isPackage = false) => ({
+const module = (name: string, isPackage = false): PythonModule => ({
   module: name,
   file: `src/${name.replaceAll('.', '/')}${isPackage ? '/__init__' : ''}.py`,
   isPackage,
 });
-const absolute = (from, ...names) => ({ level: 0, module: from, names });
+const absolute = (from: string | JsonNull, ...names: string[]): ImportStatement => ({
+  level: 0,
+  module: from,
+  names,
+});
 
 const MODULES = [
   module('app.features.billing', true),
@@ -25,7 +68,7 @@ const MODULES = [
   module('app.features.orders.cart'),
 ];
 
-function edgesOf(file, ...statements) {
+function edgesOf(file: string, ...statements: ImportStatement[]) {
   return pythonImportFacts({ modules: MODULES, imports: { [file]: statements } }).imports;
 }
 
@@ -55,7 +98,7 @@ describe('the import facts of the Python scan', () => {
       edgesOf(
         `${FEATURES}/orders/cart.py`,
         absolute('app.features.billing', '_rates', 'Invoice'),
-        absolute(null, 'app.features.billing.internal.tax'),
+        absolute(JSON_NULL, 'app.features.billing.internal.tax'),
       ).map(({ to, names }) => [to, names]),
     ).toEqual([
       [`${FEATURES}/billing/_rates.py`, [{ name: '*' }]],
@@ -91,7 +134,7 @@ describe('the import facts of the Python scan', () => {
     expect(
       edgesOf(
         `${FEATURES}/billing/__init__.py`,
-        { level: 1, module: null, names: ['VERSION'] },
+        { level: 1, module: JSON_NULL, names: ['VERSION'] },
         absolute('requests', 'get'),
       ),
     ).toEqual([]);
@@ -117,7 +160,7 @@ describe('the import facts of the Python scan', () => {
   it('turns the __all__ list of a package into whole-module re-exports of its sub-packages', () => {
     const [exported] = edgesOf(`${FEATURES}/billing/__init__.py`, {
       level: 1,
-      module: null,
+      module: JSON_NULL,
       names: ['internal', 'Invoice'],
       typeOnly: true,
       exported: true,
@@ -143,7 +186,7 @@ const CYCLE_MODULES = [
   module('app.util.u'),
 ];
 
-function cycleReport(throughUtil) {
+function cycleReport(throughUtil: boolean): ImportsReport {
   const billing = [absolute('app.features.shipping', 'b')];
   return {
     modules: CYCLE_MODULES,
@@ -156,7 +199,7 @@ function cycleReport(throughUtil) {
   };
 }
 
-function packageCycles(report, policy) {
+function packageCycles(report: ImportsReport, policy?: Row) {
   return cycleFindings(report, pythonFeatureAnalysis(report, { policy })).map(
     ({ identity }) => identity,
   );
@@ -214,7 +257,7 @@ describe('foreign-feature-persistence over the Python facts', () => {
 
 const SCAN_TIMEOUT_MS = 30_000;
 const fixture = path.resolve(import.meta.dirname, '../fixtures/feature-project');
-const reportRoots = [];
+const reportRoots: string[] = [];
 
 afterAll(() => {
   for (const root of reportRoots.splice(0)) {
@@ -225,7 +268,7 @@ afterAll(() => {
 function scanFixture() {
   const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-features-'));
   reportRoots.push(reportRoot);
-  const run = (_, [, ...args]) => {
+  const run = (_: unknown, [, ...args]: readonly string[]) => {
     const scanned = spawnSync('python3', args, { encoding: 'utf8', timeout: SCAN_TIMEOUT_MS });
     expect(scanned.status).toBe(0);
     return scanned;
@@ -237,11 +280,11 @@ function scanFixture() {
 }
 
 describe.skipIf(!pythonUsable())('the feature rules on a scanned project', () => {
-  let report;
+  let report: ImportsReport;
   beforeAll(() => {
     report = scanFixture();
   });
-  const rows = (findings) =>
+  const rows = (findings: readonly IngestedFinding[]) =>
     findings.map(({ rule, path: file, identity }) => [rule, file, identity]);
 
   it('reports internal imports, shared code importing a feature and the feature cycle', () => {

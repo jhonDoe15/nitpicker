@@ -1,21 +1,28 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   pythonClassLimitFindings,
   pythonFolderDepthFindings,
   readClassesReport,
-} from './python-size.mjs';
+} from './python-size.mts';
+import type { ClassEntry, PythonModule } from '../analysis/typed/python-graph-types.mts';
+import type { DepthOptions } from './typed/size-types.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+const { temporaryRoot } = useGitFixtures();
+
+const module = (file: string, name: string, isPackage = false): PythonModule => ({
+  file,
+  module: name,
+  isPackage,
 });
 
-const module = (file, name, isPackage = false) => ({ file, module: name, isPackage });
-
-function classEntry(file, name, overrides = {}) {
+function classEntry(
+  file: string,
+  name: string,
+  overrides: Readonly<Record<string, unknown>> = {},
+): ClassEntry {
   return { name, start: 1, kind: 'class', methods: 1, fields: 1, bases: [], file, ...overrides };
 }
 
@@ -108,7 +115,7 @@ describe('Python package depth', () => {
         true,
       ),
     ];
-    const depth = (options) =>
+    const depth = (options: DepthOptions) =>
       pythonFolderDepthFindings(marked, { thresholds: {}, ...options }).map(
         ({ message }) => message.split(' (')[0],
       );
@@ -161,7 +168,7 @@ describe('Python class limits', () => {
 
     const findings = pythonClassLimitFindings(report, modules, { thresholds: {} });
 
-    expect(findings.map(({ rule, location }) => [rule, location.line])).toEqual([
+    expect(findings.map(({ rule, location }) => [rule, location?.line])).toEqual([
       ['class-methods-limit', 3],
       ['class-fields-limit', 3],
     ]);
@@ -307,7 +314,7 @@ describe('Python class limits', () => {
     expect(
       findings
         .map(({ message }) => message.split(' (')[0])
-        .filter((message) => message.startsWith('Class D40 ')),
+        .filter((message) => message?.startsWith('Class D40 ') === true),
     ).toEqual(['Class D40 extends 40 classes deep']);
   });
   it('checks only production modules', () => {
@@ -321,8 +328,7 @@ describe('Python class limits', () => {
     expect(pythonClassLimitFindings(report, modules, { thresholds: {} })).toEqual([]);
   });
   it('fails clearly when the structure step wrote no classes report', () => {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-size-'));
-    roots.push(root);
+    const root = temporaryRoot('nitpicker-python-size-');
 
     expect(() => readClassesReport(root)).toThrow(/classes\.json report is missing/);
     writeFileSync(path.join(root, 'classes.json'), '{}');
