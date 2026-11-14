@@ -6,7 +6,7 @@ import path from 'node:path';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../preset/coding-standards/inventory-path.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
-import { parsePositiveNumber } from '../../preset/checks/numbers.mjs';
+import { parsePositiveNumber } from '../../preset/checks/numbers.mts';
 import { validatedSnapshotRoot } from '../static-checks/arguments.mts';
 import {
   MUTATION_SCOPE_OPTION,

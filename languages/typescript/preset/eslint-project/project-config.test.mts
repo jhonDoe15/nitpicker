@@ -2,13 +2,44 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { conventionStyle } from '../../../../core/conventions/definitions.mjs';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { eslintConfigFiles, eslintProjectFacts } from './project-config.mjs';
+import { conventionStyle as untypedConventionStyle } from '../../../../core/conventions/definitions.mjs';
+import {
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadCheckoutFacts as untypedWithHeadCheckoutFacts,
+} from '../head-policy.mjs';
+import {
+  eslintConfigFiles as untypedEslintConfigFiles,
+  eslintProjectFacts as untypedEslintProjectFacts,
+} from './project-config.mjs';
 
-const roots = [];
+type EslintSettings = {
+  engine?: string;
+  precedence?: string[];
+  projectConfigMissing?: boolean;
+};
+type HeadPolicy = { tools: { eslint: EslintSettings } };
+type Files = Record<string, string>;
 
-function project(files) {
+const conventionStyle: (
+  preset: string | undefined,
+  context: { config: Record<string, unknown>; projectRoot: string },
+) => {
+  unused?: unknown;
+  summary?: (conventions: unknown) => string[];
+} = untypedConventionStyle;
+const resolveHeadPolicy: (config: Record<string, unknown>, projectRoot?: string) => HeadPolicy =
+  untypedResolveHeadPolicy;
+const withHeadCheckoutFacts: (policy: HeadPolicy, head: HeadPolicy) => HeadPolicy =
+  untypedWithHeadCheckoutFacts;
+const eslintConfigFiles: (projectRoot: string) => string[] = untypedEslintConfigFiles;
+const eslintProjectFacts: (projectRoot: string) => {
+  projectConfigFile?: string;
+  projectConfigDigest?: string;
+} = untypedEslintProjectFacts;
+
+const roots: string[] = [];
+
+function project(files: Files) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-config-')));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {
@@ -18,7 +49,7 @@ function project(files) {
   return root;
 }
 
-function linked(root, link, target) {
+function linked(root: string, link: string, target: string) {
   mkdirSync(path.dirname(path.join(root, link)), { recursive: true });
   symlinkSync(target, path.join(root, link));
 }
@@ -72,7 +103,7 @@ describe('the ESLint project config files', () => {
 
   it('digest the files it reads and the installed package versions, not unrelated files', () => {
     const facts = eslintProjectFacts(project(FILES));
-    const digestWith = (changed) => eslintProjectFacts(project({ ...FILES, ...changed }));
+    const digestWith = (changed: Files) => eslintProjectFacts(project({ ...FILES, ...changed }));
 
     expect(facts.projectConfigFile).toBe('eslint.config.mjs');
     expect(digestWith({ 'eslint/unused.mjs': '1;\n' })).toEqual(facts);
@@ -132,7 +163,7 @@ describe('the head policy for the ESLint project config', () => {
     'records the %s project config only when the precedence lists the project',
     (preset) => {
       const root = project(FILES);
-      const tools = (precedence) => ({ eslint: { engine: 'eslint', precedence } });
+      const tools = (precedence: string[]) => ({ eslint: { engine: 'eslint', precedence } });
       const facts = eslintProjectFacts(root);
 
       expect(resolveHeadPolicy({ preset, tools: tools(['nitpicker']) }, root).tools).toEqual(
@@ -162,8 +193,11 @@ describe('the head policy for the ESLint project config', () => {
 describe('the notice for an ESLint config nitpicker ignores', () => {
   const NOTICE =
     'Ignoring eslint.config.mjs; opt in with "tools": { "eslint": { "precedence": ["project", "nitpicker"] } }';
-  const summary = (preset, config, files = FILES) =>
-    conventionStyle(preset, { config, projectRoot: project(files) }).summary({});
+  const summary = (
+    preset: string | undefined,
+    config: Record<string, unknown>,
+    files: Files = FILES,
+  ) => conventionStyle(preset, { config, projectRoot: project(files) }).summary?.({});
 
   it.each([undefined, 'typescript', 'javascript'])('is printed with the %s preset', (preset) => {
     expect(summary(preset, preset === undefined ? {} : { preset })).toEqual([NOTICE]);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { outsideRootsNotices } from './outside-roots-notice.mjs';
+import { outsideRootsNotices } from './outside-roots-notice.mts';
 
 describe('outsideRootsNotices', () => {
   it('names a changed TypeScript file that no source or test root covers', () => {
