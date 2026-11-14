@@ -56,6 +56,10 @@ export const JAVA_EFFECTS = [
   'EntityLoadedForOneColumn 13 MemberViews.emails MemberRepository.findByTeam() Member.getEmail',
   'EntityLoadedForExistence 17 MemberViews.taken count MemberRepository.countByEmail()',
   'EntityLoadedForExistence 21 MemberViews.known loaded MemberRepository.findByEmail()',
+  'RetryWithStaleObject 21 OrderSaves.resend Reactor retry order ReactiveOrders.save()',
+  'RetryWithStaleObject 25 OrderSaves.captured Reactor retry order ReactiveOrders.save()',
+  'RetryWithStaleObject 31 OrderSaves.loop retry loop order OrderRepository.save()',
+  'RetryWithStaleObject 41 OrderSaves.annotated @Retryable order OrderRepository.save()',
 ];
 
 export const JAVA_LOOP_LINES = {
@@ -114,6 +118,10 @@ export const KOTLIN_EFFECTS = [
   'EntityLoadedForOneColumn 4 MemberViews.emails MemberRepository.findByTeam() Member.getEmail',
   'EntityLoadedForExistence 6 MemberViews.taken count MemberRepository.countByEmail()',
   'EntityLoadedForExistence 8 MemberViews.known loaded MemberRepository.findByEmail()',
+  'RetryWithStaleObject 12 OrderSaves.resend Reactor retry order ReactiveOrders.save()',
+  'RetryWithStaleObject 14 OrderSaves.captured Reactor retry order ReactiveOrders.save()',
+  'RetryWithStaleObject 19 OrderSaves.loop retry loop order OrderRepository.save()',
+  'RetryWithStaleObject 28 OrderSaves.annotated @Retryable order OrderRepository.save()',
 ];
 
 function summaryOf(violation) {
@@ -130,7 +138,12 @@ function summaryOf(violation) {
     scope,
     framework,
     property,
+    object,
+    write,
   } = violation;
+  if (object !== undefined) {
+    return [rule, line, method, scope, object, write].join(' ');
+  }
   if (framework !== undefined) {
     return [rule, line, method, framework, calls.join('>')].join(' ');
   }

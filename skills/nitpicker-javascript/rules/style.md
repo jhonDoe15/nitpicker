@@ -116,6 +116,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   the rows in one batched query and join them in memory (`nitpicker/no-lookup-per-element`).
 - Resolve a GraphQL field of a listed type through a DataLoader (`loaders.owner.load(parent.ownerId)`), never with
   a repository or service call per parent (`nitpicker/no-query-per-parent`).
+- Retry an optimistic-lock conflict by re-reading the row by id and re-applying the change inside the retried
+  scope, never by saving the entity you loaded before the retry (`nitpicker/no-stale-retry-after-conflict`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

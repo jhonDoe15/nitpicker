@@ -52,6 +52,8 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
 - Reads: never load whole entities to read one column (`findByTeam(id).map { it.email }`; select a projection) or to
   test existence (`countByEmail(e) > 0`, `findByEmail(e).isPresent()`; use `existsByEmail`)
   (`effects/EntityLoadedForOneColumn`, `effects/EntityLoadedForExistence`).
+- Optimistic-lock retries: read the row by id and apply the change inside the retried scope (`Mono.defer`, the loop
+  body, or a `@Retryable` method that takes the id); never resend the object that conflicted (`effects/RetryWithStaleObject`).
 - Build shareable objects once: an `ObjectMapper`, `jacksonObjectMapper()`, `Json { }`, `Gson`, a
   `Regex("...")` or `DateTimeFormatter.ofPattern("...")` goes in a property, a companion or `by lazy`, not inside
   a function that runs per call (`pmd/ReusableObjectPerCall`).

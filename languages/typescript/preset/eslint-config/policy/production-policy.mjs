@@ -121,6 +121,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-whole-rows-for-one-value': 'error',
     'nitpicker/no-remote-call-under-lock': 'error',
     'nitpicker/no-retry-without-idempotency': 'error',
+    'nitpicker/no-stale-retry-after-conflict': 'error',
     'nitpicker/no-dual-write': 'error',
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',

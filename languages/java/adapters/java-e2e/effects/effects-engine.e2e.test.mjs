@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 34,
+      classes: 36,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -218,6 +218,16 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Projected.named',
       'Projected.atLeastOne',
       'Projected.none',
+    ]);
+  });
+
+  it('reports retries that resend an object read outside the retried scope', () => {
+    expect(methodsOf(run.report, 'RetryWithStaleObject')).toEqual([
+      'Stale.resend',
+      'Stale.captured',
+      'Stale.loop',
+      'Stale.loopBeforeLoop',
+      'Stale.annotated',
     ]);
   });
 

@@ -136,6 +136,7 @@
   "languages/python/rules/e2e/smells/secrets.e2e.test.mjs": 3,
   "languages/python/rules/e2e/smells/smells.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/task-markers.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/stale-retries/stale-retry.e2e.test.mjs": 2,
   "languages/python/rules/e2e/tasks/cleanup.e2e.test.mjs": 2,
   "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mjs": 3,
   "languages/python/rules/e2e/time/time-units.e2e.test.mjs": 2,

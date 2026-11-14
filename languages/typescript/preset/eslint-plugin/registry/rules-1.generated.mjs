@@ -88,6 +88,7 @@ import { rule as ruleNoShellStringCommand } from '../rules/guards/no-shell-strin
 import { rule as ruleNoSilentCatch } from '../rules/errors/no-silent-catch.mjs';
 import { rule as ruleNoSingularAndPluralProp } from '../rules/api-shape/no-singular-and-plural-prop.mjs';
 import { rule as ruleNoSqlStringBuilding } from '../rules/security/sql/no-sql-string-building.mjs';
+import { rule as ruleNoStaleRetryAfterConflict } from '../rules/writes/stale-retries/no-stale-retry-after-conflict.mjs';
 import { rule as ruleNoStringAsRegex } from '../rules/regex/no-string-as-regex.mjs';
 import { rule as ruleNoSwitchedOffTests } from '../test-assertions/no-switched-off-tests.mjs';
 import { rule as ruleNoSyncNodeApiInAsync } from '../rules/async/no-sync-node-api-in-async.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mjs';
 import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
-import { rule as ruleNoUnboundedQueryArray } from '../rules/queries/arrays/no-unbounded-query-array.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -191,6 +191,7 @@ export const partRules = {
   'no-silent-catch': ruleNoSilentCatch,
   'no-singular-and-plural-prop': ruleNoSingularAndPluralProp,
   'no-sql-string-building': ruleNoSqlStringBuilding,
+  'no-stale-retry-after-conflict': ruleNoStaleRetryAfterConflict,
   'no-string-as-regex': ruleNoStringAsRegex,
   'no-switched-off-tests': ruleNoSwitchedOffTests,
   'no-sync-node-api-in-async': ruleNoSyncNodeApiInAsync,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
   'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
-  'no-unbounded-query-array': ruleNoUnboundedQueryArray,
 };

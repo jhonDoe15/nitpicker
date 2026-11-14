@@ -81,6 +81,11 @@ describe('effect rules report', () => {
       'User|first|sqlalchemy',
       '`User` rows are loaded only to test whether one exists, when an existence query answers it',
     ],
+    [
+      'stale-retry',
+      'session.commit()|retry loop',
+      '`session.commit()` is retried after a `StaleDataError` in a retry loop that never reads the row again, so every attempt sends the same object with the old version and fails the same way, or, after a rollback, the change is lost',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

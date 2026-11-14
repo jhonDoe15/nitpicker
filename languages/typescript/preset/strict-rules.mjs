@@ -31,6 +31,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-query-per-parent',
   'nitpicker/no-whole-rows-for-one-value',
   'nitpicker/no-retry-without-idempotency',
+  'nitpicker/no-stale-retry-after-conflict',
   'nitpicker/no-remote-call-under-lock',
   'nitpicker/no-remote-call-in-transaction',
   'nitpicker/no-lazy-relation-in-loop',
