@@ -11,10 +11,13 @@ export const TEST_PATTERNS = [
   'conftest.py',
   '*/conftest.py',
 ];
-function list(items) {
+function list(items: readonly string[]): string {
   return `[ ${items.map((item) => JSON.stringify(item)).join(', ')} ]`;
 }
 
-export function section(sourcePaths, patterns = TEST_PATTERNS) {
+export function section(
+  sourcePaths: readonly string[],
+  patterns: readonly string[] = TEST_PATTERNS,
+): string {
   return `[tool.mutmut]\nsource_paths = ${list(sourcePaths)}\ndo_not_mutate = ${list(patterns)}\n`;
 }

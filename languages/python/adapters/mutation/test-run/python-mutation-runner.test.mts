@@ -1,31 +1,34 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import {
-  callsLog,
-  contextFor,
-  mutantsData,
-  mutmutCalls,
-  project,
-} from '../../test-support/mutmut-project.mjs';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
+import { callsLog, contextFor, mutmutCalls, project } from '../../test-support/mutmut-project.mts';
 import {
   restoreTemporaryState,
   setEnvironment,
-} from '../../execution/test-support/python-tools-project.mjs';
-import { MUTATION_FAILED_RULE, mutationFindings } from '../python-mutation.mjs';
+  temporaryRoot,
+} from '../../execution/test-support/python-tools-project.mts';
+import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
+import { createToolContext } from '../../test-support/typed/tool-context.mts';
+import type { ToolContext } from '../../test-support/typed/tool-context.mts';
+import { MUTATION_FAILED_RULE, mutationFindings as untypedFindings } from '../python-mutation.mjs';
 import { MUTATION_SKIPPED_RULE } from './python-mutation-runner.mjs';
+import { NOTHING_COLLECTED } from '../test-support/nothing-collected.mts';
+import { failureOf } from '../../test-support/runs/failure-of.mts';
+
+const mutationFindings: (context: ToolContext) => IngestedFinding[] = untypedFindings;
 
 afterEach(restoreTemporaryState);
-
-const NOTHING_COLLECTED = {
-  'mutants-data.json': mutantsData(null),
-  'mutmut-exit.txt': '1\n',
-  'mutmut-output.txt': 'no tests ran in 0.08s\nfailed to collect stats. runner returned 5\n',
-};
 
 const DJANGO_MANAGE =
   'import os\n\nos.environ.setdefault("DJANGO_SETTINGS_MODULE", "site.settings")\n';
 
 describe('running mutmut for the other test runners', () => {
-  const runnerContext = (root, testRunner) => contextFor(root, { settings: { testRunner } });
+  const runnerContext = (root: string, testRunner: string): ToolContext =>
+    createToolContext({
+      projectRoot: root,
+      liveRoot: root,
+      reportRoot: temporaryRoot(),
+      settings: { testRunner },
+    });
 
   it.each(['unittest', 'nose2'])(
     'lets pytest collect the test files of %s, which it does not by default',
@@ -36,7 +39,7 @@ describe('running mutmut for the other test runners', () => {
 
       mutationFindings(runnerContext(root, testRunner));
 
-      expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-o python_files=test*.py');
+      expect(mutmutCalls(calls)[0]?.['pytestAddopts']).toBe('-o python_files=test*.py');
     },
   );
 
@@ -54,12 +57,13 @@ describe('running mutmut for the other test runners', () => {
     const calls = callsLog();
     const root = project({ 'no-pytest.txt': '' });
 
-    expect(() => mutationFindings(runnerContext(root, 'unittest'))).toThrow(
-      expect.objectContaining({
-        rule: MUTATION_FAILED_RULE,
-        message:
-          'mutmut runs the tests with pytest, which cannot be imported in the virtualenv environment: install pytest there (it also runs unittest, Django and nose2 test cases), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
-      }),
+    const failure = failureOf(() => {
+      mutationFindings(runnerContext(root, 'unittest'));
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe(MUTATION_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      'mutmut runs the tests with pytest, which cannot be imported in the virtualenv environment: install pytest there (it also runs unittest, Django and nose2 test cases), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
     );
     expect(mutmutCalls(calls)).toEqual([]);
   });
@@ -94,8 +98,8 @@ describe('running mutmut for the other test runners', () => {
 
     mutationFindings(runnerContext(root, 'django'));
 
-    const [{ djangoSettings, pytestAddopts }] = mutmutCalls(calls);
-    expect([djangoSettings, pytestAddopts]).toEqual([
+    const [call] = mutmutCalls(calls);
+    expect([call?.['djangoSettings'], call?.['pytestAddopts']]).toEqual([
       'site.settings',
       '-o python_files=test*.py -o django_find_project=false',
     ]);
@@ -108,7 +112,7 @@ describe('running mutmut for the other test runners', () => {
 
     mutationFindings(contextFor(root));
 
-    expect(mutmutCalls(calls)[0].pytestAddopts).toBe('-o django_find_project=false');
+    expect(mutmutCalls(calls)[0]?.['pytestAddopts']).toBe('-o django_find_project=false');
   });
 
   it('keeps the settings of the caller and of pytest, and sets none manage.py lacks', () => {
@@ -125,7 +129,7 @@ describe('running mutmut for the other test runners', () => {
     const unnamed = project({ ...plugin, 'manage.py': 'import django\n' });
     mutationFindings(runnerContext(unnamed, 'django'));
 
-    expect(mutmutCalls(calls).map(({ djangoSettings }) => djangoSettings)).toEqual([
+    expect(mutmutCalls(calls).map((call) => call['djangoSettings'])).toEqual([
       'site.ci',
       undefined,
       undefined,

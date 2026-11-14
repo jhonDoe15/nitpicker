@@ -1,25 +1,29 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { installFakeToolchain } from '../../test-support/fake-toolchain.mjs';
-import { createToolContext } from '../../python-tools.mjs';
+import { stubCallsLog } from '../../test-support/runs/calls-log.mts';
+import { installFakeToolchain } from '../../test-support/fake-toolchain.mts';
+import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
+import { parseCall } from '../../test-support/typed/json-views.mts';
+import { createToolContext, type ToolContext } from '../../test-support/typed/tool-context.mts';
+import { listOf, textOf } from '../../../../../shared/values/readers.mts';
 import { failedOnProjectTests } from './mutation-scope.mjs';
-import { mutationFindings } from '../python-mutation.mjs';
+import { mutationFindings as untypedFindings } from '../python-mutation.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
+
+const mutationFindings: (context: ToolContext) => IngestedFinding[] = untypedFindings;
+
 afterEach(() => {
   vi.unstubAllEnvs();
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-scope-')));
-  roots.push(root);
-  return root;
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-mutation-scope-');
 }
 
-function project(files = {}) {
+function project(files: Readonly<Record<string, string>> = {}) {
   const root = temporaryRoot();
   installFakeToolchain(path.join(root, '.venv/bin'));
   const all = {
@@ -27,25 +31,16 @@ function project(files = {}) {
     'tests/conftest.py': '',
     ...files,
   };
-  for (const [file, text] of Object.entries(all)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+  writeFiles(root, all);
   return root;
 }
 
 function callsLog() {
-  const log = path.join(temporaryRoot(), 'calls.jsonl');
-  writeFileSync(log, '');
-  vi.stubEnv('FAKE_PYTHON_LOG', log);
-  return () =>
-    readFileSync(log, 'utf8')
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
+  const lines = stubCallsLog(temporaryRoot());
+  return () => lines().map((line) => parseCall(line));
 }
 
-const contextFor = (root, settings = {}) =>
+const contextFor = (root: string, settings: Readonly<Record<string, unknown>> = {}) =>
   createToolContext({ projectRoot: root, liveRoot: root, reportRoot: temporaryRoot(), settings });
 
 const FAILING_JUNIT =
@@ -72,7 +67,7 @@ describe('what mutation testing runs against', () => {
     const findings = mutationFindings(contextFor(root));
 
     const mutmut = calls().filter(({ tool }) => tool === 'mutmut');
-    expect(mutmut.map(({ pytestAddopts }) => pytestAddopts)).toEqual([
+    expect(mutmut.map((call) => call['pytestAddopts'])).toEqual([
       undefined,
       '--ignore=tests/test_a.py',
     ]);
@@ -97,9 +92,10 @@ describe('what mutation testing runs against', () => {
       mutationFindings(contextFor(root, { testRunner }));
 
       const fallback = calls().filter(
-        ({ tool, args }) => tool === 'python' && args[0].endsWith('pytest_timings.py'),
+        ({ tool, args }) =>
+          tool === 'python' && textOf(listOf(args)[0]).endsWith('pytest_timings.py'),
       );
-      expect(fallback.map((call) => [call.pytestAddopts, call.djangoSettings])).toEqual([
+      expect(fallback.map((call) => [call['pytestAddopts'], call['djangoSettings']])).toEqual([
         [pytestAddopts, djangoSettings],
       ]);
     },

@@ -1,35 +1,30 @@
 import { execFileSync } from 'node:child_process';
-import {
-  cpSync,
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readdirSync,
-  realpathSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readdirSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { byText } from '../../../../shared/text-order/by-text.mjs';
 import { seedMutantsFromBase } from './python-mutation-reuse.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-const templates = new Map();
+const roots: string[] = [];
+
+type Files = Readonly<Record<string, string>>;
+type Row = Readonly<Record<string, unknown>>;
+
+const templates = new Map<string, string>();
 const environment = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 
-function git(cwd, ...arguments_) {
-  return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: environment }).trim();
+function git(cwd: string, ...arguments_: string[]): string {
+  return execFileSync('git', arguments_, {
+    cwd,
+    encoding: 'utf8',
+    env: environment,
+    timeout: 60_000,
+  }).trim();
 }
 
-function write(root, files) {
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
-}
-
-function temporaryRoot() {
+function temporaryRoot(): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-reuse-')));
   roots.push(root);
   return root;
@@ -48,7 +43,7 @@ const BASE_FILES = {
   'pytest.ini': '[pytest]\npython_files = check_*.py test_*.py\n',
 };
 
-function inProject(prefix, files) {
+function inProject(prefix: string, files: Files): Record<string, string> {
   return Object.fromEntries(Object.entries(files).map(([file, text]) => [prefix + file, text]));
 }
 
@@ -58,7 +53,7 @@ beforeAll(() => {
     git(root, 'init', '-q', '-b', 'main');
     git(root, 'config', 'user.name', 'Reuse Test');
     git(root, 'config', 'user.email', 'reuse@example.invalid');
-    write(root, { ...inProject(prefix, BASE_FILES), 'README.md': 'readme\n' });
+    writeFiles(root, { ...inProject(prefix, BASE_FILES), 'README.md': 'readme\n' });
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'base');
     templates.set(prefix, root);
@@ -71,12 +66,24 @@ afterAll(() => {
   }
 });
 
-function scenario({ prefix = '', changes, rootChanges = {}, removed = [], baseMutants = true }) {
+function scenario({
+  prefix = '',
+  changes,
+  rootChanges = {},
+  removed = [],
+  baseMutants = true,
+}: {
+  readonly prefix?: string;
+  readonly changes: Files;
+  readonly rootChanges?: Files;
+  readonly removed?: readonly string[];
+  readonly baseMutants?: boolean;
+}) {
   const head = temporaryRoot();
   const base = temporaryRoot();
-  cpSync(templates.get(prefix), head, { recursive: true });
-  cpSync(templates.get(prefix), base, { recursive: true });
-  write(head, { ...inProject(prefix, changes), ...rootChanges });
+  cpSync(templates.get(prefix) ?? '', head, { recursive: true });
+  cpSync(templates.get(prefix) ?? '', base, { recursive: true });
+  writeFiles(head, { ...inProject(prefix, changes), ...rootChanges });
   for (const file of removed) {
     rmSync(path.join(head, prefix + file));
   }
@@ -84,7 +91,7 @@ function scenario({ prefix = '', changes, rootChanges = {}, removed = [], baseMu
   git(head, 'commit', '-q', '--allow-empty', '-m', 'head');
   const baselineRoot = path.join(base, prefix);
   if (baseMutants) {
-    write(baselineRoot, {
+    writeFiles(baselineRoot, {
       'mutants/src/a.py.meta': '{"exit_code_by_key": {"a.x_f__mutmut_1": 0}}',
       'mutants/src/pkg/b.py.meta': '{"exit_code_by_key": {}}',
       'mutants/src/pkg/c.py.meta': '{"exit_code_by_key": {}}',
@@ -99,10 +106,12 @@ function scenario({ prefix = '', changes, rootChanges = {}, removed = [], baseMu
   return { baselineRoot, projectRoot: path.join(head, prefix) };
 }
 
-const launcherOf = (command) => ({ launch: (tool, args) => ({ command, args, env: {} }) });
+const launcherOf = (command: string) => ({
+  launch: (_tool: string, args: readonly string[]) => ({ command, args, env: {} }),
+});
 const launcher = launcherOf('python3');
 
-function seed(setup, overrides = {}) {
+function seed(setup: Row, overrides: Row = {}) {
   return seedMutantsFromBase({
     snapshot: 'head',
     project: { sourceRoots: ['src'] },
@@ -114,20 +123,22 @@ function seed(setup, overrides = {}) {
   });
 }
 
-function seeded(projectRoot) {
+function seeded(projectRoot: string): string[] {
   const directory = path.join(projectRoot, 'mutants');
-  return existsSync(directory) ? readdirSync(directory, { recursive: true }).sort() : [];
+  return existsSync(directory)
+    ? readdirSync(directory, { recursive: true, encoding: 'utf8' }).sort(byText)
+    : [];
 }
 
 const MODULES = ['a', 'core', 'helper', 'pkg/b', 'pkg/c', 'top'];
 
-function resultsOf(modules) {
+function resultsOf(modules: readonly string[]): string[] {
   const directories = modules.some((name) => name.startsWith('pkg/')) ? ['src/pkg'] : [];
   return [
     'src',
     ...directories,
     ...modules.map((name) => path.join('src', `${name}.py.meta`)),
-  ].sort();
+  ].sort(byText);
 }
 
 const ALL_RESULTS = resultsOf(MODULES);
@@ -259,7 +270,7 @@ describe('reusing the base mutation results on head', () => {
   it('runs every mutant when git cannot say what changed', () => {
     const setup = scenario({ changes: { 'src/a.py': 'x = 1\n' } });
     const elsewhere = temporaryRoot();
-    write(elsewhere, { 'mutants/src/a.py.meta': '{"exit_code_by_key": {}}' });
+    writeFiles(elsewhere, { 'mutants/src/a.py.meta': '{"exit_code_by_key": {}}' });
 
     expect(seed(setup, { baselineRoot: elsewhere })).toBe(false);
     expect(seed(setup, { projectRoot: elsewhere })).toBe(false);

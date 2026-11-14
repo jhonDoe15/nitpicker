@@ -1,21 +1,19 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { mutationMarkerFindings } from './mutation-markers.mjs';
+import { describe, expect, it } from 'vitest';
+import type { IngestedFinding } from '../../ingest/typed/ingest-types.mts';
+import { mutationMarkerFindings as untypedFindings } from './mutation-markers.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
 
-const roots = [];
-afterEach(() => {
-  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
-});
+const { temporaryRoot } = useGitFixtures();
 
-function context(files) {
-  const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-mutation-markers-'));
-  roots.push(projectRoot);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(projectRoot, file)), { recursive: true });
-    writeFileSync(path.join(projectRoot, file), text);
-  }
+const mutationMarkerFindings: (context: {
+  projectRoot: string;
+  project: { sourceRoots: string[] };
+}) => IngestedFinding[] = untypedFindings;
+
+function context(files: Readonly<Record<string, string>>) {
+  const projectRoot = temporaryRoot('nitpicker-mutation-markers-');
+  writeFiles(projectRoot, files);
   return { projectRoot, project: { sourceRoots: ['src'] } };
 }
 
@@ -33,14 +31,14 @@ describe('code hidden from mutmut', () => {
         tool,
         rule,
         file,
-        location.line,
+        location?.line,
         classification,
       ]),
     ).toEqual([
       ['mutmut', 'mutant-ignored', 'src/app/a.py', 1, 'enforceable'],
       ['mutmut', 'mutant-ignored', 'src/app/a.py', 4, 'enforceable'],
     ]);
-    expect(findings[1].message).toBe(
+    expect(findings[1]?.message).toBe(
       '`# pragma: no mutate function` hides this function from mutation testing. Remove it and test the code. Ignore comments and patterns are not an exception route.',
     );
   });
