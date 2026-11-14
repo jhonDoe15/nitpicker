@@ -172,6 +172,7 @@ describe('the calls of a fixture project', () => {
       'src/state/uses.ts#computed',
       'src/state/uses.ts#external',
       'src/state/uses.ts#untouched',
+      'src/state/uses.ts#constructsBare',
     ]);
   });
 

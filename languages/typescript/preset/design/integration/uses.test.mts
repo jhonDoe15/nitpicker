@@ -62,6 +62,7 @@ describe('the member uses of a fixture project', () => {
       [{ param: 0, fields: [], forwards: [], opaque: true }],
     ],
     ['src/state/uses.ts#untouched', [{ param: 0, fields: ['locale'], forwards: [] }]],
+    ['src/state/uses.ts#constructsBare', [{ param: 0, fields: [], forwards: [], opaque: true }]],
   ])('lists how %s uses its parameters', (id, expected) => {
     expect(byId(facts.callables, id).paramUses).toEqual(expected);
   });
