@@ -12,7 +12,7 @@ import {
   normalizeCrap,
   normalizeMutation,
 } from '../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
-import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mjs';
+import { normalizeDuplicates } from '../../../languages/typescript/preset/duplicates/normalize.mts';
 import { toEntryPointDiffFindings } from '../../../languages/typescript/adapters/entry-points.mjs';
 import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
 import { fileURLToPath } from 'node:url';

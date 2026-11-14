@@ -181,12 +181,13 @@ describes the real dependency, or code that a contract replaces.
 
 `core/diff/cache/findings-cache.mts` (`lookUpCachedReport`), analyzed unchanged. Reviewed protocol:
 
-- `resolveAnalyzerMetadata(analyzer, context)` resolves the version and configuration hash of
-  `analyzer`. It may throw after updating only the version, so a throw is `ambiguous`, not a
-  definite no-write.
-- `cache.read(analyzer)` never throws (the findings cache catches its own failures) and returns
+- `resolvedAnalyzerMetadata(analyzer, context)` resolves the version and configuration
+  hash of `analyzer` and returns them as a metadata object. It does not write to `analyzer`. It
+  may throw after resolving only the version, so a throw is `ambiguous`, not a definite
+  no-resolution.
+- `cache.read(analyzer, metadata)` never throws (the findings cache catches its own failures) and returns
   `undefined` or one opaque report.
-- `cache.read(A)` requires a successful `resolveAnalyzerMetadata(A)` earlier in the same
+- `cache.read(A)` requires a successful `resolvedAnalyzerMetadata(A)` earlier in the same
   invocation. Resolving another object does not satisfy it. This is a supplied protocol requirement,
   not one inferred from names; it says nothing about metadata resolved before the invocation.
 

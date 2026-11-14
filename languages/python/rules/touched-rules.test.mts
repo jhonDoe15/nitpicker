@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isStrictRule } from '../../typescript/preset/strict-rules.mjs';
+import { isStrictRule } from '../../typescript/preset/strict-rules.mts';
 import { PYTHON_RULES_IDS, RULES_TOOL } from './rule-hints.mjs';
 import { isPythonTouchedRule } from './touched-rules.mjs';
 
+const RULE_IDS = PYTHON_RULES_IDS.filter((rule) => typeof rule === 'string');
+
 describe('the Python rules held to the touched-code standard', () => {
-  it.each(PYTHON_RULES_IDS)('include the rule %s of the rules script', (rule) => {
+  it.each(RULE_IDS)('include the rule %s of the rules script', (rule) => {
     expect(isPythonTouchedRule(rule, { tool: RULES_TOOL })).toBe(true);
     expect(isStrictRule(rule, { tool: RULES_TOOL })).toBe(true);
   });

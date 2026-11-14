@@ -9,7 +9,11 @@ const { createGitRepository } = useGitFixtures();
 
 const SCRIPT_RECIPES = scriptRecipes({ runScript: localRunScript, optionsFor: () => ({}) });
 
-type RecipeOptions = { selectedRules?: readonly string[]; recipes?: readonly unknown[] };
+type RecipeOptions = {
+  selectedRules?: readonly string[];
+  recipes?: readonly unknown[];
+  inputs?: unknown;
+};
 
 type AppliedRecipes = {
   outcome: ReturnType<typeof runRecipes>;
@@ -21,7 +25,7 @@ export function applyRecipes(
   files: Readonly<Record<string, string>>,
   options: RecipeOptions = {},
 ): AppliedRecipes {
-  const { selectedRules = [], recipes = SCRIPT_RECIPES } = options;
+  const { selectedRules = [], recipes = SCRIPT_RECIPES, inputs } = options;
   const { root: projectRoot } = createGitRepository(files, { prefix: 'nitpicker-python-recipes-' });
   const outcome = runRecipes({
     projectRoot,
@@ -30,7 +34,7 @@ export function applyRecipes(
     preset: 'python',
     selectedRules,
     accepts: (name: string) => name.endsWith('.py'),
-    inputs: undefined,
+    inputs,
   });
   return {
     outcome,

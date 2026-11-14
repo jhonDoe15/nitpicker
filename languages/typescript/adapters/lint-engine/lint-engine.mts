@@ -5,7 +5,7 @@ import { readHeadPolicy } from '../typed/head-policy.mts';
 import {
   LINT_CONFIG,
   TEST_ENVIRONMENTS_VARIABLE,
-} from '../../preset/test-environment/resolve-environment.mjs';
+} from '../../preset/test-environment/resolve-environment.mts';
 import { TROUBLESHOOTING_ANCHORS } from '../../../../shared/messages/troubleshooting.mjs';
 import { incompatiblePackageMessage } from './compatibility/incompatible-package.mts';
 import { PROJECT_LAYER_VARIABLE } from './project-layer.mjs';

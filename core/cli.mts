@@ -62,7 +62,7 @@ import type {
   Subcommand,
 } from './cli-context.mts';
 import type { NitpickerConfig } from './configuration/config-types.mts';
-import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mjs';
+import { emptySourcesErrors } from '../languages/typescript/preset/notices/empty-sources.mts';
 
 const CHECK_COMMANDS: Readonly<Record<string, (cli: CheckCli) => ExitCode>> = {
   hygiene: async (cli) => {

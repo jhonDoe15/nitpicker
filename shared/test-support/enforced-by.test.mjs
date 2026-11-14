@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { checkoutModulePath } from '../paths/checkout-module.mjs';
 import { LANGUAGES, RULES } from '../policy.mjs';
 import { FACT_RULE_LANGUAGES } from '../project-rules/fact-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
@@ -125,7 +126,9 @@ describe('the enforcedBy column of every catalogued rule', () => {
         name: `${language} ${ruleId}`,
         enforced: RULES.find(({ id }) => id === ruleId).enforcedBy[language],
         emitted: emitters[language].get(ruleId).length > 0,
-        evidenceHeld: evidence.test(readFileSync(path.join(repositoryRoot, file), 'utf8')),
+        evidenceHeld: evidence.test(
+          readFileSync(checkoutModulePath(path.join(repositoryRoot, file)), 'utf8'),
+        ),
       })),
     );
     expect(documented.map(({ name, enforced }) => [name, enforced])).toEqual(
