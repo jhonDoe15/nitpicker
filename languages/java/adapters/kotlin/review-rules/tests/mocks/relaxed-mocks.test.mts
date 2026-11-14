@@ -1,13 +1,14 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { productionTypeResolver } from '../../production-types.mjs';
-import { findingFactory } from '../../review-finding.mjs';
-import { file, klass, testFile } from '../../test-support/facts.mjs';
-import { RELAXED_MOCK_RULE, relaxedMessage, relaxedMockFindings } from './relaxed-mocks.mjs';
+import { describe, expect, it } from 'vitest';
+import { file, klass, type RuleFinding } from '../../test-support/facts.mts';
+import {
+  RELAXED_MOCK_RULE,
+  relaxedMessage as untypedRelaxedMessage,
+  relaxedMockFindings,
+} from './relaxed-mocks.mjs';
+import { mockProject } from './mock-project.mts';
+import { routedMessage } from './routed-message.mts';
 
-const roots = [];
+const relaxedMessage: (type: string) => string = untypedRelaxedMessage;
 const TEST_FILE = 'src/test/kotlin/demo/CheckoutTest.kt';
 const HEAD = `package demo
 
@@ -22,26 +23,19 @@ import org.slf4j.Logger
 const HEAD_LINES = HEAD.split('\n').length;
 const MAIN_FILES = [file({ classes: [klass('Mailer'), klass('Pricing'), klass('Checkout')] })];
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+const projectFindings = mockProject({
+  prefix: 'nitpicker-relaxed-mocks-',
+  rule: relaxedMockFindings,
+  mainFiles: MAIN_FILES,
+  defaultPath: TEST_FILE,
+  extraOptions: () => ({}),
 });
 
-function findingsFor(body, head = HEAD) {
-  const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-relaxed-mocks-'));
-  roots.push(projectRoot);
-  mkdirSync(path.dirname(path.join(projectRoot, TEST_FILE)), { recursive: true });
-  writeFileSync(path.join(projectRoot, TEST_FILE), `${head}\n${body}`);
-  const projectFiles = [...MAIN_FILES, testFile({ file: TEST_FILE, imports: [] })];
-  return relaxedMockFindings(projectFiles, {
-    finding: findingFactory(),
-    projectRoot,
-    isProduction: productionTypeResolver({ files: projectFiles, projectRoot }),
-  });
+function findingsFor(body: string, head = HEAD): RuleFinding[] {
+  return projectFindings(`${head}\n${body}`);
 }
 
-function summary(body, head) {
+function summary(body: string, head?: string): string[] {
   return findingsFor(body, head).map(
     ({ rule, location }) => `${rule}@${String(location.line - HEAD_LINES)}`,
   );
@@ -71,13 +65,13 @@ describe('relaxedMockFindings', () => {
   it('names the stubbed form and the exception route', () => {
     const [found] = findingsFor('val m = mockk<Mailer>(relaxed = true)\n');
 
-    expect(found.message).toBe(
-      findingFactory()({
+    expect(found?.message).toBe(
+      routedMessage({
         rule: RELAXED_MOCK_RULE,
         file: TEST_FILE,
         line: 1,
         message: relaxedMessage('Mailer'),
-      }).message,
+      }),
     );
   });
 

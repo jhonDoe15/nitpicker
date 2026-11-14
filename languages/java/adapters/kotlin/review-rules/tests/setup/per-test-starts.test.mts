@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { rulesOf } from '../../test-support/sources.mjs';
+import { rulesOf } from '../../test-support/sources.mts';
 import { PER_TEST_START_RULE } from './per-test-starts.mjs';
 
-const starts = (text) => rulesOf(text, PER_TEST_START_RULE);
+function starts(text: string): string[] {
+  return rulesOf(text, PER_TEST_START_RULE);
+}
 
 const JUNIT = `package demo
 

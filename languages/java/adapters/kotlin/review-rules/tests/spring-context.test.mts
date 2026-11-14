@@ -1,24 +1,34 @@
 import { describe, expect, it } from 'vitest';
+import { routeOf, summary } from '../test-support/facts.mts';
 import {
   fn,
   klass,
   parameter,
   property,
-  routeOf,
   run,
-  summary,
   testFile,
   testMethod,
-} from '../test-support/facts.mjs';
+  type Loose,
+} from '../spring/spring-test-facts.mts';
 import { SPRING_UNUSED_CONTEXT_RULE, springContextFindings } from './spring-context.mjs';
 
 const IMPORT = {
   path: 'org.springframework.boot.test.context.SpringBootTest',
   all: false,
 };
-const bootTest = (...args) => ({ name: 'SpringBootTest', arguments: args });
+function bootTest(...args: Loose[]): Loose {
+  return { name: 'SpringBootTest', arguments: args };
+}
 
-function contextTest({ annotations = [bootTest()], ...rest } = {}) {
+type ContextOptions = {
+  annotations?: Loose[];
+  properties?: Loose[];
+  functions?: Loose[];
+  classOverrides?: Loose;
+  imports?: Loose[];
+};
+
+function contextTest({ annotations = [bootTest()], ...rest }: ContextOptions = {}): Loose {
   const {
     properties = [],
     functions = [testMethod()],
@@ -33,19 +43,21 @@ function contextTest({ annotations = [bootTest()], ...rest } = {}) {
   });
 }
 
-const findingsOf = (file) => run(springContextFindings, [file]);
+function findingsOf(file: Loose) {
+  return run(springContextFindings, [file]);
+}
 
 describe('unused Spring test context in Kotlin', () => {
   it('reports a @SpringBootTest class that injects nothing, with the Java rule id and exception route', () => {
     const findings = findingsOf(contextTest());
 
     expect(summary(findings)).toEqual([`${SPRING_UNUSED_CONTEXT_RULE} SampleTest 1`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].allowedForm).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.allowedForm).toBe(
       'Make this @SpringBootTest a unit test that creates the class with its constructor, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests.',
     );
-    expect(findings[0].message.startsWith(findings[0].allowedForm)).toBe(true);
-    expect(routeOf(findings[0].message)).toBe(
+    expect(findings[0]?.message.startsWith(findings[0].allowedForm ?? '')).toBe(true);
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/SpringUnusedContext","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });

@@ -2,11 +2,9 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { productionTypeResolver } from '../production-types.mjs';
 import {
   argument,
   file,
-  fn,
   klass,
   routeOf,
   routed,
@@ -14,10 +12,19 @@ import {
   summary,
   testFile,
   testMethod,
-  wait,
-} from '../test-support/facts.mjs';
+  type FileFacts,
+  type WaitFact,
+} from '../test-support/facts.mts';
 import { FIXED_SLEEP_RULE } from '../../../../messages/wait-advice.mjs';
-import { NEGATIVE_WAIT_RULE, testWaitFindings, waitMessage } from './test-waits.mjs';
+import {
+  NEGATIVE_WAIT_RULE,
+  testWaitFindings,
+  waitMessage as untypedWaitMessage,
+} from './test-waits.mjs';
+import { fn, productionTypeResolver, wait } from './wait-facts.mts';
+
+const waitMessage: (found: { rule: string; kind: string }, awaitility?: boolean) => string =
+  untypedWaitMessage;
 
 const CLASS_FRAME = {
   k: 'class',
@@ -27,20 +34,28 @@ const CLASS_FRAME = {
   visibility: 'public',
 };
 const FUN_FRAME = { k: 'fun', name: 'waits' };
-function lambda(host) {
+function lambda(host: string): Record<string, unknown> {
   return { k: 'lambda', host };
 }
-const loop = (condition, clock = false) => ({ k: 'loop', condition, clock });
-const scopes = (...inner) => [...inner, FUN_FRAME, CLASS_FRAME];
+function loop(condition: string, clock = false): Record<string, unknown> {
+  return { k: 'loop', condition, clock };
+}
+function scopes(...inner: Record<string, unknown>[]): Record<string, unknown>[] {
+  return [...inner, FUN_FRAME, CLASS_FRAME];
+}
 
-const roots = [];
+const roots: string[] = [];
 afterAll(() => {
   for (const root of roots) {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-function waitsIn(waits, extra = {}, options = {}) {
+function waitsIn(
+  waits: WaitFact[],
+  extra: Partial<FileFacts> = {},
+  options: Record<string, unknown> = {},
+) {
   const files = [
     testFile({ classes: [klass('SampleTest')], functions: [testMethod()], waits, ...extra }),
   ];
@@ -77,7 +92,7 @@ describe('fixed sleeps in Kotlin tests', () => {
       ),
       classification: 'enforceable',
     });
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/FixedSleepInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(new Set(findings.map(({ identity }) => identity)).size).toBe(3);
@@ -126,9 +141,9 @@ describe('fixed sleeps in Kotlin tests', () => {
   });
 
   it('looks through the lambda of a project inline function unless it may run elsewhere', () => {
-    const block = (inlining) => [
-      { name: 'block', type: '() -> Unit', ...(inlining ? { inlining } : {}) },
-    ];
+    function block(inlining?: string) {
+      return [{ name: 'block', type: '() -> Unit', ...(inlining ? { inlining } : {}) }];
+    }
     const helpers = file({
       functions: [
         fn('retrying', { modifiers: ['inline'], parameters: block() }),
@@ -194,7 +209,7 @@ describe('fixed sleeps in Kotlin tests', () => {
       `${FIXED_SLEEP_RULE} SampleTest.waits 1`,
       `${FIXED_SLEEP_RULE} SampleTest.waits 2`,
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(
         waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'delay' }),
         FIXED_SLEEP_RULE,
@@ -205,9 +220,9 @@ describe('fixed sleeps in Kotlin tests', () => {
 
   it('reports kotest continually, Mockito after(...).never() and Awaitility during as negative waits', () => {
     const imports = [
-      { path: 'io.kotest.assertions.timing.continually', all: false },
-      { path: 'org.mockito.Mockito.after', all: false },
-      { path: 'org.awaitility.Awaitility.await', all: false },
+      { path: 'io.kotest.assertions.timing.continually', alias: undefined, all: false },
+      { path: 'org.mockito.Mockito.after', alias: undefined, all: false },
+      { path: 'org.awaitility.Awaitility.await', alias: undefined, all: false },
     ];
     const findings = waitsIn(
       [
@@ -234,7 +249,7 @@ describe('fixed sleeps in Kotlin tests', () => {
       `${NEGATIVE_WAIT_RULE} SampleTest.waits 5`,
       `${FIXED_SLEEP_RULE} SampleTest.waits 6`,
     ]);
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/NegativeWaitInTest","paths":["src/test/kotlin/demo/SampleTest.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -254,7 +269,7 @@ describe('fixed sleeps in Kotlin tests', () => {
     const findings = waitsIn([joined]);
     const helper = waitsIn([joined], { functions: [testMethod(), fn('join')] });
 
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(
         waitMessage({ rule: FIXED_SLEEP_RULE, kind: 'timed' }),
         FIXED_SLEEP_RULE,
@@ -408,8 +423,8 @@ describe('fixed sleeps in Kotlin tests: parity details', () => {
 
   it('reads after and during only from Mockito or Awaitility, with a delay argument', () => {
     const imports = [
-      { path: 'org.mockito.Mockito', all: false },
-      { path: 'org.awaitility.Awaitility.await', all: false },
+      { path: 'org.mockito.Mockito', alias: undefined, all: false },
+      { path: 'org.awaitility.Awaitility.await', alias: undefined, all: false },
     ];
     const findings = waitsIn(
       [
@@ -428,11 +443,13 @@ describe('fixed sleeps in Kotlin tests: parity details', () => {
     const sleep = { rule: FIXED_SLEEP_RULE, kind: 'sleep' };
     const timed = { rule: FIXED_SLEEP_RULE, kind: 'timed' };
 
-    const names = (message) => message.includes('Awaitility');
+    function names(message: string): boolean {
+      return message.includes('Awaitility');
+    }
 
     expect([sleep, timed].map((kind) => names(waitMessage(kind)))).toEqual([false, false]);
     expect([sleep, timed].map((kind) => names(waitMessage(kind, true)))).toEqual([true, true]);
-    expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0].message).toBe(
+    expect(waitsIn([wait('sleep')], {}, { awaitility: true })[0]?.message).toBe(
       routed(waitMessage(sleep, true), FIXED_SLEEP_RULE, 'src/test/kotlin/demo/SampleTest.kt'),
     );
   });

@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { JUNIT_HEAD, KOTEST_HEAD } from '../test-support/sources.mjs';
-import { scanTestFile } from './discovery/test-units.mjs';
-import { projectFlags } from './project-flags.mjs';
-import { fileReports } from './test-honesty.mjs';
+import { JUNIT_HEAD, KOTEST_HEAD } from '../test-support/sources.mts';
+import { scanTestFile as untypedScanTestFile } from './discovery/test-units.mjs';
+import { projectFlags as untypedProjectFlags } from './project-flags.mjs';
+import { fileReports as untypedFileReports } from './test-honesty.mjs';
+
+const scanTestFile: (text: string) => unknown = untypedScanTestFile;
+const projectFlags: (files: { scanned: unknown }[]) => unknown = untypedProjectFlags;
+const fileReports: (scanned: unknown, flags: unknown) => unknown[] = untypedFileReports;
 
 const JUNIT = `${JUNIT_HEAD}class OrderTest(private val io: CoroutineDispatcher = Dispatchers.IO) {
     private val scope = CoroutineScope(Dispatchers.IO)
@@ -45,7 +49,7 @@ const KOTEST = `${KOTEST_HEAD}class OrderSpec : FunSpec({
 val shared = funSpec { test("d") { } }
 `;
 
-function reportsOf(text) {
+function reportsOf(text: string): unknown[] {
   const scanned = scanTestFile(text);
   if (scanned === undefined) {
     return [];

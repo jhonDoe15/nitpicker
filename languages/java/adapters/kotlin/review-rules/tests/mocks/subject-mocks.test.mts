@@ -1,13 +1,15 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import { productionTypeResolver } from '../../production-types.mjs';
-import { findingFactory } from '../../review-finding.mjs';
-import { file, fn, klass, testFile } from '../../test-support/facts.mjs';
-import { staticMessage, subjectMessage, subjectMockFindings } from './subject-mocks.mjs';
+import { describe, expect, it } from 'vitest';
+import { file, fn, klass } from '../../test-support/facts.mts';
+import { mockProject } from './mock-project.mts';
+import { routedMessage } from './routed-message.mts';
+import {
+  staticMessage as untypedStaticMessage,
+  subjectMessage as untypedSubjectMessage,
+  subjectMockFindings,
+} from './subject-mocks.mjs';
 
-const roots = [];
+const staticMessage: (call: string, target: string) => string = untypedStaticMessage;
+const subjectMessage: (type: string) => string = untypedSubjectMessage;
 const TEST_FILE = 'src/test/kotlin/demo/OrderServiceTest.kt';
 const HEAD = `package demo
 
@@ -40,27 +42,18 @@ const MAIN_FILES = [
   file({ file: 'src/main/kotlin/demo/Totals.kt', functions: [fn('total')] }),
 ];
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
+const rawFindings = mockProject({
+  prefix: 'nitpicker-subject-mocks-',
+  rule: subjectMockFindings,
+  mainFiles: MAIN_FILES,
+  defaultPath: TEST_FILE,
+  extraOptions: (projectFiles) => ({ projectFiles }),
 });
 
-function rawFindings(text, testPath = TEST_FILE) {
-  const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-subject-mocks-'));
-  roots.push(projectRoot);
-  mkdirSync(path.dirname(path.join(projectRoot, testPath)), { recursive: true });
-  writeFileSync(path.join(projectRoot, testPath), text);
-  const projectFiles = [...MAIN_FILES, testFile({ file: testPath, imports: [] })];
-  return subjectMockFindings(projectFiles, {
-    finding: findingFactory(),
-    projectRoot,
-    projectFiles,
-    isProduction: productionTypeResolver({ files: projectFiles, projectRoot }),
-  });
-}
-
-function findingsFor(body, testPath = TEST_FILE) {
+function findingsFor(
+  body: string,
+  testPath = TEST_FILE,
+): { rule: string; line: number; message: string }[] {
   return rawFindings(`${HEAD}\n${body}`, testPath).map(({ rule, location, message }) => ({
     rule,
     line: location.line - HEAD.split('\n').length,
@@ -68,11 +61,11 @@ function findingsFor(body, testPath = TEST_FILE) {
   }));
 }
 
-function routed(message, rule = 'MockedSubjectInTest') {
-  return findingFactory()({ rule, file: TEST_FILE, line: 1, message }).message;
+function routed(message: string, rule = 'MockedSubjectInTest'): string {
+  return routedMessage({ rule, file: TEST_FILE, line: 1, message });
 }
 
-function summary(body, testPath) {
+function summary(body: string, testPath?: string): string[] {
   return findingsFor(body, testPath).map(({ rule, line }) => `${rule}@${String(line)}`);
 }
 
@@ -96,7 +89,7 @@ describe('subjectMockFindings', () => {
       'MockedSubjectInTest@6',
       'MockedSubjectInTest@8',
     ]);
-    expect(findingsFor(body)[0].message).toBe(routed(subjectMessage('OrderService')));
+    expect(findingsFor(body)[0]?.message).toBe(routed(subjectMessage('OrderService')));
   });
 
   it('reports a spy of the subject only when its own methods are stubbed', () => {
@@ -214,7 +207,7 @@ class OrderServiceTest {
       'StaticMockOfProjectType@6',
       'StaticMockOfProjectType@7',
     ]);
-    expect(found[0].message).toBe(
+    expect(found[0]?.message).toBe(
       routed(staticMessage('mockkObject', 'Ids'), 'StaticMockOfProjectType'),
     );
   });
@@ -225,18 +218,6 @@ class OrderServiceTest {
   val fake = mock(OrderService::class)
 }
 `;
-    const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-subject-mocks-'));
-    roots.push(projectRoot);
-    mkdirSync(path.join(projectRoot, 'src/test/kotlin/demo'), { recursive: true });
-    writeFileSync(path.join(projectRoot, TEST_FILE), `package demo\n\n${body}`);
-    const projectFiles = [...MAIN_FILES, testFile({ file: TEST_FILE })];
-    expect(
-      subjectMockFindings(projectFiles, {
-        finding: findingFactory(),
-        projectRoot,
-        projectFiles,
-        isProduction: () => true,
-      }),
-    ).toEqual([]);
+    expect(rawFindings(`package demo\n\n${body}`, TEST_FILE, () => true)).toEqual([]);
   });
 });

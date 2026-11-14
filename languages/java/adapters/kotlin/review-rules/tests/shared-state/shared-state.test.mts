@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { flagsFor, rulesOf } from '../../test-support/sources.mjs';
+import { flagsFor, rulesOf } from '../../test-support/sources.mts';
 import { SHARED_STATE_RULE } from './shared-state.mjs';
 
-const shared = (text, flags) => rulesOf(text, SHARED_STATE_RULE, flags);
+function shared(text: string, flags?: unknown): string[] {
+  return rulesOf(text, SHARED_STATE_RULE, flags);
+}
 
 const JUNIT = `package demo
 
