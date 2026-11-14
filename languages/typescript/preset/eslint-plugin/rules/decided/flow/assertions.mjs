@@ -1,4 +1,5 @@
 import { term } from '../../../../../../../shared/logic/terms.mjs';
+import { chainOf } from '../../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { toTerm } from '../../analysis/logic/estree-terms.mjs';
 import { fact, factOfTerm } from '../facts.mjs';
@@ -7,16 +8,10 @@ const ASSERT_MODULES = new Set(['assert', 'node:assert', 'assert/strict', 'node:
 const CONDITION_METHODS = new Set(['ok']);
 
 function importedFrom(identifier, sourceCode) {
-  let scope = sourceCode.getScope(identifier);
-  while (scope !== null) {
-    const variable = scope.set.get(identifier.name);
-    if (variable !== undefined) {
-      const [definition] = variable.defs;
-      return definition?.type === 'ImportBinding' ? definition.parent.source.value : undefined;
-    }
-    scope = scope.upper;
-  }
-  return undefined;
+  const scopes = chainOf(sourceCode.getScope(identifier), (current) => current.upper);
+  const variable = scopes.find((scope) => scope.set.has(identifier.name))?.set.get(identifier.name);
+  const [definition] = variable?.defs ?? [];
+  return definition?.type === 'ImportBinding' ? definition.parent.source.value : undefined;
 }
 
 function isLibraryAssert(callee, sourceCode) {

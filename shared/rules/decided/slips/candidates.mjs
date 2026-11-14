@@ -1,3 +1,5 @@
+import { labelOfTag } from '../../../logic/bitvectors/widths.mjs';
+
 const COMPARISONS = new Set(['<', '<=', '>', '>=', '==', '!=', '===', '!==']);
 const EQUALITIES = new Set(['==', '!=', '===', '!==']);
 const FLIPPED = new Map([
@@ -30,6 +32,9 @@ function differenceOf(node) {
     return [];
   }
   const [left, right] = node.children;
+  if (EQUALITIES.has(node.value)) {
+    return [];
+  }
   if (isTypedDifference(left) && isZero(right)) {
     return [{ kind: 'difference', node, difference: left, operator: node.value }];
   }
@@ -56,11 +61,15 @@ function remainderOf(node) {
     : [];
 }
 
+function isPromotedAbsolute(node) {
+  return isAbsolute(node) && labelOfTag(node) === labelOfTag(node.children[1]);
+}
+
 function absoluteOf(node) {
-  if (node.kind === 'binary' && node.value === '%' && isAbsolute(node.children[0])) {
+  if (node.kind === 'binary' && node.value === '%' && isPromotedAbsolute(node.children[0])) {
     return [{ kind: 'absolute', node, argument: node.children[0].children[1], use: 'a bucket' }];
   }
-  const isIndex = node.kind === 'index' && isAbsolute(node.children[1]);
+  const isIndex = node.kind === 'index' && isPromotedAbsolute(node.children[1]);
   return isIndex
     ? [{ kind: 'absolute', node, argument: node.children[1].children[1], use: 'an index' }]
     : [];
@@ -73,7 +82,6 @@ function comparerReturn(statement, unitName) {
     : [];
 }
 
-/** The nodes below `root` that are not inside a `&&`/`||` chain or a nested function. */
 function plainNodes(root) {
   const nodes = [];
   const pending = [root];

@@ -116,6 +116,7 @@ per source hash and toolchain into the nitpicker cache.
 | Feature layout         | metrics program            | `facts/shared-used-by-one-feature`, `feature-internal-import`, `shared-imports-feature`, `feature-cycle` |
 | Domain boundaries      | metrics program            | `coupling/domain-imports-adapter`, `domain-imports-io`, `-client`, `-logger`, `-random`                  |
 | Test-only code         | metrics program            | `facts/test-only-export`                                                                                 |
+| Conditions and copies  | tree-sitter Go trees, Z3   | `facts/decided-condition`, `facts/duplicate-branch`, `facts/near-duplicate`                              |
 | Tests without product  | metrics program            | `test-runtime/no-production-runtime`                                                                     |
 | Unset optional inputs  | lint program (go-rules)    | `structure/unused-option`                                                                                |
 | Entry-point bypass     | metrics program            | `entry-points/public-alternative-bypass`                                                                 |
@@ -818,6 +819,68 @@ often declare their own small type or constant of one name. Files with a build c
 `exported-name-collision` does not apply: Go code names another package's export through the
 package (`billing.Total`), so two exports with one name never meet unqualified, and a file that dot
 imports two packages exporting one name does not compile.
+
+**Condition logic and copies from syntax trees.** `decided-condition`, `duplicate-branch` and
+`near-duplicate`, with `shorter-condition`, `result-slip` and `integer-slip`, read the syntax trees of the non-test, non-generated `.go` files, which the metrics
+program does not give: they come from web-tree-sitter with the tree-sitter-go grammar (MIT,
+WebAssembly, kept compressed in `languages/java/adapters/near-duplicates/grammar/` next to the Java
+and Kotlin ones), in the same node shapes as the Java and Kotlin trees, so every fact the shared
+engine learns applies to Go unchanged (see [internals](internals.md#near-duplicate-engine-sharednear-duplicates)).
+Findings are `facts/decided-condition`, `facts/duplicate-branch`, `facts/near-duplicate`,
+`facts/shorter-condition`, `facts/result-slip` and `facts/integer-slip`, and take an exception as printed.
+
+- `decided-condition` learns from `if` and `else`, guard clauses that return, break or continue,
+  an `if init; cond` (the variables of the init statement are new ones: `if err := f(); err != nil
+{ return err }` tells nothing about an outer `err`), `if err != nil` (a fact about `err` only),
+  a `switch` (a tag switch gives each case its label and `default` the other labels, a switch
+  without a tag its cases in order), the left side of `&&` and `||`, a name just set with `:=`, `var`
+  or `=` (until it is written again), the test of a `for` loop, and `len` and `cap` (whole
+  numbers, never negative). `int`, `int8` to `int64`, `uint`, `uint8` to `uint64`, `uintptr`,
+  `byte` and `rune` are integers (`x > 3 && x < 4` cannot hold) decided as fixed-width
+  bit-vectors: `int` is 64 bits, Go does not promote narrow types, unsigned arithmetic wraps and
+  compares as unsigned, and an untyped constant takes the type of the operand next to it
+  (`var n int8 = 127; n+1 > n` is always false); shifts and `&^` stay opaque. Other numbers, a named
+  integer type (`type Count int`) included, are reals that may be NaN. A name
+  that is declared in an inner scope again is a different variable. A name whose address is taken
+  (`&x`), that a closure captures, or that a method is called on (`c.Inc()` may take its address)
+  is forgotten at every call and every write through a pointer or a field; a channel send or
+  receive counts as a call. A function with a `goto`, and a function the grammar cannot parse, is
+  not read.
+- `shorter-condition` reads the same trees: an `&&`/`||` condition with at most 6 operands, none
+  with an effect or able to panic, that a truth table or the solver proves equal to a shorter one
+  (`n > 3 && n > 5` is `n > 5`), and the guard merges of `duplicate-branch` below, as report-only
+  findings.
+- `result-slip` reads an index search of `strings`, `bytes` or `slices` (`Index`, `IndexByte`,
+  `IndexRune`, `IndexAny`, `IndexFunc` and the `Last` forms) tested with `> 0`, `>= 1`, `<= 0` or
+  `< 1`, which misses a match at position 0; nothing is reported when the function reads the first
+  element (`s[0]`) or tests the same search `== 0`. `strings.Compare`, `bytes.Compare` and
+  `cmp.Compare` return exactly -1, 0 or 1, so a sign-only check has no Go form.
+- `integer-slip` reads a difference of integers compared with 0 by order (`a-b > 0`, which wraps
+  for `int64` and for any unsigned type; `a-b == 0` is always the same as `a == b`) and a remainder
+  tested against a positive value (`x%2 == 1` misses a negative `x`), for parameters never
+  reassigned and with the guards before it known; sizes from `len` and `cap` are bounded. Each
+  integer is read at its declared width (`int` is 64 bits), a local has no known range and is
+  skipped, and `math.Abs` is a float function, so it has no slip.
+- `duplicate-branch` compares the cases of a `select`, and reads the `if` chains and `switch`es for
+  shared leading or trailing statements and guard merges. A case that ends in `fallthrough`, the
+  case it falls into, and the cases of a type switch are not compared, and nothing is moved out of
+  a `select` or a `switch` with a `break`.
+  Arms or cases with the same whole body are left to revive: `identical-branches` (the two-arm
+  `if`/`else`; go-critic's `dupBranchBody` is left out for it), `identical-ifelseif-branches` (an
+  `else if` chain) and `identical-switch-branches` (the cases of a `switch`, with or without a tag).
+- `near-duplicate` reads each function and method (the receiver is its first parameter). Copies
+  that differ only in a number type (`int`, `int64`, `float32`, `float64`, `uint8`, `any`, a type
+  parameter) are a type-specialized family and are left out, as are files with a build constraint.
+  Package-level names resolve to `<package folder>#<name>`, imports to their path, so two packages
+  that call their own `helper` are two different calls.
+
+Where these overlap a tool that already runs, the tool keeps the single-expression form and this
+rule the rest: go-critic `badCond` (`x < 10 && x > 20`) and staticcheck SA4000 and SA4014 (the same
+operands, or the same condition twice in an `else if` chain) report a pair inside one expression
+that the engine would also decide; revive `identical-branches`, `identical-ifelseif-branches` and
+`identical-switch-branches` the arms and cases with the same body; revive
+`constant-logical-expr` and `identical-ifelseif-conditions` the same as SA4000 and SA4014. A
+finding both report fails twice, and one exception for each lifts it.
 
 **`doc-comment-content`.** A doc comment on a top-level function, method, type, constant or
 variable, or on a struct field or interface method, fails when it only restates its name

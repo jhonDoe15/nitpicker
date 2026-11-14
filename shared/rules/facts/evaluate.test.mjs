@@ -221,6 +221,12 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('go')).toEqual([
       'duplicate-definition',
       'sibling-copy-edit',
+      'near-duplicate',
+      'decided-condition',
+      'duplicate-branch',
+      'result-slip',
+      'integer-slip',
+      'shorter-condition',
       'shared-used-by-one-feature',
       ...FEATURE_RULES,
       'public-alternative-bypass',

@@ -5,6 +5,8 @@ import (
 	"go/token"
 	"sort"
 	"strconv"
+
+	"github.com/jhonDoe15/nitpicker/languages/go/inspect/design/scope"
 )
 
 type Usage struct {
@@ -80,15 +82,6 @@ func (sets usageSets) identifier(scope *ast.Scope, identifier *ast.Ident) {
 	}
 }
 
-func sortedKeys(set map[string]bool) []string {
-	keys := make([]string, 0, len(set))
-	for key := range set {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 func sortedSelectors(set map[Selector]bool) []Selector {
 	selectors := make([]Selector, 0, len(set))
 	for selector := range set {
@@ -124,8 +117,8 @@ func fileUsage(fileSet *token.FileSet, file parsedFile) Usage {
 	return Usage{
 		File:      file.path,
 		Imports:   fileImports(fileSet, file.syntax),
-		Names:     sortedKeys(sets.names),
+		Names:     scope.SortedNames(sets.names),
 		Selectors: sortedSelectors(sets.selectors),
-		Local:     sortedKeys(sets.local),
+		Local:     scope.SortedNames(sets.local),
 	}
 }

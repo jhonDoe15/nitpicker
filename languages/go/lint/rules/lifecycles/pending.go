@@ -24,7 +24,7 @@ var pendingName = regexp.MustCompile(`(?i)pending|inflight|in_flight|waiter|wait
 
 func runPending(pass *analysis.Pass) (any, error) {
 	closers := closeMethods(pass)
-	decls := funcDecls(pass)
+	decls := support.FuncDecls(pass)
 	for cursor := range support.Root(pass).Preorder((*ast.TypeSpec)(nil)) {
 		spec := cursor.Node().(*ast.TypeSpec)
 		structure, ok := spec.Type.(*ast.StructType)
@@ -73,17 +73,6 @@ func isChannelMap(pass *analysis.Pass, expression ast.Expr) bool {
 	}
 	_, channel := mapped.Elem().Underlying().(*types.Chan)
 	return channel
-}
-
-func funcDecls(pass *analysis.Pass) map[types.Object]*ast.FuncDecl {
-	found := map[types.Object]*ast.FuncDecl{}
-	for cursor := range support.Root(pass).Preorder((*ast.FuncDecl)(nil)) {
-		declaration := cursor.Node().(*ast.FuncDecl)
-		if declaration.Body != nil {
-			found[pass.TypesInfo.Defs[declaration.Name]] = declaration
-		}
-	}
-	return found
 }
 
 func reachable(pass *analysis.Pass, decls map[types.Object]*ast.FuncDecl, start []*ast.FuncDecl) []*ast.FuncDecl {

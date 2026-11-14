@@ -12,7 +12,7 @@ import { foldTree } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 import { toTerm } from '../analysis/logic/estree-terms.mjs';
-import { withPredicateCalls } from './helpers/predicate-calls.mjs';
+import { withPredicateCalls } from './predicate-calls/predicate-calls.mjs';
 import { withModels } from './models/value-models.mjs';
 import { unsteadyReads, withUnsteadyReads } from './models/property-kinds.mjs';
 import { inside, isFunction, syntaxChildren } from './syntax.mjs';
@@ -53,7 +53,7 @@ function baseTerm(node, sourceCode) {
   const untyped = untypedComparisons(node, sourceCode.parserServices);
   const built = foldTerm(toTerm(node, sourceCode), (current, children) => {
     const rebuilt = { ...current, children };
-    if (!isComparison(current) || !untyped.has(rangeKey(current.range ?? [0, 0]))) {
+    if (!(isComparison(current) && untyped.has(rangeKey(current.range ?? [0, 0])))) {
       return rebuilt;
     }
     return withRange(term('name', `#compare ${key(rebuilt)}`), current.range);
@@ -68,7 +68,9 @@ function baseTerm(node, sourceCode) {
  * named atom, because the solver orders numbers and strings would break transitivity.
  */
 export function conditionTerm(node, sourceCode) {
-  const build = (part) => baseTerm(part, sourceCode);
+  function build(part) {
+    return baseTerm(part, sourceCode);
+  }
   return withPredicateCalls(baseTerm(node, sourceCode), node, { sourceCode, build });
 }
 
@@ -88,7 +90,9 @@ function readsMembers(root) {
 
 /** What `conditionNode` tells when it held (`holds`) or failed, and `reason` to name it by. */
 export function fact(conditionNode, sourceCode, { holds, reason }) {
-  const build = (part) => toTerm(part, sourceCode);
+  function build(part) {
+    return toTerm(part, sourceCode);
+  }
   const raw = withPredicateCalls(build(conditionNode), conditionNode, { sourceCode, build });
   const condition = conditionTerm(conditionNode, sourceCode);
   return {

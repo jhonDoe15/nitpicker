@@ -33,7 +33,7 @@ describe('decided-condition: precondition calls and assertions', () => {
       '7: `order == null` is always false here: line 6 throws unless `order != null`, so the code it guards never runs',
       '9: `n <= 0` is always false here: line 8 throws unless `n > 0`, so the code it guards never runs',
       '11: `k <= 4` is always false here: line 10 throws unless `k > 4`, so the code it guards never runs',
-      '13: `n > 1` is always true here: the assert on line 12 already states this',
+      '13: `n > 1` is always true here: the assert on line 12 already states this, and assertions may be off at run time',
     ]);
   });
 
@@ -81,7 +81,7 @@ describe('decided-condition: precondition calls and assertions', () => {
       '4: `n <= 0` is always false here: line 3 throws unless `n > 0`, so the code it guards never runs',
       '6: `o == null` is always false here: line 5 throws unless `o != null`, so the code it guards never runs',
       '8: `n <= 1` is always false here: line 7 throws unless `n > 1`, so the code it guards never runs',
-      '10: `n > 2` is always true here: the assert on line 9 already states this',
+      '10: `n > 2` is always true here: the assert on line 9 already states this, and assertions may be off at run time',
     ]);
     expect(decided(shadowed, KOTLIN_FILE)).toEqual([]);
   });

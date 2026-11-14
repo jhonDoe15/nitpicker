@@ -69,6 +69,20 @@ describe('shorter-condition on Java', () => {
   });
 });
 
+describe('shorter-condition on chained comparisons', () => {
+  it('names the operand each reason drops when there is more than one', () => {
+    const text = inClass(
+      '  boolean one(int x) { return x >= 2 && x < 8 && x == 3 && x != 5; }',
+      '  boolean two(int x) { return x > 3 || x > 2 || x > 1; }',
+    );
+
+    expect(shorter(text)).toEqual([
+      '2: `x >= 2 && x < 8 && x == 3 && x != 5` can be written as `x == 3 && x != 5`: `x == 3` later in the same `&&` implies `x >= 2`; `x == 3` later in the same `&&` implies `x < 8`',
+      '3: `x > 3 || x > 2 || x > 1` can be written as `x > 1`: `x > 3` implies `x > 2` later in the same `||`; `x > 2` implies `x > 1` later in the same `||`',
+    ]);
+  });
+});
+
 describe('shorter-condition on Kotlin', () => {
   it('prints an implied operand and merges ranges', () => {
     const text = [

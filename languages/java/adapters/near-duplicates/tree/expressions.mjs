@@ -7,15 +7,12 @@ import {
   literal,
   numberText,
   opaque,
+  operatorOf,
   typeNode,
 } from './nodes.mjs';
 
 const NUMBER_KIND = 'number';
 const PARAMETER_KIND = 'parameter';
-
-function operatorOf(source) {
-  return field(source, 'operator')?.type;
-}
 
 function operation(kind) {
   return (source, context) =>

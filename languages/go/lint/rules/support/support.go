@@ -17,6 +17,17 @@ func Root(pass *analysis.Pass) inspector.Cursor {
 	return pass.ResultOf[inspect.Analyzer].(*inspector.Inspector).Root()
 }
 
+func FuncDecls(pass *analysis.Pass) map[types.Object]*ast.FuncDecl {
+	found := map[types.Object]*ast.FuncDecl{}
+	for cursor := range Root(pass).Preorder((*ast.FuncDecl)(nil)) {
+		declaration := cursor.Node().(*ast.FuncDecl)
+		if declaration.Body != nil {
+			found[pass.TypesInfo.Defs[declaration.Name]] = declaration
+		}
+	}
+	return found
+}
+
 func InTestFile(pass *analysis.Pass, node ast.Node) bool {
 	return strings.HasSuffix(pass.Fset.Position(node.Pos()).Filename, "_test.go")
 }

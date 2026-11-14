@@ -1,9 +1,10 @@
 import { decidedConditions } from './decided.mjs';
 import { labelParts } from '../../near-duplicates/proof/inline.mjs';
-import { predicateTable, withPredicates } from './helpers/predicates.mjs';
+import { predicateTable, withPredicates } from './predicate-reading/predicates.mjs';
 import { getterTable, gettersOfFile } from './models/getters.mjs';
 import { modelledTree } from './models/annotate.mjs';
 import { declaredTypes } from './models/types.mjs';
+import { goTypedTree } from './widths/go-typed-tree.mjs';
 import { typedTree } from './widths/typed-tree.mjs';
 import { RULE_IDS } from '../../policy.mjs';
 import { reuseFinding } from '../reuse/reuse-finding.mjs';
@@ -21,7 +22,8 @@ function isJvm(file) {
   return file.endsWith('.java') || file.endsWith('.kt');
 }
 
-function modelled(unit, shared) {
+/** The tree of `unit` with helpers inlined, value models annotated and, for JVM and Go, integer widths. */
+export function modelledUnit(unit, shared) {
   const getters = shared.getters;
   const scope = {
     types: declaredTypes(unit.tree),
@@ -29,12 +31,20 @@ function modelled(unit, shared) {
     owner: /^(?<owner>[\w$]+)\./u.exec(unit.name)?.groups.owner,
     python: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
+    go: unit.file.endsWith('.go'),
+    resolver:
+      unit.imports === undefined
+        ? undefined
+        : { imports: unit.imports, classes: shared.classes, kotlin: unit.file.endsWith('.kt') },
   };
   const modelledOnes = modelledTree(
     withPredicates(unit.tree, { table: shared.helpers, unit }),
     scope,
   );
-  return scope.python ? modelledOnes : typedTree(modelledOnes, scope);
+  if (scope.python) {
+    return modelledOnes;
+  }
+  return scope.go ? goTypedTree(modelledOnes, scope) : typedTree(modelledOnes, scope);
 }
 
 function topLevelKotlinNames(units) {
@@ -49,7 +59,7 @@ function topLevelKotlinNames(units) {
 
 function unitFindings(unit, analyzerName, shared) {
   const seen = new Map();
-  const tree = modelled(unit, shared);
+  const tree = modelledUnit(unit, shared);
   return decidedConditions(tree, {
     looseBooleans: unit.file.endsWith('.py'),
     kotlin: unit.file.endsWith('.kt'),
@@ -72,12 +82,17 @@ function unitFindings(unit, analyzerName, shared) {
   });
 }
 
-export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
-  const shared = {
+export function sharedTables(units) {
+  return {
     getters: getterTable(units),
     helpers: predicateTable(units),
     defined: topLevelKotlinNames(units),
+    classes: new Set(units.flatMap((unit) => unit.imports?.classes ?? [])),
   };
+}
+
+export function decidedConditionFindings(units, { analyzerName, isExcepted }) {
+  const shared = sharedTables(units);
   return units
     .filter((unit) => unit.tree?.kind === 'function')
     .filter((unit) => !isExcepted(RULE_IDS.decidedCondition, unit.file))

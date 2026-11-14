@@ -3,10 +3,10 @@ import { brotliDecompressSync } from 'node:zlib';
 import { Language } from 'web-tree-sitter';
 
 /**
- * The tree-sitter grammar for `language` (`java` or `kotlin`). Each grammar is kept
+ * The tree-sitter grammar for `language` (`java`, `kotlin` or `go`). Each grammar is kept
  * brotli-compressed, since the Kotlin one is several megabytes as plain WebAssembly.
  *
- * @param {'java' | 'kotlin'} language
+ * @param {'java' | 'kotlin' | 'go'} language
  * @returns {Promise<Language>}
  */
 export function loadGrammar(language) {

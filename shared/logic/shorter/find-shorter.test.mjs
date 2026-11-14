@@ -52,9 +52,10 @@ async function expectProved(original, found, { grid = true } = {}) {
     logical('&&', [negated(original), negated(after)]),
   ]);
   expect(await decide([], both)).toBe('true');
-  for (const env of grid ? environments() : []) {
-    expect(Boolean(evaluate(after, env))).toBe(Boolean(evaluate(original, env)));
-  }
+  const grids = grid ? environments() : [];
+  expect(grids.map((env) => Boolean(evaluate(after, env)))).toEqual(
+    grids.map((env) => Boolean(evaluate(original, env))),
+  );
 }
 
 const range = (low, high) => and(binary('>=', x, number(low)), binary('<', x, number(high)));

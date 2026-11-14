@@ -1,5 +1,6 @@
 import { isSideEffectFree } from '../../../../../../../shared/logic/purity.mjs';
 import { foldTerm } from '../../../../../../../shared/logic/terms.mjs';
+import { chainOf } from '../../../../../../../shared/traversal.mjs';
 import { inside } from '../syntax.mjs';
 
 const FUNCTION_VALUES = new Set(['ArrowFunctionExpression', 'FunctionExpression']);
@@ -10,13 +11,8 @@ function rangeKeyOf(range) {
 }
 
 function variableAt(scope, name) {
-  for (let current = scope; current !== null; current = current.upper) {
-    const found = current.set.get(name);
-    if (found !== undefined) {
-      return found;
-    }
-  }
-  return undefined;
+  const scopes = chainOf(scope, (current) => current.upper);
+  return scopes.find((current) => current.set.has(name))?.set.get(name);
 }
 
 function functionOf(variable) {

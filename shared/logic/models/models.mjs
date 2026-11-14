@@ -1,11 +1,5 @@
 import { foldTerm } from '../terms.mjs';
 
-/**
- * What the solver may assume about a call or property that carries `model`: `integer` (a whole
- * number), `min` and `below` (bounds), `number` (never NaN), `stable` (the same call on the same
- * unchanged receiver returns the same value), `nonNegative` (not below 0 when it is a number) and
- * the `reason` that names the assumption.
- */
 const MODELS = Object.freeze({
   size: {
     integer: true,
@@ -51,7 +45,6 @@ export function boundedModelOf(node) {
   return model !== undefined && (hasBounds(model) || model.number === true) ? model : undefined;
 }
 
-/** The models that bound a value in `terms`. */
 function modelsIn(terms) {
   return terms.flatMap((root) =>
     foldTerm(root, (node, children) => {

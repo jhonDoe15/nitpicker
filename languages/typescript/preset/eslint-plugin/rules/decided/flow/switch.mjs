@@ -4,6 +4,7 @@ import {
   solveFacts,
 } from '../../../../../../../shared/logic/sync/solve-facts.mjs';
 import { term } from '../../../../../../../shared/logic/terms.mjs';
+import { chainOf } from '../../../../../../../shared/traversal.mjs';
 import { toTerm } from '../../analysis/logic/estree-terms.mjs';
 import { factOfTerm } from '../facts.mjs';
 
@@ -28,20 +29,22 @@ function isLiteralLabel(node) {
   return node.type === 'Literal' && node.regex === undefined;
 }
 
+function isPlainMember(node) {
+  return node.type === 'MemberExpression' && !node.computed && !node.optional;
+}
+
 function isSimpleSubject(node) {
-  let current = node;
-  while (current.type === 'MemberExpression' && !current.computed && !current.optional) {
-    current = current.object;
-  }
-  return current.type === 'Identifier' || current.type === 'ThisExpression';
+  const root = chainOf(node, (current) => (isPlainMember(current) ? current.object : undefined)).at(
+    -1,
+  );
+  return root.type === 'Identifier' || root.type === 'ThisExpression';
 }
 
 function endsInJump(consequent) {
-  let last = consequent.at(-1);
-  while (last?.type === 'BlockStatement') {
-    last = last.body.at(-1);
-  }
-  return JUMP_TYPES.has(last?.type);
+  const blocks = chainOf(consequent.at(-1), (current) =>
+    current.type === 'BlockStatement' ? current.body.at(-1) : undefined,
+  );
+  return JUMP_TYPES.has(blocks.at(-1)?.type);
 }
 
 function groupsOf(cases) {
@@ -75,7 +78,9 @@ function takingFacts(group, context) {
     return [];
   }
   const isDefault = group.cases.some(({ test }) => test === null);
-  const query = (label) => equality(node.discriminant, label, sourceCode);
+  function query(label) {
+    return equality(node.discriminant, label, sourceCode);
+  }
   if (isDefault) {
     return group.cases.length > 1
       ? []

@@ -1,14 +1,20 @@
 import { foldTerm, key } from '../../../../../../shared/logic/terms.mjs';
+import { chainOf } from '../../../../../../shared/traversal.mjs';
 
 const REFERENCES = new Set(['name', 'member', 'index', 'this']);
 const EQUALITIES = new Set(['===', '!==', '==', '!=']);
 
+function isNegation(term) {
+  return term.kind === 'unary' && term.value === '!';
+}
+
+function strippedOfNegations(term) {
+  return chainOf(term, (current) => (isNegation(current) ? current.children[0] : undefined)).at(-1);
+}
+
 function bareReference(term) {
-  let current = term;
-  while (current.kind === 'unary' && current.value === '!') {
-    current = current.children[0];
-  }
-  return REFERENCES.has(current.kind) ? current : undefined;
+  const stripped = strippedOfNegations(term);
+  return REFERENCES.has(stripped.kind) ? stripped : undefined;
 }
 
 function isReference(term) {

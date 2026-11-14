@@ -37,8 +37,11 @@ export function relevantFacts(facts, names) {
   return facts.filter((known) => kept.has(known)).slice(-MAX_FACTS);
 }
 
-/** 'true', 'false' or 'open' for `query` under `conditions`: a truth table first, then Z3. */
-export function solveFacts(conditions, query) {
+/**
+ * 'true', 'false' or 'open' for `query` under `conditions`: a truth table first, then Z3, whose runs
+ * count against `budget` (see `solverBudget`) when one is given.
+ */
+export function solveFacts(conditions, query, budget) {
   const quick = decideByTruthTable(conditions, query);
   if (quick !== 'open' && quick !== undefined) {
     return quick;
@@ -46,7 +49,7 @@ export function solveFacts(conditions, query) {
   const linked = quick === undefined || needsValues(conditions, query);
   const terms = [...conditions, query];
   return linked || hasModels(terms) || hasVectorOperations(terms) || hasExactArithmetic(terms)
-    ? decideSync(conditions, query)
+    ? decideSync(conditions, query, { budget })
     : 'open';
 }
 
@@ -54,13 +57,18 @@ export function solveFacts(conditions, query) {
  * The latest fact that alone gives `query` its `verdict`, if one of the last few does; a value
  * model that decides it alone comes first.
  */
-export function decidingFact(facts, query, verdict) {
+export function decidingFactWithin(budget, { facts, query, verdict }) {
   const modelled = modelReason([query]);
-  if (modelled !== undefined && solveFacts([], query) === verdict) {
+  if (modelled !== undefined && solveFacts([], query, budget) === verdict) {
     return { reason: modelled };
   }
   return facts
     .toReversed()
     .slice(0, REASON_TRIES)
-    .find((known) => solveFacts([known.term], query) === verdict);
+    .find((known) => solveFacts([known.term], query, budget) === verdict);
+}
+
+/** `decidingFactWithin` with no budget. */
+export function decidingFact(facts, query, verdict) {
+  return decidingFactWithin(undefined, { facts, query, verdict });
 }

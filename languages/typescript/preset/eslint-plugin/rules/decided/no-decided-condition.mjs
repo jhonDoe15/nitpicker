@@ -14,7 +14,6 @@ import { checkLabel } from './flow/switch.mjs';
 import { conditionChecks } from './statement-flow.mjs';
 import { isNarrowingTest, outsideFunctions } from './syntax.mjs';
 
-const CHAINS = new Set(['&&', '||']);
 const VERDICTS = new Map([
   ['true', 'alwaysTrue'],
   ['false', 'alwaysFalse'],

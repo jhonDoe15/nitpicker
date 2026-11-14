@@ -14,6 +14,11 @@ const SHIFTS = new Map([
   ['>>>', 'lshr'],
 ]);
 const COMPARES = { '<': 'slt', '<=': 'sle', '>': 'sgt', '>=': 'sge' };
+const UNSIGNED_COMPARES = { '<': 'ult', '<=': 'ule', '>': 'ugt', '>=': 'uge' };
+const UNSIGNED_DIVISIONS = new Map([
+  ['/', 'udiv'],
+  ['%', 'urem'],
+]);
 const MIN_COMPARED_BITS = 32;
 
 function isVectorNode(node) {
@@ -24,7 +29,6 @@ function literalBits(node) {
   return BigInt.asIntN(node.bits, BigInt(node.value));
 }
 
-/** `vector` at `bits` wide: sign- or zero-extended by its own signedness, or cut to the low bits. */
 function resized(vector, bits) {
   if (vector.bits === bits) {
     return vector.expr;
@@ -51,7 +55,8 @@ function arithmetic(encoding, node, [left, right]) {
   if (node.value === '/' || node.value === '%') {
     encoding.divisors.push(second);
   }
-  return first[MULTIPLICATIVE.get(node.value)](second);
+  const method = node.signed ? undefined : UNSIGNED_DIVISIONS.get(node.value);
+  return first[method ?? MULTIPLICATIVE.get(node.value)](second);
 }
 
 function unary(node, [operand]) {
@@ -121,10 +126,11 @@ function commonBits(left, right) {
   return Math.max(left.bits, right.bits, MIN_COMPARED_BITS);
 }
 
-/** `left op right` over two vectors, both promoted to a common signed width. */
+/** `left op right` over two vectors, both promoted to a common width and compared by signedness. */
 export function vectorRelation(operator, [left, right]) {
   const bits = commonBits(left, right);
-  return resized(left, bits)[COMPARES[operator]](resized(right, bits));
+  const compares = left.signed || right.signed ? COMPARES : UNSIGNED_COMPARES;
+  return resized(left, bits)[compares[operator]](resized(right, bits));
 }
 
 export function vectorEquality(left, right) {

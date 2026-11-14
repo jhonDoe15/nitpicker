@@ -18,7 +18,7 @@ function decided(text, file = 'src/main/java/shop/Rules.java') {
 }
 
 function inClass(...lines) {
-  return ['class Rules {', ...lines, '}'].join('\n');
+  return ['import java.util.*; class Rules {', ...lines, '}'].join('\n');
 }
 
 describe('decided-condition value models on Java', () => {

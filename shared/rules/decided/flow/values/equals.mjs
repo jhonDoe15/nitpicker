@@ -34,15 +34,15 @@ function isValueEquality([left, right], scope) {
 }
 
 function equalsSides(call) {
-  const [callee, ...arguments_] = call.children;
+  const [callee, ...passed] = call.children;
   if (call.kind !== 'call' || callee.kind !== 'member' || callee.value !== 'equals') {
     return undefined;
   }
   const [owner] = callee.children;
   if (owner?.kind === 'name' && owner.binding === 'free' && owner.value === OBJECTS) {
-    return arguments_.length === 2 ? arguments_ : undefined;
+    return passed.length === 2 ? passed : undefined;
   }
-  return arguments_.length === 1 && owner !== undefined ? [owner, arguments_[0]] : undefined;
+  return passed.length === 1 && owner !== undefined ? [owner, passed[0]] : undefined;
 }
 
 function equalityOf(call, scope) {

@@ -1,9 +1,10 @@
+import { solverBudget } from '../../logic/sync/budget.mjs';
 import { findShorter } from '../../logic/shorter/find-shorter.mjs';
 import { C_STYLE, PYTHON_STYLE, renderSkeleton } from '../../logic/shorter/render.mjs';
 import { skeletonOf, leavesOf } from '../../logic/shorter/skeleton.mjs';
 import { nodesOf } from '../../near-duplicates/tree/nodes.mjs';
 import { integerNames } from '../decided/decided.mjs';
-import { declaredTypes } from '../decided/flow/stability.mjs';
+import { declaredTypes } from '../decided/models/types.mjs';
 import { conditionTerm } from '../decided/facts.mjs';
 
 const CONNECTIVES = new Set(['&&', '||']);
@@ -22,7 +23,7 @@ function isCut(text) {
   return text.length >= SNIPPET_LIMIT && text.endsWith(CUT);
 }
 
-function sourceText(term, node) {
+function sourceText(_term, node) {
   const text = node?.text ?? (node?.kind === 'name' ? node.value : undefined);
   return text === undefined || isCut(text) ? undefined : text;
 }
@@ -46,6 +47,31 @@ function scopeOf(tree, { isPython, kotlin, references }) {
   };
 }
 
+function shorterSite(root, scope, context) {
+  const term = conditionTerm(root, scope);
+  const skeleton =
+    term === undefined ? undefined : skeletonOf(term, { rootContext: root, ...SOURCE });
+  if (skeleton === undefined || leavesOf(skeleton).some(({ text }) => text === undefined)) {
+    return [];
+  }
+  const { style, solver, isPython, tests } = context;
+  const shorter = findShorter(skeleton, {
+    style,
+    solver,
+    booleanContext: !isPython || tests.has(root),
+  });
+  return shorter === undefined
+    ? []
+    : [
+        {
+          node: root,
+          condition: textOf(root, skeleton, style),
+          form: shorter.form,
+          reason: shorter.reasons.join('; '),
+        },
+      ];
+}
+
 /**
  * The `&&`/`||`/`!` conditions of one function unit that have an equivalent form with fewer operands:
  * `{ node, condition, form, reason }`, each from the maximal condition that holds the chain. `isPython`
@@ -59,24 +85,13 @@ export function shorterConditions(tree, { isPython, kotlin = false, references =
     all.filter((node) => TESTED.has(node.kind)).map((node) => node.children[0]),
   );
   const scope = scopeOf(tree, { isPython, kotlin, references });
-  const style = isPython ? PYTHON_STYLE : C_STYLE;
-  const found = [];
-  for (const root of all.filter((node) => isConnective(node) && !inner.has(node))) {
-    const term = conditionTerm(root, scope);
-    const skeleton =
-      term === undefined ? undefined : skeletonOf(term, { rootContext: root, ...SOURCE });
-    if (skeleton === undefined || leavesOf(skeleton).some(({ text }) => text === undefined)) {
-      continue;
-    }
-    const shorter = findShorter(skeleton, { booleanContext: !isPython || tests.has(root), style });
-    if (shorter !== undefined) {
-      found.push({
-        node: root,
-        condition: textOf(root, skeleton, style),
-        form: shorter.form,
-        reason: shorter.reasons.join('; '),
-      });
-    }
-  }
-  return found;
+  const context = {
+    style: isPython ? PYTHON_STYLE : C_STYLE,
+    solver: solverBudget(),
+    isPython,
+    tests,
+  };
+  return all
+    .filter((node) => isConnective(node) && !inner.has(node))
+    .flatMap((root) => shorterSite(root, scope, context));
 }

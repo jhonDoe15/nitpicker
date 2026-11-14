@@ -49,6 +49,9 @@ function isLeftToTool(file, group, arms) {
   if (file.endsWith('.java')) {
     return group.kind === 'ternary' || (group.kind === 'if' && group.arms.length === 2);
   }
+  if (file.endsWith('.go')) {
+    return group.node.value !== 'select';
+  }
   return file.endsWith('.py') && group.kind === 'if' && isAdjacentChain(group, arms);
 }
 
@@ -65,6 +68,12 @@ function duplicateText(group, arms) {
     return {
       subject: `Both branches of the ternary on line ${String(group.node.start)} are the same`,
       fix: 'Use the value without the ternary, or change the branch that was meant to differ.',
+    };
+  }
+  if (group.node.value === 'select') {
+    return {
+      subject: `The cases on lines ${listNames(arms.map(({ start }) => String(start)))} of the select have the same body`,
+      fix: 'Move the shared body into one function and call it from each case, or change the case that was meant to differ.',
     };
   }
   if (group.kind === 'switch') {

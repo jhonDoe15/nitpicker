@@ -69,8 +69,35 @@ function packageOf(program) {
   return declaration === undefined ? '' : codeChildren(declaration)[0].text.replaceAll(/\s+/gu, '');
 }
 
+const CLASS_DECLARATIONS = new Set([
+  'class_declaration',
+  'interface_declaration',
+  'enum_declaration',
+  'record_declaration',
+  'annotation_type_declaration',
+]);
+
+function starsOf(program) {
+  return codeChildren(program)
+    .filter((child) => child.type === 'import_declaration' && /\.\*\s*;?$/u.test(child.text))
+    .map((child) => child.text.replace(/^import\s+(static\s+)?/u, '').replace(/\.\*\s*;?$/u, ''))
+    .map((text) => text.replaceAll(/\s+/gu, ''));
+}
+
+function classesOf(program) {
+  return [...depthFirst(program, codeChildren)]
+    .filter((node) => CLASS_DECLARATIONS.has(node.type))
+    .map((node) => field(node, 'name')?.text)
+    .filter((name) => name !== undefined);
+}
+
 export function fileScope(program) {
-  return { imported: importsOf(program), packageName: packageOf(program) };
+  return {
+    imported: importsOf(program),
+    packageName: packageOf(program),
+    stars: starsOf(program),
+    classes: classesOf(program),
+  };
 }
 
 function declaredFields(members) {

@@ -1,5 +1,7 @@
 import { nodesOf } from '../../../near-duplicates/tree/nodes.mjs';
 
+const COLLECTION = 'collection';
+
 const DECLARING = new Set(['parameter', 'declare', 'foreach']);
 const STRINGS = new Set(['String', 'CharSequence', 'StringBuilder', 'StringBuffer']);
 const LISTS = new Set([
@@ -55,21 +57,69 @@ function baseName(text) {
   return bare.slice(bare.lastIndexOf('.') + 1);
 }
 
-/** 'string', 'list', 'collection', 'array', 'optional', 'float' or the type's own name. */
-export function kindOfType(text) {
-  if (text.endsWith('[]')) {
-    return 'array';
-  }
-  const name = baseName(text);
+const LIBRARY_PACKAGES = new Set(['java.util', 'java.util.concurrent', 'kotlin.collections']);
+const LIBRARY_PREFIX = /^(?:java\.util|kotlin\.collections)\./u;
+const LIBRARY_KINDS = new Set(['list', COLLECTION, 'optional']);
+const KOTLIN_COLLECTIONS = new Set([
+  'List',
+  'MutableList',
+  'Set',
+  'MutableSet',
+  'Map',
+  'MutableMap',
+  'Collection',
+  'MutableCollection',
+  'ArrayList',
+  'HashMap',
+  'HashSet',
+  'LinkedHashMap',
+  'LinkedHashSet',
+  'ArrayDeque',
+]);
+
+function packageOf(importText) {
+  return importText.slice(0, importText.lastIndexOf('.'));
+}
+
+function isLibraryType(name, text, { imports, classes, kotlin }) {
+  const named = text.replace(GENERICS, '');
+  const imported = imports.names.some(
+    (entry) => entry.endsWith(`.${name}`) && LIBRARY_PACKAGES.has(packageOf(entry)),
+  );
+  const unclaimed = !(classes.has(name) || imports.classes.includes(name));
+  const starred = imports.stars.some((star) => LIBRARY_PACKAGES.has(star));
+  return (
+    LIBRARY_PREFIX.test(named) ||
+    imported ||
+    (unclaimed && (starred || (kotlin && KOTLIN_COLLECTIONS.has(name))))
+  );
+}
+
+function kindNamed(name) {
   const kinds = [
     ['string', STRINGS],
     ['list', LISTS],
-    ['collection', COLLECTIONS],
+    [COLLECTION, COLLECTIONS],
     ['array', ARRAYS],
     ['optional', OPTIONALS],
     ['float', FLOATS],
   ];
   return kinds.find(([, names]) => names.has(name))?.[0] ?? name;
+}
+
+/**
+ * 'string', 'list', COLLECTION, 'array', 'optional', 'float' or the type's own name. With a
+ * `resolver` (`imports` of the file, project `classes`, `kotlin`), a collection or optional type
+ * counts only when it resolves to the library type.
+ */
+export function kindOfType(text, resolver) {
+  if (text.endsWith('[]')) {
+    return 'array';
+  }
+  const name = baseName(text);
+  const kind = kindNamed(name);
+  const isLibrary = LIBRARY_KINDS.has(kind);
+  return isLibrary && resolver !== undefined && !isLibraryType(name, text, resolver) ? name : kind;
 }
 
 /** The declared type text of each name that every declaration in `tree` types the same way. */
@@ -88,5 +138,5 @@ export function declaredTypes(tree) {
 }
 
 export function isCollectionKind(kind) {
-  return kind === 'list' || kind === 'collection';
+  return kind === 'list' || kind === COLLECTION;
 }

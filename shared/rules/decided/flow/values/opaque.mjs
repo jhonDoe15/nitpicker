@@ -32,7 +32,7 @@ function literalValue(node) {
 function isRoundedForFloat(node, scope) {
   const [left, right] = node.children;
   const [literal, other] = isNumberLiteral(left) ? [left, right] : [right, left];
-  if (!isNumberLiteral(literal) || !SINGLE.has(typeOf(other, scope))) {
+  if (!(isNumberLiteral(literal) && SINGLE.has(typeOf(other, scope)))) {
     return false;
   }
   const value = literalValue(literal);
