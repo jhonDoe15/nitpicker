@@ -1,5 +1,5 @@
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-lazy-relation-in-loop.mjs';
 
 const ENTITIES = [
@@ -58,20 +58,20 @@ const HELPERS = [
   '',
 ].join('\n');
 
-function inRun(body) {
+function inRun(body: string) {
   return `${HEADER}export async function run() { ${body} }`;
 }
 
-function withHelpers(body) {
+function withHelpers(body: string) {
   return typed(`${HEADER}${HELPERS}export async function run() { ${body} }`);
 }
 
-function helperError(helper) {
+function helperError(helper: string) {
   const data = { access: 'order.customer', entity: 'Order', relation: 'customer' };
   return { messageId: 'lazyHelper', data: { helper, origin: 'orders.find()', ...data } };
 }
 
-function invalid(body, data) {
+function invalid(body: string, data?: Record<string, string>) {
   return { ...typed(inRun(body)), errors: [{ messageId: 'lazy', ...(data ? { data } : {}) }] };
 }
 

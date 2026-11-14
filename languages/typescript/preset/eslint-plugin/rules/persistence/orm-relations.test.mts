@@ -1,4 +1,4 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as noEagerRelation } from './no-eager-relation.mjs';
 import { rule as noManyToManyCascadeRemove } from './no-many-to-many-cascade-remove.mjs';
 
@@ -10,7 +10,7 @@ const mikro =
 const sequelize = "import { DataTypes, Model } from 'sequelize';\n";
 const scoped = "import { DefaultScope, Table } from 'sequelize-typescript';\n";
 
-function flagged(code, messageId, count = 1) {
+function flagged(code: string, messageId: string, count = 1) {
   return { code, errors: Array.from({ length: count }, () => ({ messageId })) };
 }
 

@@ -74,7 +74,7 @@ export class Invoice extends Model {
 }
 `;
 
-function write(root, file, text) {
+function write(root: string, file: string, text: string) {
   const target = path.resolve(root, file);
   if (!target.startsWith(root + path.sep)) {
     throw new Error(`${file} is outside ${root}`);
@@ -83,7 +83,7 @@ function write(root, file, text) {
   writeFileSync(target, text);
 }
 
-export function ormProject(extra = {}) {
+export function ormProject(extra: Record<string, string> = {}): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-collection-joins-')));
   write(root, 'node_modules/typeorm/index.d.ts', TYPEORM);
   write(root, 'node_modules/@mikro-orm/core/index.d.ts', MIKRO_ORM);

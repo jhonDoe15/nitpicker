@@ -1,11 +1,11 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-unindexed-foreign-key.mjs';
-import { schemaProject } from './test-support/schema-projects.mjs';
+import { schemaProject } from './test-support/schema-projects.mts';
 
-function manifest(dependencies) {
+function manifest(dependencies: string[]) {
   return JSON.stringify({
     dependencies: Object.fromEntries(dependencies.map((name) => [name, '1.0.0'])),
   });
@@ -44,7 +44,20 @@ const DRIZZLE = [
   '',
 ].join('\n');
 
-function at(root, code, errors) {
+type ExpectedError = { messageId: string; data: Record<string, string> };
+type Case = { code: string; filename: string };
+
+function at(root: string, code: string): Case;
+function at(
+  root: string,
+  code: string,
+  errors: ExpectedError[],
+): Case & { errors: ExpectedError[] };
+function at(
+  root: string,
+  code: string,
+  errors?: ExpectedError[],
+): Case | (Case & { errors: ExpectedError[] }) {
   return {
     code,
     filename: path.join(root, 'src/order.ts'),
@@ -52,14 +65,14 @@ function at(root, code, errors) {
   };
 }
 
-function flagged(messageId, property, code, root = postgres) {
+function flagged(messageId: string, property: string, code: string, root = postgres) {
   return at(root, code, [{ messageId, data: { property, columns: '' } }]);
 }
 
-function drizzle(property, code) {
+function drizzle(property: string, code: string) {
   const columns = property
     .split(', ')
-    .map((column) => `table.${column}`)
+    .map((column: string) => `table.${column}`)
     .join(', ');
   return at(postgres, code, [{ messageId: 'Drizzle', data: { property, columns } }]);
 }

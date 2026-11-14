@@ -1,5 +1,5 @@
-import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mjs';
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
+import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { rule } from './no-retry-without-idempotency.mjs';
 
 const pRetry = "import pRetry from 'p-retry';\n";
@@ -70,7 +70,7 @@ const POLICIES = [
 ].join('\n');
 const INSERT = "pool.query('INSERT INTO orders (id) VALUES ($1)', [id])";
 
-function retried(body) {
+function retried(body: string) {
   return typed(
     `${HEADER}export async function run(id: string) { await pRetry(async () => { ${body} }); }`,
   );
