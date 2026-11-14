@@ -1,61 +1,10 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
 import { isStrictRule } from '../../preset/strict-rules.mjs';
-import { normalizeEslintResults } from './normalize.mjs';
-
-const temporaryRoots = [];
-
-afterAll(() => {
-  for (const root of temporaryRoots) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function positionOf(code, offset) {
-  const before = code.slice(0, offset).split('\n');
-  return { line: before.length, column: (before.at(-1)?.length ?? 0) + 1 };
-}
-
-// Normalizes ESLint messages that point at `reported` (a substring of `code`, or a list of them,
-// one message each), the way ESLint reports them: a 1-based start and end.
-function findingFor({
-  code,
-  reported,
-  ruleId = 'functional/prefer-immutable-types',
-  messageId,
-  message = 'Reported text.',
-}) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-fingerprint-'));
-  temporaryRoots.push(root);
-  mkdirSync(path.join(root, 'src'), { recursive: true });
-  writeFileSync(path.join(root, 'src/legacy.ts'), code);
-  const reportedTexts = [reported].flat();
-  const messages = reportedTexts.map((text, index) => {
-    const start = code.indexOf(text, index === 0 ? 0 : code.indexOf(reportedTexts[index - 1]) + 1);
-    const first = positionOf(code, start);
-    const last = positionOf(code, start + text.length);
-    return {
-      ruleId,
-      messageId,
-      message,
-      severity: 2,
-      line: first.line,
-      column: first.column,
-      endLine: last.line,
-      endColumn: last.column,
-    };
-  });
-  const findings = normalizeEslintResults({
-    value: [{ filePath: path.join(root, 'src/legacy.ts'), messages }],
-    projectRoot: root,
-    analyzerName: 'eslint-strict',
-  });
-  expect(findings).toHaveLength(reportedTexts.length);
-  return findings;
-}
+import { normalizeEslintResults } from './normalize.mts';
+import { findingFor, makeTemporaryRoot, positionOf } from './test-support/finding-for.mjs';
 
 function compare(base, head) {
   return compareFindings({ baseFindings: base, headFindings: head });
@@ -155,7 +104,7 @@ describe('a finding in an edited function stays baselined while the function has
       rule: SILENT,
       path: 'src/legacy.ts',
       identity:
-        'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+        'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
       message:
         'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
@@ -250,7 +199,7 @@ describe('a finding in an edited function stays baselined while the function has
         rule: 'nitpicker/no-silent-catch',
         path: 'src/legacy.ts',
         identity:
-          'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+          'message:Reported text.|node:CatchClause|syntax:b3b5d029473cf49734508549|occurrence:1',
         message:
           'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },
@@ -451,8 +400,7 @@ describe('a complexity finding fails only when the number rises', () => {
 
 describe('findings another rule already covers', () => {
   function normalized(code, reports) {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-eslint-superseded-'));
-    temporaryRoots.push(root);
+    const root = makeTemporaryRoot('nitpicker-eslint-superseded-');
     mkdirSync(path.join(root, 'src'), { recursive: true });
     writeFileSync(path.join(root, 'src/rows.tsx'), code);
     const messages = reports.map(([ruleId, text]) => {

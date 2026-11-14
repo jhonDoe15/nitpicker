@@ -54,7 +54,20 @@ Part of the [Java preset guide](../java-preset.md).
   `45m`, and values outside 1–17895 are errors. The upper bound keeps the analyzer's Node.js
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
-  not change Maven's command budget or configure individual PIT phases.
+  not change Maven's command budget or configure individual PIT phases. When the analysis
+  command times out outside `--quick`, it runs once more with every test task, JaCoCo and PIT
+  off (`-Pnitpicker.testsSkipped=true`, which marks every project like a failing one of a red
+  base), so the static findings are kept next to one `tests-timed-out` tool error.
+- **Maven timeout.** Each Maven command, and each tool nitpicker runs on the Maven build's
+  output, has a 15-minute budget by default. Set `NITPICKER_MAVEN_TIMEOUT_MINUTES` the same way
+  as the Gradle variable, with the same limits. The analyzer deadline allows two commands plus
+  one minute; when both variables are set, the larger budget sets it. When the build and test
+  command times out outside `--quick`, it runs once more with the goals of a quick run (only
+  the ArchUnit classes), every module skips JaCoCo and PIT, and the other tools run as usual
+  next to one `tests-timed-out` tool error, as on Gradle.
+- **Analyzer deadline.** `"analyzerTimeoutMinutes": { "java": 90 }` (or `"kotlin"`) in
+  `nitpicker.config.json` replaces the analyzer deadline, and Gradle and Maven commands without
+  their own variable get the same budget. See [Analyzer timeouts](usage.md#analyzer-timeouts).
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
   opt-in [change history](../usage.md#change-history) check, which reads git and not the Java runner.
   `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
@@ -100,11 +113,12 @@ Part of the [Java preset guide](../java-preset.md).
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
-    names the feature folders `co-change` reads), and `layout.sharedRoots` and `layout.featureRoots`
-    are accepted because `shared/project-rules/fact-rules.mjs` registers Java and Kotlin for
-    `shared-used-by-one-feature`, the rule that reads them. `testConsole` is accepted because the registry lists Java and
-    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle` and `spotbugs`.
+    keys are TypeScript only, and `layout.featureRoots` and `layout.sharedRoots` are accepted
+    because the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`,
+    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`) and
+    `shared-used-by-one-feature`, which the registry lists Java and Kotlin for; once `history.coChange`
+    is on, `featureRoots` also names the feature folders `co-change` reads. `testConsole` is accepted because the registry lists Java and
+    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.

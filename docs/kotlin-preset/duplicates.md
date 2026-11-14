@@ -5,7 +5,7 @@ Part of the [Kotlin preset guide](../kotlin-preset.md).
 The shared duplicates rule runs on Kotlin: jscpd (the version of the TypeScript preset, mode `mild`)
 with `--format kotlin` over each Kotlin source root from the manifest, ignoring the folders named `build`, `generated`,
 `target` and `out` (replaced by `duplicates.skippedFolders`). Clones made only of `package` and `import` lines are not reported. Its message names both files and tells to add either to `exclude`; a glob that matches either file of the pair lifts the finding. Any new clone fails with `duplicate-clone`, tool `duplicates`, identity from the file pair,
-the cloned text and the n-th occurrence, never a line. Clones are found within one source root and
+the cloned text and the n-th occurrence of that text in the pair, never a line. Clones are found within one source root and
 within the Kotlin files; a clone between a `.kt` and a `.java` file, or between two source roots, is not
 (the same as for several Java roots).
 
@@ -19,10 +19,39 @@ clones that only repeat one or two statements (DTO mappers, `when` tables, `if` 
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 
+`near-duplicate` (tool `structure`) runs on Kotlin and Java sources together: two functions,
+accessors, secondary constructors or property lambdas whose syntax trees are proved copies (the
+same apart from renamed locals, up to 4 changed values or types, a shared run of 3 or more
+statements, or the same logic written another way: a loop and the `any`/`all` call that replaces
+it, a call to a non-`open` helper in the same file and that helper's body, or guards and locals a
+solver proves equal) fail, also across modules. A copy large enough for the renamed `duplicate-clone` pass
+and different only in names and literals is left to it; type-specialized families and the
+platform variants of one Kotlin Multiplatform declaration are not reported (see "Reuse rules" in
+`java-preset.md`). Lift a pair with an `exceptions` entry for either file.
+
+`decided-condition` (tool `structure`) reads the same trees: an `if`, `while`, `when` arm, ternary
+or `&&`/`||` operand that the guards before it in the same function decide fails, when a solver
+proves it always true (a redundant check) or always false (dead code). The guards are enclosing
+`if`s and their `else`, guard clauses that `return`, `throw`, `break` or `continue`, earlier arms
+of a `when` without a subject and the left side of `&&` and `||`; a write, or a call on a `var` a
+lambda captures, forgets what was known.
+
+`duplicate-branch` (tool `structure`) reads them too: two arms of an `if` chain or a `when` whose
+bodies have the same canonical tree (locals declared in the arm may have other names) fail, except
+arms picked by an `is` test, where the same call can resolve differently for each type; merge
+the conditions or labels into one arm, or change the arm that was meant to differ. The statements
+every arm of a complete `if` chain or `when` starts or ends with are reported, not failed, when
+moving them before or after it keeps behaviour.
+
 The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
 Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
 `java-preset.md`): top-level functions and properties, the members of `object`s and companion
 objects, and top-level classes are compared within one Gradle module; an `import ... as` alias or a
 fully qualified name that keeps two different classes of one name apart is a collision, and same-named functions, which
 overload, are not. `shared-used-by-one-feature` reads the same uses: a file under `layout.sharedRoots` that only one
-feature under `layout.featureRoots` uses is reported, as in the Java preset.
+feature under `layout.featureRoots` uses is reported, as in the Java preset. `public-alternative-bypass` treats a public
+`typealias` of a class in a subpackage as a re-export: when `shop/billing/Aliases.kt` declares
+`typealias Invoice = shop.billing.internal.Invoice`, Kotlin code outside the folder `shop/billing/` that names
+`shop.billing.internal.Invoice` is reported and told to import `Invoice` from `shop.billing`. Java code is left alone,
+since Java cannot see a type alias, and so are classes with a `main` function, `private` and `internal` aliases, an
+alias of a class in its own package, and aliases of a generic or function type.

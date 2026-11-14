@@ -1,17 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { MESSAGES, renderMessage } from '../../../../../shared/policy.mjs';
-import { mutationSkipFor } from '../runners/mutation.mjs';
-import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mjs';
+import { mutationSkipFor } from '../runners/skips/mutation-skips.mts';
+import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mts';
 import {
   coverageFailureFindings,
   formatTestFailures as formatVitestFailures,
-} from './test-report.mjs';
+} from './test-report.mts';
 import {
   timeoutText,
   unhandledErrors,
   unhandledErrorText,
   withSnapshotAdvice,
-} from './failure-lines.mjs';
+} from './failure-lines.mts';
 
 const rule = '⎯⎯⎯⎯⎯⎯⎯';
 const unhandledOutput = [
@@ -194,6 +195,7 @@ describe('failures of a base snapshot', () => {
             'Tests fail on the base:',
             '  src/a.test.ts > adds: AssertionError: expected 1 to be 2',
             '  src/a.test.ts > subtracts: Error: boom',
+            linkSentence('baseTestsFail'),
           ].join('\n'),
           classification: 'tool-error',
         },
@@ -229,6 +231,7 @@ describe('failures of a base snapshot', () => {
       [
         '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '  src/a.test.ts > could not run: Cannot find module',
+        linkSentence('baseTestsFail'),
       ].join('\n'),
     ]);
   });

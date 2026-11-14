@@ -8,8 +8,8 @@ import {
   withHeadCheckoutFacts,
   withHeadPolicyFile,
 } from '../../../preset/head-policy.mjs';
-import { normalizeArchitectureViolations } from '../../static-checks-runner.mjs';
-import { loadDependencyGraph } from '../project-dependency-graph.mjs';
+import { normalizeArchitectureViolations } from '../../static-checks-runner.mts';
+import { loadDependencyGraph } from '../project-dependency-graph.mts';
 
 const roots = [];
 afterEach(() => {

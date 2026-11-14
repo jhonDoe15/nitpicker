@@ -111,15 +111,6 @@ const OTHER_ROWS = [
   },
   {
     tool: 'coupling',
-    rule: 'package-cycle',
-    page: 'python-nitpicker',
-    summary: 'A package that is in a dependency cycle with other packages.',
-    why: 'A cycle makes packages impossible to load, test or replace one at a time.',
-    allowed:
-      'Move the shared types down into one of them, or invert one dependency behind an interface.',
-  },
-  {
-    tool: 'coupling',
     rule: 'no-production-cycles',
     page: 'python-nitpicker',
     summary: 'A module that is in an import cycle with other modules of its package.',

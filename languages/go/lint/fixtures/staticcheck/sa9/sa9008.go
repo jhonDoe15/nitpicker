@@ -1,14 +1,14 @@
 package sa9
 
-func Wrong(value any) int {
-	if value, ok := value.(int); ok {
+func Wrong(value any) int { // want any-in-exported-signature
+	if value, ok := value.(int); ok { // want identical-branches
 		return value
-	} else {
+	} else { // want indent-error-flow
 		return value // want SA9008
 	}
 }
 
-func Asserted(value any) int {
+func Asserted(value any) int { // want any-in-exported-signature
 	if count, ok := value.(int); ok {
 		return count
 	}

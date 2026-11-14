@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "mock-without-spec",
+    "mention": "create_autospec"
+  }
+]

@@ -1,36 +1,29 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
-import { failedCaseEntries, failingTestsError, freshReports } from '../builds/test-failures.mjs';
-import { readPitMutators } from '../builds/java-build.mjs';
-import { pitHistoryArguments } from '../builds/pit-history/pit-history.mjs';
+import { failedCaseEntries, freshReports } from '../builds/test-failures.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
-export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
-  const patterns = includes
+export function archunitPatterns(includes = DEFAULT_ARCHUNIT_INCLUDES) {
+  return includes
     .split(',')
     .map((pattern) => pattern.trim())
-    .filter(Boolean)
-    .map((pattern) => globMatcher(pattern));
+    .filter(Boolean);
+}
+
+export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
+  const patterns = archunitPatterns(includes).map((pattern) => globMatcher(pattern));
   return (className) => {
     const file = `${className.replaceAll('.', '/').replace(/\$.*$/u, '')}.class`;
     return patterns.some((pattern) => pattern.test(file));
   };
 }
 
-function classFiles(directory) {
+export function classFiles(directory) {
   return existsSync(directory)
     ? readdirSync(directory, { recursive: true, withFileTypes: true })
         .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
@@ -50,7 +43,19 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
+function freshTestReports(module, since) {
+  return testReportDirectories(module).flatMap(([, directory]) => freshReports(directory, since));
+}
+
+function copyArchunitReports(reports, reportDir, isArchunit) {
+  const archunitDir = path.join(reportDir, 'archunit');
+  for (const report of reports.filter((candidate) => isArchunit(suiteNameOf(candidate)))) {
+    mkdirSync(archunitDir, { recursive: true });
+    copyFileSync(report, path.join(archunitDir, path.basename(report)));
+  }
+}
+
+function testOutcome({ moduleName, failures, testsRan }) {
   if (failures.length === 0) {
     return { testsRan, failure: undefined };
   }
@@ -59,39 +64,26 @@ function testOutcome({ moduleName, failures, testsRan, tolerateFailures }) {
     tests: failures.map(({ text }) => text),
     details: failures.map(({ detail }) => detail),
   };
-  if (tolerateFailures === true) {
-    return { testsRan, failure };
-  }
-  throw failingTestsError([failure]);
+  return { testsRan, failure };
 }
 
-export function collectTestResults({
-  module,
-  reportDir,
-  since,
-  isArchunit,
-  tolerateFailures,
-  moduleName = '.',
-}) {
-  const reports = testReportDirectories(module).flatMap(([, directory]) =>
-    freshReports(directory, since),
-  );
-  const archunitDir = path.join(reportDir, 'archunit');
-  const failures = [];
-  for (const report of reports) {
-    if (isArchunit(suiteNameOf(report))) {
-      mkdirSync(archunitDir, { recursive: true });
-      copyFileSync(report, path.join(archunitDir, path.basename(report)));
-    } else {
-      failures.push(...failedCaseEntries(report));
-    }
-  }
+export function collectArchunitResults({ module, reportDir, since, isArchunit }) {
+  const reports = freshTestReports(module, since);
+  copyArchunitReports(reports, reportDir, isArchunit);
+  requireArchunitRun(module, reports, isArchunit);
+}
+
+export function collectTestResults({ module, reportDir, since, isArchunit, moduleName = '.' }) {
+  const reports = freshTestReports(module, since);
+  copyArchunitReports(reports, reportDir, isArchunit);
+  const failures = reports
+    .filter((report) => !isArchunit(suiteNameOf(report)))
+    .flatMap((report) => failedCaseEntries(report));
   requireArchunitRun(module, reports, isArchunit);
   return testOutcome({
     moduleName,
     failures,
     testsRan: reports.length > 0,
-    tolerateFailures,
   });
 }
 
@@ -112,7 +104,8 @@ export function freshExecFiles(execFiles, since) {
   );
 }
 
-export function runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn }) {
+export function runJacocoReport(options) {
+  const { module, reportDir, tools, execFiles, since, testsRan, spawn, timeoutMs } = options;
   const report = path.join(reportDir, 'jacoco.xml');
   if (classFiles(module.outputDirectory).length === 0) {
     writeFileSync(report, `<?xml version="1.0"?><report name="${module.coordinates}"></report>`);
@@ -143,35 +136,8 @@ export function runJacocoReport({ module, reportDir, tools, execFiles, since, te
     cwd: module.basedir,
     accept: (result) => result.status === 0,
     spawn,
+    timeoutMs,
   });
-}
-
-export function pitTargets(classDirectory) {
-  const targets = new Set();
-  const pending = [{ directory: classDirectory, prefix: '' }];
-  for (const { directory, prefix } of pending) {
-    const entries = readdirSync(directory, { withFileTypes: true });
-    const classes = entries
-      .filter((entry) => entry.isFile() && entry.name.endsWith('.class'))
-      .map((entry) => `${prefix}${entry.name.replace(/\.class$/u, '')}`);
-    const wholePackage = classes.length > 0 && !'org.pitest.'.startsWith(prefix);
-    if (wholePackage) {
-      targets.add(`${prefix}*`);
-      continue;
-    }
-    for (const name of classes) {
-      targets.add(name);
-    }
-    pending.push(
-      ...entries
-        .filter((entry) => entry.isDirectory())
-        .map((entry) => ({
-          directory: path.join(directory, entry.name),
-          prefix: `${prefix}${entry.name}.`,
-        })),
-    );
-  }
-  return [...targets].sort();
 }
 
 function topLevelClasses(classDirectory) {
@@ -208,78 +174,6 @@ export function pitClasspath(tools, testRuntime) {
     ...(launcher === undefined ? [] : tools[`launcher-${launcher}`]),
     ...(names.some((name) => TESTNG_JAR.test(name)) ? tools['pit-testng'] : []),
   ];
-}
-
-export function javaArgumentFile(args) {
-  return args
-    .map((argument) => {
-      const escaped = argument
-        .replaceAll('\\', '\\\\')
-        .replaceAll('"', '\\"')
-        .replaceAll('\n', '\\n')
-        .replaceAll('\r', '\\r');
-      return `"${escaped}"\n`;
-    })
-    .join('');
-}
-
-function pitArgLine(pitDir, args) {
-  if (args.length === 0) {
-    return [];
-  }
-  const file = path.join(pitDir, 'jvm-arguments');
-  writeFileSync(file, javaArgumentFile(args));
-  const quote = file.includes('"') ? "'" : '"';
-  return ['--argLine', `${quote}@${file}${quote}`];
-}
-
-export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn, history }) {
-  const pitDir = path.join(reportDir, 'pit');
-  rmSync(pitDir, { recursive: true, force: true });
-  mkdirSync(pitDir, { recursive: true });
-  const report = path.join(pitDir, 'mutations.xml');
-  if (classFiles(module.outputDirectory).length === 0) {
-    return;
-  }
-  runJava({
-    tool: 'PIT',
-    classpath: pitClasspath(tools, classpaths.testRuntime),
-    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-    args: [
-      '--reportDir',
-      pitDir,
-      '--targetClasses',
-      pitTargets(module.outputDirectory).join(','),
-      '--targetTests',
-      pitTests(module.testOutputDirectory, isArchunit).join(','),
-      '--sourceDirs',
-      module.sourceRoots.filter((root) => existsSync(root)).join(','),
-      '--classPath',
-      [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
-      '--mutableCodePaths',
-      module.outputDirectory,
-      '--mutators',
-      readPitMutators().join(','),
-      '--outputFormats',
-      'XML',
-      '--timestampedReports',
-      'false',
-      '--threads',
-      '2',
-      '--failWhenNoMutations',
-      'false',
-      '--verbose',
-      'false',
-      ...pitArgLine(pitDir, module.testJvmArgs),
-      ...pitHistoryArguments(history, module.buildDirectory),
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-  });
-  if (!existsSync(report)) {
-    writeFileSync(report, '<mutations/>');
-  }
 }
 
 export function missingLauncherVersions(analyzed) {

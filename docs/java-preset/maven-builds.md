@@ -48,7 +48,8 @@ by field. Per snapshot:
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
    A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
-   jMolecules (`jmolecules-ddd`) also runs the Spring architecture rules: ArchUnit is resolved with
+   jMolecules (`jmolecules-ddd`), or any module when the head checkout has a feature folder (see
+   [Contract types](spring-architecture-rules.md#contract-types)), also runs the Spring architecture rules: ArchUnit is resolved with
    the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
@@ -75,13 +76,13 @@ by field. Per snapshot:
   with Failsafe kept off in every module, stays on `test`.
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
-  Surefire's or Failsafe's reports, is a `java/tests-failed` tool error (exit 1) that names up to
+  Surefire's or Failsafe's reports, is a `tests/tests-failed` tool error of its module (exit 1) that names up to
   50 failing tests with the line of the failing assertion and the expected and received values. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
   properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
-  as well (the Test retries bullet above has the message). On the base snapshot the failing tests
-  are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
-  `tests-failed` tool error for that module that the core reads as a red base, the same as a Gradle
-  base whose tests fail. The other modules keep their
+  as well (the Test retries bullet above has the message). The failing tests are listed instead of
+  thrown: that module skips JaCoCo and PIT and the other checks run. On the base the failure is a
+  `java/tests-failed` tool error for that module that the core reads as a red base, the same as a
+  Gradle base whose tests fail; on the head it is the `tests/tests-failed` error above. The other modules keep their
   coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
   own source and test directories. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their
@@ -99,7 +100,13 @@ by field. Per snapshot:
   never count. `failsafe` counts as an integration task, so the tests Failsafe runs in a `verify`
   build get the integration budget.
 - **JaCoCo.** Our `prepare-agent` always runs; a project's own `prepare-agent` or
-  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent there).
+  `prepare-agent-integration` replaces it in `argLine` (the agent replaces an earlier agent of the
+  same jar there). Two JaCoCo agents of different versions cannot share a JVM (the second fails to
+  define `java.lang.$JaCoCo` and the forked test JVM aborts), so when the project binds its own
+  agent at a version (Spring Boot's parent manages one), our `prepare-agent` runs at that version
+  instead of the pinned one; the pinned JaCoCo CLI still writes the report. Modules of one reactor
+  that bind different agent versions stop the run with a message that names them, since one
+  `prepare-agent` goal runs for the whole reactor.
   Without a configured `destFile` the project's agent still writes our file, because our
   `-Djacoco.destFile` sets the default of both goals; a configured `destFile` is read as well. Every
   fresh file among ours and the configured ones goes to one JaCoCo report. Failsafe reads the same
@@ -118,10 +125,60 @@ by field. Per snapshot:
   detection scans one source root at a time, so a clone between two modules is not found, as a clone
   between two source roots is not; on Maven the scan runs once from the project root over the roots of
   all modules, as on Gradle, and its clone findings carry the module-prefixed paths.
+- **Module descriptors.** jdeps reads a class directory with a `module-info.class` as a module and
+  must then resolve every module its descriptor `requires`; it stops on a plain jar ("Unable to
+  derive module descriptor"), a missing module or a split package. Both builds run jdeps on such a
+  module exactly as on one without a descriptor, with no module path: over a temporary copy of the
+  class files of the modular class directories, without `module-info.class`, made in a
+  temporary directory and removed afterwards (`languages/java/builds/classes/jdeps-reports.mjs` on
+  Maven, the `nitpickerJdeps` task in `languages/java/gradle/nitpicker.init.gradle` on Gradle). The copy and
+  `jdeps-classes.txt` take regular `.class` files only, so a symbolic link inside a class directory,
+  to a file or a folder, is left out of both (a class directory that is itself a link is read
+  through it). A class directory without a descriptor is read in place. Only the
+  edges between the module's own classes are read, so coupling is the same. When jdeps fails, the error gives its exit code and its stderr.
+- **Guards.** The [guards](#guards) run on Maven too, outside Maven and per module
+  (`languages/java/maven/guards/`), writing the same reports in `target/nitpicker/`. The javac
+  lint pass reads the `maven-compiler-plugin` settings from the effective POM (`release`, `source`,
+  `target`, `encoding`, `compilerArgs`, `compilerArgument`, `enablePreview`, the `default-compile`
+  execution's configuration first, then the plugin's, then the `maven.compiler.*` properties; a
+  value still holding an unresolved `${...}` counts as unset). It compiles with the `javac` of
+  `JAVA_HOME` (or the PATH), not a Maven toolchain, against the main compile classpath (compile,
+  provided and system scopes), takes Lombok from it, and reads the sources in the project's
+  encoding. The runner is the one the Gradle side uses (`languages/java/builds/lint/`), so staging,
+  the differential lint and the Lombok handling below are the same on both builds; the annotation
+  processors' generated sources for a module with a descriptor come from
+  `target/generated-sources/annotations`. A POM that sets no release, source or target is linted
+  as Java 8, the compiler plugin's default. Sources under a root outside the module directory (a
+  `build-helper` root such as `../shared/src`) are not linted; their classes are on the class path, except in a module with
+  a `module-info.java`, where such a root can make the lint compile fail (`javac/lint-not-run`). In
+  a module with a descriptor, jars that are modules go on `--module-path` and the rest on `-cp`,
+  as on Gradle; when that compile fails, it is retried with every jar on `--module-path`, as the
+  compiler plugin puts a plain jar there when `module-info.java` requires it (the Gradle side
+  retries the same way). On the head it reuses the base's warnings for unchanged files exactly as
+  on Gradle. forbiddenapis reads the module's
+  output directory (`target/classes` unless the POM moves it) against the main compile classpath
+  and is skipped when the module has no classes; CPD, the guard and test-honesty PMD rulesets,
+  `pmd-tests.xml` (`TestClassWithoutTestCases` with the main source roots excluded, after the
+  guard rulesets and before the Spring one, only with Nitpicker's rulesets on),
+  the extra Checkstyle modules and the sealed `permits` edges are the same as on Gradle. The Java
+  16 PMD rules are skipped below release 16, with the same Java 8 default. The dependency check
+  reads the dependencies the module's own `pom.xml` declares with compile scope (no `<scope>` or
+  `compile`) and not `<optional>`; `provided`, `runtime`, `test` and `system` are not checked,
+  nor are dependencies on other modules of the reactor or dependencies a parent POM declares (the
+  parent has no classes to compare with). A jar that registers an annotation processor
+  (`META-INF/services/javax.annotation.processing.Processor`, such as `mapstruct-processor`)
+  counts as used, and so does a jar that cannot be read as a zip. Each dependency's own jar comes
+  from `dependency:list`, and the finding sits on
+  the module's `pom.xml` with Maven's scopes as the alternatives. The end-to-end suite compares
+  Gradle and Maven on the guards fixture and lints a reactor with a javac plug-in, preview
+  features, a module descriptor that requires a jar module, and an older release.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
-  set, else the PATH.
+  set, else the PATH. Checkstyle 13 and the Java formatters need JDK 21 or newer to run: they run on
+  that `java` when it is 21 or newer, else on the lowest JDK 21 or newer found where Error Prone
+  looks for one (the `JAVA_HOME_<N>_X64` variables, `~/.m2/toolchains.xml`, SDKMAN, `/usr/lib/jvm`,
+  `/Library/Java/JavaVirtualMachines`), and the run stops with that list when there is none.
 - **Kotlin.** A Maven project that applies `kotlin-maven-plugin` runs with the Kotlin preset (see
   [Maven](kotlin-preset.md#maven)); the java preset on it analyzes the Java sources only.
 - **Not covered.** A surefire or Failsafe configuration that sets

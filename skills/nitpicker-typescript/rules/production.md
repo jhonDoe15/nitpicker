@@ -3,9 +3,31 @@
 Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from the start; the gate is a backstop.
 
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
+- A close, dispose, stop or `afterAll` function releases every resource even when one release fails:
+  `Promise.allSettled` over the releases, then rethrow the first failure, or `try { ... } finally { reset }`;
+  never `await a.close(); await b.close();` or `Promise.all` of releases
+  (`nitpicker/no-cleanup-skipped-on-failure`).
+- A close function that clears a map of pending callbacks or resolve/reject pairs rejects every entry first
+  (`for (const entry of pending.values()) entry.reject(new Error('closed'));`), so no caller waits forever
+  (`nitpicker/settle-pending-on-close`).
+- A scope with a close function releases what it registers: keep the handler and call `off` on the emitter, or
+  register with `once` or a `{ signal }` that close aborts, and keep each `setInterval` or retry `setTimeout`
+  handle to `clearInterval` or `clearTimeout` it in close (`nitpicker/release-listeners-on-close`).
+- A promise kept in a field or variable and returned on later calls is cleared when it rejects, and only while it
+  still holds that attempt: `catch (error) { if (conn === attempt) { conn = undefined; } throw error; }`
+  (`nitpicker/no-cached-rejection`).
+- A Map, Set or array in a class field or factory closure that a method adds per request, session or run to is
+  removed from when that ends (`finally`, close), bounded by a `size` check, or a `WeakMap`
+  (`nitpicker/no-add-only-collection`).
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
   or `AbortSignal.timeout(ms)` straight to an API that takes `signal`) and drop the race.
+- Do not update shared state from a value read before an `await` (`state.total += await load()`):
+  await into a local first (`const delta = await load(); state.total += delta;`), then read and
+  write the shared state with no `await` between them. A lock or queue is not recognized; state
+  that is already serialized takes a reviewed exception (`nitpicker/require-atomic-updates`).
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. RxJS: `mergeMap(fn, 8)` or `concatMap`, never `forkJoin(items.map(load))`. Never `Promise.all(items.map(send))` over a runtime collection.
 - Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
@@ -14,8 +36,19 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `console.*` is a finding everywhere.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- In an `async` function or a request handler, use the promise APIs (`readFile` from
+  `node:fs/promises`, `access` or `stat` instead of `existsSync`, `promisify(execFile)`,
+  `promisify(pbkdf2)`), never `readFileSync`, `execSync`, `pbkdf2Sync` and the other `*Sync` calls of
+  `fs`, `child_process`, `crypto` and `zlib`: they block the event loop for every other request
+  (`nitpicker/no-sync-node-api-in-async`, entry points included). Module top level, a worker thread
+  and a CLI `main` that is only called from startup code stay synchronous.
 - Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
   throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
+- Build an `Intl` formatter or an `Ajv` instance with fixed options once, at module scope or in a
+  class field, not per call (`nitpicker/reusable-object-per-call`).
+- Test an environment variable for a value, not only for `undefined`: `if (!process.env.API_URL)`,
+  `process.env.PORT || '3000'`, or a schema with `z.string().min(1)`. `API_URL=` gives `''`, which passes
+  `!== undefined`, `in` and `??` (`nitpicker/no-undefined-only-env-check`).
 - Regexes: a `g` or `y` regex keeps `lastIndex`, so don't reuse one with `test()` or `exec()`
   across calls; drop the flag or use `text.matchAll(pattern)` (`nitpicker/no-shared-stateful-regex`).
   `match`, `matchAll` and `search` compile a string argument as a regex: use `includes` or
@@ -25,9 +58,29 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   always accepts, a duplicate alternative, `[\w_]`, an empty group) is a `regexp/` finding: remove it
   or fix what was meant; a form with a shorter equivalent (`a{1}`, `(?:ab)c`, `[a]`) takes the
   shorter one.
+- A `new Promise` that waits on a listener, a stream or a callback takes `reject` and wires the
+  failure to it: `new Promise((resolve, reject) => { source.once('error', reject); ... })`, and a
+  node-style callback branches first: `if (error) { reject(error); return; }`. Better, use a form
+  that rejects by itself: `once` from `node:events`, `pipeline`/`finished` from
+  `node:stream/promises`, or `util.promisify` (`nitpicker/require-promise-reject`). A wait on a
+  socket or network stream also gets a deadline: a timer that rejects or `AbortSignal.timeout(ms)`.
 - A child process you wait for gets a deadline: `{ timeout: 30_000 }` on `execFileSync`/`spawnSync`, or a
   `timeout` or `signal: AbortSignal.timeout(30_000)` on `execFile` and an awaited `spawn` or `execa`
   (`nitpicker/require-process-timeout`; a build wrapper that only runs a child to completion takes an exception).
+- A page of rows has an order: `limit`/`offset`/`take`/`skip`, a Prisma `cursor` or SQL `LIMIT` comes with
+  `orderBy` on a unique key (or a tie-breaker after a non-unique one), and `json_agg`/`array_agg` or
+  Kysely `jsonArrayFrom` lists sort inside (`json_agg(t ORDER BY t.name)`) (`nitpicker/no-unordered-query`).
+- A runtime array in an SQL `in` list or a multi-row insert gets an empty check and a size bound: return early when
+  it is empty, then send it as one parameter (`= any($1::uuid[])`) or split it with the project's chunking
+  helper (`nitpicker/no-unbounded-query-array`).
+- Time values carry their unit in the name (`timeoutMs`, `ttlSeconds`) and meet only the same unit: convert
+  once where a value enters (`ttlSeconds * 1000`, `Math.floor(Date.now() / 1000)`), compare JWT `exp` with
+  `Date.now() / 1000`, pass milliseconds to `setTimeout` and `new Date(...)`, and never cut an epoch time
+  with `| 0` (`nitpicker/time-unit-mismatch`).
+- A database or AWS SDK client gets a timeout once, where it is built:
+  `new Pool({ statement_timeout: 30_000 })`, `extra: { statement_timeout: 30_000 }` on a TypeORM data source,
+  `requestHandler: { requestTimeout: 30_000, throwOnRequestTimeout: true }` on an AWS SDK client
+  (`nitpicker/require-client-timeout`).
 - In a server project, dates use UTC or a named zone, never the server's own: `getUTCHours()`,
   `toISOString()`, `Date.UTC(...)`, `{ timeZone }` for `Intl.DateTimeFormat` and `toLocale*String`,
   luxon `{ zone }`, date-fns `{ in: tz(zone) }`, dayjs `.utc()` (`nitpicker/no-local-time-zone`).
@@ -40,6 +93,12 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`
   or `groupBy` (`nitpicker/no-in-memory-query`).
+- Index every foreign key in the migration that adds it (`CREATE INDEX ON orders (customer_id)`, or an index
+  that starts with the column) and give Prisma relations an `@@index([authorId])`: PostgreSQL does not create
+  one (`foreign-key-index`).
+- Join at most one to-many relation into a query: TypeORM `relationLoadStrategy: 'query'` or a query
+  per collection, Sequelize `separate: true` on the other `hasMany` includes, and
+  `strategy: 'select-in'` on a MikroORM `populate` (`nitpicker/no-multiple-collection-joins`).
 - Index every foreign key: `@Index()` on a TypeORM `@ManyToOne` (or a class `@Index` that starts with it),
   `index: true` on a MikroORM `@ManyToOne`, `index().on(t.orderId)` in a Drizzle `pgTable`
   (`nitpicker/no-unindexed-foreign-key`; with migrations, a `CREATE INDEX` there, `foreign-key-index`).
@@ -47,6 +106,22 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   them, a `Map` built once before a loop or handler instead of `find((x) => x.key === key)` in it,
   and one `reduce` pass instead of `sort(...)[0]` or `toSorted(...).at(-1)`
   (`nitpicker/no-costly-collection-form`).
+- Rows read from a stream, async generator or cursor are handled as they arrive: in `for await`, flush
+  a fixed-size batch inside the loop (`if (batch.length >= 500) await save(batch.splice(0))`) and the
+  rest after it, never one array of every row (`nitpicker/no-collected-stream-rows`).
+- Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
+  `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
+  into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
+  before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
+  `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
+- Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
+  `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
+  shared folder under such a name (`nitpicker/no-generic-name`).
+- A string of five characters or more used three times in a file is named once as a constant
+  (`nitpicker/no-repeated-string-literal`).
+- Secrets come from the environment or a secrets manager, never from a literal given to `password`, `token`,
+  `apiKey` and the like (`nitpicker/no-hardcoded-secret`), and a log call or error message says a secret is
+  set or shows a masked tail, never the value (`nitpicker/no-secret-in-log`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 - The `$schema` line of `nitpicker.config.json`

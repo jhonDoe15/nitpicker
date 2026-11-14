@@ -3,7 +3,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {
@@ -15,6 +15,7 @@ import {
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
@@ -234,6 +235,15 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         message: CLONE_MESSAGE,
         classification: 'enforceable',
         location: { line: 3 },
+        ratchet: {
+          key: 'pair:src/main/java/demo/First.java|src/main/java/demo/Second.java:clone',
+          value: 381,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/main/java/demo/First.java', startLine: 3, endLine: 32 },
+            { path: 'src/main/java/demo/Second.java', startLine: 3, endLine: 32 },
+          ],
+        },
       },
     ]);
   });
@@ -254,7 +264,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         snapshot: 'head',
         rule: build.failure.error.rule,
         path: '.',
-        message: build.failure.error.message('head'),
+        message: build.failure.error.message('head', result.reports),
       },
     ]);
   });
@@ -273,7 +283,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         snapshot: 'base',
         rule: build.failure.error.rule,
         path: '.',
-        message: build.failure.error.message('base'),
+        message: build.failure.error.message('base', result.reports),
       },
     ]);
   });
@@ -303,7 +313,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
           snapshot: 'base',
           rule: 'tests-failed',
           path: '.',
-          message: 'Tests fail on the base:\n  demo.ATest.works: expected: 1',
+          message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
         },
       ]);
       expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
@@ -321,12 +331,12 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
         expect(result.exitCode, result.text).toBe(0);
         expect(result.json('notes.json').map(({ message }) => message)).toEqual([
-          'Tests fail on the base in core:\n  demo.ATest.works: expected: 1',
+          `Tests fail on the base in core:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
         ]);
       },
     );
 
-    it('stays a tool error on both snapshots when the head tests fail too, and exits 1', () => {
+    it('reads the base as red and fails the head whose tests fail too, with exit 1', () => {
       const root = repository(build.redBase.files(failing('works')));
       writeFiles(root, {
         'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
@@ -341,8 +351,16 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         notes: result.json('notes.json'),
       }).toEqual({
         exitCode: 1,
-        errors: ['base tests-failed', 'head tests-failed'],
-        notes: [],
+        errors: ['head tests-failed'],
+        notes: [
+          {
+            tool: 'java',
+            snapshot: 'base',
+            rule: 'tests-failed',
+            path: '.',
+            message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
+          },
+        ],
       });
     });
 
@@ -354,9 +372,14 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
       expect(result.exitCode, result.text).toBe(1);
       expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
-        '✖ 1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
+        '✖ 1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+          'Fix the tests and rerun:',
       ]);
-      expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
+      expect(
+        result
+          .json('tool-errors.json')
+          .map(({ tool, rule, snapshot }) => `${tool} ${snapshot} ${rule}`),
+      ).toEqual(['tests head tests-failed']);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
@@ -403,7 +426,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       snapshot: 'base',
       rule: build.missingBinary.rule,
       path: '.',
-      message: build.missingBinary.message(binary),
+      message: build.missingBinary.message(binary, result.reports),
     });
   });
   it('gates a snapshot with --all', () => {

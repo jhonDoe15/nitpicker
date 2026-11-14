@@ -6,6 +6,8 @@ const validationName = validationBehavior(readHeadPolicy().libraries).name;
 
 const nullLiteral = "Literal[raw='null']";
 const strictEqualityOperand = 'BinaryExpression[operator=/^[!=]==$/] > Literal';
+const jsonData =
+  "CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] :matches(Property, ArrayExpression, ConditionalExpression, LogicalExpression) > Literal";
 const jsonStringifyArgument =
   "CallExpression[callee.object.name='JSON'][callee.property.name='stringify'] > Literal";
 
@@ -14,7 +16,7 @@ const reactNullHost =
 
 function nullMessageFor({ react }) {
   const reactForm = react ? ', and the `useRef` and `createContext` argument' : '';
-  return `Use \`undefined\` for an absent value, and an optional field or parameter (\`value?: T\`) where it may be missing. \`null\` is only for strict comparison with a library value and the \`JSON.stringify\` replacer argument${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
+  return `Use \`undefined\` for an absent value, and an optional field or parameter (\`value?: T\`) where it may be missing. \`null\` is only for strict comparison with a library value and as a value in the data passed to \`JSON.stringify\` (an object field, an array element, or its replacer argument), where it is the JSON value for nothing${reactForm}.${SYNTAX_EXCEPTION_HINT}`;
 }
 
 export const typeAssertionSelectors = [
@@ -36,6 +38,7 @@ export function nullSelectorsFor({ react = false } = {}) {
   const allowedNullLiterals = [
     strictEqualityOperand,
     jsonStringifyArgument,
+    jsonData,
     ...(react ? [`${reactNullHost} > Literal`] : []),
   ];
   const allowedNullTypes = react

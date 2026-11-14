@@ -15,7 +15,12 @@ import { detectLibraries } from '../rules/libraries/project-libraries.mjs';
 import { pytestStyle } from '../rules/libraries/pytest-style.mjs';
 import { withoutAllowedForms } from '../rules/filters/ruff-allowed-forms.mjs';
 import { applyPythonExceptions } from './configuration/python-exceptions.mjs';
-import { RULES_REPORT, readAllowances, readTestFiles } from './analysis/python-ast-rules.mjs';
+import {
+  RULES_REPORT,
+  readAllowances,
+  readRegexSites,
+  readTestFiles,
+} from './analysis/python-ast-rules.mjs';
 import { readPythonCrapFindings } from './mutation/python-crap.mjs';
 import { readImportLinterFindings } from './analysis/python-import-linter.mjs';
 import {
@@ -30,11 +35,14 @@ import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
 import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
 import { readTestRuntimeFindings } from './analysis/test-runtime/python-test-runtime.mjs';
 import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
+import { pythonFeatureAnalysis } from './imports/python-feature-facts.mjs';
+import { pythonPersistence } from './persistence/python-persistence.mjs';
 import {
   pythonClassLimitFindings,
   pythonFolderDepthFindings,
   readClassesReport,
 } from './size/python-size.mjs';
+import { designFindings } from './analysis/design/python-design.mjs';
 import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
 import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { readStructureFunctions } from '../../../shared/ingest/structure-report.mjs';
@@ -43,7 +51,8 @@ import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
 import { readConsoleFindings } from './test-results/console-output.mjs';
-import { readFactFindings } from './facts/python-facts.mjs';
+import { readFactFindings, readFactImports } from './facts/python-facts.mjs';
+import { moduleImportsSection } from '../../../shared/history/co-change/dependencies/module-imports.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
@@ -87,7 +96,6 @@ export function readPythonFindings({
 }) {
   const manifest = JSON.parse(readReport(reportRoot, MANIFEST_REPORT));
   const roots = [...new Set([path.resolve(projectRoot), realpathSync(projectRoot)])];
-  const coverage = readReport(reportRoot, COVERAGE_REPORT);
   const imports = readImportsReport(reportRoot);
   const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
   const found = applyRuleHints(
@@ -96,21 +104,15 @@ export function readPythonFindings({
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
-      ...ingestCoverageJson(coverage, { roots }).findings,
+      ...ingestRulesReport(readRegexSites(reportRoot), libraries),
       ...readPythonStructureFindings(reportRoot, projectRoot),
       ...pythonFileLimitFindings(projectRoot, policy),
-      ...crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }),
-      ...(manifest.testsRan === false ? [noTestsFinding()] : []),
-      ...ingestCoverageBranches(readReport(reportRoot, COVERAGE_REPORT), {
-        roots,
-        functions: readStructureFunctions(reportRoot),
-        sourceText: (file) => readSource(projectRoot, file),
-      }).findings,
+      ...testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }),
       ...readDuplicateFindings(reportRoot, projectRoot),
-      ...readCouplingFindings(reportRoot),
+      ...readCouplingFindings(reportRoot, { layout: policy.layout }),
       ...readImportLinterFindings(reportRoot),
       ...readTestRuntimeFindings({ reportRoot, projectRoot, runner: manifest.testRunner }),
-      ...testFailureFindings(manifest, policy.snapshot),
+      ...(manifest.quick ? [] : testFailureFindings(manifest, policy.snapshot)),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
       ...readConsoleFindings(reportRoot, { projectRoot, manifest }),
       ...readFactFindings(reportRoot, policy),
@@ -121,7 +123,24 @@ export function readPythonFindings({
     units: COLUMN_UNITS,
     readSource: (file) => readSource(projectRoot, file),
   });
-  return { findings };
+  return { findings, ...moduleImportsSection(readFactImports(reportRoot), policy.history) };
+}
+
+function testRunFindings({ manifest, reportRoot, projectRoot, roots, crapLimit }) {
+  if (manifest.quick) {
+    return [];
+  }
+  const coverage = readReport(reportRoot, COVERAGE_REPORT);
+  return [
+    ...ingestCoverageJson(coverage, { roots }).findings,
+    ...crapFindings({ reportRoot, coverage, projectRoot, roots, crapLimit }),
+    ...(manifest.testsRan === false ? [noTestsFinding()] : []),
+    ...ingestCoverageBranches(coverage, {
+      roots,
+      functions: readStructureFunctions(reportRoot),
+      sourceText: (file) => readSource(projectRoot, file),
+    }).findings,
+  ];
 }
 
 function sizedModules(projectRoot, modules) {
@@ -136,26 +155,40 @@ function baseModules(baselineRoot, sourceRoots) {
 
 function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }) {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
+  const classes = readClassesReport(reportRoot);
+  const features = pythonFeatureAnalysis(imports, {
+    policy,
+    isGenerated: (file) => isGeneratedPython(projectRoot, file),
+    persistence: pythonPersistence(imports, { classes, projectRoot }),
+  });
   return [
-    ...readSlowTestFindings({
-      reportRoot,
-      projectRoot,
-      limits: policy.testSeconds,
-      baselineRoot: policy.baselineRoot,
-      snapshot: policy.snapshot,
-      testRunner: manifest.testRunner,
-      testsRan: manifest.testsRan,
-    }),
+    ...(manifest.quick
+      ? []
+      : readSlowTestFindings({
+          reportRoot,
+          projectRoot,
+          limits: policy.testSeconds,
+          baselineRoot: policy.baselineRoot,
+          snapshot: policy.snapshot,
+          testRunner: manifest.testRunner,
+          testsRan: manifest.testsRan,
+        })),
     ...pythonFolderDepthFindings(sizedModules(projectRoot, imports.modules), {
       ...limits,
       tests: sizedModules(projectRoot, imports.others ?? []).filter(({ kind }) => kind === 'test'),
       sourceRoots: manifest.sourceRoots ?? [],
       rootModules: baseModules(policy.baselineRoot, manifest.sourceRoots ?? []),
     }),
-    ...pythonClassLimitFindings(readClassesReport(reportRoot), imports.modules, limits),
-    ...cycleFindings(imports),
+    ...pythonClassLimitFindings(classes, imports.modules, limits),
+    ...features.findings,
+    ...cycleFindings(imports, features),
     ...outsideRootsFindings(imports),
     ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
+    ...designFindings({
+      reportRoot,
+      analyzerName: PYTHON_ANALYZER_NAME,
+      headPolicy: policy.headPolicy,
+    }),
   ];
 }
 
@@ -224,7 +257,7 @@ function noTestsFinding() {
 function formatMessage({ formatter, formatterDetected }) {
   const base = `File is not formatted with ${formatter}`;
   const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
-  return `${base}${detected}. Format it with the "Format with ${formatter}" command printed at the start of the run.`;
+  return `${base}${detected}. Run nitpicker --fix, or format it with the "Format with ${formatter}" command printed at the start of the run.`;
 }
 
 function formatFindings(text, { roots, manifest }) {

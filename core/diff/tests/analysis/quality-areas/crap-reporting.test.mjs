@@ -6,7 +6,7 @@ import {
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { hashFiles } from '../../../../../languages/typescript/preset/checks/hash.mjs';
 import { compareFindings } from '../../../comparison/compare.mjs';
-import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import { normalizeCrap } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 
 const packageAnalyzers = configuredAnalyzers();
 describe('CRAP reporting in the quality-area analyzers', () => {
@@ -406,7 +406,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         exceptionList: 'exceptions',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
-          value: 9.5,
+          value: expect.closeTo(9.5, 10),
           worseMessage:
             'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
           worseAllowedForm: 'Put new code in a new function and cover it with tests.',

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { runTestOnlyExports, runUnusedApi } from './unused-api.mjs';
+import { runTestOnlyExports, runUnusedApi } from './unused-api.mts';
 
 const ANALYZER = 'languages/typescript/preset/unused-api/analyze.mjs';
 const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';

@@ -1,0 +1,13 @@
+{
+  "findings": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run",
+      "message": "No javac lint report.",
+      "classification": "descriptive",
+      "toolNotRun": true
+    }
+  ]
+}

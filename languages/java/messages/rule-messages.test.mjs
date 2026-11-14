@@ -33,13 +33,39 @@ describe('checkstyleRuleName', () => {
         'com.puppycrawl.tools.checkstyle.checks.indentation.IndentationCheck',
         'com.puppycrawl.tools.checkstyle.checks.UpperEllCheck',
         'RightCurlySame',
+        'com.puppycrawl.tools.checkstyle.checks.whitespace.OperatorWrapCheck#OperatorWrapNL',
         'com.example.checks.HouseRuleCheck',
       ].map(checkstyleRuleName),
-    ).toEqual(['Indentation', 'UpperEll', 'RightCurlySame', 'com.example.checks.HouseRuleCheck']);
+    ).toEqual([
+      'Indentation',
+      'UpperEll',
+      'RightCurlySame',
+      'OperatorWrapNL',
+      'com.example.checks.HouseRuleCheck',
+    ]);
   });
 });
 
 describe('withRuleMessage', () => {
+  it('routes the Kotlin source rules by their bare IDs and test-only classes by their qualified ID', () => {
+    const source = finding('detekt', 'catch-log-without-exception', 'Keep the stack trace.');
+    const assertion = finding('detekt', 'test-without-assertion', 'Assert the result.');
+    const testOnly = finding('coupling', 'test-only-export', 'Move the class to test sources.');
+    expect(
+      applyRuleMessages([source, assertion, testOnly], { preset: 'kotlin' }).map(
+        ({ message }) => message,
+      ),
+    ).toEqual([
+      `${source.message} ${hint(source.rule)}`,
+      `${assertion.message} ${hint(assertion.rule)}`,
+      `${testOnly.message} ${hint('coupling/test-only-export')}`,
+    ]);
+    expect(withRuleMessage(testOnly).message).toBe(
+      `${testOnly.message} ${hint('coupling/test-only-export')}`,
+    );
+    expect(withRuleMessage(source).message).toBe(source.message);
+  });
+
   it('adds the fix and the exception route to a rule that can hit intended code', () => {
     const { fix } = readCatalog('pmd').SystemPrintln;
 
@@ -85,19 +111,19 @@ describe('withRuleMessage', () => {
       withRuleMessage(finding('checkstyle', source, message), options).message;
 
     expect(fix({ javaStyle: 'google' })).toBe(
-      `${message} Run google-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or google-java-format on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'aosp' })).toBe(
-      `${message} Run google-java-format --aosp on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or google-java-format --aosp on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'palantir' })).toBe(
-      `${message} Run palantir-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or palantir-java-format on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'none' })).toBe(
       `${message} Fix this layout by hand; no Java formatter runs.`,
     );
     expect(fix({})).toBe(
-      `${message} Run your Java formatter on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or your Java formatter on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
   });
 
@@ -136,15 +162,51 @@ describe('withRuleMessage', () => {
     ).toBe(`Usage of System.out/err. ${readCatalog('pmd').SystemPrintln.fix}`);
   });
 
-  it('keeps messages that already end with the route, and findings of other tools', () => {
+  it('gives findings of the guard tools the same exception route, in a Kotlin project on Java sources only', () => {
+    const lint = finding('javac', 'rawtypes', 'found raw type: List. Add the type arguments.');
+    const kotlinLint = { ...lint, path: 'src/main/kotlin/A.kt' };
+    const cycle = finding(
+      'coupling',
+      'package-cycle',
+      'Package a is in a dependency cycle with b.',
+    );
+    const stability = finding('coupling', 'stability-direction', 'a depends on less stable b');
+
+    expect(
+      [
+        applyRuleMessages([lint, cycle, stability]),
+        applyRuleMessages([lint, kotlinLint], { preset: 'kotlin' }),
+      ].map((findings) => findings.map(({ message }) => message)),
+    ).toEqual([
+      [
+        `${lint.message} ${hint('javac/rawtypes')}`,
+        `${cycle.message} ${hint('coupling/package-cycle')}`,
+        stability.message,
+      ],
+      [`${lint.message} ${hint('javac/rawtypes')}`, lint.message],
+    ]);
+  });
+
+  it('keeps messages that already end with the route or the exclude route, and findings of other tools', () => {
     const spring = finding(
       'pmd',
       'SpringConstructorInjection',
       `Inject through the constructor. ${hint('pmd/SpringConstructorInjection')}`,
     );
-    const pit = finding('pit', 'mutant-survived', 'Survived');
+    const clone = finding(
+      'duplicates',
+      'duplicate-clone',
+      'This code repeats B.java:3. Keep one copy and call it from both places. If the repetition is intended, add A.java or B.java to "exclude" in nitpicker.config.json.',
+    );
+    const archunit = finding('archunit', 'layers', 'Layer violated');
+    const errorprone = finding('errorprone', 'JdkObsolete', 'Stack is a nonstandard class.');
 
-    expect(applyRuleMessages([spring, pit])).toEqual([spring, pit]);
+    expect(applyRuleMessages([spring, clone, archunit, errorprone])).toEqual([
+      spring,
+      clone,
+      archunit,
+      errorprone,
+    ]);
   });
 });
 

@@ -1,4 +1,4 @@
-import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig } from '../builds/rulesets/checkstyle-config.mjs';
 import {
   chmodSync,
   mkdirSync,
@@ -10,13 +10,19 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
-import { javaFiles, runFormat, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
+import { runFormat } from './format/maven-format.mjs';
+import { javaFiles, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 function dependency(groupId, artifactId, version, extra = '') {
   const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`;
@@ -30,43 +36,65 @@ afterEach(() => {
   }
 });
 
-const nameModule = (name, format) =>
-  `<module name="${name}"><property name="format" value="${format}"/></module>`;
-const NAME_MODULES =
-  nameModule('MemberName', '^[a-z][a-z0-9][a-zA-Z0-9]*$') +
-  nameModule('MethodName', '^[a-z][a-z0-9][a-zA-Z0-9_]*$');
-const RELAXED_NAME_MODULES =
-  nameModule('MemberName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$') +
-  nameModule('MethodName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$');
+const GOOGLE_CHECKS_13 = [
+  '<module name="Checker">',
+  '  <module name="SuppressWarningsFilter"/>',
+  '  <module name="SuppressWithNearbyCommentFilter">',
+  '    <property name="commentFormat" value="x"/>',
+  '  </module>',
+  '  <module name="TreeWalker"><module name="SuppressWarningsHolder" />',
+  '    <module name="TextBlockGoogleStyleFormatting"/>',
+  '    <module name="GoogleNonConstantFieldName"/>',
+  '    <module name="MethodName">',
+  '      <property name="format"',
+  '          value="^(?![a-z]$)[a-z][a-z0-9]*$"/>',
+  '    </module>',
+  '    <module name="TodoComment">',
+  '      <property name="id" value="TodoFormat"/>',
+  '      <property name="format" value="^TODO:"/>',
+  '    </module>',
+  '  </module>',
+  '</module>',
+].join('\n');
 
 describe('nitpickerCheckstyleConfig', () => {
-  it('drops every inline suppression filter from the bundled Google checks', () => {
-    const bundled = [
-      '<module name="Checker">',
-      '  <module name="SuppressWarningsFilter"/>',
-      '  <module name="SuppressWithNearbyCommentFilter">',
-      '    <property name="commentFormat" value="x"/>',
-      '  </module>',
-      '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
-      NAME_MODULES,
-      '</module>',
-    ].join('\n');
+  const config = nitpickerCheckstyleConfig(GOOGLE_CHECKS_13);
 
-    expect(nitpickerCheckstyleConfig(bundled)).toBe(
+  it('drops every inline suppression filter and the text block check google-java-format contradicts', () => {
+    expect(
       [
-        '<module name="Checker">',
-        '  ',
-        '  ',
-        '  <module name="TreeWalker"></module>',
-        RELAXED_NAME_MODULES,
-        '</module>',
-      ].join('\n'),
-    );
+        'SuppressWarningsFilter',
+        'SuppressWithNearbyCommentFilter',
+        'SuppressWarningsHolder',
+        'TextBlockGoogleStyleFormatting',
+      ].filter((name) => config.includes(`"${name}"`)),
+    ).toEqual([]);
   });
 
-  it('relaxes the member and method name patterns to the ones of the Gradle run', () => {
+  it('allows one-letter fields and methods, and an untagged TODO in any case but the tag itself', () => {
+    const count = (text) => config.split(text).length - 1;
+
+    expect([
+      count('value="^[a-z]([a-z0-9][a-zA-Z0-9]*)?$"/>'),
+      count(`<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/>`),
+      count('<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>'),
+    ]).toEqual([1, 1, 1]);
+    expect(config).not.toContain('^TODO:');
+  });
+
+  it('keeps rejecting an underscore between digits in field names', () => {
+    expect(
+      ['MemberName', 'StaticVariableName'].map((check) =>
+        config.includes(
+          `<module name="${check}"><property name="id" value="GoogleNonConstantFieldName"/>`,
+        ),
+      ),
+    ).toEqual([true, true]);
+  });
+
+  it('names the module it cannot find', () => {
     expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
-      'nitpicker could not find MemberName in google_checks.xml',
+      'nitpicker could not find MethodName in google_checks.xml',
     );
   });
 });
@@ -214,7 +242,10 @@ describe('runFormat', () => {
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
     mkdirSync(path.dirname(java), { recursive: true });
-    writeFileSync(java, '#!/bin/sh\ncat "${1#@}"\n');
+    writeFileSync(
+      java,
+      `#!/bin/sh\n[ "$1" = -version ] && echo 'openjdk version "21.0.1"' >&2 && exit 0\ncat "\${1#@}"\n`,
+    );
     chmodSync(java, 0o755);
     vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
     const source = path.join(root, 'src/main/java/demo/A.java');
@@ -261,7 +292,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring, springRules) {
+  function pmdRun(spring, springRules, reactor = false) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -286,7 +317,12 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       mkdirSync(directory, { recursive: true });
     }
     writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
-    const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
+    const module = {
+      basedir,
+      sourceRoots: [mainRoot],
+      testSourceRoots: [testRoot],
+      compiler: { compilerArgs: [] },
+    };
     const classpaths = { mainCompile: [], testCompile: [] };
     runPmd({
       module,
@@ -296,6 +332,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       configs: { pmd: {} },
       spring,
       springRules,
+      reactor,
     });
     const args = JSON.parse(readFileSync(path.join(basedir, 'arguments.json'), 'utf8'));
     const refs = (name) =>
@@ -315,16 +352,27 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
   it('adds the Spring rule sets to the main-only and test-only wrappers of a Spring module', () => {
     const run = pmdRun(true);
 
-    expect(run.rulesets).toEqual([
+    expect(run.rulesets.slice(0, 3)).toEqual([
       shipped('pmd-ruleset.xml'),
       path.join(run.reportDir, 'pmd-tests.xml'),
       path.join(run.reportDir, 'pmd-main.xml'),
     ]);
+    expect(run.rulesets.slice(3).every((file) => path.dirname(file) === run.reportDir)).toBe(true);
     expect(run.mainRules).toEqual([shipped('pmd-main-ruleset.xml'), shipped('spring-ruleset.xml')]);
     expect(run.testRules).toEqual([
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
     ]);
+  });
+
+  it('adds the Reactor rule set to the main-only wrapper of a module that uses Reactor', () => {
+    const run = pmdRun(false, undefined, true);
+
+    expect(run.mainRules).toEqual([
+      shipped('pmd-main-ruleset.xml'),
+      shipped('reactor-ruleset.xml'),
+    ]);
+    expect(run.testRules).toEqual([shipped('pmd-test-ruleset.xml')]);
   });
 
   it('takes the Spring rule set written for the project when it names annotations of its own', () => {
@@ -403,5 +451,21 @@ describe.skipIf(process.platform === 'win32')('runSpotbugs', () => {
     expect(
       spotbugsArguments({ spotbugs: { arguments: ['-effort:max', '-low', '-exclude', '/x.xml'] } }),
     ).toEqual(['-effort:max', '-low', '-exclude', '/x.xml']);
+  });
+});
+
+describe('javaFiles in a Git checkout', () => {
+  it('lists the files of the checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/A.java': '',
+        'src/gen/G.java': '',
+        ...nestedCheckout('src/agent', { 'X.java': '' }),
+      },
+      ['src/gen/'],
+    );
+
+    expect(javaFiles([path.join(root, 'src')])).toEqual([path.join(root, 'src/A.java')]);
+    expect(javaFiles([path.join(root, 'src/gen')])).toEqual([]);
   });
 });

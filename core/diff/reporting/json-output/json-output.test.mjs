@@ -2,10 +2,11 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../../cli.mjs';
+import { runCli as nitpickerCli } from '../../../cli.mts';
 import { PACKAGE_ROOT } from '../../../tooling/tool-resolution.mjs';
 import { finding, policy } from '../../execution/test-support/analyzer-findings.mjs';
 import { helpUriFor, referenceLinks } from '../../../../shared/reference/store.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import { captureOutput } from '../test-support/output-capture.mjs';
 import { writeFiles } from '../../git/test-support/fixture-files.mjs';
 import {
@@ -143,9 +144,11 @@ const FAILING_FINDINGS = [
   },
 ];
 
+const CRASH_TEXT = 'crashing-analyzer crashed with exit 2: no diagnostic output';
+
 const CRASH = {
   tool: 'crashing-analyzer',
-  headline: 'crashing-analyzer crashed with exit 2: no diagnostic output',
+  headline: `${CRASH_TEXT}. See ${docsUrl('docs/troubleshooting.md', 'an-analyzer-crashes')}`,
 };
 
 const ANNOTATIONS = [
@@ -154,7 +157,7 @@ const ANNOTATIONS = [
       `::error title=nitpicker tool error%3A crashing-analyzer (${snapshot})::${CRASH.headline}`,
   ),
   `::error file=src/main/pricing.ts,line=4,col=20,title=eslint-lint/nitpicker/no-magic-numbers::${TOOL_FINDINGS['eslint-lint'][0].message}`,
-  `::error file=src/main/java/shop/Order.java,line=7,title=pmd/UnusedPrivateField::${TOOL_FINDINGS.pmd[0].message}`,
+  '::error file=src/main/java/shop/Order.java,line=7,title=pmd/UnusedPrivateField::Avoid unused private fields such as total.',
   `::error file=app/orders.py,line=2,col=8,title=ruff/PLR2004::${TOOL_FINDINGS.ruff[0].message}`,
   '',
 ];
@@ -286,7 +289,7 @@ describe('nitpicker --json', () => {
   });
 
   it('marks a change with nothing to check', () => {
-    const repository = createRepository({ 'quality-policy.json': policy() });
+    const repository = createRepository({ 'quality-policy.json': policy(), 'src/a.ts': '' });
 
     const { exitCode, result, outputRoot } = runJson(repository, ['--base', repository.baseRef], {
       analyzers: [fakeAnalyzer()],

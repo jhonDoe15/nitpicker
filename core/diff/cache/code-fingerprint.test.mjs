@@ -28,7 +28,9 @@ describe('package code fingerprint', () => {
   it.each([
     'package.json',
     'core/runner.mjs',
+    'core/converted.mts',
     'shared/rules.mjs',
+    'shared/converted.mts',
     'languages/typescript/rules.mjs',
     'languages/python/rules.py',
     'languages/java/Rules.java',
@@ -65,6 +67,7 @@ describe('package code fingerprint', () => {
 
     writeFiles(root, {
       'core/runner.test.mjs': 'test code',
+      'shared/rules.test.mts': 'test code',
       'shared/fixtures/rule.mjs': 'fixture code',
       'languages/python/test-support/helper.py': 'helper code',
       'languages/java/__tests__/Rules.java': 'test code',

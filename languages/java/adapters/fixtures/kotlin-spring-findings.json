@@ -115,6 +115,7 @@
   "src/main/kotlin/shop/bad/Entities.kt:20 JpaVersion Customer",
   "src/main/kotlin/shop/bad/Entities.kt:21 JpaSequenceIds Customer.id",
   "src/main/kotlin/shop/bad/Entities.kt:32 JpaLazyFetching Invoice.customer",
+  "src/main/kotlin/shop/bad/Entities.kt:32 JpaUnindexedForeignKey Invoice.customer",
   "src/main/kotlin/shop/bad/Entities.kt:33 JpaLazyFetching Invoice.receipt",
   "src/main/kotlin/shop/bad/Entities.kt:34 JpaLazyFetching Invoice.lines",
   "src/main/kotlin/shop/bad/Entities.kt:35 JpaManyToManyCascade Invoice.tags",
@@ -127,6 +128,10 @@
   "src/main/kotlin/shop/bad/Entities.kt:49 JpaSequenceIds BaseEntity.id",
   "src/main/kotlin/shop/bad/Entities.kt:61 JpaEnumString Refund.state",
   "src/main/kotlin/shop/bad/Entities.kt:62 JpaEnumString Refund.priority",
+  "src/main/kotlin/shop/bad/Fetches.kt:10 JpaMultipleCollectionFetch InvoiceFetches.withLinesAndTags",
+  "src/main/kotlin/shop/bad/Fetches.kt:14 JpaMultipleCollectionFetch InvoiceFetches.graphOfLinesAndHistory",
+  "src/main/kotlin/shop/bad/Fetches.kt:20 JpaMultipleCollectionFetch InvoiceCriteria.joined.createQuery",
+  "src/main/kotlin/shop/bad/Fetches.kt:27 JpaMultipleCollectionFetch InvoiceCriteria.criteria.fetch",
   "src/main/kotlin/shop/bad/Handlers.kt:19 SpringTypedResponse InferredController.inferred",
   "src/main/kotlin/shop/bad/Handlers.kt:22 SpringTypedRequestBody InferredController.echo.body",
   "src/main/kotlin/shop/bad/Handlers.kt:22 SpringTypedResponse InferredController.echo",
@@ -289,5 +294,12 @@
   "src/main/kotlin/shop/bad/Wiring.kt:44 SpringOrderedProvider Decorators.unordered.stream",
   "src/main/kotlin/shop/bad/Wiring.kt:45 SpringOrderedProvider Decorators.unordered.for",
   "src/main/kotlin/shop/bad/Wiring.kt:48 SpringOrderedProvider Decorators.unordered.iterator",
-  "src/main/kotlin/shop/bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map"
+  "src/main/kotlin/shop/bad/Wiring.kt:49 SpringOrderedProvider Decorators.unordered.map",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:13 SpringNullOnlyConfigCheck TokenProperties.sslEnabled.bundle",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:25 SpringNullOnlyConfigCheck TokenConfig.tokenIssuer.properties.issuerUri",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:32 SpringNullOnlyConfigCheck TokenConfig.tokenKey.properties.signing.keyId",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:32 SpringNullOnlyConfigCheck TokenConfig.tokenKey.region",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:37 SpringNullOnlyConfigCheck TokenConfig.tokenAudience.audience",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:43 SpringNullOnlyConfigCheck TokenConfig.tokenScope.containsProperty",
+  "src/main/kotlin/shop/bad/settings/Settings.kt:46 SpringNullOnlyConfigCheck TokenConfig.tokenScope.getProperty"
 ]

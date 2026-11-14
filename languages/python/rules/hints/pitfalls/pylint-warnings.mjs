@@ -78,7 +78,7 @@ export const PYLINT_WARNING_HINTS = [
     tool: 'ruff',
     rules: ['PLW1508'],
     allowed:
-      'Pass a `str` default and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT", "8080"))`.',
+      'Give the fallback with `or` and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT") or "8080")`.',
   },
   {
     tool: 'ruff',
@@ -111,5 +111,17 @@ export const PYLINT_WARNING_HINTS = [
     tool: 'ruff',
     rules: ['PLR1711'],
     allowed: 'Remove the `return`: the function ends there anyway.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['PLR0124'],
+    allowed:
+      'One side was probably copied: fix the operand meant to differ. To test for NaN, write `math.isnan(value)`.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['PLR1714'],
+    allowed:
+      'Test membership once: `kind in {"a", "b"}`, or `kind not in {"a", "b"}` for `!=` joined by `and`.',
   },
 ];

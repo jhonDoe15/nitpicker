@@ -6,10 +6,15 @@ Part of the [Java preset guide](../java-preset.md).
   profile, no wider scope, no score gate. Every main class of the Gradle project is mutated (on each
   path of the compiled main classes, the first package that holds classes: a project rooted in
   `org.example` targets `org.example.*`. PIT refuses `org.*` because it matches PIT's own classes,
-  so classes directly in `org` are named one by one), against the project's own tests. The only
-  profile can produce enforceable findings. In a comparison, head starts from the base run's results (see
+  so classes directly in `org` are named one by one), against the project's own tests. A run given
+  paths lists instead, one by one, the classes compiled from the Java and Kotlin source files under
+  them: a class belongs to the file its `SourceFile` attribute names in the package folder that file
+  declares, and a test task with no such class runs no PIT. The only profile can produce enforceable
+  findings. A comparison mutates the lines the change wrote and the classes its changed tests use,
+  and for those classes head starts from the base run's PIT results (see
   [Mutation in a comparison](mutation-in-a-comparison.md)).
-- **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
+- **What runs.** `nitpickerPit` (`languages/java/gradle/nitpicker.init.gradle`) runs the pinned `pitest-command-line` (1.22.1, the newest release that still has the history
+  [mutation in a comparison](mutation-in-a-comparison.md) uses: 1.23.0 moved it to a commercial plugin) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
   [Mutators](../mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
@@ -48,10 +53,11 @@ Part of the [Java preset guide](../java-preset.md).
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build. When the failed build left JUnit
   reports with failing tests (the init script lists the report directory of every test task in
-  `test-results.json` of the report base), it is a `java/tests-failed` tool error (exit 1) that
-  names up to 50 of them with the same text as on Maven (`1 test fails; the build stopped, so no
-other check ran. Fix the tests and rerun:`) instead of Gradle's own failure output, with the path
-  of the full Gradle log on its last line; otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
+  `test-results.json` of the report base), the build runs again without the tests of the failing
+  projects, and each one gets a `tests/tests-failed` tool error (exit 1) that names up to 50 of them
+  with the same text as on Maven (`1 test fails in core; coverage, CRAP and mutation were skipped
+there, the other checks ran. Fix the tests and rerun:`) instead of Gradle's own failure output;
+  otherwise it is a `java/gradle-failure` tool error. Projects without main classes produce no report and no findings.
   The `pitest-junit5-plugin` and the launcher are added only when the project's test runtime has
   `junit-platform-engine`; a JUnit 4 project runs PIT's built-in JUnit 4 support. When the test
   runtime has a `testng` jar, the pinned `pitest-testng-plugin` (1.0.0) is added too, without a
@@ -60,7 +66,7 @@ other check ran. Fix the tests and rerun:`) instead of Gradle's own failure outp
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return, a field set to the value it already has, a
   redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
-  exception for `pit/mutant-survived`.
+  `exceptions` entry for `mutant-survived` narrowed to the mutated `function`.
 - **The `main` method.** A `mutant-nocoverage` on a line inside the body of a
   `static void main(String[])` method is dropped (`adapters/reporting/main-method.mjs`, after
   every report is read, so it is the same on Gradle and Maven): the method only hands the real

@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "reusable-object-per-call",
+    "mention": "module level"
+  }
+]

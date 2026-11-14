@@ -189,5 +189,25 @@
     "name": "a trailing marker without a colon",
     "text": "handle refunds later TODO",
     "reported": false
+  },
+  {
+    "name": "a TODO whose reference follows other words",
+    "text": "TODO: fix it, see #12",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a hash reference after words",
+    "text": "TODO fix #12",
+    "reported": false
+  },
+  {
+    "name": "a TODO with a link after words",
+    "text": "TODO: see https://example.com/issues/1",
+    "reported": false
+  },
+  {
+    "name": "a TODO whose later words name a standard",
+    "text": "TODO: follow RFC-7231 later",
+    "reported": true
   }
 ]

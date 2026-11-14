@@ -19,7 +19,21 @@ export const SECRET_NAME_WORDS = [
 
 export const SECRET_VALUE_SUFFIXES = ['value', 'raw', 'str', 'string', 'text', 'plain'];
 
-export const MARKER_TOKEN_WORDS = ['eos', 'bos', 'pad', 'unk', 'cls', 'sep', 'mask'];
+export const MARKER_TOKEN_WORDS = [
+  'eos',
+  'bos',
+  'pad',
+  'unk',
+  'cls',
+  'sep',
+  'mask',
+  'next',
+  'page',
+  'continuation',
+  'cancellation',
+];
+
+export const MASKED_NAME_WORDS = ['masked', 'redacted'];
 
 export const PASSPHRASE_NAME_WORDS = ['password', 'passwd', 'passphrase'];
 
@@ -35,12 +49,12 @@ export const PLACEHOLDER_PATTERNS = [
   '<.*>',
   String.raw`\[.*\]`,
   String.raw`\$\{.*\}`,
-  String.raw`\$[A-Za-z_]\w*`,
+  String.raw`\$[a-z_]\w*`,
   String.raw`\{\{.*\}\}`,
   String.raw`\{\w*\}`,
   '%s',
   String.raw`%\(\w+\)s`,
-  ':[A-Za-z_]+',
+  ':[a-z_]+',
   'changeme',
   'change-me',
   'todo',
@@ -60,6 +74,7 @@ export const NOT_SECRET_PATTERNS = [
   '[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+',
   String.raw`(?:~|\.{1,2})?(?:/[\w.-]+)+/?`,
   String.raw`\^.*\$`,
+  String.raw`\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?`,
 ];
 
 export const IDENTIFIER_PATTERNS = [
@@ -78,14 +93,18 @@ export const CREDENTIAL_SHAPES = [
 ];
 
 export const EMBEDDED_SECRET_PATTERNS = [
-  String.raw`^[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
+  String.raw`^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@`,
   String.raw`^(?:bearer|basic|token)\s+(\S+)$`,
   String.raw`[?&;]password=([^&;\s]+)`,
 ];
 
+function uncoveredWords(words) {
+  return words.filter((word) => !words.some((other) => other !== word && word.includes(other)));
+}
+
 const WORD_BOUNDARIES = [/([a-z0-9])([A-Z])/g, /([A-Z]+)([A-Z][a-z])/g];
 const SECRET_NAME = new RegExp(`(?:${SECRET_NAME_WORDS.join('|')})$`);
-const SECRET_WORD = new RegExp(SECRET_NAME_WORDS.join('|'));
+const SECRET_WORD = new RegExp(uncoveredWords(SECRET_NAME_WORDS).join('|'));
 const PASSPHRASE_NAME = new RegExp(`(?:${PASSPHRASE_NAME_WORDS.join('|')})$`);
 const PLACEHOLDER = new RegExp(`^(?:${PLACEHOLDER_PATTERNS.join('|')})$`, 'i');
 const NOT_SECRET = new RegExp(`^(?:${NOT_SECRET_PATTERNS.join('|')})$`);
@@ -95,6 +114,7 @@ const EMBEDDED = EMBEDDED_SECRET_PATTERNS.map((shape) => new RegExp(shape, 'i'))
 const URL_SCHEME = /^[a-z][a-z0-9+.-]*:\/\//i;
 const CHARACTER_CLASSES = [/[a-z]/, /[A-Z]/, /\d/, /[^A-Za-z0-9]/];
 const MARKER_TOKENS = new Set(MARKER_TOKEN_WORDS);
+const MASKED_WORDS = new Set(MASKED_NAME_WORDS);
 const VALUE_SUFFIXES = new Set(SECRET_VALUE_SUFFIXES);
 
 export function wordsOf(name) {
@@ -118,7 +138,10 @@ function joinedLetters(words) {
 export function isSecretName(name) {
   const words = nameWords(name);
   const marker = words.at(-1) === 'token' && MARKER_TOKENS.has(words[words.length - 2]);
-  return !marker && SECRET_NAME.test(joinedLetters(words));
+  return (
+    !(marker || words.some((word) => MASKED_WORDS.has(word))) &&
+    SECRET_NAME.test(joinedLetters(words))
+  );
 }
 
 function isCandidate(text) {

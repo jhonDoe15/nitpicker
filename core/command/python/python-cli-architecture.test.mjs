@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -47,6 +48,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     expect(run(root).exitCode).toBe(0);
     writeFiles(root, {
       'import-scan.json': scan({ ...feature, 'src/base/core.py': [from('other', 'o')] }),
+      'src/base/core.py': 'from other import o\n',
     });
     commit(root, 'depend on the volatile package');
 
@@ -117,7 +119,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         snapshot: 'head',
         rule: 'import-linter-failed',
         path: '.',
-        message: 'lint-imports could not check the contracts:\nCould not find .importlinter.',
+        message: `lint-imports could not check the contracts:\nCould not find .importlinter.\n${linkSentence('pythonToolFails')}`,
       },
     ]);
   });

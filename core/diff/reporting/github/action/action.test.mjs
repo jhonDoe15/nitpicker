@@ -5,14 +5,14 @@ import { parse } from 'yaml';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { executeStep } from './test-support/action-steps.mjs';
-import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mjs';
+import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mts';
 import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mjs';
 import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mjs';
 import {
   ACTION_BLOCK_END,
   ACTION_BLOCK_START,
   renderActionReference,
-} from '../../../../../scripts/action-inputs.mjs';
+} from '../../../../../scripts/action-inputs.mts';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../..');
 
@@ -121,7 +121,7 @@ describe('the sample workflow', () => {
       workflow.permissions,
     ]).toEqual([['main'], ['labeled'], null, { contents: 'read' }]);
     expect(workflow.jobs.changes.if).toBe(
-      "github.event_name != 'pull_request' || github.event.label.name == 'run-ci'",
+      "github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'run-ci')",
     );
     expect([job.needs, job.if]).toEqual(['changes', "needs.changes.outputs.run == 'true'"]);
     expect([job['timeout-minutes'], job.strategy.matrix.os, job.defaults.run.shell]).toEqual([

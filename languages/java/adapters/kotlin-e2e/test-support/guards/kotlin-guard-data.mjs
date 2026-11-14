@@ -19,6 +19,7 @@ function prefetch(task, extra = '') {
 }
 const LIMITED = `    private fun limited(url: URI): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
 
+const QUERY = `${PACKAGE}class Query {\n    fun setParameter(name: String, value: Any): Query = this\n}\n\n`;
 export const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
 
@@ -29,6 +30,7 @@ const BANNED_GUARDS = {
   'Loader.kt': `${LOGGER}class Loader(private val logger: Logger) {\n    fun load(file: java.io.File): String? {\n        try {\n            return file.readText()\n        } catch (e: java.io.IOException) {\n            logger.warning("load failed")\n            return null\n        }\n    }\n}\n`,
   'Flags.kt': `${PACKAGE}fun render(text: String, bold: Boolean): String = if (bold) "<b>$text</b>" else text\n`,
   'TriState.kt': `${PACKAGE}fun toggle(force: Boolean?): Int = if (force == true) 1 else 0\n`,
+  'Logic.kt': `${PACKAGE}fun differs(a: Int, b: Int): Boolean = !(a == b)\n`,
   'Mutation.kt': `${PACKAGE}fun append(items: MutableList<String>) {\n    items.add("x")\n}\n`,
   'Legacy.kt': `${PACKAGE}@Deprecated("Use current")\nfun legacy(): Int = 1\n\nfun current(): Int = 2\n`,
   'Spread.kt': `${PACKAGE}fun spread(low: Int, high: Int): Int = high - high + low\n`,
@@ -50,8 +52,20 @@ const BANNED_GUARDS = {
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).name\n`,
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
   'Exports.kt': `${PACKAGE}fun render(command: List<String>): Int = ProcessBuilder(command).start().waitFor()\n`,
+  'Launches.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.SupervisorJob\nimport kotlinx.coroutines.launch\n\nclass Refresher(private val reload: () -> Unit) {\n    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)\n\n    fun refresh() {\n        scope.launch { reload() }\n    }\n}\n`,
+  'Waits.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\n\nfun page(future: CompletableFuture<String>): String = future.join()\n`,
   'Versions.kt': `${PACKAGE}fun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    return process.inputStream.bufferedReader().readText()\n}\n`,
+  'Reports.kt': `${PACKAGE}const val RECENT = "select id from account where active limit 20"\n`,
+  'Lookups.kt': `${QUERY}fun byIds(query: Query, ids: List<Long>): Query = query.setParameter("ids", ids)\n`,
+  'Settings.kt': `${PACKAGE}fun batch(): String = System.getProperty("shop.batch", "50")\n`,
+  'Replies.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\n\nfun interface Listener {\n    fun accept(value: String)\n}\n\nfun interface Channel {\n    fun onReply(listener: Listener)\n}\n\nfun reply(channel: Channel): CompletableFuture<String> {\n    val reply = CompletableFuture<String>()\n    channel.onReply { reply.complete(it) }\n    return reply\n}\n`,
+  'Cleanup.kt': `${PACKAGE}class Cleanup(private val first: AutoCloseable, private val second: AutoCloseable) : AutoCloseable {\n    override fun close() {\n        first.close()\n        second.close()\n    }\n}\n`,
+  'Pending.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.ConcurrentHashMap\n\nclass Pending : AutoCloseable {\n    private val waiting = ConcurrentHashMap<String, CompletableFuture<String>>()\n\n    fun add(id: String, reply: CompletableFuture<String>) {\n        waiting[id] = reply\n    }\n\n    override fun close() {\n        waiting.clear()\n    }\n}\n`,
+  'Timers.kt': `${PACKAGE}import java.util.concurrent.Executors\n\nclass Timers : AutoCloseable {\n    private val scheduler = Executors.newSingleThreadScheduledExecutor()\n\n    fun start() {\n        scheduler.submit { }\n    }\n\n    override fun close() {\n        started = false\n    }\n\n    private var started = true\n}\n`,
+  'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            conn = scope.async { "link" }\n        }\n        return conn!!.await()\n    }\n}\n`,
+  'Registry.kt': `${PACKAGE}import java.util.concurrent.ConcurrentHashMap\n\nannotation class Service\n\n@Service\nclass Registry {\n    private val sessions = ConcurrentHashMap<String, String>()\n\n    fun open(id: String, value: String) {\n        sessions[id] = value\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): List<String> {\n        val seen = mutableListOf<String>()\n        for (path in paths) {\n            if (path !in seen) seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> = paths.map { p -> known.find { it.length == p.length } }\n\n    fun shortest(paths: List<String>): String = paths.sortedBy { it.length }.first()\n}\n`,
+  'Steps.kt': `${PACKAGE}class Steps {\n    fun letters(words: List<String>): List<Char> = words.map { it.toList() }.flatten()\n\n    fun count(words: Set<String>): Int = words.toList().size\n}\n`,
 };
 
 const BANNED_TESTS = {
@@ -66,6 +80,7 @@ const ALLOWED_GUARDS = {
   'Loader.kt': `${PACKAGE}class Loader {\n    fun load(file: java.io.File): String {\n        try {\n            return file.readText()\n        } catch (e: java.io.IOException) {\n            throw IllegalStateException("load failed", e)\n        }\n    }\n}\n`,
   'Flags.kt': `${PACKAGE}fun plain(text: String): String = text\n\nfun bold(text: String): String = "<b>$text</b>"\n`,
   'TriState.kt': `${PACKAGE}fun describe(force: Boolean): String = "forced=$force"\n`,
+  'Logic.kt': `${PACKAGE}fun differs(a: Int, b: Int): Boolean = a != b\n`,
   'Mutation.kt': `${PACKAGE}fun append(items: List<String>): List<String> = items + "x"\n`,
   'Legacy.kt': `${PACKAGE}fun current(): Int = 2\n`,
   'Spread.kt': `${PACKAGE}fun spread(low: Int, high: Int): Int = high - low\n`,
@@ -79,14 +94,25 @@ const ALLOWED_GUARDS = {
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n    show(System.out)\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    val batch = System.getProperty("shop.batch", "50")\n    ProcessBuilder("serve", "--port", System.getenv("PORT"), "--batch", batch).inheritIO().start()\n    show(System.out)\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
   'Links.kt': `${PACKAGE}import java.net.URI\n\nfun cover(path: String): URI? = runCatching { URI.create("https://shop.example/$path") }.getOrNull()\n`,
   'Streams.kt': `${PACKAGE}import java.io.File\nimport java.util.jar.JarFile\n\nfun manifestOf(root: File): String = JarFile(root).use { it.name }\n`,
   'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/\${Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
+  'Launches.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineExceptionHandler\nimport kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.SupervisorJob\nimport kotlinx.coroutines.launch\n\nclass Refresher(private val reload: () -> Unit, handler: CoroutineExceptionHandler) {\n    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + handler)\n\n    fun refresh() {\n        scope.launch { reload() }\n    }\n}\n`,
+  'Waits.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val PAGE_SECONDS = 30L\n\nfun page(future: CompletableFuture<String>): String = future.get(PAGE_SECONDS, TimeUnit.SECONDS)\n`,
   'Exports.kt': `${PACKAGE}import java.util.concurrent.TimeUnit\n\nprivate const val DEADLINE_SECONDS = 30L\n\nfun render(command: List<String>): Int {\n    val process = ProcessBuilder(command).start()\n    check(process.waitFor(DEADLINE_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return process.exitValue()\n}\n`,
-  'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.join()\n}\n`,
+  'Versions.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.TimeUnit\n\nprivate const val VERSION_SECONDS = 30L\n\nfun version(command: List<String>): String {\n    val process = ProcessBuilder(command).start()\n    val output = CompletableFuture.supplyAsync { process.inputStream.bufferedReader().readText() }\n    check(process.waitFor(VERSION_SECONDS, TimeUnit.SECONDS)) { "timed out: $command" }\n    return output.get(VERSION_SECONDS, TimeUnit.SECONDS)\n}\n`,
+  'Reports.kt': `${PACKAGE}const val RECENT = "select id from account where active order by id limit 20"\n`,
+  'Lookups.kt': `${QUERY}fun byIds(query: Query, ids: List<Long>): Query {\n    if (ids.isEmpty()) {\n        return query\n    }\n    return query.setParameter("ids", ids)\n}\n`,
+  'Replies.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\n\nfun interface Listener {\n    fun accept(value: String)\n}\n\nfun interface Failures {\n    fun accept(error: Throwable)\n}\n\ninterface Channel {\n    fun onReply(listener: Listener)\n\n    fun onFailure(listener: Failures)\n}\n\nfun reply(channel: Channel): CompletableFuture<String> {\n    val reply = CompletableFuture<String>()\n    channel.onReply { reply.complete(it) }\n    channel.onFailure { reply.completeExceptionally(it) }\n    return reply\n}\n`,
+  'Cleanup.kt': `${PACKAGE}class Cleanup(private val first: AutoCloseable, private val second: AutoCloseable) : AutoCloseable {\n    override fun close() {\n        first.use { second.close() }\n    }\n}\n`,
+  'Pending.kt': `${PACKAGE}import java.util.concurrent.CompletableFuture\nimport java.util.concurrent.ConcurrentHashMap\n\nclass Pending : AutoCloseable {\n    private val waiting = ConcurrentHashMap<String, CompletableFuture<String>>()\n\n    fun add(id: String, reply: CompletableFuture<String>) {\n        waiting[id] = reply\n    }\n\n    override fun close() {\n        waiting.values.forEach { it.completeExceptionally(IllegalStateException("closed")) }\n        waiting.clear()\n    }\n}\n`,
+  'Timers.kt': `${PACKAGE}import java.util.concurrent.Executors\n\nclass Timers : AutoCloseable {\n    private val scheduler = Executors.newSingleThreadScheduledExecutor()\n\n    fun start() {\n        scheduler.submit { }\n    }\n\n    override fun close() {\n        scheduler.shutdownNow()\n    }\n\n    private var started = true\n}\n`,
+  'Link.kt': `${PACKAGE}import kotlinx.coroutines.CoroutineScope\nimport kotlinx.coroutines.Deferred\nimport kotlinx.coroutines.async\n\nclass Link(private val scope: CoroutineScope) {\n    private var conn: Deferred<String>? = null\n\n    suspend fun get(): String {\n        if (conn == null) {\n            val attempt = scope.async { "link" }\n            conn = attempt\n            attempt.invokeOnCompletion { if (it != null && conn === attempt) conn = null }\n        }\n        return conn!!.await()\n    }\n}\n`,
+  'Registry.kt': `${PACKAGE}import java.util.concurrent.ConcurrentHashMap\n\nannotation class Service\n\n@Service\nclass Registry {\n    private val sessions = ConcurrentHashMap<String, String>()\n\n    fun open(id: String, value: String) {\n        sessions[id] = value\n    }\n\n    fun end(id: String) {\n        sessions.remove(id)\n    }\n}\n`,
   'Paths.kt': `${PACKAGE}class Paths(private val known: List<String>) {\n    fun unique(paths: List<String>): Set<String> {\n        val seen = mutableSetOf<String>()\n        for (path in paths) {\n            seen.add(path)\n        }\n        return seen\n    }\n\n    fun matches(paths: List<String>): List<String?> {\n        val byLength = known.associateBy { it.length }\n        return paths.map { p -> byLength[p.length] }\n    }\n\n    fun shortest(paths: List<String>): String? = paths.minByOrNull { it.length }\n}\n`,
+  'Steps.kt': `${PACKAGE}class Steps {\n    fun letters(words: List<String>): List<Char> = words.flatMap { it.toList() }\n\n    fun count(words: Set<String>): Int = words.size\n}\n`,
 };
 
 const ALLOWED_TESTS = {
@@ -117,6 +143,7 @@ export const EXPECTED_BANNED = [
   'kotlin-source/LogFormatArguments Formats.kt',
   'kotlin-source/BooleanFlagParameter Flags.kt',
   'kotlin-source/TriStateBoolean TriState.kt',
+  'kotlin-source/SimplerBooleanLogic Logic.kt',
   'kotlin-source/ParameterMutation Mutation.kt',
   'kotlin-source/CompatibilityShim Legacy.kt',
   'kotlin-source/OperandSlip Spread.kt',
@@ -136,9 +163,22 @@ export const EXPECTED_BANNED = [
   'kotlin-source/PlainTextRegex Routes.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Exports.kt',
   'kotlin-source/ProcessWaitWithoutTimeout Versions.kt',
+  'kotlin-source/UnboundedWait Waits.kt',
+  'kotlin-source/UnhandledRootCoroutine Launches.kt',
+  'kotlin-source/UnorderedQuery Reports.kt',
+  'kotlin-source/UnboundedQueryArray Lookups.kt',
+  'kotlin-source/ConfigurationReadOutsideCompositionRoot Settings.kt',
+  'kotlin-source/FutureWithoutException Replies.kt',
+  'kotlin-source/CleanupSkippedOnFailure Cleanup.kt',
+  'kotlin-source/PendingFuturesNotFailedOnClose Pending.kt',
+  'kotlin-source/TimerNotStoppedOnClose Timers.kt',
+  'kotlin-source/CachedDeferredKeepsFailure Link.kt',
+  'kotlin-source/UnboundedCollectionProperty Registry.kt',
   'kotlin-source/ListUsedAsSet Paths.kt',
   'kotlin-source/LinearLookupInLoop Paths.kt',
   'kotlin-source/SortForExtreme Paths.kt',
+  'kotlin-source/RedundantStreamStep Steps.kt',
+  'kotlin-source/RedundantStreamStep Steps.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',

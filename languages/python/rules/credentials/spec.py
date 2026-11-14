@@ -32,6 +32,14 @@ MARKER_TOKEN_WORDS = [
     "cls",
     "sep",
     "mask",
+    "next",
+    "page",
+    "continuation",
+    "cancellation",
+]
+MASKED_NAME_WORDS = [
+    "masked",
+    "redacted",
 ]
 PASSPHRASE_NAME_WORDS = [
     "password",
@@ -47,12 +55,12 @@ PLACEHOLDER_PATTERNS = [
     r"<.*>",
     r"\[.*\]",
     r"\$\{.*\}",
-    r"\$[A-Za-z_]\w*",
+    r"\$[a-z_]\w*",
     r"\{\{.*\}\}",
     r"\{\w*\}",
     r"%s",
     r"%\(\w+\)s",
-    r":[A-Za-z_]+",
+    r":[a-z_]+",
     r"changeme",
     r"change-me",
     r"todo",
@@ -71,6 +79,7 @@ NOT_SECRET_PATTERNS = [
     r"[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+",
     r"(?:~|\.{1,2})?(?:/[\w.-]+)+/?",
     r"\^.*\$",
+    r"\d{4}-\d{2}-\d{2}(?:T[\d:.]+(?:Z|[+-]\d{2}:?\d{2})?)?",
 ]
 IDENTIFIER_PATTERNS = [
     r"[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+",
@@ -86,7 +95,7 @@ CREDENTIAL_SHAPES = [
     r"\bdjango-insecure-\S{6,}",
 ]
 EMBEDDED_SECRET_PATTERNS = [
-    r"^[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@",
+    r"^(?:jdbc:)?[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@",
     r"^(?:bearer|basic|token)\s+(\S+)$",
     r"[?&;]password=([^&;\s]+)",
 ]

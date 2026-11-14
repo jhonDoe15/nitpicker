@@ -54,7 +54,26 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
 }
 
 function listShrank({ before = [], after = [] }) {
-  return before.some((entry) => !after.includes(entry));
+  const kept = new Set(after.map((entry) => JSON.stringify(entry)));
+  return before.some((entry) => !kept.has(JSON.stringify(entry)));
+}
+
+function lost(before = [], after = []) {
+  return before.some((name) => !after.includes(name));
+}
+
+function contractLoosened(before, after) {
+  return (
+    after === undefined ||
+    lost(before.open, after.open) ||
+    lost(after.close, before.close) ||
+    lost(before.steps, after.steps)
+  );
+}
+
+function protocolsLoosened({ before = [], after = [] }) {
+  const heads = new Map(after.map((contract) => [contract.type, contract]));
+  return before.some((contract) => contractLoosened(contract, heads.get(contract.type)));
 }
 
 function listGrew({ before = [], after = [] }) {
@@ -81,8 +100,13 @@ const LOOSENING_SETTINGS = [
   [/^go\.formatters$/u, 'go-formatters-dropped', formattersDropped],
   [/^go\.buildTags$/u, 'go-build-tags-dropped', listShrank],
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
+  [/^protocols$/u, 'protocols-loosened', protocolsLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
-  [/^conventions\.typescript\.detachedWorkRunners$/u, 'detached-work-runner-added', listGrew],
+  [
+    /^conventions\.(?:typescript|kotlin)\.detachedWorkRunners$/u,
+    'detached-work-runner-added',
+    listGrew,
+  ],
 ];
 
 export function looseningKindOfSetting(change, scope) {

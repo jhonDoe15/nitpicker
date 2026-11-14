@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e.mjs';
-import { runCli } from '../../../../../core/cli.mjs';
+import { runCli } from '../../../../../core/cli.mts';
 import { runJavaDiff } from '../../java-diff.mjs';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures');
 
@@ -112,9 +113,9 @@ export function redBaseCases({ setup, gradle, maven, environment, policy, expect
           snapshot: 'base',
           rule: 'tests-failed',
           path: '.',
-          message: testsFailOnBase([
+          message: `${testsFailOnBase([
             'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-          ]),
+          ])}\n${linkSentence('baseTestsFail')}`,
         },
       ],
     });

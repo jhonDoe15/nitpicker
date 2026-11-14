@@ -4,7 +4,7 @@ import {
   enforceable,
   fn,
 } from '../../../languages/python/adapters/test-support/structure-data.mjs';
-import { runCli as nitpickerCli } from '../../cli.mjs';
+import { runCli as nitpickerCli } from '../../cli.mts';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
@@ -111,6 +111,15 @@ describe('nitpicker with "preset": "python" and function structure', () => {
         exceptionList: 'python.exceptions',
         classification: 'enforceable',
         location: { line: 1 },
+        ratchet: {
+          key: 'pair:src/demo/a.py|src/demo/b.py:clone',
+          value: 59,
+          divisible: true,
+          mustKeepUnchangedLines: [
+            { path: 'src/demo/a.py', startLine: 1, endLine: 10 },
+            { path: 'src/demo/b.py', startLine: 1, endLine: 10 },
+          ],
+        },
       },
     ]);
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { describe, expect, it } from 'vitest';
-import { watchJestConsole, withFormattedAssert } from './jest-assert.mjs';
+import { watchJestConsole, withFormattedAssert } from './jest-assert.mts';
 
 const { BufferedConsole } = createRequire(import.meta.url)('@jest/console');
 

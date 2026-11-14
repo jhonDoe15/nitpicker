@@ -2,7 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../../adapters/java-diff.mjs';
-import { pitStatuses } from '../../../adapters/java-e2e/test-support/pit-statuses.mjs';
+import { pitStatuses } from '../../../adapters/java-e2e/test-support/pit/pit-statuses.mjs';
 import {
   useMavenPresetProject,
   enabled,
@@ -10,7 +10,7 @@ import {
   fixtures,
   copyOf,
   comparable,
-} from '../../__tests__/maven-preset-project.mjs';
+} from '../../__tests__/maven-preset-project.mts';
 
 const LABELS = `package demo.core;
 

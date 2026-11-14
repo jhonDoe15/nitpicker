@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { sourceSnippet } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
+import { sourceSnippet } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mts';
 import {
   normalizeMutation,
   withUnreachedMutantsUncovered,
-} from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
-import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/mutation.mjs';
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
+import { rebaseMutationConfig } from '../../../../../languages/typescript/adapters/quality-areas/runners/stryker/stryker-config.mts';
 
 describe('mutation reporting in the quality-area analyzers', () => {
   it('reports surviving mutants and status totals without gating on score', () => {

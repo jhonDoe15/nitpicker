@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { describePackageManager } from './package-manager.mjs';
+import { describePackageManager } from './package-manager.mts';
 
 const project = useProjects();
 const NODE_MODULES_LINKER = 'nodeLinker: node-modules\n';
 const COMMANDS = {
-  npm: { add: 'npm install --save-dev', run: 'npx nitpicker' },
-  pnpm: { add: 'pnpm add --save-dev', run: 'pnpm exec nitpicker' },
-  yarn: { add: 'yarn add --dev', run: 'yarn nitpicker' },
-  bun: { add: 'bun add --dev', run: 'bunx nitpicker' },
+  npm: { add: 'npm install --save-dev', install: 'npm install', run: 'npx nitpicker' },
+  pnpm: { add: 'pnpm add --save-dev', install: 'pnpm install', run: 'pnpm exec nitpicker' },
+  yarn: { add: 'yarn add --dev', install: 'yarn install', run: 'yarn nitpicker' },
+  bun: { add: 'bun add --dev', install: 'bun install', run: 'bunx nitpicker' },
 };
 
 function manager(root, name, details = {}) {

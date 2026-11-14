@@ -1,0 +1,7 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "client-without-timeout",
+    "mention": "statement_timeout"
+  }
+]
