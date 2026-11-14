@@ -1,8 +1,16 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { exportLine, fileAliasReads, fileDynamicImports, fileExports } from './module-facts.mjs';
+import {
+  exportLine as untypedExportLine,
+  fileAliasReads as untypedFileAliasReads,
+  fileDynamicImports,
+  fileExports,
+} from './module-facts.mjs';
 
-function parse(text) {
+const exportLine: (file: ts.SourceFile, name: string) => number | undefined = untypedExportLine;
+const fileAliasReads: (file: ts.SourceFile) => { text: string }[] = untypedFileAliasReads;
+
+function parse(text: string): ts.SourceFile {
   return ts.createSourceFile('a.ts', text, ts.ScriptTarget.Latest, true);
 }
 

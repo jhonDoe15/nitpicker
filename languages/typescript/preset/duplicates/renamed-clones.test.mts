@@ -3,14 +3,61 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
-import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { applyLayout, configuredAnalyzers } from '../diff/configured-analyzers.mjs';
-import { resolveHeadPolicy, withHeadPolicyFile } from '../head-policy.mjs';
+import { withDefaultAnalyzerParallelism as untypedWithDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
+import type { Finding } from '../../adapters/static-checks/shared.mts';
+import {
+  applyLayout as untypedApplyLayout,
+  configuredAnalyzers as untypedConfiguredAnalyzers,
+} from '../diff/configured-analyzers.mjs';
+import {
+  resolveHeadPolicy as untypedResolveHeadPolicy,
+  withHeadPolicyFile as untypedWithHeadPolicyFile,
+} from '../head-policy.mjs';
+
+type Names = {
+  readonly fn: string;
+  readonly list: string;
+  readonly rate: string;
+  readonly sum: string;
+  readonly item: string;
+  readonly out: string;
+  readonly left: string;
+  readonly right: string;
+};
+
+type CounterNames = {
+  readonly component: string;
+  readonly list: string;
+  readonly selected: string;
+  readonly item: string;
+  readonly limit: number;
+  readonly mark: string;
+};
+
+type Numbers = readonly [string, string, string, string, string];
+
+type NamedAnalyzer = { readonly name: string };
+
+const withDefaultAnalyzerParallelism: <Result>(run: () => Result) => Result =
+  untypedWithDefaultAnalyzerParallelism;
+const configuredAnalyzers: () => NamedAnalyzer[] = untypedConfiguredAnalyzers;
+const applyLayout: (analyzers: NamedAnalyzer[], policy: unknown) => NamedAnalyzer[] =
+  untypedApplyLayout;
+const resolveHeadPolicy: (config: Readonly<Record<string, unknown>>) => unknown =
+  untypedResolveHeadPolicy;
+const withHeadPolicyFile: <Result>(
+  policy: unknown,
+  run: (headPolicyFile: string) => Result,
+) => Result = untypedWithHeadPolicyFile;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 
-function pricing(names, numbers) {
+function compareText(left: string, right: string): number {
+  return left < right ? -1 : 1;
+}
+
+function pricing(names: Names, numbers: Numbers): string {
   return `export function ${names.fn}(${names.list}: Line[], ${names.rate}: number): number {
   let ${names.sum} = 0;
   for (const ${names.item} of ${names.list}) {
@@ -26,7 +73,7 @@ function pricing(names, numbers) {
 `;
 }
 
-function grading(names, numbers) {
+function grading(names: Names, numbers: readonly [string, string, string, string]): string {
   return `export function ${names.fn}(${names.list}: Mark[]): string[] {
   const ${names.out}: string[] = [];
   for (const ${names.item} of ${names.list}) {
@@ -67,7 +114,7 @@ const RENAMED = {
   right: 'y',
 };
 
-function tableTest(prefix) {
+function tableTest(prefix: string): string {
   const rows = Array.from(
     { length: 40 },
     (_, index) =>
@@ -76,20 +123,20 @@ function tableTest(prefix) {
   return `const CASES = [\n${rows}\n];\n\nexport const ${prefix}Cases = CASES;\n`;
 }
 
-function importList(names) {
+function importList(names: readonly string[]): string {
   const lines = names.map(
     (name) => `import { ${name}One, ${name}Two, ${name}Three } from './${name}.js';`,
   );
-  return `${lines.join('\n')}\n\nexport const ${names[0]}Used = ${names[0]}One;\n`;
+  return `${lines.join('\n')}\n\nexport const ${String(names[0])}Used = ${String(names[0])}One;\n`;
 }
 
-function counter(names) {
+function counter(names: CounterNames): string {
   return `export function ${names.component}({ ${names.list} }: Props) {
   const [${names.selected}, set${names.selected}] = useState<string[]>([]);
   const toggle = (${names.item}: string) => {
     if (${names.selected}.includes(${names.item})) {
       set${names.selected}(${names.selected}.filter((entry) => entry !== ${names.item}));
-    } else if (${names.selected}.length < ${names.limit}) {
+    } else if (${names.selected}.length < ${String(names.limit)}) {
       set${names.selected}([...${names.selected}, ${names.item}]);
     } else {
       set${names.selected}([${names.item}]);
@@ -108,7 +155,7 @@ function counter(names) {
 `;
 }
 
-function form(tags) {
+function form(tags: readonly string[]): string {
   const fields = tags
     .map(
       (tag, index) =>
@@ -127,12 +174,12 @@ const OTHER_NAMES = (
   'invoice placed shipped tracking discount currency'
 ).split(' ');
 
-function mapper(type, source, names) {
+function mapper(type: string, source: string, names: readonly string[]): string {
   const fields = names.map((name) => `    ${source}.${name},`).join('\n');
   return `export function to${type}Dto(${source}: ${type}) {\n  return new ${type}Dto(\n${fields}\n  );\n}\n`;
 }
 
-function switchTable(type, names) {
+function switchTable(type: string, names: readonly string[]): string {
   const cases = names.map((name) => `    case ${type}.${name}:\n      return '${name}';`);
   return `export function ${type.toLowerCase()}Name(value: ${type}): string {\n  switch (value) {\n${cases.join('\n')}\n  }\n}\n`;
 }
@@ -216,7 +263,7 @@ const FILES = {
   'test/helpers/second.test.ts': `import { it } from 'vitest';\n\n${grading(RENAMED, ['80', '40', '70', '9'])}\nit('works', () => {});\n`,
 };
 
-function writeFiles(root, files) {
+function writeFiles(root: string, files: Readonly<Record<string, string>>): void {
   for (const [relativePath, contents] of Object.entries(files)) {
     const filePath = path.join(root, relativePath);
     mkdirSync(path.dirname(filePath), { recursive: true });
@@ -224,13 +271,16 @@ function writeFiles(root, files) {
   }
 }
 
-function enforceable(run) {
+function enforceable(run: ReturnType<typeof analyze>): Finding[] {
   return (run.reports.get('duplicates')?.findings ?? []).filter(
     (finding) => finding.classification === 'enforceable',
   );
 }
 
-function analyze(files, config = {}) {
+function analyze(
+  files: Readonly<Record<string, string>>,
+  config: Readonly<Record<string, unknown>> = {},
+) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
   temporaryRoots.push(temporaryRoot);
   const projectRoot = path.join(temporaryRoot, 'base');
@@ -248,6 +298,11 @@ function analyze(files, config = {}) {
         toolRoot: packageRoot,
         liveProjectRoot: packageRoot,
         snapshot: 'head',
+        baselineRoot: undefined,
+        baselineMovesFile: undefined,
+        mutationScope: undefined,
+        logRoot: undefined,
+        runTasks: undefined,
         headPolicyFile,
       }),
     ),
@@ -260,7 +315,7 @@ afterAll(() => {
   }
 });
 
-let cachedFindings;
+let cachedFindings: { findings: Finding[]; toolErrors: unknown[] } | undefined;
 
 function foundClones() {
   if (cachedFindings === undefined) {
@@ -271,7 +326,23 @@ function foundClones() {
   return cachedFindings;
 }
 
-function expectedClone({ file, other, hash, line, lines, tokens, advice = 'Keep one copy' }) {
+function expectedClone({
+  file,
+  other,
+  hash,
+  line,
+  lines,
+  tokens,
+  advice = 'Keep one copy',
+}: {
+  readonly file: string;
+  readonly other: string;
+  readonly hash: string;
+  readonly line: number;
+  readonly lines: number;
+  readonly tokens: number;
+  readonly advice?: string;
+}) {
   const endLine = line + lines - 1;
   return {
     tool: 'duplicates',
@@ -389,11 +460,11 @@ describe('a project whose checkout sits under a folder the scan skips', () => {
     });
 
     const pairs = (run.reports.get('duplicates')?.findings ?? []).map(
-      ({ identity }) => identity.split(/:fragment:|:occurrence:/u)[0],
+      ({ identity }) => identity.split(/:fragment:|:occurrence:/u)[0] ?? identity,
     );
 
     expect(run.toolErrors).toEqual([]);
-    expect([...new Set(pairs)].toSorted()).toEqual([
+    expect([...new Set(pairs)].toSorted(compareText)).toEqual([
       'pair:src/copied/first.ts|src/copied/second.ts',
       'renamed:pair:src/renamed/first.ts|src/renamed/second.ts',
     ]);

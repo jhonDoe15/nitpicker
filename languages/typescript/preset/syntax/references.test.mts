@@ -8,7 +8,11 @@ import {
   referencedNames,
 } from './references.mjs';
 
-function parse(text, fileName = 'a.tsx') {
+function compareStrings(left: string, right: string): number {
+  return left < right ? -1 : 1;
+}
+
+function parse(text: string, fileName = 'a.tsx'): ts.SourceFile {
   return ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
 }
 
@@ -18,7 +22,15 @@ describe('referenced names', () => {
       'const a = b + c(); type T = D; const e = <F g={h} />; const i = { j }; k.l.m;',
     );
 
-    expect([...referencedNames([file])].toSorted()).toEqual(['D', 'F', 'b', 'c', 'h', 'j', 'k']);
+    expect([...referencedNames([file])].toSorted(compareStrings)).toEqual([
+      'D',
+      'F',
+      'b',
+      'c',
+      'h',
+      'j',
+      'k',
+    ]);
   });
 
   it('leave out declarations, property names, qualified names, labels and import or export names', () => {
@@ -34,7 +46,7 @@ describe('referenced names', () => {
       ].join('\n'),
     );
 
-    expect([...referencedNames([file])].toSorted()).toEqual(['Ns', 'o']);
+    expect([...referencedNames([file])].toSorted(compareStrings)).toEqual(['Ns', 'o']);
   });
 
   it('list the members of a name that is only ever read through member access', () => {
@@ -69,7 +81,15 @@ describe('declared names', () => {
       'function f<T>(a: T, { b }: { b: number }) { const [c] = [a]; class D {} return function e() { return c; }; }',
     );
 
-    expect([...declaredNames([file])].toSorted()).toEqual(['D', 'T', 'a', 'b', 'c', 'e', 'f']);
+    expect([...declaredNames([file])].toSorted(compareStrings)).toEqual([
+      'D',
+      'T',
+      'a',
+      'b',
+      'c',
+      'e',
+      'f',
+    ]);
   });
 });
 
@@ -77,6 +97,6 @@ describe('JSX tag names', () => {
   it('lists every element tag, namespaced tags included', () => {
     const file = parse('const a = <div><UI.Card /><Chip>text</Chip></div>;');
 
-    expect([...jsxTagNames(file)].toSorted()).toEqual(['Chip', 'UI.Card', 'div']);
+    expect([...jsxTagNames(file)].toSorted(compareStrings)).toEqual(['Chip', 'UI.Card', 'div']);
   });
 });

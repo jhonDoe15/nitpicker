@@ -1,25 +1,37 @@
-import { ts } from '../../typescript-api/typescript-api.mjs';
 import { realpathSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { sourceFilesUnder } from '../../../../shared/renamed-clones/files.mjs';
-import { RENAMED_SETTINGS, withNormalizedTree } from '../../../../shared/renamed-clones/tree.mjs';
-import { renamedJscpdSettings } from '../../../../core/tooling/jscpd/config.mjs';
+import { parseJson } from '../../../../shared/values/readers.mts';
+import { trackTemporaryPath, untrackTemporaryPath } from '../../adapters/typed/tooling.mts';
+import { typescriptApi } from '../../adapters/typed/typescript-program.mts';
 import {
-  trackTemporaryPath,
-  untrackTemporaryPath,
-} from '../../../../core/tooling/temporary-files.mjs';
-import { codeExtensionNames, existingRoots } from '../layout.mjs';
+  RENAMED_SETTINGS,
+  codeExtensionNames,
+  existingRoots,
+  renamedJscpdSettings,
+  sourceFilesUnder,
+  withNormalizedTree,
+} from './typed.mts';
 
 const EXTENSIONS = codeExtensionNames.map((name) => `.${name}`);
 
-export function renamedDuplicatesReport({ projectRoot, config, runJscpd, scratchRoot }) {
+export function renamedDuplicatesReport({
+  projectRoot,
+  config,
+  runJscpd,
+  scratchRoot,
+}: {
+  readonly projectRoot: string;
+  readonly config: { readonly path: string[]; readonly [key: string]: unknown };
+  readonly runJscpd: (run: { readonly configPath: string; readonly cwd: string }) => unknown;
+  readonly scratchRoot: string;
+}): { readonly report: unknown; readonly root: string } | undefined {
   const files = sourceFilesUnder(projectRoot, config.path, EXTENSIONS);
   return withNormalizedTree(
     {
       projectRoot,
       files,
       syntaxOf: () => 'typescript',
-      typescript: ts,
+      typescript: typescriptApi(),
       scratchRoot,
       temporaryPaths: { track: trackTemporaryPath, untrack: untrackTemporaryPath },
     },
@@ -40,7 +52,7 @@ export function renamedDuplicatesReport({ projectRoot, config, runJscpd, scratch
       writeFileSync(path.join(tree, configName), `${JSON.stringify(settings)}\n`);
       runJscpd({ configPath: configName, cwd: tree });
       return {
-        report: JSON.parse(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8')),
+        report: parseJson(readFileSync(path.join(output, 'jscpd-report.json'), 'utf8')),
         root: realpathSync(tree),
       };
     },

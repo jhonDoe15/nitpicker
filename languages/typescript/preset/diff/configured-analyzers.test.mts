@@ -1,18 +1,38 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { importClosure } from '../../../../shared/import-closure.mjs';
-import { configuredAnalyzers, javascriptAnalyzers } from './configured-analyzers.mjs';
+import { importClosure as untypedImportClosure } from '../../../../shared/import-closure.mjs';
+import {
+  configuredAnalyzers as untypedConfiguredAnalyzers,
+  javascriptAnalyzers as untypedJavascriptAnalyzers,
+} from './configured-analyzers.mjs';
+
+type Analyzer = {
+  readonly name: string;
+  readonly cacheKeyFiles: string[];
+  createInvocation(request: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+    readonly liveProjectRoot: string;
+    readonly snapshot: string;
+  }): { readonly args: string[] };
+};
+
+const importClosure: (files: readonly string[], root: string) => Map<string, unknown> =
+  untypedImportClosure;
+const configuredAnalyzers: () => Analyzer[] = untypedConfiguredAnalyzers;
+const javascriptAnalyzers: () => Analyzer[] = untypedJavascriptAnalyzers;
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 
-function packageFile(candidate) {
+function packageFile(candidate: string): string | undefined {
   const relative = path.relative(packageRoot, candidate).split(path.sep).join('/');
   const inside = !relative.startsWith('../') && !path.isAbsolute(relative);
   return inside && existsSync(candidate) && statSync(candidate).isFile() ? relative : undefined;
 }
 
-function invocationEntries(analyzer) {
+function invocationEntries(analyzer: Analyzer): string[] {
   const { args } = analyzer.createInvocation({
     projectRoot: packageRoot,
     policyRoot: packageRoot,
@@ -22,13 +42,13 @@ function invocationEntries(analyzer) {
   });
   return args
     .map((argument) => packageFile(path.resolve(packageRoot, argument)))
-    .filter((file) => file !== undefined && /\.m[jt]s$/u.test(file))
+    .filter((file): file is string => file !== undefined && /\.m[jt]s$/u.test(file))
     .map((file) => file.replace(/\.mts$/u, '.mjs'));
 }
 
-const analyzers = [
-  ...configuredAnalyzers().map((analyzer) => ['typescript', analyzer]),
-  ...javascriptAnalyzers().map((analyzer) => ['javascript', analyzer]),
+const analyzers: [string, Analyzer][] = [
+  ...configuredAnalyzers().map((analyzer): [string, Analyzer] => ['typescript', analyzer]),
+  ...javascriptAnalyzers().map((analyzer): [string, Analyzer] => ['javascript', analyzer]),
 ];
 
 describe('analyzer cache keys', () => {
@@ -45,13 +65,16 @@ describe('analyzer cache keys', () => {
   );
 
   it('hashes the modules the lint rules and boundary rules import', () => {
-    const hashedBy = (name) =>
-      importClosure(
-        analyzers.find(([, analyzer]) => analyzer.name === name)[1].cacheKeyFiles,
+    function hashedBy(name: string): Map<string, unknown> {
+      return importClosure(
+        analyzers.find(([, analyzer]) => analyzer.name === name)?.[1].cacheKeyFiles ?? [],
         packageRoot,
       );
+    }
 
-    const missing = (name, files) => files.filter((file) => !hashedBy(name).has(file));
+    function missing(name: string, files: string[]): string[] {
+      return files.filter((file) => !hashedBy(name).has(file));
+    }
 
     expect(
       missing('eslint-lint', [
