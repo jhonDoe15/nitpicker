@@ -2,13 +2,16 @@ import { existsSync, mkdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { JavaFinding } from '../../adapters/typed/java-values.mts';
 import { runPit } from '../../maven/pit/maven-pit.mts';
 import { pitFailureFindings } from './pit-failure.mts';
 import { pitSkippedFindings, unmutatedFailures, unmutatedSummary } from './pit-skipped.mts';
 
-const roots = [];
+type Result = { readonly status: number; readonly stdout: string; readonly stderr: string };
 
-function pitLine(testClass, method) {
+const roots: string[] = [];
+
+function pitLine(testClass: string, method: string): string {
   return (
     `PIT >> SEVERE : Description [testClass=org.jsoup.helper.${testClass}, ` +
     `name=[engine:junit-jupiter]/[class:org.jsoup.helper.${testClass}]/[method:${method}()]] ` +
@@ -16,7 +19,7 @@ function pitLine(testClass, method) {
   );
 }
 
-function failingOutput(count, testClass = 'HttpClientExecutorTest') {
+function failingOutput(count: number, testClass = 'HttpClientExecutorTest') {
   const lines = Array.from({ length: count }, (_, index) => pitLine(testClass, `case${index}`));
   return `Running\n${lines.join('\n')}\nat org.pitest.Main\n`;
 }
@@ -38,17 +41,20 @@ function moduleTree() {
   return { root, module };
 }
 
-function runWith(results, deadline) {
+function runWith(
+  results: readonly (Result | (() => Result))[],
+  deadline?: number,
+): { root: string; calls: [string][] } {
   const { root, module } = moduleTree();
-  const calls = [];
+  const calls: [string][] = [];
   runPit({
     module,
     reportDir: root,
     tools: { pit: [] },
     classpaths: { testRuntime: [] },
     isArchunit: () => false,
-    spawn: (_java, args) => {
-      calls.push([readFileSync(args[0].slice(1), 'utf8')]);
+    spawn: (_java: unknown, args: readonly string[]) => {
+      calls.push([readFileSync((args[0] ?? '').slice(1), 'utf8')]);
       const result = results[Math.min(calls.length, results.length) - 1];
       return typeof result === 'function' ? result() : result;
     },
@@ -73,7 +79,7 @@ const SUMMARY_15 =
 const SEE_TROUBLESHOOTING =
   'See https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md#pit-fails-or-times-out';
 
-function skippedNotice(count, symbol) {
+function skippedNotice(count: number, symbol: string): JavaFinding {
   return {
     tool: 'pit',
     rule: 'pit-skipped-tests',
@@ -91,7 +97,7 @@ function skippedNotice(count, symbol) {
   };
 }
 
-function pitFailure(message, separator = '. ') {
+function pitFailure(message: string, separator = '. '): JavaFinding {
   return {
     tool: 'pit',
     rule: 'pit-failure',
@@ -108,7 +114,7 @@ describe('the tests that do not pass without mutation', () => {
     const tests = unmutatedFailures(failingOutput(15) + failingOutput(1, 'OtherTest'));
 
     expect(tests).toHaveLength(16);
-    expect(tests[0].label).toBe('HttpClientExecutorTest.case0()');
+    expect(tests[0]?.label).toBe('HttpClientExecutorTest.case0()');
     expect([
       unmutatedSummary(tests.slice(0, 15)),
       unmutatedSummary(tests),
