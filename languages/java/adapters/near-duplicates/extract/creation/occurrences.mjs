@@ -2,7 +2,7 @@ import { field } from '../syntax.mjs';
 
 const CATCH = 'catch';
 const MIXED = 'mixed';
-const DECLARED = 'declared';
+export const DECLARED = 'declared';
 
 function isPlainCreation(creation) {
   return (

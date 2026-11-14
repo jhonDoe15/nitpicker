@@ -22,12 +22,12 @@ function filesProblem([first, second], crossFile) {
     : 'the copies are in different folders';
 }
 
-function wholeProblem({ finding, pair }, crossFile) {
-  const files = filesProblem(pair, crossFile);
+function wholeProblem({ finding, pair }, options) {
+  const files = filesProblem(pair, options.crossFile);
   if (files !== undefined) {
     return files;
   }
-  if (finding.proof !== undefined || finding.rewritten) {
+  if (finding.proof !== undefined || (finding.rewritten && !options.textProof)) {
     return 'the copies match only after their code is rewritten';
   }
   return undefined;
@@ -57,11 +57,11 @@ function sharedUnits(matches) {
   return new Set([...counts].filter(([, count]) => count > 1).map(([name]) => name));
 }
 
-function candidateOf(match, crowded, crossFile) {
+function candidateOf(match, crowded, options) {
   const reported = reportedFinding(match);
   const sorted = byPosition(match);
   const reason =
-    wholeProblem(match, crossFile) ??
+    wholeProblem(match, options) ??
     (sorted.some((unit) => crowded.has(unitKey(unit))) ? CROWDED : undefined) ??
     (overlapping(sorted) ? 'one copy contains the other' : undefined);
   return reason === undefined
@@ -69,18 +69,18 @@ function candidateOf(match, crowded, crossFile) {
     : { note: declineNote(reported, reason) };
 }
 
-function partitionedCandidates(matches, verdicts, crossFile = false) {
+function partitionedCandidates(matches, verdicts, options = {}) {
   const chosen = matches.filter(({ finding }) => verdicts.has(finding.verdict));
   const crowded = sharedUnits(chosen);
-  const outcomes = chosen.map((match) => candidateOf(match, crowded, crossFile));
+  const outcomes = chosen.map((match) => candidateOf(match, crowded, options));
   return {
     candidates: outcomes.flatMap(({ candidate }) => (candidate === undefined ? [] : [candidate])),
     notes: outcomes.flatMap(({ note }) => (note === undefined ? [] : [note])),
   };
 }
 
-export function wholeCandidates(matches, { crossFile = false } = {}) {
-  return partitionedCandidates(matches, WHOLE_VERDICTS, crossFile);
+export function wholeCandidates(matches, options = {}) {
+  return partitionedCandidates(matches, WHOLE_VERDICTS, options);
 }
 
 export function partialCandidates(matches) {

@@ -17,6 +17,20 @@ const LABEL = `
     }
 `;
 
+const WRITE = `
+    public void write(StringBuilder out, TYPE value) {
+        if (value == null) {
+            out.append("null");
+            return;
+        }
+        String text;
+        synchronized (LOCK) {
+            text = format.format(value);
+        }
+        out.append(text);
+    }
+`;
+
 const DEFAULTS = {
   name: 'SqlDateAdapter',
   type: 'java.sql.Date',
@@ -30,8 +44,18 @@ const DEFAULTS = {
   extra: '',
   package: 'demo',
   label: false,
+  write: false,
+  date: 'java.util.Date',
+  suppress: '@SuppressWarnings("JavaUtilDate")',
+  use: 'format.format(value)',
   call: 'format.setTimeZone(zone);',
 };
+
+function writeOf(o) {
+  return WRITE.replace('TYPE', o.type)
+    .replace('LOCK', o.lock)
+    .replace('format.format(value)', o.use);
+}
 
 function adapterFile(overrides = {}) {
   const o = { ...DEFAULTS, ...overrides };
@@ -40,10 +64,10 @@ function adapterFile(overrides = {}) {
 ${o.imports}import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import ${o.date};
 import java.util.TimeZone;
 
-@SuppressWarnings("JavaUtilDate")
+${o.suppress}
 final class ${o.name} extends Adapter<${o.type}> {
     ${o.field} = new SimpleDateFormat("${o.pattern}");
 ${o.extra}
@@ -65,7 +89,7 @@ ${o.extra}
             }
         }
     }
-${o.label ? LABEL.replace('KIND', o.kind) : ''}}
+${o.label ? LABEL.replace('KIND', o.kind) : ''}${o.write ? writeOf(o) : ''}}
 `;
 }
 

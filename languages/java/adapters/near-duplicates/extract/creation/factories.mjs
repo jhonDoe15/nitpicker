@@ -2,7 +2,9 @@ import { nameHoles } from '../../../../../../shared/fix/recipes/extract/names.mj
 import { NO_SHAPE } from '../render.mjs';
 import { field, namedChildren, squashed } from '../syntax.mjs';
 import { argumentTypes, declaredTypes, importsOf } from './arg-types.mjs';
-import { catchProblem, catchText, siteOf } from './catches.mjs';
+import { boundsOf } from './result/bounds.mjs';
+import { interfaceName, interfaceText, nameClash } from './result/interface-names.mjs';
+import { catchProblem, catchText, isUnchecked, siteOf } from './catches.mjs';
 
 const INNER = 'a constructor of a differing type is a member class that needs its outer instance';
 const ARGUMENTS =
@@ -11,36 +13,6 @@ const SIGNATURES = 'the copies pass arguments of different types to a constructo
 const RESULT =
   'a constructor of a differing type is used where its type matters: only a return, an assignment or a declared local may take it';
 const NAMES = 'the shared code has no free names for its extra parameters';
-
-function typeWord(type) {
-  const word = type
-    .replaceAll(/<.*>|\[\]/gu, 'Array')
-    .split('.')
-    .at(-1);
-  return `${word[0].toUpperCase()}${word.slice(1)}`;
-}
-
-function interfaceName({ types }) {
-  return `${types.map(typeWord).join('')}Creator`;
-}
-
-function nameClash(groups, taken) {
-  const seen = new Map();
-  return groups.some((group) => {
-    const name = interfaceName(group);
-    const other = seen.get(name);
-    seen.set(name, group.types.join('\u0000'));
-    return taken.has(name) || (other !== undefined && other !== group.types.join('\u0000'));
-  });
-}
-
-function interfaceText({ name, types, visibility }, { base, unit }) {
-  const access = visibility === '' ? '' : `${visibility} `;
-  const parameters = types.map((type, index) => `${type} argument${index}`).join(', ');
-  return `${access}interface ${name}<T, E extends Exception> {
-${base}${unit}T create(${parameters}) throws E;
-${base}}`;
-}
 
 function freshNames(stems, taken) {
   const named = nameHoles(
@@ -130,7 +102,7 @@ function innerProblem(methods, creations) {
   return used.some((text) => inner.some((names) => names.has(text))) ? INNER : undefined;
 }
 
-function analysed({ methods, typeHoles }) {
+function analysed({ methods, typeHoles, readType }) {
   const creations = creationsOf(typeHoles);
   const envs = methods.map((method) => ({
     declared: declaredTypes(method),
@@ -145,7 +117,7 @@ function analysed({ methods, typeHoles }) {
     found.declined ??
     creations.map(({ occurrence }) => resultProblem(occurrence.a.parent)).find(Boolean) ??
     innerProblem(methods, creations) ??
-    sites.map((site) => catchProblem(site, ids)).find((reason) => reason !== undefined);
+    sites.map((site) => catchProblem(site, ids, readType)).find((reason) => reason !== undefined);
   return problem === undefined ? { groups: found.groups, sites } : { declined: problem };
 }
 
@@ -160,7 +132,10 @@ function rulesOf({ factories, sites }, render) {
     }
   }
   for (const site of sites) {
-    const names = { failure: site.failure, caught: site.caught, type: site.hole.name };
+    const precise = factories.some(
+      ({ untied, occurrences }) => untied && occurrences.some(({ a }) => isInside(a, site.body)),
+    );
+    const names = { failure: site.failure, caught: site.caught, type: site.hole.name, precise };
     rules.set(site.clause.id, (inner) => catchText(site, { ...render, names }, inner));
   }
   return rules;
@@ -224,17 +199,15 @@ function sitesNamed(sites, names, offset) {
   }));
 }
 
-export function shapeOf(request) {
+function tiesOf(groups, sites) {
+  return groups
+    .map((group) => tiedSite(group, sites))
+    .map((site) => (site === undefined || isUnchecked(site.hole) ? undefined : site));
+}
+
+function built(request, { groups, sites }, bounds) {
   const { typeHoles, taken, visibility } = request;
-  const found = analysed(request);
-  if (found.declined !== undefined) {
-    return found;
-  }
-  const { groups, sites } = found;
-  if (groups.length === 0 && sites.length === 0) {
-    return NO_SHAPE;
-  }
-  const ties = groups.map((group) => tiedSite(group, sites));
+  const ties = tiesOf(groups, sites);
   const used = new Set([...taken, ...typeHoles.map(({ name }) => name)]);
   const exceptions = exceptionNames(ties.filter((tie) => tie === undefined).length, used);
   const names = namesFor(groups, sites, taken);
@@ -242,5 +215,18 @@ export function shapeOf(request) {
     return { declined: NAMES };
   }
   const factories = factoriesOf({ groups, ties, names, exceptions }, visibility);
-  return parts({ factories, sites: sitesNamed(sites, names, groups.length), exceptions }, request);
+  const named = sitesNamed(sites, names, groups.length);
+  return { ...parts({ factories, sites: named, exceptions }, request), bounds };
+}
+
+export function shapeOf(request) {
+  const found = analysed(request);
+  if (found.declined !== undefined) {
+    return found;
+  }
+  if (found.groups.length === 0 && found.sites.length === 0) {
+    return NO_SHAPE;
+  }
+  const bounded = boundsOf(found.groups, request.typeHoles);
+  return bounded.declined === undefined ? built(request, found, bounded.bounds) : bounded;
 }

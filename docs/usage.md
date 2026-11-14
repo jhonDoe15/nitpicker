@@ -2113,8 +2113,8 @@ the enclosing class, declares more than methods, or sits in a generic method or 
 `final` local, a sum that is narrowed), Java cannot tell whether the code needs instance state (a
 name that a superclass may declare, a call with a static and an instance overload), or the copies
 differ in a way a parameter cannot carry, or a pair in two Java files uses state of its class that the new class cannot
-reach or has no free class name. A pair in two TypeScript files, in two Java folders, or in two classes other than anonymous
-classes of one class, is not looked at. The
+reach or has no free class name. A pair in two Java files of one folder and one package is extracted into a new package-private class. A pair in two TypeScript files, in two Java folders, in two packages, in
+generated sources (`build`, `generated` or `target`), or in two classes other than anonymous classes of one class, is not looked at. The
 TypeScript recipe also checks the result with the compiler before it writes. The Java recipes do
 not compile the result, so they are `review` recipes, and so is the TypeScript partial-run recipe,
 whose closures and aliasing a type check cannot prove. A file that uses CRLF keeps CRLF. Kotlin,

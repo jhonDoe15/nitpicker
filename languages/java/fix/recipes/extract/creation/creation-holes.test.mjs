@@ -26,6 +26,38 @@ const CAUGHT = creatorClass(
   creator('bottom', 'StringBuffer', GUARDED),
 );
 
+const BOUNDED = creatorClass(
+  creator('top', 'StringBuilder').replace('Object top', 'CharSequence top'),
+  creator('bottom', 'StringBuffer').replace('Object bottom', 'CharSequence bottom'),
+);
+
+function guarded(type, kind) {
+  return (made) => `try {
+            return ${made};
+        } catch (${type} e) {
+            System.out.println("${kind} " + e.getMessage());
+            return null;
+        }`;
+}
+
+function opening(name, type, caught) {
+  return creator(name, type, guarded(caught, name)).replace(
+    `Object ${name}(List<String> source, int limit) {`,
+    `Object ${name}(List<String> source, int limit) throws java.io.IOException {`,
+  );
+}
+
+const UNCHECKED = creatorClass(
+  opening('top', 'java.io.FileReader', 'IllegalArgumentException'),
+  opening('bottom', 'java.io.FileInputStream', 'IllegalStateException'),
+);
+const WRAP =
+  '    static final class Wrap extends IOException {\n        Wrap(Exception e) {}\n    }\n';
+const SINGLE = urlAndUri({
+  url: { handler: 'throw new Wrap(e);' },
+  uri: { handler: 'throw new Wrap(e);' },
+}).replace('final class Adapters {\n', `final class Adapters {\n${WRAP}`);
+
 describe('javaExtractNearDuplicateRecipe with constructors that differ', () => {
   it('extracts two anonymous classes that differ in the constructor and the exception', () => {
     const { notes, after } = plan(urlAndUri());
@@ -185,5 +217,45 @@ describe('javaExtractNearDuplicateRecipe with constructors that differ', () => {
 
   it.runIf(javacAvailable())('produces code that compiles when the catch clause stays', () => {
     expect(compileStatus(plan(CAUGHT).after)).toBe(0);
+  });
+
+  it('bounds the type parameter by the type the copies return the constructor as', () => {
+    const { fixes, after } = plan(BOUNDED);
+    expect([fixes.length, after.includes('<T extends CharSequence, E extends Exception>')]).toEqual(
+      [1, true],
+    );
+  });
+
+  it.runIf(javacAvailable())('produces code that compiles when the type is bounded', () => {
+    expect(compileStatus(plan(BOUNDED).after)).toBe(0);
+  });
+
+  it('rethrows what the shared code does not catch when the caught type is unchecked', () => {
+    const { fixes, after } = plan(UNCHECKED);
+    expect([fixes.length, after.includes('throw caught;')]).toEqual([1, true]);
+  });
+
+  it.runIf(javacAvailable())(
+    'produces code that compiles when the caught type is unchecked',
+    () => {
+      expect(compileStatus(plan(UNCHECKED).after)).toBe(0);
+    },
+  );
+
+  it('names an interface after the type arguments of a generic argument', () => {
+    const text = creatorClass(
+      creator('top', 'ArrayList', undefined, 'picked'),
+      creator('bottom', 'java.util.LinkedList', undefined, 'picked'),
+    );
+    const { fixes, after } = plan(text);
+    expect([fixes.length, after.includes('ListOfStringCreator')]).toEqual([1, true]);
+  });
+
+  it('passes the exception to a constructor that has one constructor of that size', () => {
+    expect(plan(SINGLE).fixes.length).toBe(1);
+  });
+
+  it.runIf(javacAvailable())('produces code that compiles when the exception is passed on', () => {
+    expect(compileStatus(plan(SINGLE).after)).toBe(0);
   });
 });

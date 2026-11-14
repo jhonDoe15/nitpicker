@@ -6,6 +6,7 @@ import { lastSegment } from '../../../../../shared/fix/recipes/extract/names.mjs
 import { collected, outcomeOf } from '../../../../../shared/fix/recipes/extract/outcomes.mjs';
 import { nearDuplicateMatches } from '../../../../../shared/rules/near-duplicates/near-duplicates.mjs';
 import { javaUnits } from '../tree/units.mjs';
+import { readerFor } from './creation/constructors.mjs';
 import { crossOutcomes } from './cross/group.mjs';
 import { wholeExtraction } from './java-extract.mjs';
 import { partialExtraction } from './partial/partial-extract.mjs';
@@ -13,7 +14,7 @@ import { METHOD, descendants, field } from './syntax.mjs';
 
 const STRATEGIES = {
   whole: {
-    candidatesOf: (matches) => wholeCandidates(matches, { crossFile: true }),
+    candidatesOf: (matches) => wholeCandidates(matches, { crossFile: true, textProof: true }),
     extract: wholeExtraction,
   },
   partial: { candidatesOf: partialCandidates, extract: partialExtraction },
@@ -50,6 +51,7 @@ function inFile(candidate, source, context) {
     root: source.rootNode,
     text: source.text,
     claimed: context.claimed.get(source.file),
+    readType: context.readType,
   });
   const path = source.file;
   return result.edits === undefined
@@ -76,6 +78,7 @@ export function javaExtractions(sources, { mode, root }) {
     strategy,
     sources: byFile,
     claimed: new Map(sources.map(({ file }) => [file, new Set()])),
+    readType: readerFor(root, sources),
   };
   const here = candidates.filter((candidate) => !isCrossFile(candidate));
   const across = candidates.filter(isCrossFile).map((candidate) => ({
@@ -91,7 +94,7 @@ export function javaExtractions(sources, { mode, root }) {
     ...across
       .filter((entry) => !plain.includes(entry))
       .map(({ candidate }) => outcomeOf(candidate, { declined: 'a copy is not a plain method' })),
-    ...crossOutcomes(plain, root),
+    ...crossOutcomes(plain, { root, readType: context.readType }),
   ];
   return collected(outcomes, notes);
 }

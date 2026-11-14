@@ -81,16 +81,17 @@ describe('javaExtractNearDuplicateRecipe across two files of one package', () =>
     expect(after[`${FOLDER}/SqlDateAdapter.java`]).toMatchInlineSnapshot(`
       "package demo;
 
+      import java.sql.Date;
       import java.text.DateFormat;
       import java.text.SimpleDateFormat;
 
       @SuppressWarnings("JavaUtilDate")
-      final class SqlDateAdapter extends Adapter<java.sql.Date> {
+      final class SqlDateAdapter extends Adapter<Date> {
           private final DateFormat format = new SimpleDateFormat("MMM d, yyyy");
 
           @Override
-          public java.sql.Date read(String in) {
-              return SqlAdapters.sharedRead(in, this, format, "' as SQL Date; at ", java.sql.Date::new);
+          public Date read(String in) {
+              return SqlAdapters.sharedRead(in, this, format, "' as SQL Date; at ", Date::new);
           }
       }
       "
@@ -122,7 +123,11 @@ describe('javaExtractNearDuplicateRecipe across two files of one package', () =>
 
   it('puts several shared methods of the two files into the same class', () => {
     const { fixes, notes, after } = plan(filesOf({ label: true }, { label: true }));
-    expect([fixes.length, notes]).toEqual([1, []]);
+    expect([fixes.length, notes]).toEqual([2, []]);
+    expect(fixes.map((fix) => fix.edits.some(({ type }) => type === 'write'))).toEqual([
+      true,
+      false,
+    ]);
     expect(after[`${FOLDER}/SqlAdapters.java`]).toMatchInlineSnapshot(`
       "package demo;
 
@@ -212,7 +217,7 @@ describe('javaExtractNearDuplicateRecipe leaves a shared class that is taken', (
     });
     expect([found.fixes.length, found.notes[0].split('near-duplicate: ').at(-1)]).toEqual([
       0,
-      'src/main/java/demo/SqlAdapters.java already exists',
+      'a file named SqlAdapters already exists in the package',
     ]);
   });
 
