@@ -1253,6 +1253,28 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   plain `str` or `bool`, `x or ''` and `x or False`, a test that does not use the value, a name the
   function binds again, and test files. When an empty string or `False` must take the same path as
   a missing value, add an exception for the rule.
+- `http-value-case` reports HTTP text compared by exact case, in production code. A value read by
+  `request.headers["x"]`, `request.headers.get("x")` (any mapping or attribute named `*headers`) or
+  `request.content_type`, of a header whose value is case-insensitive (`Content-Type`, `Accept*`,
+  `Content-Encoding`, `Transfer-Encoding`, `Connection`, `Upgrade`, `Cache-Control`, `Authorization`,
+  `Host`, `Origin`, `Forwarded`, `X-Forwarded-Proto` and the like), a `urlparse(...).netloc`,
+  directly or through a local assigned once, is reported when it meets a string literal with a
+  letter in `==`, `!=`, `in`, `startswith`, `endswith`, `find`, a `match` statement, a
+  `re.match`, `search` or `fullmatch` without `re.I`, or as the key of a table. Also reported:
+  `name.startswith("__Host-")` or `"__Secure-"` without `lower()`, a file extension from
+  `os.path.splitext(...)[1]`, `Path(...).suffix` or `split(".")[-1]` used as the key of a table named
+  `mime` or `content_type` without `lower()`, and a capitalised header name read from a plain copy of
+  the request headers (`dict(request.headers)["Content-Type"]`). Not reported: `.lower()`,
+  `.casefold()` or a parser on the way (`email.message.Message.get_content_type`,
+  `werkzeug.http.parse_options_header`), the request header mapping itself (it ignores case), an HTTP
+  method (case-sensitive) and a parsed URL's `scheme` and `hostname`, which `urllib` lowercases.
+  Allowed form: `value.lower()` or `casefold()` first, or a parser.
+- `hand-split-http-header` reports a structured header (`Accept*`, `Content-Type`, `Cache-Control`,
+  `If-None-Match`, `If-Match`, `Cookie`, `Forwarded`, `Content-Disposition`) split by hand: `split`,
+  `rsplit` or `partition` on `,` or `;`, or a `re` call whose pattern has a separator, `q=`,
+  `charset` or `boundary`. Allowed form: `email.message.Message`, `werkzeug.http`
+  (`parse_options_header`, `parse_accept_header`, `parse_cache_control_header`, `parse_etags`) or
+  `http.cookies.SimpleCookie`; a library that is itself the parser takes an exception.
 - `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
   `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
   parameter or annotated local, and a number field of a class in the same module read through a

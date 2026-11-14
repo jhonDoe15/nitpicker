@@ -8,6 +8,7 @@ import { kotlinSourceRules as rulesConfigurationReads } from '../configuration/c
 import { kotlinSourceRules as rulesFutureCompletions } from '../futures/future-completions.mjs';
 import { kotlinSourceRules as rulesRootScopeLaunches } from '../futures/root-scope-launches.mjs';
 import { kotlinSourceRules as rulesUnboundedWaits } from '../futures/unbounded-waits.mjs';
+import { kotlinSourceRules as rulesHttpValues } from '../http/http-values.mjs';
 import { kotlinSourceRules as rulesCleanupOrder } from '../lifecycles/cleanup/cleanup-order.mjs';
 import { kotlinSourceRules as rulesAddOnlyProperties } from '../lifecycles/growth/add-only-properties.mjs';
 import { kotlinSourceRules as rulesCachedDeferred } from '../lifecycles/memo/cached-deferred.mjs';
@@ -51,6 +52,7 @@ export const directoryRules = [
   rulesFutureCompletions,
   rulesRootScopeLaunches,
   rulesUnboundedWaits,
+  rulesHttpValues,
   rulesCleanupOrder,
   rulesAddOnlyProperties,
   rulesCachedDeferred,

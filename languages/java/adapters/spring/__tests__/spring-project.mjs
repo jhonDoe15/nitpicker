@@ -143,6 +143,8 @@ const REVIEW_RULES = new Set([
   'SortForExtreme',
   'RedundantStreamStep',
   'NullMapValue',
+  'HttpValueCase',
+  'HandSplitHttpHeader',
   'StreamedRowsCollected',
   'SpringDataFilterInQuery',
   'HardcodedSecret',

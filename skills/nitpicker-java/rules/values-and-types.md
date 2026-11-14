@@ -30,6 +30,12 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
   (`pmd/DefaultTimeZone`).
+- HTTP text is case-insensitive and structured headers are parsed: lowercase a header value, URI scheme or
+  host, cookie name or file extension before comparing it (`toLowerCase(Locale.ROOT)`, `equalsIgnoreCase`) and
+  parse `Content-Type`, `Accept` and cookies with `MediaType.parseMediaType`, `MediaType.parseMediaTypes`,
+  `ContentDisposition.parse` or `HttpCookie.parse` instead of `split(",")` or `split(";")`
+  (`pmd/HttpValueCase`, `pmd/HandSplitHttpHeader`). `getHeader` and `HttpHeaders` ignore the case of the
+  name; a library that is itself the parser takes an exception.
 - Time units: name a time value with its unit (`timeoutMillis`, `ttlSeconds`) and let it meet only the same
   unit: convert once where it enters (`TimeUnit.SECONDS.toMillis(ttlSeconds)`, `Duration.ofSeconds(s).toMillis()`)
   and pass a `TimeUnit` that matches the value (`pmd/MixedTimeUnits`). Keep epoch times in a `long` or an

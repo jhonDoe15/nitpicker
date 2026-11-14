@@ -111,6 +111,12 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
   before `some`/`every`, `[await one]` not `Promise.all([one])`, and no `await` inside
   `Promise.all([...])` (`nitpicker/no-wasted-collection-step`).
+- Compare HTTP text case-insensitively and parse structured headers: lowercase a header value, media
+  type, charset, scheme, cookie name or file extension (`value.toLowerCase()`) before comparing it, and
+  parse `Accept*`, `Content-Type`, `Cache-Control`, `If-None-Match` and `Cookie` with the `content-type`,
+  `negotiator`, `accepts` or `cookie` package or the framework's own helper instead of `split(',')` or
+  `split(';')` (`nitpicker/no-raw-http-value`). Header names read with `Headers.get`, `req.header` or
+  `req.get` ignore case already; a library that is itself the parser takes an exception.
 - Name files, folders and types for what they do (`price-rounding.ts`, `PriceRounder`), never
   `utils`, `helpers`, `common`, `misc` or `*Manager`; pure logic shared between features goes in the
   shared folder under such a name (`nitpicker/no-generic-name`).

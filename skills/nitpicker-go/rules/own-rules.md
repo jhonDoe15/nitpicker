@@ -134,3 +134,9 @@ the allowed form and ends with its exception entry.
   `sync.WaitGroup`), or run the code in a `testing/synctest` bubble, where time is virtual. A fake
   that sleeps to act slow is fine.
 - A goroutine a test starts is waited for before the test returns (`go-rules/unowned-goroutine`).
+- HTTP text is case-insensitive (`go-rules/http-value-case`): compare a header value, a `Host`, a cookie
+  name prefix or a file extension with `strings.EqualFold`, or lowercase it first, and parse
+  structured headers (`go-rules/hand-split-http-header`) with `mime.ParseMediaType` or
+  `http.ParseCookie` instead of `strings.Split(value, ",")`. `Header.Get` canonicalises the name; index
+  `Header` only with a canonical key (`http.CanonicalHeaderKey`). A library that is itself the parser
+  takes an exception. `url.Parse` already lowercases the scheme, so `u.Scheme == "https"` is fine.

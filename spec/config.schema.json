@@ -2269,6 +2269,8 @@
                             "kotlin-source/UnhandledRootCoroutine",
                             "kotlin-source/ReactorBlockWithoutTimeout",
                             "kotlin-source/UnboundedWait",
+                            "kotlin-source/HttpValueCase",
+                            "kotlin-source/HandSplitHttpHeader",
                             "kotlin-source/CleanupSkippedOnFailure",
                             "kotlin-source/UnboundedCollectionProperty",
                             "kotlin-source/CachedDeferredKeepsFailure",

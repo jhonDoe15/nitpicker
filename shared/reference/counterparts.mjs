@@ -30,6 +30,18 @@ const GROUPS = [
     go: 'go-rules/unindexed-foreign-key',
   },
   {
+    java: 'HttpValueCase',
+    typescript: 'nitpicker/no-raw-http-value',
+    python: 'http-value-case',
+    go: 'go-rules/http-value-case',
+  },
+  {
+    java: 'HandSplitHttpHeader',
+    typescript: 'nitpicker/no-raw-http-value',
+    python: 'hand-split-http-header',
+    go: 'go-rules/hand-split-http-header',
+  },
+  {
     jvm: 'CopiedConstantInTest',
     typescript: 'nitpicker/no-copied-constant',
     python: 'copied-constant-in-test',
@@ -70,7 +82,15 @@ function groupEntries(group) {
   ]);
 }
 
-const COUNTERPARTS = new Map([
+function mergedEntries(entries) {
+  const merged = new Map();
+  for (const [rule, links] of entries) {
+    merged.set(rule, [...(merged.get(rule) ?? []), ...links]);
+  }
+  return merged;
+}
+
+const COUNTERPARTS = mergedEntries([
   ['nitpicker/no-orm-schema-sync', [spring('ddl-auto')]],
   ['nitpicker/no-orm-query-logging', [spring('unsafe-diagnostics')]],
   ['orm-schema-sync', [spring('ddl-auto')]],
