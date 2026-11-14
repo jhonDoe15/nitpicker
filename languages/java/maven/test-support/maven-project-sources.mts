@@ -1,26 +1,35 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { readReactor } from '../maven-project.mjs';
+import { readReactor } from '../maven-project.mts';
+import type { ModuleDescription } from '../typed/module-description.mts';
 
-export function raw(artifactId, parent = '') {
+export function raw(artifactId: string, parent = ''): string {
   const owner =
     parent === '' ? '<groupId>demo</groupId>' : `<parent><groupId>${parent}</groupId></parent>`;
   return `<project>${owner}<artifactId>${artifactId}</artifactId></project>`;
 }
 
-export function plugin(artifactId, body, groupId = 'org.apache.maven.plugins') {
+export function plugin(
+  artifactId: string,
+  body: string,
+  groupId = 'org.apache.maven.plugins',
+): string {
   return `<plugin><groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>${body}</plugin>`;
 }
 
-export function inBuild(plugins) {
+export function inBuild(plugins: string): string {
   return `<build><plugins>${plugins}</plugins></build>`;
 }
 
-export function reactorKit() {
-  const roots = [];
+export function reactorKit(): {
+  readonly reactor: (files: Readonly<Record<string, string>>) => string;
+  readonly soloModule: (inner: string) => ModuleDescription | undefined;
+  readonly removeReactors: () => void;
+} {
+  const roots: string[] = [];
 
-  function reactor(files) {
+  function reactor(files: Readonly<Record<string, string>>): string {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-reactor-'));
     roots.push(root);
     for (const [name, text] of Object.entries(files)) {
@@ -34,7 +43,7 @@ export function reactorKit() {
     return root;
   }
 
-  function soloModule(inner) {
+  function soloModule(inner: string): ModuleDescription | undefined {
     const root = reactor({ 'pom.xml': raw('solo') });
     const [module] = readReactor(
       root,
@@ -43,7 +52,7 @@ export function reactorKit() {
     return module;
   }
 
-  function removeReactors() {
+  function removeReactors(): void {
     for (const root of roots.splice(0)) {
       rmSync(root, { recursive: true, force: true });
     }

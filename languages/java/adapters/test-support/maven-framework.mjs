@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
-import { lifecycleArgs, readReactor } from '../../maven/maven-project.mjs';
+import { lifecycleArgs, readReactor } from '../../maven/maven-project.mts';
 import {
   moduleClasspaths,
   parseDependencyList,
@@ -13,7 +13,7 @@ import {
   collectTestResults,
   junitLauncherVersion,
   runJacocoReport,
-} from '../../maven/maven-tests.mjs';
+} from '../../maven/maven-tests.mts';
 import { runPit } from '../../maven/pit/maven-pit.mts';
 import { copyTestResults } from '../../maven/results/maven-test-results.mts';
 import { ingestArchunit } from '../../ingest/archunit.mts';

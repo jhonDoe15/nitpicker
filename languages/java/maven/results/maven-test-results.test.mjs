@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readdirSync, rmSync, utimesSync, writeFileSync 
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { archunitMatcher } from '../maven-tests.mjs';
+import { archunitMatcher } from '../maven-tests.mts';
 import { copyTestResults, requireTestngRun } from './maven-test-results.mts';
 
 const roots = [];

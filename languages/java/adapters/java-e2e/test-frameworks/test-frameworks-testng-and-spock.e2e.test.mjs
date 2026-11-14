@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../../java-runner.mts';
 import { runMaven } from '../../../maven/maven-command.mjs';
-import { archunitMatcher } from '../../../maven/maven-tests.mjs';
+import { archunitMatcher } from '../../../maven/maven-tests.mts';
 import { requireTestngRun } from '../../../maven/results/maven-test-results.mts';
 import { childrenNamed, parseXml } from '../../../../../shared/ingest/common.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';

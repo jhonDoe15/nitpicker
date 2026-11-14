@@ -1,14 +1,14 @@
 import path from 'node:path';
 import { runFormat } from '../format/maven-format.mts';
 import { runCheckstyle, runPmd, runSpotbugs } from '../maven-lint.mjs';
-import { archunitMatcher } from '../maven-tests.mjs';
+import { archunitMatcher } from '../maven-tests.mts';
 import { runSpringArch } from '../spring/maven-spring-arch.mts';
 import { withDeclaredSpring, withFeatureFolders } from '../spring/arch-rules-gate.mts';
 import { moduleManifest, usesReactor, writeManifest } from '../manifest/maven-manifest.mts';
 import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mts';
 import { runErrorProne } from '../errorprone/maven-errorprone.mts';
 import { parserJava, sourceLevel } from '../errorprone/maven-jdk.mjs';
-import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
+import { analyzeKotlinModule } from '../kotlin/kotlin-module.mts';
 import { runGuards } from '../guards/maven-guards.mts';
 import { runToolsConcurrently } from '../parallel/concurrent-tools.mts';
 import { runJdeps, runStructure } from '../parallel/module-metrics.mts';

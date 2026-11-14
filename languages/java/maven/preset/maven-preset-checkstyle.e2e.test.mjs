@@ -9,7 +9,7 @@ import {
   OPTED_IN_CHECKSTYLE,
   summaryOf,
   withFourSpaces,
-} from '../test-support/style-sources.mjs';
+} from '../test-support/style-sources.mts';
 import {
   useMavenPresetProject,
   enabled,
