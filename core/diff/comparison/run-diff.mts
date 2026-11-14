@@ -17,7 +17,7 @@ import { type Comparison, readSnapshotLayout, withSnapshotRoots } from './snapsh
 import { withPreparedDependencies } from './snapshots/dependencies.mts';
 import { type AnalyzerRun, analyzerRunOptions, runAnalyzers } from '../execution/run-analyzers.mts';
 import { carried, planOf, runnableOf, stopsEarly, unlessSkipped } from './snapshots/skips.mts';
-import type { CaptureHead } from '../../staged/capture-index.mts';
+import type { CaptureHead } from './snapshots/run-types.mts';
 import type {
   BaseSetup,
   DiffOptions,

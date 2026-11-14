@@ -1,6 +1,8 @@
 import type { CacheStore } from '../../cache/cache-stores.mts';
 import type { ProfiledAnalyzer } from '../../../../shared/values/analyzers.mts';
 
+export type CaptureHead = (repositoryRoot: string, headSha: string) => unknown;
+
 export type RunSettings = {
   readonly repositoryRoot: string;
   readonly projectRelativePath: string;

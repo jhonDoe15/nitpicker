@@ -1,5 +1,4 @@
-import type { CaptureHead } from '../../../staged/capture-index.mts';
-import type { RunSettings, SkipPlan, SnapshotRoots } from './run-types.mts';
+import type { CaptureHead, RunSettings, SkipPlan, SnapshotRoots } from './run-types.mts';
 import type { Comparison, SnapshotLayout } from './layout.mts';
 import type { ReportEntry } from '../../../../shared/values/findings.mts';
 

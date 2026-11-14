@@ -13,8 +13,6 @@ type HeldOptions = {
 };
 
 const oneLine: (value: unknown) => string = singleLine;
-const styled: (value: string, codes: readonly string[], color: boolean) => string = style;
-const plural: (noun: string, count: number) => string = pluralize;
 
 const MAX_HELD_LINES = 10;
 const FINDING = 'finding';
@@ -65,10 +63,6 @@ function heldList(
   ];
 }
 
-function dimmed(text: string, color: boolean): string {
-  return styled(text, [ANSI.dim], color);
-}
-
 export function heldSummaryLines(
   unchangedFindings: readonly ReportEntry[],
   { color, details, diagnosticsPath }: HeldOptions,
@@ -78,18 +72,20 @@ export function heldSummaryLines(
     ...(metrics.length === 0
       ? []
       : [
-          dimmed(
-            `Note: ${String(metrics.length)} ${plural(FINDING, metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
-            color,
+          style(
+            `Note: ${String(metrics.length)} ${pluralize(FINDING, metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
+            [ANSI.dim],
+            { color },
           ),
           ...heldList(metrics, { details, diagnosticsPath }),
         ]),
     ...(lint.length === 0
       ? []
       : [
-          dimmed(
-            `Note: ${String(lint.length)} existing lint ${plural(FINDING, lint.length)} in edited code (not failing, no more than before):`,
-            color,
+          style(
+            `Note: ${String(lint.length)} existing lint ${pluralize(FINDING, lint.length)} in edited code (not failing, no more than before):`,
+            [ANSI.dim],
+            { color },
           ),
           ...heldList(lint, { details, diagnosticsPath }),
         ]),
