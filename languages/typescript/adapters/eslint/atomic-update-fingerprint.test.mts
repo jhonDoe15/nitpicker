@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from './test-support/finding-comparison.mts';
 import { normalizeEslintResults } from './normalize.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
 const REPORTED = 'state.total += await load()';
 const CODE = `export async function update(state, load) { ${REPORTED}; }`;
 
@@ -15,7 +15,7 @@ afterAll(() => {
   }
 });
 
-function findingFor(code) {
+function findingFor(code: string) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-atomic-fingerprint-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'src'), { recursive: true });
@@ -45,6 +45,8 @@ describe('atomic-update differential identity', () => {
     const result = compareFindings({
       baseFindings: findingFor(CODE),
       headFindings: findingFor(`export const unrelated = 1;\n${CODE}`),
+      touchedCode: undefined,
+      unknownOnBase: undefined,
     });
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);

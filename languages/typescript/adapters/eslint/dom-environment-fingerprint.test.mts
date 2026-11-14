@@ -4,7 +4,7 @@ import path from 'node:path';
 import { Linter } from 'eslint';
 import tseslint from 'typescript-eslint';
 import { afterAll, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from './test-support/finding-comparison.mts';
 import { nitpickerRules } from '../../preset/eslint-plugin/index.mjs';
 import { normalizeEslintResults } from './normalize.mts';
 
@@ -13,6 +13,9 @@ const directive = ['@vitest', 'environment'].join('-');
 const logic = "it('adds', () => { expect(1 + 1).toBe(2); });\n";
 const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-dom-fingerprint-')));
 const linter = new Linter({ cwd: root });
+const verifier: {
+  verify(code: string, config: unknown, options: { readonly filename: string }): unknown;
+} = linter;
 const config = [
   {
     files: ['**/*.ts'],
@@ -26,11 +29,11 @@ afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function findingFor(name, code) {
+function findingFor(name: string, code: string) {
   const filePath = path.join(root, 'src', name);
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, code);
-  const messages = linter.verify(code, config, { filename: filePath });
+  const messages = verifier.verify(code, config, { filename: filePath });
   return normalizeEslintResults({
     value: [{ filePath, messages }],
     projectRoot: root,
@@ -48,6 +51,8 @@ describe('a no-unused-dom-environment finding under the ESLint engine', () => {
     const result = compareFindings({
       baseFindings: base,
       headFindings: findingFor('head.test.ts', head),
+      touchedCode: undefined,
+      unknownOnBase: undefined,
     });
     expect(base).toHaveLength(1);
     expect(result.newFindings).toEqual([]);
@@ -62,6 +67,8 @@ describe('a no-unused-dom-environment finding under the ESLint engine', () => {
         'declared-head.test.ts',
         `import { sum } from './sum';\n${declared}`,
       ),
+      touchedCode: undefined,
+      unknownOnBase: undefined,
     });
     expect(result.newFindings).toEqual([]);
     expect(result.unchangedFindings).toHaveLength(1);

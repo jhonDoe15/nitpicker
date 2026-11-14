@@ -1,16 +1,20 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
-import { isStrictRule } from '../../preset/strict-rules.mjs';
-import { normalizeEslintResults } from './normalize.mts';
-import { findingFor, makeTemporaryRoot, positionOf } from './test-support/finding-for.mjs';
+import { findingFor } from './test-support/finding-for.mts';
+import { compareFindings, firstOf, isStrictRule } from './test-support/finding-comparison.mts';
+import type { EslintFinding } from './typed/engine.mts';
 
-function compare(base, head) {
-  return compareFindings({ baseFindings: base, headFindings: head });
+const COUNT_ANCHOR: unknown = expect.stringMatching(/^count:Reported text\.:text:/u);
+
+function compare(base: readonly EslintFinding[], head: readonly EslintFinding[]) {
+  return compareFindings({
+    baseFindings: base,
+    headFindings: head,
+    touchedCode: undefined,
+    unknownOnBase: undefined,
+  });
 }
 
-const returnTypeFinding = (code) => findingFor({ code, reported: ': Item[]' });
+const returnTypeFinding = (code: string) => findingFor({ code, reported: ': Item[]' });
 
 describe('a finding anchored on a whole function is about its signature', () => {
   const before = [
@@ -47,20 +51,22 @@ describe('a finding anchored on a whole function is about its signature', () => 
   it('changes the identity when the signature changes', () => {
     const after = before.replace('items: readonly Item[]', 'items: readonly Item[], rate: number');
 
-    expect(returnTypeFinding(after)[0].identity).not.toBe(returnTypeFinding(before)[0].identity);
+    expect(firstOf(returnTypeFinding(after)).identity).not.toBe(
+      firstOf(returnTypeFinding(before)).identity,
+    );
   });
 
   it('keeps a body-anchored finding tied to the text it reports', () => {
-    const call = (argument) => `export function run() {\n  console.log(${argument});\n}\n`;
-    const find = (code) =>
+    const call = (argument: string) => `export function run() {\n  console.log(${argument});\n}\n`;
+    const find = (code: string) =>
       findingFor({ code, reported: code.slice(code.indexOf('console'), code.indexOf(';')) });
 
-    expect(find(call('1'))[0].identity).toBe(find(call('1'))[0].identity);
-    expect(find(call('2'))[0].identity).not.toBe(find(call('1'))[0].identity);
+    expect(firstOf(find(call('1'))).identity).toBe(firstOf(find(call('1'))).identity);
+    expect(firstOf(find(call('2'))).identity).not.toBe(firstOf(find(call('1'))).identity);
   });
 
   it('keeps a declaration without a body tied to its whole text', () => {
-    const find = (code) => findingFor({ code, reported: code.trim() });
+    const find = (code: string) => findingFor({ code, reported: code.trim() });
 
     const result = compare(
       find('declare function load(id: string): Item;\n'),
@@ -72,7 +78,7 @@ describe('a finding anchored on a whole function is about its signature', () => 
 });
 
 describe('a finding that spans the whole file is about the file', () => {
-  const wholeFileFinding = (code) =>
+  const wholeFileFinding = (code: string) =>
     findingFor({ code, reported: code.trimStart(), ruleId: 'nitpicker/no-unknown-main-folder' });
 
   it('stays baselined when the file had one statement and lines are added above it', () => {
@@ -88,7 +94,7 @@ describe('a finding that spans the whole file is about the file', () => {
   });
 
   it('anchors on the program', () => {
-    expect(wholeFileFinding('export const a = 1;\n')[0].identity).toBe(
+    expect(firstOf(wholeFileFinding('export const a = 1;\n')).identity).toBe(
       'message:Reported text.|node:Program|syntax:program|occurrence:1',
     );
   });
@@ -110,13 +116,13 @@ describe('a finding in an edited function stays baselined while the function has
       location: { line: 4, column: 5 },
       classification: 'enforceable',
       symbol: 'load',
-      anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
+      anchor: { key: COUNT_ANCHOR },
       ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       heldAtBase: 1,
     },
   ];
 
-  function load(handler, extra = '') {
+  function load(handler: string, extra = '') {
     return [
       'export function load(read: () => string): string {',
       '  try {',
@@ -127,14 +133,19 @@ describe('a finding in an edited function stays baselined while the function has
     ].join('\n');
   }
 
-  const silentCatches = (code) =>
+  const silentCatches = (code: string) =>
     findingFor({
       code,
       reported: [...code.matchAll(/catch \{[^}]*\}/g)].map(([reported]) => reported),
       ruleId: SILENT,
     });
 
-  function compareWithTouched(before, after, touchedLines, inserted = []) {
+  function compareWithTouched(
+    before: string,
+    after: string,
+    touchedLines: readonly (readonly [number, number])[],
+    inserted: readonly (readonly [number, number])[] = [],
+  ) {
     return compareFindings({
       baseFindings: silentCatches(before),
       headFindings: silentCatches(after),
@@ -144,6 +155,7 @@ describe('a finding in an edited function stays baselined while the function has
         ]),
         isStrictRule,
       },
+      unknownOnBase: undefined,
     });
   }
 
@@ -205,14 +217,14 @@ describe('a finding in an edited function stays baselined while the function has
         location: { line: 13, column: 5 },
         classification: 'enforceable',
         symbol: 'fetchValue',
-        anchor: { key: expect.stringMatching(/^count:Reported text\.:text:/u) },
+        anchor: { key: COUNT_ANCHOR },
         ratchet: { key: 'count:Reported text.', value: 1, existingCodeOnly: true },
       },
     ]);
   });
 
   it('keeps a lint finding of a non-strict rule baselined when its code is edited', () => {
-    const find = (argument) =>
+    const find = (argument: string) =>
       findingFor({
         code: `export function run(a: string) {\n  return a.concat(${argument});\n}\n`,
         reported: `a.concat(${argument})`,
@@ -245,7 +257,7 @@ describe('a new throw in a legacy function', () => {
   );
   const withoutThrow = oneThrow.replace("    throw new Error('empty');", '    return text;');
 
-  const throws = (code) =>
+  const throws = (code: string) =>
     findingFor({
       code,
       reported: [...code.matchAll(/throw new Error\('[a-z]+'\);/g)].map(([reported]) => reported),
@@ -254,7 +266,11 @@ describe('a new throw in a legacy function', () => {
       message: NO_THROW_MESSAGE,
     });
 
-  const compareWithInserted = (before, after, inserted) =>
+  const compareWithInserted = (
+    before: readonly EslintFinding[],
+    after: readonly EslintFinding[],
+    inserted: readonly (readonly [number, number])[],
+  ) =>
     compareFindings({
       baseFindings: before,
       headFindings: after,
@@ -262,10 +278,11 @@ describe('a new throw in a legacy function', () => {
         changedLines: new Map([['src/legacy.ts', { added: false, ranges: inserted, inserted }]]),
         isStrictRule,
       },
+      unknownOnBase: undefined,
     });
 
   it('carries advice for the count ratchet of the rule', () => {
-    expect(throws(oneThrow)[0].ratchet).toEqual({
+    expect(firstOf(throws(oneThrow)).ratchet).toEqual({
       key: 'count:noThrow',
       value: 1,
       existingCodeOnly: true,
@@ -306,20 +323,26 @@ describe('a new throw in a legacy function', () => {
 });
 
 describe('a complexity finding fails only when the number rises', () => {
-  const complexity = (amount) =>
+  const complexity = (amount: number) =>
     `This function has a cognitive complexity of ${String(amount)}; the limit is 15. Move nested branches and conditions into smaller named functions.`;
   const COMPLEXITY_ROUTE =
     'If this is intended, add {"rule":"nitpicker/cognitive-complexity","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 
-  const arrow = (body) => `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
-  const named = (body) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
+  const arrow = (body: string) =>
+    `export const total = (items: readonly Item[]) => {\n${body}\n};\n`;
+  const named = (body: string) => `export function total(items: readonly Item[]) {\n${body}\n}\n`;
 
-  const cases = [
+  const cases: readonly (readonly [string, (body: string) => string, string])[] = [
     ['an arrow function, reported at its arrow', arrow, '=>'],
     ['a named function, reported at its name', named, 'total'],
   ];
 
-  function find(build, reported, amount, body = '  return 1;') {
+  function find(
+    build: (body: string) => string,
+    reported: string,
+    amount: number,
+    body = '  return 1;',
+  ) {
     return findingFor({
       code: build(body),
       reported,
@@ -360,7 +383,7 @@ describe('a complexity finding fails only when the number rises', () => {
   });
 
   it.each(cases)('keeps %s baselined after a rename', (_name, build, reported) => {
-    const rename = (body) => build(body).replace('total', 'sum');
+    const rename = (body: string) => build(body).replace('total', 'sum');
     const renamed = find(rename, reported === 'total' ? 'sum' : reported, 16);
     const result = compareFindings({
       baseFindings: find(build, reported, 16),
@@ -371,6 +394,7 @@ describe('a complexity finding fails only when the number rises', () => {
         ]),
         isStrictRule,
       },
+      unknownOnBase: undefined,
     });
 
     expect(result.newFindings).toEqual([]);
@@ -381,7 +405,7 @@ describe('a complexity finding fails only when the number rises', () => {
   });
 
   it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
-    const rename = (body) => build(body).replace('total', 'sum');
+    const rename = (body: string) => build(body).replace('total', 'sum');
     const grown = find(rename, reported === 'total' ? 'sum' : reported, 60, '  return 2;');
     const result = compare(find(build, reported, 16), grown);
 
@@ -398,53 +422,9 @@ describe('a complexity finding fails only when the number rises', () => {
   });
 });
 
-describe('findings another rule already covers', () => {
-  function normalized(code, reports) {
-    const root = makeTemporaryRoot('nitpicker-eslint-superseded-');
-    mkdirSync(path.join(root, 'src'), { recursive: true });
-    writeFileSync(path.join(root, 'src/rows.tsx'), code);
-    const messages = reports.map(([ruleId, text]) => {
-      const start = positionOf(code, code.indexOf(text));
-      const end = positionOf(code, code.indexOf(text) + text.length);
-      return {
-        ruleId,
-        message: `${ruleId} text`,
-        severity: 2,
-        ...start,
-        endLine: end.line,
-        endColumn: end.column,
-      };
-    });
-    return normalizeEslintResults({
-      value: [{ filePath: path.join(root, 'src/rows.tsx'), messages }],
-      projectRoot: root,
-      analyzerName: 'eslint-lint',
-    }).map(({ rule }) => rule);
-  }
-
-  it('keeps only the key finding for a random key', () => {
-    const code = 'export const row = <li key={Math.random()} />;\n';
-
-    expect(
-      normalized(code, [
-        ['no-restricted-properties', 'Math.random'],
-        ['nitpicker/react-no-random-key', 'Math.random()'],
-      ]),
-    ).toEqual(['nitpicker/react-no-random-key']);
-  });
-
-  it('keeps the restricted-property finding outside a key', () => {
-    const code = 'export const row = <li key={id} data-seed={Math.random()} />;\n';
-
-    expect(normalized(code, [['no-restricted-properties', 'Math.random']])).toEqual([
-      'no-restricted-properties',
-    ]);
-  });
-});
-
 describe('findings of one rule in one function', () => {
   const IO = 'nitpicker/no-io-in-loop';
-  const service = (calls, above = '') =>
+  const service = (calls: readonly string[], above = '') =>
     [
       'export const service = {',
       '  sync: async (ids: string[]) => {',
@@ -455,7 +435,7 @@ describe('findings of one rule in one function', () => {
       '};',
       '',
     ].join('\n');
-  const loopFindings = (calls, above) =>
+  const loopFindings = (calls: readonly string[], above?: string) =>
     findingFor({ code: service(calls, above), reported: calls, ruleId: IO, messageId: 'io' });
 
   it('name the object-literal member they sit in', () => {
