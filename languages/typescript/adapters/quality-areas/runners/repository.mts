@@ -20,9 +20,10 @@ import {
   baselinePathsOf,
   hash,
   layoutKnipConfig,
+  graphImports,
   moduleImportsSection,
-  projectImports,
   typescriptStructureProjectFindings,
+  wantsModuleImports,
 } from '../typed/repository.mts';
 import { spawnedEntryFiles } from '../../dependency-graph/spawned-entries.mts';
 import { runDesignSignals } from './program/design-signals.mts';
@@ -114,7 +115,10 @@ export async function runCoupling(options: QualityAreaOptions): Promise<AreaRepo
       exceptions,
     ),
   );
-  return { findings, ...moduleImportsSection(projectImports(graph, layout.isSourceFile), history) };
+  const imports = wantsModuleImports(history)
+    ? graphImports(graph, { isSourceFile: layout.isSourceFile, projectRoot: options.projectRoot })
+    : undefined;
+  return { findings, ...moduleImportsSection(imports, history) };
 }
 
 export async function runTestRuntime(options: QualityAreaOptions): Promise<Finding[]> {
