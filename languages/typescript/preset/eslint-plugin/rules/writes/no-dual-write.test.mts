@@ -1,5 +1,5 @@
-import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mjs';
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
+import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 import { rule } from './no-dual-write.mjs';
 
 const kafka = "import { send } from 'kafkajs';\n";
@@ -53,7 +53,7 @@ const HEADER = [
   '',
 ].join('\n');
 
-function run(body) {
+function run(body: string) {
   return typed(`${HEADER}export async function run(id: string) { ${body} }`);
 }
 

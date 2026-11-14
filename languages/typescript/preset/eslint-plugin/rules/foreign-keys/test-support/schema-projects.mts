@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathInside } from '../../../../../../../shared/filesystem.mjs';
 
-export function schemaProject(files) {
+export function schemaProject(files: Record<string, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-foreign-keys-'));
   for (const [name, text] of Object.entries(files)) {
     const file = pathInside(root, name);

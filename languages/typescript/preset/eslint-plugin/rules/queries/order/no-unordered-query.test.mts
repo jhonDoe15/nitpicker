@@ -1,9 +1,9 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-unordered-query.mjs';
 
-const tester = createRuleTester();
-const page = (form) => [{ messageId: 'page', data: { form } }];
-const aggregate = (form) => [{ messageId: 'aggregate', data: { form } }];
+const tester = typescriptRuleTester();
+const page = (form: string) => [{ messageId: 'page', data: { form } }];
+const aggregate = (form: string) => [{ messageId: 'aggregate', data: { form } }];
 const KYSELY = 'import { Kysely, sql } from "kysely";';
 const HELPERS = 'import { jsonArrayFrom } from "kysely/helpers/postgres";';
 const KNEX = 'import knex from "knex";';

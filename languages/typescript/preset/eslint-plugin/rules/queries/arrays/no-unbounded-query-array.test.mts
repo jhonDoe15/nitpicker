@@ -1,9 +1,9 @@
-import { createRuleTester } from '../../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-unbounded-query-array.mjs';
 
-const tester = createRuleTester();
-const inList = (name) => [{ messageId: 'inList', data: { name } }];
-const insertRows = (name) => [{ messageId: 'insertRows', data: { name } }];
+const tester = typescriptRuleTester();
+const inList = (name: string) => [{ messageId: 'inList', data: { name } }];
+const insertRows = (name: string) => [{ messageId: 'insertRows', data: { name } }];
 const KYSELY = 'import { Kysely, sql } from "kysely";';
 const KNEX = 'import knex from "knex";';
 const DRIZZLE = 'import { inArray } from "drizzle-orm";';

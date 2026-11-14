@@ -1,8 +1,8 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-orm-schema-sync.mjs';
 
-const tester = createRuleTester();
-const sync = (form) => [{ messageId: 'schemaSync', data: { form } }];
+const tester = typescriptRuleTester();
+const sync = (form: string) => [{ messageId: 'schemaSync', data: { form } }];
 const TYPEORM = 'import { DataSource } from "typeorm";';
 const NEST_TYPEORM = 'import { TypeOrmModule } from "@nestjs/typeorm";';
 const SEQUELIZE = 'import { Sequelize } from "sequelize";';

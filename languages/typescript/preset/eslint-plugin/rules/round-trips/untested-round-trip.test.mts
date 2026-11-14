@@ -5,8 +5,9 @@ import path from 'node:path';
 import tseslint from 'typescript-eslint';
 import { afterEach, describe, expect, it } from 'vitest';
 import { rule } from './untested-round-trip.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
-const roots = [];
+const roots: string[] = [];
 const CODEC = [
   'export function encodeToken(value: string): string { return btoa(value); }',
   'export const decodeToken = (text: string): string => atob(text);',
@@ -24,7 +25,7 @@ afterEach(() => {
   }
 });
 
-function project(files) {
+function project(files: Record<string, string>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-round-trips-'));
   roots.push(root);
   for (const [file, text] of Object.entries(files)) {
@@ -34,11 +35,11 @@ function project(files) {
   return root;
 }
 
-function reported(root, code, file = 'src/codec.ts') {
-  const config = {
+function reported(root: string, code: string, file = 'src/codec.ts') {
+  const config: Linter.Config = {
     files: ['**/*.ts'],
     languageOptions: { parser: tseslint.parser },
-    plugins: { local: { rules: { 'untested-round-trip': rule } } },
+    plugins: { local: { rules: { 'untested-round-trip': ruleModule(rule) } } },
     rules: { 'local/untested-round-trip': 'error' },
   };
   return new Linter({ cwd: root })

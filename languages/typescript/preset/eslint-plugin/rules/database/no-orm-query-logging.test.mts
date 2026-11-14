@@ -1,8 +1,8 @@
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-orm-query-logging.mjs';
 
-const tester = createRuleTester();
-const logs = (form) => [{ messageId: 'queryLogging', data: { form } }];
+const tester = typescriptRuleTester();
+const logs = (form: string) => [{ messageId: 'queryLogging', data: { form } }];
 const TYPEORM = 'import { DataSource } from "typeorm";';
 const SEQUELIZE = 'import { Sequelize } from "sequelize";';
 const NEST_SEQUELIZE = 'import { SequelizeModule } from "@nestjs/sequelize";';

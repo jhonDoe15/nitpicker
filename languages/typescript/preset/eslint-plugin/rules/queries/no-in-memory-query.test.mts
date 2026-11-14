@@ -3,8 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-in-memory-query.mjs';
 
 const TYPEORM = 'import { Repository } from "typeorm";';
@@ -13,11 +12,11 @@ const MIKRO = 'import { EntityManager } from "@mikro-orm/core";';
 const DRIZZLE = 'import { eq } from "drizzle-orm";';
 const LODASH = 'import _ from "lodash";';
 const PRISMA = 'import { PrismaClient } from "@prisma/client";';
-const inService = (header, body) =>
+const inService = (header: string, body: string) =>
   `${header} export async function run(repo, prisma, db, em, Order, id, ids) { ${body} }`;
-const errors = (messageId) => [{ messageId }];
+const errors = (messageId: string) => [{ messageId }];
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 
 tester.run('no-in-memory-query', rule, {
   valid: [
@@ -261,7 +260,12 @@ afterAll(() => {
 const ENTITY = `${TYPEORM} class Order { status = ""; first = ""; last = ""; get fullName() { return this.first + this.last; } }`;
 const typedTester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-function typed(body, messageId) {
+function typed(body: string): { filename: string; code: string };
+function typed(
+  body: string,
+  messageId: string,
+): { filename: string; code: string; errors: { messageId: string }[] };
+function typed(body: string, messageId?: string) {
   const code = `${ENTITY} export async function run(repo: { find(): Promise<Order[]> }, name: string) { ${body} }`;
   const file = path.join(root, `src/case-${randomUUID()}.ts`);
   writeFileSync(file, code);

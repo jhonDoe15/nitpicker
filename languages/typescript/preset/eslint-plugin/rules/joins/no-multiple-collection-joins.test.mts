@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-multiple-collection-joins.mjs';
-import { ormProject } from './test-support/orm-stubs.mjs';
+import { ormProject } from './test-support/orm-stubs.mts';
 
 const MANIFEST = JSON.stringify({ dependencies: { '@mikro-orm/core': '^6.0.0' } });
 const root = ormProject();
@@ -39,18 +39,35 @@ const MIKRO = [
 ].join('\n');
 const SEQUELIZE = "import { Invoice, Line } from './entities';";
 
-function caseIn(projectRoot, { header, body, errors }) {
+type JoinError = { messageId: string; data: { first: string; second: string } };
+type JoinCase = { filename: string; code: string };
+type JoinCaseWithErrors = JoinCase & { errors: JoinError[] };
+type CaseSource = { header: string; body: string };
+
+function caseIn(projectRoot: string, source: CaseSource & { errors?: undefined }): JoinCase;
+function caseIn(
+  projectRoot: string,
+  source: CaseSource & { errors: JoinError[] },
+): JoinCaseWithErrors;
+function caseIn(
+  projectRoot: string,
+  { header, body, errors }: CaseSource & { errors?: JoinError[] | undefined },
+): JoinCase | JoinCaseWithErrors {
   const code = `${header}\nexport async function run() {\n${body}\n}\n`;
   const filename = path.join(projectRoot, `src/case-${randomUUID()}.ts`);
   writeFileSync(filename, code);
   return { filename, code, ...(errors === undefined ? {} : { errors }) };
 }
 
-function typed(header, body, errors) {
-  return caseIn(root, { header, body, errors });
+function typed(header: string, body: string): JoinCase;
+function typed(header: string, body: string, errors: JoinError[]): JoinCaseWithErrors;
+function typed(header: string, body: string, errors?: JoinError[]): JoinCase | JoinCaseWithErrors {
+  return errors === undefined
+    ? caseIn(root, { header, body })
+    : caseIn(root, { header, body, errors });
 }
 
-function crossed(messageId, first, second) {
+function crossed(messageId: string, first: string, second: string): JoinError[] {
   return [{ messageId, data: { first, second } }];
 }
 
@@ -208,7 +225,7 @@ tester.run('no-multiple-collection-joins', rule, {
 for (const [name, projectRoot] of [
   ['a project whose MikroORM config selects in by default', selectInConfig],
   ['a project on MikroORM 5, which selects in by default', version5],
-]) {
+] satisfies [string, string][]) {
   typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: projectRoot }).run(
     name,
     rule,
