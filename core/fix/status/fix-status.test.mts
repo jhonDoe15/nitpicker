@@ -1,30 +1,51 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_RECIPES } from '../engine/all-recipes.mjs';
-import { defineRecipes } from '../engine/recipes.mjs';
-import { DEFAULT_FIX_SOURCES, fixStatusFor, withFixStatus } from './fix-status.mjs';
-import { FIX_PLAN_RULES } from './fix-plan-rules.mjs';
-import { readReferenceEntries } from '../../../shared/reference/store.mjs';
-import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { fixText } from '../../../shared/reference/fix-status.mjs';
+import { ALL_RECIPES } from '../engine/all-recipes.mts';
+import { defineRecipes } from '../test-support/engine-views.mts';
+import type { RecipeSpec } from '../test-support/engine-views.mts';
+import {
+  DEFAULT_FIX_SOURCES,
+  fixStatusFor as typedFixStatusFor,
+  withFixStatus,
+} from './fix-status.mts';
+import { FIX_PLAN_RULES } from './fix-plan-rules.mts';
+import { matcherOf, presetRules, recipeListings } from './status-types.mts';
+import type { Fields } from './status-types.mts';
+import type { FixStatusSources, PresetRule } from '../typed/fix-types.mts';
+import { readReferenceEntries as untypedReadReferenceEntries } from '../../../shared/reference/store.mjs';
+import { ruleEntry as untypedRuleEntry } from '../../../shared/reference/entry.mjs';
+import { fixText as untypedFixText } from '../../../shared/reference/fix-status.mjs';
+import { fieldOf, fieldsOf, textOf } from '../../../shared/values/readers.mts';
 
-function entry(tool, rule, fields = {}) {
+const readReferenceEntries: () => readonly Fields[] = untypedReadReferenceEntries;
+const ruleEntry: (fields: { readonly tool: string; readonly rule: string } & Fields) => Fields =
+  untypedRuleEntry;
+const fixText: (entry: Fields, presets: readonly string[]) => string = untypedFixText;
+
+function fixStatusFor(candidate: Fields, preset: string, own?: FixStatusSources) {
+  return typedFixStatusFor(matcherOf(candidate), preset, own);
+}
+
+function entry(tool: string, rule: string, fields: Fields = {}) {
   const analyzers = { java: ['java'], kotlin: ['kotlin'] };
   return ruleEntry({ tool, rule, page: 'java-checkstyle', analyzers, summary: 'x', ...fields });
 }
 
-function recipe(id, fields) {
+function recipe(id: string, fields: Partial<RecipeSpec> = {}): RecipeSpec {
   return {
     id,
     rules: [{ tool: 'checkstyle', rule: 'Demo' }],
     presets: ['java'],
     scope: 'file',
     safety: 'safe',
-    plan: () => ({ fixes: [], notes: [] }),
+    plan: () => ({ fixes: [] }),
     ...fields,
   };
 }
 
-function sources(recipes, plans = []) {
+function sources(
+  recipes: readonly RecipeSpec[],
+  plans: readonly PresetRule[] = [],
+): FixStatusSources {
   return { recipes: defineRecipes(recipes), formatters: [], plans };
 }
 
@@ -73,12 +94,12 @@ describe('fixStatusFor', () => {
 
 describe('the registered fixers', () => {
   it('lists the rules of the fix plan builders', () => {
-    const found = FIX_PLAN_RULES.find(
+    const found = presetRules(FIX_PLAN_RULES).find(
       ({ tool, rule }) => tool === 'structure' && rule === 'function-lines-limit',
     );
 
     expect(found?.presets).toEqual(['typescript', 'javascript', 'java', 'kotlin', 'python', 'go']);
-    expect(withFixStatus(entry('structure', 'function-lines-limit')).fix).toEqual({
+    expect(fieldOf(withFixStatus(entry('structure', 'function-lines-limit')), 'fix')).toEqual({
       java: 'plan',
       kotlin: 'plan',
     });
@@ -87,23 +108,28 @@ describe('the registered fixers', () => {
   it('marks every rule of a plan builder with a plan in each of its presets, unless a fix beats it', () => {
     const unmarked = readReferenceEntries()
       .filter((candidate) =>
-        FIX_PLAN_RULES.some(({ tool, rule }) => tool === candidate.tool && rule === candidate.rule),
+        presetRules(FIX_PLAN_RULES).some(
+          ({ tool, rule }) =>
+            tool === fieldOf(candidate, 'tool') && rule === fieldOf(candidate, 'rule'),
+        ),
       )
-      .filter((candidate) => Object.values(withFixStatus(candidate).fix).includes('none'))
-      .map(({ id }) => id);
+      .filter((candidate) =>
+        Object.values(fieldsOf(fieldOf(withFixStatus(candidate), 'fix'))).includes('none'),
+      )
+      .map((candidate) => fieldOf(candidate, 'id'));
 
     expect(unmarked).toEqual([]);
   });
 
   it('gives every recipe rule an automatic or review status in the reference', () => {
-    const rule = ALL_RECIPES[0].rules[0];
-    const found = withFixStatus(entry(rule.tool, rule.rule), DEFAULT_FIX_SOURCES);
+    const rule = recipeListings(ALL_RECIPES)[0]?.rules[0];
+    const found = withFixStatus(entry(textOf(rule?.tool), textOf(rule?.rule)), DEFAULT_FIX_SOURCES);
 
-    expect(found.fix).toEqual({ java: 'automatic', kotlin: 'none' });
+    expect(fieldOf(found, 'fix')).toEqual({ java: 'automatic', kotlin: 'none' });
   });
 
   it('marks the formatter findings automatic in the presets that run the formatter', () => {
-    const format = (tool, rule) => withFixStatus(entry(tool, rule)).fix;
+    const format = (tool: string, rule: string) => fieldOf(withFixStatus(entry(tool, rule)), 'fix');
 
     expect(format('google-java-format', 'format')).toEqual({
       java: 'automatic',
@@ -117,13 +143,13 @@ describe('withFixStatus', () => {
   it('drops the tool fixer hint and gives the status per preset the entry has', () => {
     const found = withFixStatus(entry('eslint', 'curly', { fixableIn: ['java'] }), sources([]));
 
-    expect(found.fixableIn).toBeUndefined();
-    expect(found.fix).toEqual({ java: 'automatic', kotlin: 'none' });
+    expect(fieldOf(found, 'fixableIn')).toBeUndefined();
+    expect(fieldOf(found, 'fix')).toEqual({ java: 'automatic', kotlin: 'none' });
   });
 });
 
 describe('rules the language fixers select', () => {
-  const found = (tool, rule, preset) =>
+  const found = (tool: string, rule: string, preset: string) =>
     fixStatusFor(entry(tool, rule), preset, DEFAULT_FIX_SOURCES);
 
   it('counts the ruff fixes the gate promotes as automatic and the reviewed ones as review', () => {

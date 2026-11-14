@@ -1,18 +1,26 @@
-import { ALL_RECIPES } from '../engine/all-recipes.mjs';
-import { FIX_PLAN_RULES } from './fix-plan-rules.mjs';
-import { FORMATTER_RULES } from './tool-fixers.mjs';
-import { SELECTED_FIXER_RULES } from './selected-fixers.mjs';
+import { ALL_RECIPES } from '../engine/all-recipes.mts';
+import { FIX_PLAN_RULES } from './fix-plan-rules.mts';
+import { FORMATTER_RULES } from './tool-fixers.mts';
+import { SELECTED_FIXER_RULES } from './selected-fixers.mts';
 import { presetsOf } from '../../../shared/reference/facts.mjs';
 import { FIX_RANK, FIX_STATUS } from '../../../shared/reference/fix-status.mjs';
+import { matcherOf, presetRules, recipeListings, type Fields } from './status-types.mts';
+import type {
+  FixStatusSources,
+  PresetRule,
+  RecipeListing,
+  RuleMatcher,
+  RuleRef,
+} from '../typed/fix-types.mts';
 
-export const DEFAULT_FIX_SOURCES = {
-  recipes: ALL_RECIPES,
+export const DEFAULT_FIX_SOURCES: FixStatusSources = {
+  recipes: recipeListings(ALL_RECIPES),
   formatters: FORMATTER_RULES,
   selected: SELECTED_FIXER_RULES,
-  plans: FIX_PLAN_RULES,
+  plans: presetRules(FIX_PLAN_RULES),
 };
 
-function namesRule(entry, { tool, rule }) {
+function namesRule(entry: RuleMatcher, { tool, rule }: RuleRef) {
   const tools = [entry.tool, ...(entry.findingTools ?? [])];
   if (!tools.includes(tool)) {
     return false;
@@ -22,7 +30,7 @@ function namesRule(entry, { tool, rule }) {
     : entry.rule === rule || new RegExp(entry.pattern, 'u').test(rule);
 }
 
-function recipeStatus(entry, preset, recipes) {
+function recipeStatus(entry: RuleMatcher, preset: string, recipes: readonly RecipeListing[]) {
   const own = recipes.filter(
     ({ presets, rules }) =>
       presets.includes(preset) && rules.some((rule) => namesRule(entry, rule)),
@@ -33,17 +41,21 @@ function recipeStatus(entry, preset, recipes) {
   return own.length === 0 ? FIX_STATUS.none : FIX_STATUS.review;
 }
 
-function isListed(entry, preset, rules) {
+function isListed(entry: RuleMatcher, preset: string, rules: readonly PresetRule[]) {
   return rules.some(({ presets, ...rule }) => presets.includes(preset) && namesRule(entry, rule));
 }
 
-function toolFixerStatus(entry, preset, formatters) {
+function toolFixerStatus(entry: RuleMatcher, preset: string, formatters: readonly PresetRule[]) {
   return entry.fixableIn?.includes(preset) || isListed(entry, preset, formatters)
     ? FIX_STATUS.automatic
     : FIX_STATUS.none;
 }
 
-function selectedFixerStatus(entry, preset, selected = []) {
+function selectedFixerStatus(
+  entry: RuleMatcher,
+  preset: string,
+  selected: readonly PresetRule[] = [],
+) {
   const own = selected.filter(
     ({ presets, ...rule }) => presets.includes(preset) && namesRule(entry, rule),
   );
@@ -53,7 +65,11 @@ function selectedFixerStatus(entry, preset, selected = []) {
   return own.length === 0 ? FIX_STATUS.none : FIX_STATUS.review;
 }
 
-export function fixStatusFor(entry, preset, sources = DEFAULT_FIX_SOURCES) {
+export function fixStatusFor(
+  entry: RuleMatcher,
+  preset: string,
+  sources: FixStatusSources = DEFAULT_FIX_SOURCES,
+): string | undefined {
   const statuses = [
     recipeStatus(entry, preset, sources.recipes),
     toolFixerStatus(entry, preset, sources.formatters),
@@ -63,8 +79,11 @@ export function fixStatusFor(entry, preset, sources = DEFAULT_FIX_SOURCES) {
   return FIX_RANK.findLast((status) => statuses.includes(status));
 }
 
-export function withFixStatus({ fixableIn, ...entry }, sources = DEFAULT_FIX_SOURCES) {
-  const withHint = { ...entry, fixableIn };
+export function withFixStatus(
+  { fixableIn, ...entry }: Fields,
+  sources: FixStatusSources = DEFAULT_FIX_SOURCES,
+): Fields {
+  const withHint = matcherOf({ ...entry, fixableIn });
   return {
     ...entry,
     fix: Object.fromEntries(

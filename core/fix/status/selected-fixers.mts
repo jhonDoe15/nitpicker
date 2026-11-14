@@ -5,6 +5,8 @@ import { RUFF_PROMOTED_FIXES } from '../../../languages/python/adapters/configur
 import { REVIEW_CODES } from '../../../languages/python/fix/review/review-rules.mjs';
 import { suggestionRules } from '../../../languages/typescript/fix/suggestions/suggestion-rules.mjs';
 
+import type { PresetRule } from '../typed/fix-types.mts';
+
 const TYPESCRIPT_PRESETS = ['typescript', 'javascript'];
 
 const DEAD_CODE_RULES = Object.freeze({
@@ -14,25 +16,37 @@ const DEAD_CODE_RULES = Object.freeze({
   files: REVIEW,
 });
 
-function listed(tool, entries, presets = TYPESCRIPT_PRESETS) {
+function listed(
+  tool: string,
+  entries: readonly (readonly [string, string])[],
+  presets: readonly string[] = TYPESCRIPT_PRESETS,
+): PresetRule[] {
   return entries.map(([rule, safety]) => ({ tool, rule, safety, presets }));
 }
 
-const OWN_SUGGESTIONS = OWN_SUGGESTION_RULES.map((name) => [`nitpicker/${name}`, REVIEW]);
+const OWN_SUGGESTIONS: [string, string][] = OWN_SUGGESTION_RULES.map((name) => [
+  `nitpicker/${name}`,
+  REVIEW,
+]);
 
 export const SELECTED_FIXER_RULES = Object.freeze([
   ...listed('eslint-lint', OWN_SUGGESTIONS),
   ...listed('eslint-lint', Object.entries(suggestionRules)),
   ...listed(
     'typescript-typecheck',
-    codeFixes.flatMap(({ codes, safety }) => codes.map((code) => [`TS${code}`, safety])),
+    codeFixes.flatMap(({ codes, safety }) =>
+      codes.map((code): [string, string] => [`TS${String(code)}`, safety]),
+    ),
   ),
   ...listed('dead-code', Object.entries(DEAD_CODE_RULES)),
   ...listed(
     'ruff',
     [
-      ...RUFF_PROMOTED_FIXES.map((code) => [code, SAFE]),
-      ...REVIEW_CODES.map((code) => [code, REVIEW]),
+      ...RUFF_PROMOTED_FIXES.filter((code) => code !== undefined).map((code): [string, string] => [
+        code,
+        SAFE,
+      ]),
+      ...REVIEW_CODES.map((code): [string, string] => [code, REVIEW]),
     ],
     ['python'],
   ),

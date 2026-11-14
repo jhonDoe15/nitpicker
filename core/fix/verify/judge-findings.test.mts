@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { countFindings, judgeFindings, recipeRuns, withSharedFiles } from './judge-findings.mjs';
+import { countFindings, judgeFindings, recipeRuns, withSharedFiles } from './judge-findings.mts';
 
-function finding(tool, rule, path) {
+function finding(tool: string, rule: string, path: string) {
   return { tool, rule, path, classification: 'enforceable' };
 }
 
-function run(id, files, findings) {
+function run(id: string, files: readonly string[], findings: ReturnType<typeof finding>[]) {
   return { id, files: new Set(files), findings };
 }
 
@@ -27,7 +27,7 @@ describe('recipeRuns', () => {
     const runs = recipeRuns([
       { recipe: 'one', files: ['a'], finding: finding('t', 'r', 'a') },
       { recipe: 'one', files: ['b'], finding: finding('t', 'r', 'b') },
-      { tool: 'prettier', files: ['a'] },
+      { files: ['a'] },
     ]);
     expect(runs.map(({ id, files }) => [id, [...files]])).toEqual([['one', ['a', 'b']]]);
   });
@@ -69,7 +69,12 @@ describe('judgeFindings', () => {
     const runs = [fixed, run('other', ['b'], [])];
     const before = countFindings([finding('t', 'r', 'a')]);
     const after = countFindings([finding('build', 'compile-error', 'z')]);
-    const reasons = judgeFindings({ runs, before, after, breaking: (tool) => tool === 'build' });
+    const reasons = judgeFindings({
+      runs,
+      before,
+      after,
+      breaking: (tool: string) => tool === 'build',
+    });
     expect([...reasons.keys()]).toEqual(['fix', 'other']);
   });
 

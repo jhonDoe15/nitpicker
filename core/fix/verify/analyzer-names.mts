@@ -1,3 +1,5 @@
+import type { VerifiableAnalyzer, VerifiedAnalyzers } from './verify-types.mts';
+
 export const COMPILE_TOOLS = Object.freeze([
   'build',
   'kotlinc',
@@ -7,11 +9,14 @@ export const COMPILE_TOOLS = Object.freeze([
   'basedpyright',
 ]);
 
-function reports(analyzer, tool) {
+function reports(analyzer: VerifiableAnalyzer, tool: string) {
   return analyzer.name === tool || (analyzer.reportedTools ?? []).includes(tool);
 }
 
-export function analyzersToVerify(analyzers, tools) {
+export function analyzersToVerify(
+  analyzers: readonly VerifiableAnalyzer[],
+  tools: readonly string[],
+): VerifiedAnalyzers {
   const wanted = [...tools, ...COMPILE_TOOLS];
   return {
     names: analyzers

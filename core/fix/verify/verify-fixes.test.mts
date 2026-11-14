@@ -2,14 +2,14 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { createJournal, journalWriter } from '../dry-run/journal.mjs';
-import { createSnapshot } from '../engine/edits/snapshot.mjs';
-import { defineRecipes } from '../engine/recipes.mjs';
-import { runRecipes } from '../engine/run-recipes.mjs';
-import { verifyFixes } from './verify-fixes.mjs';
+import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mts';
+import { createJournal, journalWriter } from '../dry-run/journal.mts';
+import { createSnapshot, defineRecipes, runRecipes } from '../test-support/engine-views.mts';
+import type { PlanContext, RecipeSpec } from '../test-support/engine-views.mts';
+import type { JournalEntry } from '../dry-run/journal-types.mts';
+import { verifyFixes } from './verify-fixes.mts';
 
-const roots = [];
+const roots: string[] = [];
 const { createGitRepository } = useGitFixtures();
 
 afterEach(() => {
@@ -18,14 +18,20 @@ afterEach(() => {
   }
 });
 
-function replacing(id, rule, from, to, names) {
+function replacing(
+  id: string,
+  rule: string,
+  from: string,
+  to: string,
+  names: readonly string[],
+): RecipeSpec {
   return {
     id,
     rules: [{ tool: 't', rule }],
     presets: ['java'],
     scope: 'file',
     safety: 'safe',
-    plan: ({ files }) => ({
+    plan: ({ files }: PlanContext) => ({
       fixes: files
         .filter(({ path: name, text }) => names.includes(name) && text.includes(from))
         .map(({ path: name, text }) => ({
@@ -44,7 +50,7 @@ function replacing(id, rule, from, to, names) {
   };
 }
 
-function project(files) {
+function project(files: Readonly<Record<string, string>>) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-verify-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -53,11 +59,11 @@ function project(files) {
   return root;
 }
 
-function read(root, name) {
+function read(root: string, name: string) {
   return readFileSync(path.join(root, name), 'utf8');
 }
 
-function analyzeTree(root) {
+function analyzeTree(root: string) {
   return vi.fn(() => {
     const names = ['a.txt', 'b.txt', 'c.txt', 'd.txt', 'e.txt', 'f.txt', 'g.txt'];
     const findings = names.flatMap((name) => {
@@ -89,22 +95,26 @@ const FILES = {
   'g.txt': 'fine\n',
 };
 
-function runAll(root, recipes) {
+function runAll(root: string, recipes: readonly RecipeSpec[]) {
   const journal = createJournal(root);
   runRecipes({
     projectRoot: root,
     files: Object.keys(FILES).map((name) => ({ path: name })),
     recipes: defineRecipes(recipes),
     preset: 'java',
+    selectedRules: undefined,
     accepts: () => true,
     writer: journalWriter(journal),
+    inputs: undefined,
   });
   return journal;
 }
 
+const GOOD = replacing('good', 'a', 'FLAG:t/a', 'ok', ['a.txt']);
+const ADDS = replacing('adds', 'b', 'FLAG:t/b', 'FLAG:t/new', ['b.txt']);
 const RECIPES = [
-  replacing('good', 'a', 'FLAG:t/a', 'ok', ['a.txt']),
-  replacing('adds', 'b', 'FLAG:t/b', 'FLAG:t/new', ['b.txt']),
+  GOOD,
+  ADDS,
   replacing('breaks', 'c', 'FLAG:t/c', 'FLAG:build/compile-error', ['c.txt']),
   replacing('stays', 'd', 'x ', 'y ', ['d.txt']),
   replacing('also-good', 'e', 'FLAG:t/e', 'fine', ['e.txt']),
@@ -132,11 +142,11 @@ describe('verifyFixes', () => {
 
   it('leaves the verified tree as the fixes made it, even though the baseline run reverts it', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[0]]);
-    const seen = [];
+    const journal = runAll(root, [GOOD]);
+    const seen: string[] = [];
     verifyFixes({
       journal,
-      analyze: (request) => {
+      analyze: (request: unknown) => {
         seen.push(read(root, 'a.txt'));
         return { findings: [], request };
       },
@@ -178,7 +188,7 @@ describe('verifyFixes', () => {
 
   it('keeps every fix and says so when the analyzers fail', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[1]]);
+    const journal = runAll(root, [ADDS]);
     const { rolledBack, notes } = verifyFixes({
       journal,
       analyze: () => ({ findings: [], errors: ['java: boom'] }),
@@ -190,7 +200,7 @@ describe('verifyFixes', () => {
 
   it('keeps every fix when the analysis throws', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[0]]);
+    const journal = runAll(root, [GOOD]);
     const analyze = () => {
       throw new Error('no analyzer reports the fixed rules');
     };
@@ -202,7 +212,7 @@ describe('verifyFixes', () => {
 
   it('names the tools that no analyzer reports', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[0]]);
+    const journal = runAll(root, [GOOD]);
     const { notes } = verifyFixes({
       journal,
       analyze: () => ({ findings: [], unmatched: ['t'] }),
@@ -212,7 +222,7 @@ describe('verifyFixes', () => {
 
   it('asks the analyzers for the fixed tools and the touched files', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[0]]);
+    const journal = runAll(root, [GOOD]);
     const analyze = vi.fn(() => ({ findings: [] }));
     verifyFixes({ journal, analyze, mode: 'full' });
     expect(analyze).toHaveBeenCalledWith({ tools: ['t'], files: ['a.txt'], mode: 'full' });
@@ -222,8 +232,9 @@ describe('verifyFixes', () => {
     const { root } = createGitRepository({ '.env': 'A=1\n', 'a.txt': 'a\n' });
     const journal = createJournal(root);
     const finding = { tool: 't', rule: 'x', path: '.env', line: 1 };
-    const entries = [
+    const entries: JournalEntry[] = [
       {
+        name: '.env',
         recipe: 'untrack',
         safety: 'review',
         fix: { finding, edits: [{ type: 'untrack', path: '.env' }] },
@@ -244,7 +255,7 @@ describe('verifyFixes', () => {
 
   it('keeps a recipe whose file the user edited meanwhile and says so', () => {
     const root = project(FILES);
-    const journal = runAll(root, [RECIPES[1]]);
+    const journal = runAll(root, [ADDS]);
     writeFileSync(path.join(root, 'b.txt'), 'FLAG:t/new\nmine\n');
 
     const { rolledBack, notes } = verifyFixes({ journal, analyze: analyzeTree(root) });

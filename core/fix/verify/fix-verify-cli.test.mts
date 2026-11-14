@@ -1,24 +1,32 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fakeJvmTools } from '../../../languages/java/fix/test-support/fake-jvm-tools.mjs';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
-import { policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { defineRecipes } from '../engine/recipes.mjs';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
+import { policy } from '../../diff/execution/test-support/analyzer-findings.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { defineRecipes } from '../test-support/engine-views.mts';
+import type { PlanContext, RecipeSpec } from '../test-support/engine-views.mts';
+import { fakeJvmTools } from '../test-support/tool-views.mts';
+import type { FixCliInput } from '../test-support/tool-views.mts';
+import type {
+  FixtureAnalyzer,
+  FixtureRepository,
+} from '../../command/test-support/fixture-types.mts';
+import { fieldAt } from '../../../scripts/json/fields.mts';
+import { fieldOf, listOf, parseJson } from '../../../shared/values/readers.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
 
 const JAVA = 'src/main/java/demo';
 
-function marker(tool, rule) {
+function marker(tool: string, rule: string) {
   return `QUALITY_FINDING ${JSON.stringify({ tool, rule, identity: rule, message: rule, classification: 'enforceable' })}`;
 }
 
-function recipe(id, rule, replacement) {
+function recipe(id: string, rule: string, replacement: string): RecipeSpec {
   const target = marker('checkstyle', rule);
   return {
     id,
@@ -26,7 +34,7 @@ function recipe(id, rule, replacement) {
     presets: ['java'],
     scope: 'file',
     safety: 'safe',
-    plan: ({ files }) => ({
+    plan: ({ files }: PlanContext) => ({
       fixes: files
         .filter(({ text }) => text.includes(target))
         .map(({ path: name, text }) => ({
@@ -67,10 +75,14 @@ function repository() {
   return created;
 }
 
-function run(created, extra, analyzers = [analyzer()]) {
+function run(
+  created: FixtureRepository,
+  extra: readonly string[],
+  analyzers: readonly FixtureAnalyzer[] = [analyzer()],
+) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
-  const exitCode = runCli({
+  const input: FixCliInput = {
     arguments_: [...extra, '--base', created.baseRef, '--output', outputRoot],
     currentProjectRoot: created.root,
     environment: { NITPICKER_CACHE_DIR: makeTemporaryRoot('nitpicker-cli-cache-') },
@@ -79,11 +91,12 @@ function run(created, extra, analyzers = [analyzer()]) {
     fixRecipes: RECIPES,
     stdout: output.stdout,
     stderr: output.stderr,
-  });
+  };
+  const exitCode = runCli(input);
   return { exitCode, stdout: output.stdoutText, stderr: output.stderrText, outputRoot };
 }
 
-function read(created, name) {
+function read(created: FixtureRepository, name: string) {
   return readFileSync(path.join(created.root, `${JAVA}/${name}`), 'utf8');
 }
 
@@ -91,11 +104,11 @@ const NOTE =
   `--fix rolled back breaks-build (${JAVA}/Breaks.java): ` +
   `breaks the compile or type check: new build/compile-error in ${JAVA}/Breaks.java`;
 
-function summaryOf(stdout) {
+function summaryOf(stdout: string) {
   return stdout.slice(0, stdout.indexOf('Base: '));
 }
 
-function sources(created) {
+function sources(created: FixtureRepository) {
   return { good: read(created, 'Good.java'), breaks: read(created, 'Breaks.java') };
 }
 
@@ -120,8 +133,10 @@ describe('nitpicker --fix verification', () => {
 
     const { stdout, outputRoot } = run(created, ['--fix', '--dry-run']);
 
-    const fixes = JSON.parse(readFileSync(path.join(outputRoot, 'fixes.json'), 'utf8')).fixes;
-    expect(fixes.map(({ recipe: id }) => id)).toEqual(['fixes-it']);
+    const fixes = listOf(
+      fieldAt(parseJson(readFileSync(path.join(outputRoot, 'fixes.json'), 'utf8')), 'fixes'),
+    );
+    expect(fixes.map((fix) => fieldOf(fix, 'recipe'))).toEqual(['fixes-it']);
     expect(summaryOf(stdout).replaceAll(outputRoot, '<output>')).toBe(
       `Fixes that --fix would apply (dry run, nothing was written to your files): 1
   ${JAVA}/Good.java:1 checkstyle/Good (fixes-it, safe)
