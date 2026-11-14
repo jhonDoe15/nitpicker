@@ -202,6 +202,14 @@ function assertMavenPreset(preset: string | undefined): void {
   }
 }
 
+function presetTools(run: MavenRun, request: ToolsRequest): unknown {
+  return callUntyped(resolveTools, {
+    ...run,
+    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(request.analyzed),
+    extraTools: extraTools(request),
+  });
+}
+
 function presetInWork(
   projectRoot: string,
   {
@@ -215,13 +223,12 @@ function presetInWork(
   }: MavenPresetOptions,
   work: string,
 ): MavenPresetRun {
-  const pinned: unknown = readPinnedTools();
-  const run = {
+  const run: MavenRun = {
     projectRoot,
     maven,
     spawn,
     timeoutMs,
-    pinned,
+    pinned: readPinnedTools(),
     quick: policy.quick === true,
     mutationOff: policy['mutationOff'] === true,
   };
@@ -230,15 +237,8 @@ function presetInWork(
   const kotlin = callUntyped(kotlinSetup, setup);
   const since = Date.now() - CLOCK_SLACK_MS;
   const timedOut = buildOrSkipTests({ ...run, work, modules }, policy);
-  const analyzed = modules.map((module) => ({
-    module,
-    classpaths: readClasspaths(work, module),
-  }));
-  const tools = callUntyped(resolveTools, {
-    ...run,
-    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
-    extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
-  });
+  const analyzed = modules.map((module) => ({ module, classpaths: readClasspaths(work, module) }));
+  const tools = presetTools(run, { modules, analyzed, policy, pinned: run.pinned, kotlin });
   const testsFailures = analyzeAll({
     ...run,
     testsSkipped: timedOut.length > 0,
