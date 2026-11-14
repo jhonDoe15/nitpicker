@@ -22,6 +22,7 @@ import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { readOptions } from './options/java-read-options.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
+import { withoutSkippedTools } from './reporting/skips/skipped-tools.mjs';
 import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { sourceTextReader } from './reporting/function-locator.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
@@ -232,11 +233,11 @@ function collectBothSnapshots({
           baselineRoot: path.join(baseWorktree, projectRelativePath),
         });
         const notes = testFailuresOf({ findings: collectedBase });
-        return {
+        return withoutSkippedTools({
           notes,
           baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
           headFindings,
-        };
+        });
       },
     );
   });

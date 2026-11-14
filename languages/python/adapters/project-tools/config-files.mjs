@@ -5,7 +5,15 @@ import { readCoverageSettings } from '../configuration/coverage-config/python-co
 import { attempt } from './project-tool-layers.mjs';
 import { PYRIGHT_JSON, readProjectPyright } from './pyright/pyright-project-config.mjs';
 
-const TOOL_CONFIG_FILES = [PYRIGHT_JSON, 'pyproject.toml', 'mypy.ini', '.mypy.ini', 'setup.cfg'];
+const PYTEST_CONFIG_FILES = ['pytest.toml', '.pytest.toml', 'pytest.ini', '.pytest.ini', 'tox.ini'];
+const TOOL_CONFIG_FILES = [
+  PYRIGHT_JSON,
+  'pyproject.toml',
+  'mypy.ini',
+  '.mypy.ini',
+  'setup.cfg',
+  ...PYTEST_CONFIG_FILES,
+];
 const MUTATION_CONFIG_FILES = ['pyproject.toml', 'setup.cfg'];
 const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
 

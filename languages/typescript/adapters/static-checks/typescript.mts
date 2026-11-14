@@ -16,6 +16,9 @@ import {
   projectTypeScript,
 } from '../typecheck/typescript-program.mts';
 import { withAssetImportHint } from '../typecheck/asset-import-hint.mts';
+import { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
+
+export { contextOnlyFiles } from '../typecheck/context-only/context-only-files.mts';
 
 type TypeScriptDiagnostics = {
   readonly diagnostics: readonly TypeScript.Diagnostic[];
@@ -24,6 +27,23 @@ type TypeScriptDiagnostics = {
   readonly configRelativePath: string;
   readonly ts: typeof TypeScript;
 };
+
+type DiagnosticFilter = {
+  readonly layout: ReturnType<typeof readLayout>;
+  readonly contextOnly: ReadonlySet<string>;
+  readonly projectRoot: string;
+};
+
+function isReportedDiagnostic(
+  diagnostic: TypeScript.Diagnostic,
+  filter: DiagnosticFilter,
+): boolean {
+  if (diagnostic.file === undefined) {
+    return true;
+  }
+  const file = projectFile(filter.projectRoot, diagnostic.file.fileName);
+  return !(filter.layout.isExcluded(file) || filter.contextOnly.has(file));
+}
 
 export async function runTypecheck(options: StaticCheckOptions): Promise<Finding[]> {
   const { ts, native } = projectTypeScript(options.liveProjectRoot);
@@ -43,14 +63,17 @@ export async function runTypecheck(options: StaticCheckOptions): Promise<Finding
       projectNative: native,
     });
     const layout = readLayout();
+    const contextOnly = contextOnlyFiles(targetPath, options.projectRoot, { layout, ts });
     return normalizeTypeScriptDiagnostics({
       ts,
       diagnostics: diagnostics
         .map((diagnostic) => withProjectConfigFile(diagnostic, targetPath, options))
-        .filter(
-          (diagnostic) =>
-            diagnostic.file === undefined ||
-            !layout.isExcluded(projectFile(options.projectRoot, diagnostic.file.fileName)),
+        .filter((diagnostic) =>
+          isReportedDiagnostic(diagnostic, {
+            layout,
+            contextOnly,
+            projectRoot: options.projectRoot,
+          }),
         ),
       projectRoot: options.projectRoot,
       analyzerName: options.analyzerName,
@@ -117,7 +140,7 @@ function installTypeScriptConfig(options: StaticCheckOptions): LinkedPolicyFile 
   return linkPolicyFile(
     policyFile(options, options.configRelativePath),
     path.join(options.projectRoot, '.nitpicker-diff-typecheck.json'),
-    layoutTransformFor(options.configRelativePath, readLayout()),
+    layoutTransformFor(options.configRelativePath, readLayout(), { projectRootFiles: true }),
   );
 }
 

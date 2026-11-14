@@ -14,6 +14,10 @@ const CONFIG_FILES = [
   { file: 'tox.ini', read: (text) => iniSection(text, 'pytest') },
   { file: 'setup.cfg', read: (text) => iniSection(text, 'tool:pytest') },
 ];
+const RETRY_PLUGINS = [
+  { plugin: 'rerunfailures', count: 'reruns', delay: 'reruns_delay' },
+  { plugin: 'retry', count: 'retries', delay: 'retry_delay' },
+];
 const STOPPING_FLAGS = new Set([
   '-x',
   '--exitfirst',
@@ -74,16 +78,21 @@ function quoted(word) {
   return /^[\w@%+=:,./-]+$/u.test(word) ? word : `'${word.replaceAll("'", String.raw`'"'"'`)}'`;
 }
 
-export function readPytestAddopts(projectRoot) {
+export function readPytestOptions(projectRoot) {
   for (const { file, read } of CONFIG_FILES) {
     const text = readProjectFile(projectRoot, file);
     const options = text === undefined ? undefined : read(text);
     if (options !== undefined) {
-      const value = options.addopts ?? [];
-      return { file, words: Array.isArray(value) ? value.map(String) : shellWords(String(value)) };
+      return { file, options };
     }
   }
-  return { file: undefined, words: [] };
+  return { file: undefined, options: {} };
+}
+
+export function readPytestAddopts(projectRoot) {
+  const { file, options } = readPytestOptions(projectRoot);
+  const value = options.addopts ?? [];
+  return { file, words: Array.isArray(value) ? value.map(String) : shellWords(String(value)) };
 }
 
 function withoutExitFirst(word) {
@@ -116,6 +125,16 @@ function pinnedOption(name, value) {
     return value.startsWith(PLUGIN_OFF) && RESULT_PLUGINS.has(value.slice(PLUGIN_OFF.length));
   }
   return FILTERING_OPTIONS.has(name);
+}
+
+function retryArguments(probe, retries) {
+  return RETRY_PLUGINS.filter(({ plugin }) => probe[plugin] === true).flatMap(
+    ({ count, delay }) => [
+      '-o',
+      `${count}=${String(retries[count] ?? 0)}`,
+      ...(retries[delay] === undefined ? [] : ['-o', `${delay}=${String(retries[delay])}`]),
+    ],
+  );
 }
 
 function pinWord(word, following) {
@@ -154,12 +173,12 @@ export function pinAddopts(words) {
   return { kept, removed };
 }
 
-export function pinnedPytestArguments(projectRoot, { rerunfailures = false } = {}) {
+export function pinnedPytestArguments(projectRoot, probe = {}, retries = {}) {
   const { words } = readPytestAddopts(projectRoot);
   const { kept, removed } = pinAddopts(words);
   return [
     ...(removed.length === 0 ? [] : ['-o', `addopts=${kept.map(quoted).join(' ')}`]),
-    ...(rerunfailures ? ['-o', 'reruns=0'] : []),
+    ...retryArguments(probe, retries),
   ];
 }
 

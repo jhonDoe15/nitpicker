@@ -95,12 +95,16 @@ function installHeading(peers: Peers): string {
 }
 
 function installLines(peers: Peers): string[] {
+  const blockers = peers.blockers ?? [];
   if (peers.missing.length === 0 && peers.uninstalled.length === 0) {
-    return ['Nothing to install: every peer nitpicker needs is already there.'];
+    return blockers.length === 0
+      ? ['Nothing to install: every peer nitpicker needs is already there.']
+      : [...blockers];
   }
   return [
     installHeading(peers),
     `  ${textOf(peers.command)}`,
+    ...blockers,
     ...(peers.advice === undefined ? [] : [peers.advice]),
   ];
 }

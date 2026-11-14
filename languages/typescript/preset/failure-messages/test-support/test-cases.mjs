@@ -21,7 +21,7 @@ const partialAssertionConfig = [
   },
 ];
 
-const testFile = 'test/integration/repository.test.ts';
+const testFile = 'test/repository.test.ts';
 const childProcess = "import { execFileSync, spawnSync } from 'node:child_process';\n";
 
 function testCase({ name, banned, allowed, filename = testFile }) {
