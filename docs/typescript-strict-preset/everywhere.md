@@ -477,6 +477,23 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   array or a tuple (a string's `concat` is not reported); without it, the variable or the `reduce`
   start value must be an array literal. Allowed forms: `flatMap`, `Object.fromEntries`,
   `Object.groupBy`, or push into an array created before the loop.
+- `nitpicker/no-lazy-relation-in-loop` (needs the type checker): `await item.relation` in a loop or
+  iteration callback over the result of a TypeORM `find`, `findAndCount`, `findBy`,
+  `findAndCountBy` (on a repository, or on an `EntityManager` with the entity first:
+  `manager.find(Order, options)`) or query builder `getMany` in the same function, where `relation`
+  is declared lazy (`@ManyToOne(() => Customer, { lazy: true })`, a relation property typed
+  `Promise<T>`, or an `EntitySchema` relation with `lazy: true`, in TypeScript or JavaScript), is
+  reported: each item runs one more query. An `EntitySchema` relation is matched by the schema's
+  type argument or `name`, or by its relation name when the item's type is unknown. Fetch it in
+  that query: name it in `relations` (`relations: { customer: true }` or `['customer']`) or join it
+  with `leftJoinAndSelect('order.customer', 'customer')`. Only proven cases are reported: a
+  collection of unknown origin (a parameter, a field), options that are not a literal, and a query
+  builder that does not start from `createQueryBuilder` in the same chain are not, and neither is
+  one item read outside a loop. A project function or method that receives the item, called in the
+  loop (`await toDto(order)`) or passed by reference to an iteration method (`rows.map(toDto)`),
+  and awaits the lazy relation of that parameter in its body is reported at the call, with the
+  message naming the helper and the access it awaits. Prisma has no lazy loading, and Sequelize
+  association getters are explicit calls that `nitpicker/no-io-in-loop` reports.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,

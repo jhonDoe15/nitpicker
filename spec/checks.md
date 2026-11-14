@@ -211,6 +211,11 @@ accumulator copied with `concat` on every step of `reduce` or of a loop (`all = 
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
 the accumulator's type when the type checker runs, so a string's `concat` is left alone.
 
+Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
+reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
+that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
+item. Only proven cases are reported: a collection of unknown origin is not.
+
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,
 `manager`, `common`, `misc` or a variant, so code is named for what it does and shared pure logic

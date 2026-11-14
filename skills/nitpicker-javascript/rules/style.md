@@ -96,6 +96,8 @@ Part of the [nitpicker-javascript](../SKILL.md) skill. Write these forms from th
   (`nitpicker/no-io-in-loop`).
 - Don't copy an accumulator array with `concat` on every step of `reduce` or a loop: push into an array
   created before the loop, or build the result with `flatMap` (`nitpicker/no-accumulator-concat`).
+- Load a lazy TypeORM relation with the query that reads the items (`relations: { customer: true }` or
+  `leftJoinAndSelect`), never with `await item.customer` once per item (`nitpicker/no-lazy-relation-in-loop`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check
