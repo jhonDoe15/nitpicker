@@ -13,6 +13,7 @@ import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '..
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mts';
 import { FAILURE_DETAILS_VARIABLE } from '../../../preset/test-failures/vitest-failure-details.config.mjs';
+import { MOCK_PIN_ENVIRONMENT_VARIABLE } from './mock-pin-variable.mts';
 
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
 const TIMEOUT_LIMITS_VARIABLE = 'NITPICKER_TEST_TIMEOUT_LIMITS';
@@ -87,6 +88,17 @@ function timeoutEnvironment(setupPath: string): Readonly<Record<string, string>>
   };
 }
 
+function modeArguments(options: TestOptions): string[] {
+  if (options.rerun === undefined) {
+    return ['--coverage'];
+  }
+  const { namePattern } = options.rerun;
+  return [
+    '--maxWorkers=1',
+    ...(namePattern === undefined ? [] : ['--testNamePattern', namePattern]),
+  ];
+}
+
 export function runVitest(options: TestOptions): TestRun {
   const configured = readHeadPolicyFile().tools?.tests?.timeouts !== undefined;
   const configPath = temporaryProjectPath(options, 'vitest.config.ts');
@@ -104,9 +116,7 @@ export function runVitest(options: TestOptions): TestRun {
         'run',
         '--config',
         configPath,
-        ...(options.rerun === undefined
-          ? ['--coverage']
-          : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
+        ...modeArguments(options),
         ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
         ...vitestRetryArguments(projectTestRetry('vitest')),
         ...reportArguments(options, reportPath),
@@ -116,6 +126,7 @@ export function runVitest(options: TestOptions): TestRun {
       environment: {
         ...testConsole.environment,
         [FAILURE_DETAILS_VARIABLE]: detailsPath,
+        [MOCK_PIN_ENVIRONMENT_VARIABLE]: options.rerun?.withoutMockPin === true ? '1' : '0',
         ...(configured ? timeoutEnvironment(setupPath) : {}),
       },
       acceptedStatuses: [0, 1],
