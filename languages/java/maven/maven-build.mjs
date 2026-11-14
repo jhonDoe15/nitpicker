@@ -7,7 +7,13 @@ import { readReactor } from './maven-project.mjs';
 import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
+import {
+  archunitTool,
+  effectsTool,
+  formatTool,
+  MAVEN_PLUGINS,
+  resolveTools,
+} from './maven-tools.mjs';
 import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { writeSpringRuleset } from '../adapters/spring/proxies/proxy-ruleset.mjs';
@@ -16,11 +22,12 @@ import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
 import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
+import { effectsOptions } from '../adapters/effects/effects-options.mjs';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mjs';
 import { isTestsTimeout, timedOutTests } from '../adapters/red-base/tests-failed.mjs';
 import { buildGoals, jacocoExecFiles } from './quick/maven-test-phase.mjs';
 
-const PROJECT_CHECKS_OFF = [
+export const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
   '-Dcpd.skip=true',
@@ -30,7 +37,16 @@ const PROJECT_CHECKS_OFF = [
   '-Ddetekt.skip=true',
 ];
 
-function dependencyFile(work, module) {
+export function dependencyListArguments(work) {
+  return [
+    `${MAVEN_PLUGINS.dependency}:list`,
+    `-DoutputFile=${path.join(work, 'dependencies', `\${project.groupId}`, `\${project.artifactId}.txt`)}`,
+    '-DoutputAbsoluteArtifactFilename=true',
+    '-DappendOutput=false',
+  ];
+}
+
+export function dependencyFile(work, module) {
   const [groupId, artifactId] = module.coordinates.split(':');
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
@@ -53,10 +69,7 @@ export function buildAndTest({
     args: [
       '--quiet',
       ...buildGoals({ quick, pinned, modules }),
-      `${MAVEN_PLUGINS.dependency}:list`,
-      `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
-      '-DoutputAbsoluteArtifactFilename=true',
-      '-DappendOutput=false',
+      ...dependencyListArguments(work),
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
@@ -121,7 +134,7 @@ function buildOrSkipTests(run, { work, modules, policy }) {
   }
 }
 
-function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
+function analyzeAll({ analyzed, policy, kotlin, work, effectsOptions, ...shared }) {
   const style = {
     javaStyle: policy.javaStyle,
     indentation: checkstyleIndentation(policy.conventions),
@@ -142,6 +155,7 @@ function analyzeAll({ analyzed, policy, kotlin, work, ...shared }) {
         springRoles,
         springRules,
         mutationScope: policy.mutationScope,
+        effectsOptions,
       }),
     )
     .filter((failure) => failure !== undefined);
@@ -153,21 +167,42 @@ function extraTools({ modules, analyzed, policy, pinned, kotlin }) {
     ...formatTool(policy.javaStyle, pinned),
     ...kotlin.extraTools,
     ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+    ...effectsTool(pinned),
   ];
+}
+
+function resolveRunTools(run, { modules, analyzed, policy, kotlin }) {
+  return resolveTools({
+    ...run,
+    launcherVersions: run.quick || run.mutationOff ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned: run.pinned, kotlin }),
+  });
+}
+
+function assertMavenPreset(policy) {
+  if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
+    throw new Error(
+      `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
+    );
+  }
 }
 
 export function runMavenPreset(
   projectRoot,
   { maven, policy = {}, configs, environment = {}, spawn, timeoutMs, pitDeadline },
 ) {
-  if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
-    throw new Error(
-      `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
-    );
-  }
+  assertMavenPreset(policy);
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
-  const run = { projectRoot, maven, spawn, timeoutMs, pinned, quick: policy.quick === true };
+  const run = {
+    projectRoot,
+    maven,
+    spawn,
+    timeoutMs,
+    pinned,
+    quick: policy.quick === true,
+    mutationOff: policy.mutationOff === true,
+  };
   try {
     const { modules, effectivePom } = readModules({ ...run, work });
     const kotlin = kotlinSetup({ ...run, policy, modules, effectivePom, work, environment });
@@ -177,11 +212,7 @@ export function runMavenPreset(
       module,
       classpaths: readClasspaths(work, module),
     }));
-    const tools = resolveTools({
-      ...run,
-      launcherVersions: run.quick ? [] : missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned, kotlin }),
-    });
+    const tools = resolveRunTools(run, { modules, analyzed, policy, kotlin });
     const testsFailures = analyzeAll({
       ...run,
       testsSkipped: timedOut.length > 0,
@@ -193,6 +224,7 @@ export function runMavenPreset(
       policy,
       kotlin,
       work,
+      effectsOptions: effectsOptions(projectRoot),
       project: guardProject(projectRoot, policy, modules),
     });
     return {

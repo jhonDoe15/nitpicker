@@ -41,10 +41,19 @@ full run below.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
-   without a pipe: you need its exit code. It applies ESLint and Prettier fixes with its own
+   without a pipe: you need its exit code. It applies ESLint fixes, single ESLint suggestions of
+   reviewed rules, safe TypeScript code fixes, knip's removal of unused
+   dependencies, and Prettier fixes with its own
    configs (don't format with plain `prettier`; its quotes, semicolons, indentation and width follow
    most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
+   To look at the fixes first, run `npx nitpicker --fix --dry-run`: it changes no file and writes
+   `fix.patch` and `fixes.json` to the output folder. `--fix --rule <tool/rule>` applies only the
+   fixes of the rules you name, including their `review` recipes. A recipe that makes things worse
+   (its finding stays, it adds a finding or a compile error) is rolled back and named under "Fix notes";
+   `--fix --verify full` checks with the whole gate. To clear one rule across the whole project, run
+   `--fix --all --rule <tool/rule>`: it also lowers the rule's allowance in `nitpicker.legacy.json`.
+   For a finding no recipe fixes, read its plan in `fix-plans.json` (same folder): the target lines, the context and the steps. Follow the steps; they are done when the finding named in `doneWhen` stops.
 3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.

@@ -10,6 +10,12 @@ export function ancestorsOf(node) {
   return chainOf(node.parent, (current) => current.parent);
 }
 
+export function outermostWrapper(node, wrapperTypes) {
+  return chainOf(node, (current) =>
+    wrapperTypes.has(current.parent?.type) ? current.parent : undefined,
+  ).at(-1);
+}
+
 export function scopeChain(scope) {
   return chainOf(scope, (current) => current.upper);
 }

@@ -1,23 +1,15 @@
 import {
   DRILL_DOWN_OPTIONS,
+  type DrillDownOptions,
   parseDrillDownOptions,
   unknownArgumentError,
-} from '../diff/comparison/cli.mjs';
+} from '../diff/comparison/cli.mts';
 import { validateRunProfile } from '../quick/validate.mts';
 import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 type BooleanOption =
-  'all' | 'details' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
-type ValueOption = 'baseRef' | 'outputRoot';
-
-type DrillDown = {
-  readonly analyzerNames: readonly string[];
-  readonly ruleFilters: readonly string[];
-  readonly shardCount: number | undefined;
-  readonly shardIndex: number | undefined;
-  readonly deferExit: boolean;
-  readonly remainingArguments: readonly string[];
-};
+  'all' | 'details' | 'dryRun' | 'fix' | 'help' | 'json' | 'version' | 'cache' | 'quick' | 'staged';
+type ValueOption = 'baseRef' | 'outputRoot' | 'verify';
 
 type CommandOptions = Record<BooleanOption, boolean> &
   Partial<Record<ValueOption, string>> & {
@@ -25,9 +17,8 @@ type CommandOptions = Record<BooleanOption, boolean> &
     readonly paths: string[];
   };
 
-export type ParsedArguments = CommandOptions & Omit<DrillDown, 'remainingArguments'>;
+export type ParsedArguments = CommandOptions & Omit<DrillDownOptions, 'remainingArguments'>;
 
-const drillDownOptions: (arguments_: readonly string[]) => DrillDown = parseDrillDownOptions;
 const closestSuggestion: (
   argument: string,
   candidates: readonly string[],
@@ -37,6 +28,7 @@ const closestSuggestion: (
 const FLAGS = new Map<string, { readonly property: BooleanOption; readonly value: boolean }>([
   ['--all', { property: 'all', value: true }],
   ['--details', { property: 'details', value: true }],
+  ['--dry-run', { property: 'dryRun', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
   ['--json', { property: 'json', value: true }],
@@ -49,6 +41,7 @@ const ACCEPT_FLAG = '--accept-policy-change';
 const VALUES = new Map<string, ValueOption>([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
+  ['--verify', 'verify'],
 ]);
 const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init'];
 
@@ -59,6 +52,8 @@ export const COMPARISON_OPTIONS = [
   ...DRILL_DOWN_OPTIONS,
 ];
 
+const EXACT_RULE = /^[^/\s]+\/\S+$/u;
+const VERIFY_MODES = ['narrow', 'full'];
 const HELP_POINTER = 'Run nitpicker --help for the options.';
 
 function unknownArgument(argument: string): Error {
@@ -122,6 +117,7 @@ function remainingOptions(commandArguments: readonly string[]): CommandOptions {
   const options: CommandOptions = {
     all: false,
     details: false,
+    dryRun: false,
     fix: false,
     help: false,
     json: false,
@@ -149,14 +145,37 @@ function remainingOptions(commandArguments: readonly string[]): CommandOptions {
   return options;
 }
 
+function validateFixOptions(options: ParsedArguments): void {
+  if (options.dryRun && !options.fix) {
+    throw new Error('--dry-run only works with --fix: use nitpicker --fix --dry-run');
+  }
+  if (options.verify !== undefined && !options.fix) {
+    throw new Error('--verify only works with --fix: use nitpicker --fix --verify full');
+  }
+  if (options.verify !== undefined && !VERIFY_MODES.includes(options.verify)) {
+    throw new Error(`--verify takes ${VERIFY_MODES.join(' or ')}, not ${options.verify}`);
+  }
+  const unnamed = options.fix ? options.ruleFilters.filter((rule) => !EXACT_RULE.test(rule)) : [];
+  if (unnamed.length > 0) {
+    throw new Error(
+      `--fix --rule takes the full tool/rule name of a rule (for example eslint/no-var), not ${unnamed.join(', ')}`,
+    );
+  }
+}
+
 function validateModes(options: ParsedArguments): void {
   if (options.paths.length > 0 && options.shardCount !== undefined) {
     throw new Error(
       'Paths cannot be combined with --shard-count; shards always cover the whole project',
     );
   }
+  validateFixOptions(options);
   if (!options.all) return;
-  if (options.fix) throw new Error('--fix cannot be combined with --all');
+  if (options.fix && options.ruleFilters.length === 0) {
+    throw new Error(
+      '--fix --all rewrites the whole project, so it needs the rule to fix: use nitpicker --fix --all --rule <tool/rule>',
+    );
+  }
   const conflicts: readonly (readonly [boolean, string])[] = [
     [options.baseRef !== undefined, '--base'],
     [
@@ -171,7 +190,7 @@ function validateModes(options: ParsedArguments): void {
 }
 
 export function parseArguments(commandArguments: readonly string[]): ParsedArguments {
-  const { remainingArguments, ...drillDown } = drillDownOptions(commandArguments);
+  const { remainingArguments, ...drillDown } = parseDrillDownOptions(commandArguments);
   const options = { ...remainingOptions(remainingArguments), ...drillDown };
   validateModes(options);
   validateRunProfile(options);

@@ -13,11 +13,16 @@ import { fixerError, runFixCommand } from '../../../core/fix/common/fix-command.
 import { readBytes } from '../../../core/fix/common/fix-files.mjs';
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
-import { replaceIfUnchanged } from '../../../core/fix/common/rewrite/safe-write.mjs';
+import { selectedEslintRules, selectedOutput } from './selection/selected-fixes.mjs';
+import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
+import { applySuggestions } from './suggestions/apply-suggestions.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
+const loggingPolicy = eslintChecks.find(({ name }) => name === 'eslint-logging');
 
 const TOOL = 'eslint --fix';
+
+const EXTRA_POLICY_VARIABLE = 'NITPICKER_DIFF_ESLINT_EXTRA_POLICY_CONFIG';
 
 const REPORT_EXCERPT_LENGTH = 200;
 
@@ -30,7 +35,7 @@ function runEslint(settings, files, linked) {
       resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
       '--config',
       path.join(PACKAGE_ROOT, 'languages/typescript/adapters/eslint-wrapper.config.mjs'),
-      '--fix-dry-run',
+      ...(settings.selectedRules.length === 0 ? ['--fix-dry-run'] : []),
       '--format',
       'json',
       '--no-warn-ignored',
@@ -44,6 +49,7 @@ function runEslint(settings, files, linked) {
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
+      [EXTRA_POLICY_VARIABLE]: path.join(PACKAGE_ROOT, loggingPolicy.configRelativePath),
       [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
         liveProjectRoot: projectRoot,
         addsRules: true,
@@ -90,23 +96,53 @@ function reportedFiles(projectRoot, files, stdout) {
     if (name === undefined) {
       throw new Error(`ESLint reported a file it was not given: ${filePath}`);
     }
-    return { name, output, fatal: messages.some(({ fatal }) => fatal === true) };
+    return { name, output, messages, fatal: messages.some(({ fatal }) => fatal === true) };
   });
 }
 
-function writeOutputs(projectRoot, before, outputs) {
-  const planned = outputs
-    .map(({ name, output }) => ({
-      name,
-      text: withFixedLineEndingsOf(before.get(name).toString('utf8'), output),
-    }))
-    .filter(({ name, text }) => text !== before.get(name).toString('utf8'));
-  const written = planned.filter(({ name, text }) =>
-    replaceIfUnchanged(containedPath(projectRoot, name), before.get(name), text),
+function fixedText(settings, original, { output, messages, fatal }) {
+  if (fatal) {
+    return { text: typeof output === 'string' ? output : original, applied: [] };
+  }
+  if (settings.selectedRules.length === 0) {
+    const base = typeof output === 'string' ? output : original;
+    return applySuggestions({ text: base, messages, selectedRules: [] });
+  }
+  const { text, suggested } = selectedOutput(
+    original,
+    messages,
+    selectedEslintRules(settings.selectedRules),
   );
+  return { text: text ?? original, applied: suggested };
+}
+
+function plannedTexts(settings, before, reported) {
+  const findings = [];
+  const planned = reported.flatMap((file) => {
+    const original = before.get(file.name).toString('utf8');
+    const { text: fixed, applied } = fixedText(settings, original, file);
+    findings.push(
+      ...applied.map(({ rule, line }) => `${file.name}:${line} ${rule} (eslint-suggestion)`),
+    );
+    const text = withFixedLineEndingsOf(original, fixed);
+    return text === original ? [] : [{ name: file.name, text }];
+  });
+  return { planned, findings };
+}
+
+function writeOutputs(settings, before, reported) {
+  const { planned, findings } = plannedTexts(settings, before, reported);
+  const { written, changedMeanwhile, unwritable } = writeTexts(
+    settings.writer,
+    planned.map(({ name, text }) => ({ name, bytes: before.get(name), text })),
+    TOOL,
+  );
+  const kept = new Set(written);
   return {
-    rewritten: written.map(({ name }) => name),
-    changedMeanwhile: planned.filter((entry) => !written.includes(entry)).map(({ name }) => name),
+    rewritten: written,
+    changedMeanwhile,
+    unwritable,
+    fixedFindings: findings.filter((finding) => kept.has(finding.slice(0, finding.indexOf(':')))),
   };
 }
 
@@ -123,14 +159,18 @@ function attemptEslintFix(settings, files, before) {
     return {
       linked,
       unformattable: reported.filter(({ fatal }) => fatal).map(({ name }) => name),
-      ...writeOutputs(
-        projectRoot,
-        before,
-        reported.filter(({ output }) => typeof output === 'string'),
-      ),
+      ...writeOutputs(settings, before, reported),
     };
   } catch (error) {
-    return { linked, failure: error, rewritten: [], changedMeanwhile: [], unformattable: [] };
+    return {
+      linked,
+      failure: error,
+      rewritten: [],
+      fixedFindings: [],
+      changedMeanwhile: [],
+      unformattable: [],
+      unwritable: [],
+    };
   }
 }
 
@@ -144,18 +184,22 @@ function removeLinkedFile(linked) {
 }
 
 export function eslintFixStep(settings, files) {
-  if (files.length === 0) {
-    return { toolErrors: [], notes: [] };
+  const unselected =
+    settings.selectedRules.length > 0 && selectedEslintRules(settings.selectedRules).length === 0;
+  if (files.length === 0 || unselected) {
+    return { toolErrors: [], notes: [], fixedFindings: [] };
   }
   const attempt = attemptEslintFix(settings, files, readBytes(settings.projectRoot, files));
   const removalFailure = removeLinkedFile(attempt.linked);
   const failure = attempt.failure ?? removalFailure;
   return {
     toolErrors: failure === undefined ? [] : [fixerError('eslint-fix', failure)],
+    fixedFindings: attempt.fixedFindings,
     notes: formatNotes(TOOL, {
       rewritten: attempt.rewritten,
       changedMeanwhile: attempt.changedMeanwhile,
       unformattable: attempt.unformattable,
+      unwritable: attempt.unwritable,
       keptAsIs: [],
     }),
   };

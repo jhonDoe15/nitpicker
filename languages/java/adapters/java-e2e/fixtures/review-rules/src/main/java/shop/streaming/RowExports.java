@@ -69,7 +69,7 @@ public final class RowExports {
   }
 
   public long count() {
-    return rows.streamAllBy().count();
+    return rows.streamAllBy().count(); // violation: SpringDataFilterInQuery
   }
 
   public List<Row> firstPage() {

@@ -2,21 +2,33 @@ import { fixerError } from '../../../core/fix/common/fix-command.mjs';
 import {
   collectFixFiles,
   excludedBy,
+  changedFiles,
   readBytes,
-  rewrittenBy,
   rewrittenPaths,
   splitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
-import { formatNotes, linkNote, rewrittenNote } from '../../../core/fix/common/fix-notes.mjs';
+import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
+import { withFixedLineEndingsOf } from '../../../core/fix/common/rewrite/line-endings.mjs';
+import { runRecipes } from '../../../core/fix/engine/run-recipes.mjs';
+import { writeTexts } from '../../../core/fix/engine/write-texts.mjs';
+import { sharedInputs } from '../../../core/fix/recipes/shared-inputs.mjs';
+import { SHARED_RECIPES } from '../../../core/fix/recipes/shared-recipes.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { onlyUnparsableFiles } from '../adapters/python-tools.mjs';
 import {
   FORMAT_FAILURE_STATUS,
   formatStdinCommand,
-  lintFixCommand,
+  lintFixCommands,
+  reviewFixCommands,
 } from './python-fix-commands.mjs';
+import { reviewCodesSelected, selectedRuffCodes } from './review/review-rules.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
+import { fixOptions } from './source/fix-options.mjs';
+import { FIX_SCRIPT, SCRIPT_OPERATION } from './source/script-edits.mjs';
+import { createPythonRecipes } from './recipes/python-recipes.mjs';
+import { dependencyInputs } from './recipes/inputs/dependency-inputs.mjs';
+import { docstringInputs } from './recipes/inputs/docstring-inputs.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
 const JUPYTER_MISSING = /Jupyter dependencies are not installed/u;
@@ -73,22 +85,46 @@ function stdinFormatter(context, run, skipped) {
   };
 }
 
-function lintStep({ context, run, projectRoot, files }) {
+function lintCommands(context, selectedRules) {
+  const safe = lintFixCommands(context, selectedRuffCodes(selectedRules));
+  const review = reviewCodesSelected(selectedRules);
+  const reviewCommand = review.length === 0 ? undefined : reviewFixCommands(context, review);
+  return (name) => (reviewCommand === undefined ? [safe(name)] : [safe(name), reviewCommand(name)]);
+}
+
+function lintStep({ context, run, projectRoot, files, selectedRules, writer }) {
   const decodable = splitByEncoding(projectRoot, files).files;
-  const paths = decodable.map(({ path: name }) => name);
-  if (paths.length === 0) {
-    return [];
+  const before = readBytes(projectRoot, decodable);
+  const codes = selectedRuffCodes(selectedRules);
+  if (selectedRules.length > 0 && codes.length === 0) {
+    return { written: [], notes: [] };
   }
-  return rewrittenNote(
-    'ruff check --fix',
-    rewrittenBy(projectRoot, decodable, () => {
-      run({
+  const commandsFor = decodable.length === 0 ? undefined : lintCommands(context, selectedRules);
+  const planned = decodable.flatMap(({ path: name }) => {
+    const original = before.get(name).toString('utf8');
+    let source = original;
+    for (const command of commandsFor(name)) {
+      const result = run({
         operation: 'ruff-fix',
-        command: lintFixCommand(context, paths),
+        command,
         acceptedStatuses: [0, 1],
+        input: source,
       });
+      source = result.status === 0 ? source : withFixedLineEndingsOf(source, result.stdout);
+    }
+    return source === original ? [] : [{ name, bytes: before.get(name), text: source }];
+  });
+  const { written, changedMeanwhile, unwritable } = writeTexts(writer, planned, 'ruff check --fix');
+  return {
+    written,
+    notes: formatNotes('ruff check --fix', {
+      rewritten: written,
+      changedMeanwhile,
+      unwritable,
+      keptAsIs: [],
+      unformattable: [],
     }),
-  );
+  };
 }
 
 function formatStep({ context, run, settings, files, mergeBaseSha }) {
@@ -100,6 +136,9 @@ function formatStep({ context, run, settings, files, mergeBaseSha }) {
     mergeBaseSha,
     files,
     format: stdinFormatter(context, run, skipped),
+    writer: settings.writer,
+    allFiles: settings.allFiles === true,
+    tool: FORMATTERS[context.project.formatter].label,
   });
   return [
     ...formatNotes(FORMATTERS[context.project.formatter].label, outcome),
@@ -107,25 +146,108 @@ function formatStep({ context, run, settings, files, mergeBaseSha }) {
   ];
 }
 
+function formattedFiles({ files, settings, projectRoot, before }, written) {
+  return settings.selectedRules.length === 0
+    ? files
+    : files.filter(
+        ({ path: name }) =>
+          written.includes(name) || changedFiles(projectRoot, [{ path: name }], before).length > 0,
+      );
+}
+
+const DEPENDENCY_SELECTIONS = [
+  'dependencies/unused-dependency',
+  'dependencies/unlisted-dependency',
+  'dependencies/no-dev-dependency-in-production',
+];
+
+function recipeInputs(context, files, selectedRules) {
+  try {
+    return {
+      inputs: {
+        pythonDocstrings: docstringInputs(context, files),
+        ...(selectedRules.some((rule) => DEPENDENCY_SELECTIONS.includes(rule))
+          ? { pythonDependencies: dependencyInputs(context) }
+          : {}),
+      },
+      toolErrors: [],
+    };
+  } catch (error) {
+    return { inputs: {}, toolErrors: [fixFailure('python-recipe-inputs', error)] };
+  }
+}
+
+function pythonRecipes(context, run) {
+  return createPythonRecipes({
+    runScript: (input) =>
+      run({
+        operation: SCRIPT_OPERATION,
+        command: ['python', '-I', FIX_SCRIPT],
+        acceptedStatuses: [0],
+        input,
+      }).stdout,
+    optionsFor: fixOptions(context),
+  });
+}
+
+function recipeStep({ context, run, settings, files, accepts }) {
+  const selectedRules = settings.selectedRules ?? [];
+  const shared = sharedInputs({
+    projectRoot: settings.projectRoot,
+    headPolicy: settings.headPolicy,
+    selectedRules,
+  });
+  const gathered = recipeInputs(context, files, selectedRules);
+  const recipes = runRecipes({
+    projectRoot: settings.projectRoot,
+    files,
+    recipes: [...pythonRecipes(context, run), ...SHARED_RECIPES],
+    writer: settings.writer,
+    preset: settings.config?.preset ?? 'python',
+    selectedRules,
+    accepts,
+    inputs: { ...shared.inputs, ...gathered.inputs },
+  });
+  return {
+    files: recipes.files,
+    fixedFindings: recipes.fixedFindings,
+    toolErrors: [...shared.toolErrors, ...gathered.toolErrors, ...recipes.toolErrors],
+    notes: recipes.notes,
+  };
+}
+
 function runFixers(settings, files, mergeBaseSha) {
   try {
     return withPythonFixContext(settings, (context) => {
       const run = commandRunner(context, settings.executeFixCommand);
+      const before = readBytes(settings.projectRoot, files);
+      const recipes = recipeStep({ context, run, settings, files, accepts: settings.accepts });
       const step = {
         context,
         run,
         settings,
         projectRoot: settings.projectRoot,
-        files,
+        files: recipes.files,
         mergeBaseSha,
+        selectedRules: settings.selectedRules,
+        writer: settings.writer,
       };
+      const lint = { written: [] };
       const outcomes = [
-        attempt('ruff-fix', () => lintStep(step)),
-        attempt(FORMATTERS[context.project.formatter].operation, () => formatStep(step)),
+        attempt('ruff-fix', () => {
+          const outcome = lintStep(step);
+          lint.written = outcome.written;
+          return outcome.notes;
+        }),
+        attempt(FORMATTERS[context.project.formatter].operation, () =>
+          formatStep({ ...step, files: formattedFiles({ ...step, before }, lint.written) }),
+        ),
       ];
       return {
-        toolErrors: outcomes.flatMap(({ toolErrors }) => toolErrors),
-        notes: outcomes.flatMap(({ notes }) => notes),
+        fixedFindings: recipes.fixedFindings,
+        renamed: recipes.files.filter(({ path: name }, index) => name !== files[index].path),
+        toolErrors: [...recipes.toolErrors, ...outcomes.flatMap(({ toolErrors }) => toolErrors)],
+        notes: [...recipes.notes, ...outcomes.flatMap(({ notes }) => notes)],
       };
     });
   } catch (error) {
@@ -136,24 +258,37 @@ function runFixers(settings, files, mergeBaseSha) {
 export function fixPython(settings) {
   const { repositoryRoot, projectRoot, baseRef, scope, headPolicy = {} } = settings;
   const excluded = excludedBy(headPolicy.exclude);
+  function accepts(name) {
+    return PYTHON_FILE.test(name) && !excluded(name);
+  }
   const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     scope,
-    accepts: (name) => PYTHON_FILE.test(name) && !excluded(name),
+    allFiles: settings.allFiles === true,
+    accepts,
   });
-  if (files.length === 0) {
+  if (files.length === 0 && (settings.selectedRules ?? []).length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
-  const { toolErrors, notes } = runFixers(
-    { ...settings, headPolicy },
+  const {
+    fixedFindings = [],
+    renamed = [],
+    toolErrors,
+    notes,
+  } = runFixers(
+    { ...settings, headPolicy, accepts, selectedRules: settings.selectedRules ?? [] },
     files,
     comparison.mergeBaseSha,
   );
   return {
-    fixedFiles: rewrittenPaths(projectRoot, files, before),
+    fixedFiles: [
+      ...rewrittenPaths(projectRoot, files, before),
+      ...renamed.map(({ path: name }) => name),
+    ],
+    ...(fixedFindings.length === 0 ? {} : { fixedFindings }),
     toolErrors,
     notes: [...notes, ...linkNote(links)],
   };

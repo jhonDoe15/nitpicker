@@ -15,7 +15,7 @@ import { createEslintAnalyzer } from '../../adapters/eslint/analyzer.mjs';
 import { createStaticCheckAnalyzer } from '../../adapters/static-checks/analyzer.mjs';
 import { createQualityAreaAnalyzer } from '../../adapters/quality-areas/analyzer.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
-import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mjs';
+import { runAnalyzers } from '../../../../core/diff/execution/run-analyzers.mts';
 import {
   entryPointsCheck,
   eslintChecks,
@@ -61,7 +61,9 @@ const POLICY_PATHS = [
   'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules.generated.mjs',
+  'languages/typescript/preset/eslint-plugin/registry',
   'languages/typescript/preset/eslint-plugin/rules',
+  'languages/typescript/preset/eslint-plugin/fixes',
   'languages/typescript/preset/eslint-plugin/test-assertions',
   'languages/typescript/preset/eslint-plugin/test-isolation',
   'languages/typescript/preset/eslint-plugin/test-placement',

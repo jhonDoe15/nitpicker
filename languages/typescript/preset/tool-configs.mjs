@@ -209,12 +209,19 @@ const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noUncheckedIndexedAccess',
 ]);
 
-const ANALYSIS_OPTIONS = { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true };
+const ANALYSIS_OPTIONS = {
+  allowJs: true,
+  isolatedDeclarations: false,
+  noCheck: false,
+  noEmit: true,
+  skipLibCheck: true,
+};
 
 function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   return {
     extends: extended,
     compilerOptions: {
+      isolatedDeclarations: false,
       noCheck: false,
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),

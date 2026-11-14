@@ -19,10 +19,21 @@ export function untrackTemporaryPath(filePath) {
   trackedPaths.delete(filePath);
 }
 
+export function trackCleanup(cleanup) {
+  trackTemporaryPath(cleanup);
+  return () => {
+    untrackTemporaryPath(cleanup);
+  };
+}
+
 export function removeTrackedTemporaryPaths() {
-  for (const filePath of [...trackedPaths].reverse()) {
-    rmSync(filePath, { force: true, recursive: true });
-    trackedPaths.delete(filePath);
+  for (const entry of [...trackedPaths].reverse()) {
+    trackedPaths.delete(entry);
+    if (typeof entry === 'function') {
+      entry();
+    } else {
+      rmSync(entry, { force: true, recursive: true });
+    }
   }
 }
 

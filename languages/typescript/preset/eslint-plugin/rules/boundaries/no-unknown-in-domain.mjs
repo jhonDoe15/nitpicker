@@ -4,25 +4,15 @@ import {
   withJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
+import { ancestorsOf, outermostWrapper, variableNamed } from '../analysis/ancestry.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { librariesForFile } from '../../../libraries/file-libraries.mjs';
 import { validationBehavior } from '../../../libraries/project-libraries.mjs';
 
 const PARAMETER_WRAPPERS = new Set(['AssignmentPattern', 'RestElement', 'TSParameterProperty']);
 
-function outermostWrapper(node) {
-  const pending = [node];
-  for (const current of pending) {
-    if (PARAMETER_WRAPPERS.has(current.parent?.type)) {
-      pending.push(current.parent);
-    }
-  }
-  return pending.at(-1);
-}
-
 function isParameter(pattern) {
-  const outer = outermostWrapper(pattern);
+  const outer = outermostWrapper(pattern, PARAMETER_WRAPPERS);
   return Array.isArray(outer.parent?.params) && outer.parent.params.includes(outer);
 }
 

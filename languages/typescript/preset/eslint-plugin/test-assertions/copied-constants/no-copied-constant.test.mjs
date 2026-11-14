@@ -44,6 +44,10 @@ const SOURCES = {
     "class Local { static readonly LOCAL_KEY = 'local-key'; }",
     'export { Local as Shared };',
   ].join('\n'),
+  'src/barrel/index.ts': "export * from './constants';\nexport * from './colors';",
+  'src/barrel/constants.ts': 'export const MAX_ZOOM = 30;\nexport const SCROLL_TIMEOUT = 100;',
+  'src/barrel/colors.ts':
+    "export const PALETTE_SIZE = 7;\nexport const rgbToHex = (r: number) => String(r);\nexport { MAX_ZOOM as ZOOM } from './constants';",
   'test/helpers/values.ts': 'export const HELPER_LIMIT = 123;',
 };
 
@@ -264,5 +268,32 @@ describe('no-copied-constant', () => {
     );
 
     expect(messages).toHaveLength(1);
+  });
+
+  it('ties a literal to the module that defines what the test imports, not the rest of a barrel', () => {
+    const messages = reported(
+      [
+        "import { rgbToHex } from '../src/barrel';",
+        'expect(rgbToHex(30)).toBe("30");',
+        'expect(rgbToHex(100)).toBe("100");',
+        'expect(rgbToHex(7)).toBe("7");',
+      ].join('\n'),
+    );
+
+    expect(messages.map(({ line, message }) => `${line} ${message.split(' from ')[0]}`)).toEqual([
+      '4 This literal copies PALETTE_SIZE',
+    ]);
+  });
+
+  it('reads a barrel constant the test imports by name, also through a namespace import', () => {
+    const named = reported(
+      "import { SCROLL_TIMEOUT } from '../src/barrel';\nexpect(wait()).toBe(100);\nexpect(zoom()).toBe(30);",
+    );
+    const namespace = reported(
+      "import * as lib from '../src/barrel';\nexpect(lib.wait()).toBe(100);",
+    );
+
+    expect(named.map(({ line }) => line)).toEqual([2, 3]);
+    expect(namespace).toHaveLength(1);
   });
 });

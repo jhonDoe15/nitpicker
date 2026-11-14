@@ -1,5 +1,8 @@
+import { suggestible } from '../../../fixes/support/descriptors.mjs';
+import { HTTP_TIMEOUT_MS, httpTimeoutFix } from '../../../fixes/security/http-timeout-fix.mjs';
 import { clientBindings, clientCall } from './http-clients.mjs';
 import {
+  axiosPosition,
   defaultsTimeoutOwner,
   everyInstanceCallTimed,
   setsGlobalDispatcherTimeout,
@@ -20,6 +23,7 @@ function coveredByDefaults(found, defaults) {
 export const rule = {
   meta: {
     type: 'problem',
+    hasSuggestions: true,
     docs: { description: 'Require a timeout on outbound HTTP calls' },
     schema: [
       {
@@ -35,6 +39,7 @@ export const rule = {
     messages: {
       noTimeout:
         '{{call}} has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit.',
+      addTimeout: 'Add a timeout of {{ms}} ms.',
     },
   },
   create(context) {
@@ -75,7 +80,13 @@ export const rule = {
           const timedInstance =
             found.call === 'axios.create()' && everyInstanceCallTimed(context, node);
           if (!coveredByDefaults(found, defaults) && !timedInstance) {
-            context.report({ node, messageId: 'noTimeout', data: { call: found.call } });
+            const plan = httpTimeoutFix(context.sourceCode, node, { found, axiosPosition });
+            context.report(
+              suggestible(
+                { node, messageId: 'noTimeout', data: { call: found.call } },
+                { messageId: 'addTimeout', plan, data: { ms: String(HTTP_TIMEOUT_MS) } },
+              ),
+            );
           }
         }
       },
