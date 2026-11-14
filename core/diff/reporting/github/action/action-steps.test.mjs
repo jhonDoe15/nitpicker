@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { resolveBase } from '../../../git/repository/base-ref.mjs';
+import { resolveBase } from '../../../git/repository/base-ref.mts';
 import { actionStep, executeStep, readAction, windowsTools } from './test-support/action-steps.mjs';
 
 function runAt({ name, root, cwd, environment }) {

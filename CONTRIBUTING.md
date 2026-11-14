@@ -56,7 +56,32 @@ so the package stays plain JavaScript.
 - Code that opens a module by path (a worker, a spawned runner, a config file handed to a tool, a
   file list that is hashed) keeps the packaged `.mjs` name and resolves it with
   `checkoutModulePath` or `checkoutModuleUrl` from `shared/paths/checkout-module.mjs`, which pick
-  the `.mts` source in a checkout.
+  the `.mts` source in a checkout when Node.js strips types and the emitted `.mjs` otherwise.
+- `npm pack` and the container build run on Node.js 22.14, which cannot strip types: they emit the
+  `.mjs` files first (`node scripts/typescript/emit.mjs`, cleaned with `--clean`). Their own
+  scripts, `scripts/typescript/emit.mjs` and `scripts/reference/gen-rules.mjs` with the
+  `scripts/reference/` modules it imports, stay JavaScript; `ready.mts` holds them.
+
+## Batching issues into pull requests
+
+CI time, not review size, limits how fast changes land, so related issues ship together: fewer pull
+requests start fewer CI runs, and every change still passes the same checks.
+
+- **Coordinator issues.** A bigger feature or refactor gets a coordinator issue with the `batch`
+  label, such as #147 for the move to TypeScript. It lists each child issue as a checklist item with
+  the order to do them in, what each one depends on, and the pull request it ships in.
+- **Nesting.** A coordinator issue can list other coordinator issues, so small batches join into
+  bigger ones. Each connected group of issues becomes one pull request, with one commit per child
+  issue whose message names that issue. The pull request closes the child issues it completes, and
+  the coordinator issue closes when its last child does.
+- **One direction per pull request.** A pull request delivers one feature, refactor or family of
+  fixes; unrelated fixes go in their own batch. Aim for 20 to 30 commits: merge small batches of the
+  same feature or of closely related features into one pull request, and split a feature that needs
+  more into nested batches that land one after another, each its own pull request.
+- **New work.** Before starting an issue, check whether it belongs to an open coordinator issue, and
+  add a new issue to the coordinator issue it fits. An issue that fits no batch can still ship alone.
+- **CI.** Run the focused local checks for each commit, then push the batch and add `run-ci` once.
+  Fix what CI reports in one more push rather than one push per failure.
 
 ## Running the checks
 
@@ -82,7 +107,7 @@ below (pushes to `main` that touch the paths they list, a manual run, and the `r
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, and the `platforms` workflow described below follow them too; neither is a
 required check. On a pull request, each of these six workflows first runs a small `changes` job
-(`scripts/ci/affected-jobs.mjs`) that compares the pull request's changed files with the workflow's own
+(`scripts/ci/affected-jobs.mts`) that compares the pull request's changed files with the workflow's own
 push `paths`. When none of them matches, the workflow's other jobs are skipped and its summary job
 passes; when the files cannot be listed, all jobs run. Changing a shared path such as `core/`, `shared/`,
 `package.json` or `vitest.config.mts` runs them all.
@@ -96,12 +121,12 @@ The TypeScript red-base test (`npm run test:typescript`, which runs real vitest 
 not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
 the Stryker report is read.
 
-The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mjs` on Linux,
+The `platforms` workflow runs the CLI on the sample projects in `scripts/platforms/samples.mts` on Linux,
 macOS and Windows, and the TypeScript sample under Deno. It fails when a run's findings differ from the
-Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mjs`.
-Reproduce one sample with `node scripts/platforms/smoke.mjs typescript --output reports/platforms/local`
+Linux run under Node, except for the differences listed in `scripts/platforms/compare-runs.mts`.
+Reproduce one sample with `node scripts/platforms/smoke.mts typescript --output reports/platforms/local`
 (add `--runtime deno` for Deno), then compare two such directories with
-`node scripts/platforms/compare-runs.mjs <reference> <other>`. After changing a workflow's versions or the
+`node scripts/platforms/compare-runs.mts <reference> <other>`. After changing a workflow's versions or the
 expected differences, run `npm run gen:checks` so that [docs/compatibility.md](docs/compatibility.md)
 matches; a test fails until it does.
 
@@ -194,14 +219,16 @@ network; see [docs/python-preset.md](docs/python-preset.md).
 
 Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
 unmodified, either downloaded at run time or installed as an unmodified npm package, may be
-weak-copyleft (LGPL, EPL, MPL). GPL, AGPL and source-available licenses (SSPL, SSALv1, BSL,
-Elastic and the like) are never allowed, in either form.
+weak-copyleft (LGPL, EPL, MPL) or GPL-2.0 with the Classpath exception. Any other GPL, AGPL and
+source-available licenses (SSPL, SSALv1, BSL, Elastic and the like) are never allowed, in either
+form.
 
 Weak-copyleft tools today: SpotBugs and its find-sec-bugs plugin, and Checkstyle (LGPL); JaCoCo
 (EPL-2.0); the JUnit Platform launcher that PIT needs (EPL-2.0, added at run time next to the
 project's own engine); Saxon-HE (MPL-2.0), which PMD, SpotBugs and Checkstyle pull in; axe-core,
-which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0). PMD itself is BSD-style, which the Java tool
-list accepts as permissive.
+which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0); and the Checker Framework dataflow jars that
+Error Prone and NullAway pull in (GPL-2.0 with the Classpath exception). PMD itself is BSD-style,
+which the Java tool list accepts as permissive.
 
 `core/licensing/dependency-licenses.test.mjs` enforces what it can read on every test run: each
 tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license entry in
@@ -222,5 +249,12 @@ ids in `core/licensing/test-support/pom-licenses.mjs`, and a name it does not kn
 added there after reading the license (dom4j's POM says "Plexus" for its BSD-style license, so it
 has its own entry). The license texts inside the jars are not read, and lizard, a Python tool, keeps
 only its hand entry.
+
+## Changelog
+
+Pull requests do not edit [CHANGELOG.md](CHANGELOG.md). Its entry for a release is written when the
+release is cut, from the pull requests merged since the last tag
+([docs/releasing.md](docs/releasing.md), step 2), so give a pull request a title that says what
+changes for people who use nitpicker: the release draft starts from it.
 
 To cut a release, see [docs/releasing.md](docs/releasing.md).

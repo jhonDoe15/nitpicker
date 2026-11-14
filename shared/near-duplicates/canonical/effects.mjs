@@ -1,3 +1,4 @@
+import { pureCallKind } from '../../logic/purity.mjs';
 import { appendAll, contains, isBound, isJump, isLoop, isSwitch, nodesOf } from '../tree/nodes.mjs';
 
 const PURE_BINARY = new Set([
@@ -39,17 +40,37 @@ function locallyPure(node) {
   return LEAVES.has(node.kind);
 }
 
-export function isPure(node) {
-  return !contains(node, (current) => !locallyPure(current));
+function pureParts(node) {
+  if (node.kind === 'call') {
+    const [callee, ...rest] = node.children;
+    return pureCallKind(callee) === 'static' ? rest : undefined;
+  }
+  return locallyPure(node) ? node.children : undefined;
 }
 
-function unstableName(escaping) {
+function everyPart(root, accepts) {
+  const pending = [root];
+  for (const node of pending) {
+    const parts = pureParts(node);
+    if (parts === undefined || !accepts(node)) {
+      return false;
+    }
+    appendAll(pending, parts);
+  }
+  return true;
+}
+
+export function isPure(node) {
+  return everyPart(node, () => true);
+}
+
+function stableName(escaping) {
   return (node) =>
-    node.kind === 'this' || (node.kind === 'name' && (!isBound(node) || escaping.has(node.value)));
+    node.kind !== 'this' && (node.kind !== 'name' || (isBound(node) && !escaping.has(node.value)));
 }
 
 export function isStable(node, escaping) {
-  return node.kind === 'none' || (isPure(node) && !contains(node, unstableName(escaping)));
+  return node.kind === 'none' || everyPart(node, stableName(escaping));
 }
 
 export function escapingNames(tree) {

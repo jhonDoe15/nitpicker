@@ -13,8 +13,9 @@ Part of the [nitpicker-python](../SKILL.md) skill. Write these forms from the st
   or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
   the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
 - Honest tests: one case per test with `@pytest.mark.parametrize`, and assert unconditionally (no
-  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop:
-  `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
+  `assert` inside `if`, `for`, `while`, `match`, `except`, a comprehension or a `subTest` loop over a
+  collection that can be empty, also in a same-file helper the test calls; `range(3)` and a `subTest` loop over a
+  literal table are fine: `conditional-assertion-in-test`); a branch that only calls `pytest.fail` or skips is fine.
   Call the nested helpers a test defines, or they assert nothing. Skip only on a real condition
   with a reason, in a test, fixture or hook alike
   (`@pytest.mark.skipif(sys.platform == "win32", reason="...")`, `pytest.importorskip`); a

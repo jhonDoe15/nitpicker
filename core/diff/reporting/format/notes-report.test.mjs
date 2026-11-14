@@ -84,6 +84,15 @@ describe('red-base notes in the reports', () => {
     ]);
   });
 
+  it('says the tests did not finish when the base build timed out', () => {
+    const timedOut = { ...JAVA_NOTE, rule: 'tests-timed-out' };
+
+    expect([noteSummaryLines([timedOut])[0], noteSummaryLines([timedOut, NOTE])[0]]).toEqual([
+      "Note: the project's tests did not finish on the base (java).",
+      "Note: the project's tests fail or did not finish on the base (java, python).",
+    ]);
+  });
+
   it('says the head counts as new when the change removes tests', () => {
     const removed = { ...NOTE, tool: 'nitpicker', snapshot: 'head', rule: 'tests-removed' };
 

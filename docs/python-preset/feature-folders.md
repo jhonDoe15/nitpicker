@@ -1,16 +1,18 @@
 # Feature folders
 
 A project that groups its code by feature keeps each feature behind a small public face, keeps
-shared code independent of features, and keeps the features' dependencies one-way. Four rules,
+shared code independent of features, keeps the features' dependencies one-way and keeps each
+feature the owner of its data. Five rules,
 written once for every language over the import facts (`shared/rules/features/`) and run by the
 `python` analyzer as tool `coupling`, check that:
 
-| Rule                         | Fails                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `feature-internal-import`    | production code outside a feature imports a module behind its public face                                     |
-| `shared-imports-feature`     | a production module under a shared root imports any module of a feature                                       |
-| `feature-cycle`              | a runtime import between two features that closes a cycle of features                                         |
-| `shared-used-by-one-feature` | a module under a shared root that only one feature reaches (and nothing else uses): move it into that feature |
+| Rule                          | Fails                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `feature-internal-import`     | production code outside a feature imports a module behind its public face                                     |
+| `shared-imports-feature`      | a production module under a shared root imports any module of a feature                                       |
+| `feature-cycle`               | a runtime import between two features that closes a cycle of features                                         |
+| `shared-used-by-one-feature`  | a module under a shared root that only one feature reaches (and nothing else uses): move it into that feature |
+| `foreign-feature-persistence` | a production module of one feature imports an entity or data access module of another feature                 |
 
 **Which folders.** `layout.featureRoots` and `layout.sharedRoots` in `nitpicker.config.json` are
 folder globs from the project root (`["src/app/features"]`); they default to `**/features` and
@@ -76,6 +78,23 @@ rate`), `import a.b as c`, and `from a import b`, which is an import of the subm
   interface. A `package-cycle` whose packages all belong to the features of a reported feature cycle,
   and that no other import closes, is not reported a second time; a package cycle through a package
   outside the features, or one whose feature cycle an exception lifts, is still reported.
+- **Persistence of another feature.** `foreign-feature-persistence` reports a feature module that
+  imports another feature's persistence, directly or through a name its `__init__.py` re-exports
+  (the import names are followed, so importing a service from the same `__init__.py` passes). A
+  module is an entity when it defines a class whose base is a Django `models.Model`, a SQLAlchemy
+  `DeclarativeBase`, a Peewee, Tortoise, MongoEngine, Beanie, ODMantic or Piccolo model, a
+  SQLModel class with `table=True`, or a project class that is one of these, including the
+  `Base = declarative_base()` and `db.Model` forms (a base from a project module that imports the
+  ORM); the class list of the structure step resolves the bases through the module's imports
+  (`adapters/imports/python-persistence.mjs`). A module is data access when it imports a database
+  driver at run time (`sqlite3`, `psycopg`, `asyncpg`, `pymysql`, `pymongo`, `motor`, `redis`,
+  `cassandra`, `elasticsearch`, `databases`, ...) or an ORM's session or query API (`Session`,
+  `sessionmaker`, `create_engine`, `select`, `text`, Django's `connection`); a `TYPE_CHECKING`
+  import and Django's `transaction` do not count. The finding is on the importing module,
+  identity `foreign-persistence:<persistent module>`; the exception may name the importer or the
+  persistent module (a read model other features may use). Modules outside the features, such as
+  Alembic migrations, are not checked.
+- **import-linter.** Both apply. These rules always run and need no import-linter config; a
 - **Identities.** No line numbers: `feature-internal:<imported file>`, `<feature folder>|shared-imports-feature`
   and `<imported feature folder>|feature-cycle`, with the importing file as the path. Moving a file
   inside a feature, renaming a module, or moving a feature folder keeps a finding that existed

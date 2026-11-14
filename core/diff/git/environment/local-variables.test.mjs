@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detachLocalGitVariables } from './local-variables.mjs';
+import { detachLocalGitVariables } from './local-variables.mts';
 
 describe('detachLocalGitVariables', () => {
   it('removes the repository-local variables and returns their values', () => {

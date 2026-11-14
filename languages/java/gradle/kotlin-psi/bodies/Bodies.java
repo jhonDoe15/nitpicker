@@ -23,6 +23,7 @@ public final class Bodies {
   private final List<Object> returnValues = new ArrayList<>();
   private final List<Object> locals = new ArrayList<>();
   private final List<Object> throwsList = new ArrayList<>();
+  private final NullTests nullTests = new NullTests();
   private final ExceptionUses exceptionUses;
   private final Throwing throwing;
   private final Set<String> handlerNames;
@@ -131,6 +132,7 @@ public final class Bodies {
       call((KtCallExpression) element, frame);
     } else if (element instanceof KtBinaryExpression) {
       assignment((KtBinaryExpression) element, frame);
+      nullTests.binary((KtBinaryExpression) element, lineOf(element), scopes.id(frame));
     } else if (element instanceof KtCatchClause) {
       catchClause((KtCatchClause) element, frame);
     } else if (element instanceof KtProperty && ((KtProperty) element).isLocal()) {
@@ -312,7 +314,7 @@ public final class Bodies {
     return active
         ? m("scopes", scopes.entries(), "invocations", invocations, "catches", catches, "literals", literals,
             "nullReturns", nullReturns, "returnValues", returnValues, "exceptionUses", exceptionUses.uses(),
-            "locals", locals, "throws", throwsList)
+            "locals", locals, "throws", throwsList, "nullTests", nullTests.tests())
         : Map.of();
   }
 }

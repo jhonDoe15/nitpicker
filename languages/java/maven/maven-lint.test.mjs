@@ -1,4 +1,4 @@
-import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
+import { nitpickerCheckstyleConfig } from '../builds/rulesets/checkstyle-config.mjs';
 import {
   chmodSync,
   mkdirSync,
@@ -16,7 +16,8 @@ import {
 } from '../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { javaFiles, runFormat, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
+import { runFormat } from './format/maven-format.mjs';
+import { javaFiles, runPmd, runSpotbugs, writeCheckstyleSetup } from './maven-lint.mjs';
 import { toolDependencies } from './maven-tools.mjs';
 
 const roots = [];
@@ -34,43 +35,65 @@ afterEach(() => {
   }
 });
 
-const nameModule = (name, format) =>
-  `<module name="${name}"><property name="format" value="${format}"/></module>`;
-const NAME_MODULES =
-  nameModule('MemberName', '^[a-z][a-z0-9][a-zA-Z0-9]*$') +
-  nameModule('MethodName', '^[a-z][a-z0-9][a-zA-Z0-9_]*$');
-const RELAXED_NAME_MODULES =
-  nameModule('MemberName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$') +
-  nameModule('MethodName', '^[a-z]([a-z0-9][a-zA-Z0-9]*)?$');
+const GOOGLE_CHECKS_13 = [
+  '<module name="Checker">',
+  '  <module name="SuppressWarningsFilter"/>',
+  '  <module name="SuppressWithNearbyCommentFilter">',
+  '    <property name="commentFormat" value="x"/>',
+  '  </module>',
+  '  <module name="TreeWalker"><module name="SuppressWarningsHolder" />',
+  '    <module name="TextBlockGoogleStyleFormatting"/>',
+  '    <module name="GoogleNonConstantFieldName"/>',
+  '    <module name="MethodName">',
+  '      <property name="format"',
+  '          value="^(?![a-z]$)[a-z][a-z0-9]*$"/>',
+  '    </module>',
+  '    <module name="TodoComment">',
+  '      <property name="id" value="TodoFormat"/>',
+  '      <property name="format" value="^TODO:"/>',
+  '    </module>',
+  '  </module>',
+  '</module>',
+].join('\n');
 
 describe('nitpickerCheckstyleConfig', () => {
-  it('drops every inline suppression filter from the bundled Google checks', () => {
-    const bundled = [
-      '<module name="Checker">',
-      '  <module name="SuppressWarningsFilter"/>',
-      '  <module name="SuppressWithNearbyCommentFilter">',
-      '    <property name="commentFormat" value="x"/>',
-      '  </module>',
-      '  <module name="TreeWalker"><module name="SuppressWarningsHolder" /></module>',
-      NAME_MODULES,
-      '</module>',
-    ].join('\n');
+  const config = nitpickerCheckstyleConfig(GOOGLE_CHECKS_13);
 
-    expect(nitpickerCheckstyleConfig(bundled)).toBe(
+  it('drops every inline suppression filter and the text block check google-java-format contradicts', () => {
+    expect(
       [
-        '<module name="Checker">',
-        '  ',
-        '  ',
-        '  <module name="TreeWalker"></module>',
-        RELAXED_NAME_MODULES,
-        '</module>',
-      ].join('\n'),
-    );
+        'SuppressWarningsFilter',
+        'SuppressWithNearbyCommentFilter',
+        'SuppressWarningsHolder',
+        'TextBlockGoogleStyleFormatting',
+      ].filter((name) => config.includes(`"${name}"`)),
+    ).toEqual([]);
   });
 
-  it('relaxes the member and method name patterns to the ones of the Gradle run', () => {
+  it('allows one-letter fields and methods, and an untagged TODO in any case but the tag itself', () => {
+    const count = (text) => config.split(text).length - 1;
+
+    expect([
+      count('value="^[a-z]([a-z0-9][a-zA-Z0-9]*)?$"/>'),
+      count(`<property name="query" value="//VARIABLE_DEF/IDENT[matches(@text, '^[a-z]$')]"/>`),
+      count('<property name="format" value="^[ \\t]*(?!TODO\\b)(?i:TODO)\\b"/>'),
+    ]).toEqual([1, 1, 1]);
+    expect(config).not.toContain('^TODO:');
+  });
+
+  it('keeps rejecting an underscore between digits in field names', () => {
+    expect(
+      ['MemberName', 'StaticVariableName'].map((check) =>
+        config.includes(
+          `<module name="${check}"><property name="id" value="GoogleNonConstantFieldName"/>`,
+        ),
+      ),
+    ).toEqual([true, true]);
+  });
+
+  it('names the module it cannot find', () => {
     expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
-      'nitpicker could not find MemberName in google_checks.xml',
+      'nitpicker could not find MethodName in google_checks.xml',
     );
   });
 });
@@ -221,7 +244,10 @@ describe('runFormat', () => {
     roots.push(root);
     const java = path.join(root, 'jdk/bin/java');
     mkdirSync(path.dirname(java), { recursive: true });
-    writeFileSync(java, '#!/bin/sh\ncat "${1#@}"\n');
+    writeFileSync(
+      java,
+      `#!/bin/sh\n[ "$1" = -version ] && echo 'openjdk version "21.0.1"' >&2 && exit 0\ncat "\${1#@}"\n`,
+    );
     chmodSync(java, 0o755);
     vi.stubEnv('JAVA_HOME', path.join(root, 'jdk'));
     const source = path.join(root, 'src/main/java/demo/A.java');

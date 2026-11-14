@@ -4,10 +4,10 @@ import { runAnalyzers } from '../../../execution/run-analyzers.mjs';
 import {
   coverageFailureFindings,
   formatTestFailures,
-} from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mjs';
+} from '../../../../../languages/typescript/adapters/quality-areas/reporting/test-report.mts';
 import { compareFindings } from '../../../comparison/compare.mjs';
-import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mjs';
-import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mjs';
+import { describeUncoveredArms } from '../../../../../languages/typescript/adapters/quality-areas/reporting/source-hashes.mts';
+import { normalizeCoverage } from '../../../../../languages/typescript/adapters/quality-areas/reporting/tests.mts';
 import { fileURLToPath } from 'node:url';
 
 describe('coverage reporting in the quality-area analyzers', () => {

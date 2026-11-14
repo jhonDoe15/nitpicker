@@ -23,7 +23,9 @@ the change adds or edits its lines, else unchanged. A failing root project cover
 source and test directories, so the other Gradle projects keep their comparison. A project that
 does not compile, a run that exits non-zero without a named failing test and a run that times out
 stay `kotlin/gradle-failure`. A change that deletes tests, or removes more test lines than it
-adds, gets no help from the red base. A head whose tests fail is a `kotlin/tests-failed` tool error and exits 1.
+adds, gets no help from the red base. A head whose tests fail is rerun the same way and gets one
+`tests/tests-failed` tool error per failing project (exit 1); its other findings are compared as
+usual.
 On Maven the base already runs with `-Dmaven.test.failure.ignore=true`: a module whose fresh Surefire
 or Failsafe reports name failing tests gets `testsFailed` in its manifest and skips JaCoCo and PIT, a
 Kotlin module like a Java one, while detekt, ktlint or ktfmt, `kotlin-psi`, PMD, SpotBugs, the Spring

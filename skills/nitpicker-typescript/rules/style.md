@@ -31,7 +31,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
-- Signatures: a value with three states is a union of string literals, not `boolean | undefined`
+- Signatures: an exported function or public method does not branch on a `boolean` parameter
+  (`nitpicker/no-boolean-flag-parameter`): write two functions or take an options object or a union
+  of string literals. A value with three states is a union of string literals, not `boolean | undefined`
   or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
   `false`; return a
   new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,

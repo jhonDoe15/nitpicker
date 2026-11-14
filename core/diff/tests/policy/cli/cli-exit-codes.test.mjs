@@ -8,7 +8,7 @@ import {
   fakeAnalyzer,
   IN_PROCESS_TASKS,
 } from '../test-support/quality-diff-harness.mjs';
-import { runCli } from '../../../../cli.mjs';
+import { runCli } from '../../../../cli.mts';
 import { captureOutput } from '../../../reporting/test-support/output-capture.mjs';
 import {
   finding,

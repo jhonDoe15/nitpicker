@@ -2,13 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { normalizeEslintResults } from '../eslint/normalize.mjs';
+import { normalizeEslintResults } from '../eslint/normalize.mts';
 import {
   eslintMessageWithHint,
   routedEslintFields,
   withoutFatalDirectives,
-} from './eslint-hints.mjs';
-import { growthAdviceFor } from './growth-advice.mjs';
+} from './eslint-hints.mts';
+import { growthAdviceFor } from './growth-advice.mts';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
