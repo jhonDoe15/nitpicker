@@ -8,16 +8,15 @@ import type { ModuleBase, ModuleDescription } from './typed/module-description.m
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinRoots } from './kotlin/kotlin-roots.mts';
 import { testJvmArguments } from './configuration/surefire-jvm.mts';
+import { JACOCO, configured, jacocoSettings } from './configuration/jacoco-settings.mts';
 
 const DIRECTORY = 'directory';
 const BUILD_HELPER = 'org.codehaus.mojo:build-helper-maven-plugin';
 const GMAVENPLUS = 'org.codehaus.gmavenplus:gmavenplus-plugin';
 const GROOVY_TEST_ROOT = 'src/test/groovy';
-const JACOCO = 'org.jacoco:jacoco-maven-plugin';
 const SUREFIRE = 'org.apache.maven.plugins:maven-surefire-plugin';
 const FAILSAFE = 'org.apache.maven.plugins:maven-failsafe-plugin';
 
-const AGENT_GOALS = ['prepare-agent', 'prepare-agent-integration'];
 const FAILSAFE_SKIPS = ['skip', 'skipITs', 'skipTests'];
 const SKIP_PROPERTIES = ['skipITs', 'skipTests'];
 const VERIFY_BUILD = [
@@ -39,14 +38,6 @@ const VERIFY_BUILD = [
 function coordinates(project: XmlElement): string {
   const groupId = textAt(project, 'groupId') ?? textAt(project, 'parent', 'groupId');
   return `${textOf(groupId)}:${textOf(textAt(project, 'artifactId'))}`;
-}
-
-function configured(
-  execution: XmlElement | undefined,
-  plugin: XmlElement | undefined,
-  name: string,
-): string | undefined {
-  return textAt(execution, 'configuration', name) ?? textAt(plugin, 'configuration', name);
 }
 
 function runsFailsafe(project: XmlElement, plugin: XmlElement | undefined): boolean {
@@ -94,23 +85,6 @@ function groovyTestRoots(plugin: XmlElement | undefined, basedir: string): strin
   ]);
 }
 
-function jacocoDestFiles(plugin: XmlElement | undefined, basedir: string): string[] {
-  const executions =
-    plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal));
-  const files = executions.flatMap((execution) => configured(execution, plugin, 'destFile') ?? []);
-  return [...new Set(files.map((file) => path.resolve(basedir, file)))];
-}
-
-function jacocoAgentVersion(plugin: XmlElement | undefined): string | undefined {
-  const version = plugin === undefined ? undefined : textAt(plugin, 'version')?.trim();
-  const agents = (
-    plugin === undefined ? [] : AGENT_GOALS.flatMap((goal) => executionsWithGoal(plugin, goal))
-  ).filter((execution) => textAt(execution, 'phase') !== 'none');
-  return agents.length === 0 || version === undefined || version.includes('${')
-    ? undefined
-    : version;
-}
-
 function resolvedText(
   build: XmlElement | undefined,
   basedir: string,
@@ -129,16 +103,6 @@ function defaultExecution(plugin: XmlElement | undefined, goal: string): XmlElem
 
 function setting(plugin: XmlElement | undefined, goal: string, name: string): string | undefined {
   return configured(defaultExecution(plugin, goal), plugin, name);
-}
-
-function jacocoSettings(
-  plugin: XmlElement | undefined,
-  basedir: string,
-): Pick<ModuleBase, 'jacocoDestFiles' | 'jacocoAgentVersion'> {
-  return {
-    jacocoDestFiles: jacocoDestFiles(plugin, basedir),
-    jacocoAgentVersion: jacocoAgentVersion(plugin),
-  };
 }
 
 function packagingOf(project: XmlElement): string {
