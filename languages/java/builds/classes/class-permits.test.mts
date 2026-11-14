@@ -4,8 +4,11 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { permittedSubclasses, runPermits } from './class-permits.mts';
 
-const roots = [];
-const CONSTANTS = [
+type Extra = { readonly bytes: Buffer; readonly slots: number };
+type Constant = readonly [string, number, number, number];
+
+const roots: string[] = [];
+const CONSTANTS: readonly Constant[] = [
   ['Integer', 3, 4, 1],
   ['Float', 4, 4, 1],
   ['Long', 5, 8, 2],
@@ -23,36 +26,40 @@ const CONSTANTS = [
   ['Package', 20, 2, 1],
 ];
 
-function u2(value) {
+function u2(value: number): Buffer {
   const buffer = Buffer.alloc(2);
   buffer.writeUInt16BE(value);
   return buffer;
 }
 
-function u4(value) {
+function u4(value: number): Buffer {
   const buffer = Buffer.alloc(4);
   buffer.writeUInt32BE(value);
   return buffer;
 }
 
-function utf8(text) {
+function utf8(text: string | Buffer): Buffer {
   const bytes = typeof text === 'string' ? Buffer.from(text) : text;
   return Buffer.concat([Buffer.from([1]), u2(bytes.length), bytes]);
 }
 
-function classRef(index) {
+function classRef(index: number): Buffer {
   return Buffer.concat([Buffer.from([7]), u2(index)]);
 }
 
-function attribute(nameIndex, body) {
+function attribute(nameIndex: number, body: Buffer): Buffer {
   return Buffer.concat([u2(nameIndex), u4(body.length), body]);
 }
 
-function constant(tag, size) {
+function constant(tag: number, size: number): Buffer {
   return Buffer.concat([Buffer.from([tag]), Buffer.alloc(size, 0xff)]);
 }
 
-function classFile(self, permitted, extra = []) {
+function classFile(
+  self: string,
+  permitted: readonly (string | Buffer)[],
+  extra: readonly Extra[] = [],
+): Buffer {
   const slots = extra.reduce((total, { slots: used }) => total + used, 0);
   const first = 6 + slots;
   const pool = [
@@ -122,7 +129,7 @@ describe('permittedSubclasses', () => {
   });
 
   it('keeps the edge of a permitted subclass the sealed type uses in its own members', () => {
-    const memberOf = (classIndex) => ({
+    const memberOf = (classIndex: number): Extra => ({
       bytes: Buffer.concat([Buffer.from([10]), u2(classIndex), u2(0)]),
       slots: 1,
     });
