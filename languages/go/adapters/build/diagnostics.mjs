@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { hash, nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import { moduleFileText } from '../execution/go-module.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 
 const POSITION = /^(.+\.go):(\d+)(?::(\d+))?$/u;
 const LINE_REFERENCE = /\b(?:line|at) \d+\b|\.go:\d+(?::\d+)?/gu;
@@ -34,7 +35,8 @@ function sourceLineReader(projectRoot) {
     if (!files.has(file)) {
       files.set(file, (moduleFileText(projectRoot, file) ?? '').split(/\r?\n/u));
     }
-    return (files.get(file)[line - 1] ?? '').trim();
+    const text = files.get(file)[line - 1] ?? '';
+    return formatAgnosticText(text, file) || text.trim();
   };
 }
 

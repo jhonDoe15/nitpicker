@@ -251,8 +251,8 @@ split into outcomes; the profile records no blocks inside a condition.
 
 - **`changed-branch-coverage`** fails a branch point with less than 95% of its outcomes taken, and
   names the ones not taken (`Not taken: the if body (line 4)`). It is keyed by its function and the
-  trimmed source line, so only a branch point the change wrote or edited is new. Its exception names
-  the function, as in the other presets.
+  source line read without what gofmt changes, so only a branch point the change wrote or edited is
+  new. Its exception names the function, as in the other presets.
 - **`crap-score-limit`** scores each function and function literal as
   `complexity² × (1 − coverage)³ + complexity`. The complexity is the metrics program's cyclomatic
   complexity, and the coverage is the function's statement coverage: the statements of the blocks
