@@ -1,4 +1,4 @@
-import { fieldOf, numberOr } from '../../../../../../shared/values/readers.mts';
+import { expect } from 'vitest';
 import { kotlinSources, onlyTools, rulesOf } from '../../__tests__/kotlin-e2e-project.mts';
 import type { DiffResult } from '../../__tests__/kotlin-e2e-project.mts';
 import { assigned } from '../../test-support/views/assigned.mts';
@@ -15,6 +15,11 @@ export function generatedBranchLines(report: string): { covered: number[]; misse
   return { covered: linesWith('cb'), missed: linesWith('mb') };
 }
 
+function instabilityOfOneThird(): unknown {
+  const closeTo: unknown = expect.closeTo(0.3333, INSTABILITY_DIGITS);
+  return closeTo;
+}
+
 type Check = { readonly actual: unknown; readonly expected: unknown };
 type Comparison = { readonly actual: unknown[]; readonly expected: unknown[] };
 
@@ -27,8 +32,7 @@ function compared(checks: readonly Check[]): Comparison {
 
 const FIRST_GENERATED_LINE = 15;
 const SECOND_GENERATED_LINE = 22;
-const INSTABILITY = 0.3333;
-const INSTABILITY_TOLERANCE = 0.00005;
+const INSTABILITY_DIGITS = 10;
 
 export function generatedBranchChecks(report: string, findings: readonly Finding[]): Comparison {
   return compared([
@@ -119,12 +123,9 @@ export function structureChangeChecks(result: DiffResult): Comparison {
         },
       ],
     },
-    { actual: fieldOf(stable['metric'], 'name'), expected: 'instability' },
     {
-      actual:
-        Math.abs(numberOr(fieldOf(stable['metric'], 'value'), 0) - INSTABILITY) <
-        INSTABILITY_TOLERANCE,
-      expected: true,
+      actual: stable['metric'],
+      expected: { name: 'instability', value: instabilityOfOneThird() },
     },
     {
       actual: onlyTools(result.unchangedFindings, 'coupling')

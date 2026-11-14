@@ -158,7 +158,7 @@ export type UseLaunchFact = {
 const makeFinding: () => unknown = findingFactory;
 
 function isFinding(value: unknown): value is RuleFinding {
-  return typeof value === 'object' && value !== null && 'rule' in value && 'symbol' in value;
+  return typeof value === 'object' && value !== null && 'rule' in value;
 }
 
 export function file(overrides: Partial<FileFacts> = {}): FileFacts {
@@ -316,7 +316,11 @@ export function run(
     files,
     { finding: makeFinding(), projectRoot: '/nonexistent', ...options },
   ]);
-  return listOf(found).filter(isFinding);
+  const findings = listOf(found);
+  if (!(Array.isArray(found) && findings.every(isFinding))) {
+    throw new Error('the rule did not return a list of findings');
+  }
+  return findings.filter(isFinding);
 }
 
 export function summary(findings: RuleFinding[]): string[] {
