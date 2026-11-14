@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-collected-stream-rows.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/thumbnails/adapters/thumbnail-jobs.ts';
 
-const collected = (name) => ({ messageId: 'collectedStream', data: { name } });
+const collected = (name: string) => ({ messageId: 'collectedStream', data: { name } });
 
 tester.run('no-collected-stream-rows', rule, {
   valid: [

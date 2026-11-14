@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './unbounded-fan-out.mjs';
 
 const tester = typescriptRuleTester();
 const unbounded = [{ messageId: 'unbounded' }];
 
-function error(data) {
+function error(data: Record<string, string> = {}) {
   return [
     {
       messageId: 'unbounded',

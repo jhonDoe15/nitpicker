@@ -3,18 +3,21 @@ import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
 import { rule as unboundedFanOut } from '../concurrency/unbounded-fan-out.mjs';
 import { rule as ioInLoop } from './no-io-in-loop.mjs';
+import { ruleModule } from '../../test-support/rule-tester.mts';
 
 const linter = new Linter();
-const config = [
+const config: Linter.Config[] = [
   {
     files: ['**/*.ts'],
     languageOptions: { parser: tseslint.parser },
-    plugins: { n: { rules: { 'fan-out': unboundedFanOut, 'io-in-loop': ioInLoop } } },
+    plugins: {
+      n: { rules: { 'fan-out': ruleModule(unboundedFanOut), 'io-in-loop': ruleModule(ioInLoop) } },
+    },
     rules: { 'n/fan-out': 'error', 'n/io-in-loop': 'error' },
   },
 ];
 
-function reporters(code) {
+function reporters(code: string) {
   return linter
     .verify(code, config, { filename: 'src/job.ts' })
     .map((message) => message.ruleId)

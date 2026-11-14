@@ -1,10 +1,10 @@
-import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { cases, typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as ioInLoop } from './no-io-in-loop.mjs';
 
 const ruleTester = typescriptRuleTester();
 
-const inLoop = (statement) => `for (const id of ids) { ${statement} }`;
-const inMap = (statement) => `ids.map((id) => ${statement});`;
+const inLoop = (statement: string) => `for (const id of ids) { ${statement} }`;
+const inMap = (statement: string) => `ids.map((id) => ${statement});`;
 
 ruleTester.run('no-io-in-loop', ioInLoop, {
   valid: cases([

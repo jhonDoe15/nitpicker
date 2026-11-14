@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './no-accumulating-spread.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/adapters/ledger.ts';
 
-function at(messageId, line, column, endColumn) {
+function at(messageId: string, line: number, column: number, endColumn: number) {
   return { messageId, line, column, endLine: line, endColumn };
 }
 

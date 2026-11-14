@@ -1,16 +1,17 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-costly-collection-form.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/routing/adapters/routes.ts';
 
-function error(messageId, data) {
+function error(messageId: string, data: Record<string, string>) {
   return { messageId, data };
 }
 
-const SET = (name, method) => error('arrayAsSet', { name, method });
-const MAP = (name, method, key) => error('lookupInLoop', { name, method, key });
-const SORT = (method) => error('sortForExtreme', { method });
+const SET = (name: string, method: string) => error('arrayAsSet', { name, method });
+const MAP = (name: string, method: string, key: string) =>
+  error('lookupInLoop', { name, method, key });
+const SORT = (method: string) => error('sortForExtreme', { method });
 
 tester.run('no-costly-collection-form', rule, {
   valid: [
