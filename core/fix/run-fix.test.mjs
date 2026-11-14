@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeJvmTools } from '../../languages/java/fix/test-support/fake-jvm-tools.mjs';
-import { fakeGoFormat } from '../../languages/go/fix/test-support/fake-go-format.mjs';
-import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mjs';
+import { fakeGoFormat } from '../../languages/go/fix/test-support/fake-go-format.mts';
+import { fakePythonTools } from '../../languages/python/fix/test-support/fake-python-fix.mts';
 import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { TOOL_TIMEOUT_MS } from '../../shared/processes/deadlines.mjs';

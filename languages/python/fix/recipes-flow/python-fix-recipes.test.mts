@@ -1,13 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
+import { fakePythonTools } from '../test-support/fake-python-fix.mts';
 import {
+  fixOptions,
   fixtureGit,
   useGitFixtures,
-} from '../../../../core/diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
-import { fixWorkingTree } from '../../../../core/fix/run-fix.mts';
-import { fakePythonTools } from '../test-support/fake-python-fix.mjs';
+  writeFiles,
+} from '../test-support/git-fixtures.mts';
 
 const { createGitRepository } = useGitFixtures();
 const PYPROJECT =
@@ -30,7 +31,7 @@ const LOADER = [
 ].join('\n');
 const TEST_FILE = 'def test_add():\n    assert  1 + 1 == 2\n';
 
-function fixTopic(changes, selectedRules) {
+function fixTopic(changes: Record<string, string>, selectedRules?: string[]) {
   const repository = createGitRepository(
     { 'pyproject.toml': PYPROJECT, 'README.md': 'demo\n' },
     { baseRef: 'base' },
@@ -38,27 +39,28 @@ function fixTopic(changes, selectedRules) {
   fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
   writeFiles(repository.root, changes);
   const tools = fakePythonTools({ sourceFixes: true });
-  const result = fixWorkingTree({
-    repositoryRoot: repository.root,
-    projectRoot: repository.root,
-    baseRef: 'base',
-    executeFixCommand: tools.executeFixCommand,
-    headPolicy: { exclude: [], conventions: {} },
-    config: { preset: 'python' },
-    selectedRules,
-  });
+  const result = fixWorkingTree(
+    fixOptions({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      executeFixCommand: tools.executeFixCommand,
+      headPolicy: { exclude: [], conventions: {} },
+      config: { preset: 'python' },
+      selectedRules,
+    }),
+  );
   return {
     result,
     tools,
-    read: (name) => readFileSync(path.join(repository.root, name), 'utf8'),
-    exists: (name) => existsSync(path.join(repository.root, name)),
+    read: (name: string) => readFileSync(path.join(repository.root, name), 'utf8'),
+    exists: (name: string) => existsSync(path.join(repository.root, name)),
   };
 }
 
 const EXC_INFO = LOADER.replace('path, error)', 'path, error, exc_info=True)');
 const GUARDED = LOADER.replace('name or "é"', 'name if name is not None else "é"');
 
-function squeezed(text) {
+function squeezed(text: string): string {
   return text.replaceAll(/ {2,}/g, ' ');
 }
 
@@ -76,8 +78,8 @@ describe('--fix for Python source recipes', () => {
       'ruff-fix',
       'ruff-format-fix',
     ]);
-    expect(tools.callsOf('ruff-fix')[0].input).toBe(EXC_INFO);
-    expect(tools.callsOf('ruff-format-fix')[0].input).toBe(EXC_INFO);
+    expect(tools.callsOf('ruff-fix')[0]?.input).toBe(EXC_INFO);
+    expect(tools.callsOf('ruff-format-fix')[0]?.input).toBe(EXC_INFO);
   });
 
   it('applies review recipes for the selected rules before ruff and the formatter', () => {
@@ -88,7 +90,7 @@ describe('--fix for Python source recipes', () => {
     expect(read('app/load.py')).toBe(squeezed(GUARDED));
     expect(result.fixedFiles).toEqual(['app/load.py']);
     expect(tools.callsOf('ruff-fix')).toEqual([]);
-    expect(tools.callsOf('ruff-format-fix')[0].input).toBe(GUARDED);
+    expect(tools.callsOf('ruff-format-fix')[0]?.input).toBe(GUARDED);
   });
 
   it('renames an uncollected test file and formats it under the new name', () => {

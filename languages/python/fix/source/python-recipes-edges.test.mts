@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyRecipes } from './test-support/apply-recipes.mjs';
+import { applyRecipes } from './test-support/apply-recipes.mts';
 
 const BOM = String.fromCharCode(0xfeff);
 const FALSY = ['python-rules/falsy-default'];
 
-function defaulted(lines, eol = '\n') {
+function defaulted(lines: string[], eol = '\n'): string {
   return `${lines.join(eol)}${eol}`;
 }
 
