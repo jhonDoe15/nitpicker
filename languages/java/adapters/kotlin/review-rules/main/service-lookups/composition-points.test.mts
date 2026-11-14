@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { file, summary } from '../../test-support/facts.mjs';
+import { summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { file, flagged } from '../../test-support/loose-facts.mts';
 import {
   KOIN,
   findingsFor,
-  flagged,
   imp,
   inClass,
   inFun,
   lookup,
   rule,
-} from '../../test-support/lookup-facts.mjs';
+} from '../../test-support/lookup-facts.mts';
 
 const GUICE = [
   imp('com.google.inject.AbstractModule'),
@@ -17,11 +18,13 @@ const GUICE = [
   imp('com.google.inject.Provides'),
 ];
 const injected = { typed: [{ name: 'injector', type: 'Injector' }] };
-const viaInjector = (scopes, line = 7) =>
+const viaInjector = (scopes: Loose[], line = 7) =>
   lookup('getInstance', { qualifier: 'injector', scopes, line });
-const inLambda = (host) => [{ k: 'lambda', host }, inFun(), inClass()];
-const topLevel = (name, overrides = {}) => [inFun(name, { topLevel: true, ...overrides })];
-const stringArray = (type) => ({ type, vararg: false });
+const inLambda = (host: string) => [{ k: 'lambda', host }, inFun(), inClass()];
+const topLevel = (name: string, overrides: Loose = {}) => [
+  inFun(name, { topLevel: true, ...overrides }),
+];
+const stringArray = (type: string) => ({ type, vararg: false });
 
 describe('composition points that may look dependencies up', () => {
   it.each([

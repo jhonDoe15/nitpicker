@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { file, fn, klass, parameter, run, summary } from '../../test-support/facts.mjs';
+import { run, summary } from '../../test-support/facts.mts';
+import { file, fn, importOf, klass, parameter } from '../../test-support/loose-facts.mts';
 import { streamedRowsFindings } from './streamed-rows.mjs';
 
-function streamed(after, { returnType = 'Stream<Row>', supers = ['JpaRepository'] } = {}) {
+function streamed(after: unknown, { returnType = 'Stream<Row>', supers = ['JpaRepository'] } = {}) {
   const facts = file({
-    imports: [{ path: 'org.springframework.data.jpa.repository.JpaRepository', all: false }],
+    imports: [importOf('org.springframework.data.jpa.repository.JpaRepository')],
     classes: [
       klass('Rows', { kind: 'interface', supers }),
       klass('Exports', { primaryParameters: [parameter('rows', 'Rows', { property: true })] }),

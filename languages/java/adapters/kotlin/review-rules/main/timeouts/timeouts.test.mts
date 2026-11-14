@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { file, run, summary, testFile } from '../../test-support/facts.mjs';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { file, testFile } from '../../test-support/loose-facts.mts';
 import { TIMEOUT_RULE, timeoutFindings } from './timeouts.mjs';
 
 const COROUTINES_IMPORT = { path: 'kotlinx.coroutines.withTimeout', all: false };
 const STAR_IMPORT = { path: 'kotlinx.coroutines', all: true };
 const SECONDS = { qualifier: 'TimeUnit', name: 'SECONDS' };
 const SUPPLY_ASYNC = { receiver: 'CompletableFuture', name: 'supplyAsync' };
-const stop = (name, receiver, overrides = {}) => ({ name, receiver, root: receiver, ...overrides });
+const stop = (name: string, receiver: string, overrides: Loose = {}) => ({
+  name,
+  receiver,
+  root: receiver,
+  ...overrides,
+});
 const get = (overrides = {}) => ({
   line: 4,
   owner: 'Orders',
@@ -24,7 +31,7 @@ const get = (overrides = {}) => ({
   stops: [],
   ...overrides,
 });
-const future = (kind, source, overrides = {}) => ({
+const future = (kind: string, source: unknown, overrides = {}) => ({
   line: 6,
   owner: '',
   function: 'bounded',
@@ -34,7 +41,7 @@ const future = (kind, source, overrides = {}) => ({
   source,
   ...overrides,
 });
-const block = (awaited, overrides = {}) => ({
+const block = (awaited: unknown, overrides = {}) => ({
   line: 8,
   owner: 'Orders',
   function: 'settle',
@@ -57,7 +64,7 @@ const ASYNC_ADVICE =
   'Run the work as a coroutine under withTimeout, which cancels it, or submit it to an ExecutorService, wait ' +
   'with future.get(timeout, unit) and call cancel(true) on that Future when the TimeoutException arrives.';
 
-const findingsFor = (timeouts, overrides = {}) =>
+const findingsFor = (timeouts: unknown[], overrides = {}) =>
   run(timeoutFindings, [file({ timeouts, ...overrides })]);
 
 describe('Future.get timeouts in Kotlin', () => {
@@ -65,8 +72,8 @@ describe('Future.get timeouts in Kotlin', () => {
     const findings = findingsFor([get()]);
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} Orders.charge:get:future 4`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.message).toBe(
       'future.get(timeout, unit) stops waiting for the future, not for its task: the TimeoutException handler ' +
         'neither cancels this future with cancel(true) nor rethrows, so the task keeps running and a retry ' +
         'overlaps it. Call cancel(true) on this future in the handler or a finally block (cancel(false) lets a ' +
@@ -154,7 +161,7 @@ describe('Future.get timeouts in Kotlin', () => {
       }),
     ]);
 
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       'future.get(timeout, unit) stops waiting, but the task from CompletableFuture.supplyAsync(...) keeps ' +
         'running: cancelling a CompletableFuture never interrupts its task, so cancel(true) does not stop it. ' +
         `${ASYNC_ADVICE}${ROUTE}`,
@@ -176,7 +183,7 @@ describe('CompletableFuture timeouts in Kotlin', () => {
     const findings = findingsFor([future(kind, SUPPLY_ASYNC)]);
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} bounded:${kind}:task 6`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       `task.${kind}(...) completes the future when the timeout passes, but the task from ` +
         'CompletableFuture.supplyAsync(...) keeps running, because cancelling or completing a ' +
         `CompletableFuture never interrupts it. ${ASYNC_ADVICE}${ROUTE}`,
@@ -203,7 +210,7 @@ describe('coroutine timeouts in Kotlin', () => {
     const findings = findingsFor([block([started()])], { imports: [COROUTINES_IMPORT] });
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} Orders.settle:withTimeout:work 8`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       'withTimeout stops waiting for work, which scope.async started outside the block, so the coroutine ' +
         'keeps running after the timeout. Start the work inside the block, where the timeout cancels it, or ' +
         `cancel work when the TimeoutCancellationException arrives.${ROUTE}`,

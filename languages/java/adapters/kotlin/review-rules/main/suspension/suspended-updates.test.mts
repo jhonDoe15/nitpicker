@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { file, fn, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
+import type { FileFacts, PropertyFact } from '../../test-support/facts.mts';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { file, fn, klass, parameter, property } from '../../test-support/loose-facts.mts';
 import { SUSPENDED_UPDATE_RULE, suspendedUpdateFindings } from './suspended-updates.mjs';
 
-const suspendFun = (name, owner = 'Ledger', overrides = {}) =>
+const suspendFun = (name: string, owner = 'Ledger', overrides: Loose = {}) =>
   fn(name, { owner, modifiers: ['suspend'], ...overrides });
-const plainFun = (name, owner = 'Ledger') => fn(name, { owner });
-const call = (name, receiver = { kind: 'none' }) => ({ k: 'call', name, receiver });
-const read = (name, viaThis = false) => ({ k: 'read', name, viaThis });
-const scopes = (extra = [], supers = []) => [
+const plainFun = (name: string, owner = 'Ledger') => fn(name, { owner });
+const call = (name: string, receiver: Loose = { kind: 'none' }) => ({ k: 'call', name, receiver });
+const read = (name: string, viaThis = false) => ({ k: 'read', name, viaThis });
+const scopes = (extra: Loose[] = [], supers: string[] = []) => [
   { k: 'fun', name: 'add' },
   { k: 'class', name: 'Ledger', qualified: 'Ledger', supers, visibility: 'public' },
   ...extra,
 ];
-const update = (value, overrides = {}) => ({
+const update = (value: unknown[], overrides: Loose = {}) => ({
   line: 9,
   operator: '+=',
   target: 'total',
@@ -36,7 +39,7 @@ const ledger = (overrides = {}) =>
     topLevelProperties: [],
     ...overrides,
   });
-const findingsFor = (files, declaredIn = files) =>
+const findingsFor = (files: FileFacts[], declaredIn: FileFacts[] = files) =>
   run(suspendedUpdateFindings, files, { declaredIn });
 
 describe('updates across a suspension in Kotlin', () => {
@@ -44,8 +47,8 @@ describe('updates across a suspension in Kotlin', () => {
     const findings = findingsFor([ledger()]);
 
     expect(summary(findings)).toEqual([`${SUSPENDED_UPDATE_RULE} Ledger.total in add 9`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.message).toBe(
       '`total` is updated from a value read before `load()` suspends: another coroutine can change it ' +
         'meanwhile, and this write then overwrites that change. Call `load()` into a local first ' +
         '(`val delta = load()`, then update `total`), or hold one Mutex around the whole read-modify-write ' +
@@ -95,7 +98,7 @@ describe('updates across a suspension in Kotlin', () => {
   });
 
   it('follows a parameter declared as Deferred and an inline async', () => {
-    const imports = [{ path: 'kotlinx.coroutines.Deferred', alias: null, all: false }];
+    const imports = [{ path: 'kotlinx.coroutines.Deferred', alias: undefined, all: false }];
     const entry = update([call('await', { kind: 'name', name: 'deferred' })]);
     const withParameter = ledger({
       imports,
@@ -105,7 +108,7 @@ describe('updates across a suspension in Kotlin', () => {
       ],
     });
     const inline = ledger({
-      imports: [{ path: 'kotlinx.coroutines.async', alias: null, all: false }],
+      imports: [{ path: 'kotlinx.coroutines.async', alias: undefined, all: false }],
       updates: [update([call('await', { kind: 'async' })])],
     });
 
@@ -117,11 +120,11 @@ describe('updates across a suspension in Kotlin', () => {
     const entry = update([call('withContext')]);
     const imported = ledger({
       updates: [entry],
-      imports: [{ path: 'kotlinx.coroutines.withContext', alias: null, all: false }],
+      imports: [{ path: 'kotlinx.coroutines.withContext', alias: undefined, all: false }],
     });
     const star = ledger({
       updates: [entry],
-      imports: [{ path: 'kotlinx.coroutines', alias: null, all: true }],
+      imports: [{ path: 'kotlinx.coroutines', alias: undefined, all: true }],
     });
 
     expect(findingsFor([imported])).toHaveLength(1);
@@ -180,18 +183,18 @@ describe('updates across a suspension in Kotlin', () => {
   });
 
   it('allows withPermit only on a semaphore of the class built with one permit', () => {
-    const gate = (initializer, argument, overrides = {}) =>
+    const gate = (initializer: string, argument: string, overrides: Loose = {}) =>
       property('gate', 'Ledger', { var: false, initializer, argument, ...overrides });
     const permitted = (qualifier = 'gate') =>
       update([call('load')], {
         scopes: scopes([{ k: 'lambda', host: 'withPermit', qualifier }]),
       });
-    const withGate = (declared, entry = permitted()) =>
+    const withGate = (declared: PropertyFact, entry = permitted()) =>
       ledger({
         properties: [property('total', 'Ledger', { var: true }), declared],
         updates: [entry],
       });
-    const reported = (files) => findingsFor(files).map(({ symbol }) => symbol);
+    const reported = (files: FileFacts[]) => findingsFor(files).map(({ symbol }) => symbol);
 
     expect(reported([withGate(gate('Semaphore', '1'))])).toEqual([]);
     expect(reported([withGate(gate('Semaphore', '1'), permitted('this.gate'))])).toEqual([]);
@@ -206,10 +209,23 @@ describe('updates across a suspension in Kotlin', () => {
   });
 
   describe('a read saved in a local', () => {
-    const local = (name, value, writes = []) => ({ local: name, value, writes });
-    const assign = (name, operator, value) => ({ assign: name, operator, value, writes: [] });
-    const statement = (value, writes = []) => ({ value, writes });
-    const saved = (steps, value = [read('current'), read('delta')], overrides = {}) =>
+    const local = (name: string, value: unknown[], writes: unknown[] = []) => ({
+      local: name,
+      value,
+      writes,
+    });
+    const assign = (name: string, operator: string, value: unknown[]) => ({
+      assign: name,
+      operator,
+      value,
+      writes: [],
+    });
+    const statement = (value: unknown[], writes: unknown[] = []) => ({ value, writes });
+    const saved = (
+      steps: unknown[],
+      value = [read('current'), read('delta')],
+      overrides: Loose = {},
+    ) =>
       update(value, {
         operator: '=',
         locals: ['current', 'delta'],
@@ -217,7 +233,7 @@ describe('updates across a suspension in Kotlin', () => {
         steps,
         ...overrides,
       });
-    const reported = (entry) =>
+    const reported = (entry: Loose) =>
       findingsFor([ledger({ updates: [entry] })]).map(({ symbol, message }) => [
         symbol,
         message.slice(0, message.indexOf(' suspends')),
