@@ -1,4 +1,5 @@
 import { afterEffects, effectsOf, fact, patternNames } from './facts.mjs';
+import { assertionFacts } from './flow/assertions.mjs';
 import { assignedFacts } from './flow/assignments.mjs';
 import { recordCaptures } from './flow/closures.mjs';
 import { switchFlow } from './flow/switch.mjs';
@@ -187,7 +188,7 @@ function otherFlow(node, facts, context) {
   return {
     checks: [...checks, ...(cases?.checks ?? [])],
     children: cases?.children ?? lists.map((statements) => ({ statements, facts: entry })),
-    after: [...after, ...assignedFacts(node, sourceCode)],
+    after: [...after, ...assignedFacts(node, sourceCode), ...assertionFacts(node, sourceCode)],
   };
 }
 

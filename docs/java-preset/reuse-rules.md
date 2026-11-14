@@ -53,7 +53,10 @@ object`. Instance methods are left to the duplicates check, as class methods are
   with what the guards before a condition tell (enclosing `if`s and their `else`, guard clauses that
   return, throw, break or continue, earlier `when` arms, the arms of a `switch` or `when (subject)` (the label in its arm, the earlier
   labels excluded in `default`, nothing for fall-through or pattern arms) and a `case` label the
-  facts before the switch rule out, the left side of `&&` and `||`, the test of
+  facts before the switch rule out, precondition calls matched by their import (`Objects.requireNonNull`, Guava `Preconditions`,
+  Spring `Assert`, commons-lang `Validate`, Kotlin `require`, `check` and `requireNotNull`) and
+  `assert` (which only removes a redundant check, since assertions can be off), the left side of
+  `&&` and `||`, the test of
   a counted `for` loop or Kotlin `until`, `..` and `downTo` range, the branches of a ternary, and
   facts about names a lambda captures when they cannot change; `equals` and `Objects.equals` on a
   string, a boolean or an enum constant count as `==`, and a local declared or assigned a literal
