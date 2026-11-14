@@ -62,6 +62,7 @@ are listed at the end.
 | Lazy relations per item                         | `select_related`, `prefetch_related`, `selectinload` or `joinedload` in the query that loads the rows                                                                                  | `lazy-relation-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                    |
 | Remote calls while holding a connection or lock | make the call before the transaction or after the commit, or record an outbox row and send it from a worker                                                                            | `remote-call-in-transaction`, `remote-call-under-lock` (script)                                                                                                                                                                                                                                                                                                                     |
 | Retried writes                                  | a stable idempotency key, a deduplication or message id (Celery `task_id`), an upsert, or retry only the read                                                                          | `retry-without-idempotency` (script)                                                                                                                                                                                                                                                                                                                                                |
+| Database and message writes                     | an outbox row in the same transaction, sent by a relay                                                                                                                                 | `dual-write-without-outbox` (script)                                                                                                                                                                                                                                                                                                                                                |
 | Shareable objects                               | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets                              | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows                                   | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -842,7 +843,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   level, and tenacity `Retrying` and `AsyncRetrying` attempts); a loop over chunks (`itertools.batched`,
   `more_itertools.chunked`, `ichunked`, `batched`, a loop variable named or built as a chunk, a
   `range(0, len(items), n)` with a slice of `items`) whose call takes the whole chunk, unless the chunk loop sits inside another loop or the chunks have
-  one item. A callback handed to a registration (a signal's `connect`, `threading.Timer`,
+  one item; and the mark an outbox relay writes for each row it published. A callback handed to a registration (a signal's `connect`, `threading.Timer`,
   `loop.call_later`, a scheduler's `add_job`) runs later and is judged as its own function, not as part
   of the caller; decorators are not part of the function they decorate.
 - `accumulator-copy` reports a name that is rebuilt from a copy of itself on every step, so the work
@@ -920,6 +921,18 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   has `ON CONFLICT`, `ON DUPLICATE KEY`, `INSERT IGNORE`, `INSERT OR IGNORE`, `REPLACE INTO` or `MERGE` (or
   `on_conflict_do_*` on the construct). An HTTP `POST` alone, an ORM `save()` and any write whose
   contract is unknown are not reported.
+- `dual-write-without-outbox` reports a function that has a database write (a repository, ORM or
+  client `save`, `create`, `update`, `delete`, `merge`, `session.add`, `bulk_*`, Django `save()` and
+  `delete()` in a file that imports `django.db`, an `INSERT`, `UPDATE` or `DELETE` statement) and a
+  different message publish (the message calls above), each direct or through helpers. Only the lowest
+  function is reported: a function that calls one helper doing both is not. Publishing from a
+  `transaction.on_commit` callback, or after the `with transaction.atomic():` block that holds the
+  write, is reported with its own message: it avoids a message for a change that rolls back, but a
+  crash right after the commit loses the message. An outbox row (a database write only, published by
+  a relay), change data capture and a database-backed queue are the allowed forms and stay quiet; the
+  relay itself (a loop over rows read from the database that publishes each row and then writes a mark
+  keyed on it, `row.sent = True; row.save()`) is not reported. A callback registered to run later (a
+  signal handler, a timer, a scheduled job) is judged as its own function.
 - `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
   at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
   comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive

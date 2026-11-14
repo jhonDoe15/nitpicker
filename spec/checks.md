@@ -119,6 +119,18 @@ Database calls per element are left to the per-item I/O rules (`io-in-loop` in t
 `go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
+In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather` and task
+groups (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
+`unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
+
+Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
+`lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
+`remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
+held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
+publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
+and a message publish in one function, without an outbox). They live in
+`languages/python/rules/{accumulators,orm,transactions,retries,dual_write}/` and read the effect kinds of
+`languages/python/rules/kinds/`; the [Python preset](../docs/python-preset.md) lists what each recognizes.
 
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
