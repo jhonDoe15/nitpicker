@@ -486,7 +486,7 @@ files fall in, and no separate `hookTimeoutMs` (or the same value), or run the t
 
 ### A peer tool is missing
 
-**Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^4.1.11 || ^5.0.0 as a
+**Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^3.2.0 || ^4.1.11 || ^5.0.0 as a
 dev dependency of the project.` (for Vitest followed by a hint about npm 10); the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
 `typescript` (`Install typescript >=5.7 as a dev dependency`); `vite is not installed at or above <dir>` or
 `vite could not be resolved from the project`; or `Cannot find package 'vitest' imported from <file>`
