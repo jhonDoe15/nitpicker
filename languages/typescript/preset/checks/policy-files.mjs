@@ -1,4 +1,5 @@
 import { LOGIC_POLICY_FILES } from '../eslint-config/logic/logic-policy-files.mjs';
+import { IO_POLICY_FILES } from '../eslint-plugin/rules/support/io-policy-files.mjs';
 import { COLLECTION_POLICY_FILES } from '../eslint-plugin/rules/collections/collection-policy-files.mjs';
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
 import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
@@ -11,6 +12,7 @@ export const POLICY_FILES = [
   ...QUERY_RULE_FILES,
   ...LOGIC_POLICY_FILES,
   ...COLLECTION_POLICY_FILES,
+  ...IO_POLICY_FILES,
   ...LIFECYCLE_POLICY_FILES,
   'shared/test-timeouts/resolve.mjs',
   'shared/paths/glob.mjs',
