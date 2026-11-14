@@ -17,6 +17,7 @@ import { rule as ruleNoAssertionInLoop } from '../test-assertions/loop-assertion
 import { rule as ruleNoBooleanFlagParameter } from '../rules/flags/no-boolean-flag-parameter.mjs';
 import { rule as ruleNoBranchInCompositionRoot } from '../rules/boundaries/no-branch-in-composition-root.mjs';
 import { rule as ruleNoCachedRejection } from '../rules/lifecycles/memo/no-cached-rejection.mjs';
+import { rule as ruleNoCheckThenWrite } from '../rules/transactions/no-check-then-write.mjs';
 import { rule as ruleNoCleanupSkippedOnFailure } from '../rules/lifecycles/release/no-cleanup-skipped-on-failure.mjs';
 import { rule as ruleNoCollectedStreamRows } from '../rules/streams/no-collected-stream-rows.mjs';
 import { rule as ruleNoComments } from '../rules/modules/no-comments.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoTestHelpersInSource } from '../test-placement/no-test-hel
 import { rule as ruleNoTestRetry } from '../test-assertions/no-test-retry.mjs';
 import { rule as ruleNoThrow } from '../rules/errors/no-throw.mjs';
 import { rule as ruleNoTriStateBoolean } from '../rules/signatures/no-tri-state-boolean.mjs';
-import { rule as ruleNoUiFrameworkInDomain } from '../rules/syntax/no-ui-framework-in-domain.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -119,6 +119,7 @@ export const partRules = {
   'no-boolean-flag-parameter': ruleNoBooleanFlagParameter,
   'no-branch-in-composition-root': ruleNoBranchInCompositionRoot,
   'no-cached-rejection': ruleNoCachedRejection,
+  'no-check-then-write': ruleNoCheckThenWrite,
   'no-cleanup-skipped-on-failure': ruleNoCleanupSkippedOnFailure,
   'no-collected-stream-rows': ruleNoCollectedStreamRows,
   'no-comments': ruleNoComments,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-test-retry': ruleNoTestRetry,
   'no-throw': ruleNoThrow,
   'no-tri-state-boolean': ruleNoTriStateBoolean,
-  'no-ui-framework-in-domain': ruleNoUiFrameworkInDomain,
 };

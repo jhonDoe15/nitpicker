@@ -147,6 +147,12 @@ and a message publish in one function, without an outbox). They live in
 `languages/python/rules/{accumulators,orm,transactions,retries,dual_write}/` and read the effect kinds of
 `languages/python/rules/kinds/`; the [Python preset](../docs/python-preset.md) lists what each recognizes.
 
+Python related-write rules: `related-writes-without-transaction` (two writes to different models, or two writes
+committed separately, with no `transaction.atomic()` or `session.begin()` around them), `write-outside-transaction`
+(a write inside a transaction block through a session or database alias that is not the block's) and
+`check-then-write-race` (a read of a model that decides a create of the same model, without a lock, an atomic form
+or a transaction). They live in `languages/python/rules/related_writes/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
@@ -236,6 +242,10 @@ twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-
 Field resolvers: the Go preset reports a gqlgen field resolver of a list parent that queries once per parent without
 a dataloader (`go-rules/query-per-parent-resolver`).
 
+Related writes: the Go preset reports two writes on different tables in one function with no transaction
+(`go-rules/writes-without-transaction`, `database/sql`, sqlx, pgx and gorm) and a write through the outer
+handle inside a function that has an open transaction (`go-rules/write-outside-transaction`).
+
 Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
 accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
 the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
@@ -293,6 +303,13 @@ TypeORM `save` inside a retry that names `OptimisticLockVersionMismatchError` (p
 exponential-backoff, cockatiel or a hand-written loop) when it saves an entity loaded before the retried scope, or
 one re-read inside it but saved without the change re-applied. Re-read by id and re-apply the change inside the
 retried scope.
+Related writes: `nitpicker/no-unatomic-writes` (production source, in `eslint-lint`) reports, for projects on
+TypeORM, Prisma, Drizzle, Kysely, Knex, Sequelize or MikroORM, a write inside a transaction callback that goes
+through a client or repository other than the callback's parameter, and, where the project opens transactions
+somewhere, a function that awaits writes to two different tables with no transaction. The finding names the
+writes and the allowed forms (one transaction with its manager passed down, an atomic statement).
+`nitpicker/no-check-then-write` is the report-only form: a read of a table that decides a write to it with
+no transaction, lock or atomic statement.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

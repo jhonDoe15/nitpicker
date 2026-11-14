@@ -106,7 +106,7 @@ function productionRules({ react, routeHandlers }) {
   };
 }
 
-function productionGuardRules({ react, security }) {
+function productionGuardRules({ react, security, databaseWrites }) {
   return {
     'nitpicker/no-process-access-outside-composition-root': [
       'error',
@@ -123,6 +123,8 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-retry-without-idempotency': 'error',
     'nitpicker/no-stale-retry-after-conflict': 'error',
     'nitpicker/no-dual-write': 'error',
+    'nitpicker/no-unatomic-writes': ['error', databaseWrites],
+    'nitpicker/no-check-then-write': ['error', databaseWrites],
     'nitpicker/no-in-memory-query': 'error',
     'nitpicker/no-loaded-rows-saved-back': 'error',
     'nitpicker/no-multiple-collection-joins': 'error',
@@ -189,7 +191,11 @@ export function productionPolicyConfigFor(layout, options = {}) {
           react: options.react === true,
           routeHandlers: options.routeHandlers === true,
         }),
-        ...productionGuardRules({ react: options.react === true, security: options.security }),
+        ...productionGuardRules({
+          react: options.react === true,
+          security: options.security,
+          databaseWrites: options.databaseWrites ?? { orms: [], opensTransactions: false },
+        }),
       },
     },
     securitySupportOff(),

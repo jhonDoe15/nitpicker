@@ -93,12 +93,14 @@ describe('conventions per preset', () => {
       'typescript.fileNames',
       'typescript.assertionHelpers',
       'typescript.detachedWorkRunners',
+      'typescript.transactions',
       'typescript.typeImports',
     ]);
     expect(nonPrettierIds('javascript')).toEqual([
       'typescript.fileNames',
       'typescript.assertionHelpers',
       'typescript.detachedWorkRunners',
+      'typescript.transactions',
     ]);
   });
 

@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 36,
+      classes: 41,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -228,6 +228,13 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       'Stale.loop',
       'Stale.loopBeforeLoop',
       'Stale.annotated',
+    ]);
+  });
+
+  it('reports a check that decides a write unless a lock, a version column or another repository guards it', () => {
+    expect(methodsOf(run.report, 'CheckThenWriteWithoutLock')).toEqual([
+      'Races.reserve',
+      'Races.claim',
     ]);
   });
 

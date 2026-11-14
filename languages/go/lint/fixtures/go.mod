@@ -7,6 +7,7 @@ require (
 	gorm.io/gorm v0.0.0
 	github.com/jackc/pgx/v5 v5.0.0
 	github.com/rs/zerolog v0.0.0
+	github.com/jmoiron/sqlx v0.0.0
 	go.uber.org/zap v0.0.0
 	golang.org/x/sync v0.0.0
 	github.com/99designs/gqlgen v0.17.0
@@ -17,6 +18,7 @@ replace (
 	gorm.io/gorm => ./stubs/gorm
 	github.com/jackc/pgx/v5 => ./stubs/pgx
 	github.com/rs/zerolog => ./stubs/zerolog
+	github.com/jmoiron/sqlx => ./stubs/sqlx
 	go.uber.org/zap => ./stubs/zap
 	golang.org/x/sync => ./stubs/errgroup
 	github.com/99designs/gqlgen => ./stubs/gqlgen

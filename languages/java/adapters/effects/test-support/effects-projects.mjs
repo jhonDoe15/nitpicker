@@ -10,6 +10,11 @@ const KOTLIN_REMOTE = 'OrderLoader.price()>RestClient.get()';
 const JAVA_SEND = 'OrderEvents.placed()>KafkaTemplate.send()';
 const KOTLIN_SEND = 'OrderLoader.placed()>KafkaTemplate.send()';
 const PUBLISH = 'ApplicationEventPublisher.publishEvent()';
+const EXISTS = 'MemberRepository.existsByEmail()';
+const COUNT = 'MemberRepository.countByTeam()';
+const BY_EMAIL = 'MemberRepository.findByEmail()';
+const BY_ID = 'MemberRepository.findById()';
+const SAVE = 'MemberRepository.save()';
 
 export const JAVA_EFFECTS = [
   'IoCallInLoop 33 DualAllowed.relay loop OrderRepository.delete()',
@@ -43,6 +48,10 @@ export const JAVA_EFFECTS = [
   `RemoteCallUnderLock 51 HeldScopes.inBlock synchronized ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 61 HeldScopes.guardedUnderLock ReentrantLock.lock() ${JAVA_REMOTE}`,
   `RemoteCallUnderLock 73 HeldScopes.guardedBlock synchronized ${JAVA_REMOTE}`,
+  `CheckThenWriteWithoutLock 19 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 27 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 31 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 40 Registrations.rename ${BY_ID} ${SAVE}`,
   `RetryWithoutIdempotency 25 Retries.announce @Retryable ${JAVA_SEND}`,
   'RetryWithoutIdempotency 31 Retries.record retry loop JdbcTemplate.update()',
   'RetryWithoutIdempotency 42 Retries.charge RetryTemplate.execute() Charge.create()',
@@ -89,6 +98,10 @@ export const KOTLIN_EFFECTS = [
   'IoCallInLoop 21 LoopImports.throughHelper loop OrderLoader.load()>CrudRepository.findByIdOrNull()',
   'IoCallInLoop 24 LoopImports.remote loop OrderLoader.price()>RestClient.get()',
   'IoCallInLoop 27 LoopImports.concurrent concurrent OrderLoader.load()>CrudRepository.findByIdOrNull()',
+  `CheckThenWriteWithoutLock 16 Registrations.register ${EXISTS} ${SAVE}`,
+  `CheckThenWriteWithoutLock 24 Registrations.join ${COUNT} ${SAVE}`,
+  `CheckThenWriteWithoutLock 28 Registrations.findOrCreate ${BY_EMAIL} ${SAVE}`,
+  `CheckThenWriteWithoutLock 36 Registrations.rename CrudRepository.findByIdOrNull() ${SAVE}`,
   'AccumulatorCopyInLoop 6 Accumulators.folded loop acc',
   'AccumulatorCopyInLoop 11 Accumulators.reassigned loop ids',
   'AccumulatorCopyInLoop 18 Accumulators.mapped loop byId',
@@ -140,7 +153,12 @@ function summaryOf(violation) {
     property,
     object,
     write,
+    read,
+    write,
   } = violation;
+  if (read !== undefined) {
+    return [rule, line, method, read, write].join(' ');
+  }
   if (object !== undefined) {
     return [rule, line, method, scope, object, write].join(' ');
   }

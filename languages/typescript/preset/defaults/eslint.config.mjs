@@ -41,6 +41,8 @@ import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
 import { typeImportFixStyle } from '../../conventions/type-import-style.mjs';
 import { detachedWorkRunnerNames } from '../../conventions/measures/detached-work-runners.mjs';
+import { projectOpensTransactions } from '../../conventions/measures/transactions.mjs';
+import { ormsOf } from '../eslint-plugin/rules/support/orm/orms.mjs';
 import {
   testEnvironmentConfigFor,
   testEnvironmentsFromVariables,
@@ -123,6 +125,10 @@ const presetConfig = defineConfig(
     security,
     frameworkDefaultExports: policy.frameworks.defaultExports,
     detachedWorkRunners: detachedWorkRunnerNames(policy.conventions),
+    databaseWrites: {
+      orms: ormsOf(readDependencyNames(analyzedProjectRoot())),
+      opensTransactions: projectOpensTransactions(policy.conventions),
+    },
   }),
   ...productionLayoutConfigFor(layout, { react }),
   ...(layout.endToEndGlobs.length === 0

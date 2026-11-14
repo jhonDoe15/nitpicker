@@ -18,6 +18,7 @@ import nitpicker.effects.classes.ClassIndex;
 import nitpicker.effects.classes.ClassPath;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.graphql.GraphqlFields;
+import nitpicker.effects.races.CheckThenWrite;
 import nitpicker.effects.graphql.Schema;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.jpa.Entities;
@@ -90,6 +91,7 @@ public final class Effects {
   }
 
   static void run(Program program, Report report, Map<String, String> options, Set<String> listTypes) {
+    new CheckThenWrite(program, report).run();
     Summaries summaries = new Summaries(program);
     summaries.compute();
     program.io((flow, index) -> flow.insns[index] instanceof MethodInsnNode call

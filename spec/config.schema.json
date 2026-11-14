@@ -1392,6 +1392,10 @@
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
               },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
+              },
               "prettier.jsxQuotes": {
                 "description": "JSX attribute quotes: \"double\" (double (\"\")), \"single\" (single ('')).",
                 "enum": ["double", "single"]
@@ -1633,6 +1637,10 @@
                 "description": "Detached-work runners: the names of the functions that run detached work and handle its rejection.",
                 "type": "array",
                 "items": { "type": "string", "pattern": "^[A-Za-z_]\\w*$" }
+              },
+              "typescript.transactions": {
+                "description": "Database transactions: \"used\" (the project opens transactions), \"unused\" (no transactions found).",
+                "enum": ["used", "unused"]
               }
             },
             "additionalProperties": false

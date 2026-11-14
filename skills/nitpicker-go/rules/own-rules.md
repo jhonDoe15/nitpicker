@@ -88,6 +88,11 @@ the allowed form and ends with its exception entry.
   (`go-rules/query-per-parent-resolver`): a method such as `func (r *viewResolver) Owner(ctx, obj *View)`
   that queries by `obj.OwnerID` costs one query per list item. Load through a batched dataloader, or read
   what the parent already carries. A parent that is only returned alone is fine.
+- Related writes go through one transaction (`go-rules/writes-without-transaction`,
+  `go-rules/write-outside-transaction`): two writes on different tables in one function belong in
+  `db.BeginTx` (gorm `db.Transaction`) with every write on the `tx`, or in the caller's transaction
+  passed in. A write through the outer `db` while a `tx` is open runs outside the transaction. A
+  write that must survive a rollback (an audit row) is the exception.
 
 ## Literals, comments and methods
 

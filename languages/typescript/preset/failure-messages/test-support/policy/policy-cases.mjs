@@ -11,6 +11,13 @@ const config = [
   ...strictSyntaxConfigFor(defaultResolvedLayout),
 ];
 
+const databaseConfig = [
+  ...productionPolicyConfigFor(defaultResolvedLayout, {
+    databaseWrites: { orms: ['typeorm'], opensTransactions: true },
+  }),
+  ...productionLayoutConfigFor(defaultResolvedLayout),
+];
+
 function casesIn(filename) {
   return function policyCase(name, banned, allowed) {
     return { name: `policy: ${name}`, config, filename, banned, allowed };
@@ -98,6 +105,22 @@ export const policyFailureMessageCases = [
     "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
     'relay',
   ),
+  {
+    ...adapterCase(
+      'writes outside the transaction name passing its manager down',
+      'export class Store { async run(o) { await this.orderRepository.save(o); await this.itemRepository.save(o); } }',
+      'one transaction',
+    ),
+    config: databaseConfig,
+  },
+  {
+    ...adapterCase(
+      'a write through an outside repository names the callback parameter',
+      'export class Store { async run(o) { await this.dataSource.transaction(async (manager) => { await this.roleRepository.save(o); }); } }',
+      'callback parameter',
+    ),
+    config: databaseConfig,
+  },
   adapterCase(
     'resolver map query names the DataLoader',
     "import { ApolloServer } from '@apollo/server';\nconst typeDefs = `type Query { views: [View!]! }`;\nconst resolvers = { View: { owner: (view) => ownerRepository.findOne(view.ownerId) } };\nexport const server = new ApolloServer({ typeDefs, resolvers });",
