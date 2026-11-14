@@ -69,7 +69,7 @@ function bodyOpening(text, from) {
   return -1;
 }
 
-function bodyClosing(text, open) {
+export function bodyClosing(text, open) {
   let depth = 0;
   for (const match of text.slice(open).matchAll(BRACES)) {
     depth += match[0] === '{' ? 1 : -1;

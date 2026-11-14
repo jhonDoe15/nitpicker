@@ -9,7 +9,11 @@ import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 import { withProjectTypeMocks } from '../../../messages/mocks/project-mocks.mjs';
 import { withGeneratedMembers } from '../../../messages/generated-members/generated-members.mjs';
-import { withSpringTransactionFilters } from '../../spring/transactions/transaction-filters.mjs';
+import { dropComputedReads } from '../../spring/queries/persistent-reads.mjs';
+import {
+  springRoots,
+  withSpringTransactionFilters,
+} from '../../spring/transactions/transaction-filters.mjs';
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
@@ -67,6 +71,23 @@ function withOneAliasRule(log) {
   };
 }
 
+function filteredPmdFindings(pmd, context) {
+  const { allSourceRoots, projectRoot } = context;
+  return withJpaFilters(
+    withGeneratedMembers(
+      dropComputedReads(
+        withSpringTransactionFilters(
+          withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
+          context,
+        ),
+        { projectRoot, roots: springRoots(context) },
+      ),
+      { projectRoot },
+    ),
+    { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+  );
+}
+
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
   const pmd = withOneAliasRule(
@@ -91,19 +112,10 @@ export function sarifFindings(context) {
       withWaitAdvice(
         dropSleepsInFakes(
           withProjectTypeMocks(
-            dropInheritedVersions(
-              withJpaFilters(
-                withGeneratedMembers(
-                  withSpringTransactionFilters(
-                    withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
-                    context,
-                  ),
-                  { projectRoot },
-                ),
-                { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
-              ),
-              { projectRoot, sourceRoots: allSourceRoots },
-            ),
+            dropInheritedVersions(filteredPmdFindings(pmd, context), {
+              projectRoot,
+              sourceRoots: allSourceRoots,
+            }),
             { projectRoot, mainRoots },
           ),
           { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
