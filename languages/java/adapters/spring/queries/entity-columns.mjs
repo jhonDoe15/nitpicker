@@ -1,4 +1,10 @@
-import { pathInside, readJavaSource, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
+import {
+  blankBlockBodies,
+  pathInside,
+  readJavaSource,
+  sourceFilesUnder,
+} from '../../review-rules/java-sources.mjs';
+import { bodyClosing } from '../proxies/java-declarations.mjs';
 
 const PERSISTENT_CLASS =
   /@(?:[\w.]*\.)?(?:Entity|Embeddable|MappedSuperclass)\b(?:\s*\([^()]*\))?[^{;]*?\bclass\s+([A-Za-z_$][\w$]*)/gu;
@@ -9,29 +15,6 @@ const SKIPPED_FIELD = /\b(?:static|transient)\b/u;
 const FIELD = /([A-Za-z_$][\w$.]*)(?:\s*\[\s*\])*\s+([A-Za-z_$][\w$]*)$/u;
 const GENERICS = /<[^<>]*>/gu;
 const GETTER = /\b((?:get|is)\p{Lu}[\w$]*)\s*\(\s*\)/gu;
-
-function closingBrace(text, open) {
-  let depth = 0;
-  for (const [step, character] of [...text.slice(open)].entries()) {
-    depth += character === '{' ? 1 : 0;
-    depth -= character === '}' ? 1 : 0;
-    if (depth === 0) {
-      return open + step;
-    }
-  }
-  return text.length;
-}
-
-function memberText(body) {
-  let depth = 0;
-  let kept = '';
-  for (const character of body) {
-    depth -= character === '}' ? 1 : 0;
-    kept += depth === 0 ? character : ' ';
-    depth += character === '{' ? 1 : 0;
-  }
-  return kept;
-}
 
 function withoutNested(text, pattern, replacement) {
   const depth = text.split('').filter((character) => character === '(' || character === '<');
@@ -84,8 +67,8 @@ function fields(declaration) {
 function classesIn(text) {
   return [...text.matchAll(PERSISTENT_CLASS)].map((match) => {
     const open = text.indexOf('{', match.index + match[0].length);
-    const body = open < 0 ? '' : text.slice(open + 1, closingBrace(text, open));
-    const members = memberText(body);
+    const body = open < 0 ? '' : text.slice(open + 1, bodyClosing(text, open));
+    const members = blankBlockBodies(body);
     return {
       name: match[1],
       fields: new Map(members.split(/[;}]/u).flatMap((declaration) => fields(declaration))),
