@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "deleted-item-filter-missing",
+    "mention": "the way the other code does",
+    "subject": "count_sku|LineItem|is_deleted|is_deleted|5 of 6"
+  }
+]

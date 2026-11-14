@@ -2,6 +2,10 @@
 export const IO_POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulator-concat.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/reactive/no-lookup-per-element.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/deleted-items/flags.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/deleted-items/iterations.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/deleted-items/no-unguarded-deleted-items.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/deleted-items/project-index.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/held-scopes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/lazy-relations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/effects/no-lazy-relation-in-loop.mjs',

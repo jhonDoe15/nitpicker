@@ -161,6 +161,11 @@ Python soft-delete rule: `soft-delete-filter-missing` (a Django or SQLAlchemy re
 visibility column that skips the filter or helper at least 80% of the project's reads of that model apply, with at
 least five reads counted). It lives in `languages/python/rules/soft_delete/`.
 
+Python deleted-item rule: `deleted-item-filter-missing` (a loop, comprehension or lookup over an annotated collection of
+items that carry a deletion flag that skips the guard, helper or narrowed type that at least 80% of the project's
+iterations over that item type use, with at least five iterations counted). It lives in
+`languages/python/rules/deleted_items/`.
+
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
 sources. In a Spring project, `pmd/SpringUnreleasedResource` reports a bean field that holds an
@@ -332,6 +337,12 @@ Soft-delete filters: `nitpicker/no-unfiltered-soft-delete-read` (production sour
 Kysely, Knex, TypeORM, Drizzle, Prisma, Sequelize or MikroORM read or join of a table whose reads mostly (80%, at
 least five reads, measured at the merge base) apply a soft-delete or visibility column or helper and that does not.
 The finding names the column and the project's helper; a project with no majority is not reported.
+
+Deleted items in memory: `nitpicker/no-unguarded-deleted-items` (production source, in `eslint-lint`, type-aware) reports
+a changed loop or inline array callback over items that carry a deleted or visibility flag (`isDeleted`, `deleted`,
+`deletedAt`, `archived`, `hidden`, `isVisible`) when at least 80% of such iterations in the project (at least five) skip
+flagged items and this one does not. The finding names the flag and the project's guard form: a helper such as
+`getNonDeletedElements` or a narrowed type such as `NonDeleted<T>`.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

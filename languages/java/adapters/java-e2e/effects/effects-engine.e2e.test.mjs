@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 51,
+      classes: 54,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -270,6 +270,14 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
         .filter((violation) => violation.rule === 'SoftDeleteFilterMissing')
         .map((violation) => `${violation.method} ${violation.entity}.${violation.column}`),
     ).toEqual(['Trash.leaked Parcel.deletedAt']);
+  });
+
+  it('reports a loop over soft-deletable items that skips the flag the other loops check, and nothing else', () => {
+    expect(
+      run.report.violations
+        .filter((violation) => violation.rule === 'DeletedItemInMemory')
+        .map((violation) => `${violation.method} ${violation.entity}.${violation.flag}`),
+    ).toEqual(['Rooms.unguarded Bed.deletedAt']);
   });
 
   it('reports lazy access per element only', () => {

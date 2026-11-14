@@ -109,6 +109,11 @@ describe('effect rules report', () => {
       'count_orders|Order|deleted_at|alive()|9 of 10',
       "`count_orders` reads `Order` without the filter on `deleted_at` that 9 of 10 of the project's `Order` reads apply (`alive()`): deleted or hidden rows reach the caller",
     ],
+    [
+      'deleted-item-filter-missing',
+      'count_sku|LineItem|is_deleted|live()|5 of 6',
+      "`count_sku` goes over a collection of `LineItem` without skipping items flagged by `is_deleted`, which 5 of 6 of the project's iterations over `LineItem` do (`live()`): deleted items take part in the result",
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });

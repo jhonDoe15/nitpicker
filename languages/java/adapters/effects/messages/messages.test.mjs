@@ -62,4 +62,24 @@ describe('the messages of the soft-delete filter rule', () => {
       ].join(' '),
     );
   });
+
+  it('explains an in-memory loop that keeps deleted items', () => {
+    const message = EFFECTS_MESSAGES.DeletedItemInMemory({
+      entity: 'Item',
+      flag: 'deletedAt',
+      source: 'Basket.getItems()',
+      guarded: 8,
+      units: 10,
+    });
+
+    expect(message).toBe(
+      [
+        'This loop or lookup over `Item` items takes them from `Basket.getItems()` and does not check',
+        '`deletedAt`, so deleted items are included. 8 of the 10 places that iterate `Item`',
+        'skip the deleted ones: filter here the same way (`item.deletedAt`), load the collection with the filter',
+        '(a repository method or `@SQLRestriction`), or, for a view that wants the deleted items, add it to',
+        '`exceptions`.',
+      ].join(' '),
+    );
+  });
 });

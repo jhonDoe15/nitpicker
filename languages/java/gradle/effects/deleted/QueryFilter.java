@@ -2,9 +2,11 @@ package nitpicker.effects.deleted;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import nitpicker.effects.Report;
 import nitpicker.effects.flow.MethodFlow;
 import nitpicker.effects.flow.Program;
@@ -17,11 +19,16 @@ public final class QueryFilter {
   private final Program program;
   private final SoftDelete soft;
   private final Report report;
+  private final Set<String> reported = new HashSet<>();
 
   public QueryFilter(Program program, SoftDelete soft, Report report) {
     this.program = program;
     this.soft = soft;
     this.report = report;
+  }
+
+  public Set<String> reported() {
+    return reported;
   }
 
   public void run() {
@@ -68,6 +75,7 @@ public final class QueryFilter {
 
   private void add(QueryReads.Read read, int[] count, MethodFlow flow, int index) {
     SoftDelete.Flag flag = soft.of(read.entity()).get(0);
+    reported.add(Program.key(flow.owner.name, flow.method.name, flow.method.desc) + "#" + index);
     Map<String, Object> extra = new LinkedHashMap<>();
     extra.put("entity", SoftDelete.simple(read.entity()));
     extra.put("column", flag.property());
