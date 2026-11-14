@@ -1,25 +1,38 @@
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
-import { readHeadPolicyFile } from '../../../shared/head-policy.mjs';
-import { parseRunnerArguments } from '../../../core/tooling/runner-arguments.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
 } from '../../../core/tooling/temporary-files.mjs';
-import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import { GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME } from './go-analyzer.mjs';
-import { readMutationFindings } from './mutation/go-mutation.mjs';
-import { goRouteRule, readGoFindings } from './go-findings.mjs';
-import { createGoContext, runGoSteps } from './go-steps.mjs';
-import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { goRouteRule, readGoFindings } from './go-findings.mts';
+import {
+  applyFindingPolicy,
+  createGoContext,
+  describeError,
+  parseSharedArguments,
+  readHeadPolicyFile,
+  readMutationFindings,
+  runGoSteps,
+} from './typed/go-run-readers.mts';
+import { fieldOf, fieldsOf, parseJson, textOf } from '../../../shared/values/readers.mts';
+import type { Environment } from '../../../shared/processes/environment.mts';
+import type { FindingRow, GoContext, GoPolicy, ToolFailure } from './go-types.mts';
+
+type GoOptions = {
+  projectRoot: string;
+  settings?: object;
+  policy?: GoPolicy;
+  environment?: Environment | undefined;
+  part?: string;
+};
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
 const GO_OPTIONS = ['--go-settings', '--part', '--baseline-moves-file'];
 const PARTS = [GO_ANALYZER_NAME, GO_MUTATION_ANALYZER_NAME];
 
-function toolError({ rule, message }) {
+function toolError({ rule, message }: ToolFailure): FindingRow {
   return {
     tool: GO_ANALYZER_NAME,
     rule,
@@ -30,8 +43,9 @@ function toolError({ rule, message }) {
   };
 }
 
-function withReportRoot(step) {
-  const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-go-')));
+function withReportRoot<Result>(step: (reportRoot: string) => Result): Result {
+  const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-'));
+  trackTemporaryPath(reportRoot);
   try {
     return step(reportRoot);
   } finally {
@@ -40,33 +54,32 @@ function withReportRoot(step) {
   }
 }
 
-function partToolError(failure, part) {
+function partToolError(failure: ToolFailure, part: string): FindingRow {
   return { ...toolError(failure), tool: part };
 }
 
-function partFindings(context, part, policy) {
+function partFindings(context: GoContext, part: string, policy: GoPolicy) {
   return part === GO_MUTATION_ANALYZER_NAME
     ? readMutationFindings(context)
     : readGoFindings(context, policy);
 }
 
-export function analyzeGoSnapshot({
+function analyzeGoSnapshot({
   projectRoot,
   settings = {},
   policy = {},
-  spawn,
   environment,
   part = GO_ANALYZER_NAME,
-}) {
+}: GoOptions): { findings: FindingRow[] } {
   try {
     return {
-      findings: withReportRoot((reportRoot) => {
+      findings: withReportRoot((reportRoot: string) => {
         const context = createGoContext({
           projectRoot,
           settings,
           policy,
           reportRoot,
-          spawn,
+          spawn: undefined,
           environment,
         });
         const failures = runGoSteps(context, part);
@@ -85,7 +98,10 @@ export function analyzeGoSnapshot({
       findings: [
         partToolError(
           {
-            rule: error.rule ?? 'go-failed',
+            rule:
+              typeof fieldOf(error, 'rule') === 'string'
+                ? textOf(fieldOf(error, 'rule'))
+                : 'go-failed',
             message: error instanceof Error ? error.message : String(error),
           },
           part,
@@ -95,9 +111,14 @@ export function analyzeGoSnapshot({
   }
 }
 
-export function parseGoArguments(runnerArguments) {
-  const own = new Map();
-  const shared = [];
+function parseGoArguments(runnerArguments: readonly string[]): {
+  projectRoot: string;
+  settings: object;
+  policy: GoPolicy;
+  part: string;
+} {
+  const own = new Map<string, string | undefined>();
+  const shared: string[] = [];
   const remaining = runnerArguments.values();
   for (const argument of remaining) {
     if (GO_OPTIONS.includes(argument)) {
@@ -106,36 +127,45 @@ export function parseGoArguments(runnerArguments) {
       shared.push(argument);
     }
   }
-  const { projectRoot, policy } = parseRunnerArguments(shared, {
-    runner: `nitpicker ${GO_ANALYZER_COMMAND}`,
-    precedenceTools: precedenceToolNames(),
-  });
+  const { projectRoot, policy } = parseSharedArguments(shared, `nitpicker ${GO_ANALYZER_COMMAND}`);
   const part = own.get('--part') ?? GO_ANALYZER_NAME;
   if (!PARTS.includes(part)) {
     throw new Error(`--part must be one of: ${PARTS.join(', ')}`);
   }
   return {
     projectRoot,
-    settings: JSON.parse(own.get('--go-settings') ?? '{}'),
+    settings: fieldsOf(parseJson(own.get('--go-settings') ?? '{}')),
     policy: { ...policy, baselineMovesFile: own.get('--baseline-moves-file') },
     part,
   };
 }
 
-export function runGo(runnerArguments, { spawn, environment } = {}) {
+function runGo(
+  runnerArguments: readonly string[],
+  { environment }: { environment?: Environment | undefined } = {},
+): { findings: FindingRow[] } {
   const { projectRoot, settings, policy, part } = parseGoArguments(runnerArguments);
   const { conventions, layout, testConsole, protocols } = readHeadPolicyFile(environment);
   return analyzeGoSnapshot({
     projectRoot: realpathSync(projectRoot),
     settings,
     policy: { ...policy, conventions, layout, testConsole, protocols },
-    spawn,
     environment,
     part,
   });
 }
 
-export function runGoCli({ commandArguments, stdout, stderr, environment }) {
+export function runGoCli({
+  commandArguments,
+  stdout,
+  stderr,
+  environment,
+}: {
+  commandArguments: readonly string[];
+  stdout: { write(text: string): unknown };
+  stderr: { write(text: string): unknown };
+  environment: Environment | undefined;
+}): number {
   try {
     stdout.write(`${JSON.stringify(runGo(commandArguments, { environment }))}\n`);
     return 0;

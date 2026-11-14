@@ -1,28 +1,29 @@
-import { sharedRouteRule } from '../../../shared/exceptions/routes.mjs';
 import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-policy.mjs';
-import { readVetFindings } from './build/go-vet.mjs';
-import { goCouplingFindings } from './coupling/go-coupling.mjs';
-import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
-import { goDomainFindings } from './domain/go-domain.mjs';
-import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
-import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
-import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mjs';
+import { goCouplingFindings } from './coupling/go-coupling.mts';
+import { goDomainFindings } from './domain/go-domain.mts';
+import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mts';
 import { GO_LINT_TOOLS } from './configuration/go-config.mjs';
-import { formatFindings } from './formatting/go-format.mjs';
-import { lintFindings } from './lint/go-lint.mjs';
-import { readFormatReport } from './go-steps.mjs';
-import { goStructureFindings } from './structure/go-structure.mjs';
-import { readInspect } from './structure/go-inspect.mjs';
-import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
-import { goCoverageFindings } from './branch-coverage/go-coverage.mjs';
-import { readTestRun, testRunFindings } from './tests/go-test.mjs';
-import { raceCheckFindings, withoutRaceOnlyFailures } from './race/race-findings.mjs';
-import { goTestRuntimeFindings } from './test-runtime/go-test-runtime.mjs';
-import { goEntryPointFindings } from './entry-points/go-entry-points.mjs';
+import { goStructureFindings } from './structure/go-structure.mts';
+import { goSlowTestFindings } from './tests/go-slow-tests.mts';
+import { goCoverageFindings } from './branch-coverage/go-coverage.mts';
+import { raceCheckFindings, withoutRaceOnlyFailures } from './race/race-findings.mts';
+import { goTestRuntimeFindings } from './test-runtime/go-test-runtime.mts';
+import { goEntryPointFindings } from './entry-points/go-entry-points.mts';
+import { readInspect, readTestRun, readVetFindings, testRunFindings } from './typed/go-readers.mts';
+import {
+  formatFindings,
+  lintFindings,
+  readDeadcodeFindings,
+  readFormatReport,
+  readGoDuplicateFindings,
+  readTidyFindings,
+  sharedRouteRule,
+} from './typed/go-run-readers.mts';
+import type { FindingRow, GoContext, GoFacts, GoPolicy } from './go-types.mts';
 
 const UNUSED_LINT_RULE = 'U1000';
 
-export function goRouteRule(finding) {
+export function goRouteRule(finding: FindingRow): string | undefined {
   return GO_LINT_TOOLS.includes(finding.tool)
     ? `${finding.tool}/${finding.rule}`
     : sharedRouteRule(finding);
@@ -30,14 +31,20 @@ export function goRouteRule(finding) {
 
 const GOFUMPT_LAYOUT_RULES = new Set(['empty-lines', 'comment-spacings']);
 
-function formatterFindings(context, report) {
+function formatterFindings(
+  context: GoContext,
+  report: Readonly<Record<string, readonly string[]>>,
+) {
   return Object.entries(report).flatMap(([formatter, files]) =>
     formatFindings(context, { formatter, files }),
   );
 }
 
-function withoutGofumptOverlap(findings, report) {
-  const gofumptFiles = new Set(report.gofumpt ?? []);
+function withoutGofumptOverlap(
+  findings: readonly FindingRow[],
+  report: Readonly<Record<string, readonly string[]>>,
+) {
+  const gofumptFiles = new Set(report['gofumpt'] ?? []);
   return findings.filter(
     (finding) =>
       finding.tool !== 'revive' ||
@@ -46,7 +53,10 @@ function withoutGofumptOverlap(findings, report) {
   );
 }
 
-function deadCodeFindings(context, { facts, policy, lint }) {
+function deadCodeFindings(
+  context: GoContext,
+  { facts, policy, lint }: { facts: GoFacts; policy: GoPolicy; lint: readonly FindingRow[] },
+) {
   const factFindings = goFactFindings(facts, { policy, baseline: readGoBaseline(context) });
   const testOnly = factFindings.filter(({ rule }) => rule === UNUSED_API_RULE_IDS.testOnlyExport);
   const unused = lint.filter(({ rule }) => rule === UNUSED_LINT_RULE);
@@ -57,7 +67,7 @@ function deadCodeFindings(context, { facts, policy, lint }) {
   ];
 }
 
-export function readGoFindings(context, policy = {}) {
+export function readGoFindings(context: GoContext, policy: GoPolicy = {}): FindingRow[] {
   const report = readInspect(context.reportRoot);
   const testRun = readTestRun(context.reportRoot);
   const formatReport = readFormatReport(context.reportRoot);
