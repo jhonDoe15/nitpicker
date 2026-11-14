@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import { factsBundle } from './facts-bundle.mjs';
 
-function statement(line, module, aliases, extra = {}) {
+type Fields = Readonly<Record<string, unknown>>;
+
+function statement(
+  line: number,
+  module: string | null,
+  aliases: readonly (readonly [string, string?])[],
+  extra: Fields = {},
+) {
   return {
     level: 0,
     module,
@@ -13,7 +21,7 @@ function statement(line, module, aliases, extra = {}) {
   };
 }
 
-function definition(name, extra = {}) {
+function definition(name: string, extra: Fields = {}) {
   return {
     name,
     kind: 'function',
@@ -29,7 +37,7 @@ function definition(name, extra = {}) {
   };
 }
 
-function file(extra = {}) {
+function file(extra: Fields = {}) {
   return {
     imports: [],
     definitions: [],
@@ -41,19 +49,47 @@ function file(extra = {}) {
   };
 }
 
+const keyMatcher: unknown = expect.any(String);
+
 const MODULES = [
   { file: 'src/shop/orders/__init__.py', module: 'shop.orders', isPackage: true },
   { file: 'src/shop/orders/cart.py', module: 'shop.orders.cart', isPackage: false },
   { file: 'src/shop/orders/lines.py', module: 'shop.orders.lines', isPackage: false },
 ];
 
-function bundle(scanned, options = {}) {
-  return factsBundle({
+type Bundle = {
+  readonly modules: readonly { file: string; entry: boolean }[];
+  readonly definitions: readonly { name: string; entry: boolean; key: string; package?: string }[];
+  readonly packages: unknown;
+  readonly docComments: unknown;
+  readonly imports: readonly {
+    from: string;
+    to: string;
+    names: unknown;
+    line?: number;
+    reference?: boolean;
+  }[];
+};
+
+function isBundle(value: unknown): value is Bundle {
+  return (
+    Array.isArray(fieldOf(value, 'modules')) &&
+    Array.isArray(fieldOf(value, 'definitions')) &&
+    Array.isArray(fieldOf(value, 'imports'))
+  );
+}
+
+function bundle(scanned: Fields, options: Fields = {}): Bundle {
+  const result: unknown = factsBundle({
     modules: MODULES,
     scanned,
-    isTest: (name) => name.startsWith('tests/'),
+    isTest: (name: string) => name.startsWith('tests/'),
     ...options,
   });
+  if (!isBundle(result)) {
+    throw new Error('The facts bundle is malformed');
+  }
+  return result;
 }
 
 describe('the Python facts bundle', () => {
@@ -156,7 +192,7 @@ describe('the Python facts bundle', () => {
   });
 
   it('keys a definition by the text and the resolved source of its free names', () => {
-    const free = (binding) => [{ name: 'helper', binding }];
+    const free = (binding: Fields) => [{ name: 'helper', binding }];
     const local = { kind: 'local' };
     const imported = { kind: 'import', module: 'shop.orders.lines', level: 0, name: 'helper' };
     const external = { kind: 'import', module: 'tools', level: 0, name: 'helper' };
@@ -188,7 +224,7 @@ describe('the Python facts bundle', () => {
       literal: false,
       usedLocally: false,
       text: 'function|body',
-      key: expect.any(String),
+      key: keyMatcher,
       entry: false,
     });
   });
@@ -278,8 +314,8 @@ describe('the Python facts bundle', () => {
       'src/shop/orders/cart.py': file({ definitions: [definition('Command')] }),
       'src/shop/orders/lines.py': file({ definitions: [definition('Config')] }),
     };
-    const packageOf = (name) => (name.endsWith('cart.py') ? 'src/shop' : '');
-    const rowsOf = ({ definitions }) =>
+    const packageOf = (name: string) => (name.endsWith('cart.py') ? 'src/shop' : '');
+    const rowsOf = ({ definitions }: Bundle) =>
       definitions.map(({ name, entry, package: root }) => [name, entry, root]);
 
     expect(rowsOf(bundle(scanned, { packageOf }))).toEqual([

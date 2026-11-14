@@ -1,23 +1,13 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  BASE_FACTS_REPORT,
-  FACTS_REPORT,
-  readFactFindings,
-  readFactImports,
-} from './python-facts.mjs';
+import { describe, expect, it } from 'vitest';
+import { BASE_FACTS_REPORT, FACTS_REPORT, FACTS_TOOL, readFactImports } from './python-facts.mjs';
+import { readFactFindings } from '../typed/report/report-views.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function definition(file, name, line, body = ['1']) {
+function definition(file: string, name: string, line: number, body: readonly string[] = ['1']) {
   const tokens = ['def', name, '(', ')', ':', 'return', ...body];
   return {
     file,
@@ -58,9 +48,8 @@ const FACTS = {
   nearDuplicateUnits: [],
 };
 
-function reportRootWith(facts, baseFacts) {
-  const reportRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-facts-'));
-  roots.push(reportRoot);
+function reportRootWith(facts: unknown, baseFacts?: unknown): string {
+  const reportRoot = temporaryRoot('nitpicker-python-facts-');
   if (facts !== undefined) {
     writeFileSync(path.join(reportRoot, FACTS_REPORT), JSON.stringify(facts));
   }
@@ -73,7 +62,7 @@ function reportRootWith(facts, baseFacts) {
 const SUM = Array.from({ length: 10 }, (_, index) => [String(index), '+']).flat();
 const EDITED_SUM = SUM.with(0, '7');
 
-function siblingFacts(sums) {
+function siblingFacts(sums: Readonly<Record<string, readonly string[]>>) {
   return {
     ...FACTS,
     modules: Object.keys(sums).map((file) => ({ file, role: 'production', entry: false })),
@@ -82,7 +71,7 @@ function siblingFacts(sums) {
   };
 }
 
-function rowsOf(findings) {
+function rowsOf(findings: readonly { rule: string; path: string; identity: string }[]) {
   return findings.map(({ rule, path: file, identity }) => [rule, file, identity]);
 }
 
@@ -91,7 +80,7 @@ describe('the shared fact rules over the Python facts', () => {
     const findings = readFactFindings(reportRootWith(FACTS));
 
     expect(findings.map(({ tool, rule, path: file }) => [tool, rule, file])).toEqual([
-      ['facts', 'test-only-export', 'src/shop/helpers.py'],
+      [FACTS_TOOL, 'test-only-export', 'src/shop/helpers.py'],
     ]);
   });
 
@@ -104,7 +93,7 @@ describe('the shared fact rules over the Python facts', () => {
   it('reports a docstring that only restates its name unless its sections say more', () => {
     const comment = { file: 'src/shop/helpers.py', line: 2, name: 'helper', lines: ['Helper.'] };
     const exceptions = [{ rule: 'test-only-export', paths: ['src/shop/**'], reason: 'r' }];
-    const findingsOf = (detailed) =>
+    const findingsOf = (detailed: boolean) =>
       readFactFindings(reportRootWith({ ...FACTS, docComments: [{ ...comment, detailed }] }), {
         exceptions,
       });

@@ -1,25 +1,26 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
-import { createFactsProjects } from './test-support/facts-projects.mjs';
+import { createFactsProjects } from './test-support/facts-projects.mts';
+
+const pythonE2eEnabled = process.env['NITPICKER_PYTHON_E2E'] === '1';
 
 const { factsOf, cleanup } = createFactsProjects();
 
 afterEach(cleanup);
 
-function decided(text) {
+function decided(text: string): string[] {
   return factsOf({ 'src/shop/rules.py': text })
     .findings()
     .filter(({ rule }) => rule === 'decided-condition')
-    .map(({ location, message }) => `${String(location.line)}: ${message.split('. ')[0]}`);
+    .map(({ location, message }) => `${String(location?.line)}: ${message.split('. ')[0] ?? ''}`);
 }
 
-function branches(text) {
+function branches(text: string): string[] {
   return factsOf({ 'src/shop/rules.py': text })
     .findings()
     .filter(({ rule }) => rule === 'duplicate-branch')
     .map(
       ({ location, classification, message }) =>
-        `${String(location.line)} ${classification}: ${message.split(' If ')[0]}`,
+        `${String(location?.line)} ${classification}: ${message.split(' If ')[0] ?? ''}`,
     );
 }
 
