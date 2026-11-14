@@ -2,7 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { goStructureFindings } from './go-structure.mjs';
+import { goStructureFindings } from './go-structure.mts';
+import type { FindingRow } from '../go-types.mts';
 
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-go-structure-'));
 const FILES = {
@@ -63,7 +64,8 @@ const report = {
   tests: [],
 };
 
-const summary = (findings) => findings.map(({ rule, path: file }) => `${rule} ${file}`).sort();
+const summary = (findings: readonly FindingRow[]) =>
+  findings.map(({ rule, path: file }) => `${rule} ${file}`).sort();
 
 describe('goStructureFindings', () => {
   it('holds functions, types, files and package depth to the shared limits', () => {
@@ -88,14 +90,14 @@ describe('goStructureFindings', () => {
   });
 
   it('keeps the identity of a repeated init function when an earlier one is removed', () => {
-    const init = (start, maxControlNesting) => ({
+    const init = (start: number, maxControlNesting: number) => ({
       ...report.functions[0],
       name: 'init',
       start,
       end: start + 1,
       maxControlNesting,
     });
-    const identities = (functions) =>
+    const identities = (functions: readonly object[]) =>
       goStructureFindings({ ...report, types: [], functions }, root)
         .filter(({ rule }) => rule === 'function-control-nesting-limit')
         .map(({ identity }) => identity);

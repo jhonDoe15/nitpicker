@@ -1,9 +1,12 @@
 import path from 'node:path';
 import { FOLDER_DEPTH_DEFAULTS } from '../../../../shared/project-rules/size-rules.mjs';
-import { structureFindings } from '../../../../shared/ingest/structure-report.mjs';
-import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.mjs';
-import { classLimitFindings } from '../../../../shared/rules/size/class-limits.mjs';
-import { folderDepthFindings } from '../../../../shared/rules/size/folder-depth.mjs';
+import {
+  classLimitFindings,
+  collectFileLimitFindings,
+  folderDepthFindings,
+  structureFindings,
+} from '../typed/shared-readers.mts';
+import type { FindingRow, GoFile, GoPolicy, GoType } from '../go-types.mts';
 
 const STRUCTURE_TOOL = 'structure';
 const ACCESS_FOLDERS = new Set(['internal']);
@@ -15,27 +18,38 @@ const STRUCTURE_HINTS = {
   parameters:
     'Group related parameters into a struct, or pass an options struct; the receiver does not count.',
 };
+type StructureReport = {
+  files: readonly Pick<GoFile, 'path' | 'test' | 'generated'>[];
+  functions: readonly object[];
+  types: readonly GoType[];
+};
+type FileEntry = { path: string; kind: string; countsInFolder: boolean };
+
 const DEPTH_WORDING = {
   subject: 'Package',
   below: 'the module root',
-  advice: (limit) =>
+  advice: (limit: number) =>
     `Keep packages at most ${String(limit)} levels below the module root (internal does not count): group by responsibility instead of nesting.`,
 };
 
-function sourceFiles(report) {
+function sourceFiles(report: Pick<StructureReport, 'files'>) {
   return report.files.filter(({ generated }) => !generated);
 }
 
-function packageParts(file) {
+function packageParts(file: string) {
   return path.posix
     .dirname(file)
     .split('/')
     .filter((part) => part !== '.' && !ACCESS_FOLDERS.has(part));
 }
 
-export function goStructureFindings(report, projectRoot, policy = {}) {
+export function goStructureFindings(
+  report: StructureReport,
+  projectRoot: string,
+  policy: GoPolicy = {},
+): FindingRow[] {
   const limits = { thresholds: policy.fileLimits ?? {}, exceptions: policy.exceptions ?? [] };
-  const files = sourceFiles(report).map((file) => ({
+  const files: FileEntry[] = sourceFiles(report).map((file) => ({
     path: file.path,
     kind: file.test ? 'test' : 'source',
     countsInFolder: path.posix.basename(file.path) !== PACKAGE_MARKER,
@@ -61,7 +75,7 @@ export function goStructureFindings(report, projectRoot, policy = {}) {
         limit: limits.thresholds.folderDepth ?? FOLDER_DEPTH_DEFAULTS.go,
         exceptions: limits.exceptions,
         wording: DEPTH_WORDING,
-        depthOf: ({ parts }) => parts.length,
+        depthOf: ({ parts }: { parts: readonly string[] }) => parts.length,
       },
     ),
   ];

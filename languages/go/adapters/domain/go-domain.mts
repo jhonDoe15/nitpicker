@@ -1,32 +1,30 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
-import {
-  adapterMessage,
-  domainFinding,
-  libraryMessage,
-} from '../../../../shared/rules/domain/domain-messages.mjs';
-import { listed } from '../../../../shared/rules/features/feature-boundaries.mjs';
-import { libraryConcern } from './go-domain-libraries.mjs';
+import { libraryConcern } from './go-domain-libraries.mts';
 import { byText } from '../../../../shared/text-order/by-text.mjs';
+import { adapterMessage, domainFinding, libraryMessage, listed } from '../typed/shared-readers.mts';
+import type { FindingRow, GoFile, GoImport, GoUsage, InspectReport } from '../go-types.mts';
+
+type DomainContext = { owner: string; module: string };
 
 const DOMAIN_SEGMENT = 'domain';
 const ADAPTER_SEGMENTS = new Set(['adapter', 'adapters', 'infrastructure', 'infra']);
 
-function folderSegments(file) {
+function folderSegments(file: string) {
   return file.split('/').slice(0, -1);
 }
 
-function isAdapterFolder(segments) {
+function isAdapterFolder(segments: readonly string[]) {
   return segments.some((segment) => ADAPTER_SEGMENTS.has(segment));
 }
 
-function isDomainFile(file) {
+function isDomainFile(file: GoFile) {
   const segments = folderSegments(file.path);
   return (
     !file.test && !file.generated && segments.includes(DOMAIN_SEGMENT) && !isAdapterFolder(segments)
   );
 }
 
-function projectFolder(importPath, module) {
+function projectFolder(importPath: string, module: string) {
   if (importPath === module) {
     return '';
   }
@@ -35,8 +33,8 @@ function projectFolder(importPath, module) {
 
 const MAJOR_VERSION = /^v\d+$/u;
 
-function packageNames(importPath) {
-  const [final, previous] = importPath.split('/').toReversed();
+function packageNames(importPath: string) {
+  const [final = '', previous] = importPath.split('/').toReversed();
   const last = previous !== undefined && MAJOR_VERSION.test(final) ? previous : final;
   const bare = last
     .replace(/\.v\d+$/u, '')
@@ -45,22 +43,22 @@ function packageNames(importPath) {
   return [...new Set([bare, last, bare.replaceAll(/[-.]/gu, '')])];
 }
 
-function localName(entry) {
-  return entry.name === '' ? packageNames(entry.path)[0] : entry.name;
+function localName(entry: GoImport) {
+  return entry.name === '' ? (packageNames(entry.path)[0] ?? '') : entry.name;
 }
 
-function selectedNames(usage, entry) {
+function selectedNames(usage: GoUsage, entry: GoImport) {
   const qualifiers = new Set(entry.name === '' ? packageNames(entry.path) : [entry.name]);
   return usage.selectors
     .filter((selector) => qualifiers.has(selector.qualifier))
     .map(({ name }) => name);
 }
 
-function uniqueImports(usage) {
+function uniqueImports(usage: GoUsage) {
   return [...new Map(usage.imports.map((entry) => [entry.path, entry])).values()];
 }
 
-function adapterUses(usage, module) {
+function adapterUses(usage: GoUsage, module: string) {
   return uniqueImports(usage).flatMap((entry) => {
     const folder = projectFolder(entry.path, module);
     return folder !== undefined && isAdapterFolder(folder.split('/'))
@@ -69,7 +67,7 @@ function adapterUses(usage, module) {
   });
 }
 
-function adapterFindings(usage, { owner, module }) {
+function adapterFindings(usage: GoUsage, { owner, module }: DomainContext) {
   return adapterUses(usage, module).map(({ entry, used }) =>
     domainFinding(
       {
@@ -89,7 +87,7 @@ function adapterFindings(usage, { owner, module }) {
   );
 }
 
-function libraryFindings(usage, { owner, module }) {
+function libraryFindings(usage: GoUsage, { owner, module }: DomainContext) {
   return uniqueImports(usage).flatMap((entry) => {
     if (projectFolder(entry.path, module) !== undefined) {
       return [];
@@ -110,11 +108,14 @@ function libraryFindings(usage, { owner, module }) {
   });
 }
 
-function ownerOf(file) {
+function ownerOf(file: string) {
   return file.slice(file.lastIndexOf('/') + 1);
 }
 
-export function goDomainFindings(report, module) {
+export function goDomainFindings(
+  report: Pick<InspectReport, 'files' | 'usages'>,
+  module: string,
+): FindingRow[] {
   const domainFiles = new Set(report.files.filter(isDomainFile).map(({ path }) => path));
   return report.usages
     .filter((usage) => domainFiles.has(usage.file))

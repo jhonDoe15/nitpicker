@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseCoverProfile } from './coverage-profile.mjs';
-import { goBranchFindings } from './go-branch-coverage.mjs';
-import { goCrapFindings } from './go-crap.mjs';
+import { fieldOf } from '../../../../shared/values/readers.mts';
+import { parseCoverProfile } from '../typed/go-readers.mts';
+import { goBranchFindings } from './go-branch-coverage.mts';
+import { goCrapFindings } from './go-crap.mts';
+import type { FindingRow, Position } from '../go-types.mts';
 
 const PROFILE = `mode: count
 example.com/shop/shop/grade.go:3.30,4.16 1 3
@@ -21,8 +23,8 @@ example.com/shop/shop/grade.go:22.2,23.14 2 1
 example.com/shop/shop/grade.go:22.2,23.14 2 0
 example.com/other/skipped.go:1.1,2.2 1 1
 `;
-const at = (line, column) => ({ line, column });
-const arm = (label, from, to = from) => ({ label, from, to });
+const at = (line: number, column: number): Position => ({ line, column });
+const arm = (label: string, from: Position, to = from) => ({ label, from, to });
 const IF_FALSE = 'the condition false (the if body skipped)';
 const BRANCHES = [
   {
@@ -60,12 +62,12 @@ const FUNCTIONS = [
   },
 ];
 
-function branchSummary(findings) {
+function branchSummary(findings: readonly FindingRow[]) {
   return findings.map(({ rule, path, symbol, location, message }) => ({
     rule,
     path,
     symbol,
-    line: location.line,
+    line: fieldOf(location, 'line'),
     missed: /Branch coverage is (?<percent>[\d.]+)%.*Not taken: (?<arms>.*?)\. Test it/u.exec(
       message,
     )?.groups,
@@ -78,7 +80,7 @@ describe('Go coverage', () => {
   it('reads the blocks of module files, adding up blocks that several test binaries report', () => {
     expect(profile.counted).toBe(true);
     expect([...profile.files.keys()]).toEqual(['shop/grade.go']);
-    expect(profile.files.get('shop/grade.go').at(-1)).toEqual({
+    expect(profile.files.get('shop/grade.go')?.at(-1)).toEqual({
       start: at(22, 2),
       end: at(23, 14),
       statements: 2,
@@ -185,7 +187,9 @@ example.com/shop/shop/size.go:13.2,13.15 1 0
       sourceLines: () => SOURCE,
     });
     expect(
-      branchSummary(findings).map(({ line, missed }) => `${String(line)} ${missed.percent}`),
+      branchSummary(findings).map(
+        ({ line, missed }) => `${String(line)} ${String(missed?.['percent'])}`,
+      ),
     ).toEqual(['10 0.00', '13 50.00', '18 0.00']);
   });
 
@@ -197,7 +201,9 @@ example.com/shop/shop/size.go:13.2,13.15 1 0
       functionText: ({ start, end }) => SOURCE.slice(start - 1, end).join('\n'),
     });
     expect(
-      findings.map(({ rule, symbol, message }) => `${rule} ${symbol} ${message.split('.')[0]}`),
+      findings.map(
+        ({ rule, symbol, message }) => `${rule} ${String(symbol)} ${String(message.split('.')[0])}`,
+      ),
     ).toEqual(['crap-score-limit Grade Grade has CRAP 12']);
   });
 
@@ -209,7 +215,7 @@ example.com/shop/shop/size.go:13.2,13.15 1 0
       profile: empty,
       functionText: () => 'x',
     });
-    expect(unknown.map(({ rule, symbol }) => `${rule} ${symbol}`)).toEqual([
+    expect(unknown.map(({ rule, symbol }) => `${rule} ${String(symbol)}`)).toEqual([
       'crap-coverage-unknown Grade',
       'crap-coverage-unknown Grade.func1',
     ]);
