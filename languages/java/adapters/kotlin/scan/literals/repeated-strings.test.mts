@@ -1,13 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { repeatedStringLiterals } from './repeated-strings.mjs';
+import {
+  type Check,
+  type Messaged,
+  type Subjected,
+  lineOf,
+  scanKotlinSource,
+} from '../typed/typed-scan.mts';
+import { repeatedStringLiterals as untypedRepeatedStringLiterals } from './repeated-strings.mjs';
 
-function lines(source) {
+const repeatedStringLiterals: Check<Subjected & Messaged> = untypedRepeatedStringLiterals;
+
+function lines(source: string) {
   const scanned = scanKotlinSource(source);
   return repeatedStringLiterals(scanned).map(({ offset }) => lineOf(scanned, offset));
 }
 
-const repeat = (expression) => [expression, expression, expression].join('\n');
+const repeat = (expression: string) => [expression, expression, expression].join('\n');
 
 describe('repeatedStringLiterals', () => {
   it('reports each use from the third on, named in the message', () => {
@@ -15,8 +23,8 @@ describe('repeatedStringLiterals', () => {
     const reported = repeatedStringLiterals(scanKotlinSource(source));
 
     expect(lines(source)).toEqual([3, 4]);
-    expect(reported[0].subject).toBe('pending');
-    expect(reported[0].message).toBe(
+    expect(reported[0]?.subject).toBe('pending');
+    expect(reported[0]?.message).toBe(
       'The string "pending" is repeated three times or more in the file. Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
     );
   });
@@ -30,7 +38,7 @@ describe('repeatedStringLiterals', () => {
     ['short text', repeat('val a = "tiny"')],
     ['text without a letter or digit', repeat('val a = "-----"')],
     ['templates', repeat('val a = "pending $name"')],
-    ['templates with braces', repeat('val a = "pending ${name}"')],
+    ['templates with braces', repeat(`val a = "pending \${name}"`)],
     ['strings in comments', repeat('// "pending"')],
     ['different texts', 'val a = "pending"\nval b = "pending."\nval c = "pending!"\n'],
   ])('passes %s', (_name, source) => {
@@ -58,9 +66,9 @@ describe('repeatedStringLiterals', () => {
     ['HTTP methods', repeat('val a = "DELETE"')],
     ['MIME types', repeat('val a = "application/json"')],
     ['argparse actions', repeat('val a = "store_true"')],
-    ['expression keys in a template', repeat('val a = "id: ${row["order_id"]} "')],
-    ['named arguments in a template', repeat('val a = "${fmt(style = "compact-style")}"')],
-    ['nested template keys', repeat('val a = "x ${y("t ${row["order_id"]}")}"')],
+    ['expression keys in a template', repeat(`val a = "id: \${row["order_id"]} "`)],
+    ['named arguments in a template', repeat(`val a = "\${fmt(style = "compact-style")}"`)],
+    ['nested template keys', repeat(`val a = "x \${y("t \${row["order_id"]}")}"`)],
   ])('passes %s', (_name, source) => {
     expect(lines(source)).toEqual([]);
   });
@@ -181,7 +189,7 @@ describe('repeatedStringLiterals', () => {
     const started = performance.now();
     const reported = repeatedStringLiterals(scanKotlinSource(source));
 
-    expect(reported.length).toBeGreaterThan(0);
+    expect(reported).toHaveLength(4920);
     expect(performance.now() - started).toBeLessThan(1500);
   });
 

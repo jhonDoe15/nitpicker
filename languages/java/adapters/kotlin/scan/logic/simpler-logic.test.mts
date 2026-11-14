@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { simplerBooleanLogic } from './simpler-logic.mjs';
+import {
+  type Check,
+  type Messaged,
+  type Subjected,
+  lineOf,
+  scanKotlinSource,
+} from '../typed/typed-scan.mts';
+import { simplerBooleanLogic as untypedSimplerBooleanLogic } from './simpler-logic.mjs';
 
-function found(source) {
+const simplerBooleanLogic: Check<Subjected & Messaged> = untypedSimplerBooleanLogic;
+
+function found(source: string) {
   const scanned = scanKotlinSource(source);
   return simplerBooleanLogic(scanned).map((reported) => [
     lineOf(scanned, reported.offset),
@@ -10,11 +18,11 @@ function found(source) {
   ]);
 }
 
-function simpler(form, line = 1) {
+function simpler(form: string, line = 1) {
   return [line, `Write this boolean logic in its simpler exact form: \`${form}\`.`];
 }
 
-function swapped(form, line = 1) {
+function swapped(form: string, line = 1) {
   return [
     line,
     `Write this boolean logic in its simpler exact form: \`${form}\`, with the two branches swapped.`,

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { logFormatArguments } from './log-format-rules.mjs';
+import { type Check, type Ruled, lineOf, scanKotlinSource } from '../typed/typed-scan.mts';
+import { logFormatArguments as untypedLogFormatArguments } from './log-format-rules.mjs';
+
+const logFormatArguments: Check<Ruled> = untypedLogFormatArguments;
 
 const JBOSS = 'import org.jboss.logging.Logger\n';
 const JUL = 'import java.util.logging.Level\nimport java.util.logging.Logger\n';
@@ -11,7 +13,7 @@ const DECLARATIONS = [
   'const val PREFIX = "cache %s: "',
 ].join('\n');
 
-function found(header, body) {
+function found(header: string, body: string) {
   const source = `${header}\n${DECLARATIONS}\n\nfun calls(name: String, count: Int, ratio: Double, values: Array<Any>, error: Exception) {\n${body}\n}\n`;
   const scanned = scanKotlinSource(source);
   const first = lineOf(scanned, source.indexOf('fun calls'));
