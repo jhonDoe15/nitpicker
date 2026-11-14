@@ -60,7 +60,7 @@ export const STRUCTURE_NOTES = {
     'Write the printed shorter form. The message prints it from the original operands, in order, and names the operand that makes the other redundant.',
   ],
   'duplicate-branch': [
-    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm.',
+    'Two arms of one branch (an `if` chain, a ternary, a `switch` or a `when`) with the same body; report-only, the same statements at the start or end of every arm, adjacent guards that end in a jump with one body (one `a || b`), and a nested `if`/`else` that repeats the outer `else` (one `a && b`).',
     'Equal arms are a copy-paste left-over: either the condition is pointless or one arm was meant to differ.',
     'Merge the arms (their conditions or labels into one), or change the arm that was meant to differ; move shared statements before or after the branch.',
   ],

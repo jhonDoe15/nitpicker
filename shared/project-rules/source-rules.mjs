@@ -49,7 +49,7 @@ export function sourceRules(ids, enforcedBy) {
       id: ids.duplicateBranch,
       check: STRUCTURE_TOOL,
       limit:
-        "two arms of an `if`/`else if` chain, a ternary, a `switch` or a `when` in a production function whose bodies have the same canonical tree (the near-duplicate engine's rewrites, renamed locals of the arm count as equal, other names and literals must match; a `switch` case that falls through, or that a non-empty case falls into, and an arm picked by a type test are not compared); report-only: the same statements at the start or end of every arm of a complete `if` chain or `when`, when moving them keeps behaviour. Error Prone `DuplicateBranches` keeps the Java two-arm `if`/`else` and ternary, Ruff `SIM114` the adjacent Python `if`/`elif` arms",
+        "two arms of an `if`/`else if` chain, a ternary, a `switch` or a `when` in a production function whose bodies have the same canonical tree (the near-duplicate engine's rewrites, renamed locals of the arm count as equal, other names and literals must match; a `switch` case that falls through, or that a non-empty case falls into, and an arm picked by a type test are not compared); report-only: the same statements at the start or end of every arm of a complete `if` chain or `when`, when moving them keeps behaviour; adjacent `if` guards without `else` that share one body ending in `return`, `throw`, `break` or `continue`, when the later conditions only read (merged into `if (a || b)`); an `if (a)` whose only statement is an `if`/`else` that repeats the outer `else` (as `if (a && b)` or `if (a && !b)`). Error Prone `DuplicateBranches` keeps the Java two-arm `if`/`else` and ternary, Ruff `SIM114` the adjacent Python `if`/`elif` arms",
     },
     {
       id: ids.resultSlip,
