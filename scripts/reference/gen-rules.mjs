@@ -1,7 +1,15 @@
-import { existsSync, mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ESLINT_REGISTRY, eslintRegistrySource } from './eslint-registry.mjs';
+import { ESLINT_REGISTRY_PARTS, eslintRegistrySources } from './eslint-registry.mjs';
 import { KOTLIN_SCAN_REGISTRY, kotlinScanRegistrySource } from './kotlin-scan-registry.mjs';
 import { pmdRulesetSources } from './pmd-rulesets.mjs';
 
@@ -74,6 +82,14 @@ function replaceFile(temporary, target) {
   }
 }
 
+function removeStaleParts(generated) {
+  const folder = path.resolve(repositoryRoot, ESLINT_REGISTRY_PARTS);
+  const names = existsSync(folder) ? readdirSync(folder) : [];
+  for (const name of names.filter((each) => !generated.has(`${ESLINT_REGISTRY_PARTS}/${each}`))) {
+    rmSync(path.join(folder, name));
+  }
+}
+
 function writeGenerated(generated) {
   for (const [file, text] of generated) {
     const target = path.resolve(repositoryRoot, file);
@@ -135,11 +151,12 @@ export async function main(options, { stderr }) {
     return 2;
   }
   const registry = new Map([
-    [ESLINT_REGISTRY, await eslintRegistrySource(repositoryRoot)],
+    ...(await eslintRegistrySources(repositoryRoot)),
     [KOTLIN_SCAN_REGISTRY, await kotlinScanRegistrySource(repositoryRoot)],
     ...pmdRulesetSources(repositoryRoot),
   ]);
   if (!options.includes('--check') && !options.includes('--data')) {
+    removeStaleParts(registry);
     writeGenerated(registry);
   }
   const reference = await referenceModule();

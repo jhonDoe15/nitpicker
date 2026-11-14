@@ -119,6 +119,18 @@ Database calls per element are left to the per-item I/O rules (`io-in-loop` in t
 `go-rules/io-in-loop` in the Go preset; the other presets' own rules are named in their documents), which also keep a bounded or
 awaited per-item remote call; a call the fan-out rule reports is not reported twice. A worker pool
 started once per slot of a count is bounded, while a count read from a collection's size is not.
+In the Python preset `io-in-loop` reports a database call per element also inside `asyncio.gather` and task
+groups (one query per item stays one query per item), while a remote call in those concurrent forms belongs to
+`unbounded-fan-out` and a remote call in a sequential loop to `io-in-loop`.
+
+Python effect rules: `accumulator-copy` (a name rebuilt from a copy of itself in a loop or `functools.reduce`),
+`lazy-relation-in-loop` (a Django or SQLAlchemy relationship read once per row of a query that does not fetch it),
+`remote-call-in-transaction` and `remote-call-under-lock` (a remote call while a database transaction or a lock is
+held; a fill-once block under a lock stays allowed), `retry-without-idempotency` (a payment create, message
+publish or `INSERT` without a stable key inside a retry scope) and `dual-write-without-outbox` (a database write
+and a message publish in one function, without an outbox). They live in
+`languages/python/rules/{accumulators,orm,transactions,retries,dual_write}/` and read the effect kinds of
+`languages/python/rules/kinds/`; the [Python preset](../docs/python-preset.md) lists what each recognizes.
 
 Unbounded thread pools: `pmd/UnboundedThreadPool` in the Java and Kotlin presets reports
 `Executors.newCachedThreadPool()` and a `ThreadPoolExecutor` without a maximum size in main
@@ -194,6 +206,46 @@ preset (a `Stream` from a Spring Data repository, `getResultStream()`, `queryFor
 `return`, and a Kotlin `Stream` collected inside `use { }` are left alone. A Kotlin `Flow` is not read:
 it is the default return type of a coroutine repository, so `toList()` on it is the usual read of a
 small result. The Go preset has no own rule engine yet.
+
+Per-item I/O: `nitpicker/no-io-in-loop` (production source, in `eslint-lint`, type-aware) reports a
+database query once per item of a loop or iteration callback (also inside `Promise.all(items.map(...))`, a
+`for await` loop or a comparator, where running them concurrently still sends one query per item) and a
+remote request once per item of a sequential loop, with the batch or bounded-concurrency form in the message.
+A call is classified by the type checker first (the package that declares the receiver's type or the callee),
+then through summaries of project helpers (effects proven by a type or an import, named in the finding as a
+path), then, where no type is known, by receiver names for a call written in the loop itself; the JavaScript
+preset runs the same rule. A call that takes a whole chunk, a paging or polling loop, a retry and a broker
+publish are left alone. A remote call inside `Promise.all` is the fan-out rule's, so no call is reported
+twice. The same rule runs as `io-in-loop` in the Python preset and `go-rules/io-in-loop` in the Go preset.
+
+Accumulator copies: `nitpicker/no-accumulator-concat` (production source, in `eslint-lint`) reports an array
+accumulator copied with `concat` on every step of `reduce` or of a loop (`all = all.concat(item.tags)`), where
+the work grows with the square of the list; the spread forms are `nitpicker/no-accumulating-spread`'s. It reads
+the accumulator's type when the type checker runs, so a string's `concat` is left alone.
+
+Lazy relations: `nitpicker/no-lazy-relation-in-loop` (production source, in `eslint-lint`, type-aware)
+reports a lazy TypeORM relation awaited once per item of a `find` or `getMany` result in the same function
+that does not fetch it (`relations`, `leftJoinAndSelect`), directly or through a project function given the
+item. Only proven cases are reported: a collection of unknown origin is not.
+
+Remote calls while a resource is held: `nitpicker/no-remote-call-in-transaction` and
+`nitpicker/no-remote-call-under-lock` (production source, in `eslint-lint`, type-aware) report a remote call,
+direct or through project helpers, inside a transaction that also runs a query (a Prisma `$transaction`
+callback, `startTransaction`/`commit` ranges, TypeORM, Sequelize, knex) or while a mutex or distributed lock is
+held (`runExclusive`, `async-lock`, Web Locks, redlock). The finding names the call path and the outbox form.
+A fill-once block under a lock (`if (!token) token = await refresh()`) is left alone, and an early rollback or
+release in a guard clause does not end the scope for the calls after it. Broker publishes belong to the
+dual-write rule.
+
+Retried writes: `nitpicker/no-retry-without-idempotency` (production source, in `eslint-lint`, type-aware)
+reports a Stripe `create` without an idempotency key, a broker publish without a deduplication id or a plain
+SQL `INSERT` inside a retry wrapper (`p-retry`, `async-retry`, `exponential-backoff`, cockatiel) or a
+hand-written retry loop, direct or through project helpers.
+
+Dual writes: `nitpicker/no-dual-write` (production source, in `eslint-lint`, type-aware) reports a function
+that writes to the database and publishes a broker message at separate calls, since a crash between them
+loses or duplicates the message; the outbox table or relay is the allowed form. An outbox relay (publish a
+row read from the database, then mark it sent) is not reported.
 
 Generic names: `nitpicker/no-generic-name` (production source, in `eslint-lint`) reports a file,
 folder, class, interface, type alias, enum or namespace whose last name word is `utils`, `helpers`,

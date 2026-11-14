@@ -1,0 +1,8 @@
+[
+  {
+    "tool": "python-rules",
+    "rule": "remote-call-in-transaction",
+    "mention": "outbox",
+    "subject": "requests.post()|transaction.atomic()"
+  }
+]
