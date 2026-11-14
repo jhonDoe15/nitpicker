@@ -227,3 +227,29 @@ func TestDiscount(t *testing.T) {
 	panic("crashed after the checks")
 }
 `;
+
+export function twice(result) {
+  return `package shop
+
+func Twice(x, flag bool) int {
+	if x {
+		x = flag
+	}
+	if x {
+		return 2
+	}
+	return ${String(result)}
+}
+`;
+}
+
+export function twiceTest(...calls) {
+  const checks = calls.map((call) => `\tif Twice(${call}) < 0 {\n\t\tt.Fatal("negative")\n\t}\n`);
+  return `package shop
+
+import "testing"
+
+func TestTwice(t *testing.T) {
+${checks.join('')}}
+`;
+}
