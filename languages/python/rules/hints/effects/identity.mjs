@@ -1,7 +1,8 @@
 import { EFFECT_HINTS } from './index.mjs';
 import { FIELD_SEPARATOR, PATH_SEPARATOR } from './subject.mjs';
+import { WRITE_HINTS } from '../writes/index.mjs';
 
-const STRUCTURED_RULES = new Set(EFFECT_HINTS.flatMap(({ rules }) => rules));
+const STRUCTURED_RULES = new Set([...EFFECT_HINTS, ...WRITE_HINTS].flatMap(({ rules }) => rules));
 const CALL_MARKS = /\((?:\.\.\.)?\)|\[\.\.\.\]/gu;
 const CALL_END = '()';
 

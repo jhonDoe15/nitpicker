@@ -36,6 +36,16 @@ describe('effect rules report', () => {
       'Order.customer|django|Order.objects.all()|to_dto()',
       '`to_dto()` receives each item of the loop and reads its lazy relationship `Order.customer`: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
     ],
+    [
+      'remote-call-in-transaction',
+      'requests.post()|transaction.atomic()',
+      '`requests.post()` makes a remote call while `transaction.atomic()` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
+    ],
+    [
+      'remote-call-under-lock',
+      'notify() > requests.post()|self._lock',
+      '`notify()` (which calls `requests.post()`) makes a remote call while `self._lock` is held: every other caller waits for the remote latency, and a slow or hung remote service blocks them all',
+    ],
   ])('describes %s by its subject', (rule, subject, message) => {
     expect(ingestRulesReport(JSON.stringify([entry({ rule, subject })]))[0].message).toBe(message);
   });
