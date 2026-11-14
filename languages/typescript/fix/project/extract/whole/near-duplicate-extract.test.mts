@@ -1,8 +1,9 @@
 import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
-import { reuseFindingsFor } from '../../reuse/reuse-findings.mjs';
+import { fieldOf } from '../../../../../../shared/values/readers.mts';
+import { typescriptApi } from '../../../../adapters/typed/typescript-program.mts';
 import { useFixtureProjects } from '../../test-support/fixture-project.mts';
+import { remainingNearDuplicates as remaining } from '../test-support/near-duplicates-left.mts';
 import {
   arrow,
   asyncCopy,
@@ -11,24 +12,34 @@ import {
   loader,
   pair,
   twoMethods,
-} from '../test-support/sources.mjs';
-import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mjs';
+} from '../test-support/sources.mts';
+import { nearDuplicateExtractRecipe as recipe } from './near-duplicate-extract.mts';
 
+type Aligners = {
+  alignTop: (selection: string[], limit: number) => string;
+  alignBottom: (selection: string[], limit: number) => string;
+};
+
+const ts = typescriptApi();
 const projects = useFixtureProjects();
 
-function fix(files) {
+function fix(files: Record<string, string>) {
   return projects.fix(files, { recipe, rule: 'structure/near-duplicate' });
 }
 
-function remaining(result) {
-  return reuseFindingsFor({ projectRoot: result.projectRoot }, 'near-duplicate');
+function isAligners(value: unknown): value is Aligners {
+  return typeof fieldOf(value, 'alignTop') === 'function';
 }
 
-function run(source) {
+function run(source: string): Aligners {
   const { outputText } = ts.transpileModule(source.replaceAll('export ', ''), {
     compilerOptions: { target: ts.ScriptTarget.ES2022 },
   });
-  return vm.runInNewContext(`${outputText}\n({ alignTop, alignBottom })`);
+  const loaded: unknown = vm.runInNewContext(`${outputText}\n({ alignTop, alignBottom })`);
+  if (!isAligners(loaded)) {
+    throw new TypeError('The transpiled source does not load');
+  }
+  return loaded;
 }
 
 describe('nearDuplicateExtractRecipe', () => {
@@ -64,7 +75,7 @@ describe('nearDuplicateExtractRecipe', () => {
 
   it('keeps the line endings of a file that uses CRLF', () => {
     const result = fix({ 'src/align.ts': pair().replaceAll('\n', '\r\n') });
-    const text = result.tree['src/align.ts'];
+    const text = result.tree['src/align.ts'] ?? '';
     expect([text.includes('sharedAlignTop('), text.replaceAll('\r\n', '').includes('\n')]).toEqual([
       true,
       false,
@@ -222,12 +233,13 @@ describe('nearDuplicateExtractRecipe', () => {
     `);
   });
 
-  it.each([
+  it.each<[string[], number]>([
     [['a', 'bcd', 'efghij'], 4],
     [[], 6],
     [['  x '], 8],
   ])('returns what the copies returned for %j with limit %i', (selection, limit) => {
-    const [before, after] = [pair(), fix({ 'src/a.ts': pair() }).tree['src/a.ts']].map(run);
+    const before = run(pair());
+    const after = run(fix({ 'src/a.ts': pair() }).tree['src/a.ts'] ?? '');
     expect([after.alignTop(selection, limit), after.alignBottom(selection, limit)]).toEqual([
       before.alignTop(selection, limit),
       before.alignBottom(selection, limit),
