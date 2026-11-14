@@ -57,7 +57,7 @@ are listed at the end.
 | Regex pattern parts      | every part of a literal `re` pattern changes what it matches; the shorter form of the same pattern; no nested or overlapping quantifiers                                               | `regex-part-defect`, `regex-backtracking` (script)                                                                                                                                                                                                                                                                                                                                  |
 | Query order              | `order_by` on a unique key or with a tie-breaker (`order_by(User.created.desc(), User.id)`) before `limit`, `offset` or a slice; `aggregate_order_by` or `ArrayAgg(..., order_by=...)` | `unordered-query` (script)                                                                                                                                                                                                                                                                                                                                                          |
 | Lists in queries         | an empty check and fixed-size chunks (`itertools.batched(ids, 1000)`), or one array parameter (`any_(bindparam("ids", ids, type_=ARRAY(Integer)))`)                                    | `unbounded-query-array` (script)                                                                                                                                                                                                                                                                                                                                                    |
-| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                            | `io-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                               |
+| Input or output per item | one batch call or fixed-size chunks; no batch endpoint: a bounded fan-out (`asyncio.Semaphore`, `CapacityLimiter`, `ThreadPoolExecutor(max_workers=n)`)                                | `io-in-loop` (script)                                                                                                                                                                                                                                                                                                                                                               |
 | Shareable objects        | build once at module level, in `__init__` or in a `functools.cache` factory                                                                                                            | `reusable-object-per-call` (script)                                                                                                                                                                                                                                                                                                                                                 |
 | Lists used as sets       | a `set()` (or a `dict` as an ordered set); a `dict` built once for a lookup by key; `min`/`max` instead of `sorted(xs)[0]`                                                             | `list-used-as-set`, `linear-lookup-in-loop` (script), ruff `FURB192`                                                                                                                                                                                                                                                                                                                |
 | Streamed rows            | a fixed-size batch flushed inside the loop over a streamed query or server-side cursor                                                                                                 | `streamed-rows-collected` (script)                                                                                                                                                                                                                                                                                                                                                  |
@@ -805,13 +805,40 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   chunk or batch helper or a parameter of a function decorated with one. A subquery, a literal list
   and `session.execute(insert(User), rows)` (which SQLAlchemy batches) pass. The counterpart of
   `nitpicker/no-unbounded-query-array`; Django `__in` lookups are not read.
-- `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
-  at the same site (so one remote call has one owner), a worker task started once per slot of a
-  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
-  assigns), a loop over fixed-size chunks (`for part in itertools.batched(ids, 1000):`, the form
-  `unbounded-query-array` asks for) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
-  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `io-in-loop` reports a call with the kind `database` or `remote` once per item of a `for`, `while` or
+  comprehension, or in the callable of `map(...)`, `filter(...)`, a `sorted`, `min` or `max` key and an
+  executor's `map` or `submit`. The kind comes from the imports and client factories of the file
+  (`requests`, `httpx`, `aiohttp`, `sqlite3`, `psycopg`, `asyncpg`, `pymongo`, `redis`, `boto3` clients by
+  service, `Session` of SQLAlchemy), from the project's own functions (a function has the kinds of the
+  calls in its body and of the project functions it calls, so the finding names the path: `fetch_order()`,
+  which calls `requests.get()`; a call is followed into a nested function, a method of `self`, of a local
+  or annotated instance (`client = PriceClient()`, `PriceClient().price()`, `self.client: PriceClient`)
+  and a static or class method called through the class), and, where no import tells, from the receiver
+  name (`repo`, `db`, `session`, `cursor`, `conn`, `client`, `api`) with a method that reads or writes
+  (`find_*`, `get_by_*`, `save`, `execute`, the async Django ORM methods `aget`, `acreate`, `acount` and
+  the rest); a Django model's `save()`, `delete()` and `refresh_from_db()` (and `asave()`,
+  `adelete()`, `arefresh_from_db()`) are database calls. Value types and exceptions of those libraries
+  (CapWords names, anything from their `exceptions`, `auth`, `fields`, `extras`, `types` and `models`
+  modules: `HTTPError`, `HTTPBasicAuth`, `Json`, `httpx.URL`, `httpx.Timeout`) are no call; a receiver
+  bound to a literal or a builtin container (`{}`, `[]`, `dict()`, `defaultdict`, `Counter`, `deque`) is
+  no input or output whatever its name; a resolved client keeps its own kind (an `aiohttp` session's
+  `delete` is a remote call, not a database write); the commands of a Redis `pipeline()` and a DynamoDB
+  `batch_writer()` are buffered, and only the pipeline's `execute()` is the database call. A
+  `database` call is reported also inside `asyncio.gather`, a task group, tasks that are gathered later
+  or an executor: running one query per item concurrently is still one query per item, so fetch them
+  in one query (`WHERE id IN (...)`, `in_bulk`, `bulk_create`, `executemany`). A `remote` call in those
+  concurrent forms is left to `unbounded-fan-out`, which checks the bound, so one remote call has one
+  owner. In a sequential loop, or a task awaited at once, it is reported, and the message names a batch endpoint, fixed-size chunks of the items or, without a batch
+  endpoint, bounded concurrency (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or a
+  `ThreadPoolExecutor(max_workers=n)`). A `message` call (Kafka `send` and `produce`, pika
+  `basic_publish`, aio-pika, SQS `send_message`, SNS `publish`, Pub/Sub, NATS, Celery `delay`,
+  `apply_async` and `send_task`) is not reported: one publish per item is the protocol. Not reported
+  either: a paging loop (the condition reads a variable the body assigns); a retry (a `try` in the loop
+  that leaves on success, in its body or its `else`, while its handlers do not raise at their top
+  level); a loop over chunks (`itertools.batched`,
+  `more_itertools.chunked`, `ichunked`, `batched`, a loop variable named or built as a chunk, a
+  `range(0, len(items), n)` with a slice of `items`) whose call takes the whole chunk, unless the chunk loop sits inside another loop or the chunks have
+  one item.
 - `list-used-as-set` reports a list made with `[]` or `list()` (annotated or not, in a function or
   at module level) that gets `append` (or `+=`) and is tested with `in` or `not in` inside a loop, a
   comprehension, a `lambda` passed to `map`, `filter`, `sorted`, `min` or `max`, or a recursive
@@ -846,8 +873,8 @@ x.key == value)` and `any(x.key == value for x in xs)` inside a loop, comprehens
   (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
   Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
   `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
-  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
-  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  through `boto3`) and runs over a collection that is not fixed. The boto3 factories and services are the ones
+  `io-in-loop` uses, from one table (`index/clients.py`). The coroutine is resolved when it is a client call, a nested
   or module-level `async def` of the project, a method of the same class or an imported project
   function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
   in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or

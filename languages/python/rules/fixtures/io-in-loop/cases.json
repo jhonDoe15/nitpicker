@@ -2,6 +2,7 @@
   {
     "tool": "python-rules",
     "rule": "io-in-loop",
-    "mention": "batch it"
+    "mention": "batch it",
+    "subject": "requests.get()|remote"
   }
 ]
