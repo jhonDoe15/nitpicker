@@ -2348,7 +2348,9 @@ Most of what is left after formatting needs judgment: a function that is too lon
 survived, a branch no test takes, a duplicate, a dependency that points the wrong way. No recipe
 can rewrite these, but an agent still spends most of its work finding the code, its context and the
 form the rule allows. A comparison run writes that down in `fix-plans.json`, beside
-`new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The rule
+`new-findings.json`: one plan for each new enforceable finding of a nitpicker check. The surviving
+mutants, the mutants no test runs and the uncovered branches of one function share one plan (see
+`findings` below), so a function with twenty mutants gets one plan, not twenty. The rule
 reference marks such rules `fix plan`. Third-party lint (ESLint plugins, PMD, SpotBugs, ruff, and so
 on) keeps its message and its help link and gets no plan.
 
@@ -2363,18 +2365,26 @@ the project files and the allowed form of the rule. The schema is
   `extract-shared-function`, `invert-dependency`, `move-module`, `parse-at-boundary`,
   `reduce-complexity`, `group-parameters`, `flatten-hierarchy`, `exercise-production-code` and `follow-allowed-form`, the last for rules
   whose only guidance is their allowed form.
-- `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`.
+- `findings`: only on a plan that covers several findings of one rule in one function. It lists the
+  `line` and `column` of each, and `finding` is the first. The plan's `context` then lists each
+  mutant (`mutants`: line, column, mutator, original, replacement) or branch (`branches`: line,
+  the share covered, the outcomes not taken). Findings that name no function keep one plan each.
+- `target`: the `path`, the `symbol` when the finding names one, and the `startLine` and `endLine`
+  (for a grouped plan, the first and the last line it covers).
 - `context`: only what the kind needs. It holds the measured value and the limit with candidate
   blocks to move for a size rule, the branch and the nearest test file for coverage, the mutation
   (the mutator, the original and the replacement) for a surviving mutant, both copies for a
   duplicate, the function to extract from a near-duplicate (its signature, the arguments each copy
   passes, the shared folder the layout rules allow, and why no recipe made the change or which recipe to run), and the
-  import edge or cycle for an architecture rule. Where no test file exists, the
-  context names the path the project's test layout suggests.
+  import edge or cycle for an architecture rule. The test file is one beside the source, else an
+  existing test that imports the file (or a module that re-exports it, such as a feature `index`),
+  else a new path that follows where the project keeps its tests (for example a top-level `test/`
+  folder).
 - `steps`: the steps in order, with the real paths and names and the allowed form of the rule.
 - `doneWhen`: the finding that stops being reported.
 
-The report lists one line per plan (`<tool>/<rule> <path>:<line> <kind>`) and the console summary
+The report lists one line per plan (`<tool>/<rule> <path>:<line> <kind>`, with `(<n> findings)` added
+for a grouped plan) and the console summary
 one line, `Fix plans: <count>, see <folder>/fix-plans.json`. A project that ran no comparison, such
 as `--all`, has no plans. The plans come from one registry keyed by tool and rule
 (`shared/fix-plans/registry.mjs`), and the `fix plan` status of the rule reference is computed from
