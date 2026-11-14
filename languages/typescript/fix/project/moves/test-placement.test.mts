@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { useFixtureProjects } from '../test-support/fixture-project.mjs';
+import { useFixtureProjects } from '../test-support/fixture-project.mts';
 import {
   noExternalExecutablesInUnitTestsRecipe,
   noTestHelpersInSourceRecipe,
   noUncollectedTestsRecipe,
-} from './test-placement.mjs';
+} from './test-placement.mts';
 
 const projects = useFixtureProjects();
 const TESTS = "import { it } from 'vitest';\nit('works', () => {});\n";
