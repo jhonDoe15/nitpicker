@@ -26,15 +26,15 @@ whole project, so it takes as long as a full run; finish with the plain run belo
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
-2. Format every new file, and every file you touched that was formatted before your change
-   (`gofmt -l <file>` on the base lists it if not), with the formatter printed in the finding
-   (gofmt, gofumpt or goimports: the gate uses the one the project already uses, so never switch
-   it). With no other signal it is `gofmt -w`.
-3. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
-   pipe: you need its exit code. It runs `go vet`, `go test` and its own checks on the merge base
-   and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
-   each slow analyzer.
-4. Act on the exit code:
+2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
+   without a pipe: you need its exit code. It first formats the changed `.go` files with the
+   formatter the project already uses (gofmt, gofumpt or goimports; never switch it) and lists the
+   rewritten ones under "Fixed files:"; re-read those files before you edit them again. A file that
+   was unformatted before your change is left as it is: format the lines you changed there with
+   the command the finding prints. Then it runs `go vet`, `go test` and its own checks on the merge
+   base and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress
+   line for each slow analyzer.
+3. Act on the exit code:
    - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
      and you run the gate again without it before you finish.
    - 1: fix the failing tests the summary leads with, every new finding and any tool error listed
@@ -43,7 +43,7 @@ whole project, so it takes as long as a full run; finish with the plain run belo
      or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it
      says another run is in progress, wait for that run; never kill it.
      When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
-5. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
+4. Never suppress: no `//nolint`, `//lint:ignore`, build tags that hide a file from the checks,
    config `exclude`/`exceptions`, legacy entries, or weakened tests (`t.Skip` added to get past a
    failure). If a finding seems wrong, stop and ask. Never pass `--accept-policy-change`, set `NITPICKER_ACCEPT_POLICY_CHANGE`
    or add the `accept-policy-change` label: a `nitpicker-config/policy-loosened` finding is for a person
