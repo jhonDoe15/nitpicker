@@ -1,22 +1,9 @@
-import { RuleTester } from 'eslint';
-import tseslint from 'typescript-eslint';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import { rule as noPartialOutputAssertion } from '../rules/testing/assertions/no-partial-output-assertion.mjs';
 import { rule as noFloatEqualityInTests } from './no-float-equality-in-tests.mjs';
 import { rule as noSwitchedOffTests } from './no-switched-off-tests.mjs';
+import { typescriptRuleTester } from '../test-support/rule-tester.mts';
 
-Object.assign(RuleTester, {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  it,
-  itOnly: it.only,
-});
-const tester = new RuleTester({
-  languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
-});
+const tester = typescriptRuleTester();
 const filename = '/repo/test/report.test.ts';
 
 tester.run('no-switched-off-tests', noSwitchedOffTests, {
@@ -128,7 +115,7 @@ tester.run('no-partial-output-assertion for toMatch', noPartialOutputAssertion, 
 });
 
 const floatError = [{ messageId: 'floatEquality' }];
-const floatCases = (codes) => codes.map((code) => ({ code, errors: floatError }));
+const floatCases = (codes: string[]) => codes.map((code: string) => ({ code, errors: floatError }));
 
 tester.run('no-float-equality-in-tests', noFloatEqualityInTests, {
   valid: [
