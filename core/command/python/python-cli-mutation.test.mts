@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import {
+  linkSentence,
+  pickFields,
+  stringMatching,
+  toolNames,
+} from '../test-support/report-readers.mts';
+import type { PresetRun } from '../test-support/fixture-types.mts';
+import { fieldOf, listOf } from '../../../shared/values/readers.mts';
 
 const { callsLog, pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
-const mutantFindings = (result) =>
-  result.json('new-findings.json').filter(({ rule }) => rule !== 'mutation-summary');
+const mutantFindings = (result: Pick<PresetRun, 'json'>) =>
+  listOf(result.json('new-findings.json')).filter(
+    (entry) => fieldOf(entry, 'rule') !== 'mutation-summary',
+  );
 
 describe('nitpicker with "preset": "python" and mutation testing', () => {
   const MUTATED_VALUE =
     'def x_value__mutmut_orig():\n    return 1\n\n\ndef x_value__mutmut_1():\n    return 2\n\n\ndef x_value__mutmut_2():\n    return 3\n';
-  const mutants = (exitCodes) =>
+  const mutants = (exitCodes: readonly number[]) =>
     JSON.stringify({
       'src/demo/a.py': {
         exitCodes: Object.fromEntries(
@@ -49,7 +58,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
-        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
+        anchor: { key: stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -80,7 +89,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
-        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
+        anchor: { key: stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -112,7 +121,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         message: 'Timeout number',
         classification: 'descriptive',
         symbol: 'value',
-        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
+        anchor: { key: stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -156,8 +165,8 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(result.json('new-findings.json').map(({ rule }) => rule)).toEqual(['B006']);
-    const missing = (snapshot) => ({
+    expect(pickFields(result.json('new-findings.json'), 'rule')).toEqual([['B006']]);
+    const missing = (snapshot: string) => ({
       tool: 'mutation',
       snapshot,
       rule: 'mutation-failed',
@@ -178,10 +187,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(0);
-    expect(result.json('summary.json').tools.map(({ name }) => name)).toEqual([
-      'python',
-      'repository-hygiene',
-    ]);
+    expect(toolNames(result.json('summary.json'))).toEqual(['python', 'repository-hygiene']);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
   });
   it('does not run mutmut when the tests fail, and the tests-not-run error is the only one', () => {
@@ -193,7 +199,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-not-run']);
+    expect(pickFields(result.json('tool-errors.json'), 'rule')).toEqual([['tests-not-run']]);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toHaveLength(1);
   });
   it('reports a failing mutmut run as a tool error on head', () => {

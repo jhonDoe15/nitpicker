@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mts';
-import { commit } from '../../diff/git/test-support/git-repository.mjs';
-import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
+import { commit } from '../../diff/git/test-support/git-repository.mts';
+import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { linkSentence } from '../test-support/report-readers.mts';
+import { fieldOf } from '../../../shared/values/readers.mts';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -37,8 +38,8 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         'other/o',
       ].map((name) => [`src/${name}.py`, '']),
     );
-    const scan = (imports) => `${JSON.stringify(imports)}\n`;
-    const from = (module, ...names) => ({ level: 0, module, names });
+    const scan = (imports: object) => `${JSON.stringify(imports)}\n`;
+    const from = (module: string, ...names: readonly string[]) => ({ level: 0, module, names });
     const feature = {
       'src/feature/a.py': [from('base', 'core')],
       'src/feature/b.py': [from('base', 'core')],
@@ -124,8 +125,8 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     ]);
   });
   it('fails on a new package cycle and a new import of a package the project does not list', () => {
-    const from = (module, ...names) => ({ level: 0, module, names });
-    const scan = (imports) => `${JSON.stringify(imports)}\n`;
+    const from = (module: string, ...names: readonly string[]) => ({ level: 0, module, names });
+    const scan = (imports: object) => `${JSON.stringify(imports)}\n`;
     const root = pythonRepository({
       'src/orders/__init__.py': '',
       'src/orders/service.py': '',
@@ -154,7 +155,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     const result = run(root);
 
     expect(result.exitCode, result.text).toBe(1);
-    expect(newFindings(result, 'package-cycle').map(({ path }) => path)).toEqual([
+    expect(newFindings(result, 'package-cycle').map((entry) => fieldOf(entry, 'path'))).toEqual([
       'src/billing/__init__.py',
       'src/orders/__init__.py',
     ]);
@@ -177,7 +178,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     ]);
   });
   it('fails on a new import of a module that does not exist', () => {
-    const scan = (imports) => `${JSON.stringify(imports)}\n`;
+    const scan = (imports: object) => `${JSON.stringify(imports)}\n`;
     const root = pythonRepository({
       'src/billing/__init__.py': '',
       'src/billing/invoice.py': '',
