@@ -20,7 +20,7 @@ function messageFor(failureMessage: string, runnerName: string = RUNNER_NAMES.vi
       ],
     },
     '/p',
-    { runnerName },
+    { runnerName, mockPin: false },
   );
 }
 
@@ -75,7 +75,7 @@ describe('a failure from a missing environment variable', () => {
         ],
       },
       '/p',
-      { runnerName, snapshot },
+      { runnerName, snapshot, mockPin: false },
     );
   }
 

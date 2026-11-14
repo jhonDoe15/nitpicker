@@ -99,7 +99,11 @@ describe('the Jest command line', () => {
       {
         ...optionsFor(root),
         liveProjectRoot: PACKAGE_ROOT,
-        rerun: { files: [path.join(root, 'test/value.test.js')], namePattern: '^uncovered$' },
+        rerun: {
+          files: [path.join(root, 'test/value.test.js')],
+          namePattern: '^uncovered$',
+          withoutMockPin: false,
+        },
       },
       command(undefined, []),
     );

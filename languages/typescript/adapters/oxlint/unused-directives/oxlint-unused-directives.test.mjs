@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { withSharedUnusedDirectives } from '../../eslint/merge/unused-directives.mjs';
-import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
+import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 
 const policy = (rule) =>
   `export default [{ files: ['src/**/*.ts'], rules: { '${rule}': 'error' } }];\n`;
