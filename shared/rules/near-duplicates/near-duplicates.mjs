@@ -131,7 +131,7 @@ function nearDuplicateFinding(finding, { pair, analyzerName }) {
   });
 }
 
-export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
+export function nearDuplicateMatches(units, { isExcepted }) {
   const byId = new Map(units.map((unit) => [unitIdOf(unit), unit]));
   const rule = RULE_IDS.nearDuplicate;
   return findNearDuplicates(units.map((unit) => ({ ...unit, id: unitIdOf(unit) })))
@@ -139,6 +139,11 @@ export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
     .filter(({ finding, pair }) => !isLeftToCloneAnalyzer(finding, pair))
     .filter(({ finding, pair }) => !isTypeSpecialized(finding, pair))
     .filter(({ pair }) => !isPlatformVariant(pair))
-    .filter(({ pair }) => !pair.some(({ file }) => isExcepted(rule, file)))
-    .map(({ finding, pair }) => nearDuplicateFinding(finding, { pair, analyzerName }));
+    .filter(({ pair }) => !pair.some(({ file }) => isExcepted(rule, file)));
+}
+
+export function nearDuplicateFindings(units, { analyzerName, isExcepted }) {
+  return nearDuplicateMatches(units, { isExcepted }).map(({ finding, pair }) =>
+    nearDuplicateFinding(finding, { pair, analyzerName }),
+  );
 }

@@ -81,6 +81,13 @@ export const PROJECT_RECIPES = [
     safety: 'safe',
   }),
   lazyRecipe({
+    id: 'typescript-extract-near-duplicate',
+    rule: structureRule('near-duplicate'),
+    module: './extract/whole/near-duplicate-extract.mjs',
+    exportName: 'nearDuplicateExtractRecipe',
+    safety: 'safe',
+  }),
+  lazyRecipe({
     id: 'typescript-no-forwarding-wrapper',
     rule: eslintRule('no-forwarding-wrapper'),
     module: './wrappers/forwarding-wrapper.mjs',

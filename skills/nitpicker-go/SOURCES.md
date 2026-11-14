@@ -424,3 +424,7 @@ Two adversarial reviews of go-critic changed these rules:
 - **Overlaps settled**: exhaustive keeps a one-case enum switch over singleCaseSwitch, QF1012
   keeps the writes it reports over preferFprint, and revive's `useless-fallthrough` keeps the
   tagged switches over emptyFallthrough, which still covers untagged ones.
+
+## Near-duplicate extraction
+
+Go has no `near-duplicate` rule and no `--fix` recipes yet, so there is nothing to extract.

@@ -57,6 +57,27 @@ PMD twins the same fix clears, so the Java source recipes of AF15 do not repeat 
 already covers it, and its edit overlaps the Error Prone one, so the second is skipped),
 `ArrayTypeStyle`, `MultipleVariableDeclarations`, `NeedBraces`, `AvoidStarImport`.
 
+## Near-duplicate extraction
+
+`java-extract-near-duplicate` is a safe recipe for `structure/near-duplicate`. It parses each main
+source file with the tree-sitter grammar of the rule, finds the pairs with the engine and filters of
+the rule, and works on a `same` or `parameterizable` pair of methods in one class. The first copy
+becomes a private method placed after it, static when the body reads no instance state, and both
+bodies become one call. Signatures, `throws` clauses and annotations stay.
+
+- A differing literal, or a parameter of the method that nothing writes, becomes a parameter named
+  after what it flows into. A differing call or any other expression is not passed: a `Supplier`
+  would need the static type of the expression, which the text does not give, so the finding stays.
+- A literal in a `case` label, an annotation or a loop condition, an `int` literal that could narrow
+  to `byte`, `short` or `char`, a method with type parameters or varargs, copies with different
+  `throws`, a copy that is the only static one, copies in an interface, an enum, a record or an
+  anonymous class, a name the file already uses, and a copy in more than one pair are left alone.
+- Type holes are not turned into type parameters: `new URL(text)` against `new URI(text)` cannot be
+  written with a type parameter, and a changed signature would change callers.
+- Pairs in two classes or two files are not looked at. On gson, the URL and URI adapters are
+  anonymous classes and the SqlDate and SqlTime adapters are in two files, so the recipe changes
+  nothing there.
+
 ## Review list (applied only when the run selects the rule)
 
 281 checks. Their fix is correct for the finding but one of these holds, so a person asks for it:
