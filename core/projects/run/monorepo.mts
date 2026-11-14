@@ -17,7 +17,7 @@ import {
 } from '../report/combined-files.mts';
 import { combinedSummary, exitCodeOf, writeCombinedReports } from '../report/combined-summary.mjs';
 import { projectHeading, renderPlan, renderSummary } from '../report/console.mjs';
-import { outcomeOf } from '../report/outcome.mjs';
+import { outcomeOf, writeFailureReport } from '../report/outcome.mjs';
 import { analyzersByProject, unlistedFolders } from './context.mts';
 import {
   rejectPathScope,
@@ -85,6 +85,7 @@ function runSelected(
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     cli.stderr.write(`nitpicker failed in ${project.path}: ${message}\n`);
+    writeFailureReport(reportRoot, project.path, message);
     return outcomeOf({ exitCode: 2, reportRoot, error: message });
   }
 }
@@ -178,7 +179,7 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   const startedAt = Date.now();
   const { outputRoot, analyzers, comparison, outside, rows } = prepare(plan, cli);
   const notices = noticesOf(plan, comparison.changed, cli);
-  cli.stdout.write(renderPlan({ plan, rows, outside }));
+  cli.stdout.write(renderPlan({ plan, rows, outside, details: cli.options.details }));
   const repository = repositoryOf(planned, comparison, cli);
   const context = { cli, runProject, outputRoot, comparison, analyzers };
   const results = rows.map((row) => runRow(row, context));
@@ -187,6 +188,7 @@ function execute(planned: Planned, cli: MonorepoCli, runProject: RunProject): Ex
   const text: string = renderSummary({
     summary,
     summaryPath: path.join(outputRoot, 'summary.json'),
+    details: cli.options.details,
   });
   writeCombinedReports(outputRoot, summary, text);
   writeCombinedMachineReports({ outputRoot, plan, repository });

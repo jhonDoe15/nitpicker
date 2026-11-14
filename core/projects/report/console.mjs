@@ -28,6 +28,26 @@ function planLine({ project, selection }) {
   return `  ${verb} ${project.path} (${project.preset}): ${selection.reason}`;
 }
 
+function skippedLines(entries, reasonOf) {
+  const byReason = new Map();
+  for (const entry of entries) {
+    const reason = reasonOf(entry);
+    byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
+  }
+  return [...byReason].map(
+    ([reason, total]) => `  skip ${count(total, 'project')}: ${reason} (--details lists them)`,
+  );
+}
+
+function planLines(rows, details) {
+  if (details) {
+    return rows.map(planLine);
+  }
+  const ran = rows.filter(({ selection }) => selection.selected);
+  const skipped = rows.filter(({ selection }) => !selection.selected);
+  return [...ran.map(planLine), ...skippedLines(skipped, ({ selection }) => selection.reason)];
+}
+
 function outsideLine(outside) {
   if (outside.length === 0) {
     return [];
@@ -40,16 +60,23 @@ function outsideLine(outside) {
   return [`Changed files outside every project, not checked: ${listed}${more}`];
 }
 
-export function renderPlan({ plan, rows, outside }) {
-  return `${[introduction(plan), ...rows.map(planLine), ...outsideLine(outside)].join('\n')}\n`;
+export function renderPlan({ plan, rows, outside, details = false }) {
+  const lines = [introduction(plan), ...planLines(rows, details), ...outsideLine(outside)];
+  return `${lines.join('\n')}\n`;
 }
 
-function resultText({ status, newEnforceableFindings, reason, error, overallStatus }) {
+function firstLine(text) {
+  return text.split('\n')[0];
+}
+
+function resultText({ status, newEnforceableFindings, reason, error, overallStatus, report }) {
   if (status === 'skipped') {
     return `skipped (${reason})`;
   }
   if (status === 'error') {
-    return error === undefined ? 'tool errors, the run is incomplete' : `failed to run: ${error}`;
+    return error === undefined
+      ? 'tool errors, the run is incomplete'
+      : `failed to run: ${firstLine(error)}${report === undefined ? '' : ` (${report}/report.txt)`}`;
   }
   if (status === 'passed') {
     return 'no new violations';
@@ -110,10 +137,26 @@ function acceptanceLine(projects, repository) {
   ];
 }
 
-export function renderSummary({ summary, summaryPath }) {
-  const lines = summary.projects.map(
-    (entry) => `  ${MARKS[entry.status]} ${entry.path} (${entry.preset}): ${resultText(entry)}`,
-  );
+function summaryLine(entry) {
+  return `  ${MARKS[entry.status]} ${entry.path} (${entry.preset}): ${resultText(entry)}`;
+}
+
+function summaryLines(projects, details) {
+  if (details) {
+    return projects.map(summaryLine);
+  }
+  const ran = projects.filter(({ status }) => status !== 'skipped');
+  const skipped = projects.filter(({ status }) => status === 'skipped');
+  return [
+    ...ran.map(summaryLine),
+    ...skippedLines(skipped, ({ reason }) => reason).map((line) =>
+      line.replace('  skip ', `  ${MARKS.skipped} `),
+    ),
+  ];
+}
+
+export function renderSummary({ summary, summaryPath, details = false }) {
+  const lines = summaryLines(summary.projects, details);
   const closing = `Combined report: ${summaryPath}`;
   const repository = summary.repositoryPolicy;
   const all = [

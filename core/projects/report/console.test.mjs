@@ -23,12 +23,38 @@ describe('renderPlan', () => {
       ],
     };
 
-    expect(renderPlan({ plan, rows, outside: [] })).toBe(
+    expect(renderPlan({ plan, rows, outside: [], details: true })).toBe(
       'Monorepo: 3 projects detected (pnpm-workspace.yaml, Gradle build). ' +
         'List them in "projects" of nitpicker.config.json to choose them; ' +
         '"projects": [] keeps this repository one project.\n' +
         '  run  web (typescript): 2 changed files\n' +
         '  skip svc (java): no changed files\n',
+    );
+  });
+
+  it('collapses the skipped projects into one line per reason', () => {
+    const plan = { source: 'declared', projects: [] };
+    const skipped = (folder, reason) => ({
+      project: { path: folder, preset: 'typescript' },
+      selection: { selected: false, reason },
+    });
+
+    expect(
+      renderPlan({
+        plan,
+        rows: [
+          skipped('p1', 'no changed files'),
+          rows[0],
+          skipped('p2', 'no changed files'),
+          skipped('p3', 'not requested'),
+        ],
+        outside: [],
+      }),
+    ).toBe(
+      'Monorepo: 0 projects listed in "projects" of nitpicker.config.json.\n' +
+        '  run  web (typescript): 2 changed files\n' +
+        '  skip 2 projects: no changed files (--details lists them)\n' +
+        '  skip 1 project: not requested (--details lists them)\n',
     );
   });
 
@@ -77,8 +103,31 @@ describe('renderSummary', () => {
         '  ! c (typescript): tool errors, the run is incomplete\n' +
         '  ! d (typescript): failed to run: boom\n' +
         '  ✓ e (typescript): no new violations\n' +
-        '  - f (typescript): skipped (no changed files)\n' +
+        '  - 1 project: no changed files (--details lists them)\n' +
         'Combined report: /out/summary.json\n',
+    );
+  });
+
+  it('carries only the first line of a failure and points at the report that holds all of it', () => {
+    const summary = {
+      counts: { projects: 2, failed: 0, errored: 1, passed: 0, skipped: 1 },
+      projects: [
+        {
+          ...base,
+          path: 'api',
+          status: 'error',
+          error: 'install failed\nline 2\nline 3',
+          report: 'api',
+        },
+        { ...base, path: 'web', status: 'skipped', reason: 'no changed files' },
+      ],
+    };
+
+    expect(renderSummary({ summary, summaryPath: 'x', details: true })).toBe(
+      '\nMonorepo summary: 1 incomplete, 1 skipped (2 projects)\n' +
+        '  ! api (typescript): failed to run: install failed (api/report.txt)\n' +
+        '  - web (typescript): skipped (no changed files)\n' +
+        'Combined report: x\n',
     );
   });
 
@@ -108,7 +157,7 @@ describe('renderSummary', () => {
       '\nMonorepo summary: 2 failed, 1 skipped (3 projects)\n' +
         '  ✖ a (typescript): 1 new enforceable violation\n' +
         '  ✖ b (typescript): 1 new enforceable violation\n' +
-        '  - c (typescript): skipped (r)\n' +
+        '  - 1 project: r (--details lists them)\n' +
         'Policy loosenings in 2 projects. A person who accepts them all sets ' +
         'NITPICKER_ACCEPT_POLICY_CHANGE=aaaaaaaaaaaa,bbbbbbbbbbbb in CI.\n' +
         'Combined report: x\n',
