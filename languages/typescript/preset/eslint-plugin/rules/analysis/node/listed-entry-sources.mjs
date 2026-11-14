@@ -1,6 +1,7 @@
 import { variableNamed } from '../ancestry.mjs';
 
 const FS_MODULES = new Set(['fs', 'node:fs', 'fs/promises', 'node:fs/promises']);
+const PATH_MODULES = new Set(['path', 'node:path', 'path/posix', 'node:path/posix']);
 const UTF8_ENCODINGS = new Set(['utf8', 'utf-8']);
 const ITERATION_METHODS = new Set([
   'map',
@@ -25,15 +26,15 @@ const ITERATION_METHODS = new Set([
   'then',
 ]);
 
-function importedDefinition(sourceCode, definition) {
-  if (definition.type === 'ImportBinding') return FS_MODULES.has(definition.parent.source.value);
+function importedDefinition(sourceCode, definition, modules) {
+  if (definition.type === 'ImportBinding') return modules.has(definition.parent.source.value);
   const init = definition.type === 'Variable' ? definition.node.init : undefined;
   return (
     init?.type === 'CallExpression' &&
     init.callee.type === 'Identifier' &&
     init.callee.name === 'require' &&
     !(variableNamed(sourceCode, init.callee)?.defs.length > 0) &&
-    FS_MODULES.has(init.arguments[0]?.value)
+    modules.has(init.arguments[0]?.value)
   );
 }
 
@@ -50,7 +51,7 @@ function stableImportReference(reference) {
   );
 }
 
-export function isFsListing(scope, call) {
+function isModuleCall(scope, call, modules) {
   const callee = call.callee;
   const identifier = callee.type === 'Identifier' ? callee : callee.object;
   if (identifier?.type !== 'Identifier') return false;
@@ -62,8 +63,16 @@ export function isFsListing(scope, call) {
         ? !reference.isWrite() || reference.init
         : stableImportReference(reference),
     ) &&
-    importedDefinition(scope.sourceCode, variable.defs[0])
+    importedDefinition(scope.sourceCode, variable.defs[0], modules)
   );
+}
+
+export function isFsListing(scope, call) {
+  return isModuleCall(scope, call, FS_MODULES);
+}
+
+export function isPathBuilder(scope, call) {
+  return isModuleCall(scope, call, PATH_MODULES);
 }
 
 export function usesOrdinaryEncoding(call) {

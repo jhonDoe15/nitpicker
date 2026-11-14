@@ -1,6 +1,7 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { isEntryOfListedBase } from '../analysis/node/listed-entries.mjs';
+import { isPathBuilder } from '../analysis/node/listed-entry-sources.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { isContained, unwrapped } from './path-containment.mjs';
 
@@ -142,6 +143,7 @@ function listedEntryBase(scope, node, parts) {
   if (
     node.type === 'CallExpression' &&
     parts?.length === 2 &&
+    isPathBuilder(scope, node) &&
     ['join', 'resolve'].includes(importedCalleeName(node.callee, scope.pathModule))
   ) {
     return parts[0];
