@@ -5,7 +5,7 @@ import path from 'node:path';
 import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { runMaven } from './maven-command.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
-import { withoutTestTools } from './quick/maven-quick.mjs';
+import { withoutPitTools, withoutTestTools } from './quick/maven-quick.mjs';
 
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
@@ -210,12 +210,13 @@ export function resolveTools({
   spawn,
   timeoutMs,
   quick = false,
+  mutationOff = false,
 }) {
   const all = toolDependencies(pinned, launcherVersions, extraTools);
   return resolveToolSet({
     projectRoot,
     maven,
-    tools: quick ? withoutTestTools(all) : all,
+    tools: quick ? withoutTestTools(all) : withoutPitTools(all, mutationOff),
     spawn,
     timeoutMs,
   });

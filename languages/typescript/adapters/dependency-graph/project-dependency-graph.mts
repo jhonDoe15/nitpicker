@@ -28,6 +28,7 @@ import {
 import { projectGraphLayer } from './project-config/graph-layer.mts';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
 import type { SpawnSyncReturns } from 'node:child_process';
+import { describeProcessEnd } from '../../../../shared/processes/process-failure.mjs';
 
 export type CruiseViolation = {
   readonly rule?: unknown;
@@ -70,6 +71,7 @@ type Cruise = {
   readonly tool: string;
 };
 
+const TOOL = 'dependency-cruiser';
 const buildOnce: (key: string, build: () => string) => string = untypedBuildOnce;
 const dependencyGraphTsconfig: (layout: unknown) => unknown = untypedDependencyGraphTsconfig;
 const readLayout: () => { readonly excludePattern?: string } = readUntypedLayout;
@@ -115,7 +117,7 @@ function cruiseSpecification({
       requested.length === 0 ? undefined : requested.join('|'),
       readLayout().excludePattern,
     ),
-    tool: toolBinaryPath('dependency-cruiser', {
+    tool: toolBinaryPath(TOOL, {
       ...(liveProjectRoot === undefined ? {} : { projectRoot: liveProjectRoot }),
       bin: 'bin/dependency-cruise.mjs',
     }),
@@ -169,14 +171,13 @@ function assertCruised(result: SpawnSyncReturns<string>): void {
     throw result.error;
   }
   if (typeof result.signal === 'string') {
-    throw new TransientBuildError(`dependency-cruiser was terminated by ${result.signal}`);
+    throw new TransientBuildError(describeProcessEnd(TOOL, result));
   }
   if (
     !(result.status === 0 || result.status === 1) ||
     (result.status === 1 && 'error' in parseJson(result.stdout))
   ) {
-    const detail = result.stderr.trim() || result.stdout.trim() || 'no diagnostic output';
-    throw new Error(`dependency-cruiser exited with ${String(result.status)}: ${detail}`);
+    throw new Error(describeProcessEnd(TOOL, result));
   }
 }
 

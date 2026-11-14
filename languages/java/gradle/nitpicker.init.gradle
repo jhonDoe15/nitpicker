@@ -40,6 +40,7 @@ def nitpickerSettings = { String tool, List<String> defaults ->
     file == null ? defaults : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
 }
 def quickRun = nitpickerArgument('nitpicker.quick') == 'true'
+def mutationOff = nitpickerArgument('nitpicker.mutation') == 'off'
 def nitpickerStyle = {
     def file = nitpickerArgument('nitpicker.kotlin.styleFile')
     file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
@@ -62,11 +63,19 @@ def relativeToRoot = { File file ->
     analysisRoot.toPath().relativize(file.toPath()).toString().replace('\\', '/')
 }
 
+def processFailure = { String name, int exit, String log ->
+    def killed = exit == 137
+        ? ' (killed, usually by the out-of-memory killer; run fewer jobs at once with NITPICKER_MAX_PARALLEL or give the job more memory)' : ''
+    def text = log.trim()
+    "${name} exited with ${exit}${killed}${text.isEmpty() ? ', and its log is empty' : ': ' + text}".toString()
+}
+
 def runProcess = { String name, List<String> command, File directory ->
     def process = new ProcessBuilder(command).directory(directory).redirectErrorStream(true).start()
     def log = process.inputStream.getText('UTF-8')
-    if (process.waitFor() != 0) {
-        throw new GradleException("${name} failed: ${log.trim()}".toString())
+    def exit = process.waitFor()
+    if (exit != 0) {
+        throw new GradleException(processFailure(name, exit, log))
     }
 }
 
@@ -374,8 +383,9 @@ def runNode = { File script, List<String> arguments, String failure ->
         throw new GradleException("${failure}: could not run ${nodeCommand}: ${error.message}")
     }
     def log = process.inputStream.getText('UTF-8')
-    if (process.waitFor() != 0) {
-        throw new GradleException("${failure}: ${log.trim()}")
+    def exit = process.waitFor()
+    if (exit != 0) {
+        throw new GradleException("${failure}: ${processFailure(nodeCommand, exit, log)}")
     }
 }
 def writeRules = { String kind, File plan ->
@@ -449,11 +459,13 @@ allprojects {
         project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
         project.ext.nitpickerToolLauncher = toolLauncher
         project.ext.nitpickerRunNode = runNode
+        project.ext.nitpickerProcessFailure = processFailure
         project.ext.nitpickerWriteRules = writeRules
         def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
         def testsFailed = nitpickerArgument('nitpicker.testsSkipped') == 'true' ||
             testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
+        def javaFormatterRuns = !(javaStyle in ['none', 'spring'])
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
         configurations {
@@ -475,7 +487,7 @@ allprojects {
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
             if (javaStyle == 'palantir') {
                 nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"
-            } else if (javaStyle != 'none') {
+            } else if (javaFormatterRuns) {
                 nitpickerFormat "com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}"
             }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
@@ -725,7 +737,7 @@ allprojects {
             group = 'nitpicker'
             classpath = configurations.nitpickerFormat
             mainClass = javaStyle == 'palantir' ? 'com.palantir.javaformat.java.Main' : 'com.google.googlejavaformat.java.Main'
-            enabled = javaStyle != 'none'
+            enabled = javaFormatterRuns
             onlyIf {
                 if (!javaFiles().isEmpty()) {
                     return true
@@ -865,8 +877,9 @@ allprojects {
                 def run = { List<String> command ->
                     def process = new ProcessBuilder(command).directory(projectDir).redirectErrorStream(true).start()
                     def log = process.inputStream.getText('UTF-8')
-                    if (process.waitFor() != 0) {
-                        throw new GradleException("Spring architecture rules failed: ${log.trim()}")
+                    def exit = process.waitFor()
+                    if (exit != 0) {
+                        throw new GradleException(processFailure('Spring architecture rules', exit, log))
                     }
                 }
                 def bin = { String name -> new File(System.getProperty('java.home'), "bin/${name}").absolutePath }
@@ -1225,8 +1238,9 @@ allprojects {
                         output.absolutePath, classesOutput.absolutePath, analysisRoot.absolutePath] + roots)
                     .directory(projectDir).redirectErrorStream(true).start()
                 def log = process.inputStream.getText('UTF-8')
-                if (process.waitFor() != 0) {
-                    throw new GradleException("StructureMetrics failed: ${log.trim()}")
+                def exit = process.waitFor()
+                if (exit != 0) {
+                    throw new GradleException(processFailure('StructureMetrics', exit, log))
                 }
             }
         }
@@ -1243,7 +1257,10 @@ allprojects {
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
                 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure'
             if (!quickRun) {
-                dependsOn 'nitpickerJacoco', 'nitpickerPit'
+                dependsOn 'nitpickerJacoco'
+                if (!mutationOff) {
+                    dependsOn 'nitpickerPit'
+                }
             }
             dependsOn {
                 checkedTestTasks().findAll { it.name != 'test' }
@@ -1255,7 +1272,7 @@ allprojects {
             }
             doLast {
                 def formatReport = reportDir.get().file('format.txt').asFile
-                if (javaStyle == 'none' || !formatReport.exists()) {
+                if (!javaFormatterRuns || !formatReport.exists()) {
                     formatReport.text = ''
                 }
                 ranTestTasks().findAll { gradle.taskGraph.hasTask(it) }.each { testTask ->

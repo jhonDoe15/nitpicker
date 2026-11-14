@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { sourceTextReader } from '../function-locator.mjs';
 import { dropEntityAssociations, dropInheritedVersions } from '../../jpa/jpa-source-filters.mjs';
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
@@ -14,10 +15,14 @@ import {
   springRoots,
   withSpringTransactionFilters,
 } from '../../spring/transactions/transaction-filters.mjs';
+import { withoutUnconstrainedBodies } from '../../spring/web/request-body-constraints.mjs';
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
 import { withPmdLevels } from './pmd-levels.mjs';
+import { withRenderedPlaceholders } from '../../../messages/pmd-placeholders/pmd-placeholders.mjs';
+import { withoutRuntimeCryptoKeys } from './crypto-keys/crypto-key-filter.mjs';
+import { pmdProcessingErrors } from './processing/pmd-processing-errors.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -50,13 +55,8 @@ function withPrintedRules(report) {
   };
 }
 
-function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, identityKey) {
-  return prepareSarif(readSarifReport(path.join(reportRoot, file)), {
-    roots,
-    sourceRoots,
-    projectRoot,
-    identityKey,
-  });
+function preparedReport(log, { roots, sourceRoots, projectRoot }, identityKey) {
+  return prepareSarif(log, { roots, sourceRoots, projectRoot, identityKey });
 }
 
 function withOneAliasRule(log) {
@@ -71,62 +71,70 @@ function withOneAliasRule(log) {
   };
 }
 
-function filteredPmdFindings(pmd, context) {
-  const { allSourceRoots, projectRoot } = context;
-  return withJpaFilters(
-    withGeneratedMembers(
-      dropComputedReads(
-        withSpringTransactionFilters(
-          withoutSpringCoveredReads(ingestSarif(pmd, { tool: 'pmd' }).findings),
-          context,
-        ),
-        { projectRoot, roots: springRoots(context) },
-      ),
+function pmdFindings(raw, context) {
+  const { projectRoot } = context;
+  const sourceText = sourceTextReader(projectRoot);
+  const prepared = preparedReport(raw, context, (result) =>
+    result.message?.text?.replace(LINE_NUMBER, 'line'),
+  );
+  const pmd = withOneAliasRule(
+    withLockEvidence(
+      withPrintedRules(withLoadEffectSubjects(withPmdLevels(prepared), { projectRoot })),
       { projectRoot },
     ),
-    { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+  );
+  const constrained = withoutUnconstrainedBodies(
+    withoutRuntimeCryptoKeys(
+      withRenderedPlaceholders(ingestSarif(pmd, { tool: 'pmd' }).findings, { sourceText }),
+      { sourceText },
+    ),
+    { projectRoot, roots: springRoots(context), readText: sourceText },
+  );
+  return withoutSpringCoveredReads(constrained);
+}
+
+function withProjectFilters(findings, context) {
+  const { allSourceRoots, projectRoot } = context;
+  const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
+  return withFanOutDetails(
+    withWaitAdvice(
+      dropSleepsInFakes(
+        withProjectTypeMocks(
+          dropInheritedVersions(
+            withJpaFilters(
+              withGeneratedMembers(
+                dropComputedReads(withSpringTransactionFilters(findings, context), {
+                  projectRoot,
+                  roots: springRoots(context),
+                }),
+                { projectRoot },
+              ),
+              { projectRoot, sourceRoots: allSourceRoots, foreignKeys: context.foreignKeys },
+            ),
+            { projectRoot, sourceRoots: allSourceRoots },
+          ),
+          { projectRoot, mainRoots },
+        ),
+        { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
+      ),
+      { manifest: context.manifest, projectRoot },
+    ),
+    { projectRoot },
   );
 }
 
 export function sarifFindings(context) {
-  const { allSourceRoots, projectRoot } = context;
-  const pmd = withOneAliasRule(
-    withLockEvidence(
-      withPrintedRules(
-        withLoadEffectSubjects(
-          withPmdLevels(
-            preparedReport('pmd.sarif', context, (result) =>
-              result.message?.text?.replace(LINE_NUMBER, 'line'),
-            ),
-          ),
-          { projectRoot },
-        ),
-      ),
-      { projectRoot },
-    ),
+  const { projectRoot } = context;
+  const pmd = readSarifReport(path.join(context.reportRoot, 'pmd.sarif'));
+  const spotbugs = preparedReport(
+    readSarifReport(path.join(context.reportRoot, 'spotbugs.sarif')),
+    context,
+    spotbugsSubject,
   );
-  const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
-  const mainRoots = [...(allSourceRoots ?? []), ...(context.manifest?.kotlinSourceRoots ?? [])];
   return [
-    ...withFanOutDetails(
-      withWaitAdvice(
-        dropSleepsInFakes(
-          withProjectTypeMocks(
-            dropInheritedVersions(filteredPmdFindings(pmd, context), {
-              projectRoot,
-              sourceRoots: allSourceRoots,
-            }),
-            { projectRoot, mainRoots },
-          ),
-          { rule: FIXED_SLEEP_RULE, projectRoot, mainRoots },
-        ),
-        { manifest: context.manifest, projectRoot },
-      ),
-      { projectRoot },
-    ),
-    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
-      tool: 'spotbugs',
-    }).findings,
+    ...withProjectFilters(pmdFindings(pmd, context), context),
+    ...pmdProcessingErrors(pmd, context),
+    ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), { tool: 'spotbugs' }).findings,
   ];
 }
 

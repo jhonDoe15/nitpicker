@@ -271,7 +271,7 @@ describe('config file', () => {
     ]);
     expect(() => validateConfig({ preset: 'java', thresholds: { lineLength: 140 } })).toThrow(
       new Error(
-        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths',
+        'nitpicker.config.json: "thresholds.lineLength" is not supported with "preset": "java": Java line length follows the formatter (google-java-format wraps at 100, palantir-java-format and Spring Java Format at 120); with the "conventions" key "java.formatter" set to "none", "java.lineLength" (any number of columns) sets it, as does max on LineLength in config/checkstyle/checkstyle.xml once "tools": { "checkstyle": { "precedence": ["project"] } } opts in, and an exception for "line-length-limit" lifts the rule for some paths',
       ),
     );
   });

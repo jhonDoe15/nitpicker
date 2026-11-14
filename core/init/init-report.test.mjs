@@ -80,4 +80,20 @@ describe('the install lines of the init report', () => {
       ].join('\n'),
     );
   });
+
+  it('says "too old" instead of "missing" for an installed peer below the supported range', () => {
+    const peers = {
+      missing: ['vitest@^4.1.11', 'nitpicker@1.0.0'],
+      absent: ['nitpicker@1.0.0'],
+      outdated: ['vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)'],
+      command: "pnpm add --save-dev 'vitest@^4.1.11' nitpicker@1.0.0",
+    };
+
+    expect(peerSection(peers)).toBe(
+      [
+        'Install what nitpicker needs from your project (missing: nitpicker@1.0.0; vitest too old (have 4.0.5, need ^4.1.11 || ^5.0.0)):',
+        "  pnpm add --save-dev 'vitest@^4.1.11' nitpicker@1.0.0",
+      ].join('\n'),
+    );
+  });
 });
