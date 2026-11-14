@@ -1,5 +1,5 @@
 import type { Linter } from 'eslint';
-import { writeFileSync } from 'node:fs';
+import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, vi } from 'vitest';
@@ -28,7 +28,7 @@ export function usePresetConfig(label: string): {
   async function importConfig({ root, policy }: Import): Promise<unknown> {
     if (policy !== undefined) {
       const policyFile = path.join(root, 'policy.json');
-      writeFileSync(policyFile, JSON.stringify(policy));
+      await writeFile(policyFile, JSON.stringify(policy));
       vi.stubEnv('NITPICKER_POLICY', policyFile);
     }
     importCount += 1;

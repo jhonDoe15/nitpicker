@@ -1,4 +1,4 @@
-import type { FailureMessageCase } from './case-types.mts';
+import type { FailureMessageCase } from './typed/case-types.mts';
 import { strictAdaptersConfig } from '../../eslint-config/strict-adapters.mts';
 import { strictSyntaxConfig } from '../../eslint-config/strict.mts';
 

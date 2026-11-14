@@ -1,4 +1,4 @@
-import type { FailureMessageCase, SignatureOptions } from '../case-types.mts';
+import type { FailureMessageCase, SignatureOptions } from '../typed/case-types.mts';
 import { strictSyntaxConfig } from '../../../eslint-config/strict.mts';
 
 function syntaxCase([name = '', banned = '', allowed = '']: string[]): FailureMessageCase {

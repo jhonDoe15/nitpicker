@@ -10,7 +10,10 @@ import {
   testOnlyExportFindings as untypedTestOnlyExportFindings,
 } from '../../../preset/unused-api/test-only/test-only-exports.mts';
 import type { PackagesInfo } from '../../../preset/unused-api/workspace/workspace-types.mts';
-import type { KnipReport } from '../../../preset/unused-api/test-only/typed/knip-types.mts';
+import type {
+  KnipConfig,
+  KnipReport,
+} from '../../../preset/unused-api/test-only/typed/knip-types.mts';
 import { loadPackages as untypedLoadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
 import { testConsoleFindings as untypedTestConsoleFindings } from '../../../../../shared/rules/console/console-findings.mjs';
 
@@ -23,7 +26,7 @@ export const testConsoleFindings: (
   },
 ) => Finding[] = untypedTestConsoleFindings;
 
-export type KnipConfig = Readonly<Record<string, unknown>>;
+export type { KnipConfig };
 
 export type IsExcepted = (rule: string, ...candidates: readonly unknown[]) => boolean;
 

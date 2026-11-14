@@ -1,4 +1,5 @@
-import type { Fields, Position, Span } from '../crap-types.mts';
+import type { Position } from '../../../adapters/oxlint/plan/oxlint-shapes.mts';
+import type { Fields, Span } from '../crap-types.mts';
 
 export const MAX_COLUMN = Number.MAX_SAFE_INTEGER;
 

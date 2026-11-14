@@ -1,7 +1,7 @@
 import path from 'node:path';
 import type { Linter } from 'eslint';
-import type { CaseOutcome, FailureMessageCase, Fixture } from './case-types.mts';
-import { appendSentence, linter } from './harness-views.mts';
+import type { CaseOutcome, FailureMessageCase, Fixture } from './typed/case-types.mts';
+import { appendSentence, linter } from './typed/harness-views.mts';
 import { eslintRoute } from '../../../adapters/hints/eslint-routes.mts';
 
 export function projectRelative(filename: string): string {

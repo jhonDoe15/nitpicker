@@ -1,12 +1,8 @@
 import path from 'node:path';
 import { storyGlobs } from '../../eslint-config/scope-support.mjs';
 import { fieldsOf, textsOf } from '../../../../../shared/values/readers.mts';
-import {
-  type KnipConfig,
-  type ProductionLayout,
-  globMatcher,
-  toPosix,
-} from './typed/layout-views.mts';
+import { type ProductionLayout, globMatcher, toPosix } from './typed/layout-views.mts';
+import type { KnipConfig } from './typed/knip-types.mts';
 
 const TEST_RUNNER_CONFIG = /^vitest/u;
 const TEST_RUNNER_PLUGINS = [

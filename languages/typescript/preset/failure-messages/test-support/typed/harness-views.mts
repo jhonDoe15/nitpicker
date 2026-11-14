@@ -1,5 +1,5 @@
 import { Linter } from 'eslint';
-import { appendSentence as untypedAppendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
+import { appendSentence as untypedAppendSentence } from '../../../../../../shared/messages/exception-sentence.mjs';
 
 const linterClass: new () => {
   verify(code: string, config: unknown, options: { filename: string }): Linter.LintMessage[];

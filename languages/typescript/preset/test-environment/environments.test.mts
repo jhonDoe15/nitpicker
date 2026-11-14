@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Environments } from './environment-types.mts';
+import type { Environments } from './typed/environment-types.mts';
 import {
   DEFAULT_ENVIRONMENT,
   environmentsFromConfig as untypedEnvironmentsFromConfig,

@@ -7,13 +7,16 @@ import {
 } from './layout-views.mts';
 import { parseJson } from '../../../../../shared/values/readers.mts';
 import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
-import { onTestFinished } from 'vitest';
+import { onTestFinished, vi } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { containedPath as untypedContainedPath } from '../../../../../core/fix/common/contained-path.mjs';
+
 const sourcePath: (file: string) => string = checkoutModulePath;
+const containedPath: (root: string, name: string) => string = untypedContainedPath;
 
 export const defaults = path.join(fileURLToPath(new URL('../../', import.meta.url)), 'defaults');
 
@@ -33,7 +36,7 @@ export function trackTemporaryRoot(root: string): void {
 }
 
 export function readDefault(name: string): unknown {
-  return parseJson(readFileSync(path.join(defaults, name), 'utf8'));
+  return parseJson(readFileSync(containedPath(defaults, name), 'utf8'));
 }
 
 function isVitestFactory(value: unknown): value is VitestConfigFactory {
@@ -53,27 +56,23 @@ export async function loadConfig<Result>(
   policy: Policy | undefined,
   read: (module: object) => Result,
 ): Promise<Result> {
-  const restore = setPolicyEnvironment(policy);
-  try {
-    const url = pathToFileURL(
-      sourcePath(path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath)),
-    );
-    url.search = `policy=${randomUUID()}`;
-    const loaded: unknown = await import(url.href);
-    if (typeof loaded !== 'object' || loaded === null) {
-      throw new TypeError(`${relativePath} does not load as a module`);
-    }
-    return read(loaded);
-  } finally {
-    restore();
+  setPolicyEnvironment(policy);
+  const url = pathToFileURL(
+    sourcePath(path.join(fileURLToPath(new URL('../../', import.meta.url)), relativePath)),
+  );
+  url.search = `policy=${randomUUID()}`;
+  const loaded: unknown = await import(url.href);
+  if (typeof loaded !== 'object' || loaded === null) {
+    throw new TypeError(`${relativePath} does not load as a module`);
   }
+  return read(loaded);
 }
 
 export function temporaryProject(files: Readonly<Record<string, string>>): string {
   const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-'));
   trackTemporaryRoot(projectRoot);
   for (const [name, text] of Object.entries(files)) {
-    writeFileSync(path.join(projectRoot, name), text);
+    writeFileSync(containedPath(projectRoot, name), text);
   }
   return projectRoot;
 }
@@ -85,34 +84,27 @@ export async function resolveVitestConfig(
 ): Promise<VitestConfig> {
   const config = await loadConfig(relativePath, policy, vitestFactoryOf);
   const projectRoot = temporaryProject(projectFiles);
-  const restorePolicy = setPolicyEnvironment(policy);
   const previousDirectory = process.cwd();
   process.chdir(projectRoot);
   try {
     return await config({ command: 'serve', mode: 'test' });
   } finally {
     process.chdir(previousDirectory);
-    restorePolicy();
   }
 }
 
-function setPolicyEnvironment(policy: Policy | undefined): () => void {
-  const previous = process.env['NITPICKER_POLICY'];
+function setPolicyEnvironment(policy: Policy | undefined): void {
+  onTestFinished(() => {
+    vi.unstubAllEnvs();
+  });
   if (policy === undefined) {
-    delete process.env['NITPICKER_POLICY'];
-  } else {
-    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-config-'));
-    trackTemporaryRoot(root);
-    const policyFile = path.join(root, 'policy.json');
-    const { frameworks } = policy;
-    writeFileSync(policyFile, JSON.stringify({ ...resolveHeadPolicy(policy), frameworks }));
-    process.env['NITPICKER_POLICY'] = policyFile;
+    vi.stubEnv('NITPICKER_POLICY', undefined);
+    return;
   }
-  return () => {
-    if (previous === undefined) {
-      delete process.env['NITPICKER_POLICY'];
-    } else {
-      process.env['NITPICKER_POLICY'] = previous;
-    }
-  };
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-config-'));
+  trackTemporaryRoot(root);
+  const policyFile = path.join(root, 'policy.json');
+  const { frameworks } = policy;
+  writeFileSync(policyFile, JSON.stringify({ ...resolveHeadPolicy(policy), frameworks }));
+  vi.stubEnv('NITPICKER_POLICY', policyFile);
 }

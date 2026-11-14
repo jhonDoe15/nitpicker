@@ -1,4 +1,4 @@
-import type { CaseRow, FailureMessageCase } from '../case-types.mts';
+import type { CaseRow, FailureMessageCase } from '../typed/case-types.mts';
 import { listOf } from '../../../../../../shared/values/readers.mts';
 import tseslint from 'typescript-eslint';
 import { resolveLayout } from '../../../layout.mjs';

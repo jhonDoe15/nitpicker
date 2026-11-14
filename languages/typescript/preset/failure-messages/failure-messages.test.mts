@@ -3,11 +3,10 @@ import { routeProblems } from '../../../../core/exceptions/test-support/route-ch
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { eslintRoute } from '../../adapters/hints/eslint-routes.mts';
 import { checkFailureMessageCase, lintFixture, projectRelative } from './test-support/harness.mts';
-import type { FailureMessageCase } from './test-support/case-types.mts';
-import { failureMessageCases as baseCases } from './test-support/cases.mts';
-import { testHonestyFailureMessageCases } from './test-support/honesty/test-honesty-cases.mts';
+import type { FailureMessageCase } from './test-support/typed/case-types.mts';
+import { allFailureMessageCases } from './test-support/cases.mts';
 
-const failureMessageCases = [...baseCases, ...testHonestyFailureMessageCases];
+const failureMessageCases = await allFailureMessageCases();
 
 function caseWhere(matches: (testCase: FailureMessageCase) => boolean): FailureMessageCase {
   const found = failureMessageCases.find(matches);

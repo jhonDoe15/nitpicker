@@ -1,4 +1,4 @@
-import type { FailureMessageCase } from './case-types.mts';
+import type { FailureMessageCase } from './typed/case-types.mts';
 import { strictDomainConfig } from '../../eslint-config/strict/strict-domain.mjs';
 import { policyFailureMessageCases } from './policy/policy-cases.mts';
 

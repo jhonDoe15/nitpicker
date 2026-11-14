@@ -3,6 +3,8 @@ import { printLine, writeReport } from '../../../../shared/report-output/report-
 import { cruise, existingRoots } from '../dependency-graph/typed/graph-views.mts';
 import { analyzeCoupling, readLayout } from './typed/typed-rules.mts';
 
+const output = process.stdout;
+
 const layout = readLayout();
 const { sourceRoot } = layout;
 
@@ -21,11 +23,13 @@ await writeReport({
   projectRoot,
   outputPath,
   report,
+  output,
   summaryExtras: { stabilityDirectionSignals: report.stabilityDirection.length },
 });
-printLine('\nHighest-coupled modules (fan-in / fan-out / instability):');
+printLine(output, '\nHighest-coupled modules (fan-in / fan-out / instability):');
 for (const entry of report.hubs) {
   printLine(
+    output,
     `${String(entry.fanIn)}\t${String(entry.fanOut)}\t${String(entry.instability ?? 'N/A')}\t${entry.source}`,
   );
 }

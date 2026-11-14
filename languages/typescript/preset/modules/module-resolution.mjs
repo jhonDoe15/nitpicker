@@ -170,11 +170,9 @@ function followedFilesOf(file, specifiersOf, aliases) {
 }
 
 export function* reachableModules(entries, specifiersOf, limits) {
-  const { maxDepth, maxFiles } = limits;
-  const aliases = limits.aliases ?? [];
-  const entryFiles = [entries].flat();
-  const visited = new Set(entryFiles);
-  const queue = entryFiles.map((file) => ({ file, depth: 0 }));
+  const { maxDepth, maxFiles, aliases } = limits;
+  const queue = [entries].flat().map((file) => ({ file, depth: 0 }));
+  const visited = new Set(queue.map(({ file }) => file));
   for (const { file, depth, from } of queue) {
     if (depth > 0) yield { file, depth, from };
     const followed = new Set(followedFilesOf(file, specifiersOf, aliases));

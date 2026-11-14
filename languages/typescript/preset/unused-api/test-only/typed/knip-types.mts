@@ -14,3 +14,5 @@ export type KnipReport = {
     readonly file: string;
   })[];
 };
+
+export type KnipConfig = Readonly<Record<string, unknown>>;

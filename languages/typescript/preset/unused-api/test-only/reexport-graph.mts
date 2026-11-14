@@ -18,6 +18,7 @@ export const EVERYTHING = '<everything>';
 export const NAMED_EXPORTS = '<named exports>';
 
 const WILDCARDS = new Set([EVERYTHING, NAMED_EXPORTS]);
+const DEFAULT_EXPORT = 'default';
 
 function nodeKey({ file, name }: { readonly file: string; readonly name: string }): string {
   return `${file}\0${name}`;
@@ -33,7 +34,7 @@ function bindingsOf(imports: readonly ImportFact[]): Map<string, Binding> {
       ({ specifier, defaultName, namespaceName, named }): (readonly [string, Binding])[] => [
         ...(defaultName === undefined
           ? []
-          : [[defaultName, { specifier, imported: 'default' }] as const]),
+          : [[defaultName, { specifier, imported: DEFAULT_EXPORT }] as const]),
         ...(namespaceName === undefined
           ? []
           : [[namespaceName, { specifier, imported: EVERYTHING }] as const]),
@@ -158,7 +159,7 @@ function nextNodes(node: GraphNode, link: GraphLink & NamedLink): GraphNode[] {
 
 function expandWildcard(node: GraphNode, links: readonly GraphLink[]): Expansion {
   const next = links
-    .filter((link) => !(node.name === NAMED_EXPORTS && link.exported === 'default'))
+    .filter((link) => !(node.name === NAMED_EXPORTS && link.exported === DEFAULT_EXPORT))
     .flatMap((link) =>
       link.star
         ? [{ file: link.source, name: NAMED_EXPORTS, viaImport: node.viaImport }]
@@ -177,7 +178,7 @@ function expand(node: GraphNode, links: readonly GraphLink[]): Expansion {
   if (named.length > 0) {
     return { isDeclaration: false, next: named.flatMap((link) => nextNodes(node, link)) };
   }
-  const stars = node.name === 'default' ? [] : links.filter((link) => link.star);
+  const stars = node.name === DEFAULT_EXPORT ? [] : links.filter((link) => link.star);
   return {
     isDeclaration: true,
     next: stars.map((link) => ({ ...node, file: link.source })),
@@ -200,8 +201,29 @@ export function isCovered(
   return (
     used.has(nodeKey({ file, name })) ||
     used.has(nodeKey({ file, name: EVERYTHING })) ||
-    (name !== 'default' && used.has(nodeKey({ file, name: NAMED_EXPORTS })))
+    (name !== DEFAULT_EXPORT && used.has(nodeKey({ file, name: NAMED_EXPORTS })))
   );
+}
+
+function declarationsFrom(
+  start: GraphNode,
+  moduleOf: (file: string) => ResolvedModule,
+): GraphNode[] {
+  const seen = new Set<string>();
+  const pending = [start];
+  const found: GraphNode[] = [];
+  for (const node of pending) {
+    const unseen = !seen.has(visitKey(node));
+    const { isDeclaration, next } = unseen
+      ? expand(node, moduleOf(node.file).edges)
+      : { isDeclaration: false, next: [] };
+    seen.add(visitKey(node));
+    if (isDeclaration) {
+      found.push(node);
+    }
+    pending.push(...next);
+  }
+  return found;
 }
 
 export function reexportGraph(moduleOf: (file: string) => ResolvedModule): {
@@ -209,27 +231,11 @@ export function reexportGraph(moduleOf: (file: string) => ResolvedModule): {
   usedBy: (references: readonly Reference[]) => Set<string>;
   surfaceOf: (files: readonly string[]) => Set<string>;
 } {
-  function declarationsFrom(start: GraphNode): GraphNode[] {
-    const seen = new Set<string>();
-    const pending = [start];
-    const found: GraphNode[] = [];
-    for (const node of pending) {
-      const unseen = !seen.has(visitKey(node));
-      const { isDeclaration, next } = unseen
-        ? expand(node, moduleOf(node.file).edges)
-        : { isDeclaration: false, next: [] };
-      seen.add(visitKey(node));
-      if (isDeclaration) {
-        found.push(node);
-      }
-      pending.push(...next);
-    }
-    return found;
-  }
-
   function usedBy(references: readonly Reference[]): Set<string> {
     return new Set(
-      references.flatMap((reference) => declarationsFrom(referenceStart(reference)).map(nodeKey)),
+      references.flatMap((reference) =>
+        declarationsFrom(referenceStart(reference), moduleOf).map(nodeKey),
+      ),
     );
   }
 
@@ -238,7 +244,7 @@ export function reexportGraph(moduleOf: (file: string) => ResolvedModule): {
       const start = link.star
         ? { file: link.source, name: NAMED_EXPORTS, viaImport: false }
         : { file, name: link.exported, viaImport: false };
-      return declarationsFrom(start).map((node) => ({
+      return declarationsFrom(start, moduleOf).map((node) => ({
         hostFile: file,
         hostName: link.star || link.namespace ? undefined : link.exported,
         node,
@@ -249,7 +255,7 @@ export function reexportGraph(moduleOf: (file: string) => ResolvedModule): {
   function surfaceOf(files: readonly string[]): Set<string> {
     return new Set(
       files.flatMap((file) =>
-        declarationsFrom({ file, name: EVERYTHING, viaImport: false }).map(nodeKey),
+        declarationsFrom({ file, name: EVERYTHING, viaImport: false }, moduleOf).map(nodeKey),
       ),
     );
   }
