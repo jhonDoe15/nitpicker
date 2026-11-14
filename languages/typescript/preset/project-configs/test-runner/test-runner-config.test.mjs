@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { validateConfig } from '../../../../../core/configuration/validate.mjs';
 import { withHeadCheckoutFacts } from '../../head-policy.mjs';
 import { vitestRetryArguments } from './test-retry.mjs';
-import { runArea } from '../../../adapters/test-runners/test-support/runner-project.mjs';
+import { runArea } from '../../../adapters/test-runners/test-support/runner-project.mts';
 import { projectTestRetry } from './test-runner-config.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { OPT_IN, TESTS_FAILED, createRetryProjects } from './test-support/retry-projects.mjs';

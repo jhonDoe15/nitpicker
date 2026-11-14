@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import {
   createProject,
   lintProject,
-} from '../../../adapters/oxlint/test-support/oxlint-project.mjs';
+} from '../../../adapters/oxlint/test-support/oxlint-project.mts';
 import { regexpRules } from './regexp-rules.mjs';
 import { regexpRuleCases } from './test-support/regexp-cases.mjs';
 

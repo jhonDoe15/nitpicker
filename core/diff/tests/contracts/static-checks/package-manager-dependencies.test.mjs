@@ -12,8 +12,8 @@ import {
   dependencyPreparationMode,
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
-} from '../../../../../languages/typescript/adapters/static-checks/dependencies.mjs';
-import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mjs';
+} from '../../../../../languages/typescript/adapters/static-checks/dependencies.mts';
+import { installFakeManagers } from '../../../../../languages/typescript/adapters/dependency-graph/package-managers/test-support/fake-managers.mts';
 import { toolRoot, useStaticCheckFixtures } from './test-support/static-check-fixtures.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
