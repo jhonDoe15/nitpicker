@@ -2,11 +2,20 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readPinnedTools } from '../../builds/java-build.mjs';
-import { forbiddenMethodsOf } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
+import { readPinnedTools as untypedPinnedTools } from '../../builds/java-build.mjs';
+import { forbiddenMethodsOf as untypedForbiddenMethods } from '../../adapters/kotlin/detekt/detekt-lists.mjs';
+import { textOf } from '../../../../shared/values/readers.mts';
 import { kotlinSetup } from './kotlin-setup.mts';
+import type { JavaPolicy } from '../../adapters/typed/java-values.mts';
+import type { KotlinPinned } from './tools/kotlin-dependencies.mts';
+import type { KotlinOptions, ProjectModule } from '../typed/kotlin-types.mts';
 
-const roots = [];
+type SetupResult = ReturnType<typeof kotlinSetup>;
+
+const readPinnedTools: () => KotlinPinned = untypedPinnedTools;
+const forbiddenMethodsOf: (text: string) => unknown[] = untypedForbiddenMethods;
+
+const roots: string[] = [];
 const pinned = readPinnedTools();
 const NITPICKER_DETEKT = path.resolve(import.meta.dirname, '../../detekt/nitpicker-detekt.yml');
 const KTLINT_POM = pluginPom(
@@ -17,17 +26,47 @@ const KTFMT_POM = pluginPom(
    <configuration><kotlin><ktfmt><style>KOTLINLANG</style></ktfmt></kotlin></configuration>`,
 );
 
-const formatFacts = ({ formatter, ktfmtStyle, ktfmtEditorconfig }) => ({
+const formatFacts = ({
+  formatter,
+  ktfmtStyle,
+  ktfmtEditorconfig,
+}: KotlinOptions): Pick<KotlinOptions, 'formatter' | 'ktfmtStyle' | 'ktfmtEditorconfig'> => ({
   formatter,
   ktfmtStyle,
   ktfmtEditorconfig,
 });
 
-function pluginPom(body) {
+function optionsOf(result: SetupResult): KotlinOptions {
+  if (result.options === undefined) {
+    throw new Error('The setup has no options');
+  }
+  return result.options;
+}
+
+function moduleOf(withKotlin: boolean): ProjectModule {
+  return {
+    basedir: '/work',
+    buildDirectory: '/work/target',
+    outputDirectory: '/work/target/classes',
+    testOutputDirectory: '/work/target/test-classes',
+    sourceRoots: [],
+    testSourceRoots: [],
+    kotlin: withKotlin
+      ? {
+          jdkToolchain: undefined,
+          allOpen: { annotations: [], presets: [] },
+          sourceRoots: [],
+          testSourceRoots: [],
+        }
+      : undefined,
+  };
+}
+
+function pluginPom(body: string): string {
   return `<project><build><plugins><plugin>${body}</plugin></plugins></build></project>`;
 }
 
-function directory(files = {}) {
+function directory(files: Readonly<Record<string, string>> = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-options-'));
   roots.push(root);
   for (const [name, text] of Object.entries(files)) {
@@ -43,7 +82,13 @@ function setup({
   effectivePom = '',
   files,
   policy,
-}) {
+}: {
+  readonly preset?: string;
+  readonly modules?: readonly { readonly kotlin?: object }[];
+  readonly effectivePom?: string;
+  readonly files?: Readonly<Record<string, string>>;
+  readonly policy?: JavaPolicy;
+}): { projectRoot: string; work: string; result: SetupResult } {
   const projectRoot = directory(files);
   const work = directory();
   return {
@@ -52,10 +97,14 @@ function setup({
     result: kotlinSetup({
       projectRoot,
       policy: { preset, ...policy },
-      modules,
+      modules: modules.map(({ kotlin }) => moduleOf(kotlin !== undefined)),
       effectivePom,
       work,
       pinned,
+      maven: undefined,
+      environment: {},
+      spawn: undefined,
+      timeoutMs: undefined,
     }),
   };
 }
@@ -83,17 +132,17 @@ describe('kotlinSetup', () => {
   });
 
   it('follows the formatter the effective POM names, ktlint before ktfmt', () => {
-    expect(formatFacts(setup({ effectivePom: KTLINT_POM }).result.options)).toEqual({
+    expect(formatFacts(optionsOf(setup({ effectivePom: KTLINT_POM }).result))).toEqual({
       formatter: 'ktlint',
       ktfmtStyle: 'meta',
       ktfmtEditorconfig: false,
     });
-    expect(formatFacts(setup({ effectivePom: KTFMT_POM }).result.options)).toEqual({
+    expect(formatFacts(optionsOf(setup({ effectivePom: KTFMT_POM }).result))).toEqual({
       formatter: 'ktfmt',
       ktfmtStyle: 'kotlinlang',
       ktfmtEditorconfig: false,
     });
-    expect(setup({ effectivePom: '<name>plain</name>' }).result.options.formatter).toBe('none');
+    expect(optionsOf(setup({ effectivePom: '<name>plain</name>' }).result).formatter).toBe('none');
   });
 
   it('follows the head facts over the formatter the snapshot POM names', () => {
@@ -105,7 +154,7 @@ describe('kotlinSetup', () => {
       },
     });
 
-    expect(formatFacts(result.options)).toEqual({
+    expect(formatFacts(optionsOf(result))).toEqual({
       formatter: 'ktfmt',
       ktfmtStyle: 'google',
       ktfmtEditorconfig: false,
@@ -122,17 +171,17 @@ describe('kotlinSetup', () => {
       policy: { kotlinFormatter: 'ktfmt', toolPrecedence: { ktfmt: ['project', 'nitpicker'] } },
     });
 
-    expect(formatFacts(ignored.result.options)).toEqual({
+    expect(formatFacts(optionsOf(ignored.result))).toEqual({
       formatter: 'ktfmt',
       ktfmtStyle: 'meta',
       ktfmtEditorconfig: false,
     });
-    expect(formatFacts(opted.result.options)).toEqual({
+    expect(formatFacts(optionsOf(opted.result))).toEqual({
       formatter: 'ktfmt',
       ktfmtStyle: 'meta',
       ktfmtEditorconfig: true,
     });
-    expect(opted.result.options.style.editorconfigs).toEqual([
+    expect(optionsOf(opted.result).style.editorconfigs).toEqual([
       { path: '.editorconfig', text: 'root = true\n\nroot = true\nindent_size = 2\n' },
     ]);
     expect(opted.result.extraTools.map(({ name }) => name)).toEqual([
@@ -150,10 +199,10 @@ describe('kotlinSetup', () => {
       policy: { conventions: { 'kotlin.indentation': 4 } },
     });
 
-    expect(result.options.style.editorconfigs).toEqual([
+    expect(optionsOf(result).style.editorconfigs).toEqual([
       { path: '.editorconfig', text: 'root = true\n' },
     ]);
-    expect(result.options.style.ktlintDefaults).toBe('[*.{kt,kts}]\nindent_size = 4\n');
+    expect(optionsOf(result).style.ktlintDefaults).toBe('[*.{kt,kts}]\nindent_size = 4\n');
   });
 
   it('layers the project detekt config when the project is opted in and merges its forbidden calls into a lists file outside the project', () => {
@@ -165,14 +214,16 @@ describe('kotlinSetup', () => {
       policy: { toolPrecedence: { detekt: ['project', 'nitpicker'] } },
     });
 
-    expect(result.options.detektLayers).toEqual([
+    expect(optionsOf(result).detektLayers).toEqual([
       path.join(projectRoot, 'config/detekt/detekt.yml'),
     ]);
-    expect(result.options.detektLists).toBe(path.join(work, 'detekt-lists.yml'));
-    expect(forbiddenMethodsOf(readFileSync(result.options.detektLists, 'utf8'))).toEqual([
-      ...forbiddenMethodsOf(readFileSync(NITPICKER_DETEKT, 'utf8')),
-      { value: 'java.lang.Runtime.halt', reason: 'no halting' },
-    ]);
+    expect(optionsOf(result).detektLists).toBe(path.join(work, 'detekt-lists.yml'));
+    expect(forbiddenMethodsOf(readFileSync(textOf(optionsOf(result).detektLists), 'utf8'))).toEqual(
+      [
+        ...forbiddenMethodsOf(readFileSync(NITPICKER_DETEKT, 'utf8')),
+        { value: 'java.lang.Runtime.halt', reason: 'no halting' },
+      ],
+    );
   });
 
   it('lays the followed conventions over the project detekt config again when the project is listed and the conventions are pinned', () => {
@@ -184,7 +235,7 @@ describe('kotlinSetup', () => {
       },
     });
 
-    expect(result.options.detektLayers).toEqual([
+    expect(optionsOf(result).detektLayers).toEqual([
       path.join(work, 'followed-conventions.yml'),
       path.join(projectRoot, 'config/detekt/detekt.yml'),
       path.join(work, 'enforced-conventions.yml'),
@@ -200,14 +251,14 @@ describe('kotlinSetup', () => {
       policy: { conventions: { 'kotlin.lineLength': 100 } },
     });
 
-    expect(result.options.ktfmtMaxWidth).toBe(100);
+    expect(optionsOf(result).ktfmtMaxWidth).toBe(100);
   });
 
   it('ignores the project detekt config by default', () => {
     const { result } = setup({ files: { 'config/detekt/detekt.yml': 'style: {}\n' } });
 
-    expect(result.options.detektLayers).toEqual([]);
-    expect(result.options.detektLists).toBeUndefined();
+    expect(optionsOf(result).detektLayers).toEqual([]);
+    expect(optionsOf(result).detektLists).toBeUndefined();
   });
 
   it('rejects a configured detekt config that does not exist on head and ignores it on base', () => {
@@ -215,7 +266,7 @@ describe('kotlinSetup', () => {
       setup({ policy: { kotlinDetektConfig: 'missing.yml', snapshot: 'head' } }),
     ).toThrow(/"kotlin.detektConfig" is missing.yml, which does not exist/u);
     expect(
-      setup({ policy: { kotlinDetektConfig: 'missing.yml', snapshot: 'base' } }).result.options
+      optionsOf(setup({ policy: { kotlinDetektConfig: 'missing.yml', snapshot: 'base' } }).result)
         .detektLayers,
     ).toEqual([]);
   });

@@ -3,11 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readReactor } from '../maven-project.mts';
+import type { KotlinRoots } from './kotlin-roots.mts';
 
-const roots = [];
+const roots: string[] = [];
 const NONE_OPENED = { annotations: [], presets: [] };
 
-function project(directories) {
+function project(directories: readonly string[]): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-roots-'));
   roots.push(root);
   for (const directory of directories) {
@@ -20,13 +21,21 @@ function project(directories) {
   return root;
 }
 
-function plugin(executions, { configuration = '', group = 'org.jetbrains.kotlin' } = {}) {
+function plugin(
+  executions: string,
+  {
+    configuration = '',
+    group = 'org.jetbrains.kotlin',
+  }: { configuration?: string; group?: string } = {},
+): string {
   return `<plugin><groupId>${group}</groupId><artifactId>kotlin-maven-plugin</artifactId>
     ${configuration}<executions>${executions}</executions></plugin>`;
 }
 
-function execution(goal, directories, phase = '') {
-  const dirs = directories.map((directory) => `<sourceDir>${directory}</sourceDir>`).join('');
+function execution(goal: string, directories: readonly string[], phase = ''): string {
+  const dirs = directories
+    .map((directory: string) => `<sourceDir>${directory}</sourceDir>`)
+    .join('');
   const bound = phase === '' ? '' : `<phase>${phase}</phase>`;
   const configuration =
     directories.length === 0
@@ -35,7 +44,14 @@ function execution(goal, directories, phase = '') {
   return `<execution><id>${goal}</id>${bound}<goals><goal>${goal}</goal></goals>${configuration}</execution>`;
 }
 
-function effective(root, { build = '', plugins = '', main = 'src/main/java' }) {
+function effective(
+  root: string,
+  {
+    build = '',
+    plugins = '',
+    main = 'src/main/java',
+  }: { build?: string; plugins?: string; main?: string },
+): string {
   return `<project>
     <groupId>demo</groupId><artifactId>app</artifactId>
     <build>
@@ -47,11 +63,11 @@ function effective(root, { build = '', plugins = '', main = 'src/main/java' }) {
   </project>`;
 }
 
-function kotlinOf(root, pom) {
-  return readReactor(root, pom)[0].kotlin;
+function kotlinOf(root: string, pom: string): KotlinRoots | undefined {
+  return readReactor(root, pom)[0]?.kotlin;
 }
 
-function under(root, names) {
+function under(root: string, names: readonly string[]): string[] {
   return names.map((name) => path.join(root, name));
 }
 
@@ -130,7 +146,7 @@ describe('Kotlin source roots of a Maven module', () => {
     const plugins = plugin(execution('compile', []));
 
     expect(
-      kotlinOf(root, effective(root, { plugins, main: 'src/main/kotlin' })).sourceRoots,
+      kotlinOf(root, effective(root, { plugins, main: 'src/main/kotlin' }))?.sourceRoots,
     ).toEqual(under(root, ['src/main/kotlin']));
   });
 
@@ -147,7 +163,7 @@ describe('Kotlin source roots of a Maven module', () => {
       ]),
     );
 
-    expect(kotlinOf(root, effective(root, { plugins })).sourceRoots).toEqual(
+    expect(kotlinOf(root, effective(root, { plugins }))?.sourceRoots).toEqual(
       under(root, ['src/main/kotlin']),
     );
   });
@@ -158,7 +174,7 @@ describe('Kotlin source roots of a Maven module', () => {
       execution('compile', [`${root}/src/main/kotlin/gen`, `${root}/src/main/kotlin`]),
     );
 
-    expect(kotlinOf(root, effective(root, { plugins })).sourceRoots).toEqual(
+    expect(kotlinOf(root, effective(root, { plugins }))?.sourceRoots).toEqual(
       under(root, ['src/main/kotlin']),
     );
   });
@@ -167,22 +183,22 @@ describe('Kotlin source roots of a Maven module', () => {
     const root = project(['kaptSources']);
     const plugins = plugin(execution('kapt', [`${root}/kaptSources`]));
 
-    expect(kotlinOf(root, effective(root, { plugins })).sourceRoots).toEqual(
+    expect(kotlinOf(root, effective(root, { plugins }))?.sourceRoots).toEqual(
       under(root, ['kaptSources']),
     );
   });
 });
 
 describe('The all-open options of a Kotlin Maven module', () => {
-  const option = (text) => `<option>${text}</option>`;
-  const plugins = (...names) =>
+  const option = (text: string): string => `<option>${text}</option>`;
+  const plugins = (...names: string[]): string =>
     `<compilerPlugins>${names.map((n) => `<plugin>${n}</plugin>`).join('')}</compilerPlugins>`;
-  const execution = (goal, configuration) =>
+  const execution = (goal: string, configuration: string): string =>
     `<execution><id>${goal}</id><goals><goal>${goal}</goal></goals>` +
     `<configuration>${configuration}</configuration></execution>`;
-  const opened = (root, pluginXml) =>
-    kotlinOf(root, effective(root, { plugins: pluginXml })).allOpen;
-  const kotlinPlugin = (level, executions) =>
+  const opened = (root: string, pluginXml: string): KotlinRoots['allOpen'] | undefined =>
+    kotlinOf(root, effective(root, { plugins: pluginXml }))?.allOpen;
+  const kotlinPlugin = (level: string, executions: string): string =>
     `<plugin><groupId>org.jetbrains.kotlin</groupId><artifactId>kotlin-maven-plugin</artifactId>` +
     `<configuration>${level}</configuration><executions>${executions}</executions></plugin>`;
 
