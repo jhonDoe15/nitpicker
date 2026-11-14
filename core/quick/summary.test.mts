@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { quickLines, quickSummary } from './summary.mjs';
+import { quickLines, quickSummary } from './summary.mts';
 
 describe('quick summary', () => {
   it('lists the skipped checks and tells the reader to run the full gate', () => {

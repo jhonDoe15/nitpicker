@@ -7,11 +7,13 @@ import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
+import { parseJson } from '../../../shared/values/readers.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { fixtureGit } from '../../diff/git/test-support/git-repository.mts';
+import { writeFiles, type FileMap } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -26,7 +28,7 @@ const UNREADABLE_INDEX = new RegExp(
   'su',
 );
 
-function dirty(identity) {
+function dirty(identity: string): string {
   return findingLine(finding({ identity }));
 }
 
@@ -38,18 +40,22 @@ function repository() {
   });
 }
 
-function stage(root, files) {
+function stage(root: string, files: FileMap): void {
   writeFiles(root, files);
   fixtureGit(root, ['add', '--', ...Object.keys(files)]);
 }
 
-function findingLines(outputRoot, file) {
-  return JSON.parse(readFileSync(path.join(outputRoot, file), 'utf8')).map(
-    ({ path: findingPath, location }) => `${findingPath}:${String(location.line)}`,
+function findingLines(outputRoot: string, file: string): string[] {
+  return listOf(parseJson(readFileSync(path.join(outputRoot, file), 'utf8'))).map(
+    (entry) => `${String(fieldAt(entry, 'path'))}:${String(fieldAt(entry, 'location', 'line'))}`,
   );
 }
 
-function run(project, flags, environment = {}) {
+function run(
+  project: { readonly root: string; readonly baseRef: string },
+  flags: readonly string[],
+  environment: Readonly<Record<string, string>> = {},
+) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const exitCode = runCli({
@@ -64,13 +70,13 @@ function run(project, flags, environment = {}) {
 }
 
 describe('nitpicker --staged', () => {
-  const originalIndexFile = process.env.GIT_INDEX_FILE;
+  const originalIndexFile = process.env['GIT_INDEX_FILE'];
 
   afterEach(() => {
     if (originalIndexFile === undefined) {
-      delete process.env.GIT_INDEX_FILE;
+      delete process.env['GIT_INDEX_FILE'];
     } else {
-      process.env.GIT_INDEX_FILE = originalIndexFile;
+      process.env['GIT_INDEX_FILE'] = originalIndexFile;
     }
   });
 
@@ -95,8 +101,8 @@ describe('nitpicker --staged', () => {
     const { exitCode, output, outputRoot } = run(project, ['--staged']);
 
     expect(exitCode).toBe(0);
-    const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
-    expect([summary.mode, summary.staged]).toEqual(['full', true]);
+    const summary = parseJson(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+    expect([fieldAt(summary, 'mode'), fieldAt(summary, 'staged')]).toEqual(['full', true]);
     expect(output.stdoutText.split('\n').slice(0, 2)).toEqual([
       'Base: comparison-base (argument)',
       'Staged run: the head is the index. Unstaged edits and untracked files are not judged.',
@@ -148,27 +154,27 @@ describe('nitpicker --staged', () => {
     const project = repository();
     writeFiles(project.root, { 'src/main/staged.ts': dirty('staged-finding') });
     const indexFile = path.join(makeTemporaryRoot('nitpicker-staged-index-'), 'index');
-    process.env.GIT_INDEX_FILE = indexFile;
+    process.env['GIT_INDEX_FILE'] = indexFile;
     fixtureGit(project.root, ['read-tree', 'HEAD']);
     fixtureGit(project.root, ['add', '--', 'src/main/staged.ts']);
 
     const { exitCode } = run(project, ['--staged'], { GIT_INDEX_FILE: indexFile });
 
     expect(exitCode).toBe(1);
-    expect(process.env.GIT_INDEX_FILE).toBeUndefined();
+    expect(process.env['GIT_INDEX_FILE']).toBeUndefined();
   });
 
   it('keeps a hook index out of its git calls without --staged and judges the working tree', () => {
     const project = repository();
     writeFiles(project.root, { 'src/main/unstaged.ts': dirty('unstaged-finding') });
     const indexFile = path.join(makeTemporaryRoot('nitpicker-hook-index-'), 'index');
-    process.env.GIT_INDEX_FILE = indexFile;
+    process.env['GIT_INDEX_FILE'] = indexFile;
 
     const { exitCode, outputRoot } = run(project, [], { GIT_INDEX_FILE: indexFile });
 
     expect(exitCode).toBe(1);
     expect(findingLines(outputRoot, 'new-findings.json')).toEqual(['src/main/unstaged.ts:1']);
-    expect(process.env.GIT_INDEX_FILE).toBeUndefined();
+    expect(process.env['GIT_INDEX_FILE']).toBeUndefined();
   });
 
   it('compares the index with HEAD when the clone has no remote base', () => {

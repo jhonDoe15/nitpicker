@@ -6,16 +6,18 @@ import {
   finding,
   findingLine,
   policy,
-} from '../../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
-import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mjs';
+} from '../../diff/execution/test-support/analyzer-findings.mts';
+import { fieldAt, listOf } from '../../../scripts/json/fields.mts';
+import { parseJson } from '../../../shared/values/readers.mts';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mts';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mts';
+import { fakeAnalyzer, useCliFixtures } from '../../command/test-support/cli-harness.mts';
 
 const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
 const ANALYZER_NAMES = ['structure', 'coverage', 'crap'];
 
-function namedAnalyzer(name) {
+function namedAnalyzer(name: string) {
   return { ...fakeAnalyzer(name), reportedTools: ['fake-quality-analyzer'] };
 }
 
@@ -33,7 +35,11 @@ function repositoryWithFinding() {
   return repository;
 }
 
-function run(repository, flags, outputRoot = makeOutputRoot()) {
+function run(
+  repository: { readonly root: string; readonly baseRef: string },
+  flags: readonly string[],
+  outputRoot = makeOutputRoot(),
+) {
   const output = captureOutput();
   const exitCode = runCli({
     arguments_: ['--base', repository.baseRef, '--output', outputRoot, ...flags],
@@ -46,7 +52,7 @@ function run(repository, flags, outputRoot = makeOutputRoot()) {
   return { exitCode, output, outputRoot };
 }
 
-function consoleSummary(outputRoot, verdict) {
+function consoleSummary(outputRoot: string, verdict: readonly string[]): string {
   return [
     'Base: comparison-base (argument)',
     '',
@@ -64,8 +70,12 @@ const ADDED_FINDING = [
   '    src/main/added.ts:1:4',
 ];
 
-function readSummary(outputRoot) {
-  return JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+function readSummary(outputRoot: string): unknown {
+  return parseJson(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+}
+
+function toolNamesOf(summary: unknown): unknown[] {
+  return listOf(fieldAt(summary, 'tools')).map((tool) => fieldAt(tool, 'name'));
 }
 
 describe('nitpicker --quick', () => {
@@ -75,9 +85,12 @@ describe('nitpicker --quick', () => {
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toBe(consoleSummary(outputRoot, ADDED_FINDING));
     const summary = readSummary(outputRoot);
-    expect(summary.tools.map(({ name }) => name)).toEqual(['structure']);
-    expect(summary.mode).toBe('quick');
-    expect(summary.quick).toEqual({ skipped: ['coverage', 'crap'], message: QUICK_LINE });
+    expect(toolNamesOf(summary)).toEqual(['structure']);
+    expect(fieldAt(summary, 'mode')).toBe('quick');
+    expect(fieldAt(summary, 'quick')).toEqual({
+      skipped: ['coverage', 'crap'],
+      message: QUICK_LINE,
+    });
     expect(readFileSync(path.join(outputRoot, 'report.txt'), 'utf8')).toContain(QUICK_LINE);
   });
 
@@ -106,20 +119,16 @@ describe('nitpicker --quick', () => {
     expect(output.stdoutText).toBe(
       `No changes since comparison-base (${repository.baseSha.slice(0, 12)}); nothing to check.\n`,
     );
-    expect(readSummary(outputRoot).mode).toBe('quick');
+    expect(fieldAt(readSummary(outputRoot), 'mode')).toBe('quick');
   });
 
   it('does not mention quick mode or write a quick field on a full run', () => {
     const { output, outputRoot } = run(repositoryWithFinding(), []);
 
     expect(output.stdoutText).not.toContain('Quick run');
-    expect(readSummary(outputRoot).quick).toBeUndefined();
-    expect(readSummary(outputRoot).mode).toBe('full');
-    expect(readSummary(outputRoot).tools.map(({ name }) => name)).toEqual([
-      'structure',
-      'coverage',
-      'crap',
-    ]);
+    expect(fieldAt(readSummary(outputRoot), 'quick')).toBeUndefined();
+    expect(fieldAt(readSummary(outputRoot), 'mode')).toBe('full');
+    expect(toolNamesOf(readSummary(outputRoot))).toEqual(['structure', 'coverage', 'crap']);
   });
 
   it('narrows to the analyzers that --analyzer names inside the quick set', () => {
@@ -130,7 +139,7 @@ describe('nitpicker --quick', () => {
     ]);
 
     expect(exitCode).toBe(1);
-    expect(readSummary(outputRoot).tools.map(({ name }) => name)).toEqual(['structure']);
+    expect(toolNamesOf(readSummary(outputRoot))).toEqual(['structure']);
   });
 
   it('refuses an --analyzer that quick mode skips', () => {
@@ -177,8 +186,8 @@ describe('nitpicker --quick', () => {
 
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toContain(QUICK_LINE);
-    expect(readSummary(outputRoot).mode).toBe('quick');
-    expect(readSummary(outputRoot).quick.skipped).toEqual(['coverage', 'crap']);
-    expect(readSummary(outputRoot).tools.map(({ name }) => name)).toEqual(['structure']);
+    expect(fieldAt(readSummary(outputRoot), 'mode')).toBe('quick');
+    expect(fieldAt(readSummary(outputRoot), 'quick', 'skipped')).toEqual(['coverage', 'crap']);
+    expect(toolNamesOf(readSummary(outputRoot))).toEqual(['structure']);
   });
 });

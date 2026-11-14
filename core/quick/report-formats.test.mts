@@ -1,33 +1,33 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { useGitFixtures } from '../diff/git/test-support/git-repository.mts';
 import { renderJunitReport } from '../diff/reporting/junit.mts';
 import { renderSarifReport } from '../diff/reporting/sarif.mts';
 import { renderTextReport } from '../diff/reporting/text.mts';
-import { report } from '../diff/reporting/test-support/report-builders.mjs';
+import { report } from '../diff/reporting/test-support/report-builders.mts';
 import { writeSnapshotReports } from '../snapshot/reporters.mts';
-import { quickSummary, runProfileSummary } from './summary.mjs';
+import type { Ctx } from './summary-view.mts';
+import { fieldAt } from '../../scripts/json/fields.mts';
+import { parseJson } from '../../shared/values/readers.mts';
+import { quickSummary, runProfileSummary } from './summary.mts';
 
 const QUICK = quickSummary(['coverage', 'mutation']);
 const QUICK_LINE =
   'Quick run: skipped coverage, mutation. Run nitpicker without --quick before you finish.';
-const roots = [];
+const { temporaryRoot: fixtureRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+function invocationOf(sarif: string): unknown {
+  return fieldAt(parseJson(sarif), 'runs', 0, 'invocations', 0);
+}
 
-function profiledReport(profile) {
+function profiledReport(profile: Ctx) {
   const base = report();
   return { ...base, summary: { ...base.summary, ...runProfileSummary(profile) } };
 }
 
-function snapshotReport(profile, file) {
-  const outputRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-quick-snapshot-'));
-  roots.push(outputRoot);
+function snapshotReport(profile: Ctx, file: string): string {
+  const outputRoot = fixtureRoot('nitpicker-quick-snapshot-');
   const summary = {
     overallStatus: 'completed',
     enforceableFindings: 0,
@@ -100,9 +100,9 @@ describe('the run profile in the JUnit report', () => {
 
 describe('the run profile in the SARIF report', () => {
   it('warns that the run was quick and records the profile on the invocation', () => {
-    const [invocation] = JSON.parse(
+    const invocation = invocationOf(
       renderSarifReport(profiledReport({ quick: QUICK, staged: true })),
-    ).runs[0].invocations;
+    );
 
     expect(invocation).toEqual({
       executionSuccessful: true,
@@ -112,8 +112,7 @@ describe('the run profile in the SARIF report', () => {
   });
 
   it('marks a quick --all snapshot the same way', () => {
-    const [invocation] = JSON.parse(snapshotReport({ quick: QUICK }, 'report.sarif')).runs[0]
-      .invocations;
+    const invocation = invocationOf(snapshotReport({ quick: QUICK }, 'report.sarif'));
 
     expect(invocation).toEqual({
       executionSuccessful: true,
@@ -123,7 +122,7 @@ describe('the run profile in the SARIF report', () => {
   });
 
   it('adds nothing to a full run', () => {
-    const [invocation] = JSON.parse(renderSarifReport(profiledReport({}))).runs[0].invocations;
+    const invocation = invocationOf(renderSarifReport(profiledReport({})));
 
     expect(invocation).toEqual({ executionSuccessful: true, toolExecutionNotifications: [] });
   });
