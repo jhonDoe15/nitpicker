@@ -15,6 +15,9 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
   virtual-thread executor. Reactor: `flatMap(this::fetch, 8)` or `concatMap`, never
   `Flux.fromIterable(items).flatMap(this::fetch)` or `Mono.zip` over a list built per element.
+- Data access: never call a repository, JDBC connection, `EntityManager` or HTTP client once per loop item
+  (`ids.forEach(id -> repository.findById(id))`): fetch or write all items at once (`findAllById`, `saveAll`,
+  `where id in (...)`, one batched request), `pmd/IoCallInLoop`. Paging, polling and retry loops are fine.
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

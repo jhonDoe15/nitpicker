@@ -23,7 +23,7 @@ const reviewFixture = path.join(
   'fixtures',
   'review-rules',
 );
-const SPRING_RULE = /^(?:Spring|Jpa)/;
+const SPRING_RULE = /^(?:Spring|Jpa|IoCallInLoop$)/;
 const SOURCE_ROOT = 'src/main/java';
 const VIOLATION_MARKER = /\/\/ violation: (.*)$/;
 const CHECKSTYLE_VERSION = /<checkstyle version="([^"]+)">/;
@@ -137,6 +137,7 @@ const REVIEW_RULES = new Set([
   'UnboundedQueryArray',
   'ConfigurationReadOutsideCompositionRoot',
   'SpringNullOnlyConfigCheck',
+  'IoCallInLoop',
   'ListUsedAsSet',
   'LinearLookupInLoop',
   'SortForExtreme',
