@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll } from 'vitest';
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './unbounded-reactive-fan-out.mjs';
 
 const RX =
@@ -11,11 +11,11 @@ const RX =
 const HTTP = 'import { HttpClient } from "@angular/common/http";\n';
 const tester = typescriptRuleTester();
 
-function error(messageId, data) {
+function error(messageId: string, data: Record<string, string>) {
   return [{ messageId, data: { via: '', target: 'remote service', ...data } }];
 }
 
-function operator(data) {
+function operator(data: Record<string, string> = {}) {
   return error('operator', {
     operator: 'mergeMap',
     operation: 'fetch()',
@@ -24,7 +24,7 @@ function operator(data) {
   });
 }
 
-function combinator(data) {
+function combinator(data: Record<string, string> = {}) {
   return error('combinator', {
     operator: 'forkJoin',
     operation: 'fetch()',
@@ -163,7 +163,12 @@ afterAll(() => {
 
 const TYPED_RX = 'import { from, mergeMap } from "rxjs";\n';
 
-function typed(code, errors) {
+function typed(code: string): { filename: string; code: string };
+function typed(
+  code: string,
+  errors: ReturnType<typeof error>,
+): { filename: string; code: string; errors: ReturnType<typeof error> };
+function typed(code: string, errors?: ReturnType<typeof error>) {
   const file = path.join(root, `src/case-${randomUUID()}.ts`);
   const text = `${TYPED_RX}${code}`;
   writeFileSync(file, text);

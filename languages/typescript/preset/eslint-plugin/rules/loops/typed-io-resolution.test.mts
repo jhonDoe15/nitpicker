@@ -1,49 +1,8 @@
 import { rule as ioInLoop } from './no-io-in-loop.mjs';
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
+import { IO_FILES, IO_STORE } from '../../test-support/projects/io-store-fixture.mts';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 
-const STORE = [
-  "import { Pool } from 'pg';",
-  "import axios from 'axios';",
-  'export const pool = new Pool();',
-  'declare const bus: { on(event: string, handler: (id: string) => unknown): void };',
-  'export interface OrderPort { find(id: string): Promise<unknown> }',
-  'export class PgOrders implements OrderPort {',
-  '  async find(id: string) { return pool.query("select 1", [id]); }',
-  '}',
-  'export function loadRow(id: string): Promise<unknown>;',
-  'export function loadRow(id: number): Promise<unknown>;',
-  'export function loadRow(id: string | number) { return pool.query("select 1", [id]); }',
-  'async function plain(id: string) { return pool.query("select 1", [id]); }',
-  'export const users = { plain };',
-  'export abstract class BaseRepo {',
-  '  async byId(id: string) { return pool.query("select 1", [id]); }',
-  '}',
-  'export interface ById { byId(id: string): Promise<unknown> }',
-  'export class OrderRepo extends BaseRepo implements ById {}',
-  'export async function walk(id: string, depth: number): Promise<unknown> {',
-  '  if (depth === 0) return pool.query("select 1", [id]);',
-  '  return walk(id, depth - 1);',
-  '}',
-  'export async function a(id: string): Promise<unknown> { return b(id); }',
-  'export async function b(id: string): Promise<unknown> { return id ? a(id) : axios.get(id); }',
-  'export function viaAny(client: any, id: string) { return client.query(id); }',
-  'export function subscribe(topic: string) {',
-  '  bus.on(topic, async (id) => { await pool.query("select 1", [id]); });',
-  '}',
-  'export function later(id: string) {',
-  '  setTimeout(() => { void pool.query("delete", [id]); }, 1000);',
-  '}',
-].join('\n');
-
-const FILES = {
-  'orders.test.ts': [
-    "import type { OrderPort } from './store';",
-    'export const fakeOrders: OrderPort = { find: async (id) => ({ id }) };',
-  ].join('\n'),
-  'plain.ts': 'export const x = 1;',
-};
-
-const { tester, typed } = typedIoProject('io-resolution', STORE, FILES);
+const { tester, typed } = typedIoProject('io-resolution', IO_STORE, IO_FILES);
 
 const HEADER = [
   "import { loadRow, users, walk, a, viaAny, subscribe, later, type OrderPort, type ById } from './store';",
@@ -63,11 +22,11 @@ const HEADER = [
   '',
 ].join('\n');
 
-function loop(statement) {
+function loop(statement: string) {
   return `${HEADER}export async function run() { for (const id of ids) { ${statement} } }`;
 }
 
-function caseOf(statement, messageId, callee) {
+function caseOf(statement: string, messageId: string, callee?: string) {
   const data = callee === undefined ? {} : { data: { callee } };
   return { ...typed(loop(statement)), errors: [{ messageId, ...data }] };
 }

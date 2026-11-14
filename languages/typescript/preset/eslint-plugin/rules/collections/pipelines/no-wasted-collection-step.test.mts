@@ -1,10 +1,10 @@
-import { typescriptRuleTester } from '../../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../../test-support/rule-tester.mts';
 import { rule } from './no-wasted-collection-step.mjs';
 
 const tester = typescriptRuleTester();
 const filename = '/repo/src/main/features/billing/domain/totals.ts';
 
-function error(messageId, data) {
+function error(messageId: string, data?: Record<string, string>) {
   return data === undefined ? { messageId } : { messageId, data };
 }
 

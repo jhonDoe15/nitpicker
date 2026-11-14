@@ -1,9 +1,9 @@
-import { typescriptRuleTester } from '../../test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule } from './reusable-object-per-call.mjs';
 
 const tester = typescriptRuleTester();
 
-function flagged(code, type) {
+function flagged(code: string, type: string) {
   return { code, errors: [{ messageId: 'perCall', data: { type } }] };
 }
 

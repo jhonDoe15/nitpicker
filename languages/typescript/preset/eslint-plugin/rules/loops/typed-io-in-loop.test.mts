@@ -1,5 +1,5 @@
 import { rule as ioInLoop } from './no-io-in-loop.mjs';
-import { typedIoProject } from '../../test-support/typed-io-project.mjs';
+import { typedIoProject } from '../../test-support/projects/typed-io-project.mts';
 
 const STORE = [
   "import { Pool } from 'pg';",
@@ -32,15 +32,15 @@ const STORE_IMPORT =
   "import { loadOrder, loadPrice, viaHelper, format, saveBatch, OrderService, UserRepository, createOrderStore, pool, Customer } from './store';\n";
 const declared = 'declare const ids: string[];\ndeclare function use(value: unknown): void;\n';
 
-function loop(statement, header = '') {
+function loop(statement: string, header = '') {
   return `${header}${STORE_IMPORT}${declared}export async function run() { for (const id of ids) { ${statement} } }`;
 }
 
-function body(statements) {
+function body(statements: string) {
   return `${STORE_IMPORT}${declared}declare const parts: string[][];\nexport async function run() { ${statements} }`;
 }
 
-function caseOf(code, messageId, callee) {
+function caseOf(code: string, messageId: string, callee?: string) {
   const data = callee === undefined ? {} : { data: { callee } };
   return { ...typed(code), errors: [{ messageId, ...data }] };
 }
