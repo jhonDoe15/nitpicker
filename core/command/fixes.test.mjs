@@ -1,7 +1,7 @@
 import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
+import { runCli as nitpickerCli } from '../cli.mts';
 import { exactText } from '../diff/reporting/test-support/output-expectations.mjs';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
@@ -199,6 +199,7 @@ Full diagnostics: ${outputRoot}/report.txt
   it('uses a renamed file base path for Prettier fix eligibility', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
+      'src/main/code.ts': 'export const code = true;\n',
       'src/main/legacy.json':
         '[\n{"legacy":true},\n{"legacy":true},\n{"legacy":true},\n{"legacy":true}\n]\n',
     });

@@ -55,6 +55,7 @@ const FACTS = {
     },
   ],
   docComments: [],
+  nearDuplicateUnits: [],
 };
 
 function reportRootWith(facts, baseFacts) {

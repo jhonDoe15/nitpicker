@@ -2,13 +2,13 @@
 
 `shardWeight` on each check in `languages/typescript/preset/quality-checks.mjs` is the cost estimate that
 `nitpicker --shard-count/--shard-index` uses to spread analyzers over CI shards (greedy
-longest-first over dependency components, see `core/diff/sharding/sharding.mjs`). Only the relative sizes
+longest-first over dependency components, see `core/diff/sharding/sharding.mts`). Only the relative sizes
 matter. The original numbers were tuned on the codebase nitpicker was ported from; this note records
 the retune from measurements on TypeScript projects, and how to repeat it.
 
 ## Method
 
-`scripts/measure-shard-weights.mjs` builds a throwaway git project, installs the packed
+`scripts/shard-weights/measure.mts` builds a throwaway git project, installs the packed
 nitpicker into it (npm 11, like the installed-consumer test), commits a baseline on `main`, edits a
 few files on a `feature` branch, then times `nitpicker --base main --analyzer <name> --output ...`
 for every configured analyzer, one at a time, `--runs` times each (median kept). Each number is the
@@ -25,9 +25,9 @@ whole differential cost: base worktree plus head, including process start-up and
 ```sh
 cd typescript
 for fixture in self consumer generated; do
-  node scripts/measure-shard-weights.mjs --fixture "$fixture" --runs 3 --json "$fixture.json"
+  node scripts/shard-weights/measure.mts --fixture "$fixture" --runs 3 --json "$fixture.json"
 done
-node scripts/measure-shard-weights.mjs --blend self.json consumer.json generated.json
+node scripts/shard-weights/measure.mts --blend self.json consumer.json generated.json
 # or measure any real project: --project <git root on a feature branch> --base main
 ```
 

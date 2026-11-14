@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { guardKnipManifest } from './manifest-guard.mjs';
+import { guardKnipManifest } from './manifest-guard.mts';
 
 const cleanups = [];
 afterEach(() => {

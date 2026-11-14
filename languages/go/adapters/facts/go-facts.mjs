@@ -1,4 +1,5 @@
 import { goConsoleFacts } from '../tests/test-console.mjs';
+import { goDesignFacts } from './go-design-facts.mjs';
 import { directoryOf, goPackages } from './go-packages.mjs';
 
 const DOT_IMPORT = '.';
@@ -141,6 +142,7 @@ export function goFacts(report, { module = '', testRun } = {}) {
     packages: packages.directories.map((root) => ({ root, published: packages.isPublished(root) })),
     definitions: definitionFacts(report, productionUses(imports)),
     imports,
+    ...goDesignFacts(report, packages),
     docComments: report.docComments ?? [],
     console: testRun === undefined ? [] : goConsoleFacts(testRun, { report, module }),
     constrained: report.files

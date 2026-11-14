@@ -4,8 +4,8 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mjs';
-import { withAssetImportHint } from './asset-import-hint.mjs';
+import { normalizeTypeScriptDiagnostics } from '../static-checks/typescript.mts';
+import { withAssetImportHint } from './asset-import-hint.mts';
 
 const ts = createRequire(import.meta.url)('typescript');
 const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-typecheck-hint-'));

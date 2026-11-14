@@ -21,7 +21,7 @@ import {
 const roots = [];
 const TOOLS = {
   'java-format': {
-    coordinates: 'com.google.googlejavaformat:google-java-format:1.25.2',
+    coordinates: 'com.google.googlejavaformat:google-java-format:1.35.0',
     transitive: true,
   },
   ktlint: { coordinates: 'com.pinterest.ktlint:ktlint-cli:1.8.0:all', transitive: false },
@@ -56,7 +56,7 @@ describe('gradleToolArguments', () => {
       '--no-configuration-cache',
       '--project-dir',
       '/cache/tools',
-      '-Pnitpicker.fix.tools=java-format=com.google.googlejavaformat:google-java-format:1.25.2,ktlint=com.pinterest.ktlint:ktlint-cli:1.8.0:all!',
+      '-Pnitpicker.fix.tools=java-format=com.google.googlejavaformat:google-java-format:1.35.0,ktlint=com.pinterest.ktlint:ktlint-cli:1.8.0:all!',
       'nitpickerFixTools',
     ]);
   });

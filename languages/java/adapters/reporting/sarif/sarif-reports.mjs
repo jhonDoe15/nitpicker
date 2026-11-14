@@ -14,6 +14,7 @@ import { withSpringTransactionFilters } from '../../spring/transactions/transact
 import { withCrossedFetches } from '../../jpa/fetches/fetch-filter.mjs';
 import { withUnindexedForeignKeys } from '../../jpa/foreign-keys/key-filter.mjs';
 import { withoutSpringCoveredReads } from '../../spring/configuration/covered-reads.mjs';
+import { withPmdLevels } from './pmd-levels.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const PRINTED_PMD_RULES = new Map([['timeout-abandons-async-task', 'timeout-abandons-operation']]);
@@ -87,8 +88,10 @@ export function sarifFindings(context) {
     withLockEvidence(
       withPrintedRules(
         withLoadEffectSubjects(
-          preparedReport('pmd.sarif', context, (result) =>
-            result.message?.text?.replace(LINE_NUMBER, 'line'),
+          withPmdLevels(
+            preparedReport('pmd.sarif', context, (result) =>
+              result.message?.text?.replace(LINE_NUMBER, 'line'),
+            ),
           ),
           { projectRoot },
         ),

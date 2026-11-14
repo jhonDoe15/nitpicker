@@ -81,6 +81,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
   `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
   dependencies up.
+- Test a `String?` configuration property (a `@ConfigurationProperties` class, `@Value`) with
+  `isNullOrBlank()`, not only `!= null`, `?.let` or `?:`: an empty property binds as `""`, which those
+  count as set (`pmd/SpringNullOnlyConfigCheck`). Default it with `props.x?.ifBlank { null } ?: fallback`.
 - The lambda passed to `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut`
   on a `ConcurrentMap`, never changes the same map, not even from a callback it starts
   (`pmd/RecursiveMapUpdate`). Attach the cleanup to the result:
@@ -97,5 +100,9 @@ Part of the [nitpicker-kotlin](../SKILL.md) skill. Write these forms from the st
   collect them (`kotlin-source/ListUsedAsSet`), a map built once with `associateBy` before a loop
   instead of `find { it.key == key }` in it (`kotlin-source/LinearLookupInLoop`), and `minBy`/`maxBy`
   instead of `sortedBy { ... }.first()` (`kotlin-source/SortForExtreme`).
+- Skip a collection step whose result is thrown away: `flatMap { }` instead of `map { }.flatten()`,
+  and `size` or `isEmpty()` on the source instead of on a `toList()` copy
+  (`kotlin-source/RedundantStreamStep`); `any { }` instead of `find { } != null` and `filter { }`
+  before `first()` or `count()` are detekt's.
 - A `Stream` returned by a repository function is handled row by row in `forEach`, flushing a
   fixed-size batch there, never collected with `toList()` or `collect` (`pmd/StreamedRowsCollected`).

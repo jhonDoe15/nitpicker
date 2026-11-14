@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { TOOL_RUN_CEILING_MS } from '../../../../shared/processes/deadlines.mjs';
+import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
 
-const SUPERVISOR_URL = new URL('tool-supervisor.mjs', import.meta.url).href;
+const SUPERVISOR_URL = checkoutModuleUrl(new URL('tool-supervisor.mjs', import.meta.url)).href;
 const SUPERVISOR_SOURCE = [
   `import { superviseTools } from ${JSON.stringify(SUPERVISOR_URL)};`,
   'const chunks = [];',

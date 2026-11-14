@@ -116,7 +116,7 @@
     },
     {
       "tool": "checkstyle",
-      "rule": "MemberName",
+      "rule": "GoogleNonConstantFieldName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
     },
@@ -488,12 +488,6 @@
     },
     {
       "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/C3Locks.java",
-      "line": 9
-    },
-    {
-      "tool": "errorprone",
       "rule": "FallThrough",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 22
@@ -596,12 +590,6 @@
     },
     {
       "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/C8Equals.java",
-      "line": 4
-    },
-    {
-      "tool": "errorprone",
       "rule": "EqualsHashCode",
       "path": "src/main/java/probe/C8Equals.java",
       "line": 7
@@ -644,12 +632,6 @@
     },
     {
       "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/EqOnly.java",
-      "line": 4
-    },
-    {
-      "tool": "errorprone",
       "rule": "EqualsHashCode",
       "path": "src/main/java/probe/EqOnly.java",
       "line": 7
@@ -677,12 +659,6 @@
       "rule": "MutablePublicArray",
       "path": "src/main/java/probe/Fields.java",
       "line": 4
-    },
-    {
-      "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/Fields.java",
-      "line": 5
     },
     {
       "tool": "errorprone",
@@ -803,12 +779,6 @@
       "rule": "LogicalAssignment",
       "path": "src/main/java/probe/G7Flag.java",
       "line": 6
-    },
-    {
-      "tool": "errorprone",
-      "rule": "ForEachIterable",
-      "path": "src/main/java/probe/G9Loop.java",
-      "line": 9
     },
     {
       "tool": "errorprone",
@@ -1430,12 +1400,6 @@
     },
     {
       "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/V1Style.java",
-      "line": 8
-    },
-    {
-      "tool": "errorprone",
       "rule": "StatementSwitchToExpressionSwitch",
       "path": "src/main/java/probe/V1Style.java",
       "line": 97
@@ -1445,12 +1409,6 @@
       "rule": "SwitchDefault",
       "path": "src/main/java/probe/V1Style.java",
       "line": 98
-    },
-    {
-      "tool": "errorprone",
-      "rule": "FieldCanBeStatic",
-      "path": "src/main/java/probe/V1Style.java",
-      "line": 9
     },
     {
       "tool": "errorprone",
@@ -1922,6 +1880,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "BooleanFlagParameter",
+      "path": "src/main/java/probe/C5Nulls.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
       "rule": "AvoidCatchingGenericException",
       "path": "src/main/java/probe/C7Names.java",
       "line": 11
@@ -2186,6 +2150,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "GenericTypeName",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 3
+    },
+    {
+      "tool": "pmd",
       "rule": "ReturnEmptyCollectionRatherThanNull",
       "path": "src/main/java/probe/NullColl.java",
       "line": 11
@@ -2261,6 +2231,12 @@
       "rule": "UnsynchronizedStaticFormatter",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "GenericTypeName",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 13
     },
     {
       "tool": "pmd",
@@ -2673,6 +2649,13 @@
     {
       "tool": "spotbugs",
       "rule": "DMI_INVOKING_HASHCODE_ON_ARRAY",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5,
+      "symbol": "probe.Arrays1.all(int[], int[])#a"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DMI_INVOKING_TOSTRING_ON_ARRAY",
       "path": "src/main/java/probe/Arrays1.java",
       "line": 5,
       "symbol": "probe.Arrays1.all(int[], int[])#a"

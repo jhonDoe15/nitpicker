@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's Reactor rules for main sources. Both rules match Mono and Flux through PMD type
+<!-- Nitpicker's Reactor rules for main sources. The rules match Mono and Flux through PMD type
      resolution on the auxiliary classpath, so they find nothing in a project that does not have
      Reactor on its compile classpath. docs/java-preset.md lists the rules and why each exists. -->
 <ruleset name="nitpicker-reactor"
          xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
-  <description>Nitpicker Reactor rules: no blocking calls on the threads that run a reactive chain.</description>
+  <description>Nitpicker Reactor rules: no blocking calls on the threads that run a reactive chain, and no block() that waits without a deadline.</description>
 
   <rule name="ReactorBlockingInOperator" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Move this blocking call off the Reactor event loop: wrap it as Mono.fromCallable(() -&gt; blocking()).subscribeOn(Schedulers.boundedElastic()) inside flatMap, or add publishOn(Schedulers.boundedElastic()) earlier in the chain, or use a non-blocking client. A blocking call inside an operator runs on the thread that serves every other request, so it stalls them all until it returns.">
@@ -133,6 +133,20 @@ return
   /Block//MethodCall[@MethodName = ('block', 'blockFirst', 'blockLast', 'blockOptional')]
     [*[1][pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]]
     [ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ClassBody][1][self::MethodDeclaration]]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="ReactorBlockWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Use a deadline: mono.block(Duration.ofSeconds(30)), and likewise blockOptional(Duration), blockFirst(Duration) and blockLast(Duration), or keep the code reactive and let the caller subscribe. This call waits for the publisher with no limit, so a publisher that never completes (a stuck connection, a lost signal) hangs this thread for good. An exception fits only code whose purpose is to wait for the publisher, such as the main method of a command.">
+    <priority>3</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodCall[@MethodName = ('block', 'blockOptional', 'blockFirst', 'blockLast')][ArgumentList[@Size = 0]]
+  [*[1][pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]]
+  [let $enclosing := ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ClassBody][1]
+   return not($enclosing[self::MethodDeclaration][ClassType[pmd-java:typeIs('reactor.core.publisher.Mono')
+              or pmd-java:typeIs('reactor.core.publisher.Flux') or pmd-java:typeIs('org.reactivestreams.Publisher')]])
+     and not($enclosing[self::LambdaExpression][parent::ArgumentList/parent::MethodCall/*[1][not(self::TypeExpression)]
+              [pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]])]
 ]]></value></property></properties>
   </rule>
 </ruleset>

@@ -86,6 +86,8 @@ describe('testHonestyFindings', () => {
       'CoroutineEscapesTest',
       'FloatEqualityInTest',
       'WeakAssertionInTest',
+      'DroppedCallbackInTest',
+      'MessageAfterAssertion',
       'GlobalStateLeakInTest',
       'RealClockInTest',
       'RandomInTest',

@@ -1,27 +1,12 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { jvmReuseFacts, readJvmReuse, readJvmReuseFindings } from './jvm-reuse-facts.mjs';
+import { createReuseProjects } from './test-support/reuse-projects.mjs';
 
-const roots = [];
+const { project, cleanup } = createReuseProjects();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'jvm-reuse-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
+afterEach(cleanup);
 
 const JAVA_ROOT = 'src/main/java';
 const KOTLIN_ROOT = 'src/main/kotlin';
@@ -364,6 +349,85 @@ describe('sibling-copy-edit on Java and Kotlin', () => {
         }),
       ),
     ).toEqual([['sibling-copy-edit', `${JAVA_ROOT}/shop/a/Renamed.java`, 'sibling-copy:A.total']]);
+  });
+});
+
+const RETRY = `  public Response send(Request request, int attempts) {
+    for (int attempt = 0; attempt < attempts; attempt++) {
+      Response response = client.execute(request.withHeader("X-Attempt", String.valueOf(attempt)));
+      if (response.status() < 500) {
+        return response;
+      }
+      metrics.increment("retry.%s", request.path());
+    }
+    throw new IllegalStateException("gave up after " + attempts + " attempts");
+  }
+`;
+
+describe('near-duplicate on Java and Kotlin', () => {
+  const orders = `${JAVA_ROOT}/shop/orders/OrderClient.java`;
+  const invoices = `${JAVA_ROOT}/shop/invoices/InvoiceClient.java`;
+
+  it('reports a method copied into another class with one changed literal, once per pair', () => {
+    const found = findings({
+      [orders]: javaClass('shop.orders', 'OrderClient', RETRY),
+      [invoices]: javaClass(
+        'shop.invoices',
+        'InvoiceClient',
+        RETRY.replace('retry.%s', 'again.%s'),
+      ),
+    }).filter(({ rule }) => rule === 'near-duplicate');
+
+    expect(rows(found)).toEqual([
+      [
+        'near-duplicate',
+        orders,
+        `near-duplicate:${invoices}#InvoiceClient.send(Request,int)|${orders}#OrderClient.send(Request,int)`,
+      ],
+    ]);
+    expect(found[0].message).toBe(
+      [
+        `OrderClient.send(Request,int) is a copy of InvoiceClient.send(Request,int) (${invoices}:4)`,
+        'apart from 1 value ("retry.%s" / "again.%s"). Extract one function that takes the differing',
+        `values as parameters, and call it from both places. ${exceptionHint('near-duplicate', orders)}`,
+      ].join(' '),
+    );
+  });
+
+  it('reports a Kotlin function copied into another file with one changed literal', () => {
+    const retry = (pkg, metric) =>
+      [
+        `package shop.${pkg}`,
+        '',
+        'fun send(request: Request, attempts: Int): Response {',
+        '  for (attempt in 0 until attempts) {',
+        '    val response = client.execute(request.withHeader("X-Attempt", attempt.toString()))',
+        '    if (response.status < 500) {',
+        '      return response',
+        '    }',
+        `    metrics.increment("${metric}", request.path)`,
+        '  }',
+        '  throw IllegalStateException("gave up after $attempts attempts")',
+        '}',
+        '',
+      ].join('\n');
+    const orders = `${KOTLIN_ROOT}/shop/orders/Orders.kt`;
+    const invoices = `${KOTLIN_ROOT}/shop/invoices/Invoices.kt`;
+
+    expect(
+      rows(
+        findings(
+          { [orders]: retry('orders', 'retry'), [invoices]: retry('invoices', 'again') },
+          { kotlin: true },
+        ).filter(({ rule }) => rule === 'near-duplicate'),
+      ),
+    ).toEqual([
+      [
+        'near-duplicate',
+        orders,
+        `near-duplicate:${invoices}#send(Request,Int)|${orders}#send(Request,Int)`,
+      ],
+    ]);
   });
 });
 

@@ -3,6 +3,7 @@ import { UNUSED_API_RULE_IDS } from '../../../shared/unused-api/unused-api-polic
 import { readVetFindings } from './build/go-vet.mjs';
 import { goCouplingFindings } from './coupling/go-coupling.mjs';
 import { readDeadcodeFindings } from './dead-code/go-deadcode.mjs';
+import { goDomainFindings } from './domain/go-domain.mjs';
 import { readTidyFindings } from './dead-code/go-mod-tidy.mjs';
 import { readGoDuplicateFindings } from './duplicates/go-duplicates.mjs';
 import { goFactFindings, readGoBaseline, readGoFacts } from './facts/go-fact-findings.mjs';
@@ -13,6 +14,7 @@ import { readFormatReport } from './go-steps.mjs';
 import { goStructureFindings } from './structure/go-structure.mjs';
 import { readInspect } from './structure/go-inspect.mjs';
 import { goSlowTestFindings } from './tests/go-slow-tests.mjs';
+import { goCoverageFindings } from './branch-coverage/go-coverage.mjs';
 import { readTestRun, testRunFindings } from './tests/go-test.mjs';
 import { raceCheckFindings, withoutRaceOnlyFailures } from './race/race-findings.mjs';
 
@@ -67,8 +69,10 @@ export function readGoFindings(context, policy = {}) {
     ...raceCheckFindings(context, testRun),
     ...goSlowTestFindings(context, testRun, report),
     ...goStructureFindings(report, context.projectRoot, policy),
+    ...goCoverageFindings(context, { report, testRun }, policy),
     ...readGoDuplicateFindings(context.reportRoot, context.projectRoot),
     ...goCouplingFindings(report, context.module),
+    ...goDomainFindings(report, context.module),
     ...deadCodeFindings(context, { policy, lint }),
   ];
 }

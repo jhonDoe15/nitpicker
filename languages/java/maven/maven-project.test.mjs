@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
+import { jacocoPlugin } from './maven-tools.mjs';
 import { inBuild, plugin, raw, reactorKit } from './test-support/maven-project-sources.mjs';
 
 const { reactor, soloModule, removeReactors } = reactorKit();
@@ -92,6 +93,7 @@ const CORE_LEVEL = { release: '17', source: '17', target: undefined };
 const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
 function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
+  const compiler = packaging === 'pom' ? undefined : NO_COMPILER_SETTINGS;
   const target = path.join(basedir, 'target');
   return {
     basedir,
@@ -111,8 +113,9 @@ function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' })
     integrationTestJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
+    jacocoAgentVersion: undefined,
     archunitIncludes: undefined,
-    compiler: NO_COMPILER_SETTINGS,
+    compiler,
   };
 }
 
@@ -146,6 +149,7 @@ describe('readReactor', () => {
       integrationTestJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
+      jacocoAgentVersion: undefined,
       archunitIncludes: '**/*Rules.class',
       compiler: {
         ...CORE_LEVEL,
@@ -196,6 +200,36 @@ describe('readReactor', () => {
       [root, 'demo:parent'],
       [path.join(root, 'a'), 'demo:parent-a'],
     ]);
+  });
+
+  it('reads no compiler settings of a pom module, so its unresolved processor paths do not matter', () => {
+    const root = reactor({ 'pom.xml': raw('parent'), 'app/pom.xml': raw('app') });
+    const processor = (version) =>
+      inBuild(
+        plugin(
+          'maven-compiler-plugin',
+          '<configuration><annotationProcessorPaths><path><groupId>org.projectlombok</groupId>' +
+            `<artifactId>lombok</artifactId>${version}</path></annotationProcessorPaths></configuration>`,
+        ),
+      );
+    const effectivePom = (appVersion) =>
+      [
+        '<projects>',
+        '<project><groupId>demo</groupId><artifactId>parent</artifactId><packaging>pom</packaging>' +
+          `<modules><module>app</module></modules>${processor('')}</project>`,
+        `<project><groupId>demo</groupId><artifactId>app</artifactId>${processor(appVersion)}</project>`,
+        '</projects>',
+      ].join('');
+
+    const [parent, app] = readReactor(root, effectivePom('<version>1.18.42</version>'));
+
+    expect([parent.compiler, app.compiler.processorPaths]).toEqual([
+      undefined,
+      ['org.projectlombok:lombok:1.18.42'],
+    ]);
+    expect(() => readReactor(root, effectivePom(''))).toThrow(
+      /^Maven module demo:app: maven-compiler-plugin's annotationProcessorPaths names org\.projectlombok:lombok /u,
+    );
   });
 
   it.each([
@@ -392,5 +426,31 @@ describe('describeModule plugin configuration', () => {
       path.join(module.basedir, 'target/unit.exec'),
       path.join(module.basedir, 'target/it.exec'),
     ]);
+  });
+
+  it('runs the JaCoCo agent at the version the project binds, since two agents cannot share a JVM', () => {
+    const agent = (phase = '') =>
+      `<executions><execution>${phase}<goals><goal>prepare-agent</goal></goals></execution></executions>`;
+    const versioned = (version, body) =>
+      soloModule(
+        inBuild(
+          plugin('jacoco-maven-plugin', `<version>${version}</version>${body}`, 'org.jacoco'),
+        ),
+      );
+    const pinned = { jacoco: '0.8.16' };
+    const modules = [
+      versioned('0.8.12', agent()),
+      versioned('0.8.12', ''),
+      versioned('0.8.12', agent('<phase>none</phase>')),
+      versioned(`\${jacoco.version}`, agent()),
+    ];
+
+    expect(modules.map((module) => jacocoPlugin(pinned, [module]))).toEqual([
+      'org.jacoco:jacoco-maven-plugin:0.8.12',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+      'org.jacoco:jacoco-maven-plugin:0.8.16',
+    ]);
+    expect(jacocoPlugin(pinned)).toBe('org.jacoco:jacoco-maven-plugin:0.8.16');
   });
 });

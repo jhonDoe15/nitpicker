@@ -17,6 +17,13 @@ func receiverName(declaration *ast.FuncDecl) string {
 	return baseTypeName(declaration.Recv.List[0].Type)
 }
 
+func functionName(function *ast.FuncDecl) string {
+	if receiver := receiverName(function); receiver != "" {
+		return receiver + "." + function.Name.Name
+	}
+	return function.Name.Name
+}
+
 func baseTypeName(expression ast.Expr) string {
 	switch typed := expression.(type) {
 	case *ast.StarExpr:
@@ -69,10 +76,7 @@ func addDeclaration(report *Report, fileSet *token.FileSet, file parsedFile, fun
 	if function.Body == nil {
 		return
 	}
-	name := function.Name.Name
-	if receiver := receiverName(function); receiver != "" {
-		name = receiver + "." + name
-	}
+	name := functionName(function)
 	entries := measureUnit(fileSet, file.path, name, function.Type, function.Body, function.Pos())
 	if !file.test {
 		report.Functions = append(report.Functions, entries...)
@@ -125,6 +129,17 @@ func measureUnit(fileSet *token.FileSet, path, name string, signature *ast.FuncT
 		MaxControlNesting: walker.deepest,
 		Parameters:        parameterCount(signature),
 		Complexity:        walker.complexity,
+		Body:              position(fileSet, body.Lbrace),
+		Close:             position(fileSet, body.Rbrace),
+	}
+	for _, decision := range walker.decisions {
+		if remapped(fileSet, decision.Pos()) {
+			continue
+		}
+		branch := decisionBranch(fileSet, decision)
+		branch.File = path
+		branch.Function = name
+		entry.Branches = append(entry.Branches, branch)
 	}
 	entry.Lines = entry.End - entry.Start + 1
 	entries := []Function{entry}
@@ -141,6 +156,12 @@ func parameterCount(signature *ast.FuncType) int {
 		count += max(1, len(field.Names))
 	}
 	return count
+}
+
+func remapped(fileSet *token.FileSet, pos token.Pos) bool {
+	adjusted := fileSet.PositionFor(pos, true)
+	raw := fileSet.PositionFor(pos, false)
+	return adjusted.Filename != raw.Filename || adjusted.Line != raw.Line
 }
 
 var setupCalls = map[string]bool{"Parallel": true, "Helper": true}
