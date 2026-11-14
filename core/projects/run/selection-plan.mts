@@ -2,11 +2,17 @@ import { basePlanOf, planInputsChanged } from '../policy/base-plan.mjs';
 import { changedFiles } from '../selection/changed-files.mjs';
 import { dependencyGraph } from '../selection/dependencies/graph.mts';
 import { requestedProjects } from '../selection/requested-projects.mts';
-import { selectProjects, type Selected } from '../selection/select-projects.mts';
+import {
+  selectProjects,
+  type Selected,
+  type ToolchainImpact,
+} from '../selection/select-projects.mts';
+import { lockfileImpact } from '../selection/lockfile-impact.mjs';
 import { comparisonBase, rootConfigFiles, toolErrorsOf } from './context.mts';
 import type {
   Comparison,
   MonorepoPlan,
+  PlanProject,
   ProjectRow,
   ProjectSelection,
   SelectionCli,
@@ -43,6 +49,12 @@ export function comparisonOf(plan: MonorepoPlan, cli: SelectionCli): Comparison 
   return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
 }
 
+const impactOfLockfiles: (request: {
+  readonly repositoryRoot: string;
+  readonly mergeBaseSha: string;
+  readonly projects: readonly PlanProject[];
+}) => ToolchainImpact = lockfileImpact;
+
 function foldersOf(plan: MonorepoPlan): ReadonlyMap<string, string> {
   return new Map(plan.projects.map((project) => [project.path, project.folder ?? project.path]));
 }
@@ -64,6 +76,14 @@ function choose(plan: MonorepoPlan, cli: SelectionCli, comparison: Comparison): 
     requested,
     all: cli.options.all,
     rootConfigFiles: rootConfigFiles(plan),
+    impactOf:
+      byChanges && comparison.mergeBaseSha !== undefined
+        ? impactOfLockfiles({
+            repositoryRoot: plan.repositoryRoot,
+            mergeBaseSha: comparison.mergeBaseSha,
+            projects: plan.projects,
+          })
+        : undefined,
   });
 }
 

@@ -9,10 +9,12 @@ type Projects = readonly PlanProject[];
 type Claim = { readonly project: string; readonly own?: true; readonly reason?: string };
 type ToolchainContext = { readonly owner: PlanProject | undefined; readonly prefix: string };
 type Touch = { readonly owned: number; readonly reasons: readonly string[] };
+export type ToolchainImpact = (file: string) => ReadonlyMap<string, string> | undefined;
 type ClaimContext = {
   readonly projects: Projects;
   readonly prefix: string;
   readonly rootConfigFiles: readonly string[];
+  readonly impactOf?: ToolchainImpact | undefined;
 };
 export type SelectionQuery = {
   readonly projects: Projects;
@@ -22,6 +24,7 @@ export type SelectionQuery = {
   readonly requested?: readonly string[];
   readonly all?: boolean;
   readonly rootConfigFiles?: readonly string[];
+  readonly impactOf?: ToolchainImpact | undefined;
 };
 export type Selected = {
   readonly selection: readonly ProjectSelection[];
@@ -65,14 +68,27 @@ function usesToolchainFile(project: PlanProject, file: string, context: Toolchai
   );
 }
 
-function claimsOn({ projects, prefix, rootConfigFiles }: ClaimContext, file: string): Claim[] {
+function toolchainClaims(
+  context: ClaimContext,
+  file: string,
+  owner: PlanProject | undefined,
+): Claim[] {
+  const users = context.projects.filter((project) =>
+    usesToolchainFile(project, file, { owner, prefix: context.prefix }),
+  );
+  const impact = users.length === 0 ? undefined : context.impactOf?.(file);
+  return users
+    .filter(({ path: project }) => impact === undefined || impact.has(project))
+    .map(({ path: project }) => ({ project, reason: impact?.get(project) ?? `${file} changed` }));
+}
+
+function claimsOn(context: ClaimContext, file: string): Claim[] {
+  const { projects, rootConfigFiles } = context;
   const owner = ownerOf(projects, file);
   const shared = projects
     .filter(({ sharedFiles }) => sharedFiles.includes(file))
     .map(({ path: project }) => ({ project, reason: `shared config ${file} changed` }));
-  const toolchain = projects
-    .filter((project) => usesToolchainFile(project, file, { owner, prefix }))
-    .map(({ path: project }) => ({ project, reason: `${file} changed` }));
+  const toolchain = toolchainClaims(context, file, owner);
   const own: Claim[] = owner === undefined ? [] : [{ project: owner.path, own: true }];
   return [...own, ...rootClaims(projects, file, rootConfigFiles), ...shared, ...toolchain];
 }
@@ -81,20 +97,16 @@ function plural(count: number, word: string): string {
   return `${String(count)} ${word}${count === 1 ? '' : 's'}`;
 }
 
-function touchedBy({
-  projects,
-  changed,
-  prefix,
-  rootConfigFiles,
-}: ClaimContext & { readonly changed: readonly string[] }): {
+function touchedBy(context: ClaimContext & { readonly changed: readonly string[] }): {
   readonly touched: Map<string, Touch>;
   readonly outside: string[];
 } {
   const touched = new Map<string, Touch>();
   const outside: string[] = [];
-  for (const file of changed) {
-    const claims = claimsOn({ projects, prefix, rootConfigFiles }, file);
-    if (claims.length === 0 && isInside(file, prefix)) {
+  for (const file of context.changed) {
+    const claims = claimsOn(context, file);
+    const weighed = context.impactOf?.(file) !== undefined;
+    if (claims.length === 0 && !weighed && isInside(file, context.prefix)) {
       outside.push(file);
     }
     for (const { project, own, reason } of claims) {
@@ -156,6 +168,7 @@ export function selectProjects({
   requested = [],
   all = false,
   rootConfigFiles = [],
+  impactOf,
 }: SelectionQuery): Selected {
   if (requested.length > 0) {
     unknownRequests(projects, requested);
@@ -178,7 +191,7 @@ export function selectProjects({
       outside: [],
     };
   }
-  const { touched, outside } = touchedBy({ projects, changed, prefix, rootConfigFiles });
+  const { touched, outside } = touchedBy({ projects, changed, prefix, rootConfigFiles, impactOf });
   const dependents = new Map(
     [...dependentsOf(graph, new Set(touched.keys()))].map(([project, dependency]) => {
       const via = edgeLabel(graph, project, dependency);
