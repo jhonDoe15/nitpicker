@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { baseLineOf, parseLineShifts } from './line-shifts.mts';
+import type { Mutant } from '../typed/mutation.mts';
 import {
   baseMutationTargets,
   changedCodeMutants,
@@ -8,7 +9,7 @@ import {
   weakenedTestFindings,
 } from './weakened-mutants.mts';
 
-function mutant(status, line, overrides = {}) {
+function mutant(status: string, line: number, overrides: Partial<Mutant> = {}): Mutant {
   return {
     status,
     mutatorName: 'ConditionalExpression',
@@ -18,6 +19,8 @@ function mutant(status, line, overrides = {}) {
     ...overrides,
   };
 }
+
+const ANY_IDENTITY: unknown = expect.any(String);
 
 const mutationScope = {
   targets: ['src/classify.ts:2-2', 'src/other.ts:1-1'],
@@ -109,7 +112,7 @@ describe('mutants the changed tests let escape', () => {
         path: 'src/classify.ts',
         message:
           'This change weakened the tests of src/classify.ts: the base tests caught this ConditionalExpression mutant (`n < 5` replaced with `true`), but it survives now. Restore the assertion that caught it, or add one. If this is intended, add {"rule":"mutant-survived","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        identity: expect.any(String),
+        identity: ANY_IDENTITY,
         allowedForm: 'Restore the assertion that caught it, or add one.',
         classification: 'enforceable',
         location: { line: 1, column: 7 },
@@ -120,7 +123,7 @@ describe('mutants the changed tests let escape', () => {
         path: 'src/classify.ts',
         message:
           'This change weakened the tests of src/classify.ts: the base tests caught this StringLiteral mutant (`\'low\'` replaced with `""`), but no test runs it now. Restore the assertion that caught it, or add one. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/classify.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
-        identity: expect.any(String),
+        identity: ANY_IDENTITY,
         allowedForm: 'Restore the assertion that caught it, or add one.',
         classification: 'enforceable',
         location: { line: 3, column: 7 },
@@ -163,7 +166,12 @@ describe('mutants the changed tests let escape', () => {
     };
 
     expect(
-      weakenedTestFindings({ headReport: head, baseReport: base, mutationScope: scope }),
+      weakenedTestFindings({
+        headReport: head,
+        baseReport: base,
+        mutationScope: scope,
+        analyzerName: 'mutation',
+      }),
     ).toEqual([]);
   });
 
@@ -273,7 +281,7 @@ describe('lines of the head mapped to the base', () => {
   });
 
   it('move each unchanged line by the lines written above it, and drop written lines', () => {
-    const hunks = parseLineShifts(diff).get('src/a.ts');
+    const hunks = parseLineShifts(diff).get('src/a.ts') ?? [];
 
     expect([1, 2, 3, 4, 5, 8, 9, 10, 12].map((line) => baseLineOf(hunks, line))).toEqual([
       1,

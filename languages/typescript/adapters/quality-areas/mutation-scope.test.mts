@@ -7,7 +7,39 @@ import {
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
 import { configuredTargets, mutationTargets } from './runners/mutation-scope.mts';
-import { createQualityAreaAnalyzer } from './analyzer.mjs';
+import { createQualityAreaAnalyzer as untypedCreateQualityAreaAnalyzer } from './analyzer.mjs';
+import { testOptions } from '../test-runners/typed/test-options.mts';
+
+type Roots = {
+  readonly baselineRoot?: string;
+  readonly projectRoot: string;
+  readonly mutationScope?: string[];
+};
+
+type Analyzer = {
+  readonly createInvocation: (invocation: {
+    readonly projectRoot: string;
+    readonly policyRoot: string;
+    readonly toolRoot: string;
+    readonly snapshot: string;
+    readonly mutationScope: readonly string[] | undefined;
+  }) => { readonly args: string[] };
+};
+
+function createQualityAreaAnalyzer(options: {
+  readonly name: string;
+  readonly kind: string;
+}): Analyzer {
+  const analyzer: Analyzer = untypedCreateQualityAreaAnalyzer({
+    ...options,
+    version: undefined,
+    configurationHash: undefined,
+    exclusions: undefined,
+    timeoutMs: undefined,
+    concurrencyGroup: undefined,
+  });
+  return analyzer;
+}
 
 const layout = { isSourceFile };
 const BASE_SOURCE = [
@@ -19,13 +51,23 @@ const BASE_SOURCE = [
 
 const { createGitRepository } = useGitFixtures();
 
-function writeFile(root, relativePath, contents) {
+function writeFile(root: string, relativePath: string, contents: string): void {
   const filePath = path.join(root, relativePath);
   mkdirSync(path.dirname(filePath), { recursive: true });
   writeFileSync(filePath, contents);
 }
 
-function snapshots({ project = '.', headChanges = {}, removed = [], renamed = [] }) {
+function snapshots({
+  project = '.',
+  headChanges = {},
+  removed = [],
+  renamed = [],
+}: {
+  readonly project?: string;
+  readonly headChanges?: Readonly<Record<string, string>>;
+  readonly removed?: readonly string[];
+  readonly renamed?: readonly (readonly [string, string])[];
+}): { readonly baselineRoot: string; readonly projectRoot: string } {
   const { root } = createGitRepository({
     [`${project}/src/math.ts`]: BASE_SOURCE.join('\n'),
     [`${project}/src/old-name.ts`]: BASE_SOURCE.join('\n'),
@@ -47,8 +89,8 @@ function snapshots({ project = '.', headChanges = {}, removed = [], renamed = []
   return { baselineRoot, projectRoot: path.join(root, project) };
 }
 
-function headTargets(roots) {
-  return mutationTargets({ snapshot: 'head', ...roots }, layout);
+function headTargets(roots: Roots): string[] | undefined {
+  return mutationTargets(testOptions({ snapshot: 'head', ...roots }), layout);
 }
 
 describe('mutationTargets', () => {
@@ -96,7 +138,9 @@ describe('mutationTargets', () => {
     });
     const colocated = resolveLayout({ colocatedTests: true });
 
-    expect(mutationTargets({ snapshot: 'head', ...roots }, colocated)).toEqual(['src/math.ts:1-1']);
+    expect(mutationTargets(testOptions({ snapshot: 'head', ...roots }), colocated)).toEqual([
+      'src/math.ts:1-1',
+    ]);
     expect(headTargets(roots)).toEqual(['src/feature/test-support/make.ts:1-1', 'src/math.ts:1-1']);
   });
 
@@ -134,14 +178,14 @@ describe('mutationTargets', () => {
   it('never mutates the base snapshot, whose survivors could not be new', () => {
     const roots = snapshots({ headChanges: { 'src/math.ts': 'export const one = 2;\n' } });
 
-    expect(mutationTargets({ snapshot: 'base', ...roots }, layout)).toEqual([]);
+    expect(mutationTargets(testOptions({ snapshot: 'base', ...roots }), layout)).toEqual([]);
   });
 
   it('keeps the configured scope for a whole-project run', () => {
     const roots = snapshots({ headChanges: { 'src/math.ts': 'export const one = 2;\n' } });
 
     expect(
-      mutationTargets({ snapshot: 'head', projectRoot: roots.projectRoot }, layout),
+      mutationTargets(testOptions({ snapshot: 'head', projectRoot: roots.projectRoot }), layout),
     ).toBeUndefined();
   });
 
@@ -153,7 +197,7 @@ describe('mutationTargets', () => {
         'src/orders/notes.md': 'notes\n',
       },
     });
-    const options = { snapshot: 'head', projectRoot: roots.projectRoot };
+    const options = testOptions({ snapshot: 'head', projectRoot: roots.projectRoot });
 
     expect(mutationTargets({ ...options, mutationScope: ['src/orders'] }, layout)).toEqual([
       'src/orders/order.ts',
@@ -199,7 +243,10 @@ describe('configuredTargets', () => {
 });
 
 describe('the mutation scope argument', () => {
-  function invocationArguments(kind, mutationScope) {
+  function invocationArguments(
+    kind: string,
+    mutationScope: readonly string[] | undefined,
+  ): string[] {
     return createQualityAreaAnalyzer({ name: kind, kind }).createInvocation({
       projectRoot: '/project',
       policyRoot: '/policy',

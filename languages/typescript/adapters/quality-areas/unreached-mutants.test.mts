@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
-import { createTypescriptProject } from '../../../../core/diff/tests/policy/base-red/test-support/typescript-project.mjs';
+import { createTypescriptProject, type TypescriptProject } from './typescript-project-view.mts';
+import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
 
-const enabled = process.env.NITPICKER_TS_RED_BASE === '1';
+const enabled = process.env['NITPICKER_TS_RED_BASE'] === '1';
 
 const GREETER_TEST =
   "import { expect, it } from 'vitest';\nimport { greet } from '../src/greeter.ts';\n\nit('greets', () => {\n  expect(greet('Ada')).toBe('Hello, Ada!');\n});\n";
@@ -10,14 +11,14 @@ const UNREACHED = 'export const half = (value: number): number => value / 2;\n';
 const UNREACHED_MUTANTS = Array(2).fill('mutation mutant-nocoverage src/unreached.ts');
 
 describe.skipIf(!enabled)('TypeScript mutants that no test reaches', () => {
-  let project;
+  let project: TypescriptProject;
 
   beforeAll(() => {
     project = createTypescriptProject({
       packageRoot: PACKAGE_ROOT,
       prefix: 'nitpicker-ts-unreached',
       files: {
-        'src/greeter.ts': 'export const greet = (name: string): string => `Hello, ${name}!`;\n',
+        'src/greeter.ts': `export const greet = (name: string): string => \`Hello, \${name}!\`;\n`,
         'test/greeter.test.ts': GREETER_TEST,
       },
     });
@@ -42,10 +43,12 @@ describe.skipIf(!enabled)('TypeScript mutants that no test reaches', () => {
     });
 
     expect(
-      result
-        .json('findings.json')
-        .filter(({ classification }) => classification === 'enforceable')
-        .map(({ tool, rule, path }) => `${tool} ${rule} ${path}`),
+      listOf(result.json('findings.json'))
+        .filter((finding) => fieldOf(finding, 'classification') === 'enforceable')
+        .map(
+          (finding) =>
+            `${textOf(fieldOf(finding, 'tool'))} ${textOf(fieldOf(finding, 'rule'))} ${textOf(fieldOf(finding, 'path'))}`,
+        ),
     ).toEqual(UNREACHED_MUTANTS);
   });
 });

@@ -3,10 +3,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { runNodeTool } from '../tooling.mts';
+import { testOptions } from '../../../test-runners/typed/test-options.mts';
 
-const directories = [];
+const directories: string[] = [];
 
-function killedTool(stderr) {
+function killedTool(stderr: string): () => unknown {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-tooling-'));
   directories.push(root);
   const script = path.join(root, 'tool.mjs');
@@ -16,7 +17,7 @@ function killedTool(stderr) {
   );
   return () =>
     runNodeTool({
-      options: { kind: 'knip', projectRoot: root, liveProjectRoot: root },
+      options: testOptions({ kind: 'knip', projectRoot: root, liveProjectRoot: root }),
       absoluteToolPath: script,
       arguments_: [],
       acceptedStatuses: [0],

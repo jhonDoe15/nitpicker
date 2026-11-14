@@ -7,10 +7,13 @@ import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
   withHeadPolicyFile,
-} from '../../../preset/head-policy.mjs';
+} from '../../test-runners/typed/head-policy-views.mts';
 import { runDeadCode } from '../runners/repository.mts';
+import { testOptions } from '../../test-runners/typed/test-options.mts';
+import type { Finding } from '../../static-checks/shared.mts';
+import { fieldAt } from '../../../../../scripts/json/fields.mts';
 
-const roots = [];
+const roots: string[] = [];
 afterEach(() => {
   vi.unstubAllEnvs();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
@@ -34,7 +37,10 @@ const PROJECT_KNIP = {
   treatConfigHintsAsErrors: true,
 };
 
-function createProject(files, manifest = MANIFEST) {
+function createProject(
+  files: Readonly<Record<string, unknown>>,
+  manifest: object = MANIFEST,
+): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-knip-precedence-'));
   roots.push(root);
   symlinkSync(path.join(PACKAGE_ROOT, 'node_modules'), path.join(root, 'node_modules'));
@@ -45,27 +51,29 @@ function createProject(files, manifest = MANIFEST) {
   return root;
 }
 
-function deadCode(root, policy) {
+function deadCode(root: string, policy: object): Finding[] {
   return withHeadPolicyFile(policy, (policyFile) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
-    return runDeadCode({
-      projectRoot: root,
-      policyRoot: PACKAGE_ROOT,
-      liveProjectRoot: PACKAGE_ROOT,
-      analyzerName: 'dead-code',
-      kind: 'dead-code',
-    });
+    return runDeadCode(
+      testOptions({
+        projectRoot: root,
+        policyRoot: PACKAGE_ROOT,
+        liveProjectRoot: PACKAGE_ROOT,
+        analyzerName: 'dead-code',
+        kind: 'dead-code',
+      }),
+    );
   });
 }
 
-function reported(findings) {
+function reported(findings: readonly Finding[]): string[] {
   return findings
     .filter(({ rule }) => ['files', 'exports', 'unused-dependency'].includes(rule))
-    .map(({ rule, path: file, symbol }) => (rule === 'files' ? file : `${rule} ${symbol}`))
+    .map(({ rule, path: file, symbol }) => (rule === 'files' ? file : `${rule} ${String(symbol)}`))
     .toSorted();
 }
 
-function knipConfig(precedence, preset) {
+function knipConfig(precedence: string[], preset?: string): object {
   return { ...(preset === undefined ? {} : { preset }), tools: { knip: { precedence } } };
 }
 
@@ -98,8 +106,11 @@ describe('knip project config precedence', () => {
     );
     const config = { ...PROJECT_KNIP, entry: ['src/plugin.js'], project: ['!src/generated/**'] };
     const root = createProject({ ...sources, 'knip.json': JSON.stringify(config) });
-    const javascript = (precedence) =>
-      reported(deadCode(root, resolveHeadPolicy(knipConfig(precedence, 'javascript'), root)));
+    function javascript(precedence: string[]): string[] {
+      return reported(
+        deadCode(root, resolveHeadPolicy(knipConfig(precedence, 'javascript'), root)),
+      );
+    }
     expect(javascript(['nitpicker'])).toEqual(
       NITPICKER_ONLY.map((file) => file.replace(/\.ts$/u, '.js')),
     );
@@ -111,7 +122,7 @@ describe('knip project config precedence', () => {
     const root = createProject(SOURCES, manifest);
     expect(reported(deadCode(root, resolveHeadPolicy({}, root)))).toEqual([...NITPICKER_ONLY]);
     const optedIn = resolveHeadPolicy(knipConfig(['project', 'nitpicker']), root);
-    expect(optedIn.tools.knip.projectConfig).toEqual(manifest.knip);
+    expect(fieldAt(optedIn, 'tools', 'knip', 'projectConfig')).toEqual(manifest.knip);
     expect(reported(deadCode(root, optedIn))).toEqual([]);
   });
 
@@ -125,7 +136,7 @@ describe('knip project config precedence', () => {
     ].join('\n');
     const root = createProject({ ...SOURCES, 'knip.ts': config }, manifest);
     const policy = resolveHeadPolicy(knipConfig(['nitpicker', 'project']), root);
-    expect(policy.tools.knip.projectConfig.ignoreDependencies).toEqual([
+    expect(fieldAt(policy, 'tools', 'knip', 'projectConfig', 'ignoreDependencies')).toEqual([
       { $nitpickerRegExp: ['^left-', 'u'] },
     ]);
     expect(reported(deadCode(root, policy))).toEqual(
@@ -154,10 +165,11 @@ describe('knip project config precedence', () => {
       },
       manifest,
     );
-    const files = (precedence) =>
-      reported(deadCode(root, resolveHeadPolicy(knipConfig(precedence), root))).filter(
+    function files(precedence: string[]): string[] {
+      return reported(deadCode(root, resolveHeadPolicy(knipConfig(precedence), root))).filter(
         (entry) => !entry.startsWith('exports '),
       );
+    }
     expect(files(['nitpicker'])).toEqual([
       'packages/lib/src/tool.ts',
       'src/generated/gen.ts',
@@ -177,12 +189,12 @@ describe('knip project config precedence', () => {
     const base = createProject({ ...SOURCES, 'knip.json': '{}' });
     const headPolicy = resolveHeadPolicy(knipConfig(['project', 'nitpicker']), head);
     const basePolicy = withHeadCheckoutFacts(
-      resolveHeadPolicy(knipConfig(['project', 'nitpicker'])),
+      resolveHeadPolicy(knipConfig(['project', 'nitpicker']), undefined),
       headPolicy,
     );
-    expect(basePolicy.tools.knip).toEqual(headPolicy.tools.knip);
+    expect(fieldAt(basePolicy, 'tools', 'knip')).toEqual(fieldAt(headPolicy, 'tools', 'knip'));
     expect(reported(deadCode(base, basePolicy))).toEqual(['src/unused.ts']);
-    const notOptedIn = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
+    const notOptedIn = withHeadCheckoutFacts(resolveHeadPolicy({}, undefined), headPolicy);
     expect(reported(deadCode(base, notOptedIn))).toEqual([...NITPICKER_ONLY]);
   });
 

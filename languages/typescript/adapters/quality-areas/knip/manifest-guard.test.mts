@@ -13,12 +13,12 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { guardKnipManifest } from './manifest-guard.mts';
 
-const cleanups = [];
+const cleanups: (() => void)[] = [];
 afterEach(() => {
   for (const cleanup of cleanups.splice(0).toReversed()) cleanup();
 });
 
-function manifestIn(text) {
+function manifestIn(text: string): string {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-manifest-guard-')));
   cleanups.push(() => {
     rmSync(root, { recursive: true, force: true });
@@ -28,7 +28,7 @@ function manifestIn(text) {
   return root;
 }
 
-function guarded(manifestPath) {
+function guarded(manifestPath: string): void {
   cleanups.push(guardKnipManifest(manifestPath));
 }
 

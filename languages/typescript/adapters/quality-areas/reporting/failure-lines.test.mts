@@ -2,10 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { formatTestFailures } from './test-report.mts';
 import { assertionDetails } from './failure-lines.mts';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 
 const headline = '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:';
 
-function messageFor(failureMessage, runnerName = RUNNER_NAMES.vitest) {
+function messageFor(failureMessage: string, runnerName: string = RUNNER_NAMES.vitest): string {
   return formatTestFailures(
     {
       numFailedTests: 1,
@@ -59,8 +60,14 @@ describe('a failure from a missing environment variable', () => {
   const hint =
     'Hint: the tests need environment variables that are not set. ' +
     'Ignored files such as `.env` are not in the snapshots; export the variables in the shell that runs nitpicker.';
-  const fileFailing = (message, { snapshot, runnerName = RUNNER_NAMES.vitest } = {}) =>
-    formatTestFailures(
+  function fileFailing(
+    message: string,
+    {
+      snapshot,
+      runnerName = RUNNER_NAMES.vitest,
+    }: { readonly snapshot?: string; readonly runnerName?: string } = {},
+  ): string {
+    return formatTestFailures(
       {
         numFailedTests: 0,
         testResults: [
@@ -70,6 +77,7 @@ describe('a failure from a missing environment variable', () => {
       '/p',
       { runnerName, snapshot },
     );
+  }
 
   it.each([[RUNNER_NAMES.vitest], [RUNNER_NAMES.jest]])(
     'names the cause on the head under %s',
@@ -114,11 +122,15 @@ describe('a failure under another runner', () => {
 });
 
 describe('the line of a failing assertion', () => {
-  const lineOf = (frame) =>
-    assertionDetails(
-      { failureMessages: [`Error: no\n    at helper (/p/src/a.ts:3:1)\n${frame}`] },
-      { testFile: '/p/test/a b.test.ts', projectRoot: '/p' },
-    ).line;
+  function lineOf(frame: string): unknown {
+    return fieldOf(
+      assertionDetails(
+        { failureMessages: [`Error: no\n    at helper (/p/src/a.ts:3:1)\n${frame}`] },
+        { testFile: '/p/test/a b.test.ts', projectRoot: '/p' },
+      ),
+      'line',
+    );
+  }
 
   it.each([
     ['a raw path with a space', '    at /p/test/a b.test.ts:12:5'],
