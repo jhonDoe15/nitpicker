@@ -76,10 +76,11 @@ describe('reactor-ruleset.xml', () => {
     ]);
   });
 
-  it('declares the two Reactor rules, each with a unique name', () => {
+  it('declares the Reactor rules, each with a unique name', () => {
     expect(rules.map(({ name }) => name)).toEqual([
       'ReactorBlockingInOperator',
       'ReactorBlockInReactiveMethod',
+      'ReactorBlockWithoutTimeout',
     ]);
     expect(ruleset.match(/<rule name=/g)).toHaveLength(rules.length);
   });
@@ -100,6 +101,7 @@ describe('reactor-ruleset.xml', () => {
   it('names the offloading scheduler in the operator rule', () => {
     expect(rules.map(({ message }) => message.includes('Schedulers.boundedElastic()'))).toEqual([
       true,
+      false,
       false,
     ]);
   });

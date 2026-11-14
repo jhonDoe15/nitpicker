@@ -77,6 +77,17 @@ function splitCrashes(diagnostics: unknown): { diagnostics: unknown; crashes: un
   };
 }
 
+const KNOWN_CRASHES = new Map([
+  [
+    'UnnecessarilyFullyQualified',
+    /JCIdent cannot be cast to (?:class )?com\.sun\.source\.tree\.MemberSelectTree/u,
+  ],
+]);
+
+function isKnownCrash(check: string, cause: unknown): boolean {
+  return typeof cause === 'string' && KNOWN_CRASHES.get(check)?.test(cause) === true;
+}
+
 function crashError(crash: unknown, roots: readonly string[]): Finding {
   const file = textOf(fieldOf(crash, 'file'));
   const [relative = file] = projectRelative(file, roots);
@@ -84,12 +95,19 @@ function crashError(crash: unknown, roots: readonly string[]): Finding {
   const why = typeof cause === 'string' && cause !== '' ? ` (${cause})` : '';
   const check = textOf(fieldOf(crash, 'crash'));
   const line = textOf(fieldOf(crash, 'line'));
+  const known = isKnownCrash(check, cause);
+  const consequence = known
+    ? ', a known Error Prone bug, so it was turned off for this run and only its findings are missing. ' +
+      'The crash is not a problem in this code.'
+    : ', so it was turned off for this run and the findings of the other checks are kept. ' +
+      'The crash is an Error Prone bug, not a problem in this code.';
   return {
     ...toolError(
       'check-crashed',
-      `Error Prone's ${check} check crashed on ${relative}:${line}${why}, so it was turned off for this run and the findings of the other checks are kept. The crash is an Error Prone bug, not a problem in this code.`,
+      `Error Prone's ${check} check crashed on ${relative}:${line}${why}${consequence}`,
     ),
     identity: `check-crashed:${check}`,
+    ...(known ? { classification: 'descriptive' } : {}),
   };
 }
 

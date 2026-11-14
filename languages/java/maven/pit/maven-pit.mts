@@ -5,6 +5,10 @@ import { mavenBudget } from '../../adapters/gradle-wrapper/gradle-budget.mjs';
 import { nitpickerPitArguments } from '../../adapters/tool-config/declared/pit-declared.mjs';
 import { pitHistoryArguments } from '../../builds/pit-history/pit-history.mjs';
 import { writePitFailure } from '../../builds/pit-failure/pit-failure.mjs';
+import {
+  writeSkippedTests,
+  writeUnmutatedFailures,
+} from '../../builds/pit-failure/pit-skipped.mjs';
 import { classFiles, pitClasspath, pitTests } from '../maven-tests.mjs';
 import { pitRunTargets } from '../module/pit-scope.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
@@ -14,6 +18,7 @@ import { type MavenModule, mavenModuleOf } from '../typed/maven-values.mts';
 type PitOptions = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 type PitRun = { readonly pitDir: string; readonly targets: readonly string[] };
 type PitLimit = PitRun & { readonly limit: number };
+type PitAttempt = PitLimit & { readonly extra?: readonly string[] };
 type PitReport = PitRun & { readonly report: string };
 
 const MINUTE_MS = 60_000;
@@ -88,22 +93,56 @@ function pitArguments(options: PitOptions, { pitDir, targets }: PitRun): string[
   ];
 }
 
+function pitAttempt(options: PitOptions, { pitDir, limit, targets, extra = [] }: PitAttempt): void {
+  callUntyped(runJava, {
+    tool: 'PIT',
+    classpath: callUntyped(
+      pitClasspath,
+      options['tools'],
+      fieldOf(options['classpaths'], 'testRuntime'),
+    ),
+    mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
+    args: [...pitArguments(options, { pitDir, targets }), ...extra],
+    cwd: fieldOf(options['module'], 'basedir'),
+    accept: (result: unknown) => fieldOf(result, 'status') === 0,
+    spawn: options['spawn'],
+    timeoutMs: limit,
+  });
+}
+
+function failureOutput(error: unknown): string {
+  const output = fieldOf(error, 'output');
+  if (output !== undefined) {
+    return textOf(output);
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 function pitRan(options: PitOptions, { pitDir, limit, targets }: PitLimit): boolean {
-  const testRuntime = fieldOf(options['classpaths'], 'testRuntime');
   try {
-    callUntyped(runJava, {
-      tool: 'PIT',
-      classpath: callUntyped(pitClasspath, options['tools'], testRuntime),
-      mainClass: 'org.pitest.mutationtest.commandline.MutationCoverageReport',
-      args: pitArguments(options, { pitDir, targets }),
-      cwd: fieldOf(options['module'], 'basedir'),
-      accept: (result: unknown) => fieldOf(result, 'status') === 0,
-      spawn: options['spawn'],
-      timeoutMs: limit,
-    });
+    pitAttempt(options, { pitDir, limit, targets });
     return true;
   } catch (error) {
-    writePitFailure(pitDir, error);
+    if (!writeUnmutatedFailures(pitDir, failureOutput(error))) {
+      writePitFailure(pitDir, error);
+      return false;
+    }
+    return retriedWithoutFailingTests(options, { pitDir, targets }, error);
+  }
+}
+
+function retriedWithoutFailingTests(options: PitOptions, run: PitRun, error: unknown): boolean {
+  const limit = timeLeftMs(options);
+  if (limit < MINUTE_MS) {
+    writePitFailure(run.pitDir, error);
+    return false;
+  }
+  try {
+    pitAttempt(options, { ...run, limit, extra: ['--skipFailingTests'] });
+    writeSkippedTests(run.pitDir);
+    return true;
+  } catch (retryError) {
+    writePitFailure(run.pitDir, retryError);
     return false;
   }
 }
@@ -129,11 +168,12 @@ function optionalNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined;
 }
 
+function timeLeftMs(options: PitOptions): number {
+  return pitTimeoutMs(optionalNumber(options['timeoutMs']), optionalNumber(options['deadline']));
+}
+
 function mutate(options: PitOptions, { pitDir, report, targets }: PitReport): void {
-  const limit = pitTimeoutMs(
-    optionalNumber(options['timeoutMs']),
-    optionalNumber(options['deadline']),
-  );
+  const limit = timeLeftMs(options);
   if (limit < MINUTE_MS) {
     writePitFailure(pitDir, notStarted(mavenModuleOf(options['module'])));
     return;

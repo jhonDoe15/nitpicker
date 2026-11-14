@@ -78,7 +78,7 @@ public final class Exports {
       process.destroyForcibly();
       throw new IllegalStateException("timed out: " + command);
     }
-    return new String(output.join(), StandardCharsets.UTF_8);
+    return new String(output.join(), StandardCharsets.UTF_8); // violation: UnboundedWait
   }
 
   public static String afterExit(List<String> command) throws IOException, InterruptedException {

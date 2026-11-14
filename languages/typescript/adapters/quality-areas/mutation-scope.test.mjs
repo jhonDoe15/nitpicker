@@ -6,7 +6,7 @@ import {
   useGitFixtures,
 } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { isSourceFile, resolveLayout } from '../../preset/layout.mjs';
-import { configuredTargets, mutationTargets } from './runners/mutation-scope.mjs';
+import { configuredTargets, mutationTargets } from './runners/mutation-scope.mts';
 import { createQualityAreaAnalyzer } from './analyzer.mjs';
 
 const layout = { isSourceFile };

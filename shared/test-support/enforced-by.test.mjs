@@ -146,7 +146,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found(
         'typescript',
         'unused-dependency',
-        'languages/typescript/adapters/quality-areas/reporting/dead-code.mjs',
+        'languages/typescript/adapters/quality-areas/reporting/dead-code.mts',
       ),
       found('python', 'class-methods-limit', 'shared/rules/size/class-limits.mjs'),
       found('python', 'committed-env-file', 'shared/hygiene/files/repository-files.mjs'),

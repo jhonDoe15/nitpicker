@@ -696,7 +696,7 @@
     "mayBeIntended": false
   },
   "UnusedFormalParameter": {
-    "fix": "Remove the parameter and update the callers, or use it in the method body.",
+    "fix": "Remove the parameter and update the callers, or use it; when a framework fixes the signature, name it unusedX or ignoredX.",
     "mayBeIntended": true
   },
   "UnusedLocalVariable": {

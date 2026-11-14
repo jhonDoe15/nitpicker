@@ -30,7 +30,7 @@ function effectivePom(root) {
 `;
 }
 
-function projectWithFakeMaven() {
+function projectWithFakeMaven({ timesOut = false } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-quick-')));
   roots.push(root);
   writeFileSync(
@@ -45,6 +45,9 @@ function projectWithFakeMaven() {
       return { status: 0, stdout: '', stderr: '' };
     }
     buildCalls.push(args);
+    if (timesOut && buildCalls.length === 1) {
+      return { error: Object.assign(new Error('spawnSync mvn ETIMEDOUT'), { code: 'ETIMEDOUT' }) };
+    }
     return { status: 1, stdout: '', stderr: '[ERROR] stop after the build goals' };
   }
   return { root, spawn, buildCalls };
@@ -58,6 +61,31 @@ function buildArguments(quick) {
   );
   return buildCalls[0];
 }
+
+describe('a full Maven build that times out', () => {
+  const archunitOnly = (args) => args.filter((argument) => argument.startsWith('-Dtest='));
+
+  it('runs again with only the ArchUnit test classes, so the other checks can run', () => {
+    const { root, spawn, buildCalls } = projectWithFakeMaven({ timesOut: true });
+
+    expect(() => runMavenPreset(root, { maven: 'mvn', spawn, policy: {} })).toThrow(
+      'stop after the build goals',
+    );
+    expect(buildCalls.map(archunitOnly)).toEqual([
+      [],
+      ['-Dtest=**/*ArchTest,**/*ArchitectureTest'],
+    ]);
+  });
+
+  it('stays a failure in a quick run, which has nothing left to skip', () => {
+    const { root, spawn, buildCalls } = projectWithFakeMaven({ timesOut: true });
+
+    expect(() => runMavenPreset(root, { maven: 'mvn', spawn, policy: { quick: true } })).toThrow(
+      'Maven did not finish',
+    );
+    expect(buildCalls).toHaveLength(1);
+  });
+});
 
 describe('the Maven build in a quick run', () => {
   it('runs only the ArchUnit test classes, without the JaCoCo agent', () => {

@@ -136,7 +136,8 @@ export function analyzeModule(options: ModuleRequest): unknown {
     springArch: fieldOf(manifest, 'springArch'),
     reactor: usesReactor(classpaths),
   });
-  if (failure === undefined) {
+  const testsSkipped = options['testsSkipped'] === true;
+  if (failure === undefined && !testsSkipped) {
     callUntyped(runCoverageTools, {
       ...options,
       module: fieldOf(kotlin, 'coverageModule'),
@@ -149,7 +150,11 @@ export function analyzeModule(options: ModuleRequest): unknown {
     level: callUntyped(sourceLevel, module['compiler']),
   });
   const written = { ...fieldsOf(manifest), ...fieldsOf(fieldOf(kotlin, 'manifest')), sourceJava };
-  callUntyped(writeManifest, { reportDir, manifest: written, testsFailed: failure !== undefined });
+  callUntyped(writeManifest, {
+    reportDir,
+    manifest: written,
+    testsFailed: failure !== undefined || testsSkipped,
+  });
   return failure === undefined
     ? undefined
     : { ...fieldsOf(failure), roots: ownSourceRoots(written) };

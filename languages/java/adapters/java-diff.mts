@@ -4,7 +4,7 @@ import {
   unknownOnBaseFor,
 } from '../../../core/diff/comparison/base-red/unknown-base.mjs';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReportKeepingValid } from '../../../core/diff/comparison/schema/invalid-findings.mjs';
 import { resolveComparison } from '../../../core/diff/git/repository/git.mjs';
 import { readChangedLines } from '../../../core/diff/git/patches/changed-lines.mjs';
 import { readRemovesTests } from '../../../core/diff/git/patches/test-removal.mjs';
@@ -77,10 +77,12 @@ export function collectJavaReport(
   const findings = plan.findings(collected);
   const preset = options.policy?.preset ?? 'java';
   const readSource = sourceTextReader(projectRoot);
-  const report: unknown = parseAnalyzerReport(
-    { findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }) },
-    preset,
-  );
+  const columns: unknown = withJavaColumns(findings, {
+    projectRoot,
+    policy: options.policy,
+    readSource,
+  });
+  const report: unknown = parseAnalyzerReportKeepingValid({ findings: columns }, preset);
   const parsed = findingsOf(fieldOf(report, 'findings'));
   const policed = callUntyped(
     applyFindingPolicy,
@@ -93,8 +95,9 @@ export function collectJavaReport(
     options.resolveOverlaps ??
       ((reported: readonly JavaFinding[]) => withoutOverlaps(reported, { readSource })),
   );
+  const snapshot = options.policy?.snapshot === 'base' ? 'base' : 'head';
   return {
-    findings: withTestsFailures(findingsOf(policed), preset, testsFailures),
+    findings: withTestsFailures(findingsOf(policed), { preset, failures: testsFailures, snapshot }),
     imports,
   };
 }

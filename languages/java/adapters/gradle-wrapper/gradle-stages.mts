@@ -18,6 +18,7 @@ type ExportRequest = {
 type StageRequest = ExportRequest & {
   readonly projectRoot: string;
   readonly testsFailedModules?: readonly string[];
+  readonly testsSkipped?: boolean;
 };
 type OptionsRequest = {
   readonly projectRoot: string;
@@ -86,7 +87,14 @@ function mutationScopeProperties({ mutationScope }: JavaPolicy, directory: strin
 
 export function gradleStages(
   baseArguments: readonly string[],
-  { projectRoot, initScript, policy, directory, testsFailedModules = [] }: StageRequest,
+  {
+    projectRoot,
+    initScript,
+    policy,
+    directory,
+    testsFailedModules = [],
+    testsSkipped = false,
+  }: StageRequest,
 ): (() => string[])[] {
   const common = [
     ...baseArguments,
@@ -102,6 +110,7 @@ export function gradleStages(
       ...(testsFailedModules.length > 0
         ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
         : []),
+      ...(testsSkipped ? ['-Pnitpicker.testsSkipped=true'] : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(projectRoot, policy, directory),
       ...mutationScopeProperties(policy, directory),

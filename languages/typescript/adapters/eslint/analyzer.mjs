@@ -1,7 +1,10 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
 
-const runnerPath = path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs');
+const runnerPath = checkoutModulePath(
+  path.join(fileURLToPath(new URL('../', import.meta.url)), 'eslint-runner.mjs'),
+);
 
 export function createEslintAnalyzer({
   name,

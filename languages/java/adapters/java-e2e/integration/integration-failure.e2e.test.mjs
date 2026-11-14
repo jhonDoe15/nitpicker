@@ -17,19 +17,18 @@ describe.skipIf(!enabled)('a failing integration task wired to check', () => {
     const project = projectOf(path.join(fixtures, 'integration-tasks'), { sources: true });
     const test = path.join(project, 'src/test/java/demo/GreeterIT.java');
     writeFileSync(test, readFileSync(test, 'utf8').replace('Goodbye, Ada', 'Nope'));
-    try {
-      collectJavaFindings(project, { gradle, policy });
-    } catch (error) {
-      runs.failure = error.message
-        .replaceAll(project, '<project>')
-        .replace(/\nFull Gradle log: \S+$/u, '');
-    }
+    runs.failing = collectJavaFindings(project, { gradle, policy });
   }, 180_000);
 
-  it('fail the build naming the failing cases of a checked integration task', () => {
-    expect(runs.failure).toEqual(
-      '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
+  it('name the failing cases of a checked integration task in a tests error', () => {
+    expect(
+      runs.failing
+        .filter(({ rule }) => rule === 'tests-failed')
+        .map(({ tool, message }) => `${tool} ${message}`),
+    ).toEqual([
+      'tests 1 test fails; coverage, CRAP and mutation were skipped, the other checks ran. ' +
+        'Fix the tests and rerun:\n' +
         '  demo/GreeterIT.java:10 > demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
-    );
+    ]);
   });
 });

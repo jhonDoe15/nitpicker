@@ -4,7 +4,8 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mts';
 import {
-  isBaseTestFailure,
+  HEAD_TESTS_TOOL,
+  isTestFailure,
   runOrNoteFailingTests,
   testsFailedFinding,
   withRootSourceRoots,
@@ -38,14 +39,17 @@ function failingCall(root, modules) {
   ].join('\n');
 }
 
-function fakeGradle(failingModules) {
+function fakeGradle(failingModules, { firstCall } = {}) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-fake-gradle-'));
   temporaryRoots.push(root);
   const log = path.join(root, 'calls.log');
   const script = path.join(root, 'gradle');
-  const cases = failingModules
-    .map((modules, index) => `${String(index + 1)})\n${failingCall(root, modules)}\n;;`)
-    .join('\n');
+  const cases = [
+    ...(firstCall === undefined ? [] : [`1)\n${firstCall}\n;;`]),
+    ...failingModules.map(
+      (modules, index) => `${String(index + 1)})\n${failingCall(root, modules)}\n;;`,
+    ),
+  ].join('\n');
   writeFileSync(
     script,
     `#!/bin/sh
@@ -71,24 +75,24 @@ esac
         return {
           continued: words.includes('--continue'),
           testsFailed: words.find((word) => word.startsWith('-Pnitpicker.testsFailed=')),
+          ...(words.includes('-Pnitpicker.testsSkipped=true') ? { testsSkipped: true } : {}),
         };
       });
   return { root, script, calls };
 }
 
-describe('isBaseTestFailure', () => {
-  it('is true only for named failing tests on the base snapshot', () => {
+describe('isTestFailure', () => {
+  it('is true only for an error that names failing tests', () => {
     const failure = Object.assign(new Error('red'), {
       failures: [{ module: '.', tests: ['shop.T.t: no'] }],
     });
 
     expect([
-      isBaseTestFailure(failure, { snapshot: 'base' }),
-      isBaseTestFailure(failure, { snapshot: 'head' }),
-      isBaseTestFailure(failure, undefined),
-      isBaseTestFailure(Object.assign(new Error('x'), { failures: [] }), { snapshot: 'base' }),
-      isBaseTestFailure(new Error('x'), { snapshot: 'base' }),
-    ]).toEqual([true, false, false, false, false]);
+      isTestFailure(failure),
+      isTestFailure(Object.assign(new Error('x'), { failures: [] })),
+      isTestFailure(new Error('x')),
+      isTestFailure(undefined),
+    ]).toEqual([true, false, false, false]);
   });
 });
 
@@ -105,6 +109,54 @@ describe('testsFailedFinding', () => {
       classification: 'tool-error',
       symbol: 'core',
     });
+  });
+
+  it('is a tool error of the tests on the head that says what was skipped, so the preset keeps its findings', () => {
+    expect(
+      testsFailedFinding(
+        'java',
+        { module: 'application', tests: ['shop.T.a: no'], details: [{ name: 'shop.T.a' }] },
+        'head',
+      ),
+    ).toEqual({
+      tool: HEAD_TESTS_TOOL,
+      rule: 'tests-failed',
+      path: '.',
+      identity: 'tests-failed:application',
+      message: [
+        '1 test fails in application; coverage, CRAP and mutation were skipped there, the other checks ran. ' +
+          'Fix the tests and rerun:',
+        '  shop.T.a',
+      ].join('\n'),
+      classification: 'tool-error',
+      symbol: 'application',
+    });
+  });
+
+  it.each([
+    ['base', 'java', ' on the base'],
+    ['head', HEAD_TESTS_TOOL, ''],
+  ])('is a tests-timed-out error of the whole build on the %s', (snapshot, tool, where) => {
+    const failure = { module: '.', tests: [], timedOut: { build: 'Maven', minutes: 15 } };
+
+    expect([
+      testsFailedFinding('java', failure, snapshot),
+      withRootSourceRoots([failure], [{ dir: '', manifest: { sourceRoots: ['src'] } }]),
+    ]).toEqual([
+      {
+        tool,
+        rule: 'tests-timed-out',
+        path: '.',
+        identity: 'tests-timed-out',
+        message:
+          `Maven did not finish the tests, coverage and mutation testing${where} within 15 minutes, ` +
+          'so they were skipped and the other checks ran without them. ' +
+          'Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven command more time',
+        classification: 'tool-error',
+        symbol: '.',
+      },
+      [failure],
+    ]);
   });
 
   it('words the root project without a module and cuts a long message', () => {
@@ -139,11 +191,46 @@ describe('collectJavaFindings on a failing Gradle build', () => {
     ]);
   });
 
-  it('does not rerun a failed head: a red head fails', () => {
-    const fake = fakeGradle([['']]);
+  it('runs a failed head again without the tests of the failing modules too', () => {
+    const fake = fakeGradle([['core']]);
 
-    expect(() => collect(fake, 'head')).toThrow('1 test fails; the build stopped');
-    expect(fake.calls()).toEqual([{ continued: false, testsFailed: undefined }]);
+    expect(() => collect(fake, 'head')).toThrow('Execution failed for task :compileJava');
+    expect(fake.calls()).toEqual([
+      { continued: true, testsFailed: undefined },
+      { continued: true, testsFailed: '-Pnitpicker.testsFailed=core' },
+    ]);
+  });
+
+  it.each(['base', 'head'])(
+    'runs a %s that timed out again without any test, coverage or mutation',
+    (snapshot) => {
+      const fake = fakeGradle([], { firstCall: 'sleep 5' });
+
+      expect(() =>
+        collectJavaFindings(fake.root, {
+          gradle: fake.script,
+          policy: { preset: 'java', snapshot },
+          budget: { commandTimeoutMs: 300 },
+        }),
+      ).toThrow('Execution failed for task :compileJava');
+      expect(fake.calls()).toEqual([
+        { continued: true, testsFailed: undefined },
+        { continued: true, testsFailed: undefined, testsSkipped: true },
+      ]);
+    },
+  );
+
+  it('does not rerun a quick run that timed out', () => {
+    const fake = fakeGradle([], { firstCall: 'sleep 5' });
+
+    expect(() =>
+      collectJavaFindings(fake.root, {
+        gradle: fake.script,
+        policy: { preset: 'java', snapshot: 'head', quick: true },
+        budget: { commandTimeoutMs: 300 },
+      }),
+    ).toThrow('Gradle did not finish');
+    expect(fake.calls()).toHaveLength(1);
   });
 
   it('does not rerun a base that failed without a failing test', () => {
@@ -202,14 +289,52 @@ describe('runOrNoteFailingTests', () => {
     );
   });
 
-  it('lets a red head fail', () => {
-    const failure = failureOf('core');
-    const { run, calls } = runner(failure);
+  it('reruns a timed-out build with every test skipped and notes the timeout', () => {
+    const timedOut = { build: 'Gradle', minutes: 15 };
+    const calls = [];
+    const run = (_root, options) => {
+      calls.push([options.testsFailedModules, options.testsSkipped === true]);
+      if (calls.length === 1) {
+        throw Object.assign(new Error('slow'), { timedOut });
+      }
+    };
 
-    expect(() => runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } })).toThrow(
-      failure,
-    );
+    expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } }), calls]).toEqual([
+      [{ module: '.', tests: [], timedOut }],
+      [
+        [[], false],
+        [[], true],
+      ],
+    ]);
+  });
+
+  it('lets a quick build that timed out fail', () => {
+    const slow = Object.assign(new Error('slow'), { timedOut: { build: 'Gradle', minutes: 15 } });
+    const { run, calls } = runner(slow);
+
+    expect(() => runOrNoteFailingTests(run, '/p', { policy: { quick: true } })).toThrow(slow);
     expect(calls).toEqual([[]]);
+  });
+
+  it('reruns once more without the tests of a module that failed only in the rerun', () => {
+    const { run, calls } = runner(failureOf('core'), failureOf('api'));
+
+    expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } }), calls]).toEqual([
+      [
+        { module: 'core', tests: ['core.T.t: no'] },
+        { module: 'api', tests: ['api.T.t: no'] },
+      ],
+      [[], ['core'], ['core', 'api']],
+    ]);
+  });
+
+  it('reruns a red head the same way', () => {
+    const { run, calls } = runner(failureOf('core'));
+
+    expect([runOrNoteFailingTests(run, '/p', { policy: { snapshot: 'head' } }), calls]).toEqual([
+      [{ module: 'core', tests: ['core.T.t: no'] }],
+      [[], ['core']],
+    ]);
   });
 });
 
@@ -222,9 +347,14 @@ describe('withTestsFailures', () => {
     ];
 
     expect([
-      withTestsFailures(findings, 'java', undefined),
-      withTestsFailures(findings, 'java', failures).map(({ rule, symbol }) => `${rule} ${symbol}`),
+      withTestsFailures(findings, { preset: 'java' }),
+      withTestsFailures(findings, { preset: 'java', failures }).map(
+        ({ rule, symbol }) => `${rule} ${symbol}`,
+      ),
     ]).toEqual([findings, ['x undefined', 'tests-failed .', 'tests-failed core']]);
+    const head = withTestsFailures(findings, { preset: 'java', failures, snapshot: 'head' });
+
+    expect(head.map(({ tool }) => tool)).toEqual([undefined, HEAD_TESTS_TOOL, HEAD_TESTS_TOOL]);
   });
 });
 

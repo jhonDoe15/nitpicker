@@ -15,6 +15,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   failureText,
   troubleshootingLinkOf,
+  withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { TESTS_FAILED_RULE } from '../../../shared/rules/finding-helpers.mjs';
 import { GRADLE_LOG_LINE } from './gradle-wrapper/diagnostics/failure-log.mts';
@@ -48,6 +49,8 @@ type JavaSnapshot = {
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
+export const INTERNAL_ERROR_RULE = 'internal-error';
+const INTERNAL_ERRORS = [TypeError, RangeError, ReferenceError, SyntaxError];
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_TESTS_FAILED_LENGTH = 40_000;
 const PIT_RESERVE_MS = 2 * MINUTE_MS;
@@ -117,19 +120,16 @@ export function analyzeJavaSnapshot(
     if (compileErrors.length > 0) {
       return { findings: compileErrorFindings(compileErrors, policy?.preset ?? 'java') };
     }
+    const preset = policy?.preset ?? 'java';
     const rule = failureRule(error, projectRoot);
-    const anchor =
-      rule === MAVEN_FAILURE_RULE
-        ? TROUBLESHOOTING_ANCHORS.mavenFails
-        : TROUBLESHOOTING_ANCHORS.gradleFails;
     return {
       findings: [
         {
-          tool: policy?.preset ?? 'java',
+          tool: preset,
           rule,
           path: '.',
           identity: rule,
-          message: truncated(textOf(failureText(error, anchor)), rule),
+          message: truncated(failureMessage(error, rule, preset), rule),
           classification: 'tool-error',
         },
       ],
@@ -164,11 +164,35 @@ function hasFailures(error: unknown): boolean {
   );
 }
 
+function isInternalError(error: unknown): boolean {
+  return INTERNAL_ERRORS.some((type) => error instanceof type);
+}
+
 function failureRule(error: unknown, projectRoot: string): string {
   if (hasFailures(error)) {
     return TESTS_FAILED_RULE;
   }
+  if (isInternalError(error)) {
+    return INTERNAL_ERROR_RULE;
+  }
   return detectJavaBuild(projectRoot) === 'maven' ? MAVEN_FAILURE_RULE : GRADLE_FAILURE_RULE;
+}
+
+function failureMessage(error: unknown, rule: string, preset: string): string {
+  if (rule === INTERNAL_ERROR_RULE) {
+    const reason = error instanceof Error ? error.message : textOf(error);
+    return textOf(
+      withTroubleshooting(
+        `Internal error in the ${preset} analyzer: ${reason}`,
+        TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      ),
+    );
+  }
+  const anchor =
+    rule === MAVEN_FAILURE_RULE
+      ? TROUBLESHOOTING_ANCHORS.mavenFails
+      : TROUBLESHOOTING_ANCHORS.gradleFails;
+  return textOf(failureText(error, anchor));
 }
 
 export function readRunnerPolicy(
