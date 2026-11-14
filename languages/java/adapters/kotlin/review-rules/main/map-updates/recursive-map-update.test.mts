@@ -1,27 +1,27 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { routed, run } from '../../test-support/facts.mjs';
+import type { RuleFinding } from '../../test-support/facts.mts';
+import { routed, run } from '../../test-support/facts.mts';
+import { recordedFiles } from '../../test-support/loose-facts.mts';
 import { RECURSIVE_MAP_UPDATE_RULE, recursiveMapUpdateFindings } from './recursive-map-update.mjs';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const PROJECT = path.join(FIXTURES, 'kotlin-map-update-project');
-const { files } = JSON.parse(
-  readFileSync(path.join(FIXTURES, 'kotlin-map-update-facts.json'), 'utf8'),
-);
+const files = recordedFiles(path.join(FIXTURES, 'kotlin-map-update-facts.json'));
 const FILE = 'src/main/kotlin/demo/orders/InFlight.kt';
 const NESTED = 'src/main/kotlin/demo/orders/Batches.kt';
 
-function lineIn(file, fragment) {
+function lineIn(file: string, fragment: string) {
   const lines = readFileSync(path.join(PROJECT, file), 'utf8').split('\n');
   return lines.findIndex((text) => text.includes(fragment)) + 1;
 }
 
-function lineOf(fragment) {
+function lineOf(fragment: string) {
   return lineIn(FILE, fragment);
 }
 
-function findingsIn(file) {
+function findingsIn(file: string) {
   return run(
     recursiveMapUpdateFindings,
     files.filter((entry) => entry.file === file),
@@ -29,7 +29,7 @@ function findingsIn(file) {
   );
 }
 
-function located(findings) {
+function located(findings: RuleFinding[]) {
   return findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`);
 }
 
@@ -69,8 +69,8 @@ describe('recursive map updates in Kotlin', () => {
   it('names the map, the call and the allowed form, with the Java rule id and exception route', () => {
     const [first] = findings;
 
-    expect(first.tool).toBe('pmd');
-    expect(first.message).toBe(
+    expect(first?.tool).toBe('pmd');
+    expect(first?.message).toBe(
       routed(
         [
           'Change `inProgress` after `inProgress.computeIfAbsent` returns, not inside the function passed to it',
@@ -88,7 +88,7 @@ describe('recursive map updates in Kotlin', () => {
   it('explains that getOrPut stores the value after its function returns', () => {
     const getOrPut = findings.find(({ symbol }) => symbol === 'getOrPutConcurrent.inProgress');
 
-    expect(getOrPut.message).toBe(
+    expect(getOrPut?.message).toBe(
       routed(
         [
           'Change `inProgress` after `inProgress.getOrPut` returns, not inside the function passed to it',
@@ -113,7 +113,7 @@ describe('recursive map updates in Kotlin', () => {
     expect(
       run(
         recursiveMapUpdateFindings,
-        files.map((file) => ({ ...file, test: true })),
+        files.map((entry) => ({ ...entry, test: true })),
       ),
     ).toEqual([]);
   });

@@ -1,27 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import {
-  argument,
-  file,
-  fn,
-  klass,
-  parameter,
-  routeOf,
-  run,
-  summary,
-} from '../../test-support/facts.mjs';
+import type { ClassFact, FunctionFact } from '../../test-support/facts.mts';
+import { routeOf, run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { argument, file, fn, importOf, klass, parameter } from '../../test-support/loose-facts.mts';
+import { forward, params } from './forwarding-support.mts';
 import { FORWARDING_RULE, forwardingWrapperFindings } from './forwarding-wrappers.mjs';
 
-const forward = (name, args, overrides = {}) => ({
-  name,
-  qualifier: undefined,
-  typeArguments: false,
-  arguments: args.map((text) => argument(text)),
-  ...overrides,
-});
-const params = (...names) => names.map((name) => parameter(name, 'Int'));
-const target = (name = 'scaled', overrides = {}) =>
+const target = (name = 'scaled', overrides: Loose = {}) =>
   fn(name, { parameters: params('cents'), returnType: 'Int', ...overrides });
-const wrapper = (overrides = {}) =>
+const wrapper = (overrides: Loose = {}) =>
   fn('price', {
     line: 3,
     parameters: params('cents'),
@@ -29,8 +16,8 @@ const wrapper = (overrides = {}) =>
     ...overrides,
   });
 
-const COMPONENT = [{ path: 'org.springframework.stereotype.Component', all: false }];
-const findingsFor = (functions, classes = []) =>
+const COMPONENT = [importOf('org.springframework.stereotype.Component')];
+const findingsFor = (functions: FunctionFact[], classes: ClassFact[] = []) =>
   run(forwardingWrapperFindings, [file({ functions, classes, imports: COMPONENT })]);
 
 describe('forwarding wrapper in Kotlin', () => {
@@ -38,8 +25,8 @@ describe('forwarding wrapper in Kotlin', () => {
     const findings = findingsFor([wrapper(), target()]);
 
     expect(summary(findings)).toEqual([`${FORWARDING_RULE} price 3`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(routeOf(findings[0].message)).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/StaticForwardingWrapper","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -177,7 +164,7 @@ describe('forwarding wrapper in Kotlin', () => {
       parameters: params('a'),
       forward: forward('abs', ['a'], { qualifier: 'Math' }),
     });
-    const annotated = (name, type) =>
+    const annotated = (name: string, type: string) =>
       findingsFor([twice], [klass('Setup', { kind: 'object', annotations: [{ name, type }] })]);
 
     expect(
@@ -227,7 +214,7 @@ describe('forwarding wrapper targets in Kotlin', () => {
     const files = [wrapperFile, elsewhere];
 
     expect(summary(run(forwardingWrapperFindings, files))).toEqual([`${FORWARDING_RULE} absOf 4`]);
-    wrapperFile.imports = [{ path: 'demo.other.Math', all: false }];
+    wrapperFile.imports = [importOf('demo.other.Math')];
 
     expect(run(forwardingWrapperFindings, files)).toEqual([]);
   });
@@ -242,7 +229,7 @@ describe('forwarding wrapper targets in Kotlin', () => {
     const files = [wrapperFile, elsewhere];
 
     expect(run(forwardingWrapperFindings, files)).toEqual([]);
-    wrapperFile.imports = [{ path: 'demo.other.scaled', all: false }];
+    wrapperFile.imports = [importOf('demo.other.scaled')];
 
     expect(summary(run(forwardingWrapperFindings, files))).toEqual([`${FORWARDING_RULE} price 3`]);
   });

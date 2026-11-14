@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import {
-  file,
-  fn,
-  klass,
-  parameter,
-  property,
-  routed,
-  routeOf,
-  run,
-  summary,
-} from '../../test-support/facts.mjs';
+import type { ClassFact, ParameterFact } from '../../test-support/facts.mts';
+import { routed, routeOf, run, summary } from '../../test-support/facts.mts';
+import { file, fn, klass, parameter, property } from '../../test-support/loose-facts.mts';
 import {
   MEMBER_CYCLE_RULE,
   SKIPPED_SUPER_RULE,
   generatedMemberFindings,
 } from './generated-members.mjs';
 
-const val = (name, type, line = 1, overrides = {}) =>
+const val = (name: string, type: string, line = 1, overrides = {}) =>
   parameter(name, type, { property: 'val', line, ...overrides });
-const data = (name, parameters, overrides = {}) =>
+const data = (name: string, parameters: ParameterFact[], overrides = {}) =>
   klass(name, { data: true, primaryParameters: parameters, ...overrides });
-const findingsFor = (classes, overrides = {}) =>
+const findingsFor = (classes: ClassFact[], overrides = {}) =>
   run(generatedMemberFindings, [file({ classes, ...overrides })]);
 
 describe('generated members of Kotlin data classes over a cycle', () => {
@@ -31,13 +23,13 @@ describe('generated members of Kotlin data classes over a cycle', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${MEMBER_CYCLE_RULE} Line.order 7`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(
         'The generated toString, equals and hashCode of data class `Line` can follow `order` around the cycle Order.lines -> Line.order -> Order, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Move the back reference out of the primary constructor into the class body (`var order: ... = null`), where the generated members do not read it. A property that only ever points down a tree, never back up, is the intended case.',
         MEMBER_CYCLE_RULE,
       ),
     );
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/GeneratedMemberCycle","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -79,7 +71,7 @@ describe('generated members of Kotlin data classes over a cycle', () => {
       { functions: [fn('toString', { owner: 'Line' })] },
     );
 
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(
         'The generated equals and hashCode of data class `Line` can follow `order` around the cycle Order.lines -> Line.order -> Order, so the first log line, HashSet or cache lookup of an object in the cycle recurses until StackOverflowError. Move the back reference out of the primary constructor into the class body (`var order: ... = null`), where the generated members do not read it. A property that only ever points down a tree, never back up, is the intended case.',
         MEMBER_CYCLE_RULE,
@@ -97,7 +89,7 @@ describe('generated members of Kotlin data classes over a cycle', () => {
     const item = file({
       file: 'src/main/kotlin/shop/items/Item.kt',
       package: 'shop.items',
-      imports: [{ path: 'shop.orders', alias: null, all: true }],
+      imports: [{ path: 'shop.orders', alias: undefined, all: true }],
       classes: [
         klass('Item'),
         data('Line', [val('order', 'Order', 5)], { qualified: 'Item.Line' }),
@@ -119,7 +111,7 @@ describe('generated members of Kotlin data classes over a cycle', () => {
       val('parent', 'Node?', 2),
       val('children', 'Node', 3, { vararg: true }),
     ]);
-    const imports = [{ path: 'java.util.Date', alias: null, all: false }];
+    const imports = [{ path: 'java.util.Date', alias: undefined, all: false }];
     const date = data('Date', [val('order', 'Order', 6)]);
     const order = data('Order', [val('placed', 'Date', 7)]);
 
@@ -153,7 +145,7 @@ describe('Kotlin data classes that extend a class with state', () => {
     );
 
     expect(summary(findings)).toEqual([`${SKIPPED_SUPER_RULE} Invoice 4`]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       routed(
         'Data class `Invoice` extends `Audited`, which declares `createdAt`, `tenant`, but the generated equals and hashCode read only the primary-constructor properties of `Invoice`, so two objects that differ only in inherited properties are equal. Declare them abstract in `Audited` and override them in the primary constructor, or write equals and hashCode.',
         SKIPPED_SUPER_RULE,

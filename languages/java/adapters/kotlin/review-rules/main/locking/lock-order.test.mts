@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { file, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
+import type { FileFacts } from '../../test-support/facts.mts';
+import { run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { file, klass, parameter, property } from '../../test-support/loose-facts.mts';
 import { LOCK_ORDER_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
 import { lockOrderFindings } from './lock-order.mjs';
 
@@ -10,12 +13,18 @@ const CLASS_SCOPE = {
   supers: [],
   visibility: 'public',
 };
-const fun = (name) => ({ k: 'fun', name });
-const lambda = (host, lock) =>
+const fun = (name: string) => ({ k: 'fun', name });
+const lambda = (host: string, lock: string) =>
   host === 'synchronized'
-    ? { k: 'lambda', host, argument: lock, qualifier: null }
-    : { k: 'lambda', host, qualifier: lock, argument: null };
-const take = (line, host, lock, outer = [], overrides = {}) => ({
+    ? { k: 'lambda', host, argument: lock, qualifier: undefined }
+    : { k: 'lambda', host, qualifier: lock, argument: undefined };
+const take = (
+  line: number,
+  host: string,
+  lock: string,
+  outer: Loose[] = [],
+  overrides: { member?: string; [key: string]: unknown } = {},
+) => ({
   line,
   host,
   lock,
@@ -24,7 +33,7 @@ const take = (line, host, lock, outer = [], overrides = {}) => ({
   scopes: [...outer, fun(overrides.member ?? 'transfer'), CLASS_SCOPE],
   ...overrides,
 });
-const ledger = (lockAcquisitions, overrides = {}) =>
+const ledger = (lockAcquisitions: unknown[], overrides = {}) =>
   file({
     classes: [
       klass('Ledger', { primaryParameters: [parameter('audit', 'Any', { property: 'val' })] }),
@@ -33,7 +42,7 @@ const ledger = (lockAcquisitions, overrides = {}) =>
     lockAcquisitions,
     ...overrides,
   });
-const findingsFor = (files) => run(lockOrderFindings, files);
+const findingsFor = (files: FileFacts[]) => run(lockOrderFindings, files);
 
 describe('lock-order inversions in Kotlin', () => {
   it('reports both nestings of two locks taken in opposite orders, named in the message', () => {
@@ -52,7 +61,7 @@ describe('lock-order inversions in Kotlin', () => {
       `${LOCK_ORDER_RULE} Ledger.transfer: accounts -> audit 4`,
       `${LOCK_ORDER_RULE} Ledger.report: audit -> accounts 9`,
     ]);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       '`transfer` takes `audit` while it holds `accounts`, and `report` takes `accounts` while it holds ' +
         '`audit`: two threads that run both can each hold one lock and wait forever for the other, a ' +
         'deadlock that no test reliably shows. Take nested locks in one order everywhere in the class (if ' +

@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { kotlinCovers, kotlinPairs } from './load-effect-types.mjs';
+import {
+  kotlinCovers as untypedCovers,
+  kotlinPairs as untypedPairs,
+} from './load-effect-types.mjs';
+
+const kotlinPairs: () => string[] = untypedPairs;
+const kotlinCovers: (type: string, method: string) => boolean = untypedCovers;
 
 const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/pmd-main-ruleset.xml');
 const ARGUMENT_TYPES = new Set(['java.lang.String', 'java.io.File', 'java.nio.file.Path']);
@@ -33,7 +39,7 @@ function chainRoots() {
   );
 }
 
-const KOTLIN_ONLY = [
+const KOTLIN_ONLY: [RegExp, string][] = [
   [/^java\.nio\.file\.Path#/u, EXTENSION],
   [
     /^java\.io\.File#(?:read|write|append|forEach|use|buffered|input|output|reader|writer|print|copy)/u,
@@ -65,32 +71,36 @@ function ruleXpath() {
   return rule.slice(rule.indexOf('<![CDATA['), rule.indexOf(']]>'));
 }
 
-function lists(xpath) {
+function lists(xpath: string) {
   return new Map(
-    [...xpath.matchAll(/\$(\w+) := \(([^)]*)\)/gu)].map(([, name, body]) => [
-      `$${name}`,
-      [...body.matchAll(/'([^']+)'/gu)].map(([, method]) => method),
-    ]),
+    [...xpath.matchAll(/\$(\w+) := \(([^)]*)\)/gu)].map(
+      ([, name = '', body = '']): [string, string[]] => [
+        `$${name}`,
+        [...body.matchAll(/'([^']+)'/gu)].map(([, method = '']) => method),
+      ],
+    ),
   );
 }
 
-function signaturePairs(calls) {
-  return [...calls.matchAll(/matchesSig\('([^#']+)#([^(']+)\(/gu)].map(([, type, method]) => {
-    if (method !== '_') {
-      return `${type}#${method}`;
-    }
-    return calls.includes(`starts-with(@MethodName, 'new') and pmd-java:matchesSig('${type}#`)
-      ? `${type}#new*`
-      : `${type}#*`;
-  });
+function signaturePairs(calls: string) {
+  return [...calls.matchAll(/matchesSig\('([^#']+)#([^(']+)\(/gu)].map(
+    ([, type = '', method = '']) => {
+      if (method !== '_') {
+        return `${type}#${method}`;
+      }
+      return calls.includes(`starts-with(@MethodName, 'new') and pmd-java:matchesSig('${type}#`)
+        ? `${type}#new*`
+        : `${type}#*`;
+    },
+  );
 }
 
-function receiverPairs(calls, named) {
+function receiverPairs(calls: string, named: Map<string, string[]>) {
   const pattern =
     /@MethodName = (\$\w+|\([^)]*\))\s+and \*\[1\](?:\[not\(self::ArgumentList\)\])?\[pmd-java:typeIs\('([^']+)'\)/gu;
-  return [...calls.matchAll(pattern)].flatMap(([, methods, type]) => {
+  return [...calls.matchAll(pattern)].flatMap(([, methods = '', type = '']) => {
     const names =
-      named.get(methods) ?? [...methods.matchAll(/'([^']+)'/gu)].map(([, name]) => name);
+      named.get(methods) ?? [...methods.matchAll(/'([^']+)'/gu)].map(([, name = '']) => name);
     return names.map((method) => `${type}#${method}`);
   });
 }
@@ -104,37 +114,37 @@ function javaPairs() {
   );
   const typeExpressions = [...calls.matchAll(/TypeExpression\]\[pmd-java:typeIs\('([^']+)'\)/gu)];
   const created = [...constructors.matchAll(/typeIs\('([^']+)'\)/gu)]
-    .map(([, type]) => type)
+    .map(([, type = '']) => type)
     .filter((type) => !ARGUMENT_TYPES.has(type));
   return [
     ...new Set([
       ...signaturePairs(calls),
       ...receiverPairs(calls, lists(xpath)),
-      ...typeExpressions.map(([, type]) => `${type}#*`),
+      ...typeExpressions.map(([, type = '']) => `${type}#*`),
       ...created.map((type) => `${type}#new`),
     ]),
   ];
 }
 
-function reasonKey(pair) {
-  return JAVA_ONLY.has(pair) ? pair : `${pair.split('#')[0]}#*`;
+function reasonKey(pair: string) {
+  return JAVA_ONLY.has(pair) ? pair : `${pair.split('#')[0] ?? ''}#*`;
 }
 
-function javaOnlyReason(pair) {
+function javaOnlyReason(pair: string) {
   return JAVA_ONLY.get(reasonKey(pair));
 }
 
-function kotlinOnlyReason(pair) {
+function kotlinOnlyReason(pair: string) {
   return KOTLIN_ONLY.find(([pattern]) => pattern.test(pair))?.[1];
 }
 
-function supertypes(type) {
+function supertypes(type: string): string[] {
   const parent = SUPERTYPES.get(type);
   return parent === undefined ? [type] : [type, ...supertypes(parent)];
 }
 
-function javaCovers(pairs, pair) {
-  const [type, method] = pair.split('#');
+function javaCovers(pairs: Set<string>, pair: string) {
+  const [type = '', method = ''] = pair.split('#');
   const bare = method.replace(/\(\+\)$/u, '');
   return supertypes(type).some(
     (candidate) => pairs.has(`${candidate}#${bare}`) || pairs.has(`${candidate}#*`),
@@ -163,7 +173,7 @@ describe('class-load effect parity between the Java and Kotlin rules', () => {
 
   it('covers every Java pair in Kotlin or names why Kotlin leaves it', () => {
     const missing = java.filter((pair) => {
-      const [type, method] = pair.split('#');
+      const [type = '', method = ''] = pair.split('#');
       return !kotlinCovers(type, method) && javaOnlyReason(pair) === undefined;
     });
 
@@ -182,9 +192,10 @@ describe('class-load effect parity between the Java and Kotlin rules', () => {
   it('keeps no reason that no pair needs', () => {
     const pairs = new Set(java);
     const unused = [
-      ...[...JAVA_ONLY.keys()].filter(
-        (key) => kotlinCovers(...key.split('#')) || !java.some((pair) => reasonKey(pair) === key),
-      ),
+      ...[...JAVA_ONLY.keys()].filter((key) => {
+        const [type = '', method = ''] = key.split('#');
+        return kotlinCovers(type, method) || !java.some((pair) => reasonKey(pair) === key);
+      }),
       ...KOTLIN_ONLY.filter(([pattern]) => !kotlin.some((pair) => pattern.test(pair))).map(String),
       ...kotlin.filter((pair) => javaCovers(pairs, pair) && kotlinOnlyReason(pair) !== undefined),
     ];

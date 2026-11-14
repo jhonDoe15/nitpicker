@@ -4,30 +4,17 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mjs';
 import { withoutGeneratedSources } from '../../../../generated/generated-sources.mjs';
-import {
-  argument,
-  file,
-  fn,
-  klass,
-  parameter,
-  routed,
-  routeOf,
-  run,
-  summary,
-} from '../../test-support/facts.mjs';
+import { fieldOf, listOf } from '../../../../../../../shared/values/readers.mts';
+import type { ClassFact, FunctionFact, RuleFinding } from '../../test-support/facts.mts';
+import { routed, routeOf, run, summary } from '../../test-support/facts.mts';
+import type { Loose } from '../../test-support/loose-facts.mts';
+import { argument, file, fn, klass, parameter } from '../../test-support/loose-facts.mts';
+import { forward, params } from './forwarding-support.mts';
 import { METHOD_ALIAS_RULE, methodAliasFindings } from './method-aliases.mjs';
 
-const forward = (name, args, overrides = {}) => ({
-  name,
-  qualifier: undefined,
-  typeArguments: false,
-  arguments: args.map((text) => argument(text)),
-  ...overrides,
-});
-const params = (...names) => names.map((name) => parameter(name, 'Int'));
-const sum = (overrides = {}) =>
+const sum = (overrides: Loose = {}) =>
   fn('sum', { owner: 'Cart', parameters: params('items'), returnType: 'Int', ...overrides });
-const total = (overrides = {}) =>
+const total = (overrides: Loose = {}) =>
   fn('total', {
     line: 5,
     owner: 'Cart',
@@ -37,28 +24,33 @@ const total = (overrides = {}) =>
     ...overrides,
   });
 const cart = klass('Cart');
+const withoutGenerated: (findings: RuleFinding[], root: string) => RuleFinding[] =
+  withoutGeneratedSources;
 
-const findingsFor = (functions, classes = [cart], overrides = {}) =>
-  run(methodAliasFindings, [file({ functions, classes, ...overrides })]);
+const findingsFor = (
+  functions: FunctionFact[],
+  classes: ClassFact[] = [cart],
+  overrides: Loose = {},
+) => run(methodAliasFindings, [file({ functions, classes, ...overrides })]);
 
 describe('method alias in Kotlin', () => {
   it('reports a member that only passes its parameters to another member of its class', () => {
     const findings = findingsFor([sum(), total()]);
 
     expect(summary(findings)).toEqual([`${METHOD_ALIAS_RULE} Cart.total 5`]);
-    expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.tool).toBe('pmd');
+    expect(findings[0]?.message).toBe(
       routed(
         'This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias.',
         METHOD_ALIAS_RULE,
       ),
     );
-    expect(routeOf(findings[0].message)).toBe(
+    expect(routeOf(findings[0]?.message ?? '')).toBe(
       'If this is intended, add {"rule":"pmd/ForwardingMethodAlias","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 
-  it.each([
+  it.each<[string, Loose]>([
     ['an explicit this receiver', { forward: forward('sum', ['items'], { qualifier: 'this' }) }],
     ['a target declared before it', { line: 1 }],
     [
@@ -72,10 +64,10 @@ describe('method alias in Kotlin', () => {
     ],
     ['a suspend pair', { modifiers: ['suspend'] }],
   ])('reports %s', (_name, overrides) => {
-    const target = overrides.modifiers === undefined ? sum() : sum({ modifiers: ['suspend'] });
+    const target = overrides['modifiers'] === undefined ? sum() : sum({ modifiers: ['suspend'] });
 
     expect(summary(findingsFor([total(overrides), target]))).toEqual([
-      `${METHOD_ALIAS_RULE} Cart.total ${String(overrides.line ?? 5)}`,
+      `${METHOD_ALIAS_RULE} Cart.total ${String(typeof overrides['line'] === 'number' ? overrides['line'] : 5)}`,
     ]);
   });
 
@@ -184,7 +176,7 @@ describe('method alias in Kotlin', () => {
   });
 
   it('asks to rename a less visible target and otherwise to call it directly', () => {
-    const message = (overrides) => findingsFor([sum(overrides), total()])[0].message;
+    const message = (overrides: Loose) => findingsFor([sum(overrides), total()])[0]?.message;
     const rename = routed(
       "This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method's name and delete the alias.",
       METHOD_ALIAS_RULE,
@@ -199,7 +191,7 @@ describe('method alias in Kotlin', () => {
       message({ visibility: 'internal' }),
       message({ modifiers: ['protected'] }),
       message({ visibility: 'public' }),
-      findingsFor([sum({ visibility: 'private' }), total({ visibility: 'private' })])[0].message,
+      findingsFor([sum({ visibility: 'private' }), total({ visibility: 'private' })])[0]?.message,
     ]).toEqual([rename, rename, rename, direct, direct]);
   });
 
@@ -222,7 +214,7 @@ describe('method alias in Kotlin', () => {
 });
 
 describe('method alias identity and generated sources', () => {
-  const roots = [];
+  const roots: string[] = [];
 
   afterEach(() => {
     for (const root of roots.splice(0)) {
@@ -230,7 +222,7 @@ describe('method alias identity and generated sources', () => {
     }
   });
 
-  const identitiesFor = (line) =>
+  const identitiesFor = (line: number) =>
     findingsFor([sum({ line: 1 }), total({ line })]).map(({ identity }) => identity);
 
   it('keeps the identity when the alias moves to another line', () => {
@@ -245,10 +237,16 @@ describe('method alias identity and generated sources', () => {
       sum({ name: 'count' }),
       total({ name: 'size', line: 20, forward: forward('count', ['items']) }),
     ]);
-    const result = compareFindings({ baseFindings: base, headFindings: head });
+    const result: unknown = Reflect.apply(compareFindings, undefined, [
+      { baseFindings: base, headFindings: head },
+    ]);
 
-    expect(result.newFindings.map(({ symbol }) => symbol)).toEqual(['Cart.size']);
-    expect(result.unchangedFindings.map(({ symbol }) => symbol)).toEqual(['Cart.total']);
+    expect(listOf(fieldOf(result, 'newFindings')).map((entry) => fieldOf(entry, 'symbol'))).toEqual(
+      ['Cart.size'],
+    );
+    expect(
+      listOf(fieldOf(result, 'unchangedFindings')).map((entry) => fieldOf(entry, 'symbol')),
+    ).toEqual(['Cart.total']);
   });
 
   it('drops findings in generated sources with the other findings of the Kotlin preset', () => {
@@ -257,11 +255,12 @@ describe('method alias identity and generated sources', () => {
     const generated = 'build/generated/ksp/main/kotlin/demo/Cart.kt';
     const header = 'src/main/kotlin/demo/Header.kt';
     const handWritten = 'src/main/kotlin/demo/Hand.kt';
-    for (const [name, text] of [
+    const sources: [string, string][] = [
       [generated, 'package demo\n'],
       [header, '// Code generated by Wire protocol buffer compiler, do not edit.\npackage demo\n'],
       [handWritten, 'package demo\n'],
-    ]) {
+    ];
+    for (const [name, text] of sources) {
       mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
       writeFileSync(path.join(root, name), text);
     }
@@ -271,8 +270,6 @@ describe('method alias identity and generated sources', () => {
     const findings = run(methodAliasFindings, facts);
 
     expect(findings).toHaveLength(3);
-    expect(withoutGeneratedSources(findings, root).map(({ path: found }) => found)).toEqual([
-      handWritten,
-    ]);
+    expect(withoutGenerated(findings, root).map(({ path: found }) => found)).toEqual([handWritten]);
   });
 });
