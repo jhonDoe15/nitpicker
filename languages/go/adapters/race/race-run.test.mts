@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { parseTestEvents } from '../tests/test-events.mjs';
-import { raceOnlyFailures, raceUnavailable } from './race-run.mjs';
+import { parseTestEvents } from '../typed/go-readers.mts';
+import { raceUnavailable } from '../typed/go-report-readers.mts';
+import { raceOnlyFailures } from './race-run.mjs';
 
-const event = (fields) => JSON.stringify({ Package: 'example.com/shop', ...fields });
+const event = (fields: object) => JSON.stringify({ Package: 'example.com/shop', ...fields });
 
-function runWith(events, calls) {
+function runWith(events: readonly string[], calls: string[]) {
   return {
     projectRoot: '/work/shop',
     environment: {},
     settings: {},
-    spawn: (program, args) => {
+    spawn: (program: string, args: readonly string[]) => {
       calls.push([program, ...args].join(' '));
       return { status: 0, stdout: events.join('\n'), stderr: '' };
     },
@@ -36,7 +37,7 @@ const RACED_RUN = parseTestEvents(
 
 describe('race run', () => {
   it('reruns without -race only the failures of packages that raced, and keeps those that pass', () => {
-    const calls = [];
+    const calls: string[] = [];
     const context = runWith(
       [
         event({ Action: 'pass', Test: 'TestTally' }),
@@ -67,7 +68,7 @@ describe('race run', () => {
         event({ Action: 'fail' }),
       ].join('\n'),
     );
-    const calls = [];
+    const calls: string[] = [];
     const context = runWith(
       [event({ Action: 'pass', Test: 'TestSlow' }), event({ Action: 'pass' })],
       calls,
@@ -79,7 +80,7 @@ describe('race run', () => {
   });
 
   it('runs nothing again when no failing package raced or timed out', () => {
-    const calls = [];
+    const calls: string[] = [];
     const plain = parseTestEvents(
       [
         event({ Action: 'run', Test: 'TestBroken' }),

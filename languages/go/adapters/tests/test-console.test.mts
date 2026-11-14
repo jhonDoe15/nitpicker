@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { consoleMessages, goConsoleFacts } from './test-console.mjs';
-import { parseTestEvents } from './test-events.mjs';
+import { consoleMessages, goConsoleFacts } from './test-console.mts';
+import { parseTestEvents } from '../typed/go-readers.mts';
 
 const CART = 'example.com/shop/cart';
 
-function output(test, text, packageName = CART) {
+function output(test: string | undefined, text: string, packageName = CART) {
   return JSON.stringify({
     Action: 'output',
     Package: packageName,

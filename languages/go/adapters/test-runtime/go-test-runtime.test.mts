@@ -1,29 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { goFacts } from '../facts/go-facts.mjs';
-import { goTestRuntimeReport } from './go-test-runtime.mjs';
+import { goFacts } from '../facts/go-facts.mts';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import { goTestRuntimeReport } from './go-test-runtime.mts';
+import { reportDefinition, reportFile, reportUsage } from '../test-support/go-report-fixtures.mts';
 
 const MODULE = 'example.com/shop';
 
-function file(path, extra = {}) {
-  return {
-    path,
-    package: path.split('/').at(-2) ?? 'shop',
-    test: path.endsWith('_test.go'),
-    generated: false,
-    constrained: false,
-    ...extra,
-  };
+const file = reportFile;
+const usage = reportUsage;
+
+function definition(path: string, name: string) {
+  return reportDefinition(path, name, { exported: true, tokens: [] });
 }
 
-function definition(path, name) {
-  return { file: path, name, kind: 'function', line: 3, lines: 3, exported: true, tokens: [] };
-}
-
-function usage(path, extra = {}) {
-  return { file: path, imports: [], names: [], selectors: [], local: [], ...extra };
-}
-
-function test(path, name = 'TestIt') {
+function test(path: string, name = 'TestIt') {
   return { file: path, name, start: 5, end: 9 };
 }
 
@@ -67,7 +57,11 @@ const REPORT = {
 
 describe('Go test runtime', () => {
   const runtime = goTestRuntimeReport(goFacts(REPORT, { module: MODULE }), REPORT);
-  const categoryOf = (path) => runtime.tests.find(({ test: name }) => name === path)?.category;
+  const categoryOf = (path: string) =>
+    fieldOf(
+      listOf(runtime['tests']).find((entry) => fieldOf(entry, 'test') === path),
+      'category',
+    );
 
   it('reports a test file that reaches no production code, directly or through test helpers', () => {
     expect(runtime.findings.map(({ test: name }) => name)).toEqual(['price/alone_test.go']);
@@ -84,7 +78,7 @@ describe('Go test runtime', () => {
   });
 
   it('leaves end-to-end folders and helper-only test files out', () => {
-    expect(runtime.exclusions).toEqual(['price/e2e/flow_test.go']);
+    expect(runtime['exclusions']).toEqual(['price/e2e/flow_test.go']);
     expect(categoryOf('price/helpers_test.go')).toBeUndefined();
   });
 });

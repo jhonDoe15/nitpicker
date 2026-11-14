@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import {
-  parseRaces,
-  raceFindings,
-  raceNotCheckedFinding,
-  WARNING,
-  withoutRaceReports,
-} from './race-reports.mjs';
+import { WARNING, withoutRaceReports } from './race-reports.mjs';
+import { parseRaces, raceFindings, raceNotCheckedFinding } from '../typed/go-readers.mts';
 
 const MODULE = { root: '/work/my shop', path: 'example.com/shop' };
 const REPORT = [
@@ -71,7 +66,7 @@ describe('race reports', () => {
         tool: 'race',
         rule: 'data-race',
         path: 'cart/counter.go',
-        identity: findings[0].identity,
+        identity: findings[0]?.identity,
         message: `Data race: write in cart.(*Counter).Add (cart/counter.go:5) and read in cart.(*Counter).Value (cart/counter.go:7) touch the same memory from two goroutines without synchronization, found by TestCounter. ${FIX}`,
         allowedForm: FIX,
         classification: 'enforceable',
@@ -81,10 +76,13 @@ describe('race reports', () => {
   });
 
   it('keeps a closure race stable when another closure is added before it', () => {
-    const closure = (number) => ({ ...ADD, full: `example.com/shop/cart.Run.func${number}` });
+    const closure = (number: number) => ({
+      ...ADD,
+      full: `example.com/shop/cart.Run.func${String(number)}`,
+    });
     const [before] = raceFindings([{ accesses: [closure(1), VALUE], test: '' }]);
     const [after] = raceFindings([{ accesses: [closure(2), VALUE], test: '' }]);
-    expect(after.identity).toBe(before.identity);
+    expect(after?.identity).toBe(before?.identity);
   });
 
   it('still reports a race whose other stack could not be restored or is outside the module', () => {
@@ -98,9 +96,9 @@ describe('race reports', () => {
       { kind: 'read', function: 'a function the report does not name', full: '?' },
     ]);
     const outside = REPORT.replaceAll('/work/my shop/cart/', '/elsewhere/');
-    expect(raceFindings([{ accesses: parseRaces(outside, MODULE)[0], test: '' }])[0].path).toBe(
-      '.',
-    );
+    expect(
+      raceFindings([{ accesses: parseRaces(outside, MODULE)[0] ?? [], test: '' }])[0]?.path,
+    ).toBe('.');
   });
 
   it('removes only the race report and the failure it caused from a test output', () => {
