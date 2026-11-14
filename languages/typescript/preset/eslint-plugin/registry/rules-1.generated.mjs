@@ -72,6 +72,7 @@ import { rule as ruleNoRealTimeRandomOrNetwork } from '../test-isolation/no-real
 import { rule as ruleNoRemoteCallInTransaction } from '../rules/effects/no-remote-call-in-transaction.mjs';
 import { rule as ruleNoRemoteCallUnderLock } from '../rules/effects/no-remote-call-under-lock.mjs';
 import { rule as ruleNoRepeatedStringLiteral } from '../rules/literals/no-repeated-string-literal.mjs';
+import { rule as ruleNoRetryWithoutIdempotency } from '../rules/writes/no-retry-without-idempotency.mjs';
 import { rule as ruleNoRuntimeExclusivePropsCheck } from '../rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as ruleNoSecretInLog } from '../rules/secrets/no-secret-in-log.mjs';
 import { rule as ruleNoSelfRecursion } from '../rules/control/no-self-recursion.mjs';
@@ -97,7 +98,6 @@ import { rule as ruleNoUncoercedRequestInput } from '../rules/request-inputs/no-
 import { rule as ruleNoUncollectedTests } from '../test-isolation/no-uncollected-tests.mjs';
 import { rule as ruleNoUndefinedOnlyEnvCheck } from '../rules/config/no-undefined-only-env-check.mjs';
 import { rule as ruleNoUnhandledUrlParse } from '../rules/parsing/no-unhandled-url-parse.mjs';
-import { rule as ruleNoUnhandledVoidPromise } from '../rules/promises/no-unhandled-void-promise.mjs';
 
 export const partRules = {
   'bounded-container-teardown': ruleBoundedContainerTeardown,
@@ -175,6 +175,7 @@ export const partRules = {
   'no-remote-call-in-transaction': ruleNoRemoteCallInTransaction,
   'no-remote-call-under-lock': ruleNoRemoteCallUnderLock,
   'no-repeated-string-literal': ruleNoRepeatedStringLiteral,
+  'no-retry-without-idempotency': ruleNoRetryWithoutIdempotency,
   'no-runtime-exclusive-props-check': ruleNoRuntimeExclusivePropsCheck,
   'no-secret-in-log': ruleNoSecretInLog,
   'no-self-recursion': ruleNoSelfRecursion,
@@ -200,5 +201,4 @@ export const partRules = {
   'no-uncollected-tests': ruleNoUncollectedTests,
   'no-undefined-only-env-check': ruleNoUndefinedOnlyEnvCheck,
   'no-unhandled-url-parse': ruleNoUnhandledUrlParse,
-  'no-unhandled-void-promise': ruleNoUnhandledVoidPromise,
 };

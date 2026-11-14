@@ -84,6 +84,11 @@ export const policyFailureMessageCases = [
     'after releasing it',
   ),
   adapterCase(
+    'retried insert names the upsert',
+    "import pRetry from 'p-retry';\nexport async function run(db) { await pRetry(() => db.query('INSERT INTO t (id) VALUES (1)')); }",
+    'ON CONFLICT',
+  ),
+  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

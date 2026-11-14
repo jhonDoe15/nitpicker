@@ -121,6 +121,9 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
 - Keep a remote call out of a transaction and out of a lock: call before the transaction starts or after it
   commits (and outside the lock), and keep only the shared-state change under the lock
   (`nitpicker/no-remote-call-in-transaction`, `nitpicker/no-remote-call-under-lock`).
+- A retried write carries one key for all attempts: a Stripe `idempotencyKey`, a `MessageDeduplicationId`,
+  `jobId` or `msgID`, `ON CONFLICT` on an insert, or retry only the read
+  (`nitpicker/no-retry-without-idempotency`).
 - Take one collection step where one does: `find(p)` not `filter(p)[0]`, `some(p)` not a tested
   `find(p)`, `flatMap(f)` not `map(f).flat()`, no spread copy of an array that is already new or
   into `new Set`/`Promise.all`, `{ ...options }` not `{ ...(options || {}) }`, no length check

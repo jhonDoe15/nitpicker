@@ -530,6 +530,23 @@ find(...) }`, judged by the classes and object literals that implement it outsid
   other state does not exempt the call, and inside a transaction it never does. Every waiter queues
   behind the remote latency: make the remote call before taking the lock or after releasing it and
   keep only the shared-state change under it. Broker publishes are `nitpicker/no-dual-write`'s.
+- `nitpicker/no-retry-without-idempotency`: a write with no idempotency contract, direct or through
+  project helpers, inside a retry is reported, since a timeout after the server accepted the write
+  makes the retry run it twice. Retries are `p-retry`, `async-retry`, `exponential-backoff`
+  `backOff` (imported, required, or loaded with `import x = require(...)`), a cockatiel policy's
+  `execute`, and the hand-written retry loop that `nitpicker/no-io-in-loop` exempts (a `try` in the
+  loop that leaves on success with `return` or `break` while its `catch` goes on, including a
+  `catch` that rethrows only on the last attempt); a retried function passed by name or as
+  `this.send.bind(this)` is followed with the type checker. The supported writes are: a Stripe
+  `create` without `{ idempotencyKey }` in its request options; a broker publish (`kafkajs`,
+  `amqplib`, `@google-cloud/pubsub`, `nats` without a JetStream `msgID`, BullMQ `add` without
+  `jobId`, SQS `SendMessage` or SNS `Publish` without `MessageDeduplicationId`); and SQL `INSERT`
+  text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `INSERT IGNORE` or
+  `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options that are not a
+  literal (a parameter of a wrapper, the result of an options-builder helper) count as a contract,
+  an HTTP `POST` alone is not reported, and other writes are not judged. Give the write a stable
+  idempotency key derived from the request, a provider deduplication id, an upsert, or retry only
+  the read.
 - No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
   JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
   `dropSchema` on in ORM options (an object passed to `new DataSource`, `new Sequelize`,
