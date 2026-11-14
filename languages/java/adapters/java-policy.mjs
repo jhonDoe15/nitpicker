@@ -118,6 +118,7 @@ function runnerArguments({
   exceptions = [],
   kotlin = {},
   java = {},
+  mutationOff = false,
   duplicates = {},
   tools = {},
   testConsole = {},
@@ -134,6 +135,7 @@ function runnerArguments({
       : ['--test-console-allow', JSON.stringify(testConsole.allow)]),
     ...exceptions.flatMap((exception) => ['--exception', exceptionArgument(exception)]),
     ...(kotlin.formatter === undefined ? [] : ['--kotlin-formatter', kotlin.formatter]),
+    ...(mutationOff ? ['--mutation', 'off'] : []),
     ...(java.buildTool === undefined ? [] : ['--build-tool', java.buildTool]),
     ...(kotlin.detektConfig === undefined ? [] : ['--kotlin-detekt-config', kotlin.detektConfig]),
     ...(duplicates.skippedFolders === undefined

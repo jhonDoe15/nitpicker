@@ -134,6 +134,7 @@ export function parseRunnerArguments(
       preset: values.get('--preset'),
       kotlinFormatter: values.get('--kotlin-formatter'),
       buildTool: values.get('--build-tool'),
+      ...parseMutation(values.get('--mutation')),
       kotlinDetektConfig: values.get('--kotlin-detekt-config'),
       duplicateSkippedFolders: parseSkippedFolders(values.get('--duplicate-skipped-folders')),
       mutationScope: values.has(MUTATION_SCOPE_OPTION)
@@ -142,6 +143,13 @@ export function parseRunnerArguments(
       toolPrecedence: toolPrecedence(values, precedenceTools),
     },
   };
+}
+
+function parseMutation(mutation) {
+  if (mutation !== undefined && mutation !== 'off') {
+    throw new Error('--mutation must be: off');
+  }
+  return mutation === 'off' ? { mutationOff: true } : {};
 }
 
 function parseMode(mode = 'full') {
@@ -180,6 +188,7 @@ const RUNNER_OPTIONS = [
   '--preset',
   '--kotlin-formatter',
   '--build-tool',
+  '--mutation',
   '--kotlin-detekt-config',
   '--file-limits',
   '--test-seconds',

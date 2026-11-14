@@ -40,6 +40,7 @@ def nitpickerSettings = { String tool, List<String> defaults ->
     file == null ? defaults : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
 }
 def quickRun = nitpickerArgument('nitpicker.quick') == 'true'
+def mutationOff = nitpickerArgument('nitpicker.mutation') == 'off'
 def nitpickerStyle = {
     def file = nitpickerArgument('nitpicker.kotlin.styleFile')
     file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
@@ -1256,7 +1257,10 @@ allprojects {
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
                 'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure'
             if (!quickRun) {
-                dependsOn 'nitpickerJacoco', 'nitpickerPit'
+                dependsOn 'nitpickerJacoco'
+                if (!mutationOff) {
+                    dependsOn 'nitpickerPit'
+                }
             }
             dependsOn {
                 checkedTestTasks().findAll { it.name != 'test' }
