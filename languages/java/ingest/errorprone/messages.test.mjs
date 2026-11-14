@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { errorProneMessage } from './messages.mjs';
+import { errorProneMessage } from './messages.mts';
 
 const THROW_SUMMARY =
   'Base exception classes should be treated as abstract. Common alternatives include: AssertionError, ' +

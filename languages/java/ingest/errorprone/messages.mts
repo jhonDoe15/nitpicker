@@ -1,3 +1,5 @@
+import { textOf } from '../../../../shared/values/readers.mts';
+
 const SENTENCE_END = /[.?!:]$/u;
 const REMOVE_LINE = 'to remove this line';
 const GUAVA_ONLY = new RegExp(
@@ -8,11 +10,11 @@ const GUAVA_ONLY = new RegExp(
   ].join('|'),
   'u',
 );
-const JDK_FORMS = [
+const JDK_FORMS: readonly (readonly [RegExp, string])[] = [
   [/\bVerifyException\b/gu, 'IllegalStateException'],
   [/\bImmutable(List|Set|Map)\.(of|copyOf)\(/gu, '$1.$2('],
 ];
-const GUAVA_SUMMARIES = [
+const GUAVA_SUMMARIES: readonly (readonly [string, string])[] = [
   [", and (Guava's) VerifyException.", '.'],
   [
     'IllegalArgumentException, IllegalStateException.',
@@ -20,7 +22,7 @@ const GUAVA_SUMMARIES = [
   ],
   ['Prefer an ImmutableList,', 'Prefer an unmodifiable List (List.of),'],
 ];
-const ALLOWED_FORMS = new Map([
+const ALLOWED_FORMS = new Map<string, string>([
   [
     'NullAway',
     'Annotate what may be null with the @Nullable the project already uses ' +
@@ -46,7 +48,7 @@ const ALLOWED_FORMS = new Map([
       'explicit and tests can fix the time.',
   ],
 ]);
-const SUMMARIES = new Map([
+const SUMMARIES = new Map<string, (summary: string) => string>([
   [
     'DefaultCharset',
     () =>
@@ -58,16 +60,18 @@ const SUMMARIES = new Map([
     (summary) => summary.replace(/ You must pass an explicit time-zone.*$/u, ''),
   ],
 ]);
-const DROPPED_SUGGESTIONS = new Map([
+const DROPPED_SUGGESTIONS = new Map<string, (alternative: string) => boolean>([
   ['CheckReturnValue', () => true],
   ['JavaTimeDefaultTimeZone', () => true],
 ]);
 
-function sentence(text) {
+function sentence(text: string): string {
   return SENTENCE_END.test(text) ? text : `${text}.`;
 }
 
-function alternativesOf(suggestion) {
+function alternativesOf(
+  suggestion: string,
+): { alternatives: string[]; removeLine: boolean } | undefined {
   const body = suggestion.replace(/^Did you mean /u, '').replace(/\?$/u, '');
   const removeLine = body === REMOVE_LINE || body.endsWith(` or ${REMOVE_LINE}`);
   const quoted = removeLine ? body.slice(0, -REMOVE_LINE.length).replace(/ or $/u, '') : body;
@@ -78,7 +82,7 @@ function alternativesOf(suggestion) {
   return { alternatives, removeLine };
 }
 
-function withJdkForms(alternative, guava) {
+function withJdkForms(alternative: string, guava: boolean): string | undefined {
   if (guava) {
     return alternative;
   }
@@ -89,7 +93,7 @@ function withJdkForms(alternative, guava) {
   return GUAVA_ONLY.test(rewritten) ? undefined : rewritten;
 }
 
-function cleanSuggestion(check, suggestion, guava) {
+function cleanSuggestion(check: string, suggestion: string, guava: boolean): string | undefined {
   const parsed = alternativesOf(suggestion);
   if (parsed === undefined) {
     return suggestion;
@@ -104,20 +108,31 @@ function cleanSuggestion(check, suggestion, guava) {
   return choices.length === 0 ? undefined : `Did you mean ${choices.join(' or ')}?`;
 }
 
-function readableSummary(check, summary, guava) {
-  const rewritten = (SUMMARIES.get(check) ?? ((text) => text))(summary);
+function readableSummary(check: string, summary: string, guava: boolean): string {
+  const rewritten = (SUMMARIES.get(check) ?? ((text: string) => text))(summary);
   return guava
     ? rewritten
     : GUAVA_SUMMARIES.reduce((text, [from, to]) => text.replace(from, to), rewritten);
 }
 
-export function errorProneAllowedForm(check) {
+export function errorProneAllowedForm(check: string): string | undefined {
   return ALLOWED_FORMS.get(check);
 }
 
-export function errorProneMessage({ check, summary, suggestion }, { guava = true } = {}) {
+export interface ErrorProneParts {
+  readonly check: string;
+  readonly summary: string;
+  readonly suggestion?: string | undefined;
+}
+
+export function errorProneMessage(
+  { check, summary, suggestion }: ErrorProneParts,
+  { guava = true }: { readonly guava?: boolean } = {},
+): string {
   const cleaned = suggestion === undefined ? undefined : cleanSuggestion(check, suggestion, guava);
   const parts = [readableSummary(check, summary, guava), ALLOWED_FORMS.get(check), cleaned];
   const present = parts.filter((part) => part !== undefined);
-  return present.length === 1 ? present[0] : present.map((part) => sentence(part)).join(' ');
+  return present.length === 1
+    ? textOf(present[0])
+    : present.map((part) => sentence(part)).join(' ');
 }
