@@ -88,7 +88,7 @@ function pairByPosition(group, { file, moves, occupied }) {
   const { pairs, free } = anchoredPairs(group, file.lines);
   const legacy = [...free];
   const heads = group.head.filter(
-    (head) => !pairs.has(head) && !isNewOnUnchangedLine(head, { file, occupied, legacy }),
+    (head) => !(pairs.has(head) || isNewOnUnchangedLine(head, { file, occupied, legacy })),
   );
   for (const { head, base } of nearestCandidates(heads, free, file.lines)) {
     if (!pairs.has(head) && free.has(base)) {
