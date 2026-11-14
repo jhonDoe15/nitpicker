@@ -4,9 +4,9 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { copyJavaClasses, sourceFileOf } from './java-classes.mts';
 
-const roots = [];
+const roots: string[] = [];
 
-function utf8(text) {
+function utf8(text: string): Buffer {
   const bytes = Buffer.from(text, 'utf8');
   const header = Buffer.alloc(3);
   header[0] = 1;
@@ -14,7 +14,7 @@ function utf8(text) {
   return Buffer.concat([header, bytes]);
 }
 
-function u16(...values) {
+function u16(...values: number[]): Buffer {
   const buffer = Buffer.alloc(2 * values.length);
   for (const [index, value] of values.entries()) {
     buffer.writeUInt16BE(value, 2 * index);
@@ -22,7 +22,13 @@ function u16(...values) {
   return buffer;
 }
 
-function classFile({ sourceFile, withMember = true }) {
+function classFile({
+  sourceFile,
+  withMember = true,
+}: {
+  readonly sourceFile?: string;
+  readonly withMember?: boolean;
+}): Buffer {
   const constants = [
     utf8('demo/Sample'),
     Buffer.concat([Buffer.from([7]), u16(1)]),
@@ -48,7 +54,7 @@ function classFile({ sourceFile, withMember = true }) {
   ]);
 }
 
-function tree(files) {
+function tree(files: Readonly<Record<string, string | Buffer>>): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-classes-'));
   roots.push(root);
   for (const [name, content] of Object.entries(files)) {
