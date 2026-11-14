@@ -40,7 +40,7 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
       unreadableLibraries,
       missingParents: unresolved.supertypes,
     }).toEqual({
-      classes: 12,
+      classes: 13,
       skipped: 0,
       unreadableLibraries: 0,
       missingParents: 0,
@@ -135,5 +135,9 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
 
   it('reports copies on every step', () => {
     expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
+  });
+
+  it('reports lazy access per element only', () => {
+    expect(methodsOf(run.report, 'LazyRelationInLoop')).toEqual(['Lazy.names', 'Lazy.mapped']);
   });
 });
