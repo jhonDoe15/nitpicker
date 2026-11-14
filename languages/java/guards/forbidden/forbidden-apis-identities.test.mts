@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readForbiddenApiFindings } from './forbidden-apis.mts';
-import { createGuardProjects, javaClass, newLines } from './test-support/guard-project.mts';
+import { readForbiddenApiFindings } from '../forbidden-apis.mts';
+import { createGuardProjects, javaClass, newLines } from '../test-support/guard-project.mts';
 
 const guardProjects = createGuardProjects();
 
