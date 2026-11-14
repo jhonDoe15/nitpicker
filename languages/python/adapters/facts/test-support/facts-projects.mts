@@ -9,7 +9,7 @@ import { createToolContext } from '../../test-support/typed/tool-context.mts';
 import { FACTS_REPORT } from '../python-facts.mjs';
 import type { IngestedFinding } from '../../typed/report/report-types.mts';
 import { readFactFindings } from '../../typed/report/report-views.mts';
-import { collectFacts, type FactsReport } from '../../typed/tests/test-views.mts';
+import { collectFacts, type FactsReport } from '../../test-support/views/test-views.mts';
 
 type FactsProject = {
   factsOf: (

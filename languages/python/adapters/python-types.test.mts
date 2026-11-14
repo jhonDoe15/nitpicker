@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fieldOf, parseJson, textsOf } from '../../../shared/values/readers.mts';
-import { jscpdVersion } from './typed/tests/tools-test-views.mts';
+import { jscpdVersion } from './test-support/views/tools-test-views.mts';
 import { createFakeProjects } from './test-support/fake-project.mts';
 import { toolVersions } from './python-tools.mjs';
 import { PYRIGHT_TOOL, pyrightConfig } from './project-tools/pyright/pyright-config.mjs';

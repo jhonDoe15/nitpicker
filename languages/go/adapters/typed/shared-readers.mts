@@ -28,9 +28,8 @@ import {
   slowTestBudget as untypedSlowTestBudget,
   slowTestFindings as untypedSlowTestFindings,
 } from '../../../../shared/rules/slow-tests/slow-test-finding.mjs';
-import { designFacts as untypedDesignFacts } from '../../../../shared/rules/design/test-support/design-facts.mjs';
-import { fieldOf, listOf, textOf } from '../../../../shared/values/readers.mts';
-import type { DesignCallable, DesignType, FindingRow, GoFunction } from '../go-types.mts';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import type { FindingRow, GoFunction } from '../go-types.mts';
 
 type Fields = { readonly [field: string]: unknown };
 type Exceptions = readonly unknown[];
@@ -146,18 +145,6 @@ function slowTestFindings(input: Fields): FindingRow[] {
   return rowsOf(Reflect.apply(untypedSlowTestFindings, undefined, [input]));
 }
 
-function designFacts(input: {
-  types: readonly DesignType[];
-  callables: readonly DesignCallable[];
-}): { modules: readonly { file: string }[] } {
-  const facts: unknown = Reflect.apply(untypedDesignFacts, undefined, [input]);
-  return {
-    modules: listOf(fieldOf(facts, 'modules')).map((module) => ({
-      file: textOf(fieldOf(module, 'file')),
-    })),
-  };
-}
-
 export {
   adapterMessage,
   branchCoverageFindings,
@@ -165,7 +152,6 @@ export {
   classLimitFindings,
   classifyTestRuntime,
   collectFileLimitFindings,
-  designFacts,
   domainFinding,
   evaluateCoupling,
   evaluateTestRuntime,

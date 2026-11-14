@@ -15,7 +15,12 @@ import {
   setEnvironment,
   temporaryRoot,
 } from './test-support/python-tools-project.mts';
-import { jscpdVersion, linkSentence, probe, runsOf } from '../typed/tests/tools-test-views.mts';
+import {
+  jscpdVersion,
+  linkSentence,
+  probe,
+  runsOf,
+} from '../test-support/views/tools-test-views.mts';
 
 afterEach(restoreTemporaryState);
 
