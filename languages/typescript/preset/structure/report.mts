@@ -1,0 +1,49 @@
+import { format as formatOutput } from 'node:util';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { analyzeProductionFiles } from './analyze.mts';
+import { readLayout } from './typed/rule-views.mts';
+import type { Metric, Ranked } from './typed/analysis-types.mts';
+
+const layout = readLayout();
+const { sourceRoot } = layout;
+
+const projectRoot = path.resolve(import.meta.dirname, '../../../..');
+const outputPath = path.join(projectRoot, 'reports/quality/structure/report.json');
+const report = {
+  analyzer: 'TypeScript syntax-tree structural metrics',
+  policy: 'report-only; no size, nesting, or parameter thresholds',
+  sourceRoot,
+  ...analyzeProductionFiles(path.join(projectRoot, sourceRoot), sourceRoot, { layout }),
+};
+
+await mkdir(path.dirname(outputPath), { recursive: true });
+await writeFile(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+
+process.stdout.write(
+  formatOutput(
+    JSON.stringify({ output: path.relative(projectRoot, outputPath), ...report.summary }, null, 2),
+  ) + '\n',
+);
+const rankings: Readonly<Record<string, readonly Ranked[]>> = report.rankings;
+const METRIC_NAMES = new Map<string, Metric>([
+  ['functionLines', 'lines'],
+  ['functionStatements', 'statements'],
+  ['functionControlNesting', 'maxControlNesting'],
+  ['functionParameters', 'parameters'],
+  ['classLines', 'lines'],
+  ['classMembers', 'members'],
+]);
+for (const [name, entries] of Object.entries(rankings)) {
+  process.stdout.write(formatOutput(`\n${name}:`) + '\n');
+  const metricName = METRIC_NAMES.get(name);
+  for (const entry of entries.slice(0, 10)) {
+    const displayName = entry.function ?? entry.class;
+    const metric = metricName === undefined ? undefined : entry[metricName];
+    process.stdout.write(
+      formatOutput(
+        `${String(metric)}\t${entry.source}:${String(entry.start)}\t${String(displayName)}`,
+      ) + '\n',
+    );
+  }
+}

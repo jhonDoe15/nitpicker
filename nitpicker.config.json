@@ -24,7 +24,7 @@
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mts",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",
-      "languages/typescript/preset/defaults/crap.config.mjs",
+      "languages/typescript/preset/defaults/crap.config.mts",
       "languages/typescript/preset/defaults/stryker.config.mjs",
       "languages/typescript/preset/eslint-config/policies/coding-standards.config.mjs",
       "languages/typescript/preset/eslint-config/policies/errors.config.mjs",
