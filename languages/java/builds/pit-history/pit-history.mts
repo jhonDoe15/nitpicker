@@ -1,21 +1,34 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { sameBuildInputs } from './build-inputs.mjs';
+import type { JavaPolicy } from '../../adapters/typed/java-values.mts';
+import { sameBuildInputs } from './build-inputs.mts';
+
+type HistoryPolicy = {
+  readonly snapshot?: string | undefined;
+  readonly baselineRoot?: string | undefined;
+};
+export type PitHistory = {
+  readonly snapshot: string | undefined;
+  readonly baselineRoot: string | undefined;
+  readonly projectRoot: string | undefined;
+};
 
 export const PIT_HISTORY_DIRECTORY = 'nitpicker-pit-history';
 const MAVEN_HISTORY_FILE = 'test.history';
 
-function readsBaseHistory({ snapshot, baselineRoot }) {
-  return snapshot === 'head' && baselineRoot !== undefined;
+function readsBaseHistory(
+  policy: HistoryPolicy,
+): policy is { readonly snapshot: 'head'; readonly baselineRoot: string } {
+  return policy.snapshot === 'head' && policy.baselineRoot !== undefined;
 }
 
-function reusableBase(policy, projectRoot) {
+function reusableBase(policy: HistoryPolicy, projectRoot: string | undefined): string | undefined {
   return readsBaseHistory(policy) && sameBuildInputs(projectRoot, policy.baselineRoot)
     ? policy.baselineRoot
     : undefined;
 }
 
-export function pitHistoryOf(policy = {}, projectRoot) {
+export function pitHistoryOf(policy: JavaPolicy = {}, projectRoot?: string): PitHistory {
   return {
     snapshot: policy.snapshot,
     baselineRoot: reusableBase(policy, projectRoot),
@@ -23,7 +36,7 @@ export function pitHistoryOf(policy = {}, projectRoot) {
   };
 }
 
-export function pitHistoryProperties(policy = {}, projectRoot) {
+export function pitHistoryProperties(policy: JavaPolicy = {}, projectRoot?: string): string[] {
   if (policy.snapshot === 'base') {
     return ['-Pnitpicker.pit.recordHistory=true'];
   }
@@ -31,7 +44,10 @@ export function pitHistoryProperties(policy = {}, projectRoot) {
   return baseRoot === undefined ? [] : [`-Pnitpicker.pit.historyRoot=${baseRoot}`];
 }
 
-export function pitHistoryArguments(history, buildDirectory) {
+export function pitHistoryArguments(
+  history: PitHistory | undefined,
+  buildDirectory: string | undefined,
+): string[] {
   if (history === undefined || buildDirectory === undefined) {
     return [];
   }

@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { runPit } from '../../maven/pit/maven-pit.mts';
-import { pitFailureFindings } from './pit-failure.mjs';
-import { pitSkippedFindings, unmutatedFailures, unmutatedSummary } from './pit-skipped.mjs';
+import { pitFailureFindings } from './pit-failure.mts';
+import { pitSkippedFindings, unmutatedFailures, unmutatedSummary } from './pit-skipped.mts';
 
 const roots = [];
 

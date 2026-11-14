@@ -14,7 +14,7 @@ import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mts';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
-import { pitHistoryOf } from '../builds/pit-history/pit-history.mjs';
+import { pitHistoryOf } from '../builds/pit-history/pit-history.mts';
 import { analyzeModule, MAVEN_REPORT_DIRECTORY } from './module/maven-module.mts';
 import { buildOrSkipTests, jacocoExecFiles } from './quick/maven-test-phase.mts';
 import { fieldOf, listOf, textsOf } from '../../../shared/values/readers.mts';
