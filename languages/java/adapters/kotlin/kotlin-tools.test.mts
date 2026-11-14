@@ -1,14 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { resolveKotlinTools } from './kotlin-tools.mjs';
-import { kotlinProjects } from './test-support/kotlin-project.mjs';
+import { kotlinProjects } from './test-support/kotlin-project.mts';
+import { resolveKotlinTools } from './test-support/kotlin-tools-views.mts';
+import type { Tools, ToolOptions } from './test-support/kotlin-tools-views.mts';
 
 const { project, remove } = kotlinProjects();
 
 afterEach(remove);
 
 const PROJECT_KTFMT = { ktfmt: ['project', 'nitpicker'] };
-const toolsOf = (files, options) => resolveKotlinTools(project(files), options);
-const formatterOf = (files, options) => toolsOf(files, options).formatter;
+const toolsOf = (files: Record<string, string>, options?: ToolOptions) =>
+  resolveKotlinTools(project(files), options);
+const formatterOf = (files: Record<string, string>, options?: ToolOptions) =>
+  toolsOf(files, options).formatter;
 
 describe('formatter detection', () => {
   it.each([
@@ -210,7 +213,7 @@ describe('ktlint and ktfmt with a project .editorconfig', () => {
   it('turns ktfmt editorconfig support, and the mirror, on only for a listed project', () => {
     const files = { 'build.gradle.kts': 'ktfmt()', '.editorconfig': 'indent_size = 4\n' };
 
-    function editorconfigState({ ktfmtEditorconfig, editorconfigIgnored, workspace }) {
+    function editorconfigState({ ktfmtEditorconfig, editorconfigIgnored, workspace }: Tools) {
       return { ktfmtEditorconfig, editorconfigIgnored, workspace };
     }
 

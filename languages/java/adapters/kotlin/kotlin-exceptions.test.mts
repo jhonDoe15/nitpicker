@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from './kotlin-options.mjs';
 
-function exceptionFor(rule) {
+function exceptionFor(rule: string) {
   return {
     preset: 'kotlin',
     exceptions: [{ rule, paths: ['src/**'], reason: 'covered elsewhere' }],
@@ -21,6 +21,7 @@ describe('exceptions of the kotlin preset for Spring', () => {
         'spring/open-in-view',
       ].map((rule) => {
         validateKotlinOptions(exceptionFor(rule));
+        return undefined;
       }),
     ).toEqual([undefined, undefined, undefined, undefined, undefined, undefined]);
   });

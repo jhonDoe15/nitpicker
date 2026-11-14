@@ -2,15 +2,19 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
+import { parseAnalyzerReport as untypedParseAnalyzerReport } from '../../../../core/diff/comparison/finding-schema.mjs';
 import {
   kotlinModules,
   readKotlinCrapFindings,
   readKotlinMetrics,
   readKotlinStructureFindings,
-} from './kotlin-metrics.mjs';
+} from './test-support/kotlin-metrics-views.mts';
+import type { Metrics } from './test-support/kotlin-metrics-views.mts';
 
-const temporaryRoots = [];
+const temporaryRoots: string[] = [];
+const parseAnalyzerReport: (value: unknown, name: string) => unknown = untypedParseAnalyzerReport;
+
+type Counters = Record<'tier' | 'doubled' | 'wide' | 'lambda', string>;
 
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
@@ -38,7 +42,7 @@ class Counter(private val start: Int) {
 }
 `;
 
-const METRICS = {
+const METRICS: Metrics = {
   functions: [
     entry({
       name: 'tier',
@@ -78,6 +82,15 @@ function entry({
   nesting = 0,
   parameters = 0,
   lambda = false,
+}: {
+  name: string;
+  start: number;
+  end: number;
+  complexity?: number;
+  statements?: number;
+  nesting?: number;
+  parameters?: number;
+  lambda?: boolean;
 }) {
   return {
     file: 'src/main/kotlin/demo/Tiers.kt',
@@ -93,7 +106,7 @@ function entry({
   };
 }
 
-function project(metrics = METRICS) {
+function project(metrics: Metrics = METRICS) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-metrics-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'src/main/kotlin/demo'), { recursive: true });
@@ -103,29 +116,30 @@ function project(metrics = METRICS) {
   return { root, reportRoot: path.join(root, 'build/nitpicker') };
 }
 
-const jacoco = (counters, shift = 0) => `<report name="demo"><package name="demo">
+const jacoco = (counters: Counters, shift = 0) => `<report name="demo"><package name="demo">
   <class name="demo/TiersKt" sourcefilename="Tiers.kt">
-    <method name="tier" desc="(II)Ljava/lang/String;" line="${3 + shift}">${counters.tier}</method>
-    <method name="tier$default" desc="(IIILjava/lang/Object;)Ljava/lang/String;" line="${3 + shift}">
+    <method name="tier" desc="(II)Ljava/lang/String;" line="${String(3 + shift)}">${counters.tier}</method>
+    <method name="tier$default" desc="(IIILjava/lang/Object;)Ljava/lang/String;" line="${String(3 + shift)}">
       <counter type="LINE" missed="1" covered="0"/>
     </method>
   </class>
   <class name="demo/Counter" sourcefilename="Tiers.kt">
-    <method name="getDoubled" desc="()I" line="${12 + shift}">${counters.doubled}</method>
-    <method name="wide" desc="(IIII)I" line="${14 + shift}">${counters.wide}</method>
-    <method name="wide$lambda$0" desc="(III)I" line="${15 + shift}">${counters.lambda}</method>
+    <method name="getDoubled" desc="()I" line="${String(12 + shift)}">${counters.doubled}</method>
+    <method name="wide" desc="(IIII)I" line="${String(14 + shift)}">${counters.wide}</method>
+    <method name="wide$lambda$0" desc="(III)I" line="${String(15 + shift)}">${counters.lambda}</method>
   </class>
 </package></report>`;
 
-const lines = (covered, missed) => `<counter type="LINE" missed="${missed}" covered="${covered}"/>`;
-const FULL = {
+const lines = (covered: number, missed: number) =>
+  `<counter type="LINE" missed="${String(missed)}" covered="${String(covered)}"/>`;
+const FULL: Counters = {
   tier: lines(5, 0),
   doubled: lines(1, 0),
   wide: lines(2, 0),
   lambda: lines(1, 0),
 };
 
-function crap(counters, extra = {}) {
+function crap(counters: Counters, extra: { crapLimit?: number } = {}) {
   const { root, reportRoot } = project();
   return readKotlinCrapFindings(readKotlinMetrics(reportRoot), {
     projectRoot: root,
@@ -195,11 +209,11 @@ describe('readKotlinStructureFindings', () => {
 
   it('keeps the identity when the function only moves, and changes it when its text changes', () => {
     const { root } = project();
-    const identityAt = (start, end) =>
+    const identityAt = (start: number, end: number) =>
       readKotlinStructureFindings(
         { functions: [entry({ name: 'Counter.wide', start, end, parameters: 4 })], files: [] },
         root,
-      )[0].identity;
+      )[0]?.identity;
     const before = identityAt(14, 17);
     writeFileSync(path.join(root, 'src/main/kotlin/demo/Tiers.kt'), `\n\n${SOURCE}`);
 
@@ -240,7 +254,7 @@ describe('readKotlinCrapFindings', () => {
     const uncovered = crap({ ...FULL, lambda: lines(0, 1) }, { crapLimit: 2.1 });
 
     expect(uncovered.map(({ symbol }) => symbol)).toEqual(['Counter.wide.<lambda>']);
-    expect(uncovered[0].message).toBe(
+    expect(uncovered[0]?.message).toBe(
       'Counter.wide.<lambda> has CRAP 6.00; score must be below 2.1. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"Counter.wide.<lambda>","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -251,20 +265,23 @@ describe('readKotlinCrapFindings', () => {
       entry({ name: 'Counter.wide.<lambda>', start: 15, end: 16, complexity: 2, lambda: true }),
       entry({ name: 'Counter.wide.<lambda>.<lambda>', start: 16, end: 16, lambda: true }),
     ];
-    const report = (methodLines, sourceLines) => `<report name="demo"><package name="demo">
+    const report = (
+      methodLines: string,
+      sourceLines: string,
+    ) => `<report name="demo"><package name="demo">
   <class name="demo/Counter" sourcefilename="Tiers.kt">
     <method name="wide" desc="(IIII)I" line="14">${methodLines}</method>
   </class>
   <sourcefile name="Tiers.kt">${sourceLines}</sourcefile>
 </package></report>`;
-    const line = (number, covered, missed) =>
-      `<line nr="${number}" mi="${missed}" ci="${covered}" mb="0" cb="0"/>`;
-    const run = (jacocoReport, crapLimit) => {
+    const line = (number: number, covered: number, missed: number) =>
+      `<line nr="${String(number)}" mi="${String(missed)}" ci="${String(covered)}" mb="0" cb="0"/>`;
+    const run = (jacocoReport: string, crapLimit: number) => {
       const { root } = project();
       return readKotlinCrapFindings(
         { ...METRICS, functions },
         { projectRoot: root, jacoco: jacocoReport, crapLimit },
-      ).map(({ symbol, message }) => `${symbol}: ${/CRAP (\d+\.\d+)/.exec(message)[1]}`);
+      ).map(({ symbol, message }) => `${symbol}: ${String(/CRAP (\d+\.\d+)/.exec(message)?.[1])}`);
     };
 
     it('is scored from the coverage of its source lines, and the function around it is scored without them', () => {
@@ -333,7 +350,7 @@ describe('readKotlinCrapFindings', () => {
       'crap-coverage-unknown Counter.wide.<lambda>',
     ]);
     expect(findings.every(({ classification }) => classification === 'enforceable')).toBe(true);
-    expect(findings[0].message).toBe(
+    expect(findings[0]?.message).toBe(
       'tier has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/kotlin/demo/Tiers.kt"],"function":"tier","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
@@ -348,12 +365,12 @@ describe('readKotlinCrapFindings', () => {
       ],
       files: [{ file: 'src/main/kotlin/Flat.kt', package: 'demo', classes: ['demo.FlatKt'] }],
     };
-    const report = (counters) => `<report name="demo"><package name="demo">
+    const report = (counters: string) => `<report name="demo"><package name="demo">
   <class name="demo/FlatKt" sourcefilename="Flat.kt">
     <method name="flat" desc="()I" line="3">${counters}</method>
   </class>
 </package></report>`;
-    const run = (counters) =>
+    const run = (counters: string) =>
       readKotlinCrapFindings(flat, { projectRoot: root, jacoco: report(counters), crapLimit: 2 });
 
     expect(run(lines(1, 0))).toEqual([]);
@@ -384,7 +401,7 @@ describe('readKotlinCrapFindings', () => {
 
   it('keeps the identity of an over-limit function when it only moves, and ratchets its score', () => {
     const { root, reportRoot } = project();
-    const run = (metrics, shift = 0) =>
+    const run = (metrics: Metrics, shift = 0) =>
       readKotlinCrapFindings(metrics, {
         projectRoot: root,
         jacoco: jacoco({ ...FULL, tier: lines(0, 5) }, shift),
@@ -401,9 +418,9 @@ describe('readKotlinCrapFindings', () => {
       2,
     );
 
-    expect(moved.identity).toBe(base.identity);
-    expect(moved.location).toEqual({ line: 5, endLine: 10 });
-    expect({ key: base.ratchet.key, value: base.ratchet.value }).toEqual({
+    expect(moved?.identity).toBe(base?.identity);
+    expect(moved?.location).toEqual({ line: 5, endLine: 10 });
+    expect({ key: base?.ratchet.key, value: base?.ratchet.value }).toEqual({
       key: 'function:tier:crap',
       value: 6,
     });
