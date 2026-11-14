@@ -32,6 +32,8 @@ Part of the [nitpicker-java](../SKILL.md) skill. Write these forms from the star
   (`effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`).
 - Retries: a call that retries (`@Retryable`, `RetryTemplate`, Failsafe, a retry loop) writes idempotently: a Stripe
   idempotency key, an upsert, a message deduplication id, or retry only the read (`effects/RetryWithoutIdempotency`).
+- Database and broker: never write a row and publish a message in one method; write the message to an outbox table in
+  the same transaction and let a relay publish it (`effects/DualWriteWithoutOutbox`).
 - A `CompletableFuture` that a listener completes is completed exceptionally on the failure path too
   (`client.onFailure(reply::completeExceptionally)`), or comes from an API that returns one itself, such as
   `CompletableFuture.supplyAsync(task, executor)` (`pmd/FutureWithoutException`).

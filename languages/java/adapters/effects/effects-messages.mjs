@@ -128,6 +128,25 @@ function retryWrite({ method, scope, holder, write, path }) {
   ].join(' ');
 }
 
+function dualWrite({ method, form, write, path }) {
+  const where = `${code(`${method}()`)} writes with ${code(write.at(-1))} and publishes`;
+  const outbox = [
+    'Write the message to an outbox table in the same transaction and let a relay publish it',
+    '(or use change data capture or a database-backed queue):',
+  ].join(' ');
+  if (form === 'afterCommit') {
+    return [
+      `${outbox} ${where} after the commit through ${callPath(path).replace(/^calls /u, '')},`,
+      'which never announces a rolled-back change, but a crash between the commit and the publish loses',
+      'the message.',
+    ].join(' ');
+  }
+  return [
+    `${outbox} ${where} through ${callPath(path).replace(/^calls /u, '')}, so a rollback after the`,
+    'publish announces a change that never happened, and a crash after the commit loses the message.',
+  ].join(' ');
+}
+
 export const EFFECTS_MESSAGES = {
   IoCallInLoop: loopIo,
   AccumulatorCopyInLoop: accumulatorCopy,
@@ -135,6 +154,7 @@ export const EFFECTS_MESSAGES = {
   RemoteCallInTransaction: remoteInTransaction,
   RemoteCallUnderLock: remoteUnderLock,
   RetryWithoutIdempotency: retryWrite,
+  DualWriteWithoutOutbox: dualWrite,
 };
 
 export const EFFECTS_RULES = Object.keys(EFFECTS_MESSAGES).map((rule) => `effects/${rule}`);

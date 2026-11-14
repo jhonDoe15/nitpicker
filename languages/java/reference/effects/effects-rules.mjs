@@ -8,6 +8,7 @@ const GUIDE = 'docs/java-preset.md';
 const METHOD = '<method>';
 const HOLDER = '<holder>';
 const PATH = ['<helper>', '<call>'];
+const WRITE = ['<repository>.save()'];
 const SAMPLES = [
   ['IoCallInLoop', { method: METHOD, kind: 'database', form: 'loop', path: PATH }],
   ['AccumulatorCopyInLoop', { method: METHOD, variable: '<variable>', form: 'loop' }],
@@ -24,6 +25,7 @@ const SAMPLES = [
     'RetryWithoutIdempotency',
     { method: METHOD, scope: '@Retryable', holder: HOLDER, write: 'insert', path: PATH },
   ],
+  ['DualWriteWithoutOutbox', { method: METHOD, form: 'inline', write: WRITE, path: PATH }],
 ];
 const WHY =
   'The effects engine reads the compiled classes with ASM and follows the project helpers a call goes through, so it reports what a source pattern cannot see; the Java and Kotlin presets share it on Gradle and Maven.';

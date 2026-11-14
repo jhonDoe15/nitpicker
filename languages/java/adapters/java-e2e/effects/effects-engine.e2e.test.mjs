@@ -161,6 +161,10 @@ describe.skipIf(!enabled)('the effects engine on compiled samples', () => {
     ]);
   });
 
+  it('allows relays keyed on the rows they read, and reports a job that writes and publishes', () => {
+    expect(methodsOf(run.report, 'DualWriteWithoutOutbox')).toEqual(['Writes.batchJob']);
+  });
+
   it('reports copies on every step', () => {
     expect(methodsOf(run.report, 'AccumulatorCopyInLoop')).toEqual(['Copies.copiedEachStep']);
   });
