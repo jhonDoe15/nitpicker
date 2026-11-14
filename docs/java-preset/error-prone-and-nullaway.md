@@ -253,7 +253,7 @@ Part of the [Java preset guide](../java-preset.md).
   reviewed set is the jar's, `enable` names off-by-default checks and `disable` on-by-default ones,
   `certainBugs` plus the documented ERROR checks are exactly the enabled ERROR checks,
   `suppressible` is every name of every enabled check),
-  `maven/errorprone/maven-errorprone.e2e.test.mjs` (a Spring Initializr style build with a local
+  `maven/errorprone/maven-errorprone.e2e.test.mts` (a Spring Initializr style build with a local
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
   `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
   class compiled into `target/classes` before the regular compile), and

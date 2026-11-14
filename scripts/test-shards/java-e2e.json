@@ -55,7 +55,7 @@
   "languages/java/adapters/suppressions/escape-hatches-pmd.e2e.test.mjs": 37,
   "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs": 40,
   "languages/java/guards/guards.e2e.test.mjs": 160,
-  "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs": 22,
+  "languages/java/maven/errorprone/maven-errorprone.e2e.test.mts": 22,
   "languages/java/maven/guards/maven-cpd.e2e.test.mjs": 40,
   "languages/java/maven/guards/maven-parity.e2e.test.mjs": 150,
   "languages/java/maven/preset/comparison/maven-preset-touched-lines.e2e.test.mjs": 47,
