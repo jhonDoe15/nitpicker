@@ -1,9 +1,11 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
+import { firstOf } from '../../eslint/test-support/finding-comparison.mts';
+import type { OxlintPlan } from '../plan/oxlint-shapes.mts';
 import { nativeRuleIndex, translatePlan, translateRule } from '../oxlint-translation.mts';
-import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
+import { accumulatingSpreadMessages } from '../test-support/analyzer-views.mts';
+import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 import {
   ownedNativeChecker,
   ownedNativeMessage,
@@ -52,20 +54,23 @@ describe('the owned native rule allowlist', () => {
   });
 
   it('never selects a native oxc rule that no enabled ESLint rule maps to', () => {
-    const plan = {
+    const plan: OxlintPlan = {
       groups: [{ files: ['src/a.ts'], rules: { 'no-debugger': [2], 'nitpicker/no-null': [2] } }],
+      noInlineConfig: [],
       typedPluginRules: [],
+      ruleMessages: {},
+      nativeRules: [],
     };
     const translated = translatePlan(plan, { nativeRules: listed, bridgedRules: new Set() });
-    expect(Object.keys(translated.partitions[0].overrides[0].rules)).toEqual([
+    expect(Object.keys(firstOf(firstOf(translated.partitions).overrides).rules)).toEqual([
       'eslint/no-debugger',
       'js-nitpicker/no-null',
     ]);
     const withRule = translatePlan(
-      { ...plan, groups: [{ ...plan.groups[0], rules: { [RULE]: [2] } }] },
+      { ...plan, groups: [{ files: ['src/a.ts'], rules: { [RULE]: [2] } }] },
       { nativeRules: listed, bridgedRules: new Set() },
     );
-    expect(withRule.partitions[0].overrides[0].rules).toEqual({ [NATIVE]: 'error' });
+    expect(firstOf(firstOf(withRule.partitions).overrides).rules).toEqual({ [NATIVE]: 'error' });
     expect(withRule.ruleNames).toEqual(new Map([[NATIVE, RULE]]));
   });
 });
@@ -73,6 +78,7 @@ describe('the owned native rule allowlist', () => {
 describe('ownedNativeMessage', () => {
   it('maps the native report to the owned message and the check that confirms it', () => {
     const diagnostic = {
+      filename: ADAPTER,
       code: 'oxc(no-accumulating-spread)',
       message: REDUCE,
       help: ARRAY_HELP,
@@ -87,12 +93,13 @@ describe('ownedNativeMessage', () => {
     });
     const domain = 'src/main/features/billing/domain/totals.ts';
     expect(
-      ownedNativeMessage({ ruleId: RULE, diagnostic, ruleMessages, filePath: domain }).messageId,
+      ownedNativeMessage({ ruleId: RULE, diagnostic, ruleMessages, filePath: domain })?.messageId,
     ).toBe('domainReduceArray');
   });
 
   it('leaves a bridged report of the owned rule to its own message', () => {
     const diagnostic = {
+      filename: ADAPTER,
       code: 'js-nitpicker(no-accumulating-spread)',
       message: accumulatingSpreadMessages.loopArray,
       labels: LABELS,
@@ -104,6 +111,7 @@ describe('ownedNativeMessage', () => {
 
   it('leaves other rules alone and fails loudly when the owned rule lacks the message', () => {
     const diagnostic = {
+      filename: ADAPTER,
       code: 'oxc(no-accumulating-spread)',
       message: LOOP,
       help: 'push',
@@ -135,7 +143,7 @@ export default [
 ];
 `;
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });

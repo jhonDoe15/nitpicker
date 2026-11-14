@@ -2,11 +2,14 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { firstOf } from '../../eslint/test-support/finding-comparison.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
+import type { LintResult } from '../plan/oxlint-shapes.mts';
+import { residualRecorder, oxlintOptions } from '../test-support/oxlint-runs.mts';
 
 const RULES_URL = import.meta.resolve('../../../preset/eslint-plugin/rules');
 
-function ruleUrl(path) {
+function ruleUrl(path: string) {
   return JSON.stringify(`${RULES_URL}/${path}`);
 }
 
@@ -88,17 +91,13 @@ const EXPECTED = {
   ],
 };
 
-let root;
-let outcome;
-
-function recordResidualRules(files, extraEnvironment) {
-  outcome.residualRules = JSON.parse(extraEnvironment.NITPICKER_DIFF_ESLINT_ONLY_RULES);
-  return [];
-}
+let root: string | undefined;
+let outcome: { root: string; results: LintResult[]; residualRules: unknown };
 
 async function lintProject() {
-  outcome = {};
-  root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
+  const recorder = residualRecorder();
+  const projectRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
+  root = projectRoot;
   const files = {
     'policy.mjs': POLICY,
     ...SOURCES,
@@ -112,11 +111,13 @@ async function lintProject() {
     NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
     NITPICKER_DIFF_ESLINT_PROJECT_ROOT: root,
   };
-  outcome.results = await lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.{ts,tsx}'] },
+  const results = await lintWithOxlint({
+    options: oxlintOptions(root, ['src/**/*.{ts,tsx}']),
+    projectConfigPath: undefined,
     environment,
-    runEslintCli: recordResidualRules,
+    runEslintCli: recorder.runEslintCli,
   });
+  outcome = { root: projectRoot, results, residualRules: recorder.runs.at(-1)?.rules };
   return outcome;
 }
 
@@ -133,9 +134,9 @@ afterAll(() => {
 describe('nitpicker rule messages through the oxlint engine', () => {
   it.each(Object.entries(EXPECTED))('keeps the full message text in %s', (file, expected) => {
     const { results } = outcome;
-    const messages = results
-      .find((entry) => entry.filePath === path.join(root, file))
-      .messages.map(({ ruleId, message }) => [ruleId, message]);
+    const messages = firstOf(
+      results.filter((entry) => entry.filePath === path.join(outcome.root, file)),
+    ).messages.map(({ ruleId, message }) => [ruleId, message]);
 
     expect(messages).toEqual(expected);
   });

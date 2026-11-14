@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { rule as noComments } from '../../../preset/eslint-plugin/rules/modules/no-comments.mjs';
 import { rule as noFixedSleep } from '../../../preset/eslint-plugin/rules/testing/lifecycle/no-fixed-sleep-synchronization.mjs';
 import { rule as noHardcodedColors } from '../../../preset/eslint-plugin/rules/react/theme/react-no-hardcoded-colors.mjs';
-import { createProject, lintProject } from '../test-support/oxlint-project.mjs';
+import { createProject, lintProject } from '../test-support/oxlint-project.mts';
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
 import { nitpickerRules } from ${JSON.stringify(import.meta.resolve('../../../preset/eslint-plugin/index.mjs'))};
@@ -33,11 +33,16 @@ const SOURCES = {
     "await expect(screen.findByRole('tooltip')).rejects.toThrow();\nawait page.waitForTimeout(500);\ncy.wait(500);\n",
 };
 
-function textOf(rule, messageId, data = {}) {
-  return rule.meta.messages[messageId].replaceAll(/\{\{(\w+)\}\}/gu, (_, key) => data[key]);
+type MessagedRule = { readonly meta: { readonly messages: Readonly<Record<string, string>> } };
+type MessageData = Readonly<Record<string, string | number>>;
+
+function textOf(rule: MessagedRule, messageId: string, data: MessageData = {}) {
+  return (rule.meta.messages[messageId] ?? '').replaceAll(/\{\{(\w+)\}\}/gu, (_, key: string) =>
+    String(data[key]),
+  );
 }
 
-function finding(ruleId, rule, messageId, data) {
+function finding(ruleId: string, rule: MessagedRule, messageId: string, data?: MessageData) {
   return { ruleId, messageId, message: textOf(rule, messageId, data) };
 }
 
@@ -56,7 +61,7 @@ const EXPECTED = {
   ),
 };
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });

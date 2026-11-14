@@ -2,7 +2,9 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { firstOf } from '../eslint/test-support/finding-comparison.mts';
 import { eslintShapedResults } from './oxlint-diagnostics.mts';
+import type { OxlintPlan } from './plan/oxlint-shapes.mts';
 import {
   escapeGlob,
   messageIdResolver,
@@ -64,7 +66,7 @@ describe('translateRule', () => {
 });
 
 describe('translatePlan', () => {
-  const plan = {
+  const plan: OxlintPlan = {
     groups: [
       {
         files: ['src/a.ts'],
@@ -78,6 +80,9 @@ describe('translatePlan', () => {
       },
     ],
     typedPluginRules: ['functional/prefer-immutable-types'],
+    noInlineConfig: [],
+    ruleMessages: {},
+    nativeRules: [],
   };
 
   it('writes one override per group with oxlint names, severities and globals', () => {
@@ -121,6 +126,9 @@ describe('translatePlan', () => {
           { files: ['c.ts'], rules: { 'no-console': [2] }, settings: {} },
         ],
         typedPluginRules: [],
+        noInlineConfig: [],
+        ruleMessages: {},
+        nativeRules: [],
       },
       { nativeRules, bridgedRules: new Set() },
     );
@@ -144,8 +152,8 @@ describe('translatePlan', () => {
   it('maps reported oxlint names back to the ESLint rule ids', () => {
     const { ruleNames } = translatePlan(plan, { nativeRules, bridgedRules: new Set() });
 
-    expect(ruleNames.get(reportedRuleKey('eslint(no-debugger)'))).toBe('no-debugger');
-    expect(ruleNames.get(reportedRuleKey('js-nitpicker(no-comments)'))).toBe(
+    expect(ruleNames.get(reportedRuleKey('eslint(no-debugger)') ?? '')).toBe('no-debugger');
+    expect(ruleNames.get(reportedRuleKey('js-nitpicker(no-comments)') ?? '')).toBe(
       'nitpicker/no-comments',
     );
     expect(reportedRuleKey(undefined)).toBeUndefined();
@@ -204,22 +212,23 @@ describe('eslintShapedResults', () => {
     rmSync(stage, { recursive: true, force: true });
   });
 
-  function shaped(diagnostic) {
+  function shaped(diagnostic: { code: string; message: string; help?: string }) {
     const naming = {
       ruleNames: new Map([
         ['eslint/no-restricted-properties', 'no-restricted-properties'],
         ['eslint/no-restricted-globals', 'no-restricted-globals'],
       ]),
       messageIdOf: () => undefined,
+      ruleMessages: {},
       neutralized: new Map(),
     };
     const labels = [{ span: { offset: 20, length: 11 } }];
-    const [result] = eslintShapedResults(
+    const results = eslintShapedResults(
       stage,
       [{ filename: 'a.ts', labels, ...diagnostic }],
       naming,
     );
-    return result.messages[0].message;
+    return firstOf(firstOf(results).messages).message;
   }
 
   it('keeps the configured message that oxlint moves into the help of a restricted property', () => {
@@ -233,7 +242,12 @@ describe('eslintShapedResults', () => {
   });
 
   it('rejects a reported file outside the stage', () => {
-    const naming = { ruleNames: new Map(), messageIdOf: () => undefined, neutralized: new Map() };
+    const naming = {
+      ruleNames: new Map<string, string>(),
+      messageIdOf: () => undefined,
+      ruleMessages: {},
+      neutralized: new Map(),
+    };
     const diagnostic = { filename: '../a.ts', code: 'eslint(no-debugger)', message: 'x' };
     expect(() => eslintShapedResults(stage, [diagnostic], naming)).toThrow(
       'oxlint reported a file outside its stage: ../a.ts',

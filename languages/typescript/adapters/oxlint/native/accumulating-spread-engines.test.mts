@@ -4,20 +4,25 @@ import path from 'node:path';
 import { ESLint } from 'eslint';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createFindingsCache } from '../../../../../core/diff/cache/findings-cache.mts';
-import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
-import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
-import { importClosure } from '../../../../../shared/import-closure.mjs';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
+import { compareFindings, firstOf } from '../../eslint/test-support/finding-comparison.mts';
+import type { EslintFinding } from '../../eslint/typed/engine.mts';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
-import { resolveAnalyzerVersion } from '../../../preset/analyzer-versions.mjs';
-import { hashFiles } from '../../../preset/checks/hash.mjs';
-import { configuredAnalyzers } from '../../../preset/diff/configured-analyzers.mjs';
-import { accumulatingSpreadMessages } from '../../../preset/eslint-plugin/rules/collections/accumulating-spread-messages.mjs';
+import {
+  accumulatingSpreadMessages,
+  checkoutModulePath,
+  configuredAnalyzers,
+  hashFiles,
+  importClosure,
+  parseAnalyzerReport,
+  resolveAnalyzerVersion,
+} from '../test-support/analyzer-views.mts';
 import { normalizeEslintResults } from '../../eslint/normalize.mts';
 import { spawnJson } from '../oxlint-process.mts';
 import { lintWithOxlint } from '../oxlint-runner.mts';
+import { planOf } from '../plan/oxlint-shapes.mts';
 import { nativeRuleIndex, PARITY_BRIDGED_RULES, translatePlan } from '../oxlint-translation.mts';
-import { createProject } from '../test-support/oxlint-project.mjs';
+import { createProject } from '../test-support/oxlint-project.mts';
+import { oxlintOptions } from '../test-support/oxlint-runs.mts';
 
 const RULE = 'nitpicker/no-accumulating-spread';
 const NATIVE = 'oxc/no-accumulating-spread';
@@ -31,11 +36,11 @@ const OWNED_ENGINE_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/collections/no-accumulating-spread.mjs',
 ];
 
-function presetUrl(file) {
+function presetUrl(file: string) {
   return JSON.stringify(import.meta.resolve(`../../../preset/${file}`));
 }
 
-function policy({ javascript }) {
+function policy({ javascript }: { readonly javascript: boolean }) {
   return `import { productionPolicyConfigFor } from ${presetUrl('eslint-config/policy/production-policy.mjs')};
 import { strictSyntaxConfigFor } from ${presetUrl('eslint-config/strict.mjs')};
 import { strictTestConfigFor } from ${presetUrl('eslint-config/strict-tests.mjs')};
@@ -128,13 +133,16 @@ const EXPECTED = [
   [DOMAIN, 3, 41, 'domainReduceObject'],
 ];
 
-const roots = [];
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-function project(files, { javascript = false } = {}) {
+function project(
+  files: Readonly<Record<string, string>>,
+  { javascript = false }: { readonly javascript?: boolean } = {},
+) {
   const root = createProject('nitpicker-accumulating-spread-', {
     'policy.mjs': policy({ javascript }),
     ...files,
@@ -143,31 +151,31 @@ function project(files, { javascript = false } = {}) {
   return root;
 }
 
-async function eslintResults(root) {
+async function eslintResults(root: string) {
   const eslint = new ESLint({ cwd: root, overrideConfigFile: path.join(root, 'policy.mjs') });
   return eslint.lintFiles(PATTERNS);
 }
 
-function findingsOf(root, results) {
+function findingsOf(root: string, results: unknown) {
   return normalizeEslintResults({ value: results, projectRoot: root, analyzerName: 'eslint-lint' });
 }
 
-function ruleFindings(findings) {
+function ruleFindings(findings: readonly EslintFinding[]) {
   return findings.filter((finding) => finding.rule === RULE);
 }
 
-function located(findings) {
+function located(findings: readonly EslintFinding[]) {
   return ruleFindings(findings)
     .map(({ path: file, location, identity }) => [
       file,
-      location.line,
-      location.column,
-      identity.split('|')[0].replace('message:', ''),
+      location?.line,
+      location?.column,
+      identity.split('|')[0]?.replace('message:', ''),
     ])
     .sort((left, right) => left.join().localeCompare(right.join()));
 }
 
-function environmentOf(root) {
+function environmentOf(root: string) {
   return {
     ...process.env,
     NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
@@ -175,30 +183,34 @@ function environmentOf(root) {
   };
 }
 
-function oxlintResults(root) {
+function oxlintResults(root: string) {
   return lintWithOxlint({
-    options: { projectRoot: root, patterns: PATTERNS },
+    options: oxlintOptions(root, PATTERNS),
+    projectConfigPath: undefined,
     environment: environmentOf(root),
-    runEslintCli: () => [],
+    runEslintCli: () => Promise.resolve([]),
   });
 }
 
-function lintPlan(root) {
-  return spawnJson(
-    [
-      checkoutModulePath(path.join(import.meta.dirname, '..', 'oxlint-plan.mjs')),
-      root,
-      ...PATTERNS,
-    ],
-    {
-      cwd: root,
-      env: environmentOf(root),
-      context: 'oxlint planning',
-    },
+function lintPlan(root: string) {
+  return planOf(
+    spawnJson(
+      [
+        checkoutModulePath(path.join(import.meta.dirname, '..', 'oxlint-plan.mjs')),
+        root,
+        ...PATTERNS,
+      ],
+      {
+        cwd: root,
+        env: environmentOf(root),
+        context: 'oxlint planning',
+        timeoutMs: undefined,
+      },
+    ),
   );
 }
 
-function nativeRulesByFile(plan, bridgedRules) {
+function nativeRulesByFile(plan: ReturnType<typeof lintPlan>, bridgedRules: Set<string>) {
   const translated = translatePlan(plan, {
     nativeRules: nativeRuleIndex(plan.nativeRules),
     bridgedRules,
@@ -214,7 +226,7 @@ function nativeRulesByFile(plan, bridgedRules) {
 
 describe('nitpicker/no-accumulating-spread on both lint engines', () => {
   const root = project(SOURCES);
-  let oxlintFindings;
+  let oxlintFindings: EslintFinding[];
 
   beforeAll(async () => {
     oxlintFindings = findingsOf(root, await oxlintResults(root));
@@ -238,7 +250,9 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
   });
 
   it('names the one-pass form and the exception entry instead of mutating the accumulator', () => {
-    const domain = ruleFindings(oxlintFindings).find((finding) => finding.path === DOMAIN);
+    const domain = firstOf(
+      ruleFindings(oxlintFindings).filter((finding) => finding.path === DOMAIN),
+    );
     expect(domain.message).toBe(
       `${accumulatingSpreadMessages.domainReduceObject} If this is intended, add {"rule":"${RULE}","paths":["${DOMAIN}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
     );
@@ -262,8 +276,8 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
 
   it('leaves the loop accumulator of domain code to the let and loop bans', () => {
     const domainRules = oxlintFindings
-      .filter((finding) => finding.path === DOMAIN && finding.location.line >= 9)
-      .map(({ rule, location }) => [rule, location.line]);
+      .filter((finding) => finding.path === DOMAIN && (finding.location?.line ?? 0) >= 9)
+      .map(({ rule, location }) => [rule, location?.line]);
     expect(domainRules).toEqual([
       ['functional/no-let', 9],
       ['no-restricted-syntax', 10],
@@ -273,7 +287,9 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
   it('misses the findings cache once any owned native rule file changes', () => {
     const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-accumulating-cache-'));
     roots.push(directory);
-    const { cacheKeyFiles } = configuredAnalyzers().find(({ name }) => name === 'eslint-lint');
+    const { cacheKeyFiles } = firstOf(
+      configuredAnalyzers().filter(({ name }) => name === 'eslint-lint'),
+    );
     const copy = mkdtempSync(path.join(tmpdir(), 'nitpicker-accumulating-policy-'));
     roots.push(copy);
     for (const [file, contents] of importClosure(cacheKeyFiles, PACKAGE_ROOT)) {
@@ -281,8 +297,13 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
       writeFileSync(path.join(copy, file), contents);
     }
     const version = resolveAnalyzerVersion('eslint-lint', PACKAGE_ROOT);
-    const analyzerOf = (configurationHash) => ({ name: 'eslint-lint', version, configurationHash });
+    const analyzerOf = (configurationHash: string) => ({
+      name: 'eslint-lint',
+      version,
+      configurationHash,
+    });
     const cache = createFindingsCache({
+      store: undefined,
       directory,
       mergeBaseSha: 'base',
       projectRelativePath: '.',
@@ -296,7 +317,7 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     });
 
     expect(version.split(';').at(-1)).toBe('oxlint@1.87.0,oxlint-tsgolint@7.0.2004');
-    expect(ruleFindings(cache.read(before).findings)).toEqual(
+    expect(ruleFindings(cache.read(before)?.findings ?? [])).toEqual(
       ruleFindings(parseAnalyzerReport({ findings: oxlintFindings }, 'eslint-lint').findings),
     );
     expect(new Set([before.configurationHash, ...hashes]).size).toBe(OWNED_ENGINE_FILES.length + 1);
@@ -313,10 +334,12 @@ describe('nitpicker/no-accumulating-spread on both lint engines', () => {
     const comparison = compareFindings({
       baseFindings: ruleFindings(oxlintFindings),
       headFindings: ruleFindings(findingsOf(head, await oxlintResults(head))),
+      touchedCode: undefined,
+      unknownOnBase: undefined,
     });
-    expect(comparison.newFindings.map(({ path: file, location }) => [file, location.line])).toEqual(
-      [[ADAPTER, 1]],
-    );
+    expect(
+      comparison.newFindings.map(({ path: file, location }) => [file, location?.line]),
+    ).toEqual([[ADAPTER, 1]]);
     expect(comparison.unchangedFindings).toHaveLength(EXPECTED.length);
     expect(comparison.resolvedFindings).toEqual([]);
   });

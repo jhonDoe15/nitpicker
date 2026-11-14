@@ -5,22 +5,26 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { importClosure } from '../../../../../shared/import-closure.mjs';
-import { checkoutModulePath } from '../../../../../shared/paths/checkout-module.mjs';
-import { transpiled } from '../../../../../scripts/typescript/emit.mjs';
+import { fieldOf, listOf } from '../../../../../shared/values/readers.mts';
+import {
+  called,
+  checkoutModulePath,
+  importClosure,
+  transpiled,
+} from '../test-support/analyzer-views.mts';
 
 const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../../../../..'));
 const LISTING_MODULE = 'languages/typescript/adapters/oxlint/plan/rule-listing.mjs';
 const HERMETIC_GIT = { ...process.env, GIT_CONFIG_GLOBAL: '/dev/null', GIT_CONFIG_NOSYSTEM: '1' };
 const GIT_TIMEOUT_MS = 10_000;
-const typescript = createRequire(import.meta.url)('typescript-js-api');
+const typescript: unknown = createRequire(import.meta.url)('typescript-js-api');
 
-function shippedContents(file, contents) {
+function shippedContents(file: string, contents: string) {
   const source = checkoutModulePath(path.join(PACKAGE_ROOT, file));
   return source.endsWith('.mts') ? transpiled(contents, source, typescript) : contents;
 }
 
-function installedInIgnoredFolder(clone) {
+function installedInIgnoredFolder(clone: string) {
   execFileSync('git', ['init', '--quiet'], {
     cwd: clone,
     env: HERMETIC_GIT,
@@ -38,8 +42,8 @@ function installedInIgnoredFolder(clone) {
 }
 
 describe('the oxlint rule listing', () => {
-  let clone;
-  let installed;
+  let clone: string;
+  let installed: string;
 
   beforeAll(() => {
     clone = mkdtempSync(path.join(tmpdir(), 'nitpicker-hook-clone-'));
@@ -51,12 +55,10 @@ describe('the oxlint rule listing', () => {
   });
 
   it('lists the rules from a copy inside a folder its git clone ignores, as pre-commit installs it', async () => {
-    const { listNativeRules } = await import(
-      pathToFileURL(path.join(installed, LISTING_MODULE)).href
-    );
+    const listing: unknown = await import(pathToFileURL(path.join(installed, LISTING_MODULE)).href);
 
-    const rules = await listNativeRules();
+    const rules: unknown = await called(fieldOf(listing, 'listNativeRules'), []);
 
-    expect(rules.some(({ value }) => value === 'no-debugger')).toBe(true);
+    expect(listOf(rules).some((rule) => fieldOf(rule, 'value') === 'no-debugger')).toBe(true);
   });
 });

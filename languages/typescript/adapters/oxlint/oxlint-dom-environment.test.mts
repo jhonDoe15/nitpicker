@@ -2,10 +2,13 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
+import { compareFindings } from '../eslint/test-support/finding-comparison.mts';
+import type { EslintFinding } from '../eslint/typed/engine.mts';
 import { rule } from '../../preset/eslint-plugin/rules/testing/environment/no-unused-dom-environment.mjs';
 import { normalizeEslintResults } from '../eslint/normalize.mts';
 import { lintWithOxlint } from './oxlint-runner.mts';
+import type { LintResult } from './plan/oxlint-shapes.mts';
+import { oxlintOptions } from './test-support/oxlint-runs.mts';
 
 const RULE = 'nitpicker/no-unused-dom-environment';
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
@@ -34,13 +37,15 @@ const SOURCES = {
   'src/node/pure.test.ts': LOGIC,
   'src/format.ts': 'export const format = String;\n',
 };
-const roots = [];
+type Linted = { readonly root: string; readonly results: readonly LintResult[] };
+
+const roots: string[] = [];
 
 afterAll(() => {
   for (const root of roots) rmSync(root, { recursive: true, force: true });
 });
 
-async function lintProject(sources) {
+async function lintProject(sources: Readonly<Record<string, string>>) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-dom-environment-')));
   roots.push(root);
   writeFileSync(path.join(root, 'policy.mjs'), POLICY);
@@ -49,7 +54,8 @@ async function lintProject(sources) {
     writeFileSync(path.join(root, relativePath), text);
   }
   const results = await lintWithOxlint({
-    options: { projectRoot: root, patterns: ['src/**/*.ts'] },
+    options: oxlintOptions(root, ['src/**/*.ts']),
+    projectConfigPath: undefined,
     environment: {
       ...process.env,
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(root, 'policy.mjs'),
@@ -62,7 +68,7 @@ async function lintProject(sources) {
   return { root, results };
 }
 
-function reportsOf({ root, results }, relativePath) {
+function reportsOf({ root, results }: Linted, relativePath: string) {
   const result = results.find((entry) => entry.filePath === path.join(root, relativePath));
   return (result?.messages ?? []).map(({ ruleId, line, message, messageId }) => ({
     ruleId,
@@ -72,15 +78,15 @@ function reportsOf({ root, results }, relativePath) {
   }));
 }
 
-const projectMessage = (environment) =>
+const projectMessage = (environment: string) =>
   rule.meta.messages.unusedProjectEnvironment.replaceAll('{{environment}}', environment);
-const directiveMessage = (environment) =>
+const directiveMessage = (environment: string) =>
   rule.meta.messages.unusedDirectiveOverDomProject
     .replace('{{environment}}', environment)
     .replace('{{directive}}', directive);
 
 describe('no-unused-dom-environment under the oxlint engine', () => {
-  let linted;
+  let linted: Linted;
 
   beforeAll(async () => {
     linted = await lintProject(SOURCES);
@@ -123,18 +129,18 @@ describe('a no-unused-dom-environment finding under the oxlint engine', () => {
     'src/directive.test.ts': `/** ${directive} jsdom */\n${LOGIC}`,
     'src/directive-with-import.test.ts': `import { format } from './format';\n/** ${directive} jsdom */\n${LOGIC}`,
   };
-  let linted;
+  let linted: Linted;
 
   beforeAll(async () => {
     linted = await lintProject({ ...SOURCES, ...variants });
   });
-  const findingOf = (relativePath) =>
+  const findingOf = (relativePath: string) =>
     normalizeEslintResults({
       value: linted.results.filter((entry) => entry.filePath.endsWith(relativePath)),
       projectRoot: linted.root,
       analyzerName: 'eslint-lint',
     });
-  const movedTo = (findings, relativePath) =>
+  const movedTo = (findings: readonly EslintFinding[], relativePath: string) =>
     findings.map((finding) => ({ ...finding, path: relativePath }));
 
   it.each([
@@ -151,6 +157,8 @@ describe('a no-unused-dom-environment finding under the oxlint engine', () => {
     const result = compareFindings({
       baseFindings: base,
       headFindings: movedTo(findingOf(headPath), basePath),
+      touchedCode: undefined,
+      unknownOnBase: undefined,
     });
     expect(base).toHaveLength(1);
     expect(result.newFindings).toEqual([]);

@@ -1,16 +1,24 @@
 import { rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { createProject } from '../test-support/oxlint-project.mjs';
-import { stageConfigOptions } from './oxlint-paths.mts';
+import { createProject } from '../test-support/oxlint-project.mts';
+import { parseJson } from '../../../../../shared/values/readers.mts';
+import { stageConfigOptions, type StageConfigOptions } from './oxlint-paths.mts';
 
-const roots = [];
+const roots: string[] = [];
+const UNSET: unknown = parseJson('null');
 
-function writtenOptions({ compilerOptions, unset }) {
-  return { ...compilerOptions, ...Object.fromEntries(unset.map((option) => [option, null])) };
+function writtenOptions({ compilerOptions, unset }: StageConfigOptions): {
+  readonly paths?: unknown;
+  readonly [option: string]: unknown;
+} {
+  return { ...compilerOptions, ...Object.fromEntries(unset.map((option) => [option, UNSET])) };
 }
 
-function optionsFor(files, config) {
+function optionsFor(
+  files: Readonly<Record<string, string>>,
+  config: Readonly<Record<string, unknown>>,
+) {
   const root = createProject('nitpicker-oxlint-paths-test-', files);
   roots.push(root);
   return {
@@ -33,7 +41,7 @@ describe('stageConfigOptions', () => {
     );
 
     expect(options).toEqual({
-      baseUrl: null,
+      baseUrl: UNSET,
       paths: { '@/*': [`${root}/src/*`], '*': [`${root}/*`] },
     });
   });
@@ -53,7 +61,7 @@ describe('stageConfigOptions', () => {
   it('maps bare imports through baseUrl when no paths are set', () => {
     const { root, options } = optionsFor({}, { compilerOptions: { baseUrl: 'src' } });
 
-    expect(options).toEqual({ baseUrl: null, paths: { '*': [`${root}/src/*`] } });
+    expect(options).toEqual({ baseUrl: UNSET, paths: { '*': [`${root}/src/*`] } });
   });
 
   it('follows an extends chain through another folder', () => {
@@ -73,7 +81,7 @@ describe('stageConfigOptions', () => {
     );
 
     expect(options).toEqual({
-      baseUrl: null,
+      baseUrl: UNSET,
       paths: { '@/*': [`${root}/src/*`], '*': [`${root}/src/*`] },
     });
   });
@@ -109,7 +117,7 @@ describe('stageConfigOptions', () => {
   it('leaves a malformed paths value alone', () => {
     const { options } = optionsFor({}, { compilerOptions: { baseUrl: '.', paths: ['src/*'] } });
 
-    expect(options).toEqual({ baseUrl: null });
+    expect(options).toEqual({ baseUrl: UNSET });
   });
 
   it('fails naming the config when TypeScript cannot read it', () => {
