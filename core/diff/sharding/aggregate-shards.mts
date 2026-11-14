@@ -37,8 +37,8 @@ import {
 import { clearDiffReports, absoluteTextReportPath } from '../reporting/reporters.mts';
 import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { pathToFileURL } from 'node:url';
-import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
-import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
+import { loadConfig, describeConfigOverrides } from '../../configuration/config.mts';
+import { configureAnalyzers } from '../../configuration/configure-analyzers.mts';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mts';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mts';
@@ -49,7 +49,7 @@ import { colorEnabled } from '../../../shared/messages/terminal/terminal-text.mj
 import { comparisonExitCode } from '../reporting/failing-tests/failing-tests.mts';
 import { analyzersOf } from '../../../shared/values/analyzers.mts';
 import { textOf } from '../../../shared/values/readers.mts';
-import type { NitpickerConfig } from '../../configuration/config-types.mts';
+import type { NitpickerConfig } from '../../../shared/values/config-types.mts';
 
 function resolvePolicyRoot({
   optionsPolicyRoot,

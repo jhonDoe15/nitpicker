@@ -1,21 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { withComparisonKeys } from './comparison-keys.mts';
+import { type ComparisonScope, withComparisonKeys } from './comparison-keys.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 
-const comparison = { touchedPaths: ['a.txt'], headRoot: '/head', quick: false };
+const comparison: ComparisonScope = { touchedPaths: ['a.txt'], headRoot: '/head', quick: false };
 
 describe('comparison keys', () => {
   it('keys an analyzer apart by what its comparison key returns', () => {
-    const seen = [];
+    const seen: ComparisonScope[] = [];
     const keyed = {
       name: 'keyed',
       configurationHash: 'config',
-      resolveConfigurationHash: (root) => `config:${root}`,
-      comparisonKey: (context) => {
+      resolveConfigurationHash: (root: string) => `config:${root}`,
+      comparisonKey: (context: ComparisonScope) => {
         seen.push(context);
         return 'tests';
       },
     };
-    const [result] = withComparisonKeys([keyed], comparison);
+    const [candidate] = withComparisonKeys([keyed], comparison);
+    const result = {
+      configurationHash: fieldOf(candidate, 'configurationHash'),
+      resolveConfigurationHash: (root: string): unknown => {
+        const resolve = fieldOf(candidate, 'resolveConfigurationHash');
+        return typeof resolve === 'function'
+          ? Reflect.apply(resolve, undefined, [root])
+          : undefined;
+      },
+    };
 
     expect(seen).toEqual([comparison]);
     expect(result.configurationHash).toMatch(/^[0-9a-f]{64}$/u);

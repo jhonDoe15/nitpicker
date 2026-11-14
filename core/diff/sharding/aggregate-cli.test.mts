@@ -5,8 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mts';
 import { runAggregateCli } from './aggregate-shards.mts';
 import { fileURLToPath } from 'node:url';
-import { captureOutput } from '../reporting/test-support/output-capture.mjs';
-import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
+import { captureOutput } from '../reporting/test-support/output-capture.mts';
+import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mts';
+import { fieldOf, parseJson } from '../../../shared/values/readers.mts';
 import { checkoutModuleUrl } from '../../../shared/paths/checkout-module.mjs';
 
 const { createFixture } = useShardFixtures();
@@ -125,10 +126,10 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
     });
 
     expect(exitCode).toBe(expected);
-    const summary = JSON.parse(
+    const summary = parseJson(
       readFileSync(path.join(path.dirname(fixture.inputRoot), 'combined/summary.json'), 'utf8'),
     );
-    expect(summary.overallStatus).toBe(withToolError ? 'tool-error' : 'completed');
+    expect(fieldOf(summary, 'overallStatus')).toBe(withToolError ? 'tool-error' : 'completed');
   });
   it('supports a concise color-free success summary', () => {
     const fixture = createFixture();
@@ -163,7 +164,7 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
         'export function resolve(specifier, context, nextResolve) {',
         "  if (!specifier.startsWith('.') && !specifier.startsWith('/') &&",
         "      !specifier.startsWith('file:') && !specifier.startsWith('node:')) {",
-        '    throw new Error(`Blocked external package: ${specifier}`);',
+        `    throw new Error(\`Blocked external package: \${specifier}\`);`,
         '  }',
         '  return nextResolve(specifier, context);',
         '}',

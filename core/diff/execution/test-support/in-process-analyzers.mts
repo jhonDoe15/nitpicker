@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { runJava } from '../../../../languages/java/adapters/java-runner.mjs';
 import { runPython } from '../../../../languages/python/adapters/python-runner.mjs';
 import { headPolicyEnvironment } from '../../../../languages/typescript/preset/head-policy.mjs';
@@ -7,11 +8,34 @@ import { runHygieneCli } from '../../../../shared/hygiene/runner.mjs';
 import { progressEvent } from '../graph/outcomes.mts';
 import { reportFromAnalyzerOutput } from '../report/analyzer-report.mts';
 import { createProgressReporter } from '../progress.mts';
-import { runFakeAnalyzer } from './fake-analyzer.mjs';
-import { checkoutModulePath } from '../../../../shared/paths/checkout-module.mjs';
+import { runFakeAnalyzer } from './fake-analyzer.mts';
+import {
+  checkoutModulePath,
+  checkoutModuleUrl,
+} from '../../../../shared/paths/checkout-module.mjs';
+import { fieldOf, listOf } from '../../../../shared/values/readers.mts';
+import type { GraphResult, Outcome } from '../graph/outcomes.mts';
+import { type AnalyzerTask, byDescendingExecutionPriority, indexTasks } from '../tasks.mts';
+import type {
+  HygieneCli,
+  InProcessOptions,
+  RunContext,
+  Runner,
+  Script,
+  ScriptOutput,
+  TaskMap,
+} from './in-process-types.mts';
+
+const javaRunner: Runner = runJava;
+const pythonRunner: Runner = runPython;
+const policyEnvironment: (headPolicyFile: unknown) => NodeJS.ProcessEnv = headPolicyEnvironment;
+const sourcePath: (file: string) => string = checkoutModulePath;
+const hygieneCli: (cli: HygieneCli) => number = runHygieneCli;
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
-const fakeAnalyzerPath = path.join(import.meta.dirname, 'fake-analyzer.mjs');
+const fakeAnalyzerPath = fileURLToPath(
+  checkoutModuleUrl(new URL('./fake-analyzer.mjs', import.meta.url)),
+);
 const javaRunnerPath = path.resolve(
   import.meta.dirname,
   '../../../../languages/java/adapters/java-runner.mjs',
@@ -21,16 +45,22 @@ const pythonRunnerPath = path.resolve(
   '../../../../languages/python/adapters/python-runner.mjs',
 );
 
-const cliPath = checkoutModulePath(path.resolve(import.meta.dirname, '../../../cli.mjs'));
+const cliPath = sourcePath(path.resolve(import.meta.dirname, '../../../cli.mjs'));
 
-const inProcessScripts = new Map([
+const inProcessScripts = new Map<string, Script>([
   [cliPath, inProcessHygiene],
   [fakeAnalyzerPath, runFakeAnalyzer],
-  [javaRunnerPath, inProcessRunner(runJava)],
-  [pythonRunnerPath, inProcessRunner(runPython)],
+  [javaRunnerPath, inProcessRunner(javaRunner)],
+  [pythonRunnerPath, inProcessRunner(pythonRunner)],
 ]);
 
-export function runTasksInProcess(tasks, headPolicyFile, { progress, spawn } = {}) {
+export function runTasksInProcess(
+  taskList: readonly object[],
+  headPolicyFile: unknown,
+  { progress, spawn }: InProcessOptions = {},
+): GraphResult {
+  const tasksByName = indexTasks(taskList);
+  const tasks = [...tasksByName.values()];
   const reportSettled =
     progress === undefined
       ? undefined
@@ -39,9 +69,8 @@ export function runTasksInProcess(tasks, headPolicyFile, { progress, spawn } = {
           label: progress.label,
           total: tasks.length,
         });
-  const tasksByName = new Map(tasks.map((task) => [task.name, task]));
-  const outcomes = new Map();
-  const environment = headPolicyFile === undefined ? {} : headPolicyEnvironment(headPolicyFile);
+  const outcomes = new Map<string, Outcome>();
+  const environment = headPolicyFile === undefined ? {} : policyEnvironment(headPolicyFile);
   withPolicyFile(headPolicyFile, () => {
     for (const task of dependencyOrder(tasks, tasksByName)) {
       const outcome = settleTask(task, { tasksByName, outcomes, spawn, environment });
@@ -49,48 +78,43 @@ export function runTasksInProcess(tasks, headPolicyFile, { progress, spawn } = {
       reportSettled?.(progressEvent(outcome));
     }
   });
-  const results = tasks.map((task) => outcomes.get(task.name));
+  const results = tasks.flatMap((task) => outcomes.get(task.name) ?? []);
   return {
     reports: results
       .filter((outcome) => outcome.report !== undefined)
-      .map((outcome) => [outcome.name, outcome.report]),
+      .map((outcome): [string, unknown] => [outcome.name, outcome.report]),
     errors: results
       .filter((outcome) => outcome.error !== undefined)
-      .map((outcome) => ({ name: outcome.name, message: outcome.error })),
+      .flatMap(({ name, error }) => (error === undefined ? [] : [{ name, message: error }])),
     timings: results.map(({ name, elapsedMs }) => ({ name, elapsedMs })),
     skipped: results
       .filter((outcome) => outcome.skippedBecause !== undefined)
-      .map((outcome) => ({ name: outcome.name, because: outcome.skippedBecause })),
+      .flatMap(({ name, skippedBecause }) =>
+        skippedBecause === undefined ? [] : [{ name, because: skippedBecause }],
+      ),
   };
 }
 
-function withPolicyFile(headPolicyFile, operation) {
+function withPolicyFile<T>(headPolicyFile: unknown, operation: () => T): T {
   if (headPolicyFile === undefined) {
     return operation();
   }
-  const previous = process.env.NITPICKER_POLICY;
-  Object.assign(process.env, headPolicyEnvironment(headPolicyFile));
+  const previous = process.env['NITPICKER_POLICY'];
+  Object.assign(process.env, policyEnvironment(headPolicyFile));
   try {
     return operation();
   } finally {
     if (previous === undefined) {
-      delete process.env.NITPICKER_POLICY;
+      delete process.env['NITPICKER_POLICY'];
     } else {
-      process.env.NITPICKER_POLICY = previous;
+      process.env['NITPICKER_POLICY'] = previous;
     }
   }
 }
 
-function dependencyOrder(tasks, tasksByName) {
-  const pending = tasks
-    .map((task, index) => ({ task, index }))
-    .sort(
-      (left, right) =>
-        (right.task.executionPriority ?? 0) - (left.task.executionPriority ?? 0) ||
-        left.index - right.index,
-    )
-    .map(({ task }) => task);
-  const ordered = new Set();
+function dependencyOrder(tasks: readonly AnalyzerTask[], tasksByName: TaskMap): AnalyzerTask[] {
+  const pending = byDescendingExecutionPriority(tasks);
+  const ordered = new Set<AnalyzerTask>();
   for (const task of pending) {
     if (isReady(task, ordered, tasksByName)) {
       ordered.add(task);
@@ -101,22 +125,34 @@ function dependencyOrder(tasks, tasksByName) {
   return [...ordered];
 }
 
-function isReady(task, ordered, tasksByName) {
+function isReady(
+  task: AnalyzerTask,
+  ordered: ReadonlySet<AnalyzerTask>,
+  tasksByName: TaskMap,
+): boolean {
   return task.dependencies.every(
-    (name) => !tasksByName.has(name) || ordered.has(tasksByName.get(name)),
+    (name) => !tasksByName.has(name) || ordered.has(tasksByName.get(name) ?? task),
   );
 }
 
-function deferTask(pending, task, taskCount) {
+function deferTask(pending: AnalyzerTask[], task: AnalyzerTask, taskCount: number): void {
   if (pending.length > taskCount ** 2) {
     throw new Error(`Analyzer dependencies of ${task.name} form a cycle`);
   }
   pending.push(task);
 }
 
-function settleTask(task, { tasksByName, outcomes, ...run }) {
-  const dependencyOutcomes = task.dependencies.map((name) =>
-    tasksByName.has(name) ? outcomes.get(name) : missingDependency(name, task),
+function settleTask(
+  task: AnalyzerTask,
+  {
+    tasksByName,
+    outcomes,
+    ...run
+  }: RunContext & { tasksByName: TaskMap; outcomes: ReadonlyMap<string, Outcome> },
+): Outcome {
+  const dependencyOutcomes = task.dependencies.map(
+    (name) =>
+      (tasksByName.has(name) ? outcomes.get(name) : undefined) ?? missingDependency(name, task),
   );
   const failedDependency = dependencyOutcomes.find(hasFailed);
   return failedDependency === undefined
@@ -124,7 +160,7 @@ function settleTask(task, { tasksByName, outcomes, ...run }) {
     : dependentOutcome(task, failedDependency);
 }
 
-function missingDependency(dependencyName, task) {
+function missingDependency(dependencyName: string, task: AnalyzerTask): Outcome {
   return {
     name: dependencyName,
     error: `Analyzer dependency ${dependencyName} is missing for ${task.name}`,
@@ -132,17 +168,19 @@ function missingDependency(dependencyName, task) {
   };
 }
 
-function hasFailed(outcome) {
+function hasFailed(outcome: Outcome): boolean {
   return (
     outcome.error !== undefined ||
     outcome.skippedBecause !== undefined ||
-    (outcome.report?.findings ?? []).some((finding) => finding.classification === 'tool-error')
+    listOf(fieldOf(outcome.report, 'findings')).some(
+      (finding) => fieldOf(finding, 'classification') === 'tool-error',
+    )
   );
 }
 
-function dependentOutcome(task, failedDependency) {
+function dependentOutcome(task: AnalyzerTask, failedDependency: Outcome): Outcome {
   if (failedDependency.missing === true) {
-    return { name: task.name, error: failedDependency.error, elapsedMs: 0 };
+    return { name: task.name, error: failedDependency.error ?? '', elapsedMs: 0 };
   }
   return {
     name: task.name,
@@ -151,7 +189,7 @@ function dependentOutcome(task, failedDependency) {
   };
 }
 
-function executeTask(task, run) {
+function executeTask(task: AnalyzerTask, run: RunContext): Outcome {
   const startedAt = Date.now();
   try {
     const output = inProcessOutput(task, run) ?? spawnedOutput(task);
@@ -169,16 +207,16 @@ function executeTask(task, run) {
   }
 }
 
-function inProcessOutput(task, run) {
+function inProcessOutput(task: AnalyzerTask, run: RunContext): ScriptOutput | undefined {
   const { command, args, env } = task.invocation;
-  const script = command === process.execPath ? inProcessScripts.get(args[0]) : undefined;
+  const script = command === process.execPath ? inProcessScripts.get(args[0] ?? '') : undefined;
   if (script === undefined || env !== undefined) {
     return undefined;
   }
   return script(args.slice(1), run);
 }
 
-function spawnedOutput(task) {
+function spawnedOutput(task: AnalyzerTask): ScriptOutput {
   const result = spawnSync(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
     env: task.invocation.env ?? process.env,
@@ -187,10 +225,10 @@ function spawnedOutput(task) {
     killSignal: 'SIGKILL',
     maxBuffer: MAX_ANALYZER_OUTPUT_BYTES,
   });
-  if (result.error?.code === 'ETIMEDOUT') {
+  if (fieldOf(result.error, 'code') === 'ETIMEDOUT') {
     throw new Error(`${task.name} timed out after ${String(task.timeoutMs)} ms`);
   }
-  if (result.error?.code === 'ENOBUFS') {
+  if (fieldOf(result.error, 'code') === 'ENOBUFS') {
     throw new Error(`${task.name} exceeded the analyzer output limit`);
   }
   if (result.error !== undefined) {
@@ -204,10 +242,10 @@ function spawnedOutput(task) {
   };
 }
 
-function inProcessHygiene(argv, { environment }) {
-  const stdout = [];
-  const stderr = [];
-  const status = runHygieneCli({
+function inProcessHygiene(argv: readonly string[], { environment }: RunContext): ScriptOutput {
+  const stdout: string[] = [];
+  const stderr: string[] = [];
+  const status = hygieneCli({
     commandArguments: argv.slice(1),
     stdout: { write: (text) => stdout.push(text) },
     stderr: { write: (text) => stderr.push(text) },
@@ -216,7 +254,7 @@ function inProcessHygiene(argv, { environment }) {
   return { status, signal: undefined, stdoutText: stdout.join(''), stderrText: stderr.join('') };
 }
 
-function inProcessRunner(analyze) {
+function inProcessRunner(analyze: Runner): Script {
   return (argv, options) => {
     try {
       const report = analyze(argv, options);
@@ -227,7 +265,12 @@ function inProcessRunner(analyze) {
         stderrText: '',
       };
     } catch (error) {
-      return { status: 2, signal: undefined, stdoutText: '', stderrText: error.message };
+      return {
+        status: 2,
+        signal: undefined,
+        stdoutText: '',
+        stderrText: error instanceof Error ? error.message : String(error),
+      };
     }
   };
 }

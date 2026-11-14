@@ -1,4 +1,6 @@
-export function finding(overrides = {}) {
+export function finding(
+  overrides: Readonly<Record<string, unknown>> = {},
+): Record<string, unknown> {
   return {
     tool: 'fake-quality-analyzer',
     rule: 'fixture-rule',
@@ -9,10 +11,10 @@ export function finding(overrides = {}) {
   };
 }
 
-export function findingLine(value, marker = 'QUALITY_FINDING') {
+export function findingLine(value: unknown, marker = 'QUALITY_FINDING'): string {
   return `// ${marker} ${JSON.stringify(value)}\n`;
 }
 
-export function policy(overrides = {}) {
+export function policy(overrides: Readonly<Record<string, unknown>> = {}): string {
   return `${JSON.stringify({ marker: 'QUALITY_FINDING', ...overrides }, null, 2)}\n`;
 }

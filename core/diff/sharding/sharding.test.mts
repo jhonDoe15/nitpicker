@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { planAnalyzerShards, selectAnalyzerShard } from './sharding.mts';
 
-function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
+function analyzer(
+  name: string,
+  {
+    dependencies = [],
+    shardWeight = 1,
+  }: { readonly dependencies?: readonly string[]; readonly shardWeight?: number } = {},
+) {
   return { name, dependencies, shardWeight };
 }
 

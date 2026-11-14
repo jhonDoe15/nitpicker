@@ -1,4 +1,14 @@
 import { Worker } from 'node:worker_threads';
+import { fieldOf, numberOr } from '../../../../shared/values/readers.mts';
+
+export type TestHttpServer = {
+  readonly url: string;
+  readonly port: number;
+  readonly requests: () => Promise<unknown>;
+  readonly keys: () => Promise<unknown>;
+  readonly failWith: (status: number) => Promise<unknown>;
+  readonly close: () => Promise<number>;
+};
 
 const SERVER_SOURCE = `
 const { parentPort, workerData } = require('node:worker_threads');
@@ -49,26 +59,29 @@ server.listen(0, '127.0.0.1', () => parentPort.postMessage({ port: server.addres
 parentPort.on('message', () => server.close());
 `;
 
-export async function startTestHttpServer({ token } = {}) {
+export async function startTestHttpServer({
+  token,
+}: { readonly token?: string } = {}): Promise<TestHttpServer> {
   const worker = new Worker(SERVER_SOURCE, { eval: true, workerData: { token } });
-  const { port } = await new Promise((resolve, reject) => {
+  const message = await new Promise<unknown>((resolve, reject) => {
     worker.once('message', resolve);
     worker.once('error', reject);
   });
+  const port = numberOr(fieldOf(message, 'port'), 0);
   const url = `http://127.0.0.1:${String(port)}`;
-  async function control(body = {}) {
+  async function control(body: object = {}): Promise<unknown> {
     return (await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify(body) })).json();
   }
   return {
     url,
     port,
-    requests: async () => (await control()).requests,
-    keys: async () => (await control()).keys,
-    failWith: (status) => control({ failWith: status }),
+    requests: async () => fieldOf(await control(), 'requests'),
+    keys: async () => fieldOf(await control(), 'keys'),
+    failWith: (status: number) => control({ failWith: status }),
     close: () => worker.terminate(),
   };
 }
 
-export async function resetTestHttpServer(url) {
+export async function resetTestHttpServer(url: string): Promise<void> {
   await fetch(`${url}/__control`, { method: 'POST', body: JSON.stringify({ reset: true }) });
 }

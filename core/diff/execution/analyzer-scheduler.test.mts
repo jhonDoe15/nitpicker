@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { resolveMaxParallel, runTaskGraph } from './graph/task-graph.mts';
-import { flushScheduling, task } from './test-support/analyzer-task.mjs';
+import type { AnalyzerTask } from './tasks.mts';
+import { flushScheduling, task } from './test-support/analyzer-task.mts';
+
+const anyNumber: unknown = expect.any(Number);
+
+function release(releases: ReadonlyMap<string, () => void>, name: string): void {
+  releases.get(name)?.();
+}
 
 describe('analyzer scheduler', () => {
   it('caps the default and accepts an explicit slot count', () => {
@@ -12,11 +19,11 @@ describe('analyzer scheduler', () => {
     );
   });
   it('runs independent analyzers concurrently within the slot budget', async () => {
-    const started = [];
-    const releases = new Map();
+    const started: string[] = [];
+    const releases = new Map<string, () => void>();
     const execution = runTaskGraph([task('a'), task('b'), task('c')], {
       maxParallel: 2,
-      execute: ({ name }) =>
+      execute: ({ name }: AnalyzerTask) =>
         new Promise((resolve) => {
           started.push(name);
           releases.set(name, () => {
@@ -27,11 +34,11 @@ describe('analyzer scheduler', () => {
 
     await flushScheduling();
     expect(started).toEqual(['a', 'b']);
-    releases.get('a')();
+    release(releases, 'a');
     await flushScheduling();
     expect(started).toEqual(['a', 'b', 'c']);
-    releases.get('b')();
-    releases.get('c')();
+    release(releases, 'b');
+    release(releases, 'c');
 
     await expect(execution).resolves.toEqual({
       reports: [
@@ -41,20 +48,20 @@ describe('analyzer scheduler', () => {
       ],
       errors: [],
       timings: [
-        { name: 'a', elapsedMs: expect.any(Number) },
-        { name: 'b', elapsedMs: expect.any(Number) },
-        { name: 'c', elapsedMs: expect.any(Number) },
+        { name: 'a', elapsedMs: anyNumber },
+        { name: 'b', elapsedMs: anyNumber },
+        { name: 'c', elapsedMs: anyNumber },
       ],
     });
   });
   it('starts higher-priority analyzers first and preserves original result order', async () => {
-    const started = [];
-    const releases = new Map();
+    const started: string[] = [];
+    const releases = new Map<string, () => void>();
     const tasks = [task('default'), task('high', { executionPriority: 1 }), task('equal')];
     const originalTasks = structuredClone(tasks);
     const execution = runTaskGraph(tasks, {
       maxParallel: 1,
-      execute: ({ name }) =>
+      execute: ({ name }: AnalyzerTask) =>
         new Promise((resolve) => {
           started.push(name);
           releases.set(name, () => {
@@ -65,13 +72,13 @@ describe('analyzer scheduler', () => {
 
     await flushScheduling();
     expect(started).toEqual(['high']);
-    releases.get('high')();
+    release(releases, 'high');
     await flushScheduling();
     expect(started).toEqual(['high', 'default']);
-    releases.get('default')();
+    release(releases, 'default');
     await flushScheduling();
     expect(started).toEqual(['high', 'default', 'equal']);
-    releases.get('equal')();
+    release(releases, 'equal');
 
     await expect(execution).resolves.toEqual({
       reports: [
@@ -81,15 +88,15 @@ describe('analyzer scheduler', () => {
       ],
       errors: [],
       timings: [
-        { name: 'default', elapsedMs: expect.any(Number) },
-        { name: 'high', elapsedMs: expect.any(Number) },
-        { name: 'equal', elapsedMs: expect.any(Number) },
+        { name: 'default', elapsedMs: anyNumber },
+        { name: 'high', elapsedMs: anyNumber },
+        { name: 'equal', elapsedMs: anyNumber },
       ],
     });
     expect(tasks).toEqual(originalTasks);
   });
   it('keeps equal and default priority analyzers in input order', async () => {
-    const started = [];
+    const started: string[] = [];
 
     await runTaskGraph(
       [
@@ -99,7 +106,7 @@ describe('analyzer scheduler', () => {
       ],
       {
         maxParallel: 1,
-        execute: ({ name }) => {
+        execute: ({ name }: AnalyzerTask) => {
           started.push(name);
           return Promise.resolve({ findings: [] });
         },
@@ -111,11 +118,11 @@ describe('analyzer scheduler', () => {
   it.each([-1, 1.5, Number.MAX_SAFE_INTEGER + 1, Number.POSITIVE_INFINITY, Number.NaN, null, '1'])(
     'rejects invalid execution priority %s before starting analyzers',
     async (executionPriority) => {
-      const started = [];
+      const started: string[] = [];
 
       await expect(
-        runTaskGraph([task('valid'), task('invalid', { executionPriority })], {
-          execute: ({ name }) => {
+        runTaskGraph([task('valid'), { ...task('invalid'), executionPriority }], {
+          execute: ({ name }: AnalyzerTask) => {
             started.push(name);
             return Promise.resolve({ findings: [] });
           },
@@ -125,11 +132,11 @@ describe('analyzer scheduler', () => {
     },
   );
   it('reserves weighted capacity for expensive analyzers', async () => {
-    const started = [];
-    let releaseCoverage;
+    const started: string[] = [];
+    let releaseCoverage: (() => void) | undefined;
     const execution = runTaskGraph([task('coverage', { concurrencyWeight: 2 }), task('lint')], {
       maxParallel: 2,
-      execute: ({ name }) => {
+      execute: ({ name }: AnalyzerTask) => {
         started.push(name);
         if (name === 'coverage') {
           return new Promise((resolve) => {
@@ -144,7 +151,7 @@ describe('analyzer scheduler', () => {
 
     await flushScheduling();
     expect(started).toEqual(['coverage']);
-    releaseCoverage();
+    releaseCoverage?.();
     await expect(execution).resolves.toEqual({
       reports: [
         ['coverage', { findings: [] }],
@@ -152,15 +159,15 @@ describe('analyzer scheduler', () => {
       ],
       errors: [],
       timings: [
-        { name: 'coverage', elapsedMs: expect.any(Number) },
-        { name: 'lint', elapsedMs: expect.any(Number) },
+        { name: 'coverage', elapsedMs: anyNumber },
+        { name: 'lint', elapsedMs: anyNumber },
       ],
     });
     expect(started).toEqual(['coverage', 'lint']);
   });
   it('serializes analyzers that share an exclusive group', async () => {
-    const started = [];
-    const releases = new Map();
+    const started: string[] = [];
+    const releases = new Map<string, () => void>();
     const execution = runTaskGraph(
       [
         task('eslint-a', { concurrencyGroup: 'eslint' }),
@@ -168,7 +175,7 @@ describe('analyzer scheduler', () => {
       ],
       {
         maxParallel: 2,
-        execute: ({ name }) =>
+        execute: ({ name }: AnalyzerTask) =>
           new Promise((resolve) => {
             started.push(name);
             releases.set(name, () => {
@@ -180,10 +187,10 @@ describe('analyzer scheduler', () => {
 
     await flushScheduling();
     expect(started).toEqual(['eslint-b']);
-    releases.get('eslint-b')();
+    release(releases, 'eslint-b');
     await flushScheduling();
     expect(started).toEqual(['eslint-b', 'eslint-a']);
-    releases.get('eslint-a')();
+    release(releases, 'eslint-a');
     await expect(execution).resolves.toEqual({
       reports: [
         ['eslint-a', { findings: [] }],
@@ -191,8 +198,8 @@ describe('analyzer scheduler', () => {
       ],
       errors: [],
       timings: [
-        { name: 'eslint-a', elapsedMs: expect.any(Number) },
-        { name: 'eslint-b', elapsedMs: expect.any(Number) },
+        { name: 'eslint-a', elapsedMs: anyNumber },
+        { name: 'eslint-b', elapsedMs: anyNumber },
       ],
     });
   });

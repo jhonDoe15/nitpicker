@@ -1,4 +1,4 @@
-import { createServer } from 'node:net';
+import { type Server, type Socket, createServer } from 'node:net';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -10,10 +10,15 @@ import {
   resolveCacheStore,
 } from './cache-stores.mts';
 import { cacheKey, createFindingsCache } from './findings-cache.mts';
-import { resetTestHttpServer, startTestHttpServer } from './test-support/test-http-server.mjs';
+import {
+  type TestHttpServer,
+  resetTestHttpServer,
+  startTestHttpServer,
+} from './test-support/test-http-server.mts';
+import { fieldOf, listOf, textOf } from '../../../shared/values/readers.mts';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
-const cleanups = [];
+const cleanups: (() => unknown)[] = [];
 
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) {
@@ -21,14 +26,14 @@ afterEach(async () => {
   }
 });
 
-// One server per configuration serves the whole file. Starting a worker thread and its first
-// request costs ~200 ms, so each test resets the server instead; the requests under test still
-// go through the real HTTP store and its subprocess.
-const sharedServers = new Map();
+const sharedServers = new Map<string, TestHttpServer>();
 
-async function server(options = {}) {
+async function server(options: { readonly token?: string } = {}): Promise<TestHttpServer> {
   const key = JSON.stringify(options);
   const started = sharedServers.get(key);
+  if (started === undefined) {
+    throw new Error(`No shared test server for ${key}`);
+  }
   await resetTestHttpServer(started.url);
   return started;
 }
@@ -41,44 +46,55 @@ afterAll(async () => {
   for (const cleanup of serverCleanups) await cleanup();
 });
 
-/**
- * A remote store kept in memory. The layered store and the findings cache only see the
- * `get`/`put` contract here; the HTTP transport has its own tests above.
- */
 function memoryRemote() {
-  const objects = new Map();
+  const objects = new Map<string, string>();
   return {
     objects,
-    get: (key) => objects.get(key),
-    put: (key, text) => {
+    get: (key: string) => objects.get(key),
+    put: (key: string, text: string) => {
       objects.set(key, text);
       return true;
     },
   };
 }
 
-/** A TCP port that was free a moment ago: nothing listens on it. */
-async function closedPort() {
+function portOf(listening: Server): number {
+  const address = listening.address();
+  return typeof address === 'object' && address !== null ? address.port : 0;
+}
+
+async function closedPort(): Promise<number> {
   const probe = createServer();
-  await new Promise((resolve) => probe.listen(0, '127.0.0.1', resolve));
-  const { port } = probe.address();
-  await new Promise((resolve) => probe.close(resolve));
+  await new Promise<void>((resolve) => {
+    probe.listen(0, '127.0.0.1', resolve);
+  });
+  const port = portOf(probe);
+  await new Promise<void>((resolve) =>
+    probe.close(() => {
+      resolve();
+    }),
+  );
   return port;
 }
 
-/** Accepts connections and never answers, so every request runs into its timeout. */
-async function silentServer() {
-  const sockets = [];
+async function silentServer(): Promise<string> {
+  const sockets: Socket[] = [];
   const silent = createServer((socket) => sockets.push(socket));
-  await new Promise((resolve) => silent.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve) => {
+    silent.listen(0, '127.0.0.1', resolve);
+  });
   serverCleanups.push(async () => {
     for (const socket of sockets) socket.destroy();
-    await new Promise((resolve) => silent.close(resolve));
+    await new Promise<void>((resolve) =>
+      silent.close(() => {
+        resolve();
+      }),
+    );
   });
-  return `http://127.0.0.1:${String(silent.address().port)}`;
+  return `http://127.0.0.1:${String(portOf(silent))}`;
 }
 
-function temporaryDirectory() {
+function temporaryDirectory(): string {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-cache-stores-'));
   cleanups.push(() => {
     rmSync(root, { recursive: true, force: true });
@@ -95,7 +111,7 @@ const finding = {
   message: 'm',
   classification: 'enforceable',
 };
-const cacheOptions = { mergeBaseSha: 'abc', projectRelativePath: '.' };
+const cacheOptions = { mergeBaseSha: 'abc', projectRelativePath: '.', directory: undefined };
 
 describe('http store', () => {
   it('stores and returns text under <base>/<key>.json, and treats an unknown key as a miss', async () => {
@@ -120,7 +136,11 @@ describe('http store', () => {
     expect(authorized.get('k')).toBe('v');
     expect(anonymous.get('k')).toBeUndefined();
     expect(anonymous.put('k2', 'v')).toBe(false);
-    expect((await remote.requests()).filter(({ authorization }) => authorization)).toHaveLength(2);
+    expect(
+      listOf(await remote.requests()).filter(
+        (request) => fieldOf(request, 'authorization') !== undefined,
+      ),
+    ).toHaveLength(2);
   });
 
   it('degrades to a miss on server errors and stops calling a broken server', async () => {
@@ -131,7 +151,7 @@ describe('http store', () => {
     expect(store.get('k')).toBeUndefined();
     expect(store.get('k')).toBeUndefined();
     expect(store.put('k', 'v')).toBe(false);
-    expect(await remote.requests()).toHaveLength(1);
+    expect(listOf(await remote.requests())).toHaveLength(1);
   });
 
   it('degrades to a miss when nothing listens or the server is too slow', () => {
@@ -160,7 +180,7 @@ describe('layered store', () => {
     expect(readOnly.get('both')).toBe('local');
     expect(readOnly.get('only-remote')).toBe('r');
     expect(local.get('only-remote')).toBeUndefined();
-    readOnly.keep('only-remote', 'r');
+    readOnly.keep?.('only-remote', 'r');
     expect(local.get('only-remote')).toBe('r');
 
     readOnly.put('written', 'w');
@@ -190,9 +210,9 @@ describe('findings cache over a remote store', () => {
     });
     expect(consumer.read(analyzer)).toEqual({ findings: [finding] });
     expect(readdirSync(directory)).toHaveLength(1);
-    const requestsAfterFirstRead = (await remote.requests()).length;
+    const requestsAfterFirstRead = listOf(await remote.requests()).length;
     expect(consumer.read(analyzer)).toEqual({ findings: [finding] });
-    expect((await remote.requests()).length).toBe(requestsAfterFirstRead);
+    expect(listOf(await remote.requests()).length).toBe(requestsAfterFirstRead);
   });
 
   it('rejects corrupt, schema-invalid and mis-keyed remote entries without keeping them', () => {
@@ -256,7 +276,7 @@ describe('resolveCacheStore', () => {
     });
     expect(bad.store).toBeUndefined();
     expect(bad.warnings).toEqual([
-      `NITPICKER_CACHE_URL ignored: it must be an http(s) URL. ${linkSentence('staleCache')}`,
+      `NITPICKER_CACHE_URL ignored: it must be an http(s) URL. ${textOf(linkSentence('staleCache'))}`,
       noCacheWarning,
     ]);
     const header = resolveCacheStore({
@@ -268,13 +288,13 @@ describe('resolveCacheStore', () => {
     });
     expect(header.remote).toBeDefined();
     expect(header.warnings).toEqual([
-      `NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value". ${linkSentence('staleCache')}`,
+      `NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value". ${textOf(linkSentence('staleCache'))}`,
     ]);
   });
 });
 
-const serverCleanups = [];
-const connectionFixtures = { closedPort: undefined, silentUrl: undefined };
+const serverCleanups: (() => Promise<void>)[] = [];
+const connectionFixtures = { closedPort: 0, silentUrl: '' };
 beforeAll(async () => {
   for (const options of [{}, { token: 'secret' }]) {
     sharedServers.set(JSON.stringify(options), await startTestHttpServer(options));

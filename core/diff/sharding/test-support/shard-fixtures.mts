@@ -1,8 +1,50 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { useGitFixtures } from '../../git/test-support/git-repository.mjs';
+import { useGitFixtures } from '../../git/test-support/git-repository.mts';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 
-export function useShardFixtures() {
+type ShardOptions = {
+  readonly tools: readonly string[];
+  readonly headSha?: string;
+  readonly findings?: readonly object[];
+  readonly held?: unknown;
+  readonly notes?: unknown;
+  readonly toolErrors?: readonly unknown[];
+  readonly toolVersions?: Readonly<Record<string, string>>;
+  readonly configurationHashes?: Readonly<Record<string, string>>;
+  readonly overallStatus?: string;
+  readonly elapsedMs?: number;
+  readonly carried?: object;
+};
+
+export type AnalyzerFixture = {
+  readonly name: string;
+  version: string;
+  readonly configurationHash: string;
+  readonly exclusions: readonly string[];
+  readonly dependencies: readonly string[];
+  readonly shardWeight: number;
+  resolveVersion?: () => string;
+  resolveConfigurationHash?: (root: string) => string;
+};
+
+type SummaryOptions = Required<
+  Pick<
+    ShardOptions,
+    | 'tools'
+    | 'headSha'
+    | 'findings'
+    | 'toolVersions'
+    | 'configurationHashes'
+    | 'overallStatus'
+    | 'elapsedMs'
+    | 'carried'
+  >
+>;
+
+export function useShardFixtures(): {
+  readonly createFixture: () => { readonly inputRoot: string; readonly outputRoot: string };
+} {
   const { temporaryRoot } = useGitFixtures();
 
   function createFixture() {
@@ -16,7 +58,13 @@ export function useShardFixtures() {
   return { createFixture };
 }
 
-export function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
+export function analyzer(
+  name: string,
+  {
+    dependencies = [],
+    shardWeight = 1,
+  }: { readonly dependencies?: readonly string[]; readonly shardWeight?: number } = {},
+): AnalyzerFixture {
   return {
     name,
     version: '1.0.0',
@@ -27,14 +75,21 @@ export function analyzer(name, { dependencies = [], shardWeight = 1 } = {}) {
   };
 }
 
-function shardTool(name, findings, { toolVersions, configurationHashes }) {
+function shardTool(
+  name: string,
+  findings: readonly object[],
+  {
+    toolVersions,
+    configurationHashes,
+  }: Pick<SummaryOptions, 'toolVersions' | 'configurationHashes'>,
+) {
   return {
     name,
     version: toolVersions[name] ?? '1.0.0',
     configurationHash: configurationHashes[name] ?? `hash-${name}`,
     base: 0,
     head: 0,
-    new: findings.filter(({ tool }) => tool === name).length,
+    new: findings.filter((finding) => fieldOf(finding, 'tool') === name).length,
     resolved: 0,
     unchanged: 0,
     changedMetrics: 0,
@@ -44,7 +99,7 @@ function shardTool(name, findings, { toolVersions, configurationHashes }) {
   };
 }
 
-function shardSummary(index, options) {
+function shardSummary(index: number, options: SummaryOptions) {
   const { tools, headSha, findings, toolVersions, configurationHashes } = options;
   return {
     requestedBaseRef: 'origin/master',
@@ -63,8 +118,8 @@ function shardSummary(index, options) {
 }
 
 export function writeShard(
-  inputRoot,
-  index,
+  inputRoot: string,
+  index: number,
   {
     tools,
     headSha = 'head',
@@ -77,8 +132,8 @@ export function writeShard(
     overallStatus = 'completed',
     elapsedMs = 10,
     carried = {},
-  },
-) {
+  }: ShardOptions,
+): void {
   const shardRoot = path.join(inputRoot, String(index));
   mkdirSync(shardRoot, { recursive: true });
   writeJson(
@@ -106,6 +161,6 @@ export function writeShard(
   writeJson(path.join(shardRoot, 'tool-errors.json'), toolErrors);
 }
 
-function writeJson(filePath, value) {
+function writeJson(filePath: string, value: unknown): void {
   writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
