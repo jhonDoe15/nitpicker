@@ -85,6 +85,9 @@ left for you:
 2. **Prints the install command** for the project's package manager with only the peers that are
    missing: `nitpicker` (pinned to the version that runs init), `typescript`, `@types/node` and the test runner's packages (`vitest` and
    `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
+   A peer that is installed but older than nitpicker supports is listed as `too old (have 4.0.5,
+   need ...)` and gets the lowest supported range in the command (`'vitest@^4.1.11'`), so the
+   command changes the declared range or the lock; a bare name would leave a satisfied range as it is.
    At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
    project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
    needs one (`pytest-django`, `nose2`), added with `uv add --dev`, `poetry add --group dev`,

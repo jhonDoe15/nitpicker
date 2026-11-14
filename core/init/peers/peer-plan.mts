@@ -44,10 +44,19 @@ function adviceOf(tool: string | undefined): { readonly advice?: string } {
   return advice === undefined ? {} : { advice };
 }
 
+function nameOfRequirement(requirement: string): string {
+  const separator = requirement.indexOf('@', 1);
+  return separator === -1 ? requirement : requirement.slice(0, separator);
+}
+
 function nodePlan(projectRoot: string, project: InitProject, nodeVersion: string): Peers {
   assertTypeScriptNode(projectRoot, nodeVersion);
-  const { add, uninstalled } = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
-  return {
+  const { add, uninstalled, outdated } = missingNodePeers(
+    projectRoot,
+    project.testRunner,
+    nodeVersion,
+  );
+  const plan: Peers = {
     ...NOTHING,
     missing: add,
     uninstalled,
@@ -56,6 +65,17 @@ function nodePlan(projectRoot: string, project: InitProject, nodeVersion: string
         ? textOf(project.packageManager?.install)
         : installCommand(textOf(project.packageManager?.add), add),
   };
+  const old = new Set(outdated.map(({ name }) => name));
+  return old.size === 0
+    ? plan
+    : {
+        ...plan,
+        absent: add.filter((requirement) => !old.has(nameOfRequirement(requirement))),
+        outdated: outdated.map(
+          ({ name, installed, range }) =>
+            `${name} too old (have ${textOf(installed)}, need ${textOf(range)})`,
+        ),
+      };
 }
 
 function requirementsWhere(
