@@ -14,7 +14,7 @@ function sameDirectory(left, right) {
 }
 
 function comparisonRoots(projectRoot, policy) {
-  if (policy.quick === true) {
+  if (policy.quick === true || policy.mutationOff === true) {
     return undefined;
   }
   if (policy.snapshot === 'base') {

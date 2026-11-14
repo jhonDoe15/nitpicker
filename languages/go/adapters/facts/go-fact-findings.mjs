@@ -11,7 +11,11 @@ const CONSOLE_ANALYZER_NAME = 'test-runtime';
 const LANGUAGE = 'go';
 const PRIVATE_COPY_FIX = 'Move it to one package, export it and import it.';
 const COPY_RULES = new Set([RULE_IDS.duplicateDefinition, RULE_IDS.siblingCopyEdit]);
-const OWN_TOOL_RULES = new Set([...COPY_RULES, RULE_IDS.testConsoleOutput]);
+const OWN_TOOL_RULES = new Set([
+  ...COPY_RULES,
+  RULE_IDS.testConsoleOutput,
+  RULE_IDS.publicAlternativeBypass,
+]);
 const COPIED_KIND = 'function';
 
 function copyFacts({ constrained = [], ...facts }) {

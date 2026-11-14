@@ -7,7 +7,7 @@ import {
   comparisonOptions,
   useQualityDiffRepositories,
 } from '../test-support/quality-diff-harness.mjs';
-import { runQualityDiff } from '../../../comparison/run-diff.mjs';
+import { runQualityDiff } from '../../../comparison/run-diff.mts';
 import { commit, fixtureGit } from '../../../git/test-support/git-repository.mjs';
 import {
   finding,

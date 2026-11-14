@@ -1,10 +1,18 @@
 import { normalizeGitPath } from '../../git/normalize.mjs';
+import { isPlainObject } from '../../../../shared/config.mjs';
 
-export { isPlainObject as isRecord } from '../../../../shared/config.mjs';
+export { isPlainObject as isRecord };
 
 export function positiveInteger(value, context) {
   if (!Number.isSafeInteger(value) || value <= 0) {
     throw new TypeError(`${context} must be a positive integer`);
+  }
+  return value;
+}
+
+export function requiredRecord(value, context) {
+  if (!isPlainObject(value)) {
+    throw new TypeError(`${context} must be an object`);
   }
   return value;
 }

@@ -4,12 +4,15 @@ import { byCodePoint, readRegistryFile, registryFiles } from './registry-files.m
 
 const PLUGIN = 'languages/typescript/preset/eslint-plugin';
 const REGISTRY_NAME = 'rules.generated.mjs';
+const PARTS_FOLDER = 'registry';
+const PART_SIZE = 100;
 const RULE_EXPORT = /^export const rule\b/mu;
 const SKIPPED_FOLDERS = new Set(['fixtures', 'test-support', '__tests__']);
 const SKIPPED_FILES = new Set(['index.mjs', REGISTRY_NAME]);
 
-/** Where the generated rule map of nitpicker's ESLint plugin goes, relative to the repository root. */
-export const ESLINT_REGISTRY = `${PLUGIN}/${REGISTRY_NAME}`;
+const ESLINT_REGISTRY = `${PLUGIN}/${REGISTRY_NAME}`;
+
+export const ESLINT_REGISTRY_PARTS = `${PLUGIN}/${PARTS_FOLDER}`;
 
 const RULE_ID = /^[a-z][a-z0-9]*(?:-[a-z][a-z0-9]*)*$/u;
 
@@ -47,15 +50,53 @@ export function eslintPluginRules(repositoryRoot) {
   return rules;
 }
 
-/** The source of the generated rule map, as Prettier formats it: an import per rule and the map by id. */
-export async function eslintRegistrySource(repositoryRoot) {
-  const rules = eslintPluginRules(repositoryRoot);
-  const target = path.join(repositoryRoot, ESLINT_REGISTRY);
+async function formatted(repositoryRoot, relativePath, text) {
+  const target = path.join(repositoryRoot, relativePath);
   const options = (await prettier.resolveConfig(target)) ?? {};
+  return prettier.format(text, { ...options, filepath: target });
+}
+
+function partSource(rules) {
   const imports = rules.map(
-    ({ id, file }) => `import { rule as ${identifier(id)} } from '${file}';`,
+    ({ id, file }) => `import { rule as ${identifier(id)} } from '.${file}';`,
   );
   const entries = rules.map(({ id }) => `  '${id}': ${identifier(id)},`);
-  const text = `${imports.join('\n')}\n\nexport const directoryRules = {\n${entries.join('\n')}\n};\n`;
-  return prettier.format(text, { ...options, filepath: target });
+  return `${imports.join('\n')}\n\nexport const partRules = {\n${entries.join('\n')}\n};\n`;
+}
+
+function aggregateSource(count) {
+  const numbers = Array.from({ length: count }, (_, index) => index + 1);
+  const imports = numbers.map(
+    (n) => `import { partRules as part${n} } from './${PARTS_FOLDER}/${partName(n)}';`,
+  );
+  const spreads = numbers.map((n) => `  ...part${n},`);
+  return `${imports.join('\n')}\n\nexport const directoryRules = {\n${spreads.join('\n')}\n};\n`;
+}
+
+function partName(number) {
+  return `rules-${number}.generated.mjs`;
+}
+
+/**
+ * The sources of the generated rule map, as Prettier formats them, by path from the repository
+ * root: parts of at most `PART_SIZE` rules, each an import per rule and a map by id, and the file
+ * that merges the parts.
+ *
+ * @returns {Promise<Map<string, string>>}
+ */
+export async function eslintRegistrySources(repositoryRoot) {
+  const rules = eslintPluginRules(repositoryRoot);
+  const parts = Array.from({ length: Math.ceil(rules.length / PART_SIZE) }, (_, index) =>
+    rules.slice(index * PART_SIZE, (index + 1) * PART_SIZE),
+  );
+  const files = parts.map((part, index) => [
+    `${PLUGIN}/${PARTS_FOLDER}/${partName(index + 1)}`,
+    partSource(part),
+  ]);
+  const sources = [[ESLINT_REGISTRY, aggregateSource(parts.length)], ...files];
+  return new Map(
+    await Promise.all(
+      sources.map(async ([file, text]) => [file, await formatted(repositoryRoot, file, text)]),
+    ),
+  );
 }
