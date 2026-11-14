@@ -75,15 +75,13 @@ function renderGateSummary(
   const { failingTests, otherErrors } = splitToolErrors(report.toolErrors);
   const lines = [
     '',
-    style(
-      'Quality gate summary',
-      hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green],
+    style('Quality gate summary', hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green], {
       color,
-    ),
+    }),
     ...scopeLinesOf(report.summary),
     ...failingTestLines(failingTests, {
       headline: (text) => failing(text, color),
-      label: (tool) => style(textOf(tool), [ANSI.yellow], color),
+      label: (tool) => style(textOf(tool), [ANSI.yellow], { color }),
       diagnosticsPath,
     }),
   ];
@@ -99,7 +97,7 @@ function renderGateSummary(
   );
   lines.push(
     ...reviewSummaryLines(consolePolicySummary(report), (text) =>
-      style(text, [ANSI.bold, ANSI.yellow], color),
+      style(text, [ANSI.bold, ANSI.yellow], { color }),
     ),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
@@ -122,9 +120,9 @@ function closingLines(
   return [
     ...toolErrorSummaryLines(otherErrors, color),
     ...[...partialRunLines(report.summary), ...quickLinesOf(report.summary)].map((line) =>
-      style(line, [ANSI.bold, ANSI.yellow], color),
+      style(line, [ANSI.bold, ANSI.yellow], { color }),
     ),
-    style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color),
+    style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], { color }),
   ];
 }
 
@@ -141,7 +139,7 @@ function appendHeldSummary(
       style(
         `Note: ${String(metrics.length)} ${pluralize('finding', metrics.length)} still over a limit in touched code (not failing, not worse than before):`,
         [ANSI.dim],
-        color,
+        { color },
       ),
       ...heldList(metrics, { details, diagnosticsPath }),
     );
@@ -151,7 +149,7 @@ function appendHeldSummary(
       style(
         `Note: ${String(lint.length)} existing lint ${pluralize('finding', lint.length)} in edited code (not failing, no more than before):`,
         [ANSI.dim],
-        color,
+        { color },
       ),
       ...heldList(lint, { details, diagnosticsPath }),
     );
@@ -176,7 +174,7 @@ function appendNoteSummary(
   color: boolean,
 ): void {
   for (const line of noteSummaryLines(notes)) {
-    lines.push(style(line, [ANSI.dim], color));
+    lines.push(style(line, [ANSI.dim], { color }));
   }
 }
 
@@ -197,7 +195,7 @@ function violationHeadline(
   if (violations.length === 0) {
     return testsFail
       ? 'No new enforceable violations in the checks that ran.'
-      : style('✓ No new enforceable violations', [ANSI.green], color);
+      : style('✓ No new enforceable violations', [ANSI.green], { color });
   }
   const total = violations.length + policyCount;
   return failing(
@@ -209,7 +207,7 @@ function violationHeadline(
 }
 
 function failing(text: string, color: boolean): string {
-  return style(text, [ANSI.bold, ANSI.red], color);
+  return style(text, [ANSI.bold, ANSI.red], { color });
 }
 
 function appendViolationSummary(
@@ -225,7 +223,7 @@ function appendViolationSummary(
   }
   if (!details) {
     lines.push(
-      ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], color)),
+      ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], { color })),
     );
     return;
   }
@@ -235,7 +233,7 @@ function appendViolationSummary(
       continue;
     }
     lines.push(
-      `  ${style(`${textOf(finding.tool)}/${textOf(finding.rule)}`, [ANSI.yellow], color)} ${textOf(finding.path)}${describeLocations(group)}`,
+      `  ${style(`${textOf(finding.tool)}/${textOf(finding.rule)}`, [ANSI.yellow], { color })} ${textOf(finding.path)}${describeLocations(group)}`,
       `    ${oneLine(finding.message)}`,
     );
   }

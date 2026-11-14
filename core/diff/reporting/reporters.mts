@@ -5,6 +5,7 @@ import { renderJunitReport } from './junit.mts';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mts';
 import { heldFindingsOf as heldFindings } from './report-model.mts';
 import { referenceLinks, withHelpUris } from '../../../shared/reference/store.mjs';
+import { pathInside } from '../../../shared/filesystem.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME as CODE_QUALITY_FILE,
   renderCodeQualityReport as codeQualityReport,
@@ -65,15 +66,16 @@ const DIFF_REPORTS: readonly ReportFile<ReportData>[] = [
   },
 ];
 
+const within: (root: string, relative: string) => string | undefined = pathInside;
+
 export const REPORT_FILE_NAMES = DIFF_REPORTS.map(({ name }) => name);
 
+function outsideOutput(outputRoot: string, name: string): never {
+  throw new Error(`Report file ${name} is outside ${path.resolve(outputRoot)}`);
+}
+
 function reportPath(outputRoot: string, name: string): string {
-  const root = path.resolve(outputRoot);
-  const full = path.resolve(root, name);
-  if (!full.startsWith(`${root}${path.sep}`)) {
-    throw new Error(`Report file ${name} is outside ${root}`);
-  }
-  return full;
+  return within(outputRoot, name) ?? outsideOutput(outputRoot, name);
 }
 
 export function clearReports(outputRoot: string, names: readonly string[]): void {

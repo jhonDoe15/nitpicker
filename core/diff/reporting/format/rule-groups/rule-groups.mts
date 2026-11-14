@@ -33,6 +33,7 @@ const parseJson: (text: string) => unknown = JSON.parse;
 const SENTENCE_END = /[.!?](?=\s|$)/gu;
 const ABBREVIATION = /\b(?:e\.g|i\.e)\.$/iu;
 const LIST_KEY = /to "(?<list>(?:python\.)?exceptions)" in nitpicker\.config\.json\.$/u;
+const COLUMN_FIELD = 'column';
 const TAG_KEYS = ['function', 'name', 'packages'];
 
 function isEntry(value: unknown): value is Entry {
@@ -54,8 +55,8 @@ function byPosition(left: ReportEntry, right: ReportEntry): number {
     Number(leftPath > rightPath) - Number(leftPath < rightPath) ||
     Number(fieldOf(left['location'], 'line') ?? Infinity) -
       Number(fieldOf(right['location'], 'line') ?? Infinity) ||
-    Number(fieldOf(left['location'], 'column') ?? 0) -
-      Number(fieldOf(right['location'], 'column') ?? 0)
+    Number(fieldOf(left['location'], COLUMN_FIELD) ?? 0) -
+      Number(fieldOf(right['location'], COLUMN_FIELD) ?? 0)
   );
 }
 
@@ -146,7 +147,7 @@ function place(path: unknown, positions: ReadonlyMap<string, number>, unplaced: 
 
 function position(location: unknown): string {
   const line = fieldOf(location, 'line');
-  const column = fieldOf(location, 'column');
+  const column = fieldOf(location, COLUMN_FIELD);
   return column === undefined ? textOf(line) : `${textOf(line)}:${textOf(column)}`;
 }
 

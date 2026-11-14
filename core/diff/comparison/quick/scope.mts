@@ -22,6 +22,7 @@ const FILE_LOCAL_ANALYZERS = new Set([
   'eslint-logging',
   'eslint-module-effects',
 ]);
+const PATTERN_FLAG = '--pattern';
 const GLOB_SPECIAL = /[*?[\]{}()!\\]/gu;
 const EMPTY_REPORT_SCRIPT = String.raw`process.stdout.write(JSON.stringify({ findings: [] }) + '\n');`;
 
@@ -32,12 +33,12 @@ function scopeHash(configurationHash: unknown, digest: string): string {
 }
 
 function patternsOf(args: readonly string[]): string[] {
-  return args.flatMap((argument, index) => (args[index - 1] === '--pattern' ? [argument] : []));
+  return args.flatMap((argument, index) => (args[index - 1] === PATTERN_FLAG ? [argument] : []));
 }
 
 function withoutPatterns(args: readonly string[]): string[] {
   return args.filter(
-    (argument, index) => argument !== '--pattern' && args[index - 1] !== '--pattern',
+    (argument, index) => argument !== PATTERN_FLAG && args[index - 1] !== PATTERN_FLAG,
   );
 }
 
@@ -68,7 +69,7 @@ function scopedInvocation(
     ...invocation,
     args: [
       ...withoutPatterns(invocation.args),
-      ...files.flatMap((file) => ['--pattern', file.replaceAll(GLOB_SPECIAL, String.raw`\$&`)]),
+      ...files.flatMap((file) => [PATTERN_FLAG, file.replaceAll(GLOB_SPECIAL, String.raw`\$&`)]),
     ],
   };
 }

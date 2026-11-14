@@ -37,10 +37,10 @@ export function toolErrorSummaryLines(shown: readonly ReportEntry[], color: bool
     style(
       `✖ ${String(shown.length)} ${pluralize('tool error', shown.length)}`,
       [ANSI.bold, ANSI.red],
-      color,
+      { color },
     ),
     ...shown.flatMap((error) => toolErrorLines(error, color)),
-    ...(help === undefined ? [] : [style(help, [ANSI.dim], color)]),
+    ...(help === undefined ? [] : [style(help, [ANSI.dim], { color })]),
   ];
 }
 
@@ -50,10 +50,13 @@ function toolErrorLines(error: ReportEntry, color: boolean): string[] {
       ? textOf(error.tool)
       : `${textOf(error.tool)} (${textOf(error.snapshot)})`;
   if (error.rule === undefined) {
-    return [`  ${style(label, [ANSI.yellow], color)}: ${errorHeadline(error.message)}`];
+    return [`  ${style(label, [ANSI.yellow], { color })}: ${errorHeadline(error.message)}`];
   }
   const [first = '', ...rest] = String(error.message).split('\n');
-  return [`  ${style(label, [ANSI.yellow], color)}: ${first}`, ...rest.map((line) => `  ${line}`)];
+  return [
+    `  ${style(label, [ANSI.yellow], { color })}: ${first}`,
+    ...rest.map((line) => `  ${line}`),
+  ];
 }
 
 export function withoutSkipNotices<T extends ReportEntry>(toolErrors: readonly T[]): T[] {
@@ -85,7 +88,11 @@ export function pluralize(noun: string, count: number): string {
   return count === 1 ? noun : `${noun}s`;
 }
 
-export function style(value: string, codes: readonly string[], color: boolean): string {
+export function style(
+  value: string,
+  codes: readonly string[],
+  { color }: { readonly color: boolean },
+): string {
   return color ? `${codes.join('')}${value}${ANSI.reset}` : value;
 }
 

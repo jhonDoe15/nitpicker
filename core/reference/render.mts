@@ -5,6 +5,7 @@ import { pageCredits } from './credits.mts';
 import { pageExceptionTexts } from './page-exceptions.mts';
 import type { ReferenceEntry } from './build.mts';
 import { textOf } from '../../shared/values/readers.mts';
+import { markdownTableLines } from '../../shared/markdown/table.mts';
 
 type Fact = {
   readonly label: string;
@@ -172,25 +173,8 @@ function pageMarkdown(
   ].join('\n');
 }
 
-function tableRow(cells: readonly string[], widths: readonly number[]): string {
-  return `| ${cells.map((cell, column) => cell.padEnd(widths[column] ?? 0)).join(' | ')} |`;
-}
-
 function tableLines([header, ...rows]: readonly (readonly string[])[]): string[] {
-  if (header === undefined) {
-    return [];
-  }
-  const widths = header.map((_, column) =>
-    Math.max(...[header, ...rows].map((cells) => (cells[column] ?? '').length)),
-  );
-  return [
-    tableRow(header, widths),
-    tableRow(
-      widths.map((width) => '-'.repeat(width)),
-      widths,
-    ),
-    ...rows.map((cells) => tableRow(cells, widths)),
-  ];
+  return header === undefined ? [] : markdownTableLines(header, rows);
 }
 
 function indexMarkdown(byPage: ReadonlyMap<unknown, readonly ReferenceEntry[]>): string {
