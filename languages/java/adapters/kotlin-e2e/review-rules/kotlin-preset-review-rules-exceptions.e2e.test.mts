@@ -6,8 +6,8 @@ import {
   PLURAL_FINDINGS,
   reviewBranchFiles,
   reviewFindings,
-} from '../test-support/review/kotlin-review-findings.mjs';
-import { GENERATED_MEMBER_EXCEPTIONS } from '../test-support/review/members/kotlin-generated-member-data.mjs';
+} from '../test-support/review/kotlin-review-findings.mts';
+import { GENERATED_MEMBER_EXCEPTIONS } from '../test-support/review/members/kotlin-generated-member-data.mts';
 import {
   commitBranch,
   diffOf,
@@ -15,25 +15,27 @@ import {
   kotlinE2eEnabled,
   kotlinPolicy,
   removeProject,
-} from '../test-support/kotlin-e2e-project.mjs';
-import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mjs';
-import { SWALLOWED_CANCELLATIONS } from '../test-support/review/swallowed/kotlin-cancellation-data.mjs';
+} from '../__tests__/kotlin-e2e-project.mts';
+import type { KotlinProject } from '../__tests__/kotlin-e2e-project.mts';
+import { assigned } from '../test-support/views/assigned.mts';
+import { ARCHIVE_FILE } from '../test-support/review/kotlin-review-data.mts';
+import { SWALLOWED_CANCELLATIONS } from '../test-support/review/swallowed/kotlin-cancellation-data.mts';
 
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rule exceptions end to end', () => {
-  let project;
+  let project: KotlinProject | undefined;
 
   beforeAll(() => {
     project = initializeProject();
     commitBranch(project, 'review-rules', reviewBranchFiles(project.root));
   });
   afterAll(() => {
-    removeProject(project);
+    removeProject(assigned(project, 'project'));
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {
-    const result = diffOf(project, 'review-rules', {
+    const result = diffOf(assigned(project, 'project'), 'review-rules', {
       policy: {
         ...kotlinPolicy,
         exceptions: [

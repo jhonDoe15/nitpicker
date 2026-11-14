@@ -3,18 +3,31 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { listOf } from '../../../../../scripts/json/fields.mts';
+import { fieldOf, textOf } from '../../../../../shared/values/readers.mts';
+import { assigned } from '../test-support/views/assigned.mts';
 import {
   compilePsiProgram,
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from '../../test-support/kotlin/kotlin-psi-program.mjs';
-import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
-import { unusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mjs';
-import { forwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mjs';
+} from '../test-support/views/kotlin-psi-views.mts';
+import { findingFactory as untypedFindingFactory } from '../../kotlin/review-rules/review-finding.mjs';
+import { unusedOptionFindings as untypedUnusedOptionFindings } from '../../kotlin/review-rules/main/unused-options/unused-options.mjs';
+import { forwardingWrapperFindings as untypedForwardingWrapperFindings } from '../../kotlin/review-rules/main/forwarding/forwarding-wrappers.mjs';
 
-const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+type Identified = { identity: string }[];
+
+const findingFactory: () => unknown = untypedFindingFactory;
+const unusedOptionFindings: (
+  files: unknown,
+  options: { finding: unknown; mentionedInJava: () => boolean },
+) => Identified = untypedUnusedOptionFindings;
+const forwardingWrapperFindings: (files: unknown, options: { finding: unknown }) => Identified =
+  untypedForwardingWrapperFindings;
+
+const enabled = process.env['NITPICKER_KOTLIN_E2E'] === '1';
+const gradle = process.env['NITPICKER_GRADLE'] ?? 'gradle';
 
 const TEXT = `package demo.text
 
@@ -38,19 +51,23 @@ import demo.text.pad
 fun title(name: String): String = name.pad(width = 12)
 `;
 
-let workspace;
-let java;
-let classpath;
-let classes;
+let workspace: string | undefined;
+let java: string | undefined;
+let classpath: string | undefined;
+let classes: string | undefined;
 
-function factsOf(project) {
+function fileEnding(files: unknown, suffix: string): unknown {
+  return listOf(files).find((entry) => textOf(fieldOf(entry, 'file')).endsWith(suffix));
+}
+
+function factsOf(project: string): unknown {
   const facts = path.join(project, 'facts.json');
   const result = spawnSync(
-    path.join(java, 'bin/java'),
+    path.join(assigned(java, 'java'), 'bin/java'),
     [
-      `-Dnitpicker.kotlinCompiler=${pinnedKotlinCompiler()}`,
+      `-Dnitpicker.kotlinCompiler=${String(pinnedKotlinCompiler())}`,
       '-cp',
-      `${classpath}${path.delimiter}${classes}`,
+      `${assigned(classpath, 'classpath')}${path.delimiter}${assigned(classes, 'classes')}`,
       'nitpicker.kotlinpsi.KotlinPsi',
       path.join(project, 'metrics.json'),
       facts,
@@ -60,11 +77,11 @@ function factsOf(project) {
     { cwd: project, encoding: 'utf8', timeout: 180_000 },
   );
   expect(result.status, result.stdout + result.stderr).toBe(0);
-  return JSON.parse(readFileSync(facts, 'utf8')).files;
+  return fieldOf(JSON.parse(readFileSync(facts, 'utf8')), 'files');
 }
 
 describe.skipIf(!enabled)('the call facts of the kotlin-psi program', () => {
-  let files;
+  let files: unknown;
 
   beforeAll(() => {
     workspace = mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-calls-'));
@@ -72,7 +89,9 @@ describe.skipIf(!enabled)('the call facts of the kotlin-psi program', () => {
     cpSync(path.resolve(import.meta.dirname, '../../fixtures/kotlin-project'), project, {
       recursive: true,
     });
-    ({ javaHome: java, classpath } = gradleClasspath({ gradle, project, workspace }));
+    const compiler = gradleClasspath({ gradle, project, workspace });
+    java = compiler.javaHome;
+    classpath = compiler.classpath;
     classes = compilePsiProgram({ java, classpath, workspace });
     files = factsOf(
       writeSources(workspace, 'calls', {
@@ -83,18 +102,26 @@ describe.skipIf(!enabled)('the call facts of the kotlin-psi program', () => {
   });
 
   afterAll(() => {
-    rmSync(workspace, { recursive: true, force: true });
+    rmSync(assigned(workspace, 'workspace'), { recursive: true, force: true });
   });
 
   it('records the receiver of a call and how an inline function passes its lambdas', () => {
-    const app = files.find(({ file }) => file.endsWith('App.kt'));
-    const text = files.find(({ file }) => file.endsWith('Text.kt'));
-    const inlining = (name) =>
-      text.functions
-        .find((fn) => fn.name === name)
-        .parameters.map((parameter) => parameter.inlining);
+    const app = fileEnding(files, 'App.kt');
+    const text = fileEnding(files, 'Text.kt');
+    const inlining = (name: string) =>
+      listOf(
+        fieldOf(
+          listOf(fieldOf(text, 'functions')).find((fn) => fieldOf(fn, 'name') === name),
+          'parameters',
+        ),
+      ).map((parameter) => fieldOf(parameter, 'inlining'));
 
-    expect(app.calls.find(({ name }) => name === 'pad').qualifier).toBe('name');
+    expect(
+      fieldOf(
+        listOf(fieldOf(app, 'calls')).find((call) => fieldOf(call, 'name') === 'pad'),
+        'qualifier',
+      ),
+    ).toBe('name');
     expect([inlining('retrying'), inlining('later')]).toEqual([[undefined], ['crossinline']]);
   });
 
