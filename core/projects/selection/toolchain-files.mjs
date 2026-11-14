@@ -11,6 +11,8 @@ const JAVASCRIPT = fileNamed(
     'yarn\\.lock',
     'pnpm-lock\\.yaml',
     'pnpm-workspace\\.yaml',
+    'nx\\.json',
+    'angular\\.json',
     'bun\\.lockb?',
     '\\.npmrc',
     '\\.yarnrc(?:\\.yml)?',

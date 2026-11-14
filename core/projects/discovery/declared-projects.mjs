@@ -11,7 +11,7 @@ const DECLARING_FILES = new Map([
   ['package.json workspaces', 'package.json'],
   ['uv workspace', 'pyproject.toml'],
 ]);
-const OWN_MARKERS = ['package.json', ...PYTHON_MARKERS, CONFIG_FILE_NAME];
+const OWN_MARKERS = ['package.json', 'project.json', ...PYTHON_MARKERS, CONFIG_FILE_NAME];
 export const PROJECT_FILES = [...JVM_MARKERS, ...OWN_MARKERS];
 
 function isGlob(folder) {
@@ -54,7 +54,7 @@ function expand(entry, { root, files }) {
   const matches = globMatches(entry, { root, files });
   if (matches.length === 0) {
     throw configError(
-      `"projects" entry ${entry.path} matches no folder with a package.json, Python project file, ` +
+      `"projects" entry ${entry.path} matches no folder with a package.json, Nx project.json, Python project file, ` +
         `build file or ${CONFIG_FILE_NAME} that is not a module of another Gradle or Maven build`,
     );
   }

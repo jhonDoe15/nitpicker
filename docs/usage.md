@@ -2010,8 +2010,11 @@ A run fans out to several projects only when the repository says it holds severa
 - the `nitpicker.config.json` at the top lists `projects`, or
 - the top declares a workspace: `workspaces` in `package.json` (npm, Yarn, Bun),
   `pnpm-workspace.yaml`, or a uv workspace in `pyproject.toml` (`[tool.uv.workspace]`, or
-  `workspace = { ... }` under `[tool.uv]`). Lerna, Nx, Turborepo and Rush
-  repositories use npm, pnpm or Yarn workspaces underneath, so they are found the same way.
+  `workspace = { ... }` under `[tool.uv]`), an Nx workspace (`nx.json` at the top and a
+  `project.json` in each project folder) or an Angular CLI workspace (`angular.json` whose
+  `projects` give a folder of their own in `root`). Lerna, Turborepo, Rush and package-based Nx
+  repositories use npm, pnpm or Yarn workspaces underneath, so they are found the same way. An Nx
+  or Angular project needs no `package.json` of its own; its dependencies come from the top.
 
 Folders that only look like projects do not make a monorepo. A `package.json` with an
 `android/build.gradle`, or a Python package with `examples/*/pyproject.toml`, stays one project and
@@ -2064,7 +2067,8 @@ Where you start the run matters:
   the workspace's lockfile or `package.json` runs every member, and an entry's `preset` applies to
   each member. `"expand": false` keeps the folder one project.
 - An entry with a `*`, `?` or `{` anywhere is a glob. It stands for every folder it matches that
-  holds a `package.json`, a Python project file (`pyproject.toml`, `setup.py`, `setup.cfg`,
+  holds a `package.json`, an Nx `project.json`, a Python project file (`pyproject.toml`,
+  `setup.py`, `setup.cfg`,
   `Pipfile` or `requirements.txt`), a Gradle or Maven build file or a `nitpicker.config.json`. A
   folder inside a match is left out, and so is a module of a Gradle or Maven build: `apps/**` keeps
   `apps/android` one project, however many modules it has.
@@ -2112,13 +2116,15 @@ Nitpicker compares the files changed against the merge base (plus untracked file
 - every project that contains a changed file (the deepest project wins when projects nest);
 - every project that depends on a touched one, where its build tool says so: `package.json`
   dependencies by name, by npm alias (`"ui": "npm:@acme/ui@^1"`) or by `file:`, `link:` and
-  `portal:` path, uv `workspace = true` and `path` sources, Poetry path dependencies, Gradle
-  `includeBuild`, and a Maven `<parent>` or `<module>` outside the build;
+  `portal:` path, uv `workspace = true` and `path` sources, Poetry path dependencies, Nx
+  `implicitDependencies` in `project.json`, Gradle `includeBuild`, and a Maven `<parent>` or
+  `<module>` outside the build;
 - every project that extends a shared config file that changed (see below);
 - every project, when the top `nitpicker.config.json` or a file it extends changed;
 - every project whose config has an error, so the error is reported;
 - every project of a toolchain whose root file changed at the top of the monorepo: a lockfile or
-  `package.json` for JavaScript (and a `tsconfig` anywhere outside the projects), `pyproject.toml`
+  `package.json`, `nx.json` or `angular.json` for JavaScript (and a `tsconfig` anywhere outside the
+  projects), `pyproject.toml`
   or `uv.lock` for Python, a settings or build file for Java and Kotlin. Such a file in a folder
   that is not a project, such as `tools/package.json`, runs nothing.
 

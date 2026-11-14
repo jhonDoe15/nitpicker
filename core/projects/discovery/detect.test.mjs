@@ -300,3 +300,53 @@ describe('JavaScript and TypeScript folders under another project', () => {
     expect(result.undeclared).toEqual(['web (TypeScript package)']);
   });
 });
+
+describe('Nx and Angular workspaces', () => {
+  const nxProject = (name, extra = {}) => JSON.stringify({ name, ...extra });
+
+  it('gates each Nx project.json folder', () => {
+    const result = detect({
+      'package.json': MANIFEST('root'),
+      'nx.json': '{}',
+      'apps/shop/project.json': nxProject('shop'),
+      'apps/shop/src/main.ts': 'export {};\n',
+      'apps/admin/project.json': nxProject('admin'),
+      'libs/ui/project.json': nxProject('ui'),
+      'libs/data/project.json': nxProject('data'),
+    });
+
+    expect([result.multiple, result.paths, result.origins]).toEqual([
+      true,
+      ['apps/admin', 'apps/shop', 'libs/data', 'libs/ui'],
+      ['Nx project.json'],
+    ]);
+  });
+
+  it('needs nx.json for project.json folders to count', () => {
+    const result = detect({ 'package.json': MANIFEST('root'), 'apps/shop/project.json': '{}' });
+
+    expect(result.multiple).toBe(false);
+  });
+
+  it('gates each Angular project with a folder of its own', () => {
+    const angular = {
+      projects: {
+        shell: { root: '', sourceRoot: 'src' },
+        shop: { root: 'projects/shop' },
+        ui: { root: 'projects/ui/' },
+      },
+    };
+    const result = detect({
+      'package.json': MANIFEST('root'),
+      'angular.json': JSON.stringify(angular),
+      'src/main.ts': 'export {};\n',
+      'projects/shop/src/main.ts': 'export {};\n',
+      'projects/ui/src/index.ts': 'export {};\n',
+    });
+
+    expect([result.paths, result.origins]).toEqual([
+      ['.', 'projects/shop', 'projects/ui'],
+      ['repository root sources', 'angular.json'],
+    ]);
+  });
+});
