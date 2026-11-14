@@ -5,7 +5,7 @@ import {
   createPythonAnalyzers,
 } from '../../../languages/python/adapters/python-analyzer.mjs';
 import { configuredAnalyzers } from '../../../languages/typescript/preset/diff/configured-analyzers.mjs';
-import { analyzersToVerify } from './analyzer-names.mjs';
+import { analyzersToVerify } from './analyzer-names.mts';
 
 describe('analyzersToVerify', () => {
   it('picks the analyzers that report the fixed tools and the compile check', () => {

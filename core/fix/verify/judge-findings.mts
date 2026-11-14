@@ -1,11 +1,21 @@
-import { COMPILE_TOOLS } from './analyzer-names.mjs';
+import { COMPILE_TOOLS } from './analyzer-names.mts';
+import type {
+  AnalyzedFinding,
+  CountedFinding,
+  Comparison,
+  Counts,
+  FindingKey,
+  Judgement,
+  RunEvent,
+  RecipeRun,
+} from './verify-types.mts';
 
-function keyOf({ tool, rule, path }) {
+function keyOf({ tool, rule, path }: FindingKey) {
   return `${tool}\0${rule}\0${path}`;
 }
 
-export function countFindings(findings) {
-  const counts = new Map();
+export function countFindings(findings: readonly AnalyzedFinding[]): Counts {
+  const counts = new Map<string, CountedFinding>();
   for (const finding of findings.filter(({ classification }) => classification === 'enforceable')) {
     const key = keyOf(finding);
     const entry = counts.get(key) ?? { ...finding, count: 0 };
@@ -14,37 +24,45 @@ export function countFindings(findings) {
   return counts;
 }
 
-export function recipeRuns(events) {
-  const runs = new Map();
-  for (const { recipe, files, finding } of events.filter((event) => event.recipe !== undefined)) {
-    const run = runs.get(recipe) ?? { id: recipe, files: new Set(), findings: [] };
+export function recipeRuns(events: readonly RunEvent[]): RecipeRun[] {
+  const runs = new Map<string, RecipeRun>();
+  for (const { recipe, files, finding } of events) {
+    if (recipe === undefined) {
+      continue;
+    }
+    const run = runs.get(recipe) ?? { id: recipe, files: new Set<string>(), findings: [] };
     for (const name of files) {
       run.files.add(name);
     }
-    run.findings.push(finding);
+    if (finding !== undefined) {
+      run.findings.push(finding);
+    }
     runs.set(recipe, run);
   }
   return [...runs.values()];
 }
 
-function stillThere(run, { before, after }) {
+function stillThere(run: RecipeRun, { before, after }: Comparison) {
   const fixed = Map.groupBy(run.findings, keyOf);
   return [...fixed]
     .filter(([key, entries]) => {
       const was = before.get(key)?.count ?? 0;
       return was > 0 && (after.get(key)?.count ?? 0) > was - entries.length;
     })
-    .map(([, [{ tool, rule, path }]]) => `${tool}/${rule} is still reported in ${path}`);
+    .flatMap(([, [first]]) => (first === undefined ? [] : [first]))
+    .map(({ tool, rule, path }) => `${tool}/${rule} is still reported in ${path}`);
 }
 
-function introduced({ tool, rule, path }) {
+function introduced({ tool, rule, path }: FindingKey) {
   return COMPILE_TOOLS.includes(tool)
     ? `breaks the compile or type check: new ${tool}/${rule} in ${path}`
     : `adds ${tool}/${rule} in ${path}`;
 }
 
-export function judgeFindings({ runs, before, after, breaking }) {
-  const reasons = new Map(runs.map((run) => [run.id, new Set(stillThere(run, { before, after }))]));
+export function judgeFindings({ runs, before, after, breaking }: Judgement): Map<string, string[]> {
+  const reasons = new Map<string, Set<string>>(
+    runs.map((run) => [run.id, new Set(stillThere(run, { before, after }))]),
+  );
   for (const [key, finding] of after) {
     if (finding.count <= (before.get(key)?.count ?? 0)) {
       continue;
@@ -52,7 +70,7 @@ export function judgeFindings({ runs, before, after, breaking }) {
     const owners = runs.filter((run) => run.files.has(finding.path));
     const blamed = owners.length > 0 || !breaking(finding.tool) ? owners : runs;
     for (const { id } of blamed) {
-      reasons.get(id).add(introduced(finding));
+      reasons.get(id)?.add(introduced(finding));
     }
   }
   return new Map(
@@ -60,7 +78,10 @@ export function judgeFindings({ runs, before, after, breaking }) {
   );
 }
 
-export function withSharedFiles(runs, reasons) {
+export function withSharedFiles(
+  runs: readonly RecipeRun[],
+  reasons: ReadonlyMap<string, readonly string[]>,
+): Map<string, readonly string[]> {
   const rolled = new Map(reasons);
   const queue = runs.filter(({ id }) => rolled.has(id));
   for (const source of queue) {
