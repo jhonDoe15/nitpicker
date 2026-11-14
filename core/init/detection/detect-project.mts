@@ -4,7 +4,14 @@ import {
   detectedPreset,
   scriptProjectPreset,
 } from '../../configuration/project-checks/preset-detection.mjs';
-import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
+import {
+  sourceRoots as defaultSourceRoots,
+  resolveLayoutFor,
+} from '../../../languages/typescript/preset/layout.mjs';
+import {
+  emptySourcesMessage,
+  sourcesElsewhere,
+} from '../../../languages/typescript/preset/notices/empty-sources.mjs';
 import { existingConfig } from '../files/config-file.mts';
 import { type Detected, describeJvmProject } from './jvm-project.mts';
 import { describeNodeProject } from './node-project.mts';
@@ -26,7 +33,18 @@ function defaultRoots(): string[] {
   return stringList(shippedRoots) ?? [];
 }
 
-function emptySourcesNote(roots: readonly string[]): string {
+const layoutOf: (policy: object) => object = resolveLayoutFor;
+const elsewhereOf: (projectRoot: string, layout: object) => string = sourcesElsewhere;
+const emptyMessage: (config: object, projectRoot: string, policy: object) => string | undefined =
+  emptySourcesMessage;
+
+function emptySourcesNote(projectRoot: string, config: DetectionConfig): string {
+  const policy = { layout: config.layout, exclude: config.exclude };
+  const message = emptyMessage({}, projectRoot, policy);
+  if (message !== undefined && elsewhereOf(projectRoot, layoutOf(policy)) !== '') {
+    return message;
+  }
+  const roots = config.layout.sourceRoots;
   return `No TypeScript or JavaScript sources under ${roots.join(', ')} yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.`;
 }
 
@@ -54,7 +72,6 @@ function detectionConfig(projectRoot: string): DetectionConfig {
 
 export function detectProject(projectRoot: string): InitProject {
   const config = detectionConfig(projectRoot);
-  const sourceRoots = config.layout.sourceRoots;
   const scriptPreset = scriptPresetOf(config, projectRoot);
   if (scriptPreset !== undefined) {
     return describeNodeProject(projectRoot, scriptPreset);
@@ -72,5 +89,5 @@ export function detectProject(projectRoot: string): InitProject {
     );
   }
   const project = describeNodeProject(projectRoot, 'typescript');
-  return { ...project, notes: [...project.notes, emptySourcesNote(sourceRoots)] };
+  return { ...project, notes: [...project.notes, emptySourcesNote(projectRoot, config)] };
 }
