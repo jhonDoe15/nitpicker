@@ -1,4 +1,4 @@
-import { createRuleTester } from './test-support/rule-tester.mjs';
+import { typescriptRuleTester } from '../../test-support/rule-tester.mts';
 import { rule as noModuleLevelMutableState } from './no-module-level-mutable-state.mjs';
 import { rule as noProcessAccess } from './no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './no-shell-string-command.mjs';
@@ -6,7 +6,7 @@ import { rule as noUnknownMainFolder } from './no-unknown-main-folder.mjs';
 import { rule as noUnsafePathJoin } from './no-unsafe-path-join.mjs';
 import { withoutFixes } from '../../../eslint-config/rule-hints.mjs';
 
-const tester = createRuleTester();
+const tester = typescriptRuleTester();
 const adapter = '/repo/src/main/features/a/adapters/x.ts';
 
 tester.run('no-module-level-mutable-state', noModuleLevelMutableState, {
