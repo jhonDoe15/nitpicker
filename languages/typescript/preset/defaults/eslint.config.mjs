@@ -69,6 +69,7 @@ const parserOptions = {
 };
 const productionFiles = sourceGlobs;
 const testFiles = [...testGlobs, ...layout.sourceTestDirectoryGlobs];
+const VITEST_TYPE_TEST_FILES = ['**/*.{test,spec}-d.?(c|m)[jt]s?(x)'];
 const selectedFiles = [...productionFiles, ...testFiles];
 
 const presetConfig = defineConfig(
@@ -180,14 +181,21 @@ const presetConfig = defineConfig(
       'nitpicker/no-wait-for-with-fake-timers': 'error',
       'nitpicker/no-partial-output-assertion': 'error',
       'nitpicker/test-must-use-production-runtime': 'error',
-      'vitest/expect-expect': [
-        'error',
-        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
-      ],
+      'vitest/expect-expect': 'off',
       'vitest/no-conditional-in-test': 'error',
       'vitest/valid-expect': ['error', { maxArgs: 2 }],
       'vitest/require-awaited-expect-poll': 'error',
       'vitest/valid-expect-in-promise': 'error',
+    },
+  },
+  {
+    files: testFiles,
+    ignores: VITEST_TYPE_TEST_FILES,
+    rules: {
+      'vitest/expect-expect': [
+        'error',
+        { assertFunctionNames: assertionFunctionNames(policy.conventions) },
+      ],
     },
   },
   {
