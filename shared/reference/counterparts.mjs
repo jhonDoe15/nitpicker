@@ -9,6 +9,7 @@ const PAGES = {
     path: 'docs/rules/typescript-nitpicker.md',
     tool: 'eslint',
   },
+  spring: { label: 'Spring', path: SPRING_PAGE, tool: 'spring', prefix: 'spring/' },
   python: { label: 'Python', path: 'docs/rules/python-nitpicker.md', tool: 'python-rules' },
   go: { label: 'Go', path: 'docs/go-preset.md', anchor: 'own-rules' },
 };
@@ -48,6 +49,12 @@ const GROUPS = [
     go: 'go-rules/copied-constant-in-test',
   },
   {
+    spring: 'untrimmed-request-text',
+    typescript: 'nitpicker/no-untrimmed-request-text',
+    python: 'untrimmed-request-text',
+    go: 'go-rules/untrimmed-request-text',
+  },
+  {
     typescript: 'nitpicker/no-presence-truthiness',
     python: 'presence-truthiness',
   },
@@ -74,10 +81,15 @@ function link(language, rule) {
   };
 }
 
+function entryName(language, rule) {
+  const { tool, prefix = '' } = PAGES[language];
+  return tool === 'pmd' ? `pmd/${rule}` : `${prefix}${rule}`;
+}
+
 function groupEntries(group) {
   const languages = Object.keys(PAGES).filter((language) => group[language] !== undefined);
   return languages.map((language) => [
-    PAGES[language].tool === 'pmd' ? `pmd/${group[language]}` : group[language],
+    entryName(language, group[language]),
     languages.filter((other) => other !== language).map((other) => link(other, group[other])),
   ]);
 }

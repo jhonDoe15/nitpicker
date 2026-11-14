@@ -89,6 +89,10 @@ Part of the [nitpicker-typescript](../SKILL.md) skill. Write these forms from th
   `z.stringbool()`, `@Type(() => Number)` with class-validator, `@Transform(({ value }) => value === 'true')`
   for a boolean, `ParseIntPipe`/`ParseBoolPipe` on a single NestJS parameter. Never `z.coerce.boolean()`
   or `@Type(() => Boolean)`: they turn `"false"` into true (`nitpicker/no-uncoerced-request-input`).
+- In a server project, text from a search or filter field is trimmed once before it reaches a lookup:
+  `req.query.q?.trim()`, a zod `.trim()` schema, `@Transform(({ value }) => value.trim())` on the DTO field,
+  or one global pipe or middleware that trims every string; a padded `" Davis"` finds nothing
+  (`nitpicker/no-untrimmed-request-text`).
 - Let the database count, filter, sort and aggregate: `count`/`exists`/`findFirst` instead of
   `(await repo.find()).length`, `where` instead of `.filter`/`.some`/`.find` on the rows, `order`/`orderBy`
   instead of `.sort`, and the ORM's aggregate or `groupBy` instead of `reduce`, `Math.max(...rows.map(...))`

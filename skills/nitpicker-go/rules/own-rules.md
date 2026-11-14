@@ -35,6 +35,9 @@ the allowed form and ends with its exception entry.
 - A `Close`, `Shutdown` or `Stop` that releases several resources runs every release: `errors.Join` the
   results, or `defer` one close per resource, never `if err := a.Close(); err != nil { return err }` before
   the next release (`go-rules/cleanup-skipped`).
+- Text read from the query string or a form (`r.URL.Query().Get`, `r.FormValue`) is trimmed before it reaches a
+  lookup: wrap the read in `strings.TrimSpace`, best in one helper that reads every query value, since a padded
+  `" Davis"` finds nothing (`go-rules/untrimmed-request-text`).
 - A `Close` on a type that keeps a map of reply channels closes or sends an error to every channel before it
   clears the map, so no caller blocks forever (`go-rules/pending-not-closed`).
 - A `time.NewTicker` is stopped: `defer ticker.Stop()`, or `Stop` on the field in `Close`
