@@ -24,7 +24,8 @@ type RuleRun = JavaRun & {
   readonly locations: { readonly classes: string; readonly output: string };
 };
 
-const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
+const ARCHUNIT = 'archunit';
+const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, ARCHUNIT);
 const TOOL = 'Spring architecture rules';
 const PROPERTY_SEPARATOR = ' = ';
 const ROLES_PROPERTY = 'nitpicker.spring.roles';
@@ -139,7 +140,7 @@ function runRules({
 function cachedClasses(sources: readonly string[], pinned: unknown, spawn: unknown): string {
   const root = textOf(cacheDirectory('spring-arch'));
   mkdirSync(root, { recursive: true });
-  const versions = `${textOf(fieldOf(pinned, 'archunit'))}|${textOf(fieldOf(pinned, 'asm'))}`;
+  const versions = `${textOf(fieldOf(pinned, ARCHUNIT))}|${textOf(fieldOf(pinned, 'asm'))}`;
   return path.join(root, cacheKey(sources, versions, spawn));
 }
 
@@ -154,7 +155,7 @@ export function runSpringArch(options: ArchOptions): void {
   const rules = options['rules'];
   const sources = ruleSources(rules === undefined ? RULES_DIRECTORY : textOf(rules));
   const classes = cachedClasses(sources, pinned, spawn);
-  const libraries = existing(textsOf(fieldOf(tools, 'archunit')));
+  const libraries = existing(textsOf(fieldOf(tools, ARCHUNIT)));
   const cwd = fieldOf(module, 'basedir');
   compileRules({ classes, sources, libraries, cwd, spawn, timeoutMs });
   runRules({

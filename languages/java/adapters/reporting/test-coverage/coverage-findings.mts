@@ -36,6 +36,10 @@ function inProject(projectRoot: string, file: unknown): boolean {
   return firstProjectFile(projectRoot, [textOf(file)]) !== undefined;
 }
 
+function findingsIn(report: unknown): Findings {
+  return listOf(fieldOf(report, 'findings'));
+}
+
 export function findingsFrom(read: unknown, ...args: readonly unknown[]): Findings {
   return listOf(callUntyped(read, ...args));
 }
@@ -46,8 +50,8 @@ export function ifTested(jacoco: unknown, build: (report: unknown) => Findings):
 
 function jacocoFindings(context: ModuleContext, jacoco: unknown): Findings {
   return textsOf(callUntyped(jacocoSourceRoots, context)).flatMap((sourceRoot) =>
-    listOf(fieldOf(callUntyped(ingestJacoco, jacoco, { sourceRoot }), 'findings')).filter(
-      (finding) => inProject(context.projectRoot, fieldOf(finding, 'path')),
+    findingsIn(callUntyped(ingestJacoco, jacoco, { sourceRoot })).filter((finding) =>
+      inProject(context.projectRoot, fieldOf(finding, 'path')),
     ),
   );
 }
@@ -65,7 +69,7 @@ function crapFindings(context: ModuleContext, jacoco: unknown, crapLimit: unknow
         ? callUntyped(javaMethodText, sources, { projectRoot, reactorRoot }, entry)
         : undefined,
   });
-  return listOf(fieldOf(crap, 'findings'));
+  return findingsIn(crap);
 }
 
 function jacocoLocator(context: ModuleContext): unknown {
@@ -91,10 +95,7 @@ function pitFindings(context: ModuleContext): Findings {
     sourceText: sourceTextReader(projectRoot),
     ...(context.kotlin ? { generated: callUntyped(kotlinGeneratedFilter, context) } : {}),
   });
-  return [
-    ...listOf(fieldOf(pit, 'findings')),
-    ...findingsFrom(pitSkippedFindings, reportRoot, moduleDir),
-  ];
+  return [...findingsIn(pit), ...findingsFrom(pitSkippedFindings, reportRoot, moduleDir)];
 }
 
 export function branchFindings(context: ModuleContext, jacoco: unknown): Findings {
@@ -104,7 +105,7 @@ export function branchFindings(context: ModuleContext, jacoco: unknown): Finding
     locate: jacocoLocator(context),
     sourceText: sourceTextReader(context.projectRoot),
   });
-  return listOf(fieldOf(branches, 'findings'));
+  return findingsIn(branches);
 }
 
 export function coverageFindings(context: ModuleContext, crapLimit: unknown): Findings {

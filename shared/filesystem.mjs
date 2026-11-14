@@ -15,6 +15,17 @@ export function firstFileIn(root, names) {
   return names.map((name) => path.join(root, name)).find((file) => existsSync(file));
 }
 
+export function filesEndingWith(directories, extension) {
+  return directories
+    .filter((directory) => existsSync(directory))
+    .flatMap((directory) =>
+      readdirSync(directory, { recursive: true, withFileTypes: true })
+        .filter((entry) => entry.isFile() && entry.name.endsWith(extension))
+        .map((entry) => path.join(entry.parentPath, entry.name)),
+    )
+    .sort();
+}
+
 export function ancestorDirectories(directory) {
   const found = [directory];
   for (const current of found) {

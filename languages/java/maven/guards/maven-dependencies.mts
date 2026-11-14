@@ -21,6 +21,7 @@ type DependencyRun = Readonly<Record<string, unknown>> & {
 };
 
 const COMPILE_SCOPE = 'compile';
+const GROUP_ID = 'groupId';
 
 function childText(element: XmlElement, name: string): string | undefined {
   return childrenNamed(element, name)[0]?.text;
@@ -31,7 +32,7 @@ export function declaredDependencies(pomText: string): Declared[] {
   const list = childrenNamed(project, 'dependencies')[0];
   return (list === undefined ? [] : childrenNamed(list, 'dependency'))
     .map((dependency) => ({
-      group: childText(dependency, 'groupId') ?? '',
+      group: childText(dependency, GROUP_ID) ?? '',
       name: childText(dependency, 'artifactId') ?? '',
       scope: childText(dependency, 'scope') ?? COMPILE_SCOPE,
       optional: childText(dependency, 'optional') === 'true',
@@ -42,7 +43,7 @@ export function declaredDependencies(pomText: string): Declared[] {
 function sameArtifact(declared: Declared, resolved: unknown): boolean {
   return (
     fieldOf(resolved, 'artifactId') === declared.name &&
-    (declared.group.includes('${') || fieldOf(resolved, 'groupId') === declared.group)
+    (declared.group.includes('${') || fieldOf(resolved, GROUP_ID) === declared.group)
   );
 }
 
@@ -58,7 +59,7 @@ function declaredEntry(declared: Declared, { resolved, names }: Usage): Record<s
   const match = resolved.find((entry) => sameArtifact(declared, entry));
   return {
     configuration: COMPILE_SCOPE,
-    group: fieldOf(match, 'groupId') ?? declared.group,
+    group: fieldOf(match, GROUP_ID) ?? declared.group,
     name: declared.name,
     archives: archives.map((file) => path.basename(file)),
     used: archives.some((archive) => usesArchive(archive, names)),

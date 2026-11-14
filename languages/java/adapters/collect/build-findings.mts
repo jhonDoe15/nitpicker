@@ -26,7 +26,7 @@ type PresetRun = JavaRunOptions & {
   readonly reportBase: string;
   readonly kotlinRun?: unknown;
   readonly testsFailedModules?: readonly string[];
-  readonly testsSkipped?: boolean;
+  readonly testsSkipped: boolean;
 };
 
 const CLOCK_SLACK_MS = 2000;
@@ -58,7 +58,7 @@ function runJavaPreset(
     kotlinRun,
     budget = budgetOf(gradleBudget()),
     testsFailedModules = [],
-    testsSkipped = false,
+    testsSkipped,
   }: PresetRun,
 ): void {
   const since = Date.now() - CLOCK_SLACK_MS;

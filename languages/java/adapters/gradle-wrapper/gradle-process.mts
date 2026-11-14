@@ -1,8 +1,8 @@
 import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { fileURLToPath } from 'node:url';
 import { checkoutModuleUrl } from '../../../../shared/paths/checkout-module.mjs';
-import { fieldOf, fieldsOf, textOf } from '../../../../shared/values/readers.mts';
-import { callUntyped, optionalText } from '../typed/java-values.mts';
+import { fieldOf, fieldsOf, textOf, optionalText } from '../../../../shared/values/readers.mts';
+import { callUntyped } from '../typed/java-values.mts';
 
 export type GradleResult = {
   readonly status?: unknown;

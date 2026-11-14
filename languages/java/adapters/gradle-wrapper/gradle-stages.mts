@@ -18,7 +18,7 @@ type ExportRequest = {
 type StageRequest = ExportRequest & {
   readonly projectRoot: string;
   readonly testsFailedModules?: readonly string[];
-  readonly testsSkipped?: boolean;
+  readonly testsSkipped: boolean;
 };
 type OptionsRequest = {
   readonly projectRoot: string;
@@ -93,7 +93,7 @@ export function gradleStages(
     policy,
     directory,
     testsFailedModules = [],
-    testsSkipped = false,
+    testsSkipped,
   }: StageRequest,
 ): (() => string[])[] {
   const common = [

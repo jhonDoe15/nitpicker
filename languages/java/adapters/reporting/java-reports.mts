@@ -45,12 +45,16 @@ type ReportRun = { readonly kotlinBuild: unknown; readonly foreignKeys: unknown 
 type ModuleRun = ReportRun & { manifest: unknown; modules: readonly unknown[]; options: Options };
 type JavaReadout = { readonly findings: unknown; readonly imports: unknown };
 
+const SOURCE_ROOTS = 'sourceRoots';
+const KOTLIN = 'kotlin';
+const MANIFEST = 'manifest';
+
 function listsOf(manifest: unknown, ...lists: readonly string[]): string[] {
   return lists.flatMap((list) => textsOf(fieldOf(manifest, list)));
 }
 
 function lintedRoots(manifest: unknown): string[] {
-  return [...new Set(listsOf(manifest, 'sourceRoots', 'testSourceRoots'))];
+  return [...new Set(listsOf(manifest, SOURCE_ROOTS, 'testSourceRoots'))];
 }
 
 function projectRoots(projectRoot: string): string[] {
@@ -70,7 +74,7 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
   return fieldOf(manifest, 'spring') === true
     ? findingsFrom(readSpringConfigFindings, projectRoot, {
         ...fieldsOf(manifest),
-        sourceRoots: [...new Set(listsOf(manifest, 'sourceRoots', 'kotlinSourceRoots'))],
+        sourceRoots: [...new Set(listsOf(manifest, SOURCE_ROOTS, 'kotlinSourceRoots'))],
         baselineRoot: baselineRootOf(options),
       })
     : [];
@@ -78,7 +82,7 @@ function springFindings(projectRoot: string, manifest: unknown, options: Options
 
 function readModuleFindings(context: ModuleContext, crapLimit: unknown): Findings {
   const { reportRoot, projectRoot, kotlin } = context;
-  const testRoots = listsOf(context['manifest'], 'testSourceRoots', 'kotlinTestSourceRoots');
+  const testRoots = listsOf(context[MANIFEST], 'testSourceRoots', 'kotlinTestSourceRoots');
   return [
     ...findingsFrom(sarifFindings, context),
     ...findingsFrom(readErrorProneFindings, context),
@@ -86,13 +90,13 @@ function readModuleFindings(context: ModuleContext, crapLimit: unknown): Finding
     ...findingsFrom(checkstyleFindings, context),
     ...coverageFindings(context, crapLimit),
     ...findingsFrom(readJavaStructureFindings, reportRoot, projectRoot, context['reactorRoot']),
-    ...findingsFrom(readDocCommentFindings, { projectRoot, manifest: context['manifest'], kotlin }),
+    ...findingsFrom(readDocCommentFindings, { projectRoot, manifest: context[MANIFEST], kotlin }),
     ...findingsFrom(readClassLimitFindings, reportRoot, context['classLimits']),
     ...ifTested(context['jacoco'], (report) => branchFindings(context, report)),
     ...(kotlin ? findingsFrom(readKotlinFindings, context, crapLimit) : []),
     ...findingsFrom(readGuardFindings, {
       ...context,
-      locate: sourceLocator(projectRoot, lintedRoots(context['manifest'])),
+      locate: sourceLocator(projectRoot, lintedRoots(context[MANIFEST])),
     }),
     ...findingsFrom(testRunFindings, context, { reportRoot, projectRoot, testRoots }),
   ];
@@ -114,7 +118,7 @@ function reportingOf(options: Options, module: unknown, preset: string): Options
       moduleRoot: fieldOf(module, 'dir'),
     },
     jacoco:
-      options['quick'] === true || fieldOf(fieldOf(module, 'manifest'), 'testsFailed') === true
+      options['quick'] === true || fieldOf(fieldOf(module, MANIFEST), 'testsFailed') === true
         ? undefined
         : callUntyped(readModuleJacoco, module, preset),
   };
@@ -123,7 +127,7 @@ function reportingOf(options: Options, module: unknown, preset: string): Options
 function moduleContextFindings(projectRoot: string, module: unknown, all: ModuleRun): Findings {
   const { manifest, modules, options, ...run } = all;
   const preset = textOf(options['preset'] ?? 'java');
-  const moduleManifest = fieldOf(module, 'manifest');
+  const moduleManifest = fieldOf(module, MANIFEST);
   const context: ModuleContext = {
     projectRoot,
     reactorRoot: options['reactorRoot'] ?? projectRoot,
@@ -131,12 +135,12 @@ function moduleContextFindings(projectRoot: string, module: unknown, all: Module
     reportRoot: textOf(fieldOf(module, 'reportRoot')),
     manifest: moduleManifest,
     module: { moduleDir: fieldOf(module, 'dir'), modulePath: options['modulePath'] },
-    sourceRoots: listsOf(moduleManifest, 'sourceRoots'),
+    sourceRoots: listsOf(moduleManifest, SOURCE_ROOTS),
     lintedRoots: lintedRoots(moduleManifest),
-    allSourceRoots: fieldOf(manifest, 'sourceRoots'),
+    allSourceRoots: fieldOf(manifest, SOURCE_ROOTS),
     modules,
     ...run,
-    kotlin: preset === 'kotlin' && fieldOf(moduleManifest, 'kotlin') === true,
+    kotlin: preset === KOTLIN && fieldOf(moduleManifest, KOTLIN) === true,
     quick: options['quick'] === true,
     ...reportingOf(options, module, preset),
     mainCheckstyle: callUntyped(readMainCheckstyle, projectRoot, module, preset),
@@ -157,7 +161,7 @@ function wideReport(projectRoot: string, run: ModuleRun, reportBase: string): Ja
     projects: callUntyped(reportModuleProjects, run.modules, 'root'),
     mergedRoot: path.join(reportBase, 'project'),
     manifest: run.manifest,
-    kotlin: run.options['preset'] === 'kotlin',
+    kotlin: run.options['preset'] === KOTLIN,
     policy: run.options,
   });
   const duplicates = callUntyped(readProjectDuplicateFindings, reportBase, {
@@ -175,9 +179,9 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
   const reportBase = textOf(options['reportBase']);
   const preset = textOf(options['preset'] ?? 'java');
   const report: unknown = options['report'] ?? readReportModules(reportBase, preset);
-  const manifest = fieldOf(report, 'manifest');
+  const manifest = fieldOf(report, MANIFEST);
   const modules = listOf(fieldOf(report, 'modules'));
-  if (preset === 'kotlin' && options['requireKotlin'] !== false) {
+  if (preset === KOTLIN && options['requireKotlin'] !== false) {
     requireKotlinManifest(manifest);
   }
   const run = { manifest, modules, options, ...reportRun(projectRoot) };
@@ -197,7 +201,7 @@ export function readJavaFindings(projectRoot: string, options: Options = {}): Ja
     ],
     { preset, javaStyle: options['javaStyle'] },
   );
-  const locate: unknown = modulesUnitLocator(projectRoot, modules, preset === 'kotlin');
+  const locate: unknown = modulesUnitLocator(projectRoot, modules, preset === KOTLIN);
   return {
     findings: callUntyped(
       withJavaCountRatchets,

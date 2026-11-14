@@ -1,5 +1,5 @@
 import type { SpawnSyncOptionsWithStringEncoding, SpawnSyncReturns } from 'node:child_process';
-import { fieldsOf } from '../../../../shared/values/readers.mts';
+import { fieldsOf, optionalText } from '../../../../shared/values/readers.mts';
 
 type JavaLocation = {
   readonly line?: number;
@@ -75,10 +75,6 @@ function isJavaFinding(value: unknown): value is JavaFinding {
 
 export function findingsOf(value: unknown): JavaFinding[] {
   return Array.isArray(value) ? value.filter(isJavaFinding) : [];
-}
-
-export function optionalText(value: unknown): string | undefined {
-  return typeof value === 'string' ? value : undefined;
 }
 
 export function javaPolicyOf(value: unknown): JavaPolicy {

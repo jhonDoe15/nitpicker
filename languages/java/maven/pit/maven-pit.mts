@@ -22,6 +22,7 @@ type PitAttempt = PitLimit & { readonly extra?: readonly string[] };
 type PitReport = PitRun & { readonly report: string };
 
 const MINUTE_MS = 60_000;
+const OFF = 'false';
 
 function defaultTimeoutMs(): number {
   return numberOr(fieldOf(mavenBudget(), 'commandTimeoutMs'), 0);
@@ -85,9 +86,9 @@ function pitArguments(options: PitOptions, { pitDir, targets }: PitRun): string[
     ],
     ...['--classPath', existingJoined(textsOf(fieldOf(options['classpaths'], 'testRuntime')))],
     ...['--mutableCodePaths', textOf(module['outputDirectory'])],
-    ...['--outputFormats', 'XML', '--timestampedReports', 'false'],
+    ...['--outputFormats', 'XML', '--timestampedReports', OFF],
     ...textsOf(pitConfig ?? nitpickerPitArguments()),
-    ...['--failWhenNoMutations', 'false', '--verbose', 'false'],
+    ...['--failWhenNoMutations', OFF, '--verbose', OFF],
     ...pitArgLine(pitDir, textsOf(module['testJvmArgs'])),
     ...textsOf(callUntyped(pitHistoryArguments, options['history'], module.buildDirectory)),
   ];

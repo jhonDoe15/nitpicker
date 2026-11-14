@@ -10,8 +10,14 @@ import { PROJECT_TOOL_CONFIGS } from '../gradle-presets.mjs';
 import { mergeCheckstyleFiles } from './checkstyle/checkstyle-merge.mts';
 import { pmdLayerFiles } from './layer-files.mjs';
 import { declaredToolChoices } from './declared/declared-choices.mjs';
-import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
-import { type JavaPolicy, callUntyped, optionalText } from '../typed/java-values.mts';
+import {
+  fieldOf,
+  fieldsOf,
+  textOf,
+  textsOf,
+  optionalText,
+} from '../../../../shared/values/readers.mts';
+import { type JavaPolicy, callUntyped } from '../typed/java-values.mts';
 
 type ToolChoice = {
   readonly project?: string | undefined;

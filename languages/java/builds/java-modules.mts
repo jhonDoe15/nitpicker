@@ -6,13 +6,14 @@ import { retargetSentence } from '../../../shared/messages/exception-sentence.mj
 import { inModule } from './module-path.mjs';
 import { projectWideReport } from './project-wide.mjs';
 import { resolveInside } from '../../../shared/conventions/read-inside.mjs';
-import { fieldOf, fieldsOf, textOf, textsOf } from '../../../shared/values/readers.mts';
 import {
-  type JavaFinding,
-  callUntyped,
-  findingsOf,
+  fieldOf,
+  fieldsOf,
+  textOf,
+  textsOf,
   optionalText,
-} from '../adapters/typed/java-values.mts';
+} from '../../../shared/values/readers.mts';
+import { type JavaFinding, callUntyped, findingsOf } from '../adapters/typed/java-values.mts';
 
 type ModuleRoots = Readonly<Record<string, string[]>>;
 type ReportOptions = Readonly<Record<string, unknown>> & { readonly reportDirectory: string };

@@ -37,7 +37,8 @@ type ArgumentSet = CompileSet & {
 };
 type ErrorProneContext = Readonly<Record<string, unknown>> & { readonly reportDir: string };
 
-const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, 'errorprone');
+const ERROR_PRONE = 'errorprone';
+const RUNNER_DIRECTORY = path.join(GRADLE_DIRECTORY, ERROR_PRONE);
 const COMPILER_PACKAGES = [
   ...['api', 'file', 'main', 'model', 'parser'],
   ...['processing', 'tree', 'util', 'code', 'comp'],
@@ -194,13 +195,13 @@ function argumentFiles(context: ErrorProneContext, work: string, modular: Modula
   const module = mavenModuleOf(context['module']);
   const compiler = compilerOf(module['compiler']);
   const tools = context['tools'];
-  const flags = textsOf(fieldOf(fieldOf(context['configs'], 'errorprone'), 'arguments'));
+  const flags = textsOf(fieldOf(fieldOf(context['configs'], ERROR_PRONE), 'arguments'));
   return compileSets(module, context['classpaths'], { modular, work }).flatMap((set) =>
     writeArguments({
       ...set,
       compiler: set.test ? compilerOf({ ...compiler, ...fieldsOf(compiler['test']) }) : compiler,
       processors: [
-        ...textsOf(fieldOf(tools, 'errorprone')),
+        ...textsOf(fieldOf(tools, ERROR_PRONE)),
         ...processorPath(set.classpath, compiler, tools),
       ],
       flags,
@@ -215,7 +216,7 @@ function usesPreview(compiler: Compiler): boolean {
 
 function analyze(context: ErrorProneContext, modular: Modular): void {
   const report = path.join(context.reportDir, 'errorprone.json');
-  const work = path.join(context.reportDir, 'errorprone');
+  const work = path.join(context.reportDir, ERROR_PRONE);
   rmSync(work, { recursive: true, force: true });
   const files = argumentFiles(context, work, modular);
   if (files.length === 0) {

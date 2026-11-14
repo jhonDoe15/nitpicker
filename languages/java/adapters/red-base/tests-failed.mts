@@ -24,7 +24,7 @@ type FailingRun<O> = (
   projectRoot: string,
   options: O & {
     readonly testsFailedModules: readonly string[];
-    readonly testsSkipped?: boolean;
+    readonly testsSkipped: boolean;
   },
 ) => void;
 type FailingRuns<O> = {
@@ -34,6 +34,8 @@ type FailingRuns<O> = {
 };
 
 const ROOT_MODULE = '.';
+const TIMED_OUT = 'timedOut';
+const FAILURES = 'failures';
 export const HEAD_TESTS_TOOL = 'tests';
 const HEAD_CONSEQUENCE = 'coverage, CRAP and mutation were skipped, the other checks ran';
 const MODULE_CONSEQUENCE = 'coverage, CRAP and mutation were skipped there, the other checks ran';
@@ -57,7 +59,7 @@ function timedOutOf(value: unknown): TimedOut {
 function failuresOf(value: unknown): TestsFailure[] {
   return listOf(value).map((failure) => {
     const roots = fieldOf(failure, 'roots');
-    const timedOut = fieldOf(failure, 'timedOut');
+    const timedOut = fieldOf(failure, TIMED_OUT);
     return {
       ...fieldsOf(failure),
       module: textOf(fieldOf(failure, 'module')),
@@ -83,11 +85,11 @@ export function withRootSourceRoots(failures: unknown, modules: unknown): TestsF
 }
 
 export function isTestFailure(error: unknown): boolean {
-  return listOf(fieldOf(error, 'failures')).length > 0;
+  return listOf(fieldOf(error, FAILURES)).length > 0;
 }
 
 export function isTestsTimeout(error: unknown, policy: unknown): boolean {
-  return fieldOf(error, 'timedOut') !== undefined && fieldOf(policy, 'quick') !== true;
+  return fieldOf(error, TIMED_OUT) !== undefined && fieldOf(policy, 'quick') !== true;
 }
 
 export function timedOutTests(timedOut: unknown): TestsFailure {
@@ -100,17 +102,17 @@ export function runOrNoteFailingTests<O extends { readonly policy?: JavaPolicy |
   options: O,
 ): TestsFailure[] {
   try {
-    run(projectRoot, { ...options, testsFailedModules: [] });
+    run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: false });
     return [];
   } catch (error) {
     if (isTestsTimeout(error, options.policy)) {
       run(projectRoot, { ...options, testsFailedModules: [], testsSkipped: true });
-      return [timedOutTests(fieldOf(error, 'timedOut'))];
+      return [timedOutTests(fieldOf(error, TIMED_OUT))];
     }
     if (!isTestFailure(error)) {
       throw error;
     }
-    const failures = failuresOf(fieldOf(error, 'failures'));
+    const failures = failuresOf(fieldOf(error, FAILURES));
     return rerunWithoutFailingTests({ run, projectRoot, options }, failures);
   }
 }
@@ -124,14 +126,14 @@ function rerunWithoutFailingTests<O>(
   failures: readonly TestsFailure[],
 ): TestsFailure[] {
   try {
-    run(projectRoot, { ...options, testsFailedModules: modulesOf(failures) });
+    run(projectRoot, { ...options, testsFailedModules: modulesOf(failures), testsSkipped: false });
     return [...failures];
   } catch (error) {
     if (!isTestFailure(error)) {
       throw error;
     }
-    const all = [...failures, ...failuresOf(fieldOf(error, 'failures'))];
-    run(projectRoot, { ...options, testsFailedModules: modulesOf(all) });
+    const all = [...failures, ...failuresOf(fieldOf(error, FAILURES))];
+    run(projectRoot, { ...options, testsFailedModules: modulesOf(all), testsSkipped: false });
     return all;
   }
 }
