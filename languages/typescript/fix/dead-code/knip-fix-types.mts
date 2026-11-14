@@ -1,15 +1,15 @@
 const DEAD_CODE_TOOL = 'dead-code';
 
-const FIX_TYPE_BY_RULE = new Map([
+const FIX_TYPE_BY_RULE = new Map<string, string>([
   ['exports', 'exports'],
   ['types', 'types'],
   ['unused-dependency', 'dependencies'],
   ['files', 'files'],
 ]);
 
-const DEFAULT_FIX_TYPES = ['dependencies'];
+const DEFAULT_FIX_TYPES: readonly string[] = ['dependencies'];
 
-export function knipFixTypes(selectedRules) {
+export function knipFixTypes(selectedRules: readonly string[]): readonly string[] {
   if (selectedRules.length === 0) {
     return DEFAULT_FIX_TYPES;
   }

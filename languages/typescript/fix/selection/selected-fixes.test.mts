@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectedEslintRules, selectedOutput } from './selected-fixes.mjs';
+import { selectedEslintRules, selectedOutput } from './selected-fixes.mts';
 
 const BOM = String.fromCodePoint(0xfeff);
 const SOURCE = 'var a = 1;\nlet b = 2;\n';
