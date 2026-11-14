@@ -2,30 +2,21 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { argumentFileToken } from './javac-options.mjs';
-import { lintArguments } from './lint-arguments.mjs';
+import { lintArguments } from './lint-arguments.mts';
 import {
   LINT_CACHE,
   LINT_FINGERPRINT,
   lintFingerprint,
   reusableWarnings,
-} from './lint-baseline.mjs';
-import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mjs';
+} from './lint-baseline.mts';
+import { lintedWarnings, relocated, hasUnreadWarnings } from './lint-output.mts';
 import { posix, stageSources } from './lint-staging.mjs';
 import { filesEndingWith } from '../../../../shared/filesystem.mjs';
 import { callUntyped } from '../../adapters/typed/java-values.mts';
-import { fieldOf, fieldsOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
+import { type LintPlan, lintPlanOf } from '../typed/lint-plan.mts';
+import { fieldOf, textOf, textsOf } from '../../../../shared/values/readers.mts';
 
-type LintPlan = Readonly<Record<string, unknown>> & {
-  readonly root: string;
-  readonly basedir: string;
-  readonly reportRoot: string;
-  readonly sources: readonly string[];
-  readonly generatedSources: readonly string[];
-  readonly javac: string;
-  readonly workDirectory: string;
-  readonly cacheDirectory: string;
-};
-type LintRun = { readonly reportDir: string; readonly baselineRoot?: unknown };
+type LintRun = { readonly reportDir: string; readonly baselineRoot?: string | undefined };
 type Compiled = { readonly code: unknown; readonly log: string };
 type Compile = {
   readonly plan: LintPlan;
@@ -36,7 +27,7 @@ type Compile = {
 type LintSources = { readonly sources: readonly string[]; readonly modular: boolean };
 type Reports = { readonly plan: LintPlan; readonly output: string; readonly fingerprint: string };
 type Reused = {
-  readonly baselineRoot: unknown;
+  readonly baselineRoot: string | undefined;
   readonly all: string[];
   readonly fingerprint: string;
 };
@@ -48,20 +39,6 @@ const ENGLISH_OUTPUT = ['-J-Duser.language=en', '-J-Duser.country=US'];
 const MODULE_INFO = 'module-info.java';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const LINT_TIMEOUT_MS = 15 * 60 * 1000;
-
-function lintPlanOf(value: unknown): LintPlan {
-  return {
-    ...fieldsOf(value),
-    root: textOf(fieldOf(value, 'root')),
-    basedir: textOf(fieldOf(value, 'basedir')),
-    reportRoot: textOf(fieldOf(value, 'reportRoot')),
-    sources: textsOf(fieldOf(value, 'sources')),
-    generatedSources: textsOf(fieldOf(value, 'generatedSources')),
-    javac: textOf(fieldOf(value, 'javac')),
-    workDirectory: textOf(fieldOf(value, 'workDirectory')),
-    cacheDirectory: textOf(fieldOf(value, 'cacheDirectory')),
-  };
-}
 
 function inside(directory: string, file: string): boolean {
   const relative = path.relative(directory, file);
@@ -102,7 +79,7 @@ function compiledSources(
   plan: LintPlan,
   { sources, modular }: LintSources,
   work: string,
-): Compiled & { staged: unknown } {
+): Compiled & { staged: string } {
   const staged = path.join(work, 'sources');
   const classes = path.join(work, 'classes');
   mkdirSync(classes, { recursive: true });
@@ -118,7 +95,7 @@ function compiledSources(
   }
   const first = compile(modular);
   const compiled = first.code === 0 || !modular ? first : compile('all');
-  return { ...withUnreadWarnings(compiled), staged: fieldOf(stagedTree, 'root') };
+  return { ...withUnreadWarnings(compiled), staged: textOf(fieldOf(stagedTree, 'root')) };
 }
 
 function lintSources(plan: LintPlan, request: LintSources): Compiled {

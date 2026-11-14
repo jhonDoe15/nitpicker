@@ -14,7 +14,7 @@ import {
   warning,
   warningHeaders,
   writeFiles,
-} from './test-support/lint-project.mjs';
+} from './test-support/lint-project.mts';
 
 const temporaries = createTemporaries();
 

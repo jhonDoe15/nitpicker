@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { zipOf } from '../test-support/zip-writer.mjs';
-import { isJavaModule } from './lint-arguments.mjs';
+import { isJavaModule } from './lint-arguments.mts';
 
 const roots = [];
 

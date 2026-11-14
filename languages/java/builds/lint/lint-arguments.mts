@@ -1,7 +1,19 @@
 import { existsSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { readZipOrFailure } from '../zip-entries.mjs';
-import { languageLevel, lintCompatible, lintCompiler } from './javac-options.mjs';
+import { languageLevelOf, lintCompatibleOf, lintCompilerOf } from '../typed/javac-views.mts';
+import { type LintPlan } from '../typed/lint-plan.mts';
+
+type Lookup = {
+  readonly modular: boolean | 'all';
+  readonly classDirectory: string;
+  readonly libraries: readonly string[];
+};
+type Request = { readonly classes: string; readonly modular: boolean | 'all' };
+type ZipRead = { readonly kind: string; readonly zip?: JarView };
+type JarView = { readonly names: ReadonlySet<string>; text(name: string): string | undefined };
+
+const readJar: (file: string) => ZipRead = readZipOrFailure;
 
 const VERSIONED_MODULE_INFO = /^META-INF\/versions\/\d+\/module-info\.class$/u;
 const LINT_FLAGS = [
@@ -14,18 +26,21 @@ const LINT_FLAGS = [
   '-XDshould-stop.ifNoError=FLOW',
 ];
 
-export function isJavaModule(file) {
+export function isJavaModule(file: string): boolean {
   if (statSync(file).isDirectory()) {
     return existsSync(path.join(file, 'module-info.class'));
   }
   if (!file.endsWith('.jar')) {
     return false;
   }
-  const read = readZipOrFailure(file);
+  const read = readJar(file);
   if (read.kind !== 'zip') {
     return false;
   }
   const jar = read.zip;
+  if (jar === undefined) {
+    return false;
+  }
   return (
     jar.names.has('module-info.class') ||
     /^Automatic-Module-Name:/mu.test(jar.text('META-INF/MANIFEST.MF') ?? '') ||
@@ -33,7 +48,7 @@ export function isJavaModule(file) {
   );
 }
 
-function lookupPath({ modular, classDirectory, libraries }) {
+function lookupPath({ modular, classDirectory, libraries }: Lookup): string[] {
   const existing = libraries.filter((library) => existsSync(library));
   if (modular === false) {
     return ['-cp', [classDirectory, ...existing].join(path.delimiter)];
@@ -47,13 +62,13 @@ function lookupPath({ modular, classDirectory, libraries }) {
   ];
 }
 
-export function lombokPath(plan) {
+export function lombokPath(plan: LintPlan): string[] {
   return plan.processorPath.filter(
     (entry) => existsSync(entry) && path.basename(entry).startsWith('lombok'),
   );
 }
 
-export function lintArguments(plan, { classes, modular }) {
+export function lintArguments(plan: LintPlan, { classes, modular }: Request): string[] {
   const lombok = lombokPath(plan);
   return [
     ...LINT_FLAGS,
@@ -63,7 +78,7 @@ export function lintArguments(plan, { classes, modular }) {
     classes,
     ...lookupPath({ modular, classDirectory: plan.classDirectory, libraries: plan.classpath }),
     ...(lombok.length === 0 ? ['-proc:none'] : ['-processorpath', lombok.join(path.delimiter)]),
-    ...languageLevel(lintCompiler(plan)),
-    ...lintCompatible(lintCompiler(plan).args),
+    ...languageLevelOf(lintCompilerOf(plan)),
+    ...lintCompatibleOf(lintCompilerOf(plan).args),
   ];
 }
