@@ -21,7 +21,6 @@ import {
   consoleEntry as untypedConsoleEntry,
   writeReportFile as untypedWriteReportFile,
 } from '../../../preset/test-console/console-report.mjs';
-import { findPackageJSON as untypedFindPackageJson } from '../../../../../core/tooling/package-lookup/package-json.mjs';
 import { fieldOf, textsOf } from '../../../../../shared/values/readers.mts';
 
 type OptionSets = {
@@ -114,8 +113,3 @@ export function consoleEntry(call: ConsoleCall): unknown {
 
 export const writeReportFile: (reportPath: string, entries: readonly unknown[]) => void =
   untypedWriteReportFile;
-
-export function findPackageJson(specifier: string, base: string): string | undefined {
-  const found = called(untypedFindPackageJson, [specifier, base]);
-  return typeof found === 'string' ? found : undefined;
-}
