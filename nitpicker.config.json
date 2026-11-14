@@ -6,6 +6,7 @@
     "entryPoints": [
       "core/diff/cache/http-cache-worker.mts",
       "shared/logic/sync/decide-worker.mts",
+      "languages/java/adapters/near-duplicates/jvm-trees-process.mts",
       "languages/java/maven/parallel/tool-supervisor.mts",
       "scripts/typescript/convert.mts",
       "scripts/typescript/ready.mts",

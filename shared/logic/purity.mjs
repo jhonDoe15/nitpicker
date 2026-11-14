@@ -96,16 +96,20 @@ export function cannotThrow(root) {
   });
 }
 
-function isPureCallee(callee) {
+export function pureCallKind(callee) {
   if (callee.kind !== 'member') {
-    return false;
+    return undefined;
   }
   const receiver = callee.children[0];
   if (receiver.kind === 'name' && PURE_NAMESPACES.has(receiver.value)) {
-    return callee.value !== 'random';
+    return callee.value === 'random' ? undefined : 'static';
   }
   if (receiver.kind === 'name' && PURE_STATIC_CALLS.has(`${receiver.value}.${callee.value}`)) {
-    return true;
+    return 'static';
   }
-  return STRING_READS.has(callee.value);
+  return STRING_READS.has(callee.value) ? 'read' : undefined;
+}
+
+function isPureCallee(callee) {
+  return pureCallKind(callee) !== undefined;
 }

@@ -277,7 +277,7 @@ describe('the Gradle hand-off', () => {
     });
 
     const file = args.find((argument) => argument.startsWith('-Pnitpicker.kotlin.styleFile='));
-    expect(args.slice(3, 6)).toEqual([
+    expect(args.slice(4, 7)).toEqual([
       '-Pnitpicker.kotlin=true',
       '-Pnitpicker.kotlin.formatter=ktlint',
       '-Pnitpicker.kotlin.ktfmtStyle=meta',
@@ -291,7 +291,7 @@ describe('the Gradle hand-off', () => {
 
   it('runs Gradle without the configuration cache, for both presets', () => {
     const root = project({});
-    const common = ['--console=plain', '--quiet', '--no-configuration-cache'];
+    const common = ['--console=plain', '--quiet', '--no-configuration-cache', '--continue'];
 
     expect(argumentsOf(root, { preset: 'kotlin' })).toEqual([
       ...common,
