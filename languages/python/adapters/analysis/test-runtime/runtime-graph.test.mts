@@ -8,7 +8,7 @@ import {
   productionAt,
   relative,
   scanned,
-} from './test-support/runtime-data.mjs';
+} from './test-support/runtime-data.mts';
 
 describe('reaching production code at runtime', () => {
   it('counts a direct import', () => {
@@ -142,7 +142,7 @@ describe('string literals that name a production module', () => {
       'tests/test_a.py': 'dynamic-production-runtime',
       'tests/test_b.py': 'dynamic-production-runtime',
     });
-    expect(report.tests[1].directProductionModules).toEqual(['src/app/service.py']);
+    expect(report.tests[1]?.directProductionModules).toEqual(['src/app/service.py']);
   });
 
   it('follows a literal in a helper the test reaches', () => {

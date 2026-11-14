@@ -1,38 +1,31 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../core/diff/git/test-support/git-checkout.mjs';
-import { createScratch } from '../test-support/scratch.mjs';
+import { createScratch } from '../test-support/scratch.mts';
+import { NON_PRODUCTION_GLOBS } from './python-sources.mjs';
 import {
   existingSourceRoots,
   functionText,
   listOtherModules,
   listProductionModules,
-  NON_PRODUCTION_GLOBS,
   nonProductionGlobs,
   pythonSourceFiles,
   writeSourceListing,
-} from './python-sources.mjs';
+} from './typed/sources-views.mts';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+
+const { temporaryRoot } = useGitFixtures();
 
 const { gitCheckout } = useGitCheckouts();
 
 const scratch = createScratch();
 
-const roots = [];
-
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-sources-')));
-  roots.push(root);
+function project(files: readonly string[]): string {
+  const root = temporaryRoot('nitpicker-python-sources-');
   for (const file of files) {
     mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     writeFileSync(path.join(root, file), '');
@@ -371,7 +364,7 @@ describe('writeSourceListing', () => {
 });
 
 describe('functionText', () => {
-  const textOf = (source, range) =>
+  const textOf = (source: string, range: { start: number; end: number }): string =>
     functionText(new Map([['f.py', source.split('\n')]]), '/unused', { file: 'f.py', ...range });
 
   it('removes the common indentation and keeps the nesting inside the function', () => {

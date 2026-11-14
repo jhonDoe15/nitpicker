@@ -6,24 +6,27 @@ import {
   other,
   OPTIONS,
   scanned,
-} from '../test-support/runtime-data.mjs';
+} from '../test-support/runtime-data.mts';
 
 describe('the pytest-django bridge', () => {
   const django = { ...OPTIONS, django: true };
-  const bridged = (found, options = django) => {
-    const report = analyze({
+  const withConftest = (
+    conftest: Readonly<Record<string, unknown>>,
+    found: Readonly<Record<string, unknown>>,
+    options = django,
+  ) =>
+    analyze({
       others: [other('tests/test_a.py'), other('tests/conftest.py')],
       imports: { 'tests/test_a.py': [], 'tests/conftest.py': [] },
-      literals: {
-        'tests/conftest.py': scanned({
-          fixtures: [fixture('api', ['admin_client']), fixture('boot', ['db'], true)],
-        }),
-        'tests/test_a.py': scanned(found),
-      },
+      literals: { 'tests/conftest.py': scanned(conftest), 'tests/test_a.py': scanned(found) },
       options,
     });
-    return report.tests[0];
-  };
+  const bridged = (found: Readonly<Record<string, unknown>>, options = django) =>
+    withConftest(
+      { fixtures: [fixture('api', ['admin_client']), fixture('boot', ['db'], true)] },
+      found,
+      options,
+    ).tests[0];
 
   it.each([
     'client',
@@ -45,20 +48,20 @@ describe('the pytest-django bridge', () => {
   ])('counts a test that requests the %s fixture', (name) => {
     const test = bridged({ requests: [name] });
 
-    expect(test.category).toBe('framework-production-runtime');
-    expect(test.subprocessBridges).toEqual(['pytest-django']);
+    expect(test?.category).toBe('framework-production-runtime');
+    expect(test?.subprocessBridges).toEqual(['pytest-django']);
   });
 
   it('counts the django_db mark, on a function, a class or the module', () => {
-    expect(bridged({ marks: ['django_db'] }).category).toBe('framework-production-runtime');
+    expect(bridged({ marks: ['django_db'] })?.category).toBe('framework-production-runtime');
   });
 
   it('counts a pytest-django fixture a conftest.py fixture asks for', () => {
-    expect(bridged({ requests: ['api'] }).category).toBe('framework-production-runtime');
+    expect(bridged({ requests: ['api'] })?.category).toBe('framework-production-runtime');
   });
 
   it('counts an autouse fixture that asks for a pytest-django fixture', () => {
-    expect(bridged({}).category).toBe('framework-production-runtime');
+    expect(bridged({})?.category).toBe('framework-production-runtime');
   });
 
   it('gives no bridge to a test that asks for no such fixture, or outside a Django project', () => {
@@ -71,19 +74,11 @@ describe('the pytest-django bridge', () => {
     const elsewhere = bridged({ requests: ['client'], marks: ['django_db'] }, OPTIONS);
 
     expect(categories(noFixture)).toEqual({ 'tests/test_a.py': 'no-production-runtime' });
-    expect(elsewhere.category).toBe('no-production-runtime');
+    expect(elsewhere?.category).toBe('no-production-runtime');
   });
 
   it('gives no bridge when the project defines the fixture itself without asking for the original', () => {
-    const report = analyze({
-      others: [other('tests/test_a.py'), other('tests/conftest.py')],
-      imports: { 'tests/test_a.py': [], 'tests/conftest.py': [] },
-      literals: {
-        'tests/conftest.py': scanned({ fixtures: [fixture('client')] }),
-        'tests/test_a.py': scanned({ requests: ['client'] }),
-      },
-      options: django,
-    });
+    const report = withConftest({ fixtures: [fixture('client')] }, { requests: ['client'] });
 
     expect(categories(report)).toEqual({ 'tests/test_a.py': 'no-production-runtime' });
   });

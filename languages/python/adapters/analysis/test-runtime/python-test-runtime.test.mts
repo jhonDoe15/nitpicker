@@ -1,13 +1,44 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { hash } from '../../../../../shared/rules/finding-helpers.mjs';
 import { withCanonicalRules } from '../../../../../shared/exceptions/validation.mjs';
 import { validateConfig } from '../../../../../core/configuration/validate.mjs';
-import { applyPythonExceptions } from '../../configuration/python-exceptions.mjs';
+import { applyPythonExceptions } from '../../configuration/python-exceptions.mts';
 import { applyRuleHints } from '../../../rules/rule-hints.mjs';
-import { readTestRuntimeFindings, scanTestStrings } from './python-test-runtime.mjs';
+import {
+  readTestRuntimeFindings as untypedReadFindings,
+  scanTestStrings,
+} from './python-test-runtime.mjs';
+import {
+  fieldOf,
+  fieldsOf,
+  listOf,
+  parseJson,
+  textOf,
+  textsOf,
+} from '../../../../../shared/values/readers.mts';
+import type { ExceptionEntry } from '../../configuration/python-exceptions.mts';
+import type { IngestedFinding } from '../../../ingest/typed/ingest-types.mts';
+import type { ImportsReport } from '../typed/python-graph-types.mts';
+
+type Row = Readonly<Record<string, unknown>>;
+type FindingsRequest = {
+  readonly reportRoot: string;
+  readonly projectRoot: string;
+  readonly runner: string;
+};
+
+const readTestRuntimeFindings: (request: FindingsRequest) => IngestedFinding[] =
+  untypedReadFindings;
+
+function exceptionOf(value: unknown): ExceptionEntry {
+  return {
+    ...fieldsOf(value),
+    rule: textOf(fieldOf(value, 'rule')),
+    paths: textsOf(fieldOf(value, 'paths')),
+  };
+}
 import {
   absolute,
   analyze,
@@ -20,20 +51,14 @@ import {
   scanned,
   SERVICE,
   typeOnly,
-} from './test-support/runtime-data.mjs';
+} from './test-support/runtime-data.mts';
+import { recordingRun } from '../../test-support/runs/recording-run.mts';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-runtime-')));
-  roots.push(root);
-  return root;
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-runtime-');
 }
 
 describe('tests that run no production code', () => {
@@ -106,7 +131,7 @@ describe('tests that run no production code', () => {
     });
 
     expect(report.findings.map(({ test }) => test)).toEqual(['tests/test_a.py']);
-    expect(report.summary.discoveredTests).toBe(1);
+    expect(report.summary['discoveredTests']).toBe(1);
   });
 
   it('judges the files the project configures pytest to collect', () => {
@@ -223,7 +248,7 @@ describe('the Django framework bridge', () => {
     const others = [other('conftest.py'), other('tests/test_a.py')];
     const imports = { 'conftest.py': [plain('rest_framework.test')], 'tests/test_a.py': [] };
     const conftest = scanned({ fixtures: [fixture('api')] });
-    const analyzed = (requests) =>
+    const analyzed = (requests: readonly string[]) =>
       categories(
         analyze({
           others,
@@ -257,7 +282,13 @@ describe('the Django framework bridge', () => {
   });
 });
 
-function reportRootWith({ imports, literals }) {
+function reportRootWith({
+  imports,
+  literals,
+}: {
+  readonly imports: ImportsReport;
+  readonly literals?: Row;
+}) {
   const projectRoot = temporaryRoot();
   const reportRoot = temporaryRoot();
   mkdirSync(path.join(projectRoot, 'tests'));
@@ -302,10 +333,10 @@ describe('the findings', () => {
       path.join(second.projectRoot, 'tests/test_a.py'),
       'def test_a():\n    assert 1\n',
     );
-    const identity = ({ reportRoot, projectRoot }) =>
+    const identity = ({ reportRoot, projectRoot }: { reportRoot: string; projectRoot: string }) =>
       readTestRuntimeFindings({ reportRoot, projectRoot, runner: 'pytest' }).find(
         ({ classification }) => classification === 'enforceable',
-      ).identity;
+      )?.identity;
 
     expect(identity(first)).not.toBe(identity(second));
   });
@@ -330,21 +361,23 @@ describe('the findings', () => {
   });
 });
 
-function finding() {
+function findings(): IngestedFinding[] {
   const { projectRoot, reportRoot } = reportRootWith({ imports: REPORT_IMPORTS });
-  const [found] = readTestRuntimeFindings({ reportRoot, projectRoot, runner: 'pytest' }).filter(
-    ({ classification }) => classification === 'enforceable',
-  );
-  return found;
+  return readTestRuntimeFindings({ reportRoot, projectRoot, runner: 'pytest' })
+    .filter(({ classification }) => classification === 'enforceable')
+    .slice(0, 1);
 }
 
-function lifted(entry) {
-  const config = withCanonicalRules({
+function lifted(entry: Row) {
+  const config: unknown = withCanonicalRules({
     preset: 'python',
     python: { exceptions: [{ ...entry, reason: 'The suite checks the schema only.' }] },
   });
   validateConfig(config);
-  return applyPythonExceptions([finding()], config.python.exceptions);
+  return applyPythonExceptions(
+    findings(),
+    listOf(fieldOf(fieldOf(config, 'python'), 'exceptions')).map(exceptionOf),
+  );
 }
 
 describe('exceptions', () => {
@@ -358,26 +391,20 @@ describe('exceptions', () => {
   });
 
   it('prints the entry that lifts a finding', () => {
-    const [hinted] = applyRuleHints([finding()]);
+    const hinted = listOf(applyRuleHints(findings()))[0];
 
-    expect(hinted.message).toBe(
+    expect(fieldOf(hinted, 'message')).toBe(
       `${messageOf('no-production-runtime')}. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
     );
   });
 });
 
 describe('scanning the string literals', () => {
-  function scanWith(imports) {
+  function scanWith(imports: ImportsReport) {
     const { projectRoot, reportRoot } = reportRootWith({ imports });
-    const calls = [];
-    const run = (context, command, options) => {
-      calls.push({
-        command,
-        options,
-        request: JSON.parse(readFileSync(command.at(-1), 'utf8')),
-      });
-      return { stdout: '{"tests/test_a.py":{"strings":["app.service"],"plugins":[]}}' };
-    };
+    const { calls, run } = recordingRun(
+      '{"tests/test_a.py":{"strings":["app.service"],"plugins":[]}}',
+    );
     scanTestStrings({ projectRoot, reportRoot }, run);
     return { calls, reportRoot, projectRoot };
   }
@@ -386,17 +413,17 @@ describe('scanning the string literals', () => {
     const { calls, reportRoot, projectRoot } = scanWith(REPORT_IMPORTS);
 
     expect(calls).toHaveLength(1);
-    expect(calls[0].command.slice(0, 2)).toEqual(['python', '-I']);
-    expect(path.basename(calls[0].command[2])).toBe('string-scan.py');
-    expect(calls[0].options).toEqual({ rule: 'test-runtime-failed' });
-    expect(calls[0].request).toEqual({
+    expect(calls[0]?.command.slice(0, 2)).toEqual(['python', '-I']);
+    expect(path.basename(calls[0]?.command[2] ?? '')).toBe('string-scan.py');
+    expect(calls[0]?.options).toEqual({ rule: 'test-runtime-failed' });
+    expect(calls[0]?.request).toEqual({
       root: projectRoot,
       files: ['tests/test_a.py'],
       modules: { 'app.service': 'src/app/service.py' },
     });
-    expect(JSON.parse(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'))).toEqual(
-      { 'tests/test_a.py': { strings: ['app.service'], plugins: [] } },
-    );
+    expect(parseJson(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'))).toEqual({
+      'tests/test_a.py': { strings: ['app.service'], plugins: [] },
+    });
   });
 
   it('does not start the interpreter when there is nothing to scan', () => {
@@ -408,7 +435,7 @@ describe('scanning the string literals', () => {
       throw new Error('should not run');
     });
 
-    expect(JSON.parse(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'))).toEqual(
+    expect(parseJson(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'))).toEqual(
       {},
     );
   });

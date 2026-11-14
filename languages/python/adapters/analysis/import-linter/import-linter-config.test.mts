@@ -1,20 +1,14 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import { readImportLinterConfig } from './import-linter-config.mjs';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-import-linter-config-')));
-  roots.push(root);
+function project(files: Readonly<Record<string, string>>) {
+  const root = temporaryRoot('nitpicker-import-linter-config-');
   for (const [file, text] of Object.entries(files)) {
     writeFileSync(path.join(root, file), text);
   }
@@ -26,7 +20,8 @@ const TOML = '[tool.importlinter]\nroot_package = "store"\n';
 
 describe('the import-linter config the contracts come from', () => {
   it('reads setup.cfg, then .importlinter, then pyproject.toml, as import-linter does', () => {
-    const fileOf = (files) => readImportLinterConfig(project(files))?.file;
+    const fileOf = (files: Readonly<Record<string, string>>) =>
+      fieldOf(readImportLinterConfig(project(files)), 'file');
 
     expect(fileOf({ 'setup.cfg': INI, '.importlinter': INI, 'pyproject.toml': TOML })).toBe(
       'setup.cfg',
@@ -79,6 +74,8 @@ describe('the import-linter config the contracts come from', () => {
   it('names the file that does not parse', () => {
     const root = project({ 'pyproject.toml': '[tool.importlinter\n' });
 
-    expect(() => readImportLinterConfig(root)).toThrow(/^pyproject\.toml: /);
+    expect(() => {
+      readImportLinterConfig(root);
+    }).toThrow(/^pyproject\.toml: /);
   });
 });

@@ -1,34 +1,26 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../shared/values/readers.mts';
 import {
   hasImportLinterConfig,
   importLinterEnabled,
   readImportLinterFindings,
   runImportLinter,
 } from './python-import-linter.mjs';
+import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../core/diff/git/test-support/fixture-files.mjs';
+import { failureOf } from '../test-support/runs/failure-of.mts';
 
-const roots = [];
+const { temporaryRoot: scratchRoot } = useGitFixtures();
 
-function temporaryRoot() {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-linter-')));
-  roots.push(root);
-  return root;
+function temporaryRoot(): string {
+  return scratchRoot('nitpicker-python-linter-');
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function project(files) {
+function project(files: Readonly<Record<string, string>>): string {
   const root = temporaryRoot();
-  for (const [relative, contents] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
-    writeFileSync(path.join(root, relative), contents);
-  }
+  writeFiles(root, files);
   return root;
 }
 
@@ -63,7 +55,7 @@ describe('detecting an import-linter configuration', () => {
 });
 
 describe('running import-linter', () => {
-  function context(files, importLinter) {
+  function context(files: Readonly<Record<string, string>>, importLinter?: boolean) {
     return {
       projectRoot: project(files),
       reportRoot: temporaryRoot(),
@@ -80,14 +72,14 @@ describe('running import-linter', () => {
       throw new Error('should not run');
     });
 
-    expect(() => readFileSync(path.join(setup.reportRoot, 'import-linter.txt'))).toThrow();
+    expect(() => readFileSync(path.join(setup.reportRoot, 'import-linter.txt'))).toThrow('ENOENT');
   });
 
   it('runs the contracts without a cache and keeps the report', () => {
     const setup = context(CONFIGURED);
-    const calls = [];
+    const calls: { command: readonly string[]; options: unknown }[] = [];
 
-    runImportLinter(setup, (_, command, options) => {
+    runImportLinter(setup, (_: unknown, command: readonly string[], options: unknown) => {
       calls.push({ command, options });
       return { stdout: 'Contracts: 1 kept, 0 broken.\n', stderr: '' };
     });
@@ -132,17 +124,16 @@ describe('running import-linter', () => {
   it('reports output without a contract summary as a failure with its output', () => {
     const setup = context(CONFIGURED);
 
-    expect(() => {
+    const failure = failureOf(() => {
       runImportLinter(setup, () => ({
         stdout: 'Could not find .importlinter.\n',
         stderr: 'Traceback: boom\n',
       }));
-    }).toThrow(
-      expect.objectContaining({
-        rule: 'import-linter-failed',
-        message:
-          'lint-imports could not check the contracts:\nCould not find .importlinter.\n\nTraceback: boom',
-      }),
+    });
+
+    expect(fieldOf(failure, 'rule')).toBe('import-linter-failed');
+    expect(fieldOf(failure, 'message')).toBe(
+      'lint-imports could not check the contracts:\nCould not find .importlinter.\n\nTraceback: boom',
     );
   });
 

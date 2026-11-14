@@ -1,33 +1,24 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import { fieldOf } from '../../../../../shared/values/readers.mts';
 import {
   DESIGN_FAILED_RULE,
   DESIGN_REPORT,
   designFindings,
   readDesignFacts,
-} from './python-design.mjs';
+} from './python-design.mts';
+import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
+import { failureOf } from '../../test-support/runs/failure-of.mts';
 
-const roots = [];
+const { temporaryRoot } = useGitFixtures();
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function scratch(files = {}) {
-  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-design-')));
-  roots.push(root);
-  for (const [file, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
-    writeFileSync(path.join(root, file), text);
-  }
+function scratch(files: Readonly<Record<string, string>> = {}) {
+  const root = temporaryRoot('nitpicker-python-design-');
+  writeFiles(root, files);
   return root;
 }
 
-function reportWith(report) {
+function reportWith(report: unknown): string {
   return scratch({ [DESIGN_REPORT]: JSON.stringify(report) });
 }
 
@@ -73,23 +64,21 @@ describe('reading the design facts of the Python rules script', () => {
   it('turns an error the script reported into a design-failed error', () => {
     const reportRoot = reportWith({ error: 'RecursionError (calls.py:12)' });
 
-    expect(() => designFindings({ reportRoot, analyzerName: 'python' })).toThrow(
-      expect.objectContaining({
-        rule: DESIGN_FAILED_RULE,
-        message: 'The design facts producer failed: RecursionError (calls.py:12)',
-      }),
+    const failure = failureOf(() => designFindings({ reportRoot, analyzerName: 'python' }));
+
+    expect(fieldOf(failure, 'rule')).toBe(DESIGN_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(
+      'The design facts producer failed: RecursionError (calls.py:12)',
     );
   });
 
   it('turns facts the shared schema rejects into a design-failed error', () => {
     const reportRoot = reportWith({ facts: factsWithoutOwner() });
 
-    expect(() => designFindings({ reportRoot, analyzerName: 'python' })).toThrow(
-      expect.objectContaining({
-        rule: DESIGN_FAILED_RULE,
-        message: REJECTED_MESSAGE,
-      }),
-    );
+    const failure = failureOf(() => designFindings({ reportRoot, analyzerName: 'python' }));
+
+    expect(fieldOf(failure, 'rule')).toBe(DESIGN_FAILED_RULE);
+    expect(fieldOf(failure, 'message')).toBe(REJECTED_MESSAGE);
   });
 
   it('returns the findings of valid facts', () => {
