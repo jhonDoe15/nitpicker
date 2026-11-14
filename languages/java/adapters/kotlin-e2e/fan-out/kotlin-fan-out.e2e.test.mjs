@@ -90,7 +90,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin unbounded fan-out end to end', () => 
     );
   });
 
-  it('leaves a reported call to the fan-out rule and keeps a bounded per-item call with the loop rule', () => {
+  it('leaves a reported call to the fan-out rule and a bounded concurrent call to neither rule', () => {
     const loops = result.newEnforceable.filter(({ rule }) => rule === 'IoCallInLoop');
     const at = (file, fragment) =>
       loops.some(
@@ -98,7 +98,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin unbounded fan-out end to end', () => 
       );
 
     expect(at(UNBOUNDED, 'urls.map { async { client.send')).toBe(false);
-    expect(at(BOUNDED, 'permits.withPermit { client.send')).toBe(true);
+    expect(at(BOUNDED, 'permits.withPermit { client.send')).toBe(false);
   });
 
   it('names the exception route that lifts the rule', () => {
